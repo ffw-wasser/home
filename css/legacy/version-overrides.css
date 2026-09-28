@@ -900,7 +900,7 @@ body:not(.x) .roles-panel .group-special-status {
   background: #eef2f4!important}
 
 .age-member-button:not(.recorded)::after {
-  content: "Direkt anwesend";
+  content: "Altersmannschaft";
   display: block;
   margin-top: 3px;
   color: #586872;
@@ -8406,3 +8406,59 @@ html body .participant-command-header .compact-menu {
 #attendanceView #exportResetButton.step-3-action-button:not(:disabled):hover{
   background:#b96508!important;
 }
+
+/* Produktiv: kraeftigere Statusfarben */
+.attendance-selection-workspace.status-present{
+  --folder-accent:#067a35!important;--folder-tab:#067a35!important;--folder-paper:#ccefd8!important;--folder-line:#168a45!important}
+.attendance-selection-workspace.status-excused{
+  --folder-accent:#d17800!important;--folder-tab:#d17800!important;--folder-paper:#ffe2a3!important;--folder-line:#d88900!important}
+.attendance-selection-workspace.status-not-applicable{
+  --folder-accent:#075fb8!important;--folder-tab:#075fb8!important;--folder-paper:#cfe5ff!important;--folder-line:#1874cf!important}
+.attendance-selection-workspace.status-organization{
+  --folder-accent:#7a31a8!important;--folder-tab:#7a31a8!important;--folder-paper:#ead5f7!important;--folder-line:#8d45b8!important}
+.attendance-selection-workspace.status-present .orga-sheet,.attendance-selection-workspace.status-present .sheet-status-tab.selected{background:#ccefd8!important}
+.attendance-selection-workspace.status-excused .orga-sheet,.attendance-selection-workspace.status-excused .sheet-status-tab.selected{background:#ffe2a3!important}
+.attendance-selection-workspace.status-not-applicable .orga-sheet,.attendance-selection-workspace.status-not-applicable .sheet-status-tab.selected{background:#cfe5ff!important}
+.attendance-selection-workspace.status-organization .orga-sheet,.attendance-selection-workspace.status-organization .sheet-status-tab.selected{background:#ead5f7!important}
+#attendanceSelectionWorkspace.status-present #attendanceStatusToolbar .attendance-status-tab.selected{color:#045c28!important;border-color:#067a35!important}
+#attendanceSelectionWorkspace.status-present #attendanceStatusToolbar .attendance-status-tab.selected::before{background:#067a35!important}
+#attendanceSelectionWorkspace.status-excused #attendanceStatusToolbar .attendance-status-tab.selected{color:#8f4f00!important;border-color:#d17800!important}
+#attendanceSelectionWorkspace.status-excused #attendanceStatusToolbar .attendance-status-tab.selected::before{background:#d17800!important}
+#attendanceSelectionWorkspace.status-not-applicable #attendanceStatusToolbar .attendance-status-tab.selected{color:#064f98!important;border-color:#075fb8!important}
+#attendanceSelectionWorkspace.status-not-applicable #attendanceStatusToolbar .attendance-status-tab.selected::before{background:#075fb8!important}
+#attendanceSelectionWorkspace.status-organization #attendanceStatusToolbar .attendance-status-tab.selected{color:#622486!important;border-color:#7a31a8!important}
+#attendanceSelectionWorkspace.status-organization #attendanceStatusToolbar .attendance-status-tab.selected::before{background:#7a31a8!important}
+
+/* Produktiv: Statusfarbe auch als deutliche Karten-Hintergrundfarbe */
+#attendanceSelectionWorkspace.status-present .participant-file-card,
+#attendanceSelectionWorkspace.status-present .orga-sheet,
+#attendanceSelectionWorkspace.status-present .member-section{
+  background:#b9eac9!important;
+  border-color:#067a35!important;
+}
+#attendanceSelectionWorkspace.status-excused .participant-file-card,
+#attendanceSelectionWorkspace.status-excused .orga-sheet,
+#attendanceSelectionWorkspace.status-excused .member-section{
+  background:#ffd27a!important;
+  border-color:#d17800!important;
+}
+#attendanceSelectionWorkspace.status-not-applicable .participant-file-card,
+#attendanceSelectionWorkspace.status-not-applicable .orga-sheet,
+#attendanceSelectionWorkspace.status-not-applicable .member-section{
+  background:#b7d9ff!important;
+  border-color:#075fb8!important;
+}
+#attendanceSelectionWorkspace.status-organization .participant-file-card,
+#attendanceSelectionWorkspace.status-organization .orga-sheet,
+#attendanceSelectionWorkspace.status-organization .member-section{
+  background:#dfbdf3!important;
+  border-color:#7a31a8!important;
+}
+#attendanceSelectionWorkspace.status-present .member-section-heading{background:#8fd8aa!important}
+#attendanceSelectionWorkspace.status-excused .member-section-heading{background:#f7b947!important}
+#attendanceSelectionWorkspace.status-not-applicable .member-section-heading{background:#81baff!important}
+#attendanceSelectionWorkspace.status-organization .member-section-heading{background:#ca8bea!important}
+#attendanceSelectionWorkspace.status-present .choice-button:not(.selected):not(:disabled){background:#e5f8eb!important;border-color:#55ad72!important}
+#attendanceSelectionWorkspace.status-excused .choice-button:not(.selected):not(:disabled){background:#fff0c9!important;border-color:#d99b2f!important}
+#attendanceSelectionWorkspace.status-not-applicable .choice-button:not(.selected):not(:disabled){background:#e6f2ff!important;border-color:#4c95df!important}
+#attendanceSelectionWorkspace.status-organization .choice-button:not(.selected):not(:disabled){background:#f4e6fb!important;border-color:#a864ca!important}
