@@ -186,11 +186,11 @@ byId("menuToggleButton").addEventListener("click", () => {
   byId("menuToggleButton").setAttribute("aria-expanded", String(willOpen));
 });
 byId("attendanceTab").addEventListener("click", () => {
+  if(!requestReturnToHomeStage())return;
   showView("attendanceView");
-  setHomeFlowStage(1);
   requestAnimationFrame(()=>byId("homeFlowProgress")?.scrollIntoView({behavior:"smooth",block:"start"}));
 });
-document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => showView(button.closest("#settingsView") ? "attendanceView" : "settingsView")));
+document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => {const target=button.closest("#settingsView")?"attendanceView":"settingsView";if(target==="attendanceView"&&!requestReturnToHomeStage())return;showView(target);}));
 byId("adminTab").addEventListener("click", () => showView(adminUnlocked ? "adminView" : "adminLoginView"));
 byId("archiveTab").addEventListener("click", () => { if (adminUnlocked) { renderArchive(); showView("archiveView"); } else showView("archiveLoginView"); });
 byId("helpTab")?.addEventListener("click", () => showView("helpView"));
@@ -371,7 +371,7 @@ function renderSafetyInfoHub(){
  const breathing=members.filter(member=>!member.ageDepartment&&["expired","soon"].includes(breathingClearanceState(member,systemToday()))),drivers=members.filter(member=>["missing","overdue","soon"].includes(driverLicenseControlDue(member,systemToday()))),hub=ensureSafetyInfoHub(),count=breathing.length+drivers.length;
  hub.button.hidden=count===0;byId("safetyInfoCount").textContent=String(count);hub.button.classList.toggle("has-critical",breathing.some(m=>breathingClearanceState(m,systemToday())==="expired")||drivers.some(m=>["missing","overdue"].includes(driverLicenseControlDue(m,systemToday()))));
  const row=(name,text,state)=>`<li class="safety-${state}"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(text)}</span></li>`;
- const breathingRows=breathing.map(m=>row(nameForTile(m),breathingClearanceState(m,systemToday())==="expired"?`abgelaufen am ${m.breathingClearanceUntil||"nicht hinterlegt"}`:`gültig bis ${m.breathingClearanceUntil||"nicht hinterlegt"}`,breathingClearanceState(m,systemToday()))).join("");
+ const breathingRows=breathing.map(m=>row(nameForTile(m),breathingClearanceSummary(m),breathingClearanceState(m,systemToday()))).join("");
  const driverRows=drivers.map(m=>{const state=driverLicenseControlDue(m,systemToday());return row(nameForTile(m),state==="missing"?"Kontrolle fehlt":state==="overdue"?`fällig seit ${driverLicenseDueDate(m)}`:`fällig bis ${driverLicenseDueDate(m)}`,state);}).join("");
  byId("safetyInfoContent").innerHTML=`<section><h3>Atemschutz</h3>${breathingRows?`<ul>${breathingRows}</ul>`:"<p>Keine offenen Hinweise.</p>"}<button type="button" class="outline-button" data-safety-statistics>Details in der Statistik</button></section><section><h3>Führerscheinkontrolle</h3>${driverRows?`<ul>${driverRows}</ul>`:"<p>Keine offenen Hinweise.</p>"}<button type="button" class="outline-button" data-safety-members>Mitglieder verwalten</button></section>`;
  byId("safetyInfoContent").querySelector("[data-safety-statistics]").onclick=()=>{hub.dialog.close();renderStatistics();showView("settingsStatisticsView");};byId("safetyInfoContent").querySelector("[data-safety-members]").onclick=()=>{hub.dialog.close();showView("settingsMembersView");};

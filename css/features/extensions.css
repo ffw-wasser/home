@@ -887,3 +887,29 @@
     bottom:calc(max(10px,env(safe-area-inset-bottom)) + 68px)!important;
   }
 }
+
+/* Produktiv: dreiteilige Atemschutzfreigabe als eigene Verwaltungskarte */
+.breathing-clearance-card{grid-column:1/-1!important;margin:0!important;padding:15px!important;border:2px solid #d3a72b!important;border-radius:13px!important;background:#fffaf0!important}
+.breathing-clearance-card>legend{padding:0 8px;color:#705300;font-weight:950}
+.breathing-clearance-card>p{margin:0 0 12px;color:#5f6467;font-size:.84rem}
+.breathing-clearance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.breathing-clearance-grid label{display:grid;gap:5px;font-weight:850}
+.breathing-clearance-result{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 12px;border-radius:9px}
+.breathing-clearance-result span{display:grid;gap:2px}.breathing-clearance-result small{font-size:.77rem}
+.breathing-clearance-result.is-valid{color:#0d5a2b;background:#e4f4e9;border:1px solid #78b68b}
+.breathing-clearance-result.is-blocked{color:#842020;background:#fff0f0;border:1px solid #d89898}
+@media(max-width:800px){.breathing-clearance-grid{grid-template-columns:1fr}.breathing-clearance-result{align-items:flex-start;flex-direction:column}}
+
+/* Produktiv: Atemschutzfreigabe in der Einzelstatistik */
+.individual-breathing-clearance-panel{grid-column:1/-1!important;padding:16px!important;border:2px solid #d3a72b!important;border-radius:12px!important;background:#fffaf0!important}
+.individual-clearance-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:13px}
+.individual-clearance-heading h4{margin:0;color:#705300}.individual-clearance-heading p{margin:4px 0 0;color:#5f6467;font-size:.82rem}
+.individual-clearance-heading>strong{padding:8px 11px;border-radius:999px;white-space:nowrap;font-size:.82rem}
+.individual-clearance-heading>strong.is-valid{color:#0d5a2b;background:#e4f4e9;border:1px solid #78b68b}
+.individual-clearance-heading>strong.is-blocked{color:#842020;background:#fff0f0;border:1px solid #d89898}
+.individual-clearance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.individual-clearance-item{display:grid;gap:5px;padding:12px;border-radius:9px;background:#fff;border-left:5px solid #6d7b82}
+.individual-clearance-item span{font-size:.78rem;font-weight:850;color:#556269}.individual-clearance-item strong{font-size:.9rem}
+.individual-clearance-item.valid{border-left-color:#258348}.individual-clearance-item.soon{border-left-color:#d99a00;background:#fff8dc}.individual-clearance-item.expired,.individual-clearance-item.missing{border-left-color:#b32020;background:#fff0f0}
+@media(max-width:760px){.individual-clearance-heading{flex-direction:column}.individual-clearance-grid{grid-template-columns:1fr}}
+@media print{body.printing-individual-statistics .individual-breathing-clearance-panel{display:block!important;break-inside:avoid!important}.individual-clearance-grid{grid-template-columns:repeat(3,1fr)!important}}

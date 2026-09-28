@@ -8393,3 +8393,16 @@ html body .participant-command-header .compact-menu {
 .statistics-inline-legend span{white-space:nowrap}
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @media(max-width:560px){.monthly-stack{width:min(25px,88%)}}
+
+/* Produktiv: Schritt 3 als orange hervorgehobene Hauptaktion */
+#step3ActionArea #exportResetButton.step-3-action-button:not(:disabled),
+#attendanceView #exportResetButton.step-3-action-button:not(:disabled){
+  color:#fff!important;
+  background:#d97706!important;
+  border-color:#a95604!important;
+  box-shadow:0 8px 20px rgba(217,119,6,.30)!important;
+}
+#step3ActionArea #exportResetButton.step-3-action-button:not(:disabled):hover,
+#attendanceView #exportResetButton.step-3-action-button:not(:disabled):hover{
+  background:#b96508!important;
+}

@@ -160,7 +160,19 @@ function renderStatistics() {
   const average = yearData.length ? presentRows.length / yearData.length : null;
   byId("averageAttendance").textContent = average === null ? "–" : average.toFixed(1).replace(".", ",");
   byId("averageAttendanceDetail").textContent = `anwesende Kräfte je Termin`;
-  const ageRows = rows.filter(row => row.status !== "Betrifft nicht" && ageMembers.some(member => nameForStorage(member) === row.name || nameForTile(member) === row.name));
+  const ageEligibleEvents=yearData.filter(data=>{
+    const type=data.rows[0]?.sessionType||data.item.sessionType||"";
+    return type!=="Einsatz"&&type!=="Ausschuss Sitzung";
+  });
+  const ageRows=ageEligibleEvents.flatMap(data=>{
+    const date=data.rows[0]?.date||String(data.item.createdAt||"").slice(0,10),type=data.rows[0]?.sessionType||data.item.sessionType||"";
+    return ageMembers.map(member=>{
+      const names=[nameForStorage(member),nameForTile(member)];
+      const existing=data.rows.find(row=>names.includes(row.name));
+      if(existing&&existing.status!=="Betrifft nicht")return existing;
+      return {date,time:"",name:nameForStorage(member),sessionType:type,status:"Fehlt",role:"",topic:data.item.topic||data.rows[0]?.topic||""};
+    });
+  });
   const agePresentRows = ageRows.filter(row => row.status === "Anwesend");
   const ageExcusedRows = ageRows.filter(row => row.status === "Entschuldigt");
   const ageMissingRows = ageRows.filter(row => row.status === "Fehlt");
@@ -168,7 +180,7 @@ function renderStatistics() {
   byId("ageTeamStrength").textContent = ageMembers.length;
   byId("ageAttendanceRate").textContent = ageRate === null ? "–" : `${ageRate.toFixed(1).replace(".", ",")} %`;
   byId("ageAttendanceDetail").textContent = ageRows.length ? `${agePresentRows.length} anwesend von ${ageRows.length} möglichen Teilnahmen` : "Noch keine Teilnahmen";
-  byId("ageAverageAttendance").textContent = yearData.length ? (agePresentRows.length / yearData.length).toFixed(1).replace(".", ",") : "–";
+  byId("ageAverageAttendance").textContent = ageEligibleEvents.length ? (agePresentRows.length / ageEligibleEvents.length).toFixed(1).replace(".", ",") : "–";
   byId("agePresentCount").textContent = agePresentRows.length;
   byId("ageStatusDetail").textContent = `${ageExcusedRows.length} entschuldigt · ${ageMissingRows.length} fehlt`;
   const ageVisits = new Map(ageMembers.map(member => [nameForStorage(member), 0]));
@@ -294,6 +306,37 @@ function populateIndividualMemberSelect() {
   select.innerHTML = `<option value="">Bitte auswählen</option>${activeMembers.map(member => `<option value="${escapeHtml(member.id)}">${escapeHtml(nameForTile(member))}</option>`).join("")}`;
   if (activeMembers.some(member => member.id === current)) select.value = current;
 }
+function ensureIndividualBreathingClearancePanel(){
+  const preview=byId("individualStatisticsPreview");
+  if(!preview)return null;
+  let panel=byId("individualBreathingClearancePanel");
+  if(panel)return panel;
+  panel=document.createElement("section");
+  panel.id="individualBreathingClearancePanel";
+  panel.className="individual-statistics-section individual-breathing-clearance-panel";
+  panel.innerHTML=`<div class="individual-clearance-heading"><div><h4>Atemschutzfreigabe</h4><p>Die Freigabe wird nur erteilt, wenn alle drei Nachweise gültig sind.</p></div><strong data-individual-clearance-status></strong></div><div class="individual-clearance-grid" data-individual-clearance-items></div>`;
+  const operationPanel=byId("individualOperationStatistics");
+  if(operationPanel)operationPanel.insertAdjacentElement("afterend",panel);else preview.appendChild(panel);
+  return panel;
+}
+function renderIndividualBreathingClearance(member){
+  const panel=ensureIndividualBreathingClearancePanel();if(!panel)return;
+  const today=systemToday(),state=breathingClearanceState(member,today),valid=hasValidBreathingClearance(member,today);
+  const items=[
+    ["G26.3",member.g263ValidUntil||member.breathingClearanceUntil||""],
+    ["Unterweisung AGT",member.agtInstructionValidUntil||""],
+    ["FFI",member.ffiValidUntil||""]
+  ];
+  const status=panel.querySelector("[data-individual-clearance-status]");
+  status.textContent=valid?"Freigabe erteilt":"Freigabe nicht erteilt";
+  status.className=valid?"is-valid":"is-blocked";
+  panel.dataset.state=state;
+  panel.querySelector("[data-individual-clearance-items]").innerHTML=items.map(([label,date])=>{
+    const itemState=!date?"missing":date<today?"expired":date<=new Date(new Date(today+"T12:00:00").setDate(new Date(today+"T12:00:00").getDate()+60)).toLocaleDateString("sv-SE")?"soon":"valid";
+    const text=!date?"Nicht hinterlegt":`${itemState==="expired"?"Abgelaufen":"Gültig bis"} ${formatDisplayDate(date)}`;
+    return `<div class="individual-clearance-item ${itemState}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(text)}</strong></div>`;
+  }).join("");
+}
 function renderIndividualStatistics(memberId) {
   const preview = byId("individualStatisticsPreview");
   const button = byId("individualStatisticsPdfButton");
@@ -309,6 +352,7 @@ function renderIndividualStatistics(memberId) {
   const total = present.length + excused.length + missing.length;
   const rate = total ? present.length / total * 100 : null;
   byId("individualMemberName").textContent = nameForTile(member);
+  renderIndividualBreathingClearance(member);
   byId("individualStatisticsPeriod").textContent = `Kalenderjahr ${year} · ${yearData.filter(data=>(data.rows[0]?.sessionType||data.item.sessionType)!=="Einsatz").length} Übungen / Sitzungen · ${yearData.filter(data=>(data.rows[0]?.sessionType||data.item.sessionType)==="Einsatz").length} Einsätze`;
   byId("individualAttendanceRate").textContent = rate === null ? "–" : `${rate.toFixed(1).replace(".", ",")} %`;
   byId("individualAttendanceDetail").textContent = total ? `${present.length} von ${total} möglichen Teilnahmen` : "Noch keine Daten";
