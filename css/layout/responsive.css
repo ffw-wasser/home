@@ -381,3 +381,14 @@ button { -webkit-user-select: none; user-select: none; }
 .training-status-buttons{grid-template-columns:minmax(220px,420px)}
 @media(max-width:760px){.session-type-grid{grid-template-columns:1fr 1fr 1fr}}
 @media(max-width:520px){.session-type-grid{grid-template-columns:1fr}}
+
+/* iOS/iPadOS 27 und Safari 27 */
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px)}
+html,body{min-height:100%;min-height:100dvh}
+body{padding-left:var(--safe-left);padding-right:var(--safe-right);padding-bottom:var(--safe-bottom)}
+.top-nav{padding-top:calc(9px + var(--safe-top));padding-left:calc(20px + var(--safe-left));padding-right:calc(20px + var(--safe-right))}
+.app-shell{-webkit-overflow-scrolling:touch;padding-bottom:calc(60px + var(--safe-bottom))}
+input,select,textarea,button{font-size:max(16px,1em)}
+dialog{max-width:calc(100vw - var(--safe-left) - var(--safe-right) - 24px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)}
+[hidden]{display:none!important}
+@supports not (height:100dvh){html,body{min-height:100vh}}

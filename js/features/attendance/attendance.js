@@ -455,6 +455,7 @@ function setHomeFlowStage(stage){
   const attendanceLayout=document.querySelector("#attendanceView>.attendance-layout");
   const tactics=byId("tacticsView");
   const finish=byId("homeStageFinish");
+  const step3Action=byId("step3ActionArea");
 
   const applyVisibility=(element,visible,display)=>{
     if(!element)return;
@@ -473,6 +474,7 @@ function setHomeFlowStage(stage){
   applyVisibility(byId("rfidCsvImport"),stage===2,"block");
   applyVisibility(byId("attendanceStatusToolbar"),stage===2,"flex");
   applyVisibility(finish,false,"block");
+  applyVisibility(step3Action,stage===2,"block");
   const operationAssignment=byId("operationAssignmentStep");
   applyVisibility(operationAssignment,stage===3&&sessionType==="Einsatz","block");
   applyVisibility(byId("operationReportForm"),false,"block");
@@ -612,8 +614,8 @@ function ensureStagedHomeFlow(){
       entriesPanel.insertAdjacentElement("afterend",step3Action);
       step3Action.classList.add("step-3-action-side");
     }else workspace.appendChild(step3Action);
-    step3Action.hidden=false;
-    step3Action.removeAttribute("aria-hidden");
+    step3Action.hidden=homeFlowStage!==2;
+    step3Action.setAttribute("aria-hidden",String(homeFlowStage!==2));
   }
   const entriesPanel=byId("entries")?.closest("article,section,.panel");if(entriesPanel){entriesPanel.classList.add("flow-stage-2-support","today-entries-panel");
     const controls=byId("saveButton")?.closest(".batch-selection-controls");
