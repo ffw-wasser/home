@@ -48,10 +48,10 @@ function promptIpadTerminPackageSave(fileName,blob){
 }
 async function saveTerminPackage(fileName,blob){
   document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>node.remove());
-  const isiPad=/iPad|Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document);
+  const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document));
   // Auf iPad niemals zuerst einen eventuell alten Verzeichnis-Handle benutzen.
   // Der explizite zweite Tipp öffnet zuverlässig den nativen Teilen-Dialog.
-  if(isiPad)return promptIpadTerminPackageSave(fileName,blob);
+  if(isiOS)return promptIpadTerminPackageSave(fileName,blob);
   const handle=effectiveCsvDirectoryHandle?.()||effectivePdfDirectoryHandle?.()||null;
   if(handle){
     try{if(!(await ensureDirectoryWritePermission(handle)))return "failed";const fileHandle=await handle.getFileHandle(fileName,{create:true});const writable=await fileHandle.createWritable({keepExistingData:false});await writable.write(blob);await writable.close();return "saved";}
