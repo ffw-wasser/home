@@ -194,15 +194,14 @@ function renderStatistics() {
   const missingRows = eligibleRows.filter(row => row.status === "Fehlt");
   const attendanceRate = eligibleRows.length ? (presentRows.length / eligibleRows.length * 100) : null;
   byId("yearAttendanceRate").textContent = attendanceRate === null ? "–" : `${attendanceRate.toFixed(1).replace(".", ",")} %`;
-  byId("yearAttendanceDetail").textContent = `${presentRows.length} anwesend von ${eligibleRows.length} möglichen Teilnahmen`;
+  byId("yearAttendanceDetail").textContent = `${presentRows.length} Anwesenheiten bei ${eligibleRows.length} möglichen Personenteilnahmen`;
   byId("teamStrength").textContent = activeMembers.length;
   byId("teamStrengthDetail").textContent = `${activeMembers.length} aktive Mitglieder`;
   byId("yearProbeCount").textContent = probeYearData.length;
   byId("yearProbeDetail").textContent = `${probeYearData.length} Proben / Sitzungen · ${yearData.filter(statisticsIsOperation).length} Einsätze separat`;
-  const participantCountsByAppointment=probeYearData.map(data=>data.rows.filter(row=>row.status==="Anwesend"&&!members.find(member=>(nameForStorage(member)===row.name||nameForTile(member)===row.name)&&member.ageDepartment)).length);
-  const average = participantCountsByAppointment.length ? participantCountsByAppointment.reduce((sum,count)=>sum+count,0) / participantCountsByAppointment.length : null;
-  byId("averageAttendance").textContent = average === null ? "–" : average.toFixed(1).replace(".", ",");
-  byId("averageAttendanceDetail").textContent = `anwesende Kräfte je Termin`;
+  const annualOperationCount=yearData.filter(statisticsIsOperation).length;
+  byId("averageAttendance").textContent = annualOperationCount;
+  byId("averageAttendanceDetail").textContent = annualOperationCount===1?"Einsatz im gewählten Kalenderjahr":"Einsätze im gewählten Kalenderjahr";
   const ageEligibleEvents=probeYearData.filter(data=>{
     const type=data.rows[0]?.sessionType||data.item.sessionType||"";
     return type!=="Einsatz"&&type!=="Ausschuss Sitzung";

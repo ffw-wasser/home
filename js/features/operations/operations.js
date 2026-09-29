@@ -124,7 +124,14 @@ async function operationPdfBlob(d){
  {
   const ops=['0 0 0 RG 0 0 0 rg'];opPageHeader(ops,2);let y=750;
   y=opSection(ops,'Verlauf der Tätigkeit (Brandbekämpfung / Löscherfolg / Technische Rettung / Hilfeleistung)',y+8);opParagraph(ops,48,y,d.actions,91,10);y-=132;
-  y=opSection(ops,'Fahrzeug- und Reservezuordnung',y+8);for(const group of ['EM 5/42 LF10','EM 5/47 TSF','Reserve Einsatzstelle','Reserve Gerätehaus']){const assigned=operationSortNames(d.members.filter(name=>d.assignments?.[name]===group),d.assignmentRoles).map(name=>`${operationProtocolName(name)}${d.assignmentRoles?.[name]?` (${d.assignmentRoles[name]})`:''}`);opPdfText(ops,48,y,8.3,`${group}:`,true);const valueX=55+group.length*4.7;opParagraph(ops,valueX,y,assigned.join(', ')||'-',Math.max(34,91-Math.ceil(group.length*.6)),2);y-=29;}y=opSection(ops,'Personalangaben bei Menschenrettung, Unglücksfällen oder Verletzungen',y+8);opParagraph(ops,48,y,d.persons,91,4);y-=62;
+  y=opSection(ops,'Fahrzeug- und Reservezuordnung',y+8);
+  const assignmentGroups=['EM 5/42 LF10','EM 5/47 TSF','Reserve Einsatzstelle','Reserve Gerätehaus'];
+  const assignmentLines=Object.fromEntries(assignmentGroups.map(group=>[group,operationSortNames(d.members.filter(name=>d.assignments?.[name]===group),d.assignmentRoles).map(name=>`${operationProtocolName(name)}${d.assignmentRoles?.[name]?` (${d.assignmentRoles[name]})`:''}`)]));
+  const assignmentBox=(group,x,top,width,height)=>{opRect(ops,x,top-height,width,height);opPdfText(ops,x+5,top-13,8,group,true);const names=assignmentLines[group].length?assignmentLines[group]:['-'];const available=height-22,leading=Math.max(7,Math.min(9,available/Math.max(1,names.length))),fontSize=leading<8?6.2:7.2;names.forEach((name,index)=>opPdfText(ops,x+7,top-24-index*leading,fontSize,name));};
+  const assignmentRows=[['EM 5/42 LF10','EM 5/47 TSF'],['Reserve Einsatzstelle','Reserve Gerätehaus']];
+  for(const pair of assignmentRows){const lineCount=Math.max(1,assignmentLines[pair[0]].length,assignmentLines[pair[1]].length),height=Math.max(42,24+lineCount*9);assignmentBox(pair[0],40,y,255,height);assignmentBox(pair[1],295,y,260,height);y-=height+10;}
+  y-=8;
+  y=opSection(ops,'Personalangaben bei Menschenrettung, Unglücksfällen oder Verletzungen',y);opParagraph(ops,48,y-4,d.persons,91,4);y-=68;
   y=opSection(ops,'Besondere Vorkommnisse',y+8);opParagraph(ops,48,y,d.special,91,4);y-=62;
   y=opSection(ops,'Weitere Kräfte und Behörden',y+8);const agencies=[...d.agencies,d.otherAgencies].filter(Boolean);opParagraph(ops,48,y,agencies.join(', '),91,5);y-=75;
   y=opSection(ops,'Einsatzleitung und Atemschutz',y+8);opField(ops,'Einsatzleiter',d.leader,45,y);y-=21;opField(ops,'ZvD',d.zvd,45,y);y-=21;opField(ops,'Atemschutzüberwachung',d.atueUsed?(d.atueDepartment?'Ja, durch Abt. Emmendingen':`Ja, ${d.atuePerson}`):'Nein',45,y,138);y-=38;
