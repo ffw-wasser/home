@@ -353,7 +353,7 @@ else removeStandaloneAttendanceVersion();
 
 
 /* Versionsanzeige der Fusszeile verbindlich setzen, auch bei altem HTML-Cache. */
-const originalRenderStatistics=renderStatistics;renderStatistics=function(){originalRenderStatistics();ensureOperationStatisticsPanel();renderOperationStatistics();};
+// Einsatzstatistik wird getrennt durch statistics.js dargestellt.
 function enforceFooterVersion(){
   const footer=document.querySelector(".app-footer");
   if(footer)footer.textContent="© 2026 Markus Bürklin · Feuerwehr Wasser 2.0 · Produktiv";
