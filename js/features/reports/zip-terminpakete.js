@@ -85,7 +85,10 @@ window.finishOperationZip=async function(){
   if(statusButton){statusButton.textContent="Einsatz wird vorbereitet …";statusButton.setAttribute("aria-busy","true");}
   if(validationBox){validationBox.hidden=false;validationBox.innerHTML='<p class="warning">Einsatzbericht wird geprüft und erstellt …</p>';}
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-  const d=collectOperationData();
+  const d=(typeof collectOperationData==="function"?collectOperationData():null);
+  if(!d||typeof d!=="object")throw new Error("Einsatzdaten konnten nicht gelesen werden");
+  d.members=Array.isArray(d.members)?d.members:[];
+  d.times=d.times||{};
   if(d.atueUsed&&!d.atueDepartment&&!documentReportReady){showDocumentReportPanel();showToast("Bitte zuerst den Bericht der Atemschutzüberwachung fotografieren oder auswählen.","error");return;}
   const check=validateOperation(d),box=byId("operationValidation");box.hidden=!(check.errors.length||check.warnings.length);box.innerHTML=[...check.errors.map(x=>`<p class="error">${escapeHtml(x)}</p>`),...check.warnings.map(x=>`<p class="warning">${escapeHtml(x)}</p>`)].join("");
   if(check.errors.length)return showToast("Bitte die Pflichtangaben und Hinweise prüfen.","error");
@@ -103,7 +106,7 @@ window.finishOperationZip=async function(){
       // ausgewählten Ordner ersetzt statt als CSV/PDF-Doppel ausgegeben wird.
       const zip=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Einsatz",operationData:d}),result=await saveTerminPackage(zipName,zip);
       if(result==="failed"||result==="cancelled"){showToast("Das Einsatz-Terminpaket konnte nicht gespeichert werden. Daten bleiben erhalten.","error");return false;}
-      const item={id:previous?.id||makeId(),packageFileName:zipName,fileName:csvName,pdfFileName:pdfName,content:csv,sessionType:"Einsatz",topic:`${d.type} · ${d.location}`,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),presentCount:d.members.length,excusedCount:0,missingCount:0,operationData:d,hasImportedPdf:true,revisions:[...(previous?.revisions||[]),...(previous?[{correctedAt:new Date().toISOString(),reason:"Einsatzbericht korrigiert",previousOperationData:previous.operationData}]:[])]};
+      const item={id:previous?.id||makeId(),packageFileName:zipName,fileName:csvName,pdfFileName:pdfName,content:csv,sessionType:"Einsatz",topic:`${d.type} · ${d.location}`,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),presentCount:(Array.isArray(d.members)?d.members.length:0),excusedCount:0,missingCount:0,operationData:d,hasImportedPdf:true,revisions:[...(previous?.revisions||[]),...(previous?[{correctedAt:new Date().toISOString(),reason:"Einsatzbericht korrigiert",previousOperationData:previous.operationData}]:[])]};
       try{await saveImportedReportPdf(item.id,new File([pdf],pdfName,{type:"application/pdf"}));await commitPendingDocumentReport?.(item.id);csvArchive=previous?csvArchive.map(entry=>entry.id===item.id?item:entry):[item,...csvArchive];saveArchive();}catch(error){console.error("Lokales Einsatzarchiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
       entries=entries.filter(e=>e.operationId!==currentOperationId);saveEntries();resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();setHomeFlowStage(1);showView("attendanceView");showToast(previous?"Korrigiertes Einsatz-Terminpaket wurde gespeichert.":"Einsatz-Terminpaket wurde gespeichert.");return true;
     });
