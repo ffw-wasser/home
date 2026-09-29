@@ -35,10 +35,16 @@ function ensureOperationForm(){
  <div id="operationValidation" class="operation-validation" hidden></div><div class="operation-actions"><button class="outline-button" id="operationBack" type="button">Zurück zur Zuordnung</button><button class="primary-button" id="operationFinish" type="button">Einsatz abschließen · CSV + PDF</button></div>`;
  byId("attendanceView").appendChild(section);
  byId("operationBack").onclick=()=>{ensureOperationForm().hidden=true;showOperationForm();};
- byId("operationFinish").onclick=event=>{
+ byId("operationFinish").onclick=async event=>{
    event.preventDefault();
-   if(typeof window.finishOperationZip!=="function")return showToast("ZIP-Speicherfunktion ist nicht verfügbar. Bitte Seite neu laden.","error");
-   window.finishOperationZip();
+   const button=event.currentTarget;
+   const originalText=button.textContent;
+   if(typeof window.finishOperationZip!=="function")return showToast("Einsatzabschluss ist nicht geladen. Bitte Seite vollständig neu laden.","error");
+   button.textContent="Einsatz wird vorbereitet …";
+   button.setAttribute("aria-busy","true");
+   try{await window.finishOperationZip();}
+   catch(error){console.error("Einsatzabschluss fehlgeschlagen",error);showToast(`Einsatz konnte nicht abgeschlossen werden: ${error?.message||"unbekannter Fehler"}`,"error");}
+   finally{button.textContent=originalText;button.removeAttribute("aria-busy");button.disabled=false;}
  };
  const syncAtueMode=()=>{
    const used=Boolean(byId("opAtueUsed")?.checked),department=Boolean(byId("opAtueDepartment")?.checked);

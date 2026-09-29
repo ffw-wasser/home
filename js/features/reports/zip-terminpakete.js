@@ -81,6 +81,10 @@ window.closeDay=async function(topic=currentClosingTopic){
 
 /* Einsatzabschluss: direkt speichern, archivieren und anschließend zu Home zurückkehren. */
 window.finishOperationZip=async function(){
+  const statusButton=byId("operationFinish"),validationBox=byId("operationValidation");
+  if(statusButton){statusButton.textContent="Einsatz wird vorbereitet …";statusButton.setAttribute("aria-busy","true");}
+  if(validationBox){validationBox.hidden=false;validationBox.innerHTML='<p class="warning">Einsatzbericht wird geprüft und erstellt …</p>';}
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const d=collectOperationData();
   if(d.atueUsed&&!d.atueDepartment&&!documentReportReady){showDocumentReportPanel();showToast("Bitte zuerst den Bericht der Atemschutzüberwachung fotografieren oder auswählen.","error");return;}
   const check=validateOperation(d),box=byId("operationValidation");box.hidden=!(check.errors.length||check.warnings.length);box.innerHTML=[...check.errors.map(x=>`<p class="error">${escapeHtml(x)}</p>`),...check.warnings.map(x=>`<p class="warning">${escapeHtml(x)}</p>`)].join("");
@@ -105,17 +109,9 @@ window.finishOperationZip=async function(){
     });
     if(!completed)showToast("Finales Speichern abgebrochen. Einsatzdaten bleiben zur Bearbeitung erhalten.","error");
   }catch(error){console.error("Einsatzabschluss fehlgeschlagen",error);showToast(`Einsatz konnte nicht abgeschlossen werden. Daten bleiben erhalten.${error?.message?` (${error.message})`:""}`,"error");}
-  finally{button.disabled=false;}
+  finally{button.disabled=false;button.removeAttribute("aria-busy");}
 };
-// Dynamisch erzeugte Einsatzformulare und Korrekturformulare zuverlässig anbinden.
-// Ereignisdelegation funktioniert auch dann, wenn der Button erst später entsteht.
-document.addEventListener("click",event=>{
-  const button=event.target.closest?.("#operationFinish");
-  if(!button)return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  window.finishOperationZip();
-},true);
+// Der Abschlussbutton wird direkt und genau einmal in operations.js gebunden.
 
 /* ZIP-Auswahl in der Historie automatisch entpacken. */
 async function importTerminPackageFile(file){
