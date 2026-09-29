@@ -10,6 +10,23 @@ const OP_DEVICES=["Wärmebildkamera","Pressluftatmer","Kettensäge","Sprungpolst
 const OP_ROLE_ORDER=Object.freeze(["GF","Maschinist","ATF","ATM","WTF","WTM","STF","STM","Melder"]);
 function operationRoleRank(role){const index=OP_ROLE_ORDER.indexOf(String(role||""));return index<0?99:index;}
 function operationSortNames(names,roles){return [...names].sort((a,b)=>operationRoleRank(roles?.[a])-operationRoleRank(roles?.[b])||operationProtocolName(a).localeCompare(operationProtocolName(b),"de"));}
+window.__ffwFinishOperation=async function(event){
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  const button=document.getElementById("operationFinish");
+  if(button){button.disabled=false;button.textContent="Einsatz wird vorbereitet …";button.setAttribute("aria-busy","true");}
+  try{
+    if(typeof window.finishOperationZip!=="function")throw new Error("Einsatzabschluss-Modul ist nicht geladen");
+    await window.finishOperationZip();
+  }catch(error){
+    console.error("Einsatzabschluss fehlgeschlagen",error);
+    if(typeof showToast==="function")showToast(`Einsatz konnte nicht abgeschlossen werden: ${error?.message||"unbekannter Fehler"}`,"error");
+    else alert(`Einsatz konnte nicht abgeschlossen werden: ${error?.message||"unbekannter Fehler"}`);
+  }finally{
+    if(button){button.disabled=false;button.removeAttribute("aria-busy");if(button.isConnected)button.textContent="Einsatz abschließen · Terminpaket";}
+  }
+  return false;
+};
 const OP_AGENCIES=["Polizei","Streifendienst","KDD","Kripo","Bundespolizei","Rettungsdienst","RTW","NEF","KTW","RTH","DRK Ortsverein","KBM","Stadt Emmendingen","Stadtwerke","Netze BW","Badenova","THW","DLRG","Abschleppdienst","Straßen-/Autobahnmeisterei","DB-Notfallmanager","Bestatter","Weitere Feuerwehren"];
 function operationSessionKey(){return currentOperationId||"";}
 function startOperationSession(){if(currentOperationId&&entries.some(e=>e.operationId===currentOperationId))return;operationAssignments={};operationAssignmentRoles={};currentOperationId=`op-${today()}-${Date.now()}-${Math.random().toString(16).slice(2)}`;safeStorage.setItem("fw_v1_current_operation_id",currentOperationId);currentOperationDraft=null;}
@@ -32,20 +49,9 @@ function ensureOperationForm(){
  <fieldset><legend>Bericht</legend><label>Lage und Zustand beim Eintreffen *<textarea id="opSituation" rows="4"></textarea></label><label>Verlauf der Tätigkeit *<textarea id="opActions" rows="5"></textarea></label><label>Menschenrettung, Unglücksfälle oder Verletzungen<textarea id="opPersons" rows="3"></textarea></label><label>Besondere Vorkommnisse<textarea id="opSpecial" rows="3"></textarea></label></fieldset>
  <fieldset><legend>Weitere Kräfte und Behörden</legend><div class="operation-check-grid">${checks(OP_AGENCIES,"agency")}</div><label>Sonstige beteiligte Stellen<input id="opOtherAgencies"></label></fieldset>
  <fieldset><legend>Atemschutz</legend><label class="operation-check"><input id="opAtueUsed" type="checkbox"><span>Atemschutzüberwachung wurde durchgeführt</span></label><label class="operation-check"><input id="opAtueDepartment" type="checkbox"><span>Abteilung Emmendingen durchgeführt</span></label><label id="opAtuePersonLabel">ATÜ-Person<select id="opAtuePerson"><option value="">Bitte auswählen</option></select></label><p class="operation-field-hint">Bei „Abteilung Emmendingen durchgeführt“ ist keine ATÜ-Person und kein eingescanntes Dokument erforderlich.</p></fieldset>
- <div id="operationValidation" class="operation-validation" hidden></div><div class="operation-actions"><button class="outline-button" id="operationBack" type="button">Zurück zur Zuordnung</button><button class="primary-button" id="operationFinish" type="button">Einsatz abschließen · CSV + PDF</button></div>`;
+ <div id="operationValidation" class="operation-validation" hidden></div><div class="operation-actions"><button class="outline-button" id="operationBack" type="button">Zurück zur Zuordnung</button><button class="primary-button" id="operationFinish" type="button" onclick="return window.__ffwFinishOperation(event)">Einsatz abschließen · CSV + PDF</button></div>`;
  byId("attendanceView").appendChild(section);
  byId("operationBack").onclick=()=>{ensureOperationForm().hidden=true;showOperationForm();};
- byId("operationFinish").onclick=async event=>{
-   event.preventDefault();
-   const button=event.currentTarget;
-   const originalText=button.textContent;
-   if(typeof window.finishOperationZip!=="function")return showToast("Einsatzabschluss ist nicht geladen. Bitte Seite vollständig neu laden.","error");
-   button.textContent="Einsatz wird vorbereitet …";
-   button.setAttribute("aria-busy","true");
-   try{await window.finishOperationZip();}
-   catch(error){console.error("Einsatzabschluss fehlgeschlagen",error);showToast(`Einsatz konnte nicht abgeschlossen werden: ${error?.message||"unbekannter Fehler"}`,"error");}
-   finally{button.textContent=originalText;button.removeAttribute("aria-busy");button.disabled=false;}
- };
  const syncAtueMode=()=>{
    const used=Boolean(byId("opAtueUsed")?.checked),department=Boolean(byId("opAtueDepartment")?.checked);
    const person=byId("opAtuePerson"),label=byId("opAtuePersonLabel");
