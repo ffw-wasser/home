@@ -1,7 +1,7 @@
 "use strict";
 const OD_CLIENT_KEY="fw_onedrive_client_id",OD_SHARE_KEY="fw_onedrive_shared_folder_url",OD_TOKEN_KEY="fw_onedrive_tokens",OD_PKCE_KEY="fw_onedrive_pkce",OD_STATE_FILE="feuerwehr-wasser-daten.json";
 let oneDriveBusy=false,oneDriveTimer=null,oneDriveApplying=false,oneDriveSharedRoot=null,oneDriveLastError="",oneDriveRetryUntil=0;
-const odRedirect=()=>location.origin+location.pathname;
+const odRedirect=()=>"https://ffw-wasser.github.io/home/";
 const odConfig=()=>({clientId:localStorage.getItem(OD_CLIENT_KEY)||"",authority:"https://login.microsoftonline.com/consumers/oauth2/v2.0",scope:"openid profile offline_access Files.ReadWrite"});
 const odB64Url=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
 const odShareToken=url=>"u!"+odB64Url(new TextEncoder().encode(url));
