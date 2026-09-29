@@ -4,3 +4,13 @@
 #qualityStatusCard .quality-status-list{display:grid;gap:6px;margin:10px 0 14px}
 #qualityStatusCard .quality-status-list span{display:block;padding:7px 0;border-bottom:1px solid var(--line);color:var(--muted);font-size:.82rem;font-weight:750}
 #qualityStatusCard .quality-status-list span:last-child{border-bottom:0}
+
+/* iPhone/iOS: Statusreiter erst in Schritt 2 anzeigen. */
+@supports (-webkit-touch-callout: none) {
+  #attendanceView:not(.workflow-stage-2) #attendanceStatusToolbar,
+  #attendanceView:not(.workflow-stage-2) #floatingAttendanceStatusToolbar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}

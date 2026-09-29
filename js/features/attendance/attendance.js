@@ -450,6 +450,10 @@ function setHomeFlowStage(stage){
     updateSelection();
   }
   homeFlowStage=stage;
+  const attendanceView=byId("attendanceView");
+  attendanceView?.classList.toggle("workflow-stage-1",stage===1);
+  attendanceView?.classList.toggle("workflow-stage-2",stage===2);
+  attendanceView?.classList.toggle("workflow-stage-3",stage===3);
   const sessionPanel=document.querySelector("#attendanceView .home-session-type-panel");
   const workspace=byId("attendanceSelectionWorkspace");
   const attendanceLayout=document.querySelector("#attendanceView>.attendance-layout");
