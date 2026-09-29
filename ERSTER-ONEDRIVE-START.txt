@@ -1,7 +1,0 @@
-ERSTER ONEDRIVE-START
-
-1. Die neue Version zuerst auf dem Gerät öffnen, auf dem die vollständigen bisherigen Daten vorhanden sind.
-2. Unten links OneDrive öffnen, die Client-ID eintragen und anmelden.
-3. Danach „Jetzt synchronisieren“ wählen.
-4. Erst nach erfolgreicher Synchronisierung die weiteren Geräte verbinden.
-5. Die frühere Supabase-Version erst nach vollständigem Test stilllegen.
