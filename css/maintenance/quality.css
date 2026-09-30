@@ -64,3 +64,19 @@
   }
   #attendanceView #homeFlowProgress{margin-bottom:22px!important}
 }
+
+/* 2.20.1: sichtbarer Innenabstand zwischen Kartenoberkante und Überschrift. */
+#attendanceView .home-session-type-panel.home-flow-stage-1{
+  padding-top:30px!important;
+}
+#attendanceView .home-session-type-panel.home-flow-stage-1>.flow-stage-heading{
+  position:static!important;
+  top:auto!important;
+  margin:0 0 14px!important;
+  transform:none!important;
+}
+@media(max-width:760px){
+  #attendanceView .home-session-type-panel.home-flow-stage-1{
+    padding-top:26px!important;
+  }
+}
