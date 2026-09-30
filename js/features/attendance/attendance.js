@@ -382,25 +382,8 @@ function syncFloatingAttendanceStatusToolbar(){
   updateFloatingAttendanceStatusToolbar();
 }
 function updateFloatingAttendanceStatusToolbar(){
-  const source=byId("attendanceStatusToolbar"),floating=byId("floatingAttendanceStatusToolbar"),view=byId("attendanceView");
-  if(!source||!floating||homeFlowStage!==2||source.hidden||view?.hidden){if(floating)floating.hidden=true;return;}
-  const rect=source.getBoundingClientRect();
-  const mobile=window.matchMedia("(max-width: 760px)").matches;
-  const top=mobile?8:64;
-  const workspaceRect=byId("attendanceSelectionWorkspace")?.getBoundingClientRect();
-  const stageVisible=Boolean(workspaceRect&&workspaceRect.bottom>0&&workspaceRect.top<window.innerHeight);
-  const shouldFloat=mobile?stageVisible:(rect.top<top&&stageVisible);
-  floating.hidden=!shouldFloat;
-  if(!shouldFloat)return;
-  if(!mobile){
-    floating.style.top=`${top}px`;
-    floating.style.left=`${Math.max(8,rect.left)}px`;
-    floating.style.width=`${Math.min(rect.width,window.innerWidth-16)}px`;
-  }else{
-    floating.style.removeProperty("top");
-    floating.style.removeProperty("left");
-    floating.style.removeProperty("width");
-  }
+  const floating=byId("floatingAttendanceStatusToolbar");
+  if(floating)floating.hidden=true;
 }
 if(!window.__floatingAttendanceStatusBound){
   window.__floatingAttendanceStatusBound=true;
@@ -443,21 +426,10 @@ function requestReturnToHomeStage(){
   return true;
 }
 function setHomeFlowStage(stage){
-  // Beim Verlassen eines noch nicht abgeschlossenen Einsatzes zu Home bzw.
-  // Schritt 1 werden die zu diesem Einsatz erfassten Teilnehmer verworfen.
-  // So beginnt eine spätere Einsatzwahl immer mit einer leeren Teilnehmerliste.
-  if(stage===1&&sessionType==="Einsatz"&&currentOperationId){
-    const abandonedOperationId=currentOperationId;
-    entries=entries.filter(entry=>entry.operationId!==abandonedOperationId);
-    saveEntries();
-    resetDocumentReportState?.();
-    resetOperationState?.();
-    chosenMemberId="";
-    chosenMemberIds.clear();
-    chosenRole="";
-    renderEntries();
-    renderMembers();
-    updateSelection();
+  // Schritt 1 verhält sich wie Home: Bereits erfasste Anwesenheiten werden
+  // nach Bestätigung vollständig zurückgesetzt, unabhängig von der Terminart.
+  if(stage===1&&homeFlowStage!==1&&todayEntries().length){
+    if(!resetAttendanceForReturnToHome())return false;
   }
   homeFlowStage=stage;
   const attendanceView=byId("attendanceView");

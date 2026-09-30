@@ -967,3 +967,13 @@
 
 .document-report-sticky-actions{grid-template-columns:minmax(150px,.42fr) minmax(190px,.55fr) minmax(240px,1fr)!important}
 @media(max-width:760px){.document-report-sticky-actions{grid-template-columns:1fr!important}}
+
+/* 2.27: Statuswahl gehört in den Anwesenheitsbereich, nicht in den Seitenkopf. */
+#floatingAttendanceStatusToolbar{display:none!important}
+#attendanceSelectionWorkspace #attendanceStatusToolbar{
+  position:static!important;
+  inset:auto!important;
+  width:100%!important;
+  margin:0 0 10px!important;
+  z-index:auto!important;
+}
