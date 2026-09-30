@@ -590,6 +590,17 @@ function ensureStagedHomeFlow(){
   const attendance=byId("attendanceView"),workspace=byId("attendanceSelectionWorkspace"),sessionPanel=attendance?.querySelector(".home-session-type-panel");
   if(!attendance||!workspace||!sessionPanel)return;
   sessionPanel.classList.add("home-flow-card","home-flow-stage-1");
+  // Abstand unter der gruenen Kartenlinie direkt setzen. setProperty mit important
+  // verhindert, dass spaetere Wartungs-CSS-Regeln die Position wieder hochziehen.
+  sessionPanel.style.setProperty("padding-top","34px","important");
+  const sessionHeading=sessionPanel.querySelector(":scope > .panel-heading");
+  if(sessionHeading){
+    sessionHeading.style.setProperty("position","static","important");
+    sessionHeading.style.setProperty("inset","auto","important");
+    sessionHeading.style.setProperty("top","auto","important");
+    sessionHeading.style.setProperty("margin","0 0 14px","important");
+    sessionHeading.style.setProperty("transform","none","important");
+  }
   if(!byId("homeFlowProgress")){
     const progress=document.createElement("nav");progress.id="homeFlowProgress";progress.className="home-flow-progress";progress.setAttribute("aria-label","Terminablauf");sessionPanel.parentElement.insertBefore(progress,sessionPanel);
     progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){if(!requestReturnToHomeStage())return;requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3&&sessionType==="Einsatz"){ensureOperationForm?.().setAttribute("hidden","");showOperationForm?.();syncHomeFlowProgress(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;openOperationReportForm?.();syncHomeFlowProgress(4);}});
