@@ -143,7 +143,7 @@ function operationPdfEscape(v){return pdfEscape(pdfLatin1(String(v||"")))}functi
 async function operationPdfBlob(d){
   d=d||collectOperationData();
   const {PDFDocument,StandardFonts,rgb}=PDFLib,pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
-  const bytes=async path=>new Uint8Array(await (await fetch(path)).arrayBuffer()),bg1=await pdf.embedJpg(await bytes("einsatzbericht-vorlage-seite1.jpg")),bg2=await pdf.embedJpg(await bytes("einsatzbericht-vorlage-seite2.jpg"));
+  const template1=window.OPERATION_REPORT_TEMPLATE_PAGE_1,template2=window.OPERATION_REPORT_TEMPLATE_PAGE_2;if(!template1||!template2)throw new Error("Einsatzbericht-Vorlage ist nicht geladen");const bg1=await pdf.embedJpg(template1),bg2=await pdf.embedJpg(template2);
   const pages=[pdf.addPage([595,842]),pdf.addPage([595,842])];pages[0].drawImage(bg1,{x:0,y:0,width:595,height:842});pages[1].drawImage(bg2,{x:0,y:0,width:595,height:842});
   const clean=value=>String(value??"").replace(/\s+/g," ").trim().replace(/[–—]/g,"-").replace(/×/g,"x"),put=(page,value,x,y,size=7,max=90,isBold=false)=>{value=clean(value);if(!value)return;const words=value.split(" "),lines=[];let line="";for(const word of words){const next=line?`${line} ${word}`:word;if(next.length>max&&line){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);lines.slice(0,4).forEach((text,index)=>page.drawText(text,{x,y:y-index*(size+2),size,font:isBold?bold:font,color:rgb(0,0,0)}));};
   const p1=pages[0],p2=pages[1],date=clean(d.date)?new Date(`${d.date}T12:00:00`).toLocaleDateString("de-DE"):"";
