@@ -47,6 +47,8 @@ function validateOperationAssignments(){
   for(const group of operationVehicleGroups()){
     const assigned=names.filter(name=>operationAssignments[name]===group);
     if(!assigned.length)continue;
+    const capacity=OP_VEHICLE_CAPACITY[group]||0;
+    if(capacity&&assigned.length>capacity)errors.push(`${group}: ${assigned.length} Personen überschreiten die Kapazität von ${capacity}.`);
     if(!assigned.some(name=>operationAssignmentRoles[name]==="GF"))errors.push(`${group}: Ein Gruppenführer mit Funktion GF fehlt.`);
     if(!assigned.some(name=>operationAssignmentRoles[name]==="Maschinist"))errors.push(`${group}: Ein geeigneter Maschinist fehlt.`);
   }
@@ -67,53 +69,74 @@ function autoAssignOperationCrew(){
   renderOperationAssignmentStep();
   const errors=validateOperationAssignments();showToast(errors.length?"Vorschlag erstellt. Bitte die rot markierten Hinweise prüfen.":"Plausibler Besetzungsvorschlag wurde erstellt.",errors.length?"error":"success");
 }
+function operationBaseRolesForName(name){
+  const member=operationMemberForName(name),roles=member?[...new Set(getMemberRoles(member).filter(Boolean))]:[];
+  if(member?.machinistVehicles?.length&&!roles.includes("Maschinist"))roles.push("Maschinist");
+  return OP_ROLE_ORDER.filter(role=>roles.includes(role));
+}
+function operationAllowedGroupsForRole(name,role){
+  const member=operationMemberForName(name),vehicles=Array.isArray(member?.machinistVehicles)?member.machinistVehicles:[];
+  if(role==="Maschinist")return [vehicles.includes("LF")?"EM 5/42 LF10":"",vehicles.includes("TSF")||vehicles.includes("LF")?"EM 5/47 TSF":"","Reserve Einsatzstelle","Reserve Gerätehaus"].filter(Boolean);
+  return ["EM 5/42 LF10","EM 5/47 TSF","Reserve Einsatzstelle","Reserve Gerätehaus"];
+}
+function operationAssignmentControls(name){
+  const group=operationAssignments[name]||"",role=operationAssignmentRoles[name]||"",baseRoles=operationBaseRolesForName(name),roles=baseRoles.filter(value=>value===role||!group||!operationRoleOwner(group,value,name)),groups=operationAllowedGroupsForRole(name,role);
+  const roleOptions=['<option value="">Zuerst Funktion wählen</option>',...roles.map(value=>`<option value="${escapeHtml(value)}" ${role===value?"selected":""}>${escapeHtml(value)}</option>`)].join("");
+  const groupOptions=['<option value="">Danach Fahrzeug / Reserve wählen</option>',...groups.map(value=>`<option value="${escapeHtml(value)}" ${group===value?"selected":""}>${escapeHtml(value)}</option>`)].join("");
+  const complete=Boolean(group&&role);
+  return `<article class="operation-person-chip ${complete?"is-complete":"is-open"}"><div class="operation-person-name"><i aria-hidden="true">${complete?"✓":"1"}</i><strong title="${escapeHtml(operationProtocolName(name))}">${escapeHtml(operationProtocolName(name))}</strong></div><label class="operation-role-field"><span>1 · Funktion</span><select aria-label="Funktion für ${escapeHtml(operationProtocolName(name))}" data-assignment-name="${escapeHtml(name)}" data-assignment-field="role">${roleOptions}</select></label><label class="operation-group-field"><span>2 · Fahrzeug / Reserve</span><select aria-label="Fahrzeug oder Reserve für ${escapeHtml(operationProtocolName(name))}" data-assignment-name="${escapeHtml(name)}" data-assignment-field="group" ${role?"":"disabled"}>${groupOptions}</select></label></article>`;
+}
 function operationVehicleOverview(group,title,image){
   const names=operationNames().filter(name=>operationAssignments[name]===group),roles=new Map(names.map(name=>[operationAssignmentRoles[name],name])),hasGf=roles.has("GF"),hasMa=roles.has("Maschinist"),capacity=OP_VEHICLE_CAPACITY[group]||0;
-  return `<article class="operation-vehicle-board ${hasGf&&hasMa?"is-ready":"needs-crew"}"><div class="operation-vehicle-image"><img src="${image}" alt="${escapeHtml(title)}"><span>${names.length} / ${capacity}</span></div><header><div><small>${escapeHtml(group)}</small><h3>${escapeHtml(title)}</h3></div><div class="operation-readiness"><i class="${hasGf?"ok":"missing"}">GF</i><i class="${hasMa?"ok":"missing"}">MA</i></div></header><div class="operation-crew-pills">${names.length?names.sort((a,b)=>operationRoleRank(operationAssignmentRoles[a])-operationRoleRank(operationAssignmentRoles[b])).map(name=>`<span><b>${escapeHtml(operationAssignmentRoles[name])}</b>${escapeHtml(operationProtocolName(name))}</span>`).join(""):'<p>Noch keine Einsatzkraft zugeordnet.</p>'}</div></article>`;
+  return `<article class="operation-vehicle-board ${hasGf&&hasMa?"is-ready":"needs-crew"}" data-operation-board="${escapeHtml(group)}"><div class="operation-vehicle-image"><img src="${image}" alt="${escapeHtml(title)}"><span>${names.length} / ${capacity}</span></div><header><div><small>${escapeHtml(group)}</small><h3>${escapeHtml(title)}</h3></div><div class="operation-readiness"><i class="${hasGf?"ok":"missing"}" title="Gruppenführer">GF ${hasGf?"✓":"!"}</i><i class="${hasMa?"ok":"missing"}" title="Maschinist">MA ${hasMa?"✓":"!"}</i></div></header><div class="operation-board-people">${names.length?names.sort((a,b)=>operationRoleRank(operationAssignmentRoles[a])-operationRoleRank(operationAssignmentRoles[b])).map(operationAssignmentControls).join(""):'<p class="operation-board-empty"><strong>Fahrzeug noch leer</strong><span>Personen über „Zuordnung“ hierher verschieben.</span></p>'}</div></article>`;
 }
-function operationReserveOverview(){const names=operationNames().filter(name=>String(operationAssignments[name]||"").startsWith("Reserve"));return `<article class="operation-reserve-board"><header><div><small>Weitere Kräfte</small><h3>Reserve</h3></div><strong>${names.length}</strong></header><div>${names.length?names.map(name=>`<span>${escapeHtml(operationProtocolName(name))}<small>${escapeHtml(operationAssignments[name])}</small></span>`).join(""):'<p>Noch keine Reserve zugeordnet.</p>'}</div></article>`;}
+function operationReserveOverview(){
+  const names=operationNames().filter(name=>String(operationAssignments[name]||"").startsWith("Reserve"));
+  return `<article class="operation-reserve-board" data-operation-board="Reserve"><header><div><small>Weitere Kräfte</small><h3>Reserve</h3></div><strong>${names.length}</strong></header><div class="operation-board-people">${names.length?names.map(operationAssignmentControls).join(""):'<p class="operation-board-empty">Noch keine Reserve zugeordnet.</p>'}</div></article>`;
+}
+function operationUnassignedOverview(){
+  const names=operationNames().filter(name=>!operationAssignments[name]).sort((a,b)=>operationProtocolName(a).localeCompare(operationProtocolName(b),"de"));
+  return `<article class="operation-unassigned-board" data-operation-board="Offen"><header><div><small>Noch offen</small><h3>Nicht zugeordnet</h3></div><strong>${names.length}</strong></header><div class="operation-board-people">${names.length?names.map(operationAssignmentControls).join(""):'<p class="operation-board-empty">Alle Einsatzkräfte sind einem Bereich zugeordnet.</p>'}</div></article>`;
+}
 function ensureOperationAssignmentStep(){
   let section=byId("operationAssignmentStep");
   if(section)return section;
   section=document.createElement("section");section.id="operationAssignmentStep";section.className="panel operation-assignment-step";
-  section.innerHTML='<div class="flow-stage-heading"><span>3</span><div><strong>Einsatzkräfte und Funktionen zuordnen</strong><small>Fahrzeuge visuell besetzen, Funktionen prüfen und Reserve festlegen.</small></div><button type="button" class="outline-button operation-auto-assign">Smart-Vorschlag erstellen</button></div><div class="operation-vehicle-overview"></div><div class="operation-assignment-subheading"><div><small>Mannschaft</small><h3>Personen zuordnen</h3></div><span>Änderungen werden oben sofort sichtbar.</span></div><div class="operation-assignment-members"></div><div class="operation-assignment-footer"><span></span><button type="button" class="primary-button">Weiter zum Einsatzbericht</button></div>';
+  section.innerHTML='<div class="flow-stage-heading"><span>3</span><div><strong>Fahrzeuge besetzen</strong><small>Zuerst die Funktion festlegen. Danach wird die Person einem passenden Fahrzeug oder der Reserve zugeordnet.</small></div><div class="operation-heading-actions"><button type="button" class="outline-button operation-clear-assign">Zurücksetzen</button><button type="button" class="primary-button operation-auto-assign">Smart-Vorschlag</button></div></div><div class="operation-assignment-guide"><span><b>1</b> Funktion wählen</span><span><b>2</b> Fahrzeug oder Reserve wählen</span><span><b>3</b> Besetzung prüfen</span></div><div class="operation-vehicle-overview"></div><div class="operation-assignment-footer"><span></span><button type="button" class="primary-button">Weiter zum Einsatzbericht</button></div>';
   byId("attendanceView").appendChild(section);
-  section.querySelector(".operation-assignment-members").addEventListener("change",event=>{
+  section.querySelector(".operation-vehicle-overview").addEventListener("change",event=>{
     const select=event.target.closest("select[data-assignment-name]");if(!select)return;
     const name=select.dataset.assignmentName;
-    if(select.dataset.assignmentField==="group"){
-      operationAssignments[name]=select.value;
-      const allowed=operationRolesForName(name,select.value);
-      if(!allowed.includes(operationAssignmentRoles[name]))operationAssignmentRoles[name]=allowed.length===1?allowed[0]:"";
-    }else if(select.dataset.assignmentField==="role"){
-      const group=operationAssignments[name],role=select.value,owner=operationRoleOwner(group,role,name);
-      if(role&&operationVehicleGroups().includes(group)&&owner){
-        operationAssignmentRoles[name]="";
-        showToast(`${role} ist auf ${group} bereits durch ${operationProtocolName(owner)} besetzt.`,"error");
-      }else operationAssignmentRoles[name]=role;
+    if(select.dataset.assignmentField==="role"){
+      const nextRole=select.value,currentGroup=operationAssignments[name]||"";
+      operationAssignmentRoles[name]=nextRole;
+      if(!nextRole){operationAssignments[name]="";}
+      else if(currentGroup&&!operationAllowedGroupsForRole(name,nextRole).includes(currentGroup)){operationAssignments[name]="";showToast("Die bisherige Fahrzeugzuordnung passt nicht zur gewählten Funktion und wurde entfernt.","error");}
+      else if(currentGroup&&operationVehicleGroups().includes(currentGroup)){
+        const owner=operationRoleOwner(currentGroup,nextRole,name);
+        if(owner){operationAssignments[name]="";showToast(`${nextRole} ist auf ${currentGroup} bereits durch ${operationProtocolName(owner)} besetzt. Bitte ein anderes Fahrzeug wählen.`,"error");}
+      }
+    }else if(select.dataset.assignmentField==="group"){
+      const nextGroup=select.value,role=operationAssignmentRoles[name]||"",owner=operationRoleOwner(nextGroup,role,name);
+      if(nextGroup&&operationVehicleGroups().includes(nextGroup)&&owner){operationAssignments[name]="";showToast(`${role} ist auf ${nextGroup} bereits durch ${operationProtocolName(owner)} besetzt.`,"error");}
+      else operationAssignments[name]=nextGroup;
     }
     renderOperationAssignmentStep();
   });
   section.querySelector(".operation-auto-assign").onclick=autoAssignOperationCrew;
+  section.querySelector(".operation-clear-assign").onclick=()=>{operationAssignments={};operationAssignmentRoles={};renderOperationAssignmentStep();showToast("Zuordnung wurde zurückgesetzt.");};
   section.querySelector(".operation-assignment-footer button").onclick=openOperationReportForm;
   return section;
 }
 function renderOperationAssignmentStep(){
-  const section=ensureOperationAssignmentStep(),names=operationNames(),groups=["EM 5/42 LF10","EM 5/47 TSF","Reserve Einsatzstelle","Reserve Gerätehaus"];
-  section.querySelector(".operation-vehicle-overview").innerHTML=operationVehicleOverview("EM 5/42 LF10","LF10","taktik-lf10.png")+operationVehicleOverview("EM 5/47 TSF","TSF","taktik-tsf.png")+operationReserveOverview();
-  section.querySelector(".operation-assignment-members").innerHTML=names.map(name=>{
-    const group=operationAssignments[name]||"",allRoles=operationRolesForName(name,group),role=operationAssignmentRoles[name]||"",roles=allRoles.filter(value=>value===role||!operationRoleOwner(group,value,name));
-    const groupOptions=['<option value="">Fahrzeug / Reserve wählen</option>',...groups.map(value=>`<option value="${escapeHtml(value)}" ${group===value?"selected":""}>${escapeHtml(value)}</option>`)].join("");
-    const roleOptions=['<option value="">Funktion wählen</option>',...roles.map(value=>`<option value="${escapeHtml(value)}" ${role===value?"selected":""}>${escapeHtml(value)}</option>`)].join("");
-    return `<article class="operation-assignment-card"><strong>${escapeHtml(operationProtocolName(name))}</strong><label><span>Fahrzeug / Reserve</span><select data-assignment-name="${escapeHtml(name)}" data-assignment-field="group">${groupOptions}</select></label><label><span>Funktion</span><select data-assignment-name="${escapeHtml(name)}" data-assignment-field="role" ${group?"":"disabled"}>${roleOptions}</select></label></article>`;
-  }).join("");
+  const section=ensureOperationAssignmentStep(),names=operationNames();
+  section.querySelector(".operation-vehicle-overview").innerHTML=operationUnassignedOverview()+operationVehicleOverview("EM 5/42 LF10","LF10","taktik-lf10.png")+operationVehicleOverview("EM 5/47 TSF","TSF","taktik-tsf.png")+operationReserveOverview();
   const complete=names.filter(name=>operationAssignments[name]&&operationAssignmentRoles[name]).length,errors=validateOperationAssignments();
   const footer=section.querySelector(".operation-assignment-footer"),status=footer.querySelector("span");
   status.innerHTML=`<strong>${complete} von ${names.length} vollständig zugeordnet</strong>${errors.length?`<small>${escapeHtml(errors[0])}${errors.length>1?` · ${errors.length-1} weiterer Hinweis${errors.length===2?"":"e"}`:""}</small>`:"<small>Besetzung ist gültig.</small>"}`;
   footer.classList.toggle("has-errors",errors.length>0);
   footer.querySelector("button").disabled=!names.length||errors.length>0;
 }
-
 function showOperationForm(){const f=byId("operationReportForm");if(f)f.hidden=true;const s=ensureOperationAssignmentStep();s.hidden=false;renderOperationAssignmentStep()}
 function operationPdfEscape(v){return pdfEscape(pdfLatin1(String(v||"")))}function opPdfBytes(v){const t=String(v??""),b=new Uint8Array(t.length);for(let i=0;i<t.length;i++)b[i]=t.charCodeAt(i)&255;return b}function opConcatBytes(p){const l=p.reduce((s,x)=>s+x.length,0),r=new Uint8Array(l);let o=0;for(const x of p){r.set(x,o);o+=x.length}return r}
 async function operationPdfBlob(d){d=d||collectOperationData();const rows=(d.members||[]).map(n=>({time:d.times?.alarm||"",name:operationProtocolName(n),status:"Anwesend",role:d.assignmentRoles?.[n]||d.assignments?.[n]||""}));return probePdfBlob(rows,"Einsatz",{present:rows.length,excused:0,missing:0,notApplicable:0},`${d.type||"Einsatz"} · ${d.location||""}`,d.date||today())}
