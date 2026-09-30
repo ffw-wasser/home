@@ -1095,3 +1095,10 @@ html body .status-tab-rail{display:none!important;position:static!important;visi
 #attendanceSelectionWorkspace .member-status-action.selected{outline:3px solid currentColor!important;outline-offset:1px!important;box-shadow:0 0 0 3px rgba(255,255,255,.9) inset!important;transform:translateY(-1px)!important}
 #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action.selected){border-left-color:#16713a!important;background:#f8fcf9!important}
 .batch-selection-controls{position:sticky!important;bottom:8px!important;z-index:20!important;background:rgba(255,255,255,.96)!important;padding:10px!important;border-radius:14px!important;box-shadow:0 6px 24px rgba(25,45,55,.18)!important}
+
+/* 2.35 final: ausschließlich Direktauswahl anzeigen. */
+html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAttendanceStatusToolbar,html body .attendance-status-toolbar,html body .status-tab-rail{display:none!important;visibility:hidden!important;position:absolute!important;inline-size:0!important;block-size:0!important;overflow:hidden!important;pointer-events:none!important}
+.direct-status-mode-label{display:inline-flex;margin-left:8px;padding:3px 8px;border-radius:999px;background:#176b36;color:#fff;font-size:.68rem;vertical-align:middle}
+#attendanceSelectionWorkspace .member-status-action{cursor:pointer!important;pointer-events:auto!important}
+#attendanceSelectionWorkspace .member-status-action.selected,#attendanceSelectionWorkspace .member-status-action[aria-pressed="true"]{outline:3px solid currentColor!important;outline-offset:2px!important;filter:saturate(1.15)!important}
+#attendanceSelectionWorkspace .member-direct-card{pointer-events:auto!important}

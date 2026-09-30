@@ -284,7 +284,7 @@ updateHelpForCurrentFeatures();
 })();
 
 
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("service-worker.js").catch(() => {});
+/* Service Worker voruebergehend deaktiviert: verhindert alte UI aus dem Cache. */
 if (!safeStorage.persistent) {
   setTimeout(() => showToast("Safari erlaubt hier keine dauerhafte Speicherung. Die Sitzung funktioniert, Daten können nach dem Schließen verloren gehen.", "error"), 700);
 }
