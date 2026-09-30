@@ -1,3 +1,4 @@
+const pendingMemberStatuses=new Map();
 function renderMembers() {
   members = sortMembers(members);
   const current = todayEntries();
@@ -18,7 +19,9 @@ function renderMembers() {
     const recorded = recordedNames.has(nameForStorage(member)) || recordedNames.has(nameForTile(member));
     const selected = !recorded && (multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId);
     const organizationSelected = selected && chosenRole === "Orga";
-    return `<button type="button" class="choice-button ${member.ageDepartment ? "age-member-button" : ""} ${selected ? "selected" : ""} ${organizationSelected ? "organization-selected" : ""} ${recorded ? "recorded" : ""}" data-member="${escapeHtml(member.id)}" aria-pressed="${selected}" ${recorded ? 'disabled aria-disabled="true"' : ""}>${escapeHtml(nameForTile(member))}</button>`;
+    const extra=sessionType==="Sonderprobe"?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">–</span><span>N/A</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span><span>Orga</span></button>`:"";
+    const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span><span>Entschuldigt</span></button>`;
+    return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""} ${recorded ? "recorded" : ""}"><strong>${escapeHtml(nameForTile(member))}</strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span><span>Anwesend</span></button>${excused}${extra}</div></article>`;
   };
   const activeMembers = (sessionType === "Ausschuss Sitzung" ? members.filter(member => member.committeeMember) : members).filter(member => !member.ageDepartment);
   const ageMembers = (sessionType === "Ausschuss Sitzung" || sessionType === "Einsatz") ? [] : members.filter(member => member.ageDepartment);
@@ -69,10 +72,8 @@ function updateSelection() {
   if(byId("participantCount"))byId("participantCount").textContent = selectedMultiMembers.length;
   if(byId("participantList"))byId("participantList").innerHTML = selectedMultiMembers.length ? selectedMultiMembers.map(member => `<li>${escapeHtml(nameForTile(member))}</li>`).join("") : "<li>Noch keine Mitglieder ausgewählt</li>";
   document.querySelector(".current-selection")?.classList.toggle("training-selection", isTraining);
-  if(byId("saveButton"))byId("saveButton").textContent = multiMode
-    ? `Auswahl übernehmen (${chosenMemberIds.size})`
-    : "Auswahl übernehmen";
-  if(byId("saveButton"))byId("saveButton").disabled = !multiMode || chosenMemberIds.size === 0;
+  if(byId("saveButton"))byId("saveButton").textContent=`Auswahl übernehmen (${pendingMemberStatuses.size})`;
+  if(byId("saveButton"))byId("saveButton").disabled=pendingMemberStatuses.size===0;
   if(byId("roleSaveButton"))byId("roleSaveButton").disabled = !(sessionType === "Allgemeine Probe" && selected && chosenRole);
   updateProbeWorkflow();
 }
@@ -155,6 +156,24 @@ function saveDirectGeneralAttendance(member, status = "Anwesend") {
   showToast(`${nameForTile(member)} wurde als ${status.toLowerCase()} gespeichert. Die Funktion wird beim Start der Probe berechnet.`);
   return true;
 }
+function saveQuickMemberStatus(id,status){
+  const member=members.find(item=>item.id===id);if(!member)return false;
+  const already=todayEntries().some(entry=>entry.storedName===nameForStorage(member)||entry.displayName===nameForTile(member));if(already)return false;
+  const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
+  if(!allowed.includes(status))return false;
+  if(pendingMemberStatuses.get(id)===status)pendingMemberStatuses.delete(id);else pendingMemberStatuses.set(id,status);
+  chosenMemberIds=new Set(pendingMemberStatuses.keys());
+  renderMembers();updateSelection();updateProbeWorkflow();
+  return true;
+}
+function commitPendingMemberStatuses(){
+  if(!pendingMemberStatuses.size)return false;
+  const time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),isOperation=sessionType==="Einsatz";
+  let count=0;
+  pendingMemberStatuses.forEach((status,id)=>{const member=members.find(item=>item.id===id);if(!member)return;entries.unshift({id:makeId(),date:today(),time,displayName:nameForTile(member),storedName:nameForStorage(member),role:status==="Orga"?"Orga":sessionType==="Ausschuss Sitzung"&&status==="Anwesend"?"Ausschuss Sitzung":sessionType==="Unterricht"&&status==="Anwesend"?"Unterricht":"",status:status==="Orga"?"Anwesend":status,sessionType,sessionId:isOperation?"":ensureCurrentSessionId(),operationId:isOperation?currentOperationId:""});count++;});
+  saveEntries();pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";
+  renderMembers();renderEntries();renderAdmin();updateSelection();updateProbeWorkflow();updatePrimaryAction();showToast(`${count} Personen wurden übernommen.`);return true;
+}
 function chooseMember(id) {
   const clickedMember=members.find(member=>member.id===id);
   if(!clickedMember || !chosenRole) return;
@@ -174,6 +193,7 @@ function chooseRole(role) {
   renderMembers(); renderRoles(); updateSelection(); updateProbeWorkflow();
 }
 function saveAttendance() {
+  if(pendingMemberStatuses.size){commitPendingMemberStatuses();return;} 
   const isStandard = sessionType === "Allgemeine Probe";
   const isSpecial = sessionType === "Sonderprobe";
   const isTraining = sessionType === "Unterricht";
@@ -303,25 +323,32 @@ function clearToday() {
 }
 
 function setupUnifiedHomeWorkflow(){
+  removeLegacyStatusRails();
   if(!chosenRole) chosenRole="Anwesend";
   const input=document.querySelector("#attendanceView .input-column"),roles=byId("rolesPanel"),members=document.querySelector("#attendanceView .members-panel");
   if(input&&roles&&members){
     let workspace=byId("attendanceSelectionWorkspace");
     if(!workspace){workspace=document.createElement("div");workspace.id="attendanceSelectionWorkspace";workspace.className="attendance-selection-workspace";input.insertBefore(workspace,input.firstChild);}
-    workspace.appendChild(roles);workspace.appendChild(members);
-    roles.hidden=false;members.hidden=false;roles.classList.add("inline-status-panel","status-tab-rail");members.classList.add("inline-members-panel","orga-sheet");
+    workspace.appendChild(members);
+    roles.hidden=true;roles.style.setProperty("display","none","important");roles.setAttribute("aria-hidden","true");
+    members.hidden=false;members.classList.add("inline-members-panel","orga-sheet");
     roles.querySelector(".panel-heading")?.remove();
     byId("roleSelectionHint")?.remove();
   }
   byId("backToMembersButton")?.remove();byId("changeStatusButton")?.remove();
 }
+function removeLegacyStatusRails(){
+  byId("attendanceStatusToolbar")?.remove();
+  byId("floatingAttendanceStatusToolbar")?.remove();
+  const panel=byId("rolesPanel");if(panel){panel.hidden=true;panel.style.setProperty("display","none","important");panel.setAttribute("aria-hidden","true");}
+}
 function updateProbeWorkflow(){
   const standard=sessionType==="Allgemeine Probe",special=sessionType==="Sonderprobe",training=sessionType==="Unterricht",committee=sessionType==="Ausschuss Sitzung",operation=sessionType==="Einsatz";
   const hasStatus=Boolean(chosenRole);
   const membersPanel=document.querySelector(".members-panel"),rolesPanel=byId("rolesPanel");
-  if(membersPanel)membersPanel.hidden=false;if(rolesPanel)rolesPanel.hidden=false;
+  if(membersPanel)membersPanel.hidden=false;if(rolesPanel){rolesPanel.hidden=true;rolesPanel.style.setProperty("display","none","important");rolesPanel.setAttribute("aria-hidden","true");}
   if(byId("selectedStatusBar"))byId("selectedStatusBar").hidden=true;
-  if(byId("saveButton")){byId("saveButton").hidden=false;byId("saveButton").disabled=!hasStatus||chosenMemberIds.size===0;}
+  if(byId("saveButton")){byId("saveButton").hidden=false;byId("saveButton").disabled=pendingMemberStatuses.size===0;byId("saveButton").textContent=`Auswahl übernehmen (${pendingMemberStatuses.size})`;}
   if(byId("batchSelectionHint"))byId("batchSelectionHint").hidden=true;
   if(byId("participantOverview"))byId("participantOverview").hidden=chosenMemberIds.size===0;
   if(byId("roleSaveButton"))byId("roleSaveButton").hidden=true;
@@ -335,6 +362,7 @@ function updateProbeWorkflow(){
 }
 
 function renderRoles(){
+  removeLegacyStatusRails();
   const statuses=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!statuses.includes(chosenRole)){chosenRole="Anwesend";chosenMemberIds.clear();}
   const workspace=byId("attendanceSelectionWorkspace"),sheet=document.querySelector(".orga-sheet");
@@ -412,7 +440,7 @@ function resetAttendanceForReturnToHome(){
   entries=sessionType==="Einsatz"&&operationId
     ? entries.filter(entry=>entry.operationId!==operationId)
     : entries.filter(entry=>entry.sessionId!==sessionId);
-  chosenMemberId="";chosenMemberIds.clear();chosenRole="";
+  chosenMemberId="";chosenMemberIds.clear();chosenRole="";pendingMemberStatuses.clear();
   saveEntries();
   resetDocumentReportState?.();
   if(sessionType==="Einsatz")resetOperationState?.();
@@ -458,7 +486,7 @@ function setHomeFlowStage(stage){
   applyVisibility(attendanceLayout,stage===2,"grid");
   applyVisibility(workspace,stage===2,"grid");
   applyVisibility(byId("rfidCsvImport"),stage===2,"block");
-  applyVisibility(byId("attendanceStatusToolbar"),stage===2,"flex");
+  applyVisibility(byId("attendanceStatusToolbar"),false,"none");
   applyVisibility(finish,false,"block");
   applyVisibility(step3Action,stage===2,"block");
   const operationAssignment=byId("operationAssignmentStep");

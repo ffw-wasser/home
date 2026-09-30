@@ -233,7 +233,7 @@ byId("clearCsvFolderButton").addEventListener("click", clearCsvFolder);
 byId("chooseBackupFolderButton").addEventListener("click", chooseBackupFolder);
 byId("clearBackupFolderButton").addEventListener("click", clearBackupFolder);
 byId("newFirstName").addEventListener("keydown", event => { if (event.key === "Enter") addMember(); });
-byId("members").addEventListener("click", event => { const button = event.target.closest("[data-member]"); if (button) chooseMember(button.dataset.member); });
+byId("members").addEventListener("click",event=>{const action=event.target.closest("[data-quick-member][data-quick-status]");if(action){event.preventDefault();saveQuickMemberStatus(action.dataset.quickMember,action.dataset.quickStatus);return;}const button=event.target.closest("[data-member]");if(button)chooseMember(button.dataset.member);});
 byId("roles").addEventListener("click", event => { const button = event.target.closest("[data-role]"); if (button) chooseRole(button.dataset.role); });
 byId("entries").addEventListener("click", event => { const button = event.target.closest("[data-entry]"); if (button) deleteEntry(button.dataset.entry); });
 byId("exportCompleteBackupButton").addEventListener("click", exportCompleteBackup);
@@ -385,3 +385,5 @@ function cleanupTemporaryBlobUiOnStartup(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",cleanupTemporaryBlobUiOnStartup,{once:true});else cleanupTemporaryBlobUiOnStartup();
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initCloudSync,{once:true});else initCloudSync();
+
+requestAnimationFrame(()=>{document.getElementById("attendanceStatusToolbar")?.remove();document.getElementById("floatingAttendanceStatusToolbar")?.remove();const panel=document.getElementById("rolesPanel");if(panel){panel.hidden=true;panel.style.setProperty("display","none","important");}});

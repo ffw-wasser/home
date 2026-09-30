@@ -990,3 +990,108 @@
 .document-editor-force-landscape .ipad-editor-tools{display:grid!important;grid-template-columns:1fr!important;align-content:start!important;overflow-y:auto!important;max-height:none!important}
 .document-editor-force-landscape .ipad-editor-shell footer{display:grid!important;grid-template-columns:1fr!important;overflow-y:auto!important}
 .document-editor-force-landscape .ipad-editor-help,.document-editor-force-landscape .ipad-editor-status{display:flex!important;visibility:visible!important}
+
+/* 2.29: Direkter Status je Person, ohne globales Umschalten. */
+#attendanceStatusToolbar,#floatingAttendanceStatusToolbar,#rolesPanel.status-tab-rail{display:none!important;position:static!important}
+.member-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important;gap:10px!important}
+.member-direct-card{display:grid;gap:10px;padding:13px;border:1px solid #ccd5da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(26,47,57,.07)}
+.member-direct-card>strong{font-size:1.02rem;color:#26343b}
+.member-direct-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.member-status-action{min-height:48px;border:1px solid #c5cfd4;border-radius:10px;background:#edf1f3;color:#26343b;font-weight:900;touch-action:manipulation}
+.member-status-action.status-present{border-color:#80b78f;background:#e6f4e9;color:#176b36}
+.member-status-action.status-excused{border-color:#d2ae69;background:#fff5df;color:#795000}
+.member-status-action.status-na{border-color:#9daab1;background:#eef1f2;color:#46545b}
+.member-status-action.status-orga{border-color:#7aa4c0;background:#e8f2f8;color:#174e70}
+.member-direct-card.recorded{display:none!important}
+@media(max-width:620px){.member-grid{grid-template-columns:1fr!important}.member-direct-actions{grid-template-columns:1fr 1fr}.member-status-action{font-size:.82rem;padding:8px 5px}}
+
+
+/* 2.30: kompakte, überlappungsfreie Direktstatus-Karten. */
+#attendanceSelectionWorkspace .member-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px 12px!important;
+  align-items:stretch!important;
+}
+#attendanceSelectionWorkspace .member-direct-card{
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(125px,1fr) minmax(250px,1.65fr)!important;
+  align-items:center!important;
+  gap:12px!important;
+  padding:11px 12px!important;
+  border:1px solid #cbd6dc!important;
+  border-left:5px solid #98a8b0!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  box-shadow:0 3px 10px rgba(31,54,64,.07)!important;
+  overflow:hidden!important;
+}
+#attendanceSelectionWorkspace .member-direct-card>strong{
+  min-width:0!important;
+  margin:0!important;
+  color:#26343b!important;
+  font-size:.98rem!important;
+  line-height:1.25!important;
+  overflow-wrap:anywhere!important;
+}
+#attendanceSelectionWorkspace .member-direct-actions{
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:6px!important;
+}
+#attendanceSelectionWorkspace .member-status-action{
+  min-width:0!important;
+  min-height:44px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  padding:7px 6px!important;
+  border-width:1px!important;
+  border-radius:9px!important;
+  font-size:.77rem!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  box-shadow:none!important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-icon{
+  flex:0 0 22px!important;
+  width:22px!important;
+  height:22px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.72)!important;
+  font-size:.8rem!important;
+  font-weight:950!important;
+}
+#attendanceSelectionWorkspace .member-status-action.status-present{background:#e8f6ec!important;border-color:#8ac59a!important;color:#146d34!important}
+#attendanceSelectionWorkspace .member-status-action.status-excused{background:#fff6e3!important;border-color:#ddb96f!important;color:#805500!important}
+#attendanceSelectionWorkspace .member-status-action.status-orga{background:#eaf4fb!important;border-color:#87b4d0!important;color:#155477!important}
+#attendanceSelectionWorkspace .member-status-action.status-na{background:#eef2f4!important;border-color:#aab6bc!important;color:#44535b!important}
+#attendanceSelectionWorkspace .member-status-action:active{transform:scale(.98)!important}
+@media(max-width:1100px){
+  #attendanceSelectionWorkspace .member-grid{grid-template-columns:1fr!important}
+}
+@media(max-width:620px){
+  #attendanceSelectionWorkspace .member-direct-card{grid-template-columns:1fr!important;gap:8px!important;padding:11px!important}
+  #attendanceSelectionWorkspace .member-direct-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #attendanceSelectionWorkspace .member-status-action{font-size:.76rem!important}
+}
+
+/* 2.31: alte Status-Reiter vollständig entfernt. */
+html body #rolesPanel,
+html body #attendanceStatusToolbar,
+html body #floatingAttendanceStatusToolbar,
+html body .attendance-status-toolbar,
+html body .status-tab-rail{display:none!important;position:static!important;visibility:hidden!important;pointer-events:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
+#attendanceSelectionWorkspace .member-direct-card:has(.member-direct-actions>.status-present:only-child) .member-direct-actions{grid-template-columns:1fr!important}
+
+/* 2.32: Status zuerst markieren, anschließend gesammelt übernehmen. */
+#attendanceSelectionWorkspace .member-status-action.selected{outline:3px solid currentColor!important;outline-offset:1px!important;box-shadow:0 0 0 3px rgba(255,255,255,.9) inset!important;transform:translateY(-1px)!important}
+#attendanceSelectionWorkspace .member-direct-card:has(.member-status-action.selected){border-left-color:#16713a!important;background:#f8fcf9!important}
+.batch-selection-controls{position:sticky!important;bottom:8px!important;z-index:20!important;background:rgba(255,255,255,.96)!important;padding:10px!important;border-radius:14px!important;box-shadow:0 6px 24px rgba(25,45,55,.18)!important}
