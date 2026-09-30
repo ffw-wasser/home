@@ -98,3 +98,204 @@
   #attendanceSelectionWorkspace .member-direct-card{grid-template-columns:1fr !important;gap:9px !important}
   #attendanceSelectionWorkspace .member-direct-actions{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
 }
+
+/* Kartenfix 2: Name oben, Statusauswahl vollständig darunter. */
+#attendanceSelectionWorkspace .member-direct-card {
+  grid-template-columns:1fr !important;
+  grid-template-rows:auto auto !important;
+  align-content:start !important;
+  gap:10px !important;
+  min-height:0 !important;
+  padding:12px !important;
+}
+#attendanceSelectionWorkspace .member-direct-card > strong {
+  display:block !important;
+  width:100% !important;
+  padding:0 2px 8px !important;
+  border-bottom:1px solid #dce3e6 !important;
+  font-size:1rem !important;
+  line-height:1.25 !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+#attendanceSelectionWorkspace .member-direct-actions {
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:8px !important;
+  width:100% !important;
+}
+#attendanceSelectionWorkspace .member-status-action {
+  min-height:44px !important;
+  padding:8px 6px !important;
+  font-size:.76rem !important;
+  overflow:visible !important;
+}
+#attendanceSelectionWorkspace .member-status-action > span:last-child {
+  display:block !important;
+  min-width:0 !important;
+  overflow-wrap:anywhere !important;
+}
+#attendanceSelectionWorkspace .member-direct-card:has(.member-direct-actions > .member-status-action:only-child) .member-direct-actions {
+  grid-template-columns:1fr !important;
+}
+@media(min-width:1180px){
+  #attendanceSelectionWorkspace .member-subgrid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+}
+@media(max-width:720px){
+  #attendanceSelectionWorkspace .member-subgrid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  #attendanceSelectionWorkspace .member-direct-actions{
+    grid-template-columns:1fr !important;
+  }
+}
+@media(max-width:430px){
+  #attendanceSelectionWorkspace .member-subgrid{
+    grid-template-columns:1fr !important;
+  }
+}
+
+/* Übernommene Personen verschwinden aus der Auswahl. Nach Löschen des Tabelleneintrags
+   werden sie durch renderMembers() automatisch wieder eingeblendet. */
+#attendanceSelectionWorkspace .member-direct-card.recorded { display:none !important; }
+
+/* Kurze Statuscodes und seitliche Legende. */
+#attendanceSelectionWorkspace .member-status-action .status-short{
+  display:none !important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-icon{
+  font-size:.9rem !important;
+  font-weight:950 !important;
+}
+#attendanceSelectionWorkspace .member-status-legend{
+  position:sticky !important;
+  top:82px !important;
+  z-index:12 !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:8px !important;
+  float:right !important;
+  width:max-content !important;
+  max-width:100% !important;
+  margin:0 0 10px auto !important;
+  padding:7px 9px !important;
+  border:1px solid #b9c7cd !important;
+  border-radius:10px !important;
+  background:rgba(255,255,255,.96) !important;
+  box-shadow:0 3px 10px rgba(25,45,55,.10) !important;
+  color:#44535b !important;
+  font-size:.72rem !important;
+}
+#attendanceSelectionWorkspace .member-status-legend>strong{
+  color:#26343b !important;
+  font-size:.72rem !important;
+}
+#attendanceSelectionWorkspace .member-status-legend>span{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:4px !important;
+  white-space:nowrap !important;
+}
+#attendanceSelectionWorkspace .member-status-legend b{
+  display:grid !important;
+  place-items:center !important;
+  min-width:24px !important;
+  height:24px !important;
+  padding:0 4px !important;
+  border-radius:7px !important;
+  color:#fff !important;
+  font-size:.7rem !important;
+}
+#attendanceSelectionWorkspace .member-status-legend .legend-a{background:#176b36 !important}
+#attendanceSelectionWorkspace .member-status-legend .legend-e{background:#9a6500 !important}
+#attendanceSelectionWorkspace .member-status-legend .legend-o{background:#235f83 !important}
+#attendanceSelectionWorkspace .member-status-legend .legend-na{background:#58656c !important}
+#attendanceSelectionWorkspace .member-status-legend + .member-section{clear:both !important}
+@media(max-width:720px){
+  #attendanceSelectionWorkspace .member-status-legend{
+    position:static !important;
+    float:none !important;
+    width:100% !important;
+    flex-wrap:wrap !important;
+    margin:0 0 10px !important;
+  }
+}
+
+/* Kompakte Statusauswahl: A, E, O und Minuszeichen. */
+#attendanceSelectionWorkspace .member-direct-card{
+  padding:9px !important;
+  gap:7px !important;
+}
+#attendanceSelectionWorkspace .member-direct-card>strong{
+  padding-bottom:6px !important;
+  font-size:.92rem !important;
+}
+#attendanceSelectionWorkspace .member-direct-actions{
+  grid-template-columns:repeat(3,minmax(38px,1fr)) !important;
+  gap:6px !important;
+}
+#attendanceSelectionWorkspace .member-status-action{
+  min-height:38px !important;
+  padding:5px !important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-icon{
+  width:28px !important;
+  height:28px !important;
+  flex-basis:28px !important;
+  font-size:1rem !important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-short{
+  display:none !important;
+}
+#attendanceSelectionWorkspace .member-direct-card:has(.member-direct-actions>.member-status-action:only-child) .member-direct-actions{
+  grid-template-columns:minmax(70px,1fr) !important;
+}
+@media(min-width:1180px){
+  #attendanceSelectionWorkspace .member-subgrid{grid-template-columns:repeat(5,minmax(0,1fr)) !important}
+}
+@media(max-width:720px){
+  #attendanceSelectionWorkspace .member-direct-actions{grid-template-columns:repeat(3,minmax(38px,1fr)) !important}
+}
+
+/* Nur Symbole in einer Reihe: Haken, E, O und Minus. */
+#attendanceSelectionWorkspace .member-direct-actions{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  justify-content:flex-start !important;
+  gap:7px !important;
+}
+#attendanceSelectionWorkspace .member-status-action{
+  flex:0 0 42px !important;
+  width:42px !important;
+  min-width:42px !important;
+  min-height:40px !important;
+  padding:4px !important;
+  border-radius:9px !important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-icon{
+  width:28px !important;
+  height:28px !important;
+  flex:0 0 28px !important;
+  margin:0 !important;
+  font-size:1rem !important;
+  line-height:1 !important;
+}
+#attendanceSelectionWorkspace .member-status-action.status-present .status-icon{
+  color:#176b36 !important;
+}
+#attendanceSelectionWorkspace .member-status-action.status-present.selected .status-icon{
+  color:#fff !important;
+}
+#attendanceSelectionWorkspace .member-direct-card:has(.member-direct-actions>.member-status-action:only-child) .member-status-action{
+  width:48px !important;
+  flex-basis:48px !important;
+}
+@media(max-width:720px){
+  #attendanceSelectionWorkspace .member-direct-actions{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+  }
+}
