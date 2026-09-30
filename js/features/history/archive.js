@@ -398,6 +398,13 @@ function showHistoryPdfPreview(blob,fileName){
   historyPdfPreviewBlob=blob;historyPdfPreviewName=fileName;
   historyPdfPreviewUrl=URL.createObjectURL(blob instanceof Blob&&blob.type==="application/pdf"?blob:new Blob([blob],{type:"application/pdf"}));
   byId("historyPdfPreviewTitle").textContent=fileName;
+  const isiPhonePdf=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document));
+  if(isiPhonePdf){
+    // iOS zeigt mehrseitige PDFs in eingebetteten iframes oft nur als erste Seite.
+    // Im nativen Safari-PDF-Viewer sind alle Seiten scrollbar und die Ansicht startet passend skaliert.
+    const opened=window.open(historyPdfPreviewUrl,"_blank");
+    if(opened){dialog.close?.();return;}
+  }
   byId("historyPdfPreviewFrame").src=historyPdfPreviewUrl+"#toolbar=1&navpanes=0&view=FitH";
   dialog.showModal();
 }
