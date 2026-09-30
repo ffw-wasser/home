@@ -386,4 +386,5 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initCloudSync,{once:true});else initCloudSync();
 
-requestAnimationFrame(()=>{document.getElementById("attendanceStatusToolbar")?.remove();document.getElementById("floatingAttendanceStatusToolbar")?.remove();const panel=document.getElementById("rolesPanel");if(panel){panel.hidden=true;panel.style.setProperty("display","none","important");}});
+
+requestAnimationFrame(()=>{for(const id of ["rolesPanel","attendanceStatusToolbar","floatingAttendanceStatusToolbar"]){const el=document.getElementById(id);if(el){el.hidden=true;el.style.setProperty("display","none","important");el.setAttribute("aria-hidden","true");}}});
