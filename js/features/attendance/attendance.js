@@ -385,19 +385,29 @@ function updateFloatingAttendanceStatusToolbar(){
   const source=byId("attendanceStatusToolbar"),floating=byId("floatingAttendanceStatusToolbar"),view=byId("attendanceView");
   if(!source||!floating||homeFlowStage!==2||source.hidden||view?.hidden){if(floating)floating.hidden=true;return;}
   const rect=source.getBoundingClientRect();
-  const top=window.innerWidth<=760?60:64;
-  const workspace=byId("attendanceSelectionWorkspace")?.getBoundingClientRect();
-  const shouldFloat=rect.top<top&&workspace&&workspace.bottom>top+floating.offsetHeight+12;
+  const mobile=window.matchMedia("(max-width: 760px)").matches;
+  const top=mobile?8:64;
+  const workspaceRect=byId("attendanceSelectionWorkspace")?.getBoundingClientRect();
+  const stageVisible=Boolean(workspaceRect&&workspaceRect.bottom>0&&workspaceRect.top<window.innerHeight);
+  const shouldFloat=mobile?stageVisible:(rect.top<top&&stageVisible);
   floating.hidden=!shouldFloat;
   if(!shouldFloat)return;
-  floating.style.top=`${top}px`;
-  floating.style.left=`${Math.max(8,rect.left)}px`;
-  floating.style.width=`${Math.min(rect.width,window.innerWidth-16)}px`;
+  if(!mobile){
+    floating.style.top=`${top}px`;
+    floating.style.left=`${Math.max(8,rect.left)}px`;
+    floating.style.width=`${Math.min(rect.width,window.innerWidth-16)}px`;
+  }else{
+    floating.style.removeProperty("top");
+    floating.style.removeProperty("left");
+    floating.style.removeProperty("width");
+  }
 }
 if(!window.__floatingAttendanceStatusBound){
   window.__floatingAttendanceStatusBound=true;
   window.addEventListener("scroll",updateFloatingAttendanceStatusToolbar,{passive:true});
   window.addEventListener("resize",updateFloatingAttendanceStatusToolbar,{passive:true});
+  window.visualViewport?.addEventListener("scroll",updateFloatingAttendanceStatusToolbar,{passive:true});
+  window.visualViewport?.addEventListener("resize",updateFloatingAttendanceStatusToolbar,{passive:true});
 }
 
 if(!window.__attendanceStatusToolbarBound){
