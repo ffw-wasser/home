@@ -7,3 +7,10 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed;opacity:.68}
 .dialog-actions,.probe-topic-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .help-text{max-width:75ch}
 @media(max-width:620px){.dialog-actions,.probe-topic-actions{align-items:stretch;flex-direction:column}.dialog-actions button,.probe-topic-actions button{width:100%}dialog{max-width:calc(100% - 20px)}}
+
+/* Einsatzbericht: Mengenfelder und Zeitfolge */
+.operation-time-order{margin:0 0 10px;padding:9px 11px;border-left:5px solid #2477bd;background:#eef6fb;color:#33464f;font-weight:750}
+.operation-device-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}.operation-device-amount{display:grid;grid-template-columns:minmax(0,1fr) 72px;align-items:center;gap:8px;padding:8px 9px;border:1px solid #d5dde0;border-radius:9px;background:#f8fafb}.operation-device-amount input{text-align:center;min-width:0}.operation-pipe-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;grid-column:1/-1}.operation-pipe-grid input{text-align:center}@media(max-width:720px){.operation-device-grid{grid-template-columns:1fr}.operation-pipe-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.operation-pipe-grid{grid-template-columns:1fr}}
+
+/* Einsatzbericht ohne Pflichtfelder */
+.operation-draft-hint{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;padding:10px 12px;border:1px solid #9fc4d9;border-radius:10px;background:#eef7fc;color:#294854}.operation-draft-hint strong{white-space:nowrap}.operation-draft-hint span{line-height:1.35}@media(max-width:600px){.operation-draft-hint{display:grid}}

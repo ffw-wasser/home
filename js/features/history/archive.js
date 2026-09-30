@@ -357,7 +357,7 @@ function renderHistory(){
     const yearOpen=year===currentYear?" open":"";
     const monthHtml=[...months.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([month,items])=>{
       const monthOpen=month===currentMonth?" open":"";
-      return `<details class="history-month"${monthOpen}><summary><span>${escapeHtml(historyMonthLabel(month))}</span><small>${items.length} Bericht${items.length===1?"":"e"}</small><i aria-hidden="true"></i></summary><div class="history-list">${items.map(item=>{const date=historyDateLabel(item),topic=item.topic||parseCsvRows(item.content)[0]?.topic||"Ohne Thema";return `<article class="history-item${item.revisions?.length?" history-item-corrected":""}"><div class="history-item-details"><strong>${escapeHtml(date)} · ${escapeHtml(item.sessionType||"Probe")}</strong><span>${escapeHtml(topic)}</span><small>${escapeHtml(item.fileName)}${item.revisions?.length?` · ${item.revisions.length} Korrektur(en)`:""}</small></div><div class="history-item-actions"><button class="primary-button" type="button" data-history-pdf="${escapeHtml(item.id)}">PDF ansehen</button><button class="secondary-button" type="button" data-history-csv="${escapeHtml(item.id)}">CSV ausgeben</button><button class="outline-button" type="button" data-history-correct="${escapeHtml(item.id)}" title="Aktualisiert CSV und zugehöriges PDF">${item.sessionType==="Einsatz"?"Einsatz korrigieren":"Eintrag korrigieren"}</button><button class="danger-button" type="button" data-history-delete="${escapeHtml(item.id)}">Löschen</button></div></article>`;}).join("")}</div></details>`;
+      return `<details class="history-month"${monthOpen}><summary><span>${escapeHtml(historyMonthLabel(month))}</span><small>${items.length} Bericht${items.length===1?"":"e"}</small><i aria-hidden="true"></i></summary><div class="history-list">${items.map(item=>{const date=historyDateLabel(item),topic=item.topic||parseCsvRows(item.content)[0]?.topic||"Ohne Thema";return `<article class="history-item${item.revisions?.length?" history-item-corrected":""}"><div class="history-item-details"><strong>${escapeHtml(date)} · ${escapeHtml(item.sessionType||"Probe")}</strong><span>${escapeHtml(topic)}</span><small>${escapeHtml(item.fileName)}${item.revisions?.length?` · ${item.revisions.length} Korrektur(en)`:""}</small></div><div class="history-item-actions"><button class="primary-button" type="button" data-history-pdf="${escapeHtml(item.id)}">${item.sessionType==="Einsatz"?"Einsatzbericht ansehen":"PDF ansehen"}</button><button class="secondary-button" type="button" data-history-csv="${escapeHtml(item.id)}">CSV ausgeben</button><button class="outline-button" type="button" data-history-correct="${escapeHtml(item.id)}" title="Aktualisiert CSV und zugehöriges PDF">${item.sessionType==="Einsatz"?"Einsatz korrigieren":"Eintrag korrigieren"}</button><button class="danger-button" type="button" data-history-delete="${escapeHtml(item.id)}">Löschen</button></div></article>`;}).join("")}</div></details>`;
     }).join("");
     return `<details class="history-year"${yearOpen}><summary class="history-year-heading"><h3>${escapeHtml(year)}</h3><span>${yearCount} Bericht${yearCount===1?"":"e"}</span><i aria-hidden="true"></i></summary><div class="history-months">${monthHtml}</div></details>`;
   }).join("");
@@ -419,13 +419,14 @@ function showHistoryPdfPreview(blob,fileName){
 }
 async function openHistoryPdf(id){
   const item=csvArchive.find(x=>x.id===id);if(!item)return;
-  // Bei Einsätzen zuerst das archivierte Gesamt-PDF öffnen, damit angehängte Seiten erhalten bleiben.
+  // Einsätze werden immer aus den strukturierten Einsatzdaten als Einsatzbericht erzeugt.
+  // Ein möglicherweise falsch zugeordnetes oder älteres Proben-PDF darf diesen Bericht nicht ersetzen.
   if(item.operationData||String(item.sessionType||"").trim()==="Einsatz"){
-    const operationName=item.pdfFileName||item.fileName.replace(/\.csv$/i,".pdf");
+    const operationName=item.pdfFileName||`FFW-Wasser_${historyDateFromItem(item)}_Einsatzbericht.pdf`;
+    if(item.operationData){showHistoryPdfPreview(await operationPdfBlob(item.operationData),operationName);return;}
     const stored=item.hasImportedPdf?await loadImportedReportPdf?.(id):null;
     if(stored){showHistoryPdfPreview(stored,operationName);return;}
-    if(!item.operationData)return showToast("Für diesen Einsatz fehlen Berichtsdaten und ein gespeichertes PDF.","error");
-    showHistoryPdfPreview(await operationPdfBlob(item.operationData),operationName);return;
+    showToast("Für diesen Einsatz fehlen strukturierte Einsatzdaten und ein gespeichertes Einsatz-PDF.","error");return;
   }
   const imported=item.hasImportedPdf?await loadImportedReportPdf?.(id):null;
   if(imported){

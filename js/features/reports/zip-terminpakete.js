@@ -55,16 +55,23 @@ function promptIpadTerminPackageSave(fileName,blob){
   const dialog=ensureIpadTerminPackageDialog();byId("ipadTerminPackageName").textContent=fileName;byId("ipadTerminPackageError").hidden=true;byId("ipadTerminPackageShare").disabled=false;
   return new Promise(resolve=>{pendingTerminPackageSave={fileName,blob,resolve,dialog};dialog.showModal();});
 }
-async function saveTerminPackage(fileName,blob){
+async function saveTerminPackage(fileName,blob,overwriteRequired=false){
   document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>node.remove());
   const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document));
   // Auf iPad niemals zuerst einen eventuell alten Verzeichnis-Handle benutzen.
   // Der explizite zweite Tipp öffnet zuverlässig den nativen Teilen-Dialog.
-  if(isiOS)return promptIpadTerminPackageSave(fileName,blob);
+  if(isiOS){
+    if(overwriteRequired)showToast("Korrektur: Im Dateien-Dialog die vorhandene ZIP mit gleichem Namen ersetzen.","warning");
+    return promptIpadTerminPackageSave(fileName,blob);
+  }
   const handle=effectiveCsvDirectoryHandle?.()||effectivePdfDirectoryHandle?.()||null;
   if(handle){
     try{if(!(await ensureDirectoryWritePermission(handle)))return "failed";const fileHandle=await handle.getFileHandle(fileName,{create:true});const writable=await fileHandle.createWritable({keepExistingData:false});await writable.write(blob);await writable.close();return "saved";}
     catch(error){console.error(error);return "failed";}
+  }
+  if(overwriteRequired){
+    showToast("Zum Überschreiben bitte zuerst unter Einstellungen den Ordner für Terminpakete auswählen.","error");
+    return "failed";
   }
   try{downloadBlob(fileName,blob);return "downloaded";}catch(error){return "failed";}
 }
@@ -120,7 +127,7 @@ window.finishOperationZip=async function(){
       // Neu und Korrektur speichern ausschließlich ein ZIP. Bei der Korrektur
       // bleibt der ursprüngliche Paketname erhalten, damit die Datei im
       // ausgewählten Ordner ersetzt statt als CSV/PDF-Doppel ausgegeben wird.
-      const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Einsatz",operationData:d}),result=await saveTerminPackage(zipName,packageResult.zipBlob);
+      const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Einsatz",operationData:d}),result=await saveTerminPackage(zipName,packageResult.zipBlob,Boolean(previous));
       if(result==="failed"||result==="cancelled"){showToast("Das Einsatz-Terminpaket konnte nicht gespeichert werden. Daten bleiben erhalten.","error");return false;}
       const item={id:previous?.id||makeId(),packageFileName:zipName,fileName:csvName,pdfFileName:pdfName,content:csv,sessionType:"Einsatz",topic:`${d.type} · ${d.location}`,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),presentCount:(Array.isArray(d.members)?d.members.length:0),excusedCount:0,missingCount:0,operationData:d,hasImportedPdf:true,revisions:[...(previous?.revisions||[]),...(previous?[{correctedAt:new Date().toISOString(),reason:"Einsatzbericht korrigiert",previousOperationData:previous.operationData}]:[])]};
       try{await saveImportedReportPdf(item.id,new File([packageResult.finalPdf],pdfName,{type:"application/pdf"}));await commitPendingDocumentReport?.(item.id);csvArchive=previous?csvArchive.map(entry=>entry.id===item.id?item:entry):[item,...csvArchive];saveArchive();}catch(error){console.error("Lokales Einsatzarchiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
