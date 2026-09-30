@@ -105,7 +105,8 @@ window.finishOperationZip=async function(){
   d.times=d.times||{};
   const check=validateOperation(d),box=byId("operationValidation");box.hidden=!(check.errors.length||check.warnings.length);box.innerHTML=[...check.errors.map(x=>`<p class="error">${escapeHtml(x)}</p>`),...check.warnings.map(x=>`<p class="warning">${escapeHtml(x)}</p>`)].join("");
   if(check.errors.length)return showToast("Bitte die Pflichtangaben und Hinweise prüfen.","error");
-  if(check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem fortfahren?"))return;
+  if(typeof window.smartConfirmOperation==="function"&&!await window.smartConfirmOperation(d,check))return;
+  else if(typeof window.smartConfirmOperation!=="function"&&check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem fortfahren?"))return;
   const button=byId("operationFinish");button.disabled=true;
   try{
     const previous=editingOperationArchiveId?csvArchive.find(entry=>entry.id===editingOperationArchiveId):null;
