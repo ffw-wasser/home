@@ -80,3 +80,19 @@
     padding-top:26px!important;
   }
 }
+
+/* 2.20.2: Abstand direkt unter der gruenen Kartenlinie. */
+#attendanceView article.home-session-type-panel.home-flow-stage-1{
+  padding-top:26px!important;
+}
+#attendanceView article.home-session-type-panel.home-flow-stage-1>.panel-heading{
+  position:static!important;
+  inset:auto!important;
+  margin:0 0 14px!important;
+  transform:none!important;
+}
+@media(max-width:760px){
+  #attendanceView article.home-session-type-panel.home-flow-stage-1{
+    padding-top:24px!important;
+  }
+}
