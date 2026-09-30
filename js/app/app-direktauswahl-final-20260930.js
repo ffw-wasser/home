@@ -356,7 +356,7 @@ else removeStandaloneAttendanceVersion();
 // Einsatzstatistik wird getrennt durch statistics.js dargestellt.
 function enforceFooterVersion(){
   const footer=document.querySelector(".app-footer");
-  if(footer)footer.textContent="© 2026 Markus Bürklin · Feuerwehr Wasser 2.0 · Produktiv";
+  if(footer)footer.textContent="© 2026 Feuerwehr Wasser 2.0 · Produktiv";
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enforceFooterVersion,{once:true});
 else enforceFooterVersion();
