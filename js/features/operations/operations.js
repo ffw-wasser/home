@@ -152,11 +152,9 @@ async function operationPdfBlob(d){
   put(p1,d.pipes?.c,183,548,8,6);put(p1,d.pipes?.b,278,548,8,6);put(p1,d.pipes?.monitor,379,548,8,6);put(p1,d.pipes?.smallExtinguishers,493,548,8,6);put(p1,(d.waterSources||[]).join(", "),115,503,7,75);
   const deviceText=Object.entries(d.deviceAmounts||{}).map(([name,count])=>`${count} x ${name}`).concat(clean(d.deviceOther)?[clean(d.deviceOther)]:[]).join(", ");put(p1,deviceText,98,451,7,100);put(p1,d.oil?.description,98,381,7,100);
   const groups={};(d.members||[]).forEach(name=>{const vehicle=clean(d.assignments?.[name])||"Ohne Fahrzeug";(groups[vehicle]||=[]).push(`${operationProtocolName(name)}${clean(d.assignmentRoles?.[name])?` (${clean(d.assignmentRoles[name])})`:""}`);});
-  let gy=326;Object.entries(groups).forEach(([vehicle,names])=>{put(p1,vehicle,38,gy,8,34,true);put(p1,names.join(", "),135,gy,7,82);gy-=Math.max(18,Math.ceil(names.join(", ").length/82)*10+7);});
+  let vehicleTextY=203;Object.entries(groups).forEach(([vehicle,names])=>{if(vehicleTextY<128)return;put(p1,`${vehicle}: ${names.join(", ")}`,36,vehicleTextY,6.5,112);vehicleTextY-=Math.max(12,Math.ceil(`${vehicle}: ${names.join(", ")}`.length/112)*8+4);});put(p1,(d.members||[]).length?String((d.members||[]).length):"",505,123,7,4,true);
   put(p2,d.situation,103,738,7,105);put(p2,d.actions,103,635,7,105);put(p2,d.persons,103,531,7,105);put(p2,d.otherVehicles,103,457,7,105);put(p2,d.special,103,385,7,105);
   const agencies=(d.agencies||[]).join(", ");put(p2,agencies,103,300,7,105);if(d.atueUsed)put(p2,"X",198,213,9,2,true);if(d.atueDepartment)put(p2,"X",404,213,9,2,true);put(p2,d.atuePerson,454,213,7,25);
-  // Fahrzeugweise Zusammenfassung im freien unteren Bereich des Originalblatts.
-  let y=174;put(p2,"Einsatzkraefte nach Fahrzeug",36,y,9,50,true);y-=14;Object.entries(groups).forEach(([vehicle,names])=>{if(y<52)return;put(p2,vehicle,36,y,7,28,true);put(p2,names.join(", "),132,y,7,88);y-=Math.max(14,Math.ceil(names.join(", ").length/88)*9+5);});
   return new Blob([await pdf.save()],{type:"application/pdf"});
 }
 
