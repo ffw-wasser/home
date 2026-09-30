@@ -25,7 +25,7 @@ async function requestCloseProbe() {
     return;
   }
   if (sessionType === "Ausschuss Sitzung") {
-    openProbeTopicDialog();
+    showDocumentReportPanel();
     return;
   }
   // Sonderprobe und Unterricht benötigen keinen Dokumentbericht.
