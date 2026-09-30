@@ -977,3 +977,16 @@
   margin:0 0 10px!important;
   z-index:auto!important;
 }
+
+/* 2.28: zuverlässige Querformat-Bildbearbeitung auf iPhone. */
+.document-editor-force-landscape .ipad-document-editor{overflow:hidden!important}
+.document-editor-force-landscape .ipad-editor-shell{
+  width:100%!important;height:100%!important;overflow:hidden!important;
+  grid-template-columns:minmax(0,1fr) minmax(220px,32vw)!important;
+  grid-template-rows:auto auto auto minmax(0,1fr) auto!important;
+  grid-template-areas:"header header" "stage help" "stage status" "stage tools" "stage footer"!important;
+}
+.document-editor-force-landscape .ipad-editor-stage{min-width:0!important;min-height:0!important;height:100%!important}
+.document-editor-force-landscape .ipad-editor-tools{display:grid!important;grid-template-columns:1fr!important;align-content:start!important;overflow-y:auto!important;max-height:none!important}
+.document-editor-force-landscape .ipad-editor-shell footer{display:grid!important;grid-template-columns:1fr!important;overflow-y:auto!important}
+.document-editor-force-landscape .ipad-editor-help,.document-editor-force-landscape .ipad-editor-status{display:flex!important;visibility:visible!important}
