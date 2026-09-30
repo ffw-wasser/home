@@ -326,11 +326,11 @@ function setupUnifiedHomeWorkflow(){
   removeLegacyStatusRails();
   if(!chosenRole) chosenRole="Anwesend";
   const input=document.querySelector("#attendanceView .input-column"),roles=byId("rolesPanel"),members=document.querySelector("#attendanceView .members-panel");
-  if(input&&roles&&members){
+  if(input&&members){
     let workspace=byId("attendanceSelectionWorkspace");
     if(!workspace){workspace=document.createElement("div");workspace.id="attendanceSelectionWorkspace";workspace.className="attendance-selection-workspace";input.insertBefore(workspace,input.firstChild);}
     workspace.appendChild(members);
-    roles.hidden=true;roles.style.setProperty("display","none","important");roles.setAttribute("aria-hidden","true");
+    if(roles){roles.hidden=true;roles.style.setProperty("display","none","important");roles.setAttribute("aria-hidden","true");}
     members.hidden=false;members.classList.add("inline-members-panel","orga-sheet");
     roles.querySelector(".panel-heading")?.remove();
     byId("roleSelectionHint")?.remove();
@@ -362,35 +362,10 @@ function updateProbeWorkflow(){
 }
 
 function renderRoles(){
-  removeLegacyStatusRails();
-  const statuses=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
-  if(!statuses.includes(chosenRole)){chosenRole="Anwesend";chosenMemberIds.clear();}
-  const workspace=byId("attendanceSelectionWorkspace"),sheet=document.querySelector(".orga-sheet");
-  const statusClass=chosenRole==="Entschuldigt"?"status-excused":chosenRole==="Betrifft nicht"?"status-not-applicable":chosenRole==="Orga"?"status-organization":"status-present";
-  [workspace,sheet].filter(Boolean).forEach(element=>{element.classList.remove("status-present","status-excused","status-not-applicable","status-organization");element.classList.add(statusClass);});
-
-  let toolbar=byId("attendanceStatusToolbar");
-  if(!toolbar){toolbar=document.createElement("nav");toolbar.id="attendanceStatusToolbar";toolbar.className="attendance-status-toolbar";toolbar.setAttribute("aria-label","Teilnahmestatus");}
-  toolbar.innerHTML=statuses.map(status=>`<button type="button" role="tab" class="attendance-status-tab ${chosenRole===status?"selected":""}" data-role="${escapeHtml(status)}" aria-selected="${chosenRole===status}" aria-pressed="${chosenRole===status}">${escapeHtml(status)}</button>`).join("");
-  const membersRoot=byId("members");
-  const membersPanel=membersRoot?.closest(".members-panel,article,.panel,section");
-  if(membersPanel&&membersPanel!==workspace&&membersPanel.parentElement){
-    membersPanel.classList.add("participant-file-card");
-    membersPanel.parentElement.insertBefore(toolbar,membersPanel);
-  } else if(membersRoot?.parentElement){
-    membersRoot.parentElement.classList.add("participant-file-card");
-    membersRoot.parentElement.insertBefore(toolbar,membersRoot);
-  } else workspace?.prepend(toolbar);
-  const showStatusTabs=homeFlowStage===2;
-  toolbar.hidden=!showStatusTabs;
-  toolbar.setAttribute("aria-hidden",String(!showStatusTabs));
-  toolbar.style.display=showStatusTabs?"flex":"none";
-  syncFloatingAttendanceStatusToolbar();
-
-  const legacyPanel=byId("rolesPanel");if(legacyPanel){legacyPanel.hidden=true;legacyPanel.style.display="none";}
+  const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
+  if(!allowed.includes(chosenRole))chosenRole="Anwesend";
+  removeLegacyStatusRails();updatePrimaryAction();
 }
-
-
 
 function syncFloatingAttendanceStatusToolbar(){
   const source=byId("attendanceStatusToolbar");
