@@ -29,12 +29,21 @@ function renderMembers() {
   const legendItems=sessionType==="Einsatz"
     ? `<span><b class="legend-a">A</b>Anwesend</span>`
     : sessionType==="Allgemeine Probe"
-      ? `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Orga</span>`
+      ? `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
       : sessionType==="Sonderprobe"
         ? `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
         : `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
+  let headingLegend=byId("stage2StatusLegend");
+  if(!headingLegend && byId("stage2Heading")){
+    headingLegend=document.createElement("aside");
+    headingLegend.id="stage2StatusLegend";
+    headingLegend.className="member-status-legend member-status-legend-heading";
+    headingLegend.setAttribute("aria-label","Legende der Statusabkürzungen");
+    const dateControl=byId("probeDateInput")?.closest("label");
+    byId("stage2Heading").insertBefore(headingLegend,dateControl||null);
+  }
+  if(headingLegend) headingLegend.innerHTML=`<strong>Legende</strong>${legendItems}`;
   const sections = [
-    `<aside class="member-status-legend" aria-label="Legende der Statusabkürzungen"><strong>Legende</strong>${legendItems}</aside>`,
     `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
     ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
@@ -108,7 +117,7 @@ function renderEntries() {
     <tr>
       <td>${escapeHtml(entry.time)}</td>
       <td><strong>${escapeHtml(entry.displayName)}</strong></td>
-      <td>${escapeHtml(entry.role === "Orga" ? "Orga" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? entry.status : entry.role))}</td>
+      <td>${escapeHtml(entry.role === "Orga" ? "Organisation" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? entry.status : entry.role))}</td>
       <td><button type="button" class="delete-entry" data-entry="${escapeHtml(entry.id)}" aria-label="Anmeldung löschen">✕</button></td>
     </tr>`).join("");
   const presentCount = current.filter(entry => entry.status === "Anwesend").length;

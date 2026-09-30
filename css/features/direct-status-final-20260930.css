@@ -299,3 +299,51 @@
     flex-wrap:nowrap !important;
   }
 }
+
+/* Legende mittig im Kopfbereich „Anwesenheit erfassen“. */
+#attendanceSelectionWorkspace #stage2Heading{
+  display:grid !important;
+  grid-template-columns:auto minmax(190px,1fr) auto minmax(190px,1fr) auto !important;
+  align-items:center !important;
+  gap:12px !important;
+}
+#attendanceSelectionWorkspace #stage2Heading .member-status-legend-heading{
+  position:static !important;
+  float:none !important;
+  justify-self:center !important;
+  align-self:center !important;
+  width:max-content !important;
+  max-width:100% !important;
+  margin:0 !important;
+  box-shadow:none !important;
+  background:#f5f8f9 !important;
+}
+#attendanceSelectionWorkspace #stage2Heading .probe-date-control{
+  justify-self:end !important;
+}
+/* Symbole exakt mittig im farbigen Hintergrundkreis. */
+#attendanceSelectionWorkspace .member-status-action{
+  display:grid !important;
+  place-items:center !important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-icon{
+  display:grid !important;
+  place-items:center !important;
+  margin:0 auto !important;
+  padding:0 !important;
+  text-align:center !important;
+  line-height:1 !important;
+  transform:none !important;
+}
+@media(max-width:900px){
+  #attendanceSelectionWorkspace #stage2Heading{
+    grid-template-columns:auto minmax(0,1fr) auto !important;
+  }
+  #attendanceSelectionWorkspace #stage2Heading .member-status-legend-heading{
+    grid-column:1/-1 !important;
+    grid-row:2 !important;
+    width:100% !important;
+    justify-content:center !important;
+    flex-wrap:wrap !important;
+  }
+}
