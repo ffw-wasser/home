@@ -14,6 +14,11 @@ function restoreLatestSafetySnapshot(){
 }
 function qualityMinutes(value){if(!/^\d{2}:\d{2}$/.test(value||""))return null;const [h,m]=value.split(":").map(Number);return h*60+m;}
 function validateOperationData(d){
+  d=d||((typeof collectOperationData==="function")?collectOperationData():{})||{};
+  d.members=Array.isArray(d.members)?d.members:[];
+  d.assignments=d.assignments||{};
+  d.assignmentRoles=d.assignmentRoles||{};
+  d.times=d.times||{};
   const errors=[],warnings=[];if(!d?.date)errors.push("Datum fehlt.");if(!d?.type)errors.push("Einsatzart fehlt.");if(!d?.location)errors.push("Einsatzort fehlt.");if(!(d?.members||[]).length)errors.push("Keine Einsatzkräfte erfasst.");
   const groups=["EM 5/42 LF10","EM 5/47 TSF","Reserve Einsatzstelle","Reserve Gerätehaus"];
   (d?.members||[]).forEach(name=>{if(!groups.includes(d.assignments?.[name]))errors.push(`${operationProtocolName?.(name)||name}: keine Fahrzeug- oder Reservezuordnung.`);if((d.assignments?.[name]||"").startsWith("EM ")&&!d.assignmentRoles?.[name])errors.push(`${operationProtocolName?.(name)||name}: Fahrzeugfunktion fehlt.`);});
@@ -49,7 +54,6 @@ function installQualityHooks(){
   installDirectQualityGuards();
   updateQualityStatusCard();
   if(typeof requestCloseProbe==="function"){const original=requestCloseProbe;requestCloseProbe=function(){const result=validateProbeBeforeFinish();if(!confirmQualityResult(result,"Plausibilitätsprüfung Probe"))return;createSafetySnapshot("Vor Probenabschluss");return original.apply(this,arguments);};}
-  if(typeof finishOperationZip==="function"){const original=finishOperationZip;finishOperationZip=async function(d){const result=validateOperationData(d);if(!confirmQualityResult(result,"Plausibilitätsprüfung Einsatz"))return false;createSafetySnapshot("Vor Einsatzabschluss");return original.apply(this,arguments);};window.finishOperationZip=finishOperationZip;}
   if(typeof deleteArchiveItem==="function"){const original=deleteArchiveItem;deleteArchiveItem=async function(){createSafetySnapshot("Vor Löschen eines Archiveintrags");return original.apply(this,arguments);};}
   if(typeof importCompleteBackup==="function"){const original=importCompleteBackup;importCompleteBackup=async function(){createSafetySnapshot("Vor Wiederherstellung eines Komplett-Backups");return original.apply(this,arguments);};}
   const dataPanel=byId("backupLocationPanel")?.parentElement||byId("settingsFilesView")?.querySelector(".panel");if(dataPanel&&!byId("restoreSafetySnapshotButton")){const button=document.createElement("button");button.id="restoreSafetySnapshotButton";button.type="button";button.className="outline-button";button.textContent="Letzten automatischen Sicherungspunkt wiederherstellen";button.addEventListener("click",restoreLatestSafetySnapshot);dataPanel.appendChild(button);}
