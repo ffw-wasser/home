@@ -400,10 +400,18 @@ function showHistoryPdfPreview(blob,fileName){
   byId("historyPdfPreviewTitle").textContent=fileName;
   const isiPhonePdf=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document));
   if(isiPhonePdf){
-    // iOS zeigt mehrseitige PDFs in eingebetteten iframes oft nur als erste Seite.
-    // Im nativen Safari-PDF-Viewer sind alle Seiten scrollbar und die Ansicht startet passend skaliert.
-    const opened=window.open(historyPdfPreviewUrl,"_blank");
-    if(opened){dialog.close?.();return;}
+    // Ein echtes Link-Ziel oeffnet auf iOS den nativen PDF-Viewer statt des
+    // eingebetteten Einseiten-Previews. Dort sind Seite 1 und Seite 2 scrollbar.
+    const link=document.createElement("a");
+    link.href=historyPdfPreviewUrl;
+    link.target="_blank";
+    link.rel="noopener";
+    link.download=fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    try{dialog.close?.();}catch(error){}
+    return;
   }
   byId("historyPdfPreviewFrame").src=historyPdfPreviewUrl+"#toolbar=1&navpanes=0&view=FitH";
   dialog.showModal();
