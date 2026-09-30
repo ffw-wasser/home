@@ -1,7 +1,7 @@
 "use strict";
 let currentOperationId=safeStorage.getItem("fw_v1_current_operation_id")||"";
 let currentOperationDraft=null,editingOperationArchiveId="",operationAssignmentGroup="EM 5/42 LF10",operationAssignments={},operationAssignmentRoles={};
-const OP_REPORT_VEHICLES=["EM 1/10 KDOW", "EM 1/11 ELW 1", "EM 5/23 TLF", "EM 5/47 TSF", "EM 1/46 HLF 20", "EM 1/33 DLK 23/12", "EM 1/44 LF 20", "EM 1/59 GW-Hygiene"],OP_VEHICLES=["EM 5/47 TSF","EM 5/42 LF10"],OP_VEHICLE_CAPACITY=Object.freeze({"EM 5/47 TSF":7,"EM 5/42 LF10":9});
+const OP_REPORT_VEHICLES=["EM 1/10 KDOW", "EM 1/11 ELW 1", "EM 5/42 LF10", "EM 5/47 TSF", "EM 1/46 HLF 20", "EM 1/33 DLK 23/12", "EM 1/44 LF 20", "EM 1/59 GW-Hygiene"],OP_VEHICLES=["EM 5/47 TSF","EM 5/42 LF10"],OP_VEHICLE_CAPACITY=Object.freeze({"EM 5/47 TSF":7,"EM 5/42 LF10":9});
 const OP_DEVICES=["Wärmebildkamera","Pressluftatmer","Kettensäge","Sprungpolster","Belüftungsgerät","Stromerzeuger","Tauchpumpe","Wassersauger","Rettungsschere","Rettungsspreizer","Rettungszylinder","Türöffnungswerkzeug"];
 const OP_ROLE_ORDER=Object.freeze(["GF","Maschinist","ATF","ATM","WTF","WTM","STF","STM","Melder"]),OP_AGENCIES=["Polizei","Streifendienst","KDD","Kripo","Bundespolizei","Rettungsdienst","RTW","NEF","KTW","RTH","DRK Ortsverein","KBM","Stadt Emmendingen","Stadtwerke","Netze BW","Badenova","THW","DLRG","Abschleppdienst","Straßen-/Autobahnmeisterei","DB-Notfallmanager","Bestatter","Weitere Feuerwehren"];
 function operationRoleRank(r){const i=OP_ROLE_ORDER.indexOf(String(r||""));return i<0?99:i}function operationSortNames(n,r){return[...n].sort((a,b)=>operationRoleRank(r?.[a])-operationRoleRank(r?.[b])||operationProtocolName(a).localeCompare(operationProtocolName(b),"de"))}
