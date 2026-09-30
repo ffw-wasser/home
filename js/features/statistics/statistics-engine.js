@@ -1,0 +1,1 @@
+(function(global){"use strict";function percentage(value,total){return total?Math.round(value/total*100):0;}function average(value,total){return total?value/total:0;}global.StatisticsEngine=Object.freeze({percentage,average});})(globalThis);
