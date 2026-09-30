@@ -83,3 +83,59 @@
   #cloudSyncDialog .cloud-sync-actions{display:grid!important;grid-template-columns:1fr!important;gap:9px!important}
   #cloudSyncDialog .cloud-sync-actions button{width:100%!important;min-height:50px!important;margin:0!important}
 }
+
+/* 2.21: OneDrive und ereignisabhaengige Info platzsparend im Header. */
+.top-nav .top-nav-actions{
+  align-items:center!important;
+}
+.top-nav #cloudSyncButton.cloud-sync-button{
+  position:static!important;
+  inset:auto!important;
+  order:80!important;
+  display:inline-grid!important;
+  grid-template-columns:30px auto!important;
+  align-items:center!important;
+  gap:7px!important;
+  width:auto!important;
+  min-width:0!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:5px 10px 5px 6px!important;
+  border:1px solid rgba(255,255,255,.72)!important;
+  border-radius:11px!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+  background:#1267b1!important;
+  color:#fff!important;
+}
+.top-nav #cloudSyncButton[data-state="online"]{background:#16753a!important}
+.top-nav #cloudSyncButton[data-state="syncing"]{background:#a66d00!important}
+.top-nav #cloudSyncButton[data-state="error"]{background:#a61616!important}
+.top-nav #cloudSyncButton .cloud-sync-icon{
+  display:grid!important;place-items:center!important;width:30px!important;height:30px!important;
+  border-radius:8px!important;background:#fff!important;color:#1267b1!important;font-size:20px!important;
+}
+.top-nav #cloudSyncButton .cloud-sync-copy{display:grid!important;gap:1px!important;text-align:left!important;line-height:1!important}
+.top-nav #cloudSyncButton .cloud-sync-copy b{font-size:12px!important;color:#fff!important}
+.top-nav #cloudSyncButton .cloud-sync-copy small{font-size:10px!important;color:#fff!important;white-space:nowrap!important}
+.top-nav #safetyInfoButton.safety-info-button{
+  position:static!important;inset:auto!important;order:81!important;display:grid!important;place-items:center!important;
+  width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;padding:0!important;
+  border:1px solid rgba(255,255,255,.72)!important;border-radius:11px!important;box-shadow:none!important;
+  background:#184d70!important;color:#fff!important;font-size:20px!important;
+}
+.top-nav #safetyInfoButton[hidden]{display:none!important}
+.top-nav #safetyInfoButton b{right:-5px!important;top:-6px!important}
+@media(max-width:760px){
+  .top-nav #cloudSyncButton.cloud-sync-button{
+    grid-template-columns:26px auto!important;height:38px!important;min-height:38px!important;padding:4px 7px 4px 5px!important;gap:5px!important;border-radius:9px!important;
+  }
+  .top-nav #cloudSyncButton .cloud-sync-icon{width:26px!important;height:26px!important;font-size:17px!important;border-radius:7px!important}
+  .top-nav #cloudSyncButton .cloud-sync-copy b{font-size:11px!important}
+  .top-nav #cloudSyncButton .cloud-sync-copy small{font-size:9px!important;max-width:44px!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .top-nav #safetyInfoButton.safety-info-button{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;border-radius:9px!important}
+}
+@media(max-width:430px){
+  .top-nav #cloudSyncButton .cloud-sync-copy b{display:none!important}
+  .top-nav #cloudSyncButton .cloud-sync-copy small{max-width:45px!important}
+}

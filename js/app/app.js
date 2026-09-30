@@ -363,7 +363,7 @@ else enforceFooterVersion();
 
 function ensureSafetyInfoHub(){
  let button=byId("safetyInfoButton"),dialog=byId("safetyInfoDialog");
- if(!button){button=document.createElement("button");button.id="safetyInfoButton";button.type="button";button.className="safety-info-button";button.setAttribute("aria-label","Hinweise zu Atemschutz und Führerscheinkontrolle öffnen");button.innerHTML='<span aria-hidden="true">i</span><b id="safetyInfoCount">0</b>';document.body.appendChild(button);}
+ if(!button){button=document.createElement("button");button.id="safetyInfoButton";button.type="button";button.className="safety-info-button";button.setAttribute("aria-label","Hinweise zu Atemschutz und Führerscheinkontrolle öffnen");button.innerHTML='<span aria-hidden="true">i</span><b id="safetyInfoCount">0</b>';button.hidden=true;(document.querySelector(".top-nav-actions")||document.querySelector(".top-nav")||document.body).appendChild(button);}
  if(!dialog){dialog=document.createElement("dialog");dialog.id="safetyInfoDialog";dialog.className="safety-info-dialog";dialog.innerHTML='<form method="dialog"><header><div><small>Sicherheitsinformationen</small><h2>Offene Hinweise</h2></div><button value="cancel" aria-label="Hinweise schließen">×</button></header><div id="safetyInfoContent"></div><footer><button value="cancel" class="primary-button">Schließen</button></footer></form>';document.body.appendChild(dialog);button.onclick=()=>dialog.showModal?.();}
  return {button,dialog};
 }
