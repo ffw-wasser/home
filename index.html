@@ -27,6 +27,23 @@
 <link href="css/features/extensions.css?v=produktv-2-0-atemschutz-3fach" rel="stylesheet"/>
 <link href="css/features/cloud-sync-2.17.1.css?v=20260920-2180" rel="stylesheet"/>
 <style id="accessGateCriticalStyle">html.page-access-pending,html.page-access-pending body{margin:0;overflow:hidden;background:#182329}html.page-access-pending body>:not(#pageAccessGate):not(script){visibility:hidden!important}.page-access-gate-critical{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:20px;background:#182329}.page-access-card-critical{display:grid;gap:12px;width:min(430px,calc(100% - 24px));box-sizing:border-box;padding:28px;border-top:6px solid #f2c500;border-radius:18px;background:#fff;color:#1f2a30;box-shadow:0 24px 70px rgba(0,0,0,.48)}.page-access-card-critical img{width:68px;height:68px;border-radius:14px}.page-access-card-critical h1,.page-access-card-critical p{margin:0}.page-access-card-critical label{font-weight:850}.page-access-card-critical input{width:100%;box-sizing:border-box;padding:11px;border:1px solid #9ca8ae;border-radius:8px;font-size:1.1rem}.page-access-card-critical button{min-height:48px;border:0;border-radius:9px;color:#fff;background:#19783a;font-weight:850}.page-access-card-critical small{color:#65737b;text-align:center}.page-access-card-critical .error-box{padding:9px;border-radius:7px;color:#8d1111;background:#ffeaea}#protectedAppContent[hidden]{display:none!important}html.page-access-pending #protectedAppContent{display:none!important}</style><script>document.documentElement.classList.add("page-access-pending");</script>
+
+<style id="final-session-card-spacing">
+/* Endgueltige Regel nach allen Stylesheets: Abstand unter der gruenen Linie. */
+#attendanceView article.home-session-type-panel.home-flow-stage-1{
+  padding-top:34px!important;
+}
+#attendanceView article.home-session-type-panel.home-flow-stage-1>.panel-heading{
+  position:static!important;
+  inset:auto!important;
+  top:auto!important;
+  margin:0 0 14px!important;
+  transform:none!important;
+}
+@media(max-width:760px){
+  #attendanceView article.home-session-type-panel.home-flow-stage-1{padding-top:30px!important}
+}
+</style>
 </head>
 <body>
 <div aria-labelledby="pageAccessTitle" aria-modal="true" class="page-access-gate-critical" id="pageAccessGate" role="dialog"><form autocomplete="on" class="page-access-card-critical" id="pageAccessForm"><img alt="Wappen Feuerwehr Wasser" src="icon-192.png"/><p>Geschützter Zugang</p><h1 id="pageAccessTitle">FFW Wasser</h1><p>Bitte das Passwort eingeben, um die Anwendung zu öffnen.</p><label for="pageAccessPin">Passwort</label><input enterkeyhint="done" id="pageAccessPin" name="password" autocomplete="current-password" maxlength="64" required="" type="password"/><p class="error-box" hidden="" id="pageAccessError">Falsches Passwort.</p><button type="submit">Anwendung öffnen</button><small>Die Startseite wird erst nach erfolgreicher Passworteingabe angezeigt.</small></form></div>
