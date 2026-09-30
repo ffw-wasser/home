@@ -361,6 +361,7 @@ function renderHistory(){
     }).join("");
     return `<details class="history-year"${yearOpen}><summary class="history-year-heading"><h3>${escapeHtml(year)}</h3><span>${yearCount} Bericht${yearCount===1?"":"e"}</span><i aria-hidden="true"></i></summary><div class="history-months">${monthHtml}</div></details>`;
   }).join("");
+  window.SmartWorkflow?.history?.();
 }
 let historyPdfPreviewUrl="";
 let historyPdfPreviewBlob=null;

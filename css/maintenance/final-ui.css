@@ -1,0 +1,9 @@
+/* Final UI stabilization layer. Feature-specific CSS remains in its own module. */
+:where(button,input,select,textarea){font:inherit}
+:where(button,[role="button"],summary,select){touch-action:manipulation}
+:where(button,select,input,textarea):focus-visible{outline:3px solid rgba(36,119,189,.28);outline-offset:2px}
+button:disabled,select:disabled,input:disabled{cursor:not-allowed;opacity:.68}
+[hidden]{display:none!important}
+.dialog-actions,.probe-topic-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.help-text{max-width:75ch}
+@media(max-width:620px){.dialog-actions,.probe-topic-actions{align-items:stretch;flex-direction:column}.dialog-actions button,.probe-topic-actions button{width:100%}dialog{max-width:calc(100% - 20px)}}

@@ -293,6 +293,7 @@ function renderStatistics() {
   renderDriverLicenseStatistics();
   arrangeStatisticsPage();
   ensureCollapsedStatisticsPanels();
+  window.SmartWorkflow?.statistics?.();
 }
 
 

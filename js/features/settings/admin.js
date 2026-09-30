@@ -109,6 +109,7 @@ function login() {
   byId("pinError").hidden = true;
   renderAdmin();
   showView(pendingSettingsTarget||"settingsMembersView");
+  window.SmartWorkflow?.settings?.();
   pendingSettingsTarget="";
 }
 
@@ -124,6 +125,7 @@ function loginArchive() {
   byId("archivePinError").hidden = true;
   renderArchive();
   showView(pendingSettingsTarget||"settingsFilesView");
+  window.SmartWorkflow?.settings?.();
   pendingSettingsTarget="";
 }
 

@@ -80,6 +80,8 @@ window.closeDay=async function(topic=currentClosingTopic){
   const current=committeeExport?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   if(!current.length)return showToast("Es sind noch keine Anmeldungen vorhanden.","error");
   const organizers=current.filter(e=>e.status==="Anwesend"&&e.role==="Orga").length,present=current.filter(e=>e.status==="Anwesend"&&e.role!=="Orga").length,excused=current.filter(e=>e.status==="Entschuldigt").length;
+  const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),openPreview=exportMembers.filter(m=>!m.ageDepartment&&!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))).length;
+  if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Ohne Status",String(openPreview)]],openPreview?[`${openPreview} Person${openPreview===1?" ist":"en sind"} noch ohne Status.`]:[]);if(!approved)return;}
   const recorded=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missing=exportMembers.filter(m=>!m.ageDepartment&&!recorded.has(nameForStorage(m))&&!recorded.has(nameForTile(m))).length;
   if(!exportMembers.length)return showToast(committeeExport?"Es sind keine Ausschussmitglieder eingerichtet.":"Es gibt keine Mitglieder für den Export.","error");
   const exportType=current[0]?.sessionType||sessionType,entryByName=new Map(current.map(e=>[e.storedName||e.displayName,e]));
@@ -105,8 +107,8 @@ window.finishOperationZip=async function(){
   d.times=d.times||{};
   const check=validateOperation(d),box=byId("operationValidation");box.hidden=!(check.errors.length||check.warnings.length);box.innerHTML=[...check.errors.map(x=>`<p class="error">${escapeHtml(x)}</p>`),...check.warnings.map(x=>`<p class="warning">${escapeHtml(x)}</p>`)].join("");
   if(check.errors.length)return showToast("Bitte die Pflichtangaben und Hinweise prüfen.","error");
-  if(typeof window.smartConfirmOperation==="function"&&!await window.smartConfirmOperation(d,check))return;
-  else if(typeof window.smartConfirmOperation!=="function"&&check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem fortfahren?"))return;
+  if(window.SmartWorkflow?.confirmOperation&&!await window.SmartWorkflow.confirmOperation(d,check))return;
+  else if(!window.SmartWorkflow?.confirmOperation&&check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem fortfahren?"))return;
   const button=byId("operationFinish");button.disabled=true;
   try{
     const previous=editingOperationArchiveId?csvArchive.find(entry=>entry.id===editingOperationArchiveId):null;
