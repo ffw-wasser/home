@@ -347,3 +347,50 @@
     flex-wrap:wrap !important;
   }
 }
+
+/* Präzise optische Zentrierung der Statussymbole. */
+#attendanceSelectionWorkspace .member-status-action{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:42px !important;
+  height:42px !important;
+  min-width:42px !important;
+  min-height:42px !important;
+  padding:0 !important;
+  line-height:1 !important;
+  vertical-align:middle !important;
+}
+#attendanceSelectionWorkspace .member-status-action .status-icon{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:28px !important;
+  height:28px !important;
+  min-width:28px !important;
+  min-height:28px !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:50% !important;
+  line-height:28px !important;
+  text-align:center !important;
+  text-indent:0 !important;
+  transform:none !important;
+  position:static !important;
+}
+#attendanceSelectionWorkspace .member-status-action.selected,
+#attendanceSelectionWorkspace .member-status-action[aria-pressed="true"]{
+  outline:0 !important;
+  box-shadow:0 0 0 3px rgba(23,107,54,.24) !important;
+  transform:none !important;
+}
+#attendanceSelectionWorkspace .member-status-action.status-excused.selected{box-shadow:0 0 0 3px rgba(154,101,0,.24) !important}
+#attendanceSelectionWorkspace .member-status-action.status-orga.selected{box-shadow:0 0 0 3px rgba(35,95,131,.24) !important}
+#attendanceSelectionWorkspace .member-status-action.status-na.selected{box-shadow:0 0 0 3px rgba(88,101,108,.24) !important}
+#attendanceSelectionWorkspace .member-status-action:focus-visible{
+  outline:2px solid #f2c500 !important;
+  outline-offset:2px !important;
+}
