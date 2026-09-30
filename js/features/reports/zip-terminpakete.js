@@ -3,8 +3,16 @@ async function buildTerminPackage({baseName,csvName,csvContent,pdfName,pdfBlob,d
   if(typeof JSZip!=="function")throw new Error("ZIP-Funktion ist nicht geladen");
   const zip=new JSZip();
   zip.file(csvName,csvContent);
-  zip.file(pdfName,pdfBlob);
-  if(documentReport?.pdf)zip.file(documentReport.pdfName||`${baseName}_Zusatzbericht.pdf`,documentReport.pdf);
+  let finalPdf=pdfBlob;
+  if(documentReport?.pdf){
+    if(!globalThis.PDFLib?.PDFDocument)throw new Error("PDF-Zusammenführung ist nicht geladen");
+    const main=await PDFLib.PDFDocument.load(await pdfBlob.arrayBuffer());
+    const attachment=await PDFLib.PDFDocument.load(await documentReport.pdf.arrayBuffer());
+    const copied=await main.copyPages(attachment,attachment.getPageIndices());
+    copied.forEach(page=>main.addPage(page));
+    finalPdf=new Blob([await main.save()],{type:"application/pdf"});
+  }
+  zip.file(pdfName,finalPdf);
   zip.file("paket-info.json",JSON.stringify({format:"FFW-Wasser-Terminpaket",version:"2.0",type:packageType,createdAt:new Date().toISOString(),baseName,csvName,pdfName,operationData:operationData||undefined,files:Object.keys(zip.files)},null,2));
   return zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6},mimeType:"application/zip"});
 }
@@ -89,7 +97,6 @@ window.finishOperationZip=async function(){
   if(!d||typeof d!=="object")throw new Error("Einsatzdaten konnten nicht gelesen werden");
   d.members=Array.isArray(d.members)?d.members:[];
   d.times=d.times||{};
-  if(d.atueUsed&&!d.atueDepartment&&!documentReportReady){showDocumentReportPanel();showToast("Bitte zuerst den Bericht der Atemschutzüberwachung fotografieren oder auswählen.","error");return;}
   const check=validateOperation(d),box=byId("operationValidation");box.hidden=!(check.errors.length||check.warnings.length);box.innerHTML=[...check.errors.map(x=>`<p class="error">${escapeHtml(x)}</p>`),...check.warnings.map(x=>`<p class="warning">${escapeHtml(x)}</p>`)].join("");
   if(check.errors.length)return showToast("Bitte die Pflichtangaben und Hinweise prüfen.","error");
   if(check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem fortfahren?"))return;
