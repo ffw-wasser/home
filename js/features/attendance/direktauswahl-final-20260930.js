@@ -27,12 +27,12 @@ function renderMembers() {
   const activeMembers = (sessionType === "Ausschuss Sitzung" ? members.filter(member => member.committeeMember) : members).filter(member => !member.ageDepartment && !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
   const ageMembers = (sessionType === "Ausschuss Sitzung" || sessionType === "Einsatz") ? [] : members.filter(member => member.ageDepartment && !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
   const legendItems=sessionType==="Einsatz"
-    ? `<span><b class="legend-a">A</b>Anwesend</span>`
+    ? `<span><b class="legend-a">✓</b>Anwesend</span>`
     : sessionType==="Allgemeine Probe"
-      ? `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
+      ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
       : sessionType==="Sonderprobe"
-        ? `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
-        : `<span><b class="legend-a">A</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
+        ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
+        : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
   let headingLegend=byId("stage2StatusLegend");
   if(!headingLegend && byId("stage2Heading")){
     headingLegend=document.createElement("aside");
@@ -190,7 +190,15 @@ function commitPendingMemberStatuses(){
   let count=0;
   pendingMemberStatuses.forEach((status,id)=>{const member=members.find(item=>item.id===id);if(!member)return;entries.unshift({id:makeId(),date:today(),time,displayName:nameForTile(member),storedName:nameForStorage(member),role:status==="Orga"?"Orga":sessionType==="Ausschuss Sitzung"&&status==="Anwesend"?"Ausschuss Sitzung":sessionType==="Unterricht"&&status==="Anwesend"?"Unterricht":"",status:status==="Orga"?"Anwesend":status,sessionType,sessionId:isOperation?"":ensureCurrentSessionId(),operationId:isOperation?currentOperationId:""});count++;});
   saveEntries();pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";
-  renderMembers();renderEntries();renderAdmin();updateSelection();updateProbeWorkflow();updatePrimaryAction();showToast(`${count} Personen wurden übernommen.`);return true;
+  renderMembers();renderEntries();renderAdmin();updateSelection();updateProbeWorkflow();updatePrimaryAction();
+  requestAnimationFrame(()=>{
+    const target=document.querySelector("#members .member-section-active .member-section-heading") || document.querySelector("#members .member-section-active") || byId("members");
+    if(!target)return;
+    const headerHeight=document.querySelector(".participant-command-header")?.getBoundingClientRect().height||0;
+    const top=window.scrollY+target.getBoundingClientRect().top-headerHeight-12;
+    window.scrollTo({top:Math.max(0,top),left:0,behavior:"smooth"});
+  });
+  showToast(`${count} Personen wurden übernommen.`);return true;
 }
 function chooseMember(id) {
   const clickedMember=members.find(member=>member.id===id);
