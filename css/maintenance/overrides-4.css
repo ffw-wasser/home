@@ -2225,3 +2225,56 @@ html body .participant-command-header .compact-menu {
 .operation-person-chip .operation-group-field span{white-space:normal;line-height:1.2}
 @media(max-width:900px){.operation-person-chip{grid-template-columns:minmax(145px,.8fr) minmax(140px,.72fr) minmax(205px,1.18fr)!important}}
 @media(max-width:700px){.operation-person-chip{grid-template-columns:1fr!important}.operation-person-chip .operation-role-field,.operation-person-chip .operation-group-field{order:initial}}
+
+/* 2.43: Kartenueberlagerung und Mobilansicht Schritt 3 */
+#operationAssignmentStep,
+#operationAssignmentStep *{box-sizing:border-box}
+#operationAssignmentStep{overflow:visible}
+.operation-vehicle-overview{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  width:100%;max-width:100%;overflow:visible
+}
+.operation-unassigned-board,
+.operation-vehicle-board,
+.operation-reserve-board{
+  min-width:0!important;max-width:100%!important;overflow:hidden!important
+}
+.operation-vehicle-board .operation-board-people,
+.operation-unassigned-board .operation-board-people,
+.operation-reserve-board .operation-board-people{
+  min-width:0;max-width:100%;overflow:visible!important
+}
+.operation-person-chip{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  grid-template-areas:"name name" "role group"!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  gap:8px 10px!important;padding:10px!important;overflow:hidden
+}
+.operation-person-chip .operation-person-name{grid-area:name;min-width:0;max-width:100%;padding:0 0 3px}
+.operation-person-chip .operation-role-field{grid-area:role;min-width:0;max-width:100%;order:initial!important}
+.operation-person-chip .operation-group-field{grid-area:group;min-width:0;max-width:100%;order:initial!important}
+.operation-person-chip label,.operation-person-chip select{min-width:0!important;max-width:100%!important;width:100%!important}
+.operation-person-chip select{padding-right:26px!important;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.operation-person-name strong{display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.operation-vehicle-board .operation-board-people{max-height:none!important}
+@media(max-width:1050px){
+  .operation-vehicle-overview{grid-template-columns:1fr!important}
+  .operation-unassigned-board,.operation-reserve-board{grid-column:auto!important}
+}
+@media(max-width:620px){
+  #operationAssignmentStep{margin-left:0!important;margin-right:0!important;padding-left:10px!important;padding-right:10px!important}
+  .operation-vehicle-overview{gap:12px!important}
+  .operation-person-chip{grid-template-columns:1fr!important;grid-template-areas:"name" "role" "group"!important;gap:8px!important}
+  .operation-person-chip select{min-height:48px!important;font-size:16px!important}
+  .operation-vehicle-image{height:118px!important}
+  .operation-vehicle-board header,.operation-unassigned-board header,.operation-reserve-board header{align-items:flex-start!important;flex-wrap:wrap!important}
+  .operation-readiness{width:100%;justify-content:flex-start!important}
+  .operation-assignment-footer{left:0;right:0;align-items:stretch!important;flex-direction:column!important}
+  .operation-assignment-footer button{width:100%!important}
+}
+@media(max-width:380px){
+  #operationAssignmentStep{padding-left:6px!important;padding-right:6px!important}
+  .operation-person-chip{padding:8px!important}
+  .operation-assignment-guide span{font-size:.76rem}
+}
