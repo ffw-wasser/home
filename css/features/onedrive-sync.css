@@ -196,3 +196,39 @@
 @media(min-width:761px){
   .top-nav .compact-menu-wrap{order:99!important;margin-left:auto!important}
 }
+
+/* 2.23: Info-Zaehler sicher am i-Icon verankern. */
+.top-nav #safetyInfoButton.safety-info-button{
+  position:relative!important;
+  overflow:visible!important;
+  isolation:isolate!important;
+}
+.top-nav #safetyInfoButton.safety-info-button>span{
+  position:relative!important;
+  z-index:1!important;
+}
+.top-nav #safetyInfoButton.safety-info-button>#safetyInfoCount{
+  position:absolute!important;
+  right:-6px!important;
+  top:-7px!important;
+  left:auto!important;
+  bottom:auto!important;
+  z-index:3!important;
+  display:grid!important;
+  place-items:center!important;
+  min-width:21px!important;
+  width:auto!important;
+  height:21px!important;
+  padding:0 5px!important;
+  margin:0!important;
+  border:2px solid #fff!important;
+  border-radius:999px!important;
+  background:#c08a00!important;
+  color:#fff!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  transform:none!important;
+}
+.top-nav #safetyInfoButton.safety-info-button.has-critical>#safetyInfoCount{background:#a60000!important}
+.top-nav #safetyInfoButton.safety-info-button[hidden]>#safetyInfoCount{display:none!important}
