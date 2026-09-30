@@ -418,14 +418,13 @@ function showHistoryPdfPreview(blob,fileName){
 }
 async function openHistoryPdf(id){
   const item=csvArchive.find(x=>x.id===id);if(!item)return;
-  // Einsatzberichte immer aus den strukturierten Einsatzdaten erzeugen.
-  // So kann niemals versehentlich die allgemeine Proben-PDF geöffnet werden.
+  // Bei Einsätzen zuerst das archivierte Gesamt-PDF öffnen, damit angehängte Seiten erhalten bleiben.
   if(item.operationData||String(item.sessionType||"").trim()==="Einsatz"){
-    if(!item.operationData)return showToast("Für diesen älteren Einsatz fehlen strukturierte Einsatzberichtsdaten.","error");
-    const operationBlob=await operationPdfBlob(item.operationData);
     const operationName=item.pdfFileName||item.fileName.replace(/\.csv$/i,".pdf");
-    showHistoryPdfPreview(operationBlob,operationName);
-    return;
+    const stored=item.hasImportedPdf?await loadImportedReportPdf?.(id):null;
+    if(stored){showHistoryPdfPreview(stored,operationName);return;}
+    if(!item.operationData)return showToast("Für diesen Einsatz fehlen Berichtsdaten und ein gespeichertes PDF.","error");
+    showHistoryPdfPreview(await operationPdfBlob(item.operationData),operationName);return;
   }
   const imported=item.hasImportedPdf?await loadImportedReportPdf?.(id):null;
   if(imported){

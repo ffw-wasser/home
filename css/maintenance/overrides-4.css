@@ -2114,3 +2114,57 @@ html body .participant-command-header .compact-menu {
 #attendanceSelectionWorkspace.status-excused .choice-button:not(.selected):not(:disabled){background:#fff0c9!important;border-color:#d99b2f!important}
 #attendanceSelectionWorkspace.status-not-applicable .choice-button:not(.selected):not(:disabled){background:#e6f2ff!important;border-color:#4c95df!important}
 #attendanceSelectionWorkspace.status-organization .choice-button:not(.selected):not(:disabled){background:#f4e6fb!important;border-color:#a864ca!important}
+
+/* 2.36: vollständige Einsatzpflege und Korrektur */
+#operationAssignmentStep,#operationReportForm{width:100%;max-width:1180px;margin:22px auto 0;clear:both}
+#operationReportForm .operation-resource-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#operationReportForm .operation-resource-grid section{min-width:0;padding:12px;border:1px solid #d0d8dc;border-radius:10px;background:#f8fafb}
+#operationReportForm .operation-resource-grid h4{margin:0 0 10px;color:#6f1111}
+#operationReportForm .operation-check-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#operationAssignmentStep .operation-assignment-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#operationAssignmentStep .operation-assignment-members article{display:grid;grid-template-columns:minmax(150px,1fr) repeat(2,minmax(130px,.8fr));gap:8px;align-items:center;padding:12px;border:1px solid #c8d2d7;border-left:6px solid #8d1111;border-radius:12px;background:#f8fafb}
+#operationAssignmentStep .operation-assignment-members article>strong{grid-row:1/3;overflow-wrap:anywhere}
+#operationAssignmentStep .operation-assignment-members button{min-width:0;min-height:44px;padding:8px;border:1px solid #aebbc1;border-radius:8px;background:#fff;font-weight:800;white-space:normal}
+#operationAssignmentStep .operation-assignment-members button.selected{color:#fff;border-color:#12612d;background:#19783a}
+@media(max-width:900px){#operationAssignmentStep .operation-assignment-members,#operationReportForm .operation-resource-grid{grid-template-columns:1fr}}
+@media(max-width:620px){#operationAssignmentStep .operation-assignment-members article{grid-template-columns:1fr 1fr}#operationAssignmentStep .operation-assignment-members article>strong{grid-column:1/-1;grid-row:auto}#operationReportForm .operation-check-grid{grid-template-columns:1fr}}
+
+/* 2.37: Funktionszuordnung im Einsatz-Schritt 3 */
+#operationAssignmentStep .operation-assignment-members article.operation-assignment-card{
+  display:grid!important;grid-template-columns:minmax(170px,1fr) minmax(210px,1.15fr) minmax(180px,1fr)!important;
+  align-items:end!important;gap:12px!important
+}
+#operationAssignmentStep .operation-assignment-card>strong{grid-row:auto!important;align-self:center;font-size:1rem}
+#operationAssignmentStep .operation-assignment-card label{display:grid;gap:6px;min-width:0;font-weight:800;color:#34434a}
+#operationAssignmentStep .operation-assignment-card label span{font-size:.75rem;text-transform:uppercase;letter-spacing:.045em;color:#65737a}
+#operationAssignmentStep .operation-assignment-card select{width:100%;min-width:0;min-height:46px;padding:9px 36px 9px 10px;border:2px solid #aebbc1;border-radius:9px;background:#fff;color:#172126;font:inherit;font-weight:750}
+#operationAssignmentStep .operation-assignment-card select:focus{border-color:#8d1111;outline:3px solid rgba(141,17,17,.16)}
+#operationAssignmentStep .operation-assignment-card select:disabled{color:#7b858a;background:#edf0f1}
+@media(max-width:760px){#operationAssignmentStep .operation-assignment-members article.operation-assignment-card{grid-template-columns:1fr!important;align-items:stretch!important}#operationAssignmentStep .operation-assignment-card>strong{padding-bottom:4px}}
+
+/* 2.38: Besetzungsprüfung pro Einsatzfahrzeug */
+#operationAssignmentStep .operation-assignment-footer span{display:grid;gap:3px}
+#operationAssignmentStep .operation-assignment-footer span strong{font-size:.92rem}
+#operationAssignmentStep .operation-assignment-footer span small{color:#20633a;font-weight:750}
+#operationAssignmentStep .operation-assignment-footer.has-errors{border-color:#b94040;background:#fff1f1}
+#operationAssignmentStep .operation-assignment-footer.has-errors span small{color:#981f1f}
+
+/* 2.39: visuelle und smarte Einsatzbesetzung */
+#operationAssignmentStep .flow-stage-heading{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px}
+#operationAssignmentStep .operation-auto-assign{white-space:nowrap}
+.operation-vehicle-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(220px,.72fr);gap:16px;margin:18px 0 24px}
+.operation-vehicle-board,.operation-reserve-board{overflow:hidden;border:2px solid #c6d0d5;border-radius:16px;background:#fff;box-shadow:0 7px 20px rgba(31,45,52,.1)}
+.operation-vehicle-board.is-ready{border-color:#318353;box-shadow:0 0 0 3px rgba(49,131,83,.12),0 7px 20px rgba(31,45,52,.1)}
+.operation-vehicle-board.needs-crew{border-color:#d6a638}
+.operation-vehicle-image{position:relative;height:180px;overflow:hidden;background:#252c30}
+.operation-vehicle-image img{width:100%;height:100%;object-fit:cover;display:block}
+.operation-vehicle-image span{position:absolute;right:10px;bottom:10px;padding:6px 10px;border-radius:999px;background:rgba(20,25,28,.86);color:#fff;font-weight:950}
+.operation-vehicle-board header,.operation-reserve-board header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px 10px}
+.operation-vehicle-board header small,.operation-reserve-board header small{color:#6a777d;font-weight:800}
+.operation-vehicle-board h3,.operation-reserve-board h3{margin:2px 0 0}
+.operation-readiness{display:flex;gap:6px}.operation-readiness i{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;font-style:normal;font-size:.73rem;font-weight:950}.operation-readiness .ok{background:#dff3e6;color:#176536}.operation-readiness .missing{background:#ffe3df;color:#98261d}
+.operation-crew-pills{display:grid;gap:7px;padding:0 14px 14px}.operation-crew-pills span{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:8px 10px;border-radius:9px;background:#f2f5f6;font-weight:750}.operation-crew-pills b{color:#851414}.operation-crew-pills p,.operation-reserve-board p{margin:4px 0;color:#738087}
+.operation-reserve-board{background:#f7f9fa}.operation-reserve-board header strong{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#26343b;color:#fff}.operation-reserve-board>div{display:grid;gap:7px;padding:0 14px 14px}.operation-reserve-board>div span{display:grid;padding:8px 10px;border-radius:9px;background:#fff;border:1px solid #d5dde0;font-weight:800}.operation-reserve-board>div small{margin-top:2px;color:#6b787e;font-weight:650}
+.operation-assignment-subheading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:8px 0 12px;padding-bottom:10px;border-bottom:1px solid #cfd8dc}.operation-assignment-subheading small{color:#8d1111;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.operation-assignment-subheading h3{margin:2px 0 0}.operation-assignment-subheading>span{color:#647179;font-size:.86rem}
+@media(max-width:980px){.operation-vehicle-overview{grid-template-columns:1fr 1fr}.operation-reserve-board{grid-column:1/-1}}
+@media(max-width:700px){#operationAssignmentStep .flow-stage-heading{grid-template-columns:auto 1fr}#operationAssignmentStep .operation-auto-assign{grid-column:1/-1;width:100%}.operation-vehicle-overview{grid-template-columns:1fr}.operation-reserve-board{grid-column:auto}.operation-vehicle-image{height:155px}.operation-assignment-subheading{align-items:flex-start;flex-direction:column}}
