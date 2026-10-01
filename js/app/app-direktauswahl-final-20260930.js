@@ -367,8 +367,9 @@ function ensureSafetyInfoHub(){
  if(!dialog){dialog=document.createElement("dialog");dialog.id="safetyInfoDialog";dialog.className="safety-info-dialog";dialog.innerHTML='<form method="dialog"><header><div><small>Sicherheitsinformationen</small><h2>Offene Hinweise</h2></div><button value="cancel" aria-label="Hinweise schließen">×</button></header><div id="safetyInfoContent"></div><footer><button value="cancel" class="primary-button">Schließen</button></footer></form>';document.body.appendChild(dialog);button.onclick=()=>dialog.showModal?.();}
  return {button,dialog};
 }
+function isAtmOrAtgQualified(member){const roles=Array.isArray(member?.roles)?member.roles:[];return roles.includes("ATM")||roles.includes("ATG")||member?.breathingQualified===true;}
 function renderSafetyInfoHub(){
- const breathing=members.filter(member=>!member.ageDepartment&&["expired","soon"].includes(breathingClearanceState(member,systemToday()))),drivers=members.filter(member=>["missing","overdue","soon"].includes(driverLicenseControlDue(member,systemToday()))),hub=ensureSafetyInfoHub(),count=breathing.length+drivers.length;
+ const breathing=members.filter(member=>!member.ageDepartment&&isAtmOrAtgQualified(member)&&["expired","soon"].includes(breathingClearanceState(member,systemToday()))),drivers=members.filter(member=>["missing","overdue","soon"].includes(driverLicenseControlDue(member,systemToday()))),hub=ensureSafetyInfoHub(),count=breathing.length+drivers.length;
  hub.button.hidden=count===0;byId("safetyInfoCount").textContent=String(count);hub.button.classList.toggle("has-critical",breathing.some(m=>breathingClearanceState(m,systemToday())==="expired")||drivers.some(m=>["missing","overdue"].includes(driverLicenseControlDue(m,systemToday()))));
  const row=(name,text,state)=>`<li class="safety-${state}"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(text)}</span></li>`;
  const breathingRows=breathing.map(m=>row(nameForTile(m),breathingClearanceSummary(m),breathingClearanceState(m,systemToday()))).join("");
@@ -396,3 +397,23 @@ function enforceDirectStatusOnly(){
 }
 requestAnimationFrame(enforceDirectStatusOnly);
 new MutationObserver(enforceDirectStatusOnly).observe(document.documentElement,{childList:true,subtree:true});
+
+
+function installDateClearButtons(){
+  document.querySelectorAll('input[type="date"]').forEach(input=>{
+    if(input.dataset.clearButtonBound==="true")return;
+    input.dataset.clearButtonBound="true";
+    const button=document.createElement("button");
+    button.type="button";button.className="date-clear-button";button.textContent="Datum löschen";
+    button.setAttribute("aria-label","Datum löschen");
+    button.addEventListener("click",()=>{
+      if(input.id==="probeDateInput"&&typeof todayEntries==="function"&&todayEntries().length){return showToast("Das Datum kann nach der ersten Anmeldung nicht mehr geändert werden.","error");}
+      input.value="";
+      input.dispatchEvent(new Event("input",{bubbles:true}));
+      input.dispatchEvent(new Event("change",{bubbles:true}));
+    });
+    input.insertAdjacentElement("afterend",button);
+  });
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{installDateClearButtons();new MutationObserver(installDateClearButtons).observe(document.body,{childList:true,subtree:true});},{once:true});
+else{installDateClearButtons();new MutationObserver(installDateClearButtons).observe(document.body,{childList:true,subtree:true});}

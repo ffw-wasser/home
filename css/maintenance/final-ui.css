@@ -14,3 +14,8 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed;opacity:.68}
 
 /* Einsatzbericht ohne Pflichtfelder */
 .operation-draft-hint{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;padding:10px 12px;border:1px solid #9fc4d9;border-radius:10px;background:#eef7fc;color:#294854}.operation-draft-hint strong{white-space:nowrap}.operation-draft-hint span{line-height:1.35}@media(max-width:600px){.operation-draft-hint{display:grid}}
+
+/* Datumsfelder: mobile Loeschmoeglichkeit */
+.date-clear-button{margin-top:6px;min-height:38px;padding:7px 11px;border:1px solid #b8c3c8;border-radius:8px;background:#fff;color:#33464f;font-weight:750;touch-action:manipulation}
+.date-clear-button:hover,.date-clear-button:focus-visible{border-color:#2477bd;background:#eef6fb}
+@media(min-width:721px){.date-clear-button{font-size:.88rem}}

@@ -181,7 +181,7 @@ function renderStatistics() {
   // In der AS-Statistik nur Personen anzeigen, bei denen Atemschutz
   // tatsächlich hinterlegt beziehungsweise vorgesehen ist. Nicht eingesetzte
   // Personen ohne Atemschutzbezug werden nicht als "nicht dokumentiert" geführt.
-  const breathingStates=members.filter(member=>!member.ageDepartment&&(member.breathingClearanceUntil||member.breathingActive||member.breathingQualified)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
+  const breathingStates=members.filter(member=>!member.ageDepartment&&isAtmOrAtgQualified(member)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
   const bcCounts=Object.fromEntries(["valid","soon","expired","none"].map(state=>[state,breathingStates.filter(item=>item.state===state).length]));
   byId("breathingValidCount").textContent=bcCounts.valid;byId("breathingSoonCount").textContent=bcCounts.soon;byId("breathingExpiredCount").textContent=bcCounts.expired;byId("breathingNoneCount").textContent=bcCounts.none;
   const clearanceLabel={valid:"Gültig bis",soon:"Fällig bis",expired:"Überfällig seit",none:"Nicht dokumentiert"};
@@ -364,6 +364,7 @@ function ensureIndividualBreathingClearancePanel(){
 }
 function renderIndividualBreathingClearance(member){
   const panel=ensureIndividualBreathingClearancePanel();if(!panel)return;
+  panel.hidden=!isAtmOrAtgQualified(member);if(panel.hidden)return;
   const today=systemToday(),state=breathingClearanceState(member,today),valid=hasValidBreathingClearance(member,today);
   const items=[
     ["G26.3",member.g263ValidUntil||member.breathingClearanceUntil||""],
