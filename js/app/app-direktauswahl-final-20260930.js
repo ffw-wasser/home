@@ -426,7 +426,7 @@ function showTerminabschlussAnimation(){
     overlay.id="terminabschlussAnimation";
     overlay.className="terminabschluss-animation";
     overlay.hidden=true;
-    overlay.innerHTML='<div class="terminabschluss-animation-card" role="dialog" aria-modal="true" aria-label="Termin erfolgreich abgeschlossen"><button type="button" class="terminabschluss-animation-close" aria-label="Animation schliessen">×</button><img src="terminabschluss-animation.png" alt="Comicartige Abschlussdarstellung"><div class="terminabschluss-pop" aria-hidden="true">Plopp!</div></div>';
+    overlay.innerHTML='<div class="terminabschluss-animation-card" role="dialog" aria-modal="true" aria-label="Termin erfolgreich abgeschlossen"><button type="button" class="terminabschluss-animation-close" aria-label="Animation schliessen">×</button><img src="terminabschluss-animation.gif" alt="Comicartige Abschlussdarstellung"><div class="terminabschluss-pop" aria-hidden="true">Plopp!</div></div>';
     document.body.appendChild(overlay);
     const close=()=>{overlay.classList.remove("is-visible");setTimeout(()=>overlay.hidden=true,240);};
     overlay.querySelector("button").addEventListener("click",close);
