@@ -19,3 +19,20 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed;opacity:.68}
 .date-clear-button{margin-top:6px;min-height:38px;padding:7px 11px;border:1px solid #b8c3c8;border-radius:8px;background:#fff;color:#33464f;font-weight:750;touch-action:manipulation}
 .date-clear-button:hover,.date-clear-button:focus-visible{border-color:#2477bd;background:#eef6fb}
 @media(min-width:721px){.date-clear-button{font-size:.88rem}}
+
+/* iPad: Atemschutzueberwachung in Mitgliederkarten innerhalb der Karte halten */
+.member-card,.member-safety-settings,.member-safety-settings>*{min-width:0;max-width:100%;box-sizing:border-box}
+.atue-member-toggle{min-width:0;max-width:100%;overflow:hidden;align-items:flex-start;white-space:normal}
+.atue-member-toggle span,.atue-member-toggle strong,.atue-member-toggle label{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:1.3}
+.atue-member-toggle input{flex:0 0 auto}
+@media (min-width:621px) and (max-width:1180px){
+  .member-safety-settings{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .atue-member-toggle,.breathing-clearance-toggle{width:100%;min-height:58px}
+}
+
+/* Atemschutzfreigabe analog zur Infoanzeige farblich kennzeichnen */
+.breathing-clearance-result{border:1px solid #aeb8bd;border-left:6px solid #6d7b82;border-radius:9px;padding:10px 12px;background:#f4f6f7;color:#33464f}
+.breathing-clearance-result.is-valid{border-color:#78b68b;border-left-color:#258348;background:#e4f4e9;color:#0d5a2b}
+.breathing-clearance-result.is-soon{border-color:#e0b84d;border-left-color:#d99a00;background:#fff8dc;color:#705300}
+.breathing-clearance-result.is-expired,.breathing-clearance-result.is-none{border-color:#d89898;border-left-color:#b32020;background:#fff0f0;color:#842020}
+.breathing-clearance-result strong,.breathing-clearance-result small{display:block;color:inherit}
