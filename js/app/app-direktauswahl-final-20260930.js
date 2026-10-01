@@ -424,17 +424,20 @@ function showTerminabschlussAnimation(){
   if(!overlay){
     overlay=document.createElement("div");
     overlay.id="terminabschlussAnimation";
-    overlay.className="terminabschluss-animation";
+    overlay.className="terminabschluss-animation terminabschluss-wappen";
     overlay.hidden=true;
-    overlay.innerHTML='<div class="terminabschluss-animation-card" role="dialog" aria-modal="true" aria-label="Termin erfolgreich abgeschlossen"><button type="button" class="terminabschluss-animation-close" aria-label="Animation schliessen">×</button><img src="terminabschluss-animation.gif" alt="Comicartige Abschlussdarstellung"><div class="terminabschluss-pop" aria-hidden="true">Plopp!</div></div>';
+    overlay.innerHTML='<div class="terminabschluss-wappen-card" role="status" aria-live="polite"><button type="button" class="terminabschluss-animation-close" aria-label="Animation schliessen">×</button><div class="terminabschluss-wappen-rings" aria-hidden="true"></div><img src="wappen-abschluss.png" alt="Wappen"><strong>Termin erfolgreich abgeschlossen</strong><small>Vielen Dank für den Einsatz.</small></div>';
     document.body.appendChild(overlay);
-    const close=()=>{overlay.classList.remove("is-visible");setTimeout(()=>overlay.hidden=true,240);};
+    const close=()=>{overlay.classList.remove("is-visible");setTimeout(()=>overlay.hidden=true,320);};
     overlay.querySelector("button").addEventListener("click",close);
     overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
     overlay._closeAnimation=close;
   }
-  clearTimeout(overlay._hideTimer);overlay.hidden=false;requestAnimationFrame(()=>overlay.classList.add("is-visible"));
-  overlay._hideTimer=setTimeout(()=>overlay._closeAnimation(),3800);
+  clearTimeout(overlay._hideTimer);
+  overlay.hidden=false;
+  void overlay.offsetWidth;
+  requestAnimationFrame(()=>overlay.classList.add("is-visible"));
+  overlay._hideTimer=setTimeout(()=>overlay._closeAnimation(),3600);
 }
 (function bindSuccessfulTerminabschlussAnimation(){
   const wrap=name=>{
