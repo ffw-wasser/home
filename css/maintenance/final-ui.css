@@ -70,3 +70,11 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed;opacity:.68}
 @keyframes wappen-einblenden{0%{opacity:0;transform:scale(.75)}18%{opacity:1;transform:scale(1.06)}32%,78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.94)}}
 @keyframes wappen-ring{0%{opacity:.8;transform:translateX(-50%) scale(.72)}100%{opacity:0;transform:translateX(-50%) scale(1.65)}}
 @media(prefers-reduced-motion:reduce){.terminabschluss-wappen .terminabschluss-wappen-card,.terminabschluss-wappen.is-visible .terminabschluss-wappen-card img,.terminabschluss-wappen.is-visible .terminabschluss-wappen-rings{animation:none;transition:none}.terminabschluss-wappen.is-visible .terminabschluss-wappen-card{opacity:1;transform:none}}
+
+/* Wappen-Abschluss in doppelter Darstellungsgroesse */
+.terminabschluss-wappen .terminabschluss-wappen-card{width:min(720px,94vw);padding:48px 40px 40px;gap:16px}
+.terminabschluss-wappen-card img{width:264px;height:264px}
+.terminabschluss-wappen-card strong{font-size:2.1rem;line-height:1.15}
+.terminabschluss-wappen-card small{font-size:1.35rem}
+.terminabschluss-wappen-rings{top:51px;width:240px;height:240px;border-width:5px}
+@media(max-width:620px){.terminabschluss-wappen .terminabschluss-wappen-card{width:min(94vw,560px);padding:36px 22px 30px}.terminabschluss-wappen-card img{width:min(230px,58vw);height:min(230px,58vw)}.terminabschluss-wappen-card strong{font-size:1.55rem}.terminabschluss-wappen-card small{font-size:1.05rem}.terminabschluss-wappen-rings{top:40px;width:min(220px,56vw);height:min(220px,56vw)}}
