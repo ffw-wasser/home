@@ -417,3 +417,30 @@ function installDateClearButtons(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{installDateClearButtons();new MutationObserver(installDateClearButtons).observe(document.body,{childList:true,subtree:true});},{once:true});
 else{installDateClearButtons();new MutationObserver(installDateClearButtons).observe(document.body,{childList:true,subtree:true});}
+
+/* Kleine Abschlussanimation nach erfolgreich beendetem Termin. */
+function showTerminabschlussAnimation(){
+  let overlay=document.getElementById("terminabschlussAnimation");
+  if(!overlay){
+    overlay=document.createElement("div");
+    overlay.id="terminabschlussAnimation";
+    overlay.className="terminabschluss-animation";
+    overlay.hidden=true;
+    overlay.innerHTML='<div class="terminabschluss-animation-card" role="dialog" aria-modal="true" aria-label="Termin erfolgreich abgeschlossen"><button type="button" class="terminabschluss-animation-close" aria-label="Animation schliessen">×</button><img src="terminabschluss-animation.png" alt="Comicartige Abschlussdarstellung"><div class="terminabschluss-pop" aria-hidden="true">Plopp!</div></div>';
+    document.body.appendChild(overlay);
+    const close=()=>{overlay.classList.remove("is-visible");setTimeout(()=>overlay.hidden=true,240);};
+    overlay.querySelector("button").addEventListener("click",close);
+    overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
+    overlay._closeAnimation=close;
+  }
+  clearTimeout(overlay._hideTimer);overlay.hidden=false;requestAnimationFrame(()=>overlay.classList.add("is-visible"));
+  overlay._hideTimer=setTimeout(()=>overlay._closeAnimation(),3800);
+}
+(function bindSuccessfulTerminabschlussAnimation(){
+  const wrap=name=>{
+    const original=window[name];if(typeof original!=="function"||original.__abschlussAnimationWrapped)return;
+    const wrapped=async function(...args){const result=await original.apply(this,args);showTerminabschlussAnimation();return result;};
+    wrapped.__abschlussAnimationWrapped=true;window[name]=wrapped;
+  };
+  wrap("closeDay");wrap("finishOperationZip");
+})();
