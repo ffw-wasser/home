@@ -363,7 +363,7 @@ function setupUnifiedHomeWorkflow(){
   if(input&&roles&&members){
     let workspace=byId("attendanceSelectionWorkspace");
     if(!workspace){workspace=document.createElement("div");workspace.id="attendanceSelectionWorkspace";workspace.className="attendance-selection-workspace";input.insertBefore(workspace,input.firstChild);}
-    workspace.appendChild(members);
+    input.insertBefore(members,roles);
     roles.hidden=true;roles.style.setProperty("display","none","important");roles.setAttribute("aria-hidden","true");
     members.hidden=false;members.classList.add("inline-members-panel","orga-sheet");
     roles.querySelector(".panel-heading")?.remove();

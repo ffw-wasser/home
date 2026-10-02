@@ -146,3 +146,55 @@ html[data-theme="dark"] :focus-visible{outline-color:#8ed3ff!important}
 }
 #attendanceSelectionWorkspace #stage2Heading{grid-column:1/-1!important;grid-row:auto!important;position:static!important;inset:auto!important;transform:none!important}
 #attendanceSelectionWorkspace .members-panel,#attendanceSelectionWorkspace .roles-panel,#attendanceSelectionWorkspace .entries-panel{position:static!important;inset:auto!important;transform:none!important;min-height:0!important;height:auto!important}
+
+/* Freiraum-Finalfix: Grid-Inhalt der linken Spalte oben ausrichten. */
+#attendanceSelectionWorkspace>.input-column{
+  display:grid!important;
+  grid-auto-rows:max-content!important;
+  align-content:start!important;
+  justify-content:stretch!important;
+  align-items:start!important;
+  justify-items:stretch!important;
+  padding-top:0!important;
+  margin-top:0!important;
+}
+#attendanceSelectionWorkspace>.input-column>.members-panel:not([hidden]),
+#attendanceSelectionWorkspace>.input-column>.roles-panel:not([hidden]){
+  align-self:start!important;
+  justify-self:stretch!important;
+  margin-top:0!important;
+}
+
+/* Definitiver Freiraum-Fix: linke Spalte nicht mehr als verteilendes Grid. */
+#attendanceSelectionWorkspace{
+  align-items:start!important;
+  grid-auto-rows:auto!important;
+}
+#attendanceSelectionWorkspace>.input-column{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  align-items:stretch!important;
+  align-self:start!important;
+  gap:12px!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+#attendanceSelectionWorkspace>.input-column>.members-panel:not([hidden]){
+  order:0!important;
+  position:static!important;
+  inset:auto!important;
+  align-self:stretch!important;
+  margin:0!important;
+  transform:none!important;
+}
+#attendanceSelectionWorkspace>.input-column>.roles-panel:not([hidden]){
+  order:1!important;
+  position:static!important;
+  inset:auto!important;
+  align-self:stretch!important;
+  margin:0!important;
+  transform:none!important;
+}

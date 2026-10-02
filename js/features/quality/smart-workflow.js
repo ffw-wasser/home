@@ -21,7 +21,9 @@
       }else{
         if(!String(item.topic||"").trim())issues.push({type:"Termin",label,message:"Thema fehlt."});
         const rows=Array.isArray(item.rows)?item.rows:[];
-        if(!rows.length&&!String(item.csvContent||"").trim())issues.push({type:"Termin",label,message:"Keine auswertbaren Teilnehmerdaten vorhanden."});
+        const qualityType=String(item.sessionType||rows[0]?.sessionType||"").trim().toLowerCase().replace(/\s+/g," ");
+        const participantDataRequired=qualityType==="allgemeine probe"||qualityType==="einsatz";
+        if(participantDataRequired&&!rows.length&&!String(item.csvContent||"").trim())issues.push({type:"Termin",label,message:"Keine auswertbaren Teilnehmerdaten vorhanden."});
       }
     });
     return issues;
