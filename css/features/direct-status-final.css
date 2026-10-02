@@ -1,0 +1,25 @@
+/* Finaler Sperr-Layer: keine alten Statusreiter, nur Direktauswahl je Person. */
+#attendanceStatusToolbar,
+#floatingAttendanceStatusToolbar,
+.attendance-status-toolbar,
+.floating-attendance-status-toolbar,
+.status-tab-rail,
+.sheet-status-tabs,
+.sheet-status-tab {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+#rolesPanel { display:none !important; }
+#attendanceSelectionWorkspace .member-direct-card { display:grid !important; }
+#attendanceSelectionWorkspace .member-direct-actions { display:grid !important; }
+#attendanceSelectionWorkspace .member-status-action { display:flex !important; pointer-events:auto !important; }

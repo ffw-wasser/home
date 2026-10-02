@@ -1,0 +1,33 @@
+/* Schritt 2: iPad-Layout ohne Überdeckung */
+#attendanceSelectionWorkspace,#attendanceSelectionWorkspace *{box-sizing:border-box}
+#attendanceSelectionWorkspace .attendance-layout>*{min-width:0}
+#attendanceSelectionWorkspace .probe-date-control{min-width:0;max-width:100%;overflow:hidden}
+#attendanceSelectionWorkspace .probe-date-control input{display:block;width:100%;max-width:100%;min-width:0}
+@media (min-width:761px) and (max-width:1180px){
+  #attendanceSelectionWorkspace .attendance-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important;align-items:start!important}
+  #attendanceSelectionWorkspace .action-column{position:static!important;width:100%!important;max-width:none!important;margin:0!important}
+  #attendanceSelectionWorkspace .members-panel,#attendanceSelectionWorkspace .entries-panel,#attendanceSelectionWorkspace .roles-panel{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+  #attendanceSelectionWorkspace .probe-date-control{display:grid!important;grid-template-columns:auto minmax(0,220px)!important;align-items:center!important;gap:10px!important;width:100%!important}
+  #attendanceSelectionWorkspace .sheet-status-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;height:auto!important;min-height:0!important;gap:8px!important;padding:8px!important;align-items:stretch!important}
+  #attendanceSelectionWorkspace .sheet-status-tab{width:100%!important;min-width:0!important;min-height:64px!important;height:auto!important;padding:11px 8px!important;border-radius:12px!important;border-width:2px!important;font-size:1rem!important;line-height:1.15!important;white-space:normal!important;transform:none!important}
+  #attendanceSelectionWorkspace .sheet-status-tab.selected{min-height:70px!important;height:auto!important;transform:none!important;border-width:3px!important}
+}
+@media(max-width:760px){
+  #attendanceSelectionWorkspace .probe-date-control{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;width:100%!important}
+  #attendanceSelectionWorkspace .sheet-status-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;height:auto!important;min-height:0!important;gap:8px!important;padding:8px!important}
+  #attendanceSelectionWorkspace .sheet-status-tab,#attendanceSelectionWorkspace .sheet-status-tab.selected{width:100%!important;min-width:0!important;min-height:62px!important;height:auto!important;padding:10px 8px!important;border-radius:11px!important;font-size:.98rem!important;line-height:1.15!important;white-space:normal!important;transform:none!important}
+}
+/* Umschalter */
+.color-mode-toggle{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:1600;min-height:46px;padding:10px 14px;border:2px solid #334155;border-radius:999px;background:#fff;color:#17202a;font-weight:850;box-shadow:0 7px 22px rgba(0,0,0,.24)}
+html[data-theme="dark"]{--green:#39a864;--yellow:#f5cf35;--red:#ff6666;--muted:#b5c0c9;color:#eef3f6;background:#101519}
+html[data-theme="dark"] body,html[data-theme="dark"] .app-shell{background:#101519!important;color:#eef3f6!important}
+html[data-theme="dark"] header,html[data-theme="dark"] nav,html[data-theme="dark"] .panel,html[data-theme="dark"] article,html[data-theme="dark"] section,html[data-theme="dark"] dialog,html[data-theme="dark"] .member-card,html[data-theme="dark"] .role-group,html[data-theme="dark"] .current-selection,html[data-theme="dark"] .settings-card{background:#1a2228!important;color:#eef3f6!important;border-color:#45545f!important}
+html[data-theme="dark"] h1,html[data-theme="dark"] h2,html[data-theme="dark"] h3,html[data-theme="dark"] h4,html[data-theme="dark"] strong,html[data-theme="dark"] label,html[data-theme="dark"] summary{color:#fff!important}
+html[data-theme="dark"] p,html[data-theme="dark"] small,html[data-theme="dark"] .help-text,html[data-theme="dark"] .session-hint{color:#c6d0d7!important}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#0f1519!important;color:#fff!important;border-color:#667782!important}
+html[data-theme="dark"] button:not(.primary-button):not(.selected){background:#263139;color:#fff;border-color:#657680}
+html[data-theme="dark"] .choice-button,html[data-theme="dark"] .sheet-status-tab,html[data-theme="dark"] .metric-row,html[data-theme="dark"] .history-item{background:#222d34!important;color:#fff!important;border-color:#52636e!important}
+html[data-theme="dark"] .sheet-status-tab.selected,html[data-theme="dark"] .choice-button.selected{background:#247a45!important;border-color:#f5cf35!important}
+html[data-theme="dark"] .statistics-donut circle[fill="#fff"]{fill:#1a2228}
+html[data-theme="dark"] .color-mode-toggle{background:#f5cf35;color:#111;border-color:#f5cf35}
+@media print{.color-mode-toggle{display:none!important}html[data-theme="dark"]{color-scheme:light}html[data-theme="dark"] body{background:#fff!important;color:#000!important}}
