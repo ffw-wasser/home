@@ -220,3 +220,34 @@ html[data-theme="dark"] :focus-visible{outline-color:#8ed3ff!important}
   box-shadow:none!important;
   filter:none!important;
 }
+
+/* iPhone/iPad: Passwortmaske bleibt oberhalb der Bildschirmtastatur sichtbar. */
+input[type="password"]{font-size:16px!important;scroll-margin-block:110px!important}
+@supports (-webkit-touch-callout:none){
+  body.ios-password-keyboard-open{min-height:var(--ios-visual-height,100dvh)!important}
+  body.ios-password-keyboard-open .ios-keyboard-host{
+    max-height:calc(var(--ios-visual-height,100dvh) - 20px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    scroll-padding-top:24px!important;
+    scroll-padding-bottom:120px!important;
+  }
+  body.ios-password-keyboard-open #pageAccessGate{
+    height:var(--ios-visual-height,100dvh)!important;
+    min-height:0!important;
+    align-items:flex-start!important;
+    overflow-y:auto!important;
+    padding:12px 10px 140px!important;
+  }
+  body.ios-password-keyboard-open #pageAccessGate .page-access-card-critical{
+    margin:auto!important;
+    max-height:none!important;
+  }
+  body.ios-password-keyboard-open dialog[open].ios-keyboard-host{
+    position:fixed!important;
+    top:calc(var(--ios-visual-top,0px) + 10px)!important;
+    bottom:auto!important;
+    max-height:calc(var(--ios-visual-height,100dvh) - 20px)!important;
+  }
+}
