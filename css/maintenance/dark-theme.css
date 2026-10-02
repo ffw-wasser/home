@@ -198,3 +198,25 @@ html[data-theme="dark"] :focus-visible{outline-color:#8ed3ff!important}
   margin:0!important;
   transform:none!important;
 }
+
+/* Schatten-Fix: Abschlusskarte und Teilnehmertabelle ohne dunklen Hintergrundschatten. */
+#attendanceSelectionWorkspace .step-3-action-panel,
+#attendanceSelectionWorkspace .participant-entries-panel,
+#attendanceSelectionWorkspace .entries-panel,
+#attendanceSelectionWorkspace .participant-entries-panel .table-wrap,
+#attendanceSelectionWorkspace .entries-panel .table-wrap,
+#attendanceSelectionWorkspace .participant-entries-panel table,
+#attendanceSelectionWorkspace .entries-panel table {
+  box-shadow:none!important;
+  filter:none!important;
+  text-shadow:none!important;
+}
+#attendanceSelectionWorkspace .step-3-action-panel::before,
+#attendanceSelectionWorkspace .step-3-action-panel::after,
+#attendanceSelectionWorkspace .participant-entries-panel::before,
+#attendanceSelectionWorkspace .participant-entries-panel::after,
+#attendanceSelectionWorkspace .entries-panel::before,
+#attendanceSelectionWorkspace .entries-panel::after {
+  box-shadow:none!important;
+  filter:none!important;
+}
