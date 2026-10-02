@@ -1,0 +1,136 @@
+/* Harmonischer Dark Mode: einheitliche Oberflaechen und semantische Statusfarben. */
+.color-mode-toggle{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:1600;min-height:46px;padding:10px 16px;border:1px solid #647781;border-radius:999px;background:#fff;color:#182229;font-weight:850;box-shadow:0 8px 24px rgba(0,0,0,.24)}
+html[data-theme="dark"]{color-scheme:dark;--dm-canvas:#0d1418;--dm-shell:#111b20;--dm-surface:#19252b;--dm-surface-2:#213139;--dm-surface-3:#293c45;--dm-border:#435c68;--dm-border-soft:#314750;--dm-text:#eef5f7;--dm-muted:#b9c7cd;--dm-yellow:#f2c500;--dm-green:#4fc780;--dm-green-bg:#153d29;--dm-blue:#69b8ea;--dm-blue-bg:#14364b;--dm-orange:#ffb454;--dm-orange-bg:#493017;--dm-red:#ff8585;--dm-red-bg:#4a2024;--dm-purple:#c3a4ef;--dm-purple-bg:#34264a;--dm-shadow:0 12px 30px rgba(0,0,0,.32);background:var(--dm-canvas);color:var(--dm-text)}
+html[data-theme="dark"] body,html[data-theme="dark"] .app-shell{background:var(--dm-canvas)!important;color:var(--dm-text)!important}
+html[data-theme="dark"] .top-nav,html[data-theme="dark"] .participant-command-header,html[data-theme="dark"] .app-footer{background:var(--dm-shell)!important;color:var(--dm-text)!important;border-color:var(--dm-border-soft)!important}
+html[data-theme="dark"] .panel,html[data-theme="dark"] dialog,html[data-theme="dark"] .login-card,html[data-theme="dark"] .settings-menu-card,html[data-theme="dark"] .help-section,html[data-theme="dark"] .history-import-panel,html[data-theme="dark"] .history-reports,html[data-theme="dark"] .age-statistics-section{background:var(--dm-surface)!important;color:var(--dm-text)!important;border-color:var(--dm-border)!important;box-shadow:var(--dm-shadow)}
+html[data-theme="dark"] .screen-heading,html[data-theme="dark"] .settings-group-heading,html[data-theme="dark"] .history-section-heading,html[data-theme="dark"] .statistics-note,html[data-theme="dark"] .tactics-note{color:var(--dm-text)!important}
+html[data-theme="dark"] h1,html[data-theme="dark"] h2,html[data-theme="dark"] h3,html[data-theme="dark"] h4,html[data-theme="dark"] h5,html[data-theme="dark"] strong,html[data-theme="dark"] label,html[data-theme="dark"] summary,html[data-theme="dark"] th{color:var(--dm-text)!important}
+html[data-theme="dark"] p,html[data-theme="dark"] small,html[data-theme="dark"] td,html[data-theme="dark"] .help-text,html[data-theme="dark"] .session-hint,html[data-theme="dark"] .eyebrow,html[data-theme="dark"] .empty-state{color:var(--dm-muted)!important}
+html[data-theme="dark"] a{color:var(--dm-blue)}
+html[data-theme="dark"] hr,html[data-theme="dark"] table,html[data-theme="dark"] th,html[data-theme="dark"] td{border-color:var(--dm-border-soft)!important}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#0f191e!important;color:var(--dm-text)!important;border-color:#58717c!important;caret-color:var(--dm-text)}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#8fa2aa!important}
+html[data-theme="dark"] button,html[data-theme="dark"] .outline-button,html[data-theme="dark"] .secondary-button{background:var(--dm-surface-2)!important;color:var(--dm-text)!important;border-color:#58717c!important}
+html[data-theme="dark"] button:hover:not(:disabled),html[data-theme="dark"] .outline-button:hover,html[data-theme="dark"] .secondary-button:hover{background:var(--dm-surface-3)!important;border-color:#7f9aa6!important}
+html[data-theme="dark"] .primary-button,html[data-theme="dark"] .admin-save,html[data-theme="dark"] .topbar-start-button:not(:disabled){background:#23834b!important;color:#fff!important;border-color:#58ca83!important}
+html[data-theme="dark"] button:disabled{background:#253239!important;color:#829199!important;border-color:#3a4c54!important;opacity:.82}
+html[data-theme="dark"] .nav-button.active,html[data-theme="dark"] .start-nav-button.active{background:var(--dm-yellow)!important;color:#171717!important;border-color:var(--dm-yellow)!important}
+html[data-theme="dark"] .step.yellow,html[data-theme="dark"] .badge{background:var(--dm-yellow)!important;color:#171717!important;border-color:#ffe36a!important}
+html[data-theme="dark"] .step:not(.yellow){background:#237947!important;color:#fff!important}
+html[data-theme="dark"] .session-type-button,html[data-theme="dark"] .member-direct-card,html[data-theme="dark"] .member-card,html[data-theme="dark"] .role-group,html[data-theme="dark"] .crew-position,html[data-theme="dark"] .tactics-alternative-card,html[data-theme="dark"] .backup-folder-card,html[data-theme="dark"] .metric-row,html[data-theme="dark"] .history-item,html[data-theme="dark"] .stat-kpi,html[data-theme="dark"] .statistics-kpis>div{background:var(--dm-surface-2)!important;color:var(--dm-text)!important;border-color:var(--dm-border)!important}
+html[data-theme="dark"] .session-type-button.selected,html[data-theme="dark"] .choice-button.selected,html[data-theme="dark"] .sheet-status-tab.selected{background:var(--dm-green-bg)!important;color:#dff9e9!important;border-color:var(--dm-green)!important;box-shadow:0 0 0 2px rgba(79,199,128,.2)}
+html[data-theme="dark"] .selected-status-bar,html[data-theme="dark"] .current-selection,html[data-theme="dark"] .participant-overview,html[data-theme="dark"] .folder-status,html[data-theme="dark"] .complete-backup-area{background:var(--dm-surface-2)!important;color:var(--dm-text)!important;border-color:var(--dm-border)!important}
+html[data-theme="dark"] .status-present,html[data-theme="dark"] .special-present,html[data-theme="dark"] .stat-present,html[data-theme="dark"] .metric-green,html[data-theme="dark"] .is-valid{background:var(--dm-green-bg)!important;color:#c9f6da!important;border-color:var(--dm-green)!important}
+html[data-theme="dark"] .status-excused,html[data-theme="dark"] .stat-excused,html[data-theme="dark"] .metric-gold,html[data-theme="dark"] .ranking-gold,html[data-theme="dark"] .is-soon{background:var(--dm-orange-bg)!important;color:#ffe0aa!important;border-color:var(--dm-orange)!important}
+html[data-theme="dark"] .status-orga,html[data-theme="dark"] .status-organization,html[data-theme="dark"] .special-organization,html[data-theme="dark"] .tactics-organizer-entry{background:var(--dm-purple-bg)!important;color:#eadcff!important;border-color:var(--dm-purple)!important}
+html[data-theme="dark"] .stat-missing,html[data-theme="dark"] .metric-red,html[data-theme="dark"] .is-expired,html[data-theme="dark"] .safety-expired,html[data-theme="dark"] .safety-missing,html[data-theme="dark"] .driver-license-missing,html[data-theme="dark"] .error-box,html[data-theme="dark"] .help-warning,html[data-theme="dark"] .audit-warning{background:var(--dm-red-bg)!important;color:#ffd1d1!important;border-color:var(--dm-red)!important}
+html[data-theme="dark"] .metric-blue{background:var(--dm-blue-bg)!important;color:#d8f0ff!important;border-color:var(--dm-blue)!important}
+html[data-theme="dark"] .danger-button{background:#a93139!important;color:#fff!important;border-color:var(--dm-red)!important}
+html[data-theme="dark"] .operation-draft-hint,html[data-theme="dark"] .operation-time-order{background:var(--dm-blue-bg)!important;color:#d8f0ff!important;border-color:var(--dm-blue)!important}
+html[data-theme="dark"] .breathing-clearance-result{background:var(--dm-surface-2)!important;color:var(--dm-muted)!important;border-color:var(--dm-border)!important}
+html[data-theme="dark"] .breathing-clearance-result.is-valid{background:var(--dm-green-bg)!important;color:#c9f6da!important;border-color:var(--dm-green)!important}
+html[data-theme="dark"] .breathing-clearance-result.is-soon{background:var(--dm-orange-bg)!important;color:#ffe0aa!important;border-color:var(--dm-orange)!important}
+html[data-theme="dark"] .breathing-clearance-result.is-expired,html[data-theme="dark"] .breathing-clearance-result.is-none{background:var(--dm-red-bg)!important;color:#ffd1d1!important;border-color:var(--dm-red)!important}
+html[data-theme="dark"] .statistics-donut circle[fill="#fff"]{fill:var(--dm-surface)!important}
+html[data-theme="dark"] .statistics-donut text{fill:var(--dm-text)!important}
+html[data-theme="dark"] .statistics-bar-row>div,html[data-theme="dark"] .monthly-columns{background:transparent!important}
+html[data-theme="dark"] .table-wrap{background:var(--dm-surface)!important;border-color:var(--dm-border)!important}
+html[data-theme="dark"] tbody tr:nth-child(even){background:#162229!important}
+html[data-theme="dark"] tbody tr:hover{background:#22343c!important}
+html[data-theme="dark"] .page-access-gate-critical{background:var(--dm-canvas)!important}
+html[data-theme="dark"] .page-access-card-critical{background:var(--dm-surface)!important;color:var(--dm-text)!important;border-top-color:var(--dm-yellow)!important}
+html[data-theme="dark"] .color-mode-toggle{background:var(--dm-yellow)!important;color:#171717!important;border-color:#ffe36a!important;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+html[data-theme="dark"] :focus-visible{outline-color:#8ed3ff!important}
+@media print{.color-mode-toggle{display:none!important}html[data-theme="dark"]{color-scheme:light}html[data-theme="dark"] body{background:#fff!important;color:#000!important}}
+
+/* Schritt-3-Aktion: niemals ueber der Hinweiskarte platzieren. */
+#attendanceSelectionWorkspace #step3ActionArea.step-3-action-area,
+#attendanceView #step3ActionArea.step-3-action-area.step-3-action-side{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  float:none!important;
+  clear:both!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  align-items:stretch!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  margin:14px 0 0!important;
+  padding:14px!important;
+  gap:10px!important;
+  overflow:visible!important;
+  box-sizing:border-box!important;
+}
+#attendanceSelectionWorkspace #step3ActionArea>*{position:static!important;min-width:0!important;max-width:100%!important}
+#attendanceSelectionWorkspace #step3ActionArea #exportResetButton.step-3-action-button{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:52px!important;
+  height:auto!important;
+  margin:0!important;
+  padding:11px 14px!important;
+  white-space:normal!important;
+  line-height:1.2!important;
+  overflow-wrap:anywhere!important;
+  box-sizing:border-box!important;
+}
+@media(min-width:900px){
+  #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area{
+    grid-template-columns:minmax(0,1fr) minmax(250px,auto)!important;
+    align-items:center!important;
+  }
+  #attendanceSelectionWorkspace #step3ActionArea #exportResetButton.step-3-action-button{width:auto!important;min-width:250px!important}
+}
+@media(max-width:899px){
+  #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area{grid-template-columns:minmax(0,1fr)!important}
+}
+
+/* Schritt 2 kompakt: keinen reservierten Leerraum oberhalb der Teilnehmerkarten. */
+#attendanceSelectionWorkspace.attendance-layout,
+#attendanceSelectionWorkspace.home-flow-stage-2,
+#attendanceView #attendanceSelectionWorkspace{
+  padding-top:0!important;
+  margin-top:0!important;
+  min-height:0!important;
+  height:auto!important;
+  align-content:start!important;
+}
+#attendanceSelectionWorkspace>#stage2Heading.flow-stage-heading,
+#attendanceSelectionWorkspace>.flow-stage-heading{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  width:100%!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:0 0 10px!important;
+  padding:10px 12px!important;
+  box-sizing:border-box!important;
+}
+#attendanceSelectionWorkspace .input-column,
+#attendanceSelectionWorkspace .action-column,
+#attendanceSelectionWorkspace .members-panel,
+#attendanceSelectionWorkspace .roles-panel,
+#attendanceSelectionWorkspace .entries-panel{
+  align-self:start!important;
+  min-height:0!important;
+  height:auto!important;
+  margin-top:0!important;
+}
+#attendanceSelectionWorkspace .members-panel>.panel-heading{
+  margin-top:0!important;
+}
+@media(max-width:1180px){
+  #attendanceSelectionWorkspace.attendance-layout,
+  #attendanceSelectionWorkspace.home-flow-stage-2,
+  #attendanceView #attendanceSelectionWorkspace{padding-top:0!important;gap:12px!important}
+  #attendanceSelectionWorkspace>#stage2Heading.flow-stage-heading{margin-bottom:8px!important}
+}
