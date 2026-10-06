@@ -132,10 +132,10 @@ window.finishOperationZip=async function(){
     const generatedBase=`FFW-Wasser_${d.date}_${stamp}_Einsatz`;
     const previousBase=String(previous?.packageFileName||previous?.fileName||"").replace(/\.(zip|csv|pdf)$/i,"");
     const base=previousBase||generatedBase,zipName=`${base}.zip`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,csv=operationCsv(d);
-    if(validationBox)validationBox.innerHTML='<p class="warning">PDF-Vorschau wird lokal erstellt. Bitte kurz warten ...</p>';
+    if(validationBox)validationBox.innerHTML='<p class="warning">Einsatz-PDF und Terminpaket werden erstellt. Bitte kurz warten ...</p>';
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const pdf=await operationPdfBlob(d);
-    const completed=await showOperationPdfPreview(pdf,pdfName,async()=>{
+    const completed=await (async()=>{
       // Neu und Korrektur speichern ausschließlich ein ZIP. Bei der Korrektur
       // bleibt der ursprüngliche Paketname erhalten, damit die Datei im
       // ausgewählten Ordner ersetzt statt als CSV/PDF-Doppel ausgegeben wird.

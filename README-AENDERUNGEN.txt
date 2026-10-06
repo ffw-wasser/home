@@ -133,3 +133,44 @@ Feuerwehr Wasser 4.8, 2026-10-06
 - PDF-Hintergrundprozess funktioniert jetzt auch beim direkten Start ueber file://.
 - Worker-Code und PDF-Abhaengigkeiten sind vollstaendig eingebettet.
 - Keine externen Worker-Dateien oder Datei-URLs werden mehr nachgeladen.
+
+
+Feuerwehr Wasser 4.9, 2026-10-06
+- Fehler window is not defined im PDF-Hintergrundprozess behoben.
+- Worker stellt fuer eingebettete browserorientierte Module eine kompatible window-Referenz bereit.
+- Cache-Kennung und Worker-Version aktualisiert.
+
+
+Feuerwehr Wasser 5.0, 2026-10-06
+- PDF-Vorschau beim Einsatzabschluss vollstaendig entfernt.
+- Nach der PDF-Erstellung wird das Terminpaket unmittelbar gespeichert.
+- Kein Vorschaufenster und keine zusaetzliche Bestaetigung mehr.
+
+
+Feuerwehr Wasser 5.1, 2026-10-06
+- Fehlende operationCsv-Funktion wiederhergestellt.
+- CSV-Inhalt des Einsatz-Terminpakets wird wieder erzeugt.
+- PDF-Vorschau bleibt entfernt; Terminpaket wird direkt gespeichert.
+
+
+Feuerwehr Wasser 5.2, 2026-10-06
+- Auf iPads laufen Auswahl uebernehmen und Weiter zu Schritt 3 nebeneinander am unteren Bildschirmrand mit.
+- Teilnehmerkarten sind auf iPads auf zwei Karten pro Reihe begrenzt.
+- Beim Wechsel zu Fahrzeug besetzen wird automatisch an den Kartenanfang gescrollt.
+- Beim Wechsel zum Einsatzprotokoll beginnt die Ansicht oben am Formular.
+
+
+Feuerwehr Wasser 5.3, 2026-10-06
+- Teilnehmerkarten werden auf dem iPad in drei Spalten angezeigt.
+- Die beiden mitlaufenden Schaltflaechen am unteren Bildschirmrand bleiben unveraendert.
+
+
+Feuerwehr Wasser 5.3, 2026-10-06
+- Teilnehmerkarten auf dem iPad auf drei Karten pro Reihe festgelegt.
+- Mitlaufende Schaltflaechen am unteren Bildschirmrand bleiben erhalten.
+
+
+Feuerwehr Wasser 5.4, 2026-10-06
+- Erfolgsanimation erscheint nur noch nach tatsaechlich gespeichertem Terminpaket.
+- Bei Abbruch, fehlender Freigabe oder nicht ausgefuehrtem Speichern bleiben Einsatzdaten erhalten und es wird kein falscher Erfolg angezeigt.
+- Nach erfolgreichem Speichern wird der Einsatz weiterhin archiviert, das Protokoll geleert und zur Startansicht gewechselt.

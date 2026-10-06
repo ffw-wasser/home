@@ -425,7 +425,7 @@ function showTerminabschlussAnimation(){
 (function bindSuccessfulTerminabschlussAnimation(){
   const wrap=name=>{
     const original=window[name];if(typeof original!=="function"||original.__abschlussAnimationWrapped)return;
-    const wrapped=async function(...args){const result=await original.apply(this,args);showTerminabschlussAnimation();return result;};
+    const wrapped=async function(...args){const result=await original.apply(this,args);if(result===true)showTerminabschlussAnimation();return result;};
     wrapped.__abschlussAnimationWrapped=true;window[name]=wrapped;
   };
   wrap("closeDay");wrap("finishOperationZip");
