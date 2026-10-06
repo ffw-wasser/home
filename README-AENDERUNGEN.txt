@@ -249,3 +249,9 @@ Feuerwehr Wasser 6.6, 2026-10-06
 - Cache-Kennung fuer config.js und operations.js hart geaendert.
 - Zusaetzliche Kompatibilitaetsfunktion direkt nach dem Laden von config.js.
 - safeStorage.removeItem steht dadurch auch bei gemischten alten und neuen Cache-Dateien bereit.
+
+
+Feuerwehr Wasser 6.7, 2026-10-06
+- safeStorage.removeItem wird beim Einsatzabschluss nicht mehr verwendet.
+- Entwurfsdaten werden direkt aus localStorage und sessionStorage entfernt.
+- Neue Cache-Kennungen fuer die betroffenen Dateien.
