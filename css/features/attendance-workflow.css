@@ -1130,3 +1130,28 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 #attendanceView #step3ActionArea .step3-action-copy{display:none!important}
 #attendanceView #step3ActionArea .step-3-action-button{width:100%!important;min-height:56px!important;margin:0!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
 }
+
+
+/* FFW 5.6: iPad-Aktionsleiste wirklich viewportfest, auch auf grossen iPads */
+@supports (-webkit-touch-callout:none){
+@media (min-width:700px) and (max-width:1400px){
+#attendanceSelectionWorkspace{padding-bottom:124px!important}
+#attendanceSelectionWorkspace #saveButton:not([hidden]){position:fixed!important;left:14px!important;right:auto!important;bottom:max(12px,env(safe-area-inset-bottom))!important;z-index:1201!important;width:calc(50vw - 21px)!important;min-height:58px!important;margin:0!important;transform:none!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
+#attendanceView #step3ActionArea:not([hidden]){position:fixed!important;left:auto!important;right:14px!important;bottom:max(12px,env(safe-area-inset-bottom))!important;z-index:1201!important;width:calc(50vw - 21px)!important;min-height:58px!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;transform:none!important}
+#attendanceView #step3ActionArea .step3-action-copy{display:none!important}
+#attendanceView #step3ActionArea .step-3-action-button{width:100%!important;min-height:58px!important;margin:0!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
+}
+}
+
+/* FFW 5.9: ursprüngliche Einsatzbericht-PDF-Vorschau wieder aktiviert. */
+#operationPdfPreviewDialog.operation-pdf-preview-dialog{display:block!important;width:min(1000px,calc(100vw - 24px));height:min(92vh,950px);padding:0;border:0;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.42)}
+#operationPdfPreviewDialog::backdrop{background:rgba(0,0,0,.58)}
+#operationPdfPreviewDialog .operation-preview-shell{display:grid;height:100%;grid-template-rows:auto auto minmax(240px,1fr) auto;background:#fff}
+#operationPdfPreviewDialog header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;background:#edf0f2}
+#operationPdfPreviewDialog header h2,#operationPdfPreviewDialog header p{margin:2px 0}
+#operationPdfPreviewDialog .operation-preview-check{display:flex;flex-wrap:wrap;gap:8px 14px;padding:10px 16px;background:#fff8dc}
+#operationPdfPreviewDialog .operation-preview-frame-wrap{min-height:0;background:#777}
+#operationPdfPreviewDialog iframe{display:block;width:100%;height:100%;border:0;background:#777}
+#operationPdfPreviewDialog footer{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;padding:10px 16px;background:#fff}
+#operationPdfPreviewDialog footer button{min-height:52px}
+@media(max-width:620px){#operationPdfPreviewDialog.operation-pdf-preview-dialog{width:calc(100vw - 10px);height:96vh}#operationPdfPreviewDialog header{display:grid}#operationPdfPreviewDialog footer{grid-template-columns:1fr}}

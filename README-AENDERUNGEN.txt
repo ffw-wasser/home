@@ -174,3 +174,38 @@ Feuerwehr Wasser 5.4, 2026-10-06
 - Erfolgsanimation erscheint nur noch nach tatsaechlich gespeichertem Terminpaket.
 - Bei Abbruch, fehlender Freigabe oder nicht ausgefuehrtem Speichern bleiben Einsatzdaten erhalten und es wird kein falscher Erfolg angezeigt.
 - Nach erfolgreichem Speichern wird der Einsatz weiterhin archiviert, das Protokoll geleert und zur Startansicht gewechselt.
+
+
+Feuerwehr Wasser 5.5, 2026-10-06
+- Beim Abschluss wird der Dokumenteditor aus Schritt 4 vor dem ZIP-Speicherdialog geschlossen.
+- Dadurch kann auf dem iPad der Dialog Teilen und speichern sichtbar geoeffnet werden.
+- Falls Safari den modalen Dialog ablehnt, erscheint automatisch eine sichtbare nichtmodale Ersatzanzeige.
+
+
+Feuerwehr Wasser 5.6, 2026-10-06
+- Windows/Chrome: Wenn der ausgewaehlte Ordner nicht beschreibbar ist, wird das ZIP automatisch ueber den Browser-Download gespeichert.
+- iPad: Auswahl uebernehmen und Anwesenheit vollstaendig sind auf kleinen und grossen iPads fest am unteren Bildschirmrand verankert.
+
+
+Feuerwehr Wasser 5.7, 2026-10-06
+- Geprueft, fortfahren setzt den Abschluss nun eindeutig und nur einmal fort.
+- Der Pruefdialog wird sicher geschlossen und die Verarbeitung im naechsten Bildaufbau fortgesetzt.
+- Sofortige Rueckmeldung PDF und ZIP werden erstellt wurde ergaenzt.
+
+
+Feuerwehr Wasser 5.8, 2026-10-06
+- Einsatzabschluss und Pruefdialog wurden auf den nachweislich funktionierenden Ablauf aus Version 4.8 zurueckgesetzt.
+- Die spaeter ergaenzten Windows-Download- und iPad-Aktionsleisten-Korrekturen bleiben erhalten.
+
+
+Feuerwehr Wasser 5.9, 2026-10-06
+- Urspruengliche Einsatzbericht-PDF-Vorschau vor dem Speichern wiederhergestellt.
+- ZIP-Erstellung startet erst nach Geprueft, Terminpaket speichern.
+- Zurueck zum Protokoll bricht den Abschluss ab und behaelt alle Daten.
+
+
+Feuerwehr Wasser 6.0, 2026-10-06
+- PDF-Erstellung wieder direkt aus der Word-Vorlage ueber die bewaehrte OneDrive-Konvertierung.
+- Dadurch werden Feldpositionen, Seitenumbrueche und Vorlagenlayout nicht mehr durch den lokalen PDF-Renderer verschoben.
+- PDF-Vorschau vor dem Speichern bleibt erhalten.
+- Fehlermeldungen nach der Vorschau zeigen nun den konkreten Speicherfehler an.

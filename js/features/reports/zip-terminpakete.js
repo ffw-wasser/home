@@ -53,7 +53,24 @@ async function sharePendingTerminPackage(){
 function promptIpadTerminPackageSave(fileName,blob){
   if(pendingTerminPackageSave)return Promise.resolve("failed");
   const dialog=ensureIpadTerminPackageDialog();byId("ipadTerminPackageName").textContent=fileName;byId("ipadTerminPackageError").hidden=true;byId("ipadTerminPackageShare").disabled=false;
-  return new Promise(resolve=>{pendingTerminPackageSave={fileName,blob,resolve,dialog};dialog.showModal();});
+  return new Promise(resolve=>{
+    pendingTerminPackageSave={fileName,blob,resolve,dialog};
+    // Der Dokumenteditor aus Schritt 4 ist selbst ein modaler Dialog. Safari/iPad
+    // erlaubt keinen zweiten modalen Dialog darueber. Deshalb zuerst sauber schliessen.
+    document.querySelectorAll("dialog[open]").forEach(openDialog=>{
+      if(openDialog===dialog)return;
+      try{openDialog.close();}catch{openDialog.removeAttribute("open");}
+    });
+    document.documentElement.classList.remove("document-editor-open");
+    requestAnimationFrame(()=>{
+      try{dialog.showModal();}
+      catch(error){
+        console.error("Speicherdialog konnte nicht modal geoeffnet werden",error);
+        dialog.setAttribute("open","");
+        dialog.scrollIntoView({block:"center"});
+      }
+    });
+  });
 }
 async function saveTerminPackage(fileName,blob,overwriteRequired=false){
   document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>node.remove());
@@ -66,8 +83,16 @@ async function saveTerminPackage(fileName,blob,overwriteRequired=false){
   }
   const handle=effectiveCsvDirectoryHandle?.()||effectivePdfDirectoryHandle?.()||null;
   if(handle){
-    try{if(!(await ensureDirectoryWritePermission(handle)))return "failed";const fileHandle=await handle.getFileHandle(fileName,{create:true});const writable=await fileHandle.createWritable({keepExistingData:false});await writable.write(blob);await writable.close();return "saved";}
-    catch(error){console.error(error);return "failed";}
+    try{
+      if(await ensureDirectoryWritePermission(handle)){
+        const fileHandle=await handle.getFileHandle(fileName,{create:true});
+        const writable=await fileHandle.createWritable({keepExistingData:false});
+        await writable.write(blob);await writable.close();return "saved";
+      }
+      console.warn("Ordnerfreigabe wurde nicht erteilt, verwende Browser-Download.");
+    }catch(error){
+      console.error("Speichern in den gewaehlten Ordner fehlgeschlagen, verwende Browser-Download.",error);
+    }
   }
   if(overwriteRequired){
     showToast("Zum Überschreiben bitte zuerst unter Einstellungen den Ordner für Terminpakete auswählen.","error");
@@ -132,10 +157,10 @@ window.finishOperationZip=async function(){
     const generatedBase=`FFW-Wasser_${d.date}_${stamp}_Einsatz`;
     const previousBase=String(previous?.packageFileName||previous?.fileName||"").replace(/\.(zip|csv|pdf)$/i,"");
     const base=previousBase||generatedBase,zipName=`${base}.zip`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,csv=operationCsv(d);
-    if(validationBox)validationBox.innerHTML='<p class="warning">Einsatz-PDF und Terminpaket werden erstellt. Bitte kurz warten ...</p>';
+    if(validationBox)validationBox.innerHTML='<p class="warning">PDF-Vorschau wird lokal erstellt. Bitte kurz warten ...</p>';
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const pdf=await operationPdfBlob(d);
-    const completed=await (async()=>{
+    const completed=await showOperationPdfPreview(pdf,pdfName,async()=>{
       // Neu und Korrektur speichern ausschließlich ein ZIP. Bei der Korrektur
       // bleibt der ursprüngliche Paketname erhalten, damit die Datei im
       // ausgewählten Ordner ersetzt statt als CSV/PDF-Doppel ausgegeben wird.

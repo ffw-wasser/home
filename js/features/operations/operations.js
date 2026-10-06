@@ -147,18 +147,29 @@ function renderOperationAssignmentStep(){
 function showOperationForm(){const f=byId("operationReportForm");if(f&&!f.hidden){try{persistOperationDraft(collectOperationData());}catch(error){console.warn("Einsatzbericht konnte beim Zurückgehen nicht zwischengespeichert werden",error);}f.hidden=true;}const s=ensureOperationAssignmentStep();s.hidden=false;renderOperationAssignmentStep();syncHomeFlowProgress?.(3);window.SmartWorkflow?.operationForm?.();requestAnimationFrame(()=>requestAnimationFrame(()=>s.scrollIntoView({behavior:"smooth",block:"start"})))}
 function operationPdfEscape(v){return pdfEscape(pdfLatin1(String(v||"")))}function opPdfBytes(v){const t=String(v??""),b=new Uint8Array(t.length);for(let i=0;i<t.length;i++)b[i]=t.charCodeAt(i)&255;return b}function opConcatBytes(p){const l=p.reduce((s,x)=>s+x.length,0),r=new Uint8Array(l);let o=0;for(const x of p){r.set(x,o);o+=x.length}return r}
 async function operationDocxBlob(d){d=d||collectOperationData();if(!window.OperationDocx)throw new Error("Word-Modul ist nicht geladen");return window.OperationDocx.create(d);}
-function operationPdfBlob(d){
+async function operationPdfBlob(d){
   d=d||collectOperationData();
-  return new Promise((resolve,reject)=>{
-    let settled=false;
-    if(!globalThis.OPERATION_PDF_WORKER_SOURCE)return reject(new Error("PDF-Hintergrundmodul ist nicht geladen"));
-    const workerUrl=URL.createObjectURL(new Blob([globalThis.OPERATION_PDF_WORKER_SOURCE],{type:"text/javascript"}));
-    const worker=new Worker(workerUrl);
-    const finish=(error,blob)=>{if(settled)return;settled=true;clearTimeout(timeout);worker.terminate();URL.revokeObjectURL(workerUrl);error?reject(error):resolve(blob);};
-    const timeout=setTimeout(()=>finish(new Error("Die lokale PDF-Erstellung hat zu lange gedauert. Bitte erneut versuchen.")),45000);
-    worker.onmessage=event=>{const result=event.data||{};if(!result.ok)return finish(new Error(result.message||"PDF-Erstellung fehlgeschlagen"));finish(null,new Blob([result.buffer],{type:"application/pdf"}));};
-    worker.onerror=event=>finish(new Error(event.message||"PDF-Hintergrundprozess konnte nicht gestartet werden"));
-    try{worker.postMessage({operationData:d});}catch(error){finish(error);}
+  const docx=await operationDocxBlob(d);
+  const safeTime=String(d.times?.alarm||"Einsatz").replace(":","-");
+  const name=`FFW-Wasser_${d.date||today()}_${safeTime}.docx`;
+  if(typeof oneDriveConvertDocxToPdf!=="function")throw new Error("Die PDF-Erstellung über die Word-Vorlage ist nicht verfügbar.");
+  return await oneDriveConvertDocxToPdf(docx,name);
+}
+
+async function showOperationPdfPreview(blob,fileName,onConfirm){
+  if(!(blob instanceof Blob)||blob.type!=="application/pdf"||!blob.size)throw new Error("PDF-Vorschau konnte nicht erstellt werden");
+  document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>{try{node.close?.();}catch(error){}node.remove();});
+  const previewUrl=URL.createObjectURL(blob),dialog=document.createElement("dialog");
+  dialog.id="operationPdfPreviewDialog";dialog.className="operation-pdf-preview-dialog";
+  dialog.innerHTML=`<div class="operation-preview-shell"><header><div><small>Einsatzprotokoll prüfen</small><h2>PDF-Vorschau</h2><p>${escapeHtml(fileName)}</p></div><a class="secondary" href="${previewUrl}" target="_blank" rel="noopener">PDF groß öffnen</a></header><div class="operation-preview-check"><strong>Bitte vor dem Abschluss prüfen:</strong><span>Namen und Funktionen</span><span>Fahrzeugzuordnung</span><span>Positionen und Seitenumbrüche</span></div><div class="operation-preview-frame-wrap"><iframe title="PDF-Vorschau des Einsatzprotokolls" src="${previewUrl}#toolbar=1&navpanes=0&view=FitH"></iframe></div><footer><button type="button" class="secondary operation-preview-back">Zurück zum Protokoll</button><button type="button" class="primary operation-preview-confirm">Geprüft, Terminpaket speichern</button></footer></div>`;
+  document.body.appendChild(dialog);
+  return await new Promise(resolve=>{
+    let finished=false;
+    const cleanup=result=>{if(finished)return;finished=true;try{dialog.close();}catch(error){}dialog.remove();URL.revokeObjectURL(previewUrl);resolve(result);};
+    dialog.querySelector(".operation-preview-back").onclick=()=>cleanup(false);
+    dialog.querySelector(".operation-preview-confirm").onclick=async event=>{const button=event.currentTarget;button.disabled=true;button.textContent="Terminpaket wird gespeichert ...";try{const result=await onConfirm();cleanup(Boolean(result));}catch(error){button.disabled=false;button.textContent="Geprüft, Terminpaket speichern";showToast?.(`Terminpaket konnte nicht gespeichert werden: ${error?.message||"Unbekannter Fehler"}`,"error");}};
+    dialog.addEventListener("cancel",event=>{event.preventDefault();cleanup(false);});
+    if(typeof dialog.showModal==="function")dialog.showModal();else dialog.setAttribute("open","");
   });
 }
 function operationCsv(d){d=d||collectOperationData();const h=["Datum","Alarmzeit","Ausgerückt","Einsatzstelle erreicht","Einsatzende","Eingerückt","Einsatznummer","Einsatzart","Einsatzstelle","Einsatzleiter","ZvD","Name","Fahrzeug / Reserve","Funktion","Lage beim Eintreffen","Verlauf der Tätigkeit","Personal / Menschenrettung / Verletzungen","Besondere Vorkommnisse","Geräte mit Stückzahlen","Sonstige Geräte","Wasserentnahmestellen","Rohre / Schlauchmaterial","Ölbindemittel / Betriebsstoffe","Weitere Stellen","Alarmierungswege","Atemschutzüberwachung","ATÜ durch Abteilung Emmendingen","ATÜ-Person"];const common=[d.date,d.times?.alarm||"",d.times?.departed||"",d.times?.arrived||"",d.times?.ended||"",d.times?.returned||"",d.number||"",d.type||"",d.location||"",d.leader||"",d.zvd||""];const deviceText=Object.entries(d.deviceAmounts||{}).map(([name,count])=>`${count} × ${name}`).join(", ");const pipeText=[[d.pipes?.c,"C-Rohre"],[d.pipes?.b,"B-Rohre"],[d.pipes?.monitor,"Wasserwerfer"],[d.pipes?.smallExtinguishers,"Kleinlöschgeräte"]].filter(([count])=>Number(count)>0).map(([count,name])=>`${count} × ${name}`).concat(d.pipes?.description?[d.pipes.description]:[]).join(", ");const details=[d.situation||"",d.actions||"",d.persons||"",d.special||"",deviceText,d.deviceOther||"",(d.waterSources||[]).join(", "),pipeText,d.oil?.description||"",(d.agencies||[]).join(", "),(d.alarmMethods||[]).join(", "),d.atueUsed?"Ja":"Nein",d.atueDepartment?"Ja":"Nein",d.atuePerson||""];const rows=(d.members||[]).map(n=>[...common,operationProtocolName(n),d.assignments?.[n]||"",d.assignmentRoles?.[n]||"",...details]);return '\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\r\n')}
