@@ -1,0 +1,4 @@
+(function(global){"use strict";
+ function model({rows,sessionType,counts,topic,date}){const safeRows=(rows||[]).map(r=>({time:String(r.time||""),name:String(r.name||""),status:String(r.status||""),role:String(r.role||"")}));const calculated={present:safeRows.filter(r=>r.status==="Anwesend").length,excused:safeRows.filter(r=>r.status==="Entschuldigt").length,missing:safeRows.filter(r=>r.status==="Fehlt").length,notApplicable:safeRows.filter(r=>r.status==="Betrifft nicht").length};return {date:String(date||""),sessionType:String(sessionType||"Probe"),topic:String(topic||""),rows:safeRows,counts:{...calculated,...(counts||{})}};}
+ const api=Object.freeze({model});global.ReportEngine=api;if(typeof module!=="undefined"&&module.exports)module.exports=api;
+})(typeof globalThis!=="undefined"?globalThis:this);
