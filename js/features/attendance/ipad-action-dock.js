@@ -10,7 +10,6 @@
   let stepHome = null;
   let scheduled = false;
 
-  const visible = element => Boolean(element && !element.hidden && getComputedStyle(element).display !== "none");
 
   function ensureDock() {
     if (dock?.isConnected) return dock;
@@ -55,7 +54,7 @@
       getComputedStyle(attendanceView).display !== "none"
     );
 
-    if (!isIPadLayout() || !inStepTwo) {
+    if (!isIPadLayout()) {
       restoreNode(saveButton, saveHome);
       restoreNode(stepArea, stepHome);
       setActive(false);
@@ -65,7 +64,7 @@
     const target = ensureDock();
     if (saveButton && saveButton.parentNode !== target) target.appendChild(saveButton);
     if (stepArea && stepArea.parentNode !== target) target.appendChild(stepArea);
-    setActive(visible(saveButton) || visible(stepArea));
+    setActive(inStepTwo);
   }
 
   function scheduleSync() {

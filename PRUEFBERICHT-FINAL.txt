@@ -1,0 +1,32 @@
+Feuerwehr Wasser 8.0 - finaler Plausibilitaets- und Bereinigungsbericht
+Stand: 2026-10-06
+
+Geprueft:
+- Syntax aller eigenen JavaScript-Dateien und des Service Workers
+- Gueltigkeit der JSON-Dateien
+- doppelte HTML-IDs
+- doppelte Skript- und Stylesheet-Einbindungen
+- fehlende lokale Dateien aus src- und href-Verweisen
+- leere Dateien
+- Vorhandensein und Einbindung aller Stylesheets
+- Entfernung des frueher fehlerhaften safeStorage.removeItem-Aufrufs
+- Entfernung alter einmaliger Cache-Reset-Skripte
+- iPad-Dock nur in der sichtbaren Terminarten-Ansicht Schritt 2
+- harte Ausblendung des iPad-Docks ausserhalb Schritt 2
+- ZIP-Integritaet
+
+Bereinigt:
+- nicht mehr verwendete Hilfsfunktion im iPad-Dock entfernt
+- finale Cache-Kennung vergeben
+- aktueller Funktionsstand dokumentiert
+
+Bewusst nicht veraendert:
+- Datenformate und OneDrive-Synchronisierung
+- Berichts-, PDF-, DOCX-, CSV- und ZIP-Erzeugung
+- Passwort- und Anwendungslogik
+- fachliche Terminarten und Anwesenheitslogik
+- Vorlagen und Bildressourcen
+
+Ergebnis:
+Die statischen und strukturellen Pruefungen wurden ohne Fehler abgeschlossen.
+Ein vollstaendiger realer End-to-End-Test mit OneDrive-Anmeldung, Safari auf dem konkreten iPad und echten Nutzdaten kann durch die statische Pruefung nicht ersetzt werden.
