@@ -47,7 +47,15 @@
     const stepArea = document.getElementById("step3ActionArea");
     rememberHomes(saveButton, stepArea);
 
-    if (!isIPadLayout()) {
+    const attendanceView = document.getElementById("attendanceView");
+    const inStepTwo = Boolean(
+      attendanceView &&
+      attendanceView.classList.contains("workflow-stage-2") &&
+      !attendanceView.hidden &&
+      getComputedStyle(attendanceView).display !== "none"
+    );
+
+    if (!isIPadLayout() || !inStepTwo) {
       restoreNode(saveButton, saveHome);
       restoreNode(stepArea, stepHome);
       setActive(false);
