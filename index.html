@@ -55,6 +55,9 @@
 #attendanceSelectionWorkspace>.input-column{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:stretch!important;align-self:start!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;gap:12px!important}
 #attendanceSelectionWorkspace>.input-column>.members-panel:not([hidden]),#attendanceSelectionWorkspace>.input-column>.roles-panel:not([hidden]){position:static!important;inset:auto!important;align-self:stretch!important;margin:0!important;transform:none!important}
 </style>
+  <link href="css/features/workflow-step-fix.css?v=20260930-v5" rel="stylesheet"/>
+  <link href="css/features/attendance-table-compact.css?v=20260930-v5" rel="stylesheet"/>
+  <link href="css/themes/dark-accessibility.css?v=20260930-v5" rel="stylesheet"/>
 </head>
 <body>
 <div aria-labelledby="pageAccessTitle" aria-modal="true" class="page-access-gate-critical" id="pageAccessGate" role="dialog"><form autocomplete="on" class="page-access-card-critical" id="pageAccessForm"><img alt="Wappen Feuerwehr Wasser" src="icon-192.png"/><p>Geschützter Zugang</p><h1 id="pageAccessTitle">FFW Wasser</h1><p>Bitte das Passwort eingeben, um die Anwendung zu öffnen.</p><label for="pageAccessPin">Passwort</label><input enterkeyhint="done" id="pageAccessPin" name="password" autocomplete="current-password" maxlength="64" required="" type="password"/><p class="error-box" hidden="" id="pageAccessError">Falsches Passwort.</p><button type="submit">Anwendung öffnen</button><small>Die Startseite wird erst nach erfolgreicher Passworteingabe angezeigt.</small></form></div>
@@ -76,7 +79,7 @@
 <h3>Terminart auswählen</h3>
 </div>
 <div class="session-type-grid" id="sessionTypes">
-<button class="session-type-button selected" data-session-type="Allgemeine Probe" type="button">Allgemeine Probe</button>
+<button class="session-type-button" data-session-type="Allgemeine Probe" type="button">Allgemeine Probe</button>
 <button class="session-type-button" data-session-type="Sonderprobe" type="button">Sonderprobe</button>
 <button class="session-type-button" data-session-type="Unterricht" type="button">Unterricht</button>
 <button class="session-type-button" data-session-type="Ausschuss Sitzung" type="button">Ausschuss Sitzung</button>
@@ -345,5 +348,6 @@
 <script src="js/features/statistics/statistics-quality-term-fix.js?v=20261002-korrigiert"></script>
 <script src="js/app/dark-mode.js?v=20261002-harmonisch"></script>
 <script src="js/core/ios-keyboard-fix.js?v=20261002-ios-keyboard"></script>
+  <script src="js/features/attendance/workflow-step-fix.js?v=20260930-v5"></script>
 </body>
 </html>
