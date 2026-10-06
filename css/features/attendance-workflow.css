@@ -1156,43 +1156,6 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 #operationPdfPreviewDialog footer button{min-height:52px}
 @media(max-width:620px){#operationPdfPreviewDialog.operation-pdf-preview-dialog{width:calc(100vw - 10px);height:96vh}#operationPdfPreviewDialog header{display:grid}#operationPdfPreviewDialog footer{grid-template-columns:1fr}}
 
-/* FFW 6.2: iPad-Aktionskarten bleiben im Seiteninhalt und stehen untereinander. */
-@supports (-webkit-touch-callout:none){
-  @media (min-width:700px) and (max-width:1400px){
-    #attendanceSelectionWorkspace{padding-bottom:24px!important}
-    #attendanceSelectionWorkspace #saveButton:not([hidden]){
-      position:static!important;
-      inset:auto!important;
-      display:block!important;
-      width:100%!important;
-      max-width:none!important;
-      min-height:58px!important;
-      margin:14px 0 0!important;
-      transform:none!important;
-      box-shadow:none!important;
-    }
-    #attendanceView #step3ActionArea:not([hidden]){
-      position:static!important;
-      inset:auto!important;
-      display:block!important;
-      width:100%!important;
-      max-width:none!important;
-      min-height:0!important;
-      margin:14px 0 0!important;
-      padding:0!important;
-      transform:none!important;
-      box-shadow:none!important;
-    }
-    #attendanceView #step3ActionArea .step3-action-copy{display:block!important}
-    #attendanceView #step3ActionArea .step-3-action-button{
-      width:100%!important;
-      min-height:58px!important;
-      margin:12px 0 0!important;
-      box-shadow:none!important;
-    }
-  }
-}
-
 /* FFW 6.3: iPad-Aktionsleiste fest, nebeneinander und mit freiem Scroll-Ende. */
 @supports (-webkit-touch-callout:none){
   @media (min-width:700px) and (max-width:1400px){
@@ -1252,5 +1215,58 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
       border-radius:12px!important;
       box-shadow:0 10px 28px rgba(0,0,0,.38)!important;
     }
+  }
+}
+
+/* FFW 6.9: echte, vom Seiteninhalt unabhängige iPad-Aktionsleiste. */
+#ipadAttendanceActionDock{display:none}
+@media (min-width:700px) and (max-width:1400px) and (pointer:coarse){
+  html.ipad-attendance-dock-active body{
+    padding-bottom:calc(100px + env(safe-area-inset-bottom))!important;
+  }
+  #ipadAttendanceActionDock{
+    position:fixed!important;
+    left:max(14px,env(safe-area-inset-left))!important;
+    right:max(14px,env(safe-area-inset-right))!important;
+    bottom:max(12px,env(safe-area-inset-bottom))!important;
+    z-index:2147483000!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:10px!important;
+    align-items:stretch!important;
+    pointer-events:none!important;
+  }
+  #ipadAttendanceActionDock[hidden]{display:none!important}
+  #ipadAttendanceActionDock>#saveButton,
+  #ipadAttendanceActionDock>#step3ActionArea{
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:58px!important;
+    margin:0!important;
+    transform:none!important;
+    pointer-events:auto!important;
+  }
+  #ipadAttendanceActionDock>#saveButton{
+    display:block!important;
+    border-radius:12px!important;
+    box-shadow:0 10px 28px rgba(0,0,0,.38)!important;
+  }
+  #ipadAttendanceActionDock>#step3ActionArea{
+    display:block!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  #ipadAttendanceActionDock>#step3ActionArea .step3-action-copy{display:none!important}
+  #ipadAttendanceActionDock>#step3ActionArea .step-3-action-button{
+    width:100%!important;
+    min-height:58px!important;
+    margin:0!important;
+    border-radius:12px!important;
+    box-shadow:0 10px 28px rgba(0,0,0,.38)!important;
   }
 }
