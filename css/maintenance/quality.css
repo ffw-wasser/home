@@ -1,0 +1,98 @@
+.app-update-notice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:14px 16px;background:#17324d;color:#fff;border-radius:12px;box-shadow:0 8px 30px #0005}.app-update-notice span{font-size:.85rem}.app-update-notice button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#fff;color:#17324d}@media(max-width:650px){.app-update-notice{grid-template-columns:1fr}.app-update-notice button{width:100%}}
+
+
+#qualityStatusCard .quality-status-list{display:grid;gap:6px;margin:10px 0 14px}
+#qualityStatusCard .quality-status-list span{display:block;padding:7px 0;border-bottom:1px solid var(--line);color:var(--muted);font-size:.82rem;font-weight:750}
+#qualityStatusCard .quality-status-list span:last-child{border-bottom:0}
+
+/* iPhone/iOS: Statusreiter erst in Schritt 2 anzeigen. */
+@supports (-webkit-touch-callout: none) {
+  #attendanceView:not(.workflow-stage-2) #attendanceStatusToolbar,
+  #attendanceView:not(.workflow-stage-2) #floatingAttendanceStatusToolbar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
+/* Einsatzabschluss muss auf Desktop und iOS immer direkt bedienbar bleiben. */
+#operationReportForm .operation-actions{position:relative!important;z-index:2147483000!important;pointer-events:auto!important}
+#operationFinish{position:relative!important;z-index:2147483646!important;pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(0,0,0,.12)!important}
+#operationFinish::before,#operationFinish::after{pointer-events:none!important}
+
+/* 2.20.0: mehr Abstand zwischen Ablaufanzeige und Terminart-Karte. */
+#attendanceView #homeFlowProgress{margin-bottom:18px!important}
+#attendanceView .home-session-type-panel{margin-top:0!important}
+
+/* 2.20.0: Statuswahl auf iPhone beim Scrollen in beide Richtungen sichtbar. */
+@media(max-width:760px){
+  #floatingAttendanceStatusToolbar{
+    position:fixed!important;
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    top:calc(env(safe-area-inset-top) + 8px)!important;
+    width:auto!important;
+    z-index:1600!important;
+    display:flex!important;
+    gap:4px!important;
+    padding:6px!important;
+    border:1px solid #b9c6cc!important;
+    border-radius:13px!important;
+    background:rgba(255,255,255,.97)!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.24)!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+  }
+  #floatingAttendanceStatusToolbar[hidden]{display:none!important}
+  #floatingAttendanceStatusToolbar::-webkit-scrollbar{display:none!important}
+  #floatingAttendanceStatusToolbar [data-role]{
+    flex:1 0 auto!important;
+    min-height:44px!important;
+    padding:8px 11px!important;
+    border:2px solid #b8c4ca!important;
+    border-radius:9px!important;
+    white-space:nowrap!important;
+    font-size:.78rem!important;
+    font-weight:900!important;
+  }
+  #floatingAttendanceStatusToolbar [data-role].selected,
+  #floatingAttendanceStatusToolbar [data-role][aria-pressed="true"]{
+    color:#fff!important;
+    border-color:#145f31!important;
+    background:#19783a!important;
+  }
+  #attendanceView #homeFlowProgress{margin-bottom:22px!important}
+}
+
+/* 2.20.1: sichtbarer Innenabstand zwischen Kartenoberkante und Überschrift. */
+#attendanceView .home-session-type-panel.home-flow-stage-1{
+  padding-top:30px!important;
+}
+#attendanceView .home-session-type-panel.home-flow-stage-1>.flow-stage-heading{
+  position:static!important;
+  top:auto!important;
+  margin:0 0 14px!important;
+  transform:none!important;
+}
+@media(max-width:760px){
+  #attendanceView .home-session-type-panel.home-flow-stage-1{
+    padding-top:26px!important;
+  }
+}
+
+/* 2.20.2: Abstand direkt unter der gruenen Kartenlinie. */
+#attendanceView article.home-session-type-panel.home-flow-stage-1{
+  padding-top:26px!important;
+}
+#attendanceView article.home-session-type-panel.home-flow-stage-1>.panel-heading{
+  position:static!important;
+  inset:auto!important;
+  margin:0 0 14px!important;
+  transform:none!important;
+}
+@media(max-width:760px){
+  #attendanceView article.home-session-type-panel.home-flow-stage-1{
+    padding-top:24px!important;
+  }
+}

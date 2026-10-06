@@ -1,0 +1,215 @@
+/* Schritt 2, bereinigtes Layout v22. Diese zusammenhaengende Schicht ersetzt die Einzelkorrekturen v17-v21. */
+#attendanceSelectionWorkspace{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(260px,330px)!important;
+  gap:16px!important;
+  align-items:start!important;
+}
+#attendanceSelectionWorkspace>.input-column{
+  grid-column:1!important;
+  min-width:0!important;
+}
+#attendanceSelectionWorkspace>.action-column{
+  grid-column:2!important;
+  position:static!important;
+  display:grid!important;
+  gap:12px!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  align-content:start!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel{
+  grid-column:1/-1!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:0!important;
+  padding:16px!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel>*{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel .panel-heading,
+#attendanceSelectionWorkspace>.today-entries-panel .card-heading,
+#attendanceSelectionWorkspace>.today-entries-panel header{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin:0 0 12px!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel .table-wrap{
+  width:100%!important;
+  max-height:310px!important;
+  overflow:auto!important;
+  border:1px solid #d6dde1!important;
+  border-radius:10px!important;
+  background:#fff!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel table{
+  width:100%!important;
+  min-width:0!important;
+  table-layout:fixed!important;
+  border-collapse:collapse!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel th,
+#attendanceSelectionWorkspace>.today-entries-panel td{
+  padding:9px 10px!important;
+  vertical-align:middle!important;
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+  line-height:1.3!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel th:nth-child(1),
+#attendanceSelectionWorkspace>.today-entries-panel td:nth-child(1){width:86px!important}
+#attendanceSelectionWorkspace>.today-entries-panel th:last-child,
+#attendanceSelectionWorkspace>.today-entries-panel td:last-child{width:58px!important;text-align:center!important}
+#attendanceSelectionWorkspace>.today-entries-panel .delete-entry{
+  width:38px!important;
+  min-width:38px!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:0!important;
+  margin:auto!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel .delete-entry::after{content:none!important;display:none!important}
+#attendanceSelectionWorkspace>.today-entries-panel .today-reset-footer{
+  display:grid!important;
+  grid-template-columns:minmax(240px,420px) minmax(0,1fr)!important;
+  gap:14px!important;
+  align-items:center!important;
+  margin-top:14px!important;
+  padding-top:14px!important;
+  border-top:1px solid #dfe5e8!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel .today-reset-button{
+  grid-column:1!important;
+  width:100%!important;
+  min-height:48px!important;
+  margin:0!important;
+  white-space:normal!important;
+  line-height:1.2!important;
+}
+#attendanceSelectionWorkspace>.today-entries-panel .today-reset-copy{
+  grid-column:2!important;
+  position:static!important;
+  width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  line-height:1.45!important;
+}
+#attendanceSelectionWorkspace .member-direct-card .member-name,
+#attendanceSelectionWorkspace .member-direct-card strong{
+  font-size:.96rem!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+}
+#attendanceSelectionWorkspace .batch-selection-controls{
+  position:static!important;
+  inset:auto!important;
+  width:100%!important;
+  margin:0!important;
+  padding:10px!important;
+  box-shadow:none!important;
+}
+@media(max-width:900px){
+  #attendanceSelectionWorkspace{grid-template-columns:1fr!important}
+  #attendanceSelectionWorkspace>.input-column,
+  #attendanceSelectionWorkspace>.action-column,
+  #attendanceSelectionWorkspace>.today-entries-panel{grid-column:1!important}
+}
+@media(max-width:620px){
+  #attendanceSelectionWorkspace>.today-entries-panel{padding:12px!important}
+  #attendanceSelectionWorkspace>.today-entries-panel .table-wrap{max-height:270px!important}
+  #attendanceSelectionWorkspace>.today-entries-panel .today-reset-footer{grid-template-columns:1fr!important}
+  #attendanceSelectionWorkspace>.today-entries-panel .today-reset-button,
+  #attendanceSelectionWorkspace>.today-entries-panel .today-reset-copy{grid-column:1!important}
+  #attendanceSelectionWorkspace>.today-entries-panel th:nth-child(1),
+  #attendanceSelectionWorkspace>.today-entries-panel td:nth-child(1){width:64px!important}
+}
+
+/* v25: Datum-loeschen-Steuerelemente und Dark-Mode-Kontraste */
+.date-delete-control-hidden,
+button[aria-label="Datum löschen"],
+button[title="Datum löschen"],
+[data-action="delete-date"],
+[data-action="clear-date"],
+#deleteDateButton,
+#clearDateButton,
+#removeDateButton{display:none!important}
+
+html[data-theme="dark"]{
+  --v25-bg:#10181d;
+  --v25-surface:#182329;
+  --v25-surface-2:#223038;
+  --v25-border:#607680;
+  --v25-text:#f3f7f9;
+  --v25-muted:#c7d3d8;
+  --v25-link:#9edcff;
+}
+html[data-theme="dark"] body{background:var(--v25-bg)!important;color:var(--v25-text)!important}
+html[data-theme="dark"] :is(.panel,.card,.settings-card,.workflow-card,.member-card,.member-direct-card,.today-entries-panel,.step-3-action-area,.desktop-save-button-dock,.admin-row,fieldset,details){background:var(--v25-surface)!important;color:var(--v25-text)!important;border-color:var(--v25-border)!important}
+html[data-theme="dark"] :is(.member-section,.member-subgrid,.table-wrap,.selection-summary,.status-card,.info-card,.hint-card,.action-card){background:var(--v25-surface-2)!important;color:var(--v25-text)!important;border-color:var(--v25-border)!important}
+html[data-theme="dark"] :is(h1,h2,h3,h4,h5,h6,strong,b,legend,label,.card-title,.panel-title,.member-name,.member-card-header,.flow-stage-heading){color:var(--v25-text)!important}
+html[data-theme="dark"] :is(p,small,.hint,.help-text,.muted,.subtitle,.description,.member-meta,.card-description,.panel-description){color:var(--v25-muted)!important}
+html[data-theme="dark"] :is(a,.link-button){color:var(--v25-link)!important}
+html[data-theme="dark"] :is(input,select,textarea){background:#0f181d!important;color:#fff!important;border-color:#718892!important}
+html[data-theme="dark"] :is(input,textarea)::placeholder{color:#b6c4ca!important;opacity:1!important}
+html[data-theme="dark"] table{color:var(--v25-text)!important}
+html[data-theme="dark"] :is(td,th){border-color:#51666f!important}
+html[data-theme="dark"] tbody tr:nth-child(even){background:#1e2b31!important}
+html[data-theme="dark"] :is(button,.button,.primary-button,.secondary-button){border-color:#718892!important}
+html[data-theme="dark"] button:disabled{color:#c1cbd0!important;background:#3b4a51!important;opacity:.78!important}
+html[data-theme="dark"] .member-status-action{background:#263840!important;color:#fff!important;border-color:#7c949e!important}
+html[data-theme="dark"] .member-status-action.status-present{background:#174d31!important;color:#effff6!important}
+html[data-theme="dark"] .member-status-action.status-excused{background:#644d13!important;color:#fff8dc!important}
+html[data-theme="dark"] .member-status-action.status-organization{background:#164b6a!important;color:#eef9ff!important}
+html[data-theme="dark"] .today-reset-copy{color:var(--v25-muted)!important}
+
+/* v26: ausgewaehlte Namen lesbar und rechte Aktionskarten wieder sticky */
+html[data-theme="dark"] #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action.selected),
+html[data-theme="dark"] #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action[aria-pressed="true"]){
+  background:#f4f8f9!important;
+  border-color:#31a95f!important;
+  color:#14242b!important;
+}
+html[data-theme="dark"] #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action.selected) :is(.member-name,strong,.member-meta,small,span),
+html[data-theme="dark"] #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action[aria-pressed="true"]) :is(.member-name,strong,.member-meta,small,span){
+  color:#14242b!important;
+  text-shadow:none!important;
+}
+html[data-theme="dark"] #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action.selected) .member-status-action,
+html[data-theme="dark"] #attendanceSelectionWorkspace .member-direct-card:has(.member-status-action[aria-pressed="true"]) .member-status-action{
+  color:#f7fbfc!important;
+}
+
+@media(min-width:901px){
+  #attendanceSelectionWorkspace>.action-column{
+    position:sticky!important;
+    top:112px!important;
+    align-self:start!important;
+    max-height:calc(100vh - 128px)!important;
+    overflow-y:auto!important;
+    scrollbar-gutter:stable!important;
+    z-index:12!important;
+  }
+}
+@media(max-width:900px){
+  #attendanceSelectionWorkspace>.action-column{
+    position:static!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
