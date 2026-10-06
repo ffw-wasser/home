@@ -209,3 +209,43 @@ Feuerwehr Wasser 6.0, 2026-10-06
 - Dadurch werden Feldpositionen, Seitenumbrueche und Vorlagenlayout nicht mehr durch den lokalen PDF-Renderer verschoben.
 - PDF-Vorschau vor dem Speichern bleibt erhalten.
 - Fehlermeldungen nach der Vorschau zeigen nun den konkreten Speicherfehler an.
+
+
+Feuerwehr Wasser 6.1, 2026-10-06
+- Doppelte Abschlusspruefung mit missverstaendlicher Anzeige Dokumentseiten 0 entfernt.
+- Nach der Datenerfassung wird direkt die PDF-Vorschau erzeugt.
+- Desktop und Windows laden das fertige ZIP immer direkt ueber den Browser herunter.
+- Alte oder abgelaufene Ordnerfreigaben koennen den ZIP-Download nicht mehr blockieren.
+- iPad verwendet weiterhin den nativen Teilen-/Speichern-Dialog.
+
+
+Feuerwehr Wasser 6.2, 2026-10-06
+- iPad: Auswahl uebernehmen und Anwesenheit vollstaendig sind nicht mehr am unteren Bildschirmrand fixiert.
+- Beide Aktionskarten stehen wieder im normalen Seiteninhalt untereinander.
+- Keine nebeneinanderliegenden schwebenden Aktionskarten mehr.
+
+
+Feuerwehr Wasser 6.3, 2026-10-06
+- iPad: Auswahl uebernehmen und Anwesenheit vollstaendig wieder fest am unteren Bildschirmrand.
+- Beide Aktionen stehen nebeneinander und bleiben beim Scrollen immer bedienbar.
+- Zusaetzlicher Leerraum am Seitenende verhindert, dass die Aktionsleiste Inhalte verdeckt.
+- Safe-Area-Abstaende fuer iPad-Raender werden beruecksichtigt.
+
+
+Feuerwehr Wasser 6.4, 2026-10-06
+- Fehler safeStorage.removeItem is not a function behoben.
+- Entwurfsdaten koennen nach erfolgreichem ZIP-Speichern wieder sauber entfernt werden.
+- Browser-, Sitzungs- und Speicher-Fallback unterstuetzen jetzt removeItem einheitlich.
+
+
+Feuerwehr Wasser 6.5, 2026-10-06
+- Abschluss ist auch mit einer noch gecachten alten safeStorage-Version fehlertolerant.
+- Entwurf wird notfalls direkt aus localStorage oder sessionStorage entfernt.
+- Service Worker laedt HTML, JavaScript und CSS bei Updates zuerst aus dem Netzwerk.
+- Alte Anwendungsskripte koennen dadurch nicht mehr dauerhaft aus dem Cache weiterlaufen.
+
+
+Feuerwehr Wasser 6.6, 2026-10-06
+- Cache-Kennung fuer config.js und operations.js hart geaendert.
+- Zusaetzliche Kompatibilitaetsfunktion direkt nach dem Laden von config.js.
+- safeStorage.removeItem steht dadurch auch bei gemischten alten und neuen Cache-Dateien bereit.

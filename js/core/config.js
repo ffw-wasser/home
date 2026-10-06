@@ -96,13 +96,15 @@ const safeStorage = (() => {
       return {
         persistent: candidate === window.localStorage,
         getItem: key => candidate.getItem(key),
-        setItem: (key, value) => candidate.setItem(key, value)
+        setItem: (key, value) => candidate.setItem(key, value),
+        removeItem: key => candidate.removeItem(key)
       };
     } catch (error) {}
   }
   return {
     persistent: false,
     getItem: key => Object.prototype.hasOwnProperty.call(memoryStorage, key) ? memoryStorage[key] : null,
-    setItem: (key, value) => { memoryStorage[key] = String(value); }
+    setItem: (key, value) => { memoryStorage[key] = String(value); },
+    removeItem: key => { delete memoryStorage[key]; }
   };
 })();

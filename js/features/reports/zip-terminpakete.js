@@ -73,33 +73,25 @@ function promptIpadTerminPackageSave(fileName,blob){
   });
 }
 async function saveTerminPackage(fileName,blob,overwriteRequired=false){
-  document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>node.remove());
+  document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>{try{node.close?.();}catch{}node.remove();});
   const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document));
-  // Auf iPad niemals zuerst einen eventuell alten Verzeichnis-Handle benutzen.
-  // Der explizite zweite Tipp öffnet zuverlässig den nativen Teilen-Dialog.
   if(isiOS){
     if(overwriteRequired)showToast("Korrektur: Im Dateien-Dialog die vorhandene ZIP mit gleichem Namen ersetzen.","warning");
     return promptIpadTerminPackageSave(fileName,blob);
   }
-  const handle=effectiveCsvDirectoryHandle?.()||effectivePdfDirectoryHandle?.()||null;
-  if(handle){
-    try{
-      if(await ensureDirectoryWritePermission(handle)){
-        const fileHandle=await handle.getFileHandle(fileName,{create:true});
-        const writable=await fileHandle.createWritable({keepExistingData:false});
-        await writable.write(blob);await writable.close();return "saved";
-      }
-      console.warn("Ordnerfreigabe wurde nicht erteilt, verwende Browser-Download.");
-    }catch(error){
-      console.error("Speichern in den gewaehlten Ordner fehlgeschlagen, verwende Browser-Download.",error);
-    }
-  }
-  if(overwriteRequired){
-    showToast("Zum Überschreiben bitte zuerst unter Einstellungen den Ordner für Terminpakete auswählen.","error");
+  // Desktop/Windows: immer als echten Browser-Download ausgeben. Ein alter oder
+  // abgelaufener Verzeichnis-Handle darf den ZIP-Download nicht mehr verhindern.
+  try{
+    if(!(blob instanceof Blob)||!blob.size)throw new Error("Das ZIP-Paket ist leer.");
+    downloadBlob(fileName,blob);
+    return "downloaded";
+  }catch(error){
+    console.error("ZIP-Download fehlgeschlagen",error);
+    showToast(`ZIP konnte nicht heruntergeladen werden: ${error?.message||"unbekannter Fehler"}`,"error");
     return "failed";
   }
-  try{downloadBlob(fileName,blob);return "downloaded";}catch(error){return "failed";}
 }
+
 async function packageFilesFromZip(file){const zip=await JSZip.loadAsync(file),files=[];for(const entry of Object.values(zip.files)){if(entry.dir||!/\.(csv|pdf)$/i.test(entry.name))continue;const blob=await entry.async("blob"),name=entry.name.split("/").pop();files.push(new File([blob],name,{type:/\.csv$/i.test(name)?"text/csv":"application/pdf",lastModified:file.lastModified||Date.now()}));}return files;}
 
 /* Probe-/Terminabschluss: nur ein ZIP-Paket nach außen speichern. */
@@ -149,8 +141,9 @@ window.finishOperationZip=async function(){
     const check={errors:Array.isArray(rawCheck.errors)?rawCheck.errors:[],warnings:Array.isArray(rawCheck.warnings)?rawCheck.warnings:[]};
     if(validationBox){validationBox.hidden=!(check.errors.length||check.warnings.length);validationBox.innerHTML=[...check.errors.map(x=>`<p class="error">${escapeHtml(x)}</p>`),...check.warnings.map(x=>`<p class="warning">${escapeHtml(x)}</p>`)].join("");}
     if(check.errors.length){showToast("Bitte die Pflichtangaben und Hinweise prüfen.","error");return;}
-    if(window.SmartWorkflow?.confirmOperation){if(!await window.SmartWorkflow.confirmOperation(d,check))return;}
-    else if(check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem fortfahren?"))return;
+    // Keine doppelte Abschlussprüfung: Die PDF-Vorschau ist jetzt die einzige
+    // verbindliche Prüfung. Dadurch ist "Dokumentseiten 0" nicht mehr missverständlich.
+    if(check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem PDF-Vorschau erstellen?"))return;
 
     const previous=editingOperationArchiveId?csvArchive.find(entry=>entry.id===editingOperationArchiveId):null;
     const stamp=(d.times.alarm||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})).replace(":","-");

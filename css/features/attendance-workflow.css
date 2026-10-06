@@ -1155,3 +1155,102 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 #operationPdfPreviewDialog footer{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;padding:10px 16px;background:#fff}
 #operationPdfPreviewDialog footer button{min-height:52px}
 @media(max-width:620px){#operationPdfPreviewDialog.operation-pdf-preview-dialog{width:calc(100vw - 10px);height:96vh}#operationPdfPreviewDialog header{display:grid}#operationPdfPreviewDialog footer{grid-template-columns:1fr}}
+
+/* FFW 6.2: iPad-Aktionskarten bleiben im Seiteninhalt und stehen untereinander. */
+@supports (-webkit-touch-callout:none){
+  @media (min-width:700px) and (max-width:1400px){
+    #attendanceSelectionWorkspace{padding-bottom:24px!important}
+    #attendanceSelectionWorkspace #saveButton:not([hidden]){
+      position:static!important;
+      inset:auto!important;
+      display:block!important;
+      width:100%!important;
+      max-width:none!important;
+      min-height:58px!important;
+      margin:14px 0 0!important;
+      transform:none!important;
+      box-shadow:none!important;
+    }
+    #attendanceView #step3ActionArea:not([hidden]){
+      position:static!important;
+      inset:auto!important;
+      display:block!important;
+      width:100%!important;
+      max-width:none!important;
+      min-height:0!important;
+      margin:14px 0 0!important;
+      padding:0!important;
+      transform:none!important;
+      box-shadow:none!important;
+    }
+    #attendanceView #step3ActionArea .step3-action-copy{display:block!important}
+    #attendanceView #step3ActionArea .step-3-action-button{
+      width:100%!important;
+      min-height:58px!important;
+      margin:12px 0 0!important;
+      box-shadow:none!important;
+    }
+  }
+}
+
+/* FFW 6.3: iPad-Aktionsleiste fest, nebeneinander und mit freiem Scroll-Ende. */
+@supports (-webkit-touch-callout:none){
+  @media (min-width:700px) and (max-width:1400px){
+    /* Der reservierte Leerraum verhindert, dass die feste Leiste am Seitenende Inhalte verdeckt. */
+    #attendanceSelectionWorkspace{
+      padding-bottom:calc(96px + env(safe-area-inset-bottom))!important;
+      scroll-padding-bottom:calc(96px + env(safe-area-inset-bottom))!important;
+    }
+    #attendanceSelectionWorkspace::after{
+      content:""!important;
+      display:block!important;
+      width:100%!important;
+      height:calc(82px + env(safe-area-inset-bottom))!important;
+      grid-column:1/-1!important;
+      flex:0 0 calc(82px + env(safe-area-inset-bottom))!important;
+      pointer-events:none!important;
+    }
+    #attendanceSelectionWorkspace #saveButton:not([hidden]){
+      position:fixed!important;
+      left:max(14px,env(safe-area-inset-left))!important;
+      right:auto!important;
+      top:auto!important;
+      bottom:max(12px,env(safe-area-inset-bottom))!important;
+      z-index:1201!important;
+      display:block!important;
+      width:calc(50vw - 21px - (env(safe-area-inset-left) / 2) - (env(safe-area-inset-right) / 2))!important;
+      max-width:none!important;
+      min-height:58px!important;
+      margin:0!important;
+      transform:none!important;
+      border-radius:12px!important;
+      box-shadow:0 10px 28px rgba(0,0,0,.38)!important;
+    }
+    #attendanceView #step3ActionArea:not([hidden]){
+      position:fixed!important;
+      left:auto!important;
+      right:max(14px,env(safe-area-inset-right))!important;
+      top:auto!important;
+      bottom:max(12px,env(safe-area-inset-bottom))!important;
+      z-index:1201!important;
+      display:block!important;
+      width:calc(50vw - 21px - (env(safe-area-inset-left) / 2) - (env(safe-area-inset-right) / 2))!important;
+      max-width:none!important;
+      min-height:58px!important;
+      margin:0!important;
+      padding:0!important;
+      border:0!important;
+      background:transparent!important;
+      transform:none!important;
+      box-shadow:none!important;
+    }
+    #attendanceView #step3ActionArea .step3-action-copy{display:none!important}
+    #attendanceView #step3ActionArea .step-3-action-button{
+      width:100%!important;
+      min-height:58px!important;
+      margin:0!important;
+      border-radius:12px!important;
+      box-shadow:0 10px 28px rgba(0,0,0,.38)!important;
+    }
+  }
+}
