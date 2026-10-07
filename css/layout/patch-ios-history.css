@@ -44,3 +44,67 @@
     bottom:calc(142px + env(safe-area-inset-bottom))!important;
   }
 }
+
+
+/* IPHONE-BUTTONS-V2-20261007 */
+@media (max-width: 600px) {
+  #attendanceView.workflow-stage-2 #saveButton,
+  #attendanceView.workflow-stage-2 #step3ActionArea {
+    position: fixed !important;
+    top: auto !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    z-index: 2200 !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+  }
+  #attendanceView.workflow-stage-2 #saveButton {
+    display: block !important;
+    left: 8px !important;
+    right: auto !important;
+    width: calc(50vw - 12px) !important;
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+    white-space: normal !important;
+    font-size: .82rem !important;
+    line-height: 1.1 !important;
+  }
+  #attendanceView.workflow-stage-2 #step3ActionArea {
+    display: block !important;
+    left: auto !important;
+    right: 8px !important;
+    width: calc(50vw - 12px) !important;
+    min-width: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  #attendanceView.workflow-stage-2 #step3ActionArea .step3-action-copy {
+    display: none !important;
+  }
+  #attendanceView.workflow-stage-2 #exportResetButton {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    margin: 0 !important;
+    padding: 6px 8px !important;
+    white-space: normal !important;
+    font-size: .82rem !important;
+    line-height: 1.1 !important;
+    box-sizing: border-box !important;
+  }
+  #attendanceView.workflow-stage-2 #attendanceSelectionWorkspace {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+  #attendanceView.workflow-stage-2 #cloudSyncButton {
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+}
