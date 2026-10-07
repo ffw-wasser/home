@@ -76,8 +76,6 @@
   addEventListener("resize", scheduleSync, { passive: true });
   addEventListener("orientationchange", () => setTimeout(scheduleSync, 150), { passive: true });
   document.addEventListener("DOMContentLoaded", scheduleSync, { once: true });
-  document.addEventListener("click", scheduleSync, true);
-  document.addEventListener("change", scheduleSync, true);
   document.addEventListener("attendance:updated", scheduleSync);
-  setInterval(scheduleSync, 1500);
+  new MutationObserver(scheduleSync).observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:["class","hidden"]});
 })();

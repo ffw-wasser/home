@@ -1282,3 +1282,6 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
     pointer-events:none!important;
   }
 }
+
+/* FFW 8.2: iPad-Touchstabilitaet */
+@media (min-width:700px) and (max-width:1400px) and (pointer:coarse){#attendanceSelectionWorkspace .member-status-action,#attendanceSelectionWorkspace .member-status-action:active,#attendanceSelectionWorkspace .member-status-action.selected{transform:none!important;transition:background-color .12s linear,border-color .12s linear,color .12s linear!important;-webkit-tap-highlight-color:transparent!important;touch-action:manipulation!important}#ipadAttendanceActionDock,#ipadAttendanceActionDock>#saveButton,#ipadAttendanceActionDock>#step3ActionArea,#ipadAttendanceActionDock .step-3-action-button{transform:none!important;transition:none!important;animation:none!important}html.ipad-attendance-dock-active #ipadAttendanceActionDock>#saveButton,html.ipad-attendance-dock-active #ipadAttendanceActionDock>#step3ActionArea{position:static!important;inset:auto!important;width:100%!important}}
