@@ -204,7 +204,23 @@ function saveQuickMemberStatus(id,status){
   if(!allowed.includes(status))return false;
   if(pendingMemberStatuses.get(id)===status)pendingMemberStatuses.delete(id);else pendingMemberStatuses.set(id,status);
   chosenMemberIds=new Set(pendingMemberStatuses.keys());
-  renderMembers();updateSelection();updateProbeWorkflow();
+
+  // iPad-Fix: Die Teilnehmerliste nicht bei jedem Antippen komplett neu aufbauen.
+  // Das verhindert, dass der gerade beruehrte Button unter dem Finger ersetzt wird
+  // und dadurch sichtbar hin- und herspringt oder einen zweiten Klick ausloest.
+  document.querySelectorAll(`#members [data-quick-member="${CSS.escape(String(id))}"]`).forEach(button=>{
+    const selected=pendingMemberStatuses.get(id)===button.dataset.quickStatus;
+    button.classList.toggle("selected",selected);
+    button.setAttribute("aria-pressed",String(selected));
+  });
+  const count=byId("memberCount");
+  if(count){
+    const recordedNames=new Set(todayEntries().flatMap(entry=>[entry.storedName,entry.displayName].filter(Boolean)));
+    const eligible=sessionType==="Ausschuss Sitzung"?members.filter(item=>item.committeeMember):sessionType==="Einsatz"?members.filter(item=>!item.ageDepartment):members;
+    const open=eligible.filter(item=>!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
+    count.textContent=`${chosenMemberIds.size} ausgewählt · ${open} offen`;
+  }
+  updateSelection();updateProbeWorkflow();
   return true;
 }
 function commitPendingMemberStatuses(){
