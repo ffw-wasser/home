@@ -1,1 +1,46 @@
 .page-access-gate-critical{min-height:100dvh;min-height:var(--ios-visual-height,100dvh);overflow:auto;-webkit-overflow-scrolling:touch}body.ios-password-keyboard-open .page-access-gate-critical{align-items:start!important;justify-content:center!important;padding-top:calc(var(--ios-visual-top,0px) + max(12px,env(safe-area-inset-top)))!important;padding-bottom:max(18px,env(safe-area-inset-bottom))!important}body.ios-password-keyboard-open .ios-keyboard-host{max-height:calc(var(--ios-visual-height,100dvh) - 24px)!important;overflow:auto!important}#pageAccessPin,#adminPin,#archivePin{scroll-margin:18px 0 28px;font-size:16px}.mobile-attendance-action-dock{position:fixed;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));z-index:2000;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-radius:16px;background:rgba(24,34,39,.96);box-shadow:0 12px 34px #0006}.mobile-attendance-action-dock[hidden]{display:none!important}.mobile-attendance-action-dock #saveButton,.mobile-attendance-action-dock #step3ActionArea{position:static!important;inset:auto!important;width:100%!important;margin:0!important;transform:none!important}.mobile-attendance-action-dock #step3ActionArea .step3-action-copy{display:none!important}.mobile-attendance-action-dock #exportResetButton{width:100%!important;min-height:58px!important;margin:0!important}html.mobile-attendance-dock-active #attendanceSelectionWorkspace{padding-bottom:calc(100px + env(safe-area-inset-bottom))!important}html.mobile-attendance-dock-active #cloudSyncButton{bottom:calc(96px + env(safe-area-inset-bottom))!important}@media(max-width:520px){.mobile-attendance-action-dock{grid-template-columns:1fr}html.mobile-attendance-dock-active #attendanceSelectionWorkspace{padding-bottom:calc(155px + env(safe-area-inset-bottom))!important}html.mobile-attendance-dock-active #cloudSyncButton{bottom:calc(150px + env(safe-area-inset-bottom))!important}}
+
+
+/* BUTTONS-HOTFIX-20261007 */
+@media (max-width:760px){
+  #attendanceView.workflow-stage-2 #saveButton{
+    display:block!important;
+    position:fixed!important;
+    left:10px!important;
+    right:10px!important;
+    bottom:calc(74px + env(safe-area-inset-bottom))!important;
+    z-index:2100!important;
+    width:calc(100vw - 20px)!important;
+    min-height:56px!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.32)!important;
+  }
+  #attendanceView.workflow-stage-2 #step3ActionArea{
+    display:block!important;
+    position:fixed!important;
+    left:10px!important;
+    right:10px!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+    z-index:2099!important;
+    width:calc(100vw - 20px)!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+  }
+  #attendanceView.workflow-stage-2 #step3ActionArea .step3-action-copy{display:none!important}
+  #attendanceView.workflow-stage-2 #exportResetButton{
+    display:block!important;
+    width:100%!important;
+    min-height:56px!important;
+    margin:0!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.32)!important;
+  }
+  #attendanceView.workflow-stage-2 #attendanceSelectionWorkspace{
+    padding-bottom:calc(160px + env(safe-area-inset-bottom))!important;
+  }
+  #attendanceView.workflow-stage-2 #cloudSyncButton{
+    bottom:calc(142px + env(safe-area-inset-bottom))!important;
+  }
+}
