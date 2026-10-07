@@ -1,28 +1,33 @@
 "use strict";
 (() => {
   let busy = false;
-  const reportPdfBlobs = new Map();
-  const normalizeBase = name => String(name || "").split("/").pop().replace(/\.(zip|csv|pdf)$/i, "").toLocaleLowerCase("de-DE");
+  const pdfByReportId = new Map();
   const clone = value => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  const cleanName = name => String(name || "").split("/").pop();
+  const baseName = name => cleanName(name).replace(/\.zip$/i, "");
+  const logicalBase = name => baseName(name)
+    .replace(/_korrigiert-v\d+$/i, "")
+    .replace(/_korrigiert$/i, "")
+    .toLocaleLowerCase("de-DE");
 
-  async function listChildren(root, itemId) {
-    const found = [];
+  async function children(root, itemId) {
+    const result = [];
     let url = `https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(itemId)}/children?$select=id,name,file,folder,lastModifiedDateTime,size`;
     while (url) {
       const response = await odFetch(url);
       const data = await response.json();
-      found.push(...(data.value || []));
+      result.push(...(data.value || []));
       url = data["@odata.nextLink"] || "";
     }
-    return found;
+    return result;
   }
 
-  async function listReportFiles(root, itemId = root.id, depth = 0) {
+  async function zipFiles(root, itemId = root.id, depth = 0) {
     if (depth > 4) return [];
     const result = [];
-    for (const item of await listChildren(root, itemId)) {
-      if (item.folder) result.push(...await listReportFiles(root, item.id, depth + 1));
-      else if (item.file && /\.(zip|csv|pdf)$/i.test(item.name)) result.push(item);
+    for (const item of await children(root, itemId)) {
+      if (item.folder) result.push(...await zipFiles(root, item.id, depth + 1));
+      else if (item.file && /\.zip$/i.test(item.name)) result.push(item);
     }
     return result;
   }
@@ -31,80 +36,45 @@
     return (await odFetch(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(item.id)}/content`)).blob();
   }
 
-  function normalizeArchiveItem(item) {
-    const rows = CsvEngine.parse(item.content || "");
-    const first = rows[0] || {};
+  function counts(rows) {
     return {
-      ...item,
-      sessionType: item.sessionType || first.sessionType || "Probe",
-      topic: item.topic || first.topic || "",
-      oneDriveLive: true,
-      hasImportedPdf: false
+      presentCount: rows.filter(row => row.status === "Anwesend").length,
+      excusedCount: rows.filter(row => row.status === "Entschuldigt").length,
+      missingCount: rows.filter(row => row.status === "Fehlt").length
     };
   }
 
-  function itemFromCsv(name, content, createdAt, operationData = null) {
+  async function reportFromZip(root, file) {
+    const zip = await JSZip.loadAsync(await itemBlob(root, file));
+    const infoEntry = zip.file("paket-info.json");
+    const info = infoEntry ? JSON.parse(await infoEntry.async("string")) : {};
+    const csvEntry = (info.csvName && zip.file(info.csvName)) || Object.values(zip.files).find(entry => !entry.dir && /\.csv$/i.test(entry.name));
+    if (!csvEntry) return null;
+    const content = await csvEntry.async("string");
     const rows = CsvEngine.parse(content);
     if (!rows.length) return null;
     const first = rows[0];
-    const key = `${first.date || createdAt || ""}|${first.sessionType || "Probe"}|${first.topic || ""}|${name}`;
+    const reportDate = first.date || String(info.createdAt || file.lastModifiedDateTime || "").slice(0, 10);
+    const id = `onedrive-zip:${file.id}`;
+    const pdfEntry = (info.pdfName && zip.file(info.pdfName)) || Object.values(zip.files).find(entry => !entry.dir && /\.pdf$/i.test(entry.name));
+    if (pdfEntry) pdfByReportId.set(id, await pdfEntry.async("blob"));
+    const operationData = info.operationData ? clone(info.operationData) : undefined;
+    if (operationData && reportDate) operationData.date = reportDate;
     return {
-      id: `onedrive:${key}`,
-      fileName: name,
-      pdfFileName: name.replace(/\.csv$/i, ".pdf"),
+      id,
+      packageFileName: file.name,
+      fileName: cleanName(info.csvName || csvEntry.name),
+      pdfFileName: cleanName(info.pdfName || (info.csvName || csvEntry.name).replace(/\.csv$/i, ".pdf")),
       content,
-      sessionType: first.sessionType || (operationData ? "Einsatz" : "Probe"),
+      sessionType: first.sessionType || info.type || "Probe",
       topic: first.topic || (operationData ? [operationData.type, operationData.location].filter(Boolean).join(" · ") : ""),
-      createdAt: createdAt || new Date().toISOString(),
-      operationData: operationData || undefined,
+      createdAt: file.lastModifiedDateTime || info.createdAt || new Date().toISOString(),
+      originalReportDate: reportDate,
+      operationData,
       oneDriveLive: true,
-      hasImportedPdf: false
+      hasImportedPdf: Boolean(pdfEntry),
+      ...counts(rows)
     };
-  }
-
-  async function reportsFromFiles(root) {
-    const files = await listReportFiles(root);
-    const loosePdfs = new Map();
-    const reports = [];
-    for (const file of files.filter(item => /\.pdf$/i.test(item.name))) {
-      loosePdfs.set(normalizeBase(file.name), file);
-    }
-    for (const file of files) {
-      try {
-        if (/\.csv$/i.test(file.name)) {
-          const content = await (await itemBlob(root, file)).text();
-          const item = itemFromCsv(file.name, content, file.lastModifiedDateTime);
-          if (item) {
-            const pdf = loosePdfs.get(normalizeBase(file.name));
-            if (pdf) reportPdfBlobs.set(item.id, await itemBlob(root, pdf));
-            reports.push(item);
-          }
-        } else if (/\.zip$/i.test(file.name) && typeof JSZip === "function") {
-          const zip = await JSZip.loadAsync(await itemBlob(root, file));
-          const infoEntry = zip.file("paket-info.json");
-          const info = infoEntry ? JSON.parse(await infoEntry.async("string")) : null;
-          const csvEntry = (info?.csvName && zip.file(info.csvName)) || Object.values(zip.files).find(entry => !entry.dir && /\.csv$/i.test(entry.name));
-          if (!csvEntry) continue;
-          const content = await csvEntry.async("string");
-          const csvName = (info?.csvName || csvEntry.name).split("/").pop();
-          const item = itemFromCsv(csvName, content, info?.createdAt || file.lastModifiedDateTime, info?.operationData || null);
-          if (!item) continue;
-          item.packageFileName = file.name;
-          const pdfEntry = (info?.pdfName && zip.file(info.pdfName)) || Object.values(zip.files).find(entry => !entry.dir && /\.pdf$/i.test(entry.name));
-          if (pdfEntry) reportPdfBlobs.set(item.id, await pdfEntry.async("blob"));
-          reports.push(item);
-        }
-      } catch (error) {
-        console.error("OneDrive-Berichtsdatei konnte nicht gelesen werden", file.name, error);
-      }
-    }
-    return reports;
-  }
-
-  function reportKey(item) {
-    const rows = CsvEngine.parse(item.content || "");
-    const first = rows[0] || {};
-    return [first.date || "", item.sessionType || first.sessionType || "", item.topic || first.topic || "", normalizeBase(item.fileName)].join("|");
   }
 
   async function loadOneDriveHistory({ manual = false } = {}) {
@@ -116,29 +86,37 @@
       return;
     }
     busy = true;
-    reportPdfBlobs.clear();
+    pdfByReportId.clear();
     document.documentElement.classList.add("onedrive-history-loading");
     try {
       const root = await oneDriveResolveSharedRoot();
-      let stateItems = [];
-      try {
-        const state = await oneDriveReadState();
-        stateItems = Array.isArray(state?.csvArchive) ? state.csvArchive.map(item => normalizeArchiveItem(clone(item))) : [];
-      } catch (error) {
-        console.warn("OneDrive-Datendatei enthält keine lesbare Historie", error);
+      const files = await zipFiles(root);
+      const newestByLogicalName = new Map();
+      for (const file of files) {
+        const key = logicalBase(file.name);
+        const current = newestByLogicalName.get(key);
+        if (!current || String(file.lastModifiedDateTime || "") > String(current.lastModifiedDateTime || "")) newestByLogicalName.set(key, file);
       }
-      const fileItems = await reportsFromFiles(root);
-      const merged = new Map();
-      for (const item of [...stateItems, ...fileItems]) merged.set(reportKey(item), item);
-      csvArchive = [...merged.values()].sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+      const reports = [];
+      for (const file of newestByLogicalName.values()) {
+        try {
+          const report = await reportFromZip(root, file);
+          if (report) reports.push(report);
+        } catch (error) {
+          console.error("ZIP-Terminpaket konnte nicht gelesen werden", file.name, error);
+        }
+      }
+      // Ausschließlich die aktuell in OneDrive vorhandenen ZIP-Pakete anzeigen.
+      // Lokale Archiveinträge und die csvArchive-Kopie aus feuerwehr-wasser-daten.json werden bewusst ignoriert.
+      csvArchive = reports.sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
       renderHistory?.();
       renderStatistics?.();
-      if (manual) showToast(`Historie aus OneDrive geladen: ${csvArchive.length} Bericht${csvArchive.length === 1 ? "" : "e"}.`);
+      if (manual) showToast(`Historie aus ${files.length} OneDrive-ZIP-Datei${files.length === 1 ? "" : "en"} geladen.`);
     } catch (error) {
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
       csvArchive = [];
       renderHistory?.();
-      showToast("Historie konnte nicht aus OneDrive geladen werden.", "error");
+      showToast("Historie konnte nicht aus den OneDrive-ZIP-Dateien geladen werden.", "error");
     } finally {
       busy = false;
       document.documentElement.classList.remove("onedrive-history-loading");
@@ -146,9 +124,5 @@
   }
 
   window.loadOneDriveHistory = loadOneDriveHistory;
-  window.loadOneDriveHistoryPdf = async item => reportPdfBlobs.get(item?.id) || null;
-  document.addEventListener("visibilitychange", () => {
-    const view = document.getElementById("settingsHistoryView");
-    if (!document.hidden && view && !view.hidden) loadOneDriveHistory();
-  });
+  window.loadOneDriveHistoryPdf = async item => pdfByReportId.get(item?.id) || null;
 })();

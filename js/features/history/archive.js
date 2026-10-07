@@ -239,7 +239,7 @@ async function saveArchiveCorrection(){
   if(!archiveCorrectionState)return;
   const {item,rows}=archiveCorrectionState,index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
   const status=byId("correctionStatus").value,role=status==="Anwesend"?byId("correctionRole").value.trim():"";
-  const correctedDate=byId("correctionDate")?.value||row.date;
+  const correctedDate=historyDateFromItem(item)||row.date;
   if(!correctedDate)return showToast("Bitte einen gültigen Probetermin auswählen.","error");
   const isGeneral=(item.sessionType||rows[0]?.sessionType)==="Allgemeine Probe";
   if(status==="Anwesend"&&isGeneral&&!role){
