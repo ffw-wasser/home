@@ -17,19 +17,54 @@ function statisticsRolesFromValue(value){
 function statisticsRoleRelevant(row){return new Set(["Allgemeine Probe","Einsatz"]).has(String(row?.sessionType||"").trim());}
 function statisticsAssignmentCount(rows){return rows.filter(row=>row.status==="Anwesend"&&statisticsRoleRelevant(row)).reduce((sum,row)=>sum+statisticsRolesFromValue(row.role).length,0);}
 
+function statisticsParseCsvMatrix(content){
+  const source=String(content||"").replace(/^\uFEFF/,"");
+  const matrix=[];let row=[],cell="",quoted=false;
+  for(let i=0;i<source.length;i++){
+    const ch=source[i],next=source[i+1];
+    if(ch==='"'&&quoted&&next==='"'){cell+='"';i++;}
+    else if(ch==='"')quoted=!quoted;
+    else if(ch===';'&&!quoted){row.push(cell);cell="";}
+    else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&next==='\n')i++;row.push(cell);if(row.some(value=>value!==""))matrix.push(row);row=[];cell="";}
+    else cell+=ch;
+  }
+  row.push(cell);if(row.some(value=>value!==""))matrix.push(row);return matrix;
+}
+function statisticsOperationRowsFromCsv(item){
+  const matrix=statisticsParseCsvMatrix(item?.content||"");
+  if(matrix.length<2)return [];
+  const headers=matrix[0].map(value=>String(value||"").trim().toLocaleLowerCase("de-DE"));
+  const index=name=>headers.indexOf(String(name).toLocaleLowerCase("de-DE"));
+  if(index("Einsatzart")<0&&index("Alarmzeit")<0)return [];
+  const value=(row,name)=>{const i=index(name);return i>=0?String(row[i]||"").trim():"";};
+  return matrix.slice(1).map(row=>{
+    const name=value(row,"Name");
+    const type=value(row,"Einsatzart")||String(item?.operationData?.type||"").trim()||"Einsatz";
+    const location=value(row,"Einsatzstelle")||String(item?.operationData?.location||"").trim();
+    return {date:value(row,"Datum")||String(item?.operationData?.date||item?.createdAt||"").slice(0,10),time:value(row,"Alarmzeit")||String(item?.operationData?.times?.alarm||""),name,sessionType:"Einsatz",status:"Anwesend",role:value(row,"Funktion"),topic:[type,location].filter(Boolean).join(" · "),vehicle:value(row,"Fahrzeug / Reserve"),operationId:item?.operationData?.id||item?.id||""};
+  }).filter(row=>row.name);
+}
 function statisticsOperationRows(item){
   const data=item?.operationData;
-  if(item?.sessionType!=="Einsatz"||!data)return [];
+  if(String(item?.sessionType||"").trim()!=="Einsatz"&&!data)return [];
+  const members=[...new Set(Array.isArray(data?.members)?data.members:[])];
+  if(!members.length)return statisticsOperationRowsFromCsv(item);
   const date=String(data.date||item.createdAt||"").slice(0,10);
   const time=String(data.times?.alarm||"");
   const topic=[data.type,data.location].filter(Boolean).join(" · ")||item.topic||"Einsatz";
   const assignments=data.assignments||{},roles=data.assignmentRoles||{};
   const atueName=String(data.atuePerson||"").trim();
-  return [...new Set(Array.isArray(data.members)?data.members:[])].map(name=>{
+  return members.map(name=>{
     const normalizedName=String(name||"").trim();
     const role=String(roles[normalizedName]||(atueName&&normalizedName===atueName?"ATÜ":""));
     return {date,time,name:normalizedName,sessionType:"Einsatz",status:"Anwesend",role,topic,vehicle:assignments[normalizedName]||"",operationId:data.id||item.id||""};
   }).filter(row=>row.name);
+}
+function statisticsOperationLabel(data){
+  const structured=String(data?.item?.operationData?.type||"").trim();
+  if(structured)return structured;
+  const topic=String(data?.item?.topic||data?.rows?.[0]?.topic||"").trim();
+  return topic?topic.split(" · ")[0]:"Einsatz";
 }
 
 function statisticsIsOperation(data){
@@ -83,7 +118,7 @@ function ensureStatisticsCharts(){
 }
 function renderStatisticsCharts(yearData,presentRows){
   ensureStatisticsCharts();
-  const types=new Map(),operationTypes=new Map(),roles=new Map();yearData.filter(data=>!statisticsIsOperation(data)).forEach(data=>{const type=data.rows[0]?.sessionType||data.item.sessionType||"Unbekannt";types.set(type,(types.get(type)||0)+1);});yearData.filter(statisticsIsOperation).forEach(data=>{const type=data.item.operationData?.type||data.rows[0]?.topic||"Einsatz";operationTypes.set(type,(operationTypes.get(type)||0)+1);});presentRows.filter(statisticsRoleRelevant).forEach(row=>statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1)));
+  const types=new Map(),operationTypes=new Map(),roles=new Map();yearData.filter(data=>!statisticsIsOperation(data)).forEach(data=>{const type=data.rows[0]?.sessionType||data.item.sessionType||"Unbekannt";types.set(type,(types.get(type)||0)+1);});yearData.filter(statisticsIsOperation).forEach(data=>{const type=statisticsOperationLabel(data);operationTypes.set(type,(operationTypes.get(type)||0)+1);});presentRows.filter(statisticsRoleRelevant).forEach(row=>statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1)));
   const panel=byId("statisticsVisualDashboard");if(!panel)return;panel.querySelector("[data-chart-types]").innerHTML=renderDonutChart(statisticsChartEntries(types),"Verteilung der Übungen und Sitzungen");panel.querySelector("[data-chart-operations]").innerHTML=renderDonutChart(statisticsChartEntries(operationTypes),"Verteilung der Einsätze");panel.querySelector("[data-chart-months]").innerHTML=renderMonthlyColumns(yearData.filter(data=>!statisticsIsOperation(data)),"Proben und Sitzungen je Monat");panel.querySelector("[data-chart-roles]").innerHTML=renderBarChart(statisticsChartEntries(roles),"Verteilung der Funktionen aus Proben und Einsätzen","#176b36");
 }
 function renderIndividualStatisticsCharts(rows){
@@ -109,7 +144,7 @@ function renderSeparatedOperationStatistics(yearData){
   ensureOperationStatisticsSections();
   const operations=yearData.filter(statisticsIsOperation);
   const rows=operations.flatMap(data=>data.rows).filter(row=>row.status==="Anwesend");
-  const types=new Map();operations.forEach(data=>{const label=data.item.operationData?.type||data.rows[0]?.topic||"Einsatz";types.set(label,(types.get(label)||0)+1);});
+  const types=new Map();operations.forEach(data=>{const label=statisticsOperationLabel(data);types.set(label,(types.get(label)||0)+1);});
   const panel=byId("statisticsOperationSummary");if(!panel)return;
   panel.querySelector("[data-operation-count]").textContent=operations.length;
   panel.querySelector("[data-operation-participations]").textContent=operations.length?(rows.length/operations.length).toFixed(1).replace(".",","):"–";
