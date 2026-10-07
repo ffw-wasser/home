@@ -239,7 +239,7 @@ async function saveArchiveCorrection(){
   if(!archiveCorrectionState)return;
   const {item,rows}=archiveCorrectionState,index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
   const status=byId("correctionStatus").value,role=status==="Anwesend"?byId("correctionRole").value.trim():"";
-  const correctedDate=historyDateFromItem(item)||row.date;
+  const correctedDate=byId("correctionDate")?.value||row.date;
   if(!correctedDate)return showToast("Bitte einen gültigen Probetermin auswählen.","error");
   const isGeneral=(item.sessionType||rows[0]?.sessionType)==="Allgemeine Probe";
   if(status==="Anwesend"&&isGeneral&&!role){
@@ -428,7 +428,7 @@ async function openHistoryPdf(id){
     if(stored){showHistoryPdfPreview(stored,operationName);return;}
     showToast("Für diesen Einsatz fehlen strukturierte Einsatzdaten und ein gespeichertes Einsatz-PDF.","error");return;
   }
-  const imported=item.oneDriveLive?await window.loadOneDriveHistoryPdf?.(item):(item.hasImportedPdf?await loadImportedReportPdf?.(id):null);
+  const imported=item.hasImportedPdf?await loadImportedReportPdf?.(id):null;
   if(imported){
     const fileName=item.pdfFileName||item.fileName.replace(/\.csv$/i,".pdf");
     showHistoryPdfPreview(imported,fileName);
