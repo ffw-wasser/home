@@ -75,7 +75,7 @@ function renderMembers() {
 function updatePrimaryAction() {
   const button=byId("exportResetButton"),count=todayEntries().length,hasEntries=count>0;
   if(!button)return;
-  button.textContent=hasEntries?`Teilnahme gespeichert · ${count} ${count===1?"Person":"Personen"} · Weiter zu Schritt 3 →`:"Teilnahme speichern, dann weiter zu Schritt 3 →";
+  button.textContent="Weiter zu Schritt 3";
   button.disabled=!hasEntries;
   button.title=hasEntries?(sessionType==="Allgemeine Probe"?"Taktik öffnen und Probe abschließen":"Probe abschließen"):"Mindestens eine Teilnahme erfassen";
   const summary=byId("step3ActionSummary");
