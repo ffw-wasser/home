@@ -1,0 +1,65 @@
+/* iPhone-Aktionsdock V3: beide Originalaktionen in einem gemeinsamen Container. */
+@media (max-width:600px) {
+  #iphoneAttendanceActionDock.iphone-attendance-action-dock {
+    position:fixed!important;
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+    z-index:2300!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:8px!important;
+    width:auto!important;
+    height:auto!important;
+    margin:0!important;
+    padding:8px!important;
+    border:1px solid rgba(255,255,255,.9)!important;
+    border-radius:15px!important;
+    background:rgba(28,38,43,.97)!important;
+    box-shadow:0 12px 32px rgba(0,0,0,.4)!important;
+    box-sizing:border-box!important;
+  }
+  #iphoneAttendanceActionDock[hidden]{display:none!important}
+  #iphoneAttendanceActionDock #saveButton,
+  #iphoneAttendanceActionDock #step3ActionArea,
+  #iphoneAttendanceActionDock #exportResetButton {
+    position:static!important;
+    inset:auto!important;
+    left:auto!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    margin:0!important;
+    transform:none!important;
+    box-sizing:border-box!important;
+  }
+  #iphoneAttendanceActionDock #saveButton,
+  #iphoneAttendanceActionDock #exportResetButton {
+    display:block!important;
+    padding:6px 7px!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    font-size:.78rem!important;
+    line-height:1.08!important;
+  }
+  #iphoneAttendanceActionDock #step3ActionArea {
+    display:block!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  #iphoneAttendanceActionDock #step3ActionArea .step3-action-copy {display:none!important}
+  html.iphone-action-dock-active #attendanceSelectionWorkspace {
+    padding-bottom:calc(88px + env(safe-area-inset-bottom))!important;
+  }
+  html.iphone-action-dock-active #cloudSyncButton {
+    bottom:calc(82px + env(safe-area-inset-bottom))!important;
+  }
+}
