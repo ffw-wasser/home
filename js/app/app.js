@@ -83,7 +83,7 @@ function ensureSettingsNavigation(){
       if(pageButton.hasAttribute("data-archive-protected")&&!adminUnlocked)return showView("archiveLoginView");
       showView(target);
       if(target==="settingsStatisticsView")renderStatistics();
-      if(target==="settingsHistoryView")renderHistory();
+      if(target==="settingsHistoryView"){renderHistory();window.loadOneDriveHistory?.();}
       if(target==="settingsFilesView"){ensurePdfFolderControls();ensureArchiveStorageCenter();renderArchive();}
       pendingSettingsTarget="";
     });

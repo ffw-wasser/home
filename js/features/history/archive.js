@@ -428,7 +428,7 @@ async function openHistoryPdf(id){
     if(stored){showHistoryPdfPreview(stored,operationName);return;}
     showToast("Für diesen Einsatz fehlen strukturierte Einsatzdaten und ein gespeichertes Einsatz-PDF.","error");return;
   }
-  const imported=item.hasImportedPdf?await loadImportedReportPdf?.(id):null;
+  const imported=item.oneDriveLive?await window.loadOneDriveHistoryPdf?.(item):(item.hasImportedPdf?await loadImportedReportPdf?.(id):null);
   if(imported){
     const fileName=item.pdfFileName||item.fileName.replace(/\.csv$/i,".pdf");
     showHistoryPdfPreview(imported,fileName);
