@@ -1,4 +1,13 @@
 const pendingMemberStatuses=new Map();
+function syncStep3ButtonState(){
+  const button=byId("exportResetButton");
+  if(!button)return;
+  const hasUnappliedSelection=pendingMemberStatuses.size>0;
+  const hasSavedAttendance=todayEntries().length>0;
+  button.disabled=hasUnappliedSelection||!hasSavedAttendance;
+  button.setAttribute("aria-disabled",String(button.disabled));
+  button.title=hasUnappliedSelection?"Bitte zuerst die Auswahl übernehmen.":"";
+}
 function fitMemberLastNames(){
   const labels=[...document.querySelectorAll("#attendanceSelectionWorkspace .member-last-name")];
   if(!labels.length)return;
@@ -105,6 +114,7 @@ function updateSelection() {
   document.querySelector(".current-selection")?.classList.toggle("training-selection", isTraining);
   if(byId("saveButton"))byId("saveButton").textContent=`Auswahl übernehmen (${pendingMemberStatuses.size})`;
   if(byId("saveButton"))byId("saveButton").disabled=pendingMemberStatuses.size===0;
+  syncStep3ButtonState();
   if(byId("roleSaveButton"))byId("roleSaveButton").disabled = !(sessionType === "Allgemeine Probe" && selected && chosenRole);
   updateProbeWorkflow();
 }
@@ -146,7 +156,7 @@ function renderEntries() {
 function renderAdmin() {
   members = sortMembers(members);
   byId("adminMemberCount").textContent = members.length;
-  byId("exportResetButton").disabled = todayEntries().length === 0;
+  syncStep3ButtonState();
   const targets = getRoleTargets();
   const targetBox = byId("roleTargetInputs");
   if (targetBox) targetBox.innerHTML = ROLE_GROUPS.map(group => `<fieldset class="role-target-group role-theme-${group.key}"><legend>${escapeHtml(group.title)}</legend>${group.roles.map(role => `<label><span>${escapeHtml(role)}</span><input type="number" min="0" max="99" step="1" inputmode="numeric" data-role-target="${escapeHtml(role)}" value="${targets[role]}"><small>× pro Jahr</small></label>`).join("")}</fieldset>`).join("");
@@ -661,6 +671,7 @@ function ensureStagedHomeFlow(){
     step3Button.addEventListener("click",event=>{
       if(homeFlowStage!==2)return;
       event.preventDefault();event.stopImmediatePropagation();
+      if(pendingMemberStatuses.size)return showToast("Bitte zuerst die Auswahl übernehmen.","error");
       if(!todayEntries().length)return showToast("Bitte mindestens eine Teilnahme erfassen.","error");
       if(sessionType==="Einsatz"){
         setHomeFlowStage(3);
