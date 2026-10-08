@@ -66,11 +66,11 @@
     };
     const matrix=parseCsvMatrix(content),headers=(matrix[0]||[]).map(value=>String(value||"").trim()),values=matrix[1]||[];
     const headerIndex = name => headers.findIndex(header=>header.toLocaleLowerCase("de-DE")===name.toLocaleLowerCase("de-DE"));
-    const isOperation = headerIndex("Einsatzart")>=0 || headerIndex("Alarmzeit")>=0;
+    const isOperation = headerIndex("Einsatzart")>=0 || headerIndex("Alarmzeit")>=0 || Boolean(info.operationData) || info.type==="Einsatz";
     const rows = isOperation ? [] : CsvEngine.parse(content);
     const first = rows[0] || {};
     const valueFor = name => { const index=headerIndex(name); return index>=0 ? String(values[index]||"").trim() : ""; };
-    const reportDate = (isOperation ? valueFor("Datum") : first.date) || String(info.createdAt || file.lastModifiedDateTime || "").slice(0, 10);
+    const reportDate = [isOperation ? valueFor("Datum") : first.date,info.operationData?.date,info.createdAt,file.lastModifiedDateTime].map(CsvEngine.normalizeDate).find(Boolean)||"";
     const detectedOperationData = isOperation ? {
       date: reportDate,
       type: valueFor("Einsatzart") || "Einsatz",

@@ -1,5 +1,5 @@
 let selectedStatisticsYear=String(new Date().getFullYear());
-function availableStatisticsYears(){const years=new Set([String(new Date().getFullYear())]);statisticsArchiveData().forEach(data=>{const year=String(data.rows[0]?.date||data.item.createdAt||"").slice(0,4);if(/^\d{4}$/.test(year))years.add(year);});return [...years].sort((a,b)=>b.localeCompare(a));}
+function availableStatisticsYears(){const years=new Set([String(new Date().getFullYear())]);statisticsArchiveData().forEach(data=>{const year=data.date.slice(0,4);if(/^\d{4}$/.test(year))years.add(year);});return [...years].sort((a,b)=>b.localeCompare(a));}
 function renderStatisticsYearSelect(){const select=byId("statisticsYearSelect");if(!select)return;const years=availableStatisticsYears();if(!years.includes(selectedStatisticsYear))selectedStatisticsYear=years[0];select.innerHTML=years.map(year=>`<option value="${year}"${year===selectedStatisticsYear?" selected":""}>${year}</option>`).join("");}
 function parseCsvRows(content) { return CsvEngine.parse(content); }
 function statisticsRolesFromValue(value){
@@ -46,7 +46,7 @@ function statisticsOperationRowsFromCsv(item){
 }
 function statisticsOperationRows(item){
   const data=item?.operationData;
-  if(String(item?.sessionType||"").trim()!=="Einsatz"&&!data)return [];
+  if(String(item?.sessionType||"").trim()!=="Einsatz"&&!data)return statisticsOperationRowsFromCsv(item);
   const members=[...new Set(Array.isArray(data?.members)?data.members:[])];
   if(!members.length)return statisticsOperationRowsFromCsv(item);
   const date=String(data.date||item.createdAt||"").slice(0,10);
@@ -70,13 +70,17 @@ function statisticsOperationLabel(data){
 function statisticsIsOperation(data){
   const item=data?.item||data||{};
   const rowType=data?.rows?.[0]?.sessionType||"";
-  return Boolean(item.operationData)||String(item.sessionType||"").trim()==="Einsatz"||String(rowType).trim()==="Einsatz";
+  return data?.operation===true||Boolean(item.operationData)||String(item.sessionType||"").trim()==="Einsatz"||String(rowType).trim()==="Einsatz";
 }
 function statisticsArchiveData() {
   return csvArchive.map(item => {
     const operationRows=statisticsOperationRows(item);
-    return {item,rows:operationRows.length?operationRows:parseCsvRows(item.content)};
-  }).filter(data => data.rows.length);
+    const rows=operationRows.length?operationRows:parseCsvRows(item.content);
+    const headers=statisticsParseCsvMatrix(item.content)[0]||[];
+    const operation=statisticsIsOperation({item,rows})||headers.some(value=>["einsatzart","alarmzeit"].includes(String(value).trim().toLocaleLowerCase("de-DE")));
+    const date=[item.operationData?.date,...rows.map(row=>row.date),item.originalReportDate,item.createdAt].map(CsvEngine.normalizeDate).find(Boolean)||"";
+    return {item,date,operation,rows:rows.filter(row=>String(row.name||"").trim()).map(row=>({...row,date:CsvEngine.normalizeDate(row.date)||date,name:String(row.name).trim()}))};
+  }).filter(data => data.rows.length||data.operation);
 }
 function statisticsMemberNameKey(value){
   return String(value||"").normalize("NFC").trim().replace(/\s+/g," ").replace(/\s*,\s*/g,", ").toLocaleLowerCase("de-DE");
@@ -127,7 +131,7 @@ function renderBarChart(entries,label,color="#2477bd"){
 }
 function renderMonthlyColumns(rows,label){
   const types=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Einsatz"],monthly=Object.fromEntries(types.map(type=>[type,Array(12).fill(0)])),seen=new Set();
-  rows.forEach(data=>{const date=String(data.rows[0]?.date||data.item.createdAt||""),month=Number(date.slice(5,7))-1;if(month<0||month>11)return;const key=data.item.id||`${date}|${data.item.topic||""}`;if(seen.has(key))return;seen.add(key);const type=data.rows[0]?.sessionType||data.item.sessionType||"Unbekannt";if(!monthly[type])monthly[type]=Array(12).fill(0);monthly[type][month]++;});
+  rows.forEach(data=>{const date=data.date,month=Number(date.slice(5,7))-1;if(month<0||month>11)return;const key=data.item.id||`${date}|${data.item.topic||""}`;if(seen.has(key))return;seen.add(key);const type=data.rows[0]?.sessionType||data.item.sessionType||"Unbekannt";if(!monthly[type])monthly[type]=Array(12).fill(0);monthly[type][month]++;});
   const totals=Array.from({length:12},(_,month)=>Object.values(monthly).reduce((sum,values)=>sum+(values[month]||0),0)),max=Math.max(1,...totals),months=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
   const activeTypes=Object.keys(monthly).filter(type=>monthly[type].some(Boolean));
   return `<div class="statistics-monthly-chart" role="img" aria-label="${escapeHtml(label)}"><div class="monthly-columns monthly-stacked-columns">${months.map((month,index)=>`<div class="monthly-group"><div class="monthly-stack" title="${month}: ${totals[index]} Aktivitäten">${activeTypes.map((type,typeIndex)=>monthly[type][index]?`<i style="height:${monthly[type][index]/max*100}%;background:${statisticsTypeColor(type,typeIndex)}"><span class="sr-only">${escapeHtml(type)}: ${monthly[type][index]}</span></i>`:"").join("")}</div><span>${month}</span></div>`).join("")}</div><div class="statistics-inline-legend">${activeTypes.map((type,index)=>`<span><i style="background:${statisticsTypeColor(type,index)}"></i>${escapeHtml(type)}</span>`).join("")}</div></div>`;
@@ -230,7 +234,7 @@ function renderStatistics() {
   populateIndividualMemberSelect();
   const year = selectedStatisticsYear || String(new Date().getFullYear());
   const all = statisticsArchiveData();
-  const yearData = all.filter(data => String(data.rows[0]?.date || data.item.createdAt || "").startsWith(year));
+  const yearData = all.filter(data => data.date.startsWith(year));
   const probeYearData=yearData.filter(data=>!statisticsIsOperation(data)),allYearRows=probeYearData.flatMap(data=>data.rows),presentYearRows=allYearRows.filter(row=>row.status==="Anwesend"),assignmentTotal=statisticsAssignmentCount(presentYearRows),changedRows=presentYearRows.filter(row=>/2\. Füllung:/.test(row.role||""));
   renderSeparatedOperationStatistics(yearData);
   renderStatisticsCharts(yearData,yearData.flatMap(data=>data.rows).filter(row=>row.status==="Anwesend"));
@@ -276,7 +280,7 @@ function renderStatistics() {
   agePresentRows.forEach(row => { if (ageVisits.has(row.name)) ageVisits.set(row.name, ageVisits.get(row.name) + 1); });
   byId("ageAttendanceRanking").innerHTML = [...ageVisits.entries()].sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0],"de")).map(([name,count],index)=>renderMetric("", `${index+1}. ${name}`, `${count} Teilnahme${count===1?"":"n"}`, count>0?"good":"neutral")).join("");
   byId("ageAttendanceEmpty").hidden = ageMembers.length > 0;
-  const dates = probeYearData.map(data => data.rows[0]?.date).filter(Boolean).sort();
+  const dates = probeYearData.map(data => data.date).filter(Boolean).sort();
   byId("statisticsPeriod").textContent = probeYearData.length ? `Auswertung ${year}${dates.length ? ` · ${dates[0]} bis ${dates[dates.length - 1]}` : ""}` : `Noch kein abgeschlossener Termin für ${year} im lokalen Archiv.`;
 
   const memberStats=activeMembers.map(member=>{
@@ -435,7 +439,7 @@ function renderIndividualStatistics(memberId) {
   const member = members.find(item => item.id === memberId);
   if (!member) { preview.hidden = true; button.disabled = true; return; }
   const year = selectedStatisticsYear || String(new Date().getFullYear());
-  const yearData = statisticsArchiveData().filter(data => String(data.rows[0]?.date || data.item.createdAt || "").startsWith(year));
+  const yearData = statisticsArchiveData().filter(data => data.date.startsWith(year));
   const personalEvents=member.ageDepartment?statisticsAgeEvents(yearData):yearData;
   const rows = member.ageDepartment?statisticsAgeRows(yearData,[member]):yearData.flatMap(data => data.rows).filter(row => statisticsRowMatchesMember(row,member));
   const present = rows.filter(row => row.status === "Anwesend");
