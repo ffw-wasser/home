@@ -95,6 +95,8 @@ const safeStorage = (() => {
       candidate.removeItem(testKey);
       return {
         persistent: candidate === window.localStorage,
+        get length() { return candidate.length; },
+        key: index => candidate.key(index),
         getItem: key => candidate.getItem(key),
         setItem: (key, value) => candidate.setItem(key, value),
         removeItem: key => candidate.removeItem(key)
@@ -103,6 +105,8 @@ const safeStorage = (() => {
   }
   return {
     persistent: false,
+    get length() { return Object.keys(memoryStorage).length; },
+    key: index => Object.keys(memoryStorage)[index] ?? null,
     getItem: key => Object.prototype.hasOwnProperty.call(memoryStorage, key) ? memoryStorage[key] : null,
     setItem: (key, value) => { memoryStorage[key] = String(value); },
     removeItem: key => { delete memoryStorage[key]; }

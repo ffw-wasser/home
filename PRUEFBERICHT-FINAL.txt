@@ -1,32 +1,60 @@
-Feuerwehr Wasser 8.0 - finaler Plausibilitaets- und Bereinigungsbericht
-Stand: 2026-10-06
+PRÜFBERICHT – FEUERWEHR WASSER
+Stand: 08.10.2026
+Ausgangscommit: ea7d08216bbd50c5ad444267b1928aa23d32299d
 
-Geprueft:
-- Syntax aller eigenen JavaScript-Dateien und des Service Workers
-- Gueltigkeit der JSON-Dateien
-- doppelte HTML-IDs
-- doppelte Skript- und Stylesheet-Einbindungen
-- fehlende lokale Dateien aus src- und href-Verweisen
-- leere Dateien
-- Vorhandensein und Einbindung aller Stylesheets
-- Entfernung des frueher fehlerhaften safeStorage.removeItem-Aufrufs
-- Entfernung alter einmaliger Cache-Reset-Skripte
-- iPad-Dock nur in der sichtbaren Terminarten-Ansicht Schritt 2
-- harte Ausblendung des iPad-Docks ausserhalb Schritt 2
-- ZIP-Integritaet
+UMFANG
+Alle 78 Repository-Dateien wurden vollständig anhand der Git-Blob-Prüfsummen
+verifiziert. Prüfung von HTML, JavaScript, JSON, Dateiverweisen, Speicheradapter,
+Datenbackup, OneDrive-Historie, Statistik, Fahrzeugbesetzung und Berichtsausgabe.
 
-Bereinigt:
-- nicht mehr verwendete Hilfsfunktion im iPad-Dock entfernt
-- finale Cache-Kennung vergeben
-- aktueller Funktionsstand dokumentiert
+BESTÄTIGTE KORREKTUREN
+1. Komplettbackups und deren Wiederherstellung erhalten jetzt g263ValidUntil,
+   agtInstructionValidUntil und ffiValidUntil. Diese Felder gingen bisher verloren.
+2. Automatische Sicherungspunkte erhalten echte Nutzdaten. safeStorage unterstützt
+   jetzt length und key auch beim Speicherersatz. Sicherungspunkte enthalten weder
+   weitere Sicherungspunkte noch OAuth-Tokens/PKCE-Werte.
+3. Komplettbackups berücksichtigen PDFs der geladenen OneDrive-Historie zusätzlich
+   zu den lokal importierten PDFs.
+4. Der App-Start registriert den Service Worker. Der Installationscache enthält
+   alle direkt benötigten öffentlichen App-Dateien und die Word-Fallbackvorlage.
+   Private OneDrive-Antworten bleiben außerhalb des Service-Worker-Caches.
+5. Der ungültige CSS-Verweis css/patch-ios-history.css wurde entfernt.
+6. Die Anzeige der Statistik-Datengrundlage beschreibt jetzt den OneDrive-Abruf.
 
-Bewusst nicht veraendert:
-- Datenformate und OneDrive-Synchronisierung
-- Berichts-, PDF-, DOCX-, CSV- und ZIP-Erzeugung
-- Passwort- und Anwendungslogik
-- fachliche Terminarten und Anwesenheitslogik
-- Vorlagen und Bildressourcen
+BEREINIGUNG
+Entfernt wurden vier nachweislich ungenutzte Dateien (194.859 Bytes):
+- js/onedrive-history-live.js: identische, nicht von der Seite geladene Kopie.
+  Tests verwenden jetzt js/features/history/onedrive-history-live.js.
+- js/features/statistics/statistics-engine.js: geladen, aber keine Nutzung der API.
+- assets/templates/einsatzbericht-vorlage-seite1.jpg und -seite2.jpg: keine
+  Referenzen; die PDF-Erstellung verwendet eigene eingebettete Vorlagenbilder.
+Aktive Vorlagen, Bibliotheken, dynamisch verwendete Module und CSS-Schichten
+wurden erhalten. Nicht belegbar ungenutzte CSS-Regeln wurden nicht entfernt.
 
-Ergebnis:
-Die statischen und strukturellen Pruefungen wurden ohne Fehler abgeschlossen.
-Ein vollstaendiger realer End-to-End-Test mit OneDrive-Anmeldung, Safari auf dem konkreten iPad und echten Nutzdaten kann durch die statische Pruefung nicht ersetzt werden.
+VALIDIERUNG
+41 automatisierte Tests bestanden: CSV/Themen, Datumsnormalisierung, Altersmannschaft,
+OneDrive-Start und Wiederverbindung, Fehlererhalt, private Cache-Grenzen, Backup-
+Wiederherstellung, Sicherungspunkte, erste Offline-Installation, Fahrzeugberechtigungen,
+Staffelbildung und Doppel-/Überbelegung, Word- und PDF-Berichtserstellung.
+Die Wordausgabe enthält keine verbleibenden Platzhalter; der PDF-Hintergrundprozess
+erzeugt einen lesbaren zweiseitigen Bericht. Alle JavaScript-Dateien wurden mit
+node --check geprüft, JSON-Dateien sind lesbar, HTML-IDs sind eindeutig und alle
+lokalen HTML-Dateiverweise existieren.
+
+PRAXISGRENZEN UND OFFENE PUNKTE
+Der Browser-Kurztest betrifft die bisher veröffentlichte Version: Start, Menü,
+Einstellungen und Statistik funktionieren ohne App-JavaScript-Fehler. Der bereinigte
+Stand wurde automatisiert, noch nicht in einem vollständigen Browserdurchlauf geprüft.
+Die bereitgestellten Original-ZIPs wurden zuvor erfolgreich mit der Statistiklogik
+importiert: Einsatz am 23.09.2026 erkannt; Sonderprobe am 05.10.2026 korrekt gelesen.
+Beide Alterskameraden stehen in dieser Sonderprobe auf Fehlt.
+Die realen iOS-Teilen-, Kamera- und Offline-Abläufe sowie parallele Änderungen von
+mehreren Geräten sind nicht vollständig praktisch geprüft.
+OneDrive verwendet weiterhin einen Zeitstempelvergleich: gleichzeitige Änderungen
+werden nicht feldweise zusammengeführt. Bei einer Backup-Wiederherstellung kann
+nachfolgende Synchronisierung wieder den neueren OneDrive-Stand laden.
+Öffentliche aktive Word-/PDF-Vorlagen enthalten weiterhin festen Personentext;
+die Worddatei enthält Autorenmetadaten. Diese Inhalte sind kein Mitgliederbestand,
+aber öffentlich abrufbar. Die Vorlagen wurden in dieser Bereinigung nicht umgebaut.
+Das lokale Admin-Passwort schützt die Bedienoberfläche, keine öffentlich gehosteten
+Dateien. OneDrive-Zugriffsrechte werden unabhängig davon verwaltet.

@@ -3,7 +3,7 @@ const QUALITY_SNAPSHOT_KEY="fw_v1_safety_snapshots";
 function qualityNow(){return new Date().toISOString();}
 function createSafetySnapshot(reason="Automatische Sicherung"){
   try{
-    const data={};for(let i=0;i<safeStorage.length;i++){const key=safeStorage.key(i);if(key?.startsWith("fw_"))data[key]=safeStorage.getItem(key);}
+    const data={};for(let i=0;i<safeStorage.length;i++){const key=safeStorage.key(i);if(key?.startsWith("fw_")&&key!==QUALITY_SNAPSHOT_KEY&&!/^fw_onedrive_(?:tokens|pkce)$/.test(key))data[key]=safeStorage.getItem(key);}
     const list=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]");
     list.unshift({id:`snapshot-${Date.now()}`,createdAt:qualityNow(),reason,data});
     safeStorage.setItem(QUALITY_SNAPSHOT_KEY,JSON.stringify(list.slice(0,10)));return true;
