@@ -15,12 +15,12 @@ function renderArchive() {
   renderHistory?.();
 }
 async function exportArchiveItem(id) { const item=csvArchive.find(x=>x.id===id); if(!item)return; const result=await exportCsvFile(item.fileName,item.content,true); showToast(result==="failed"?"CSV konnte nicht ausgegeben werden.":result==="cancelled"?"Ausgabe wurde abgebrochen.":"CSV wurde erneut ausgegeben.",result==="failed"||result==="cancelled"?"error":"success"); }
-async function deleteArchiveItem(id) { const item=csvArchive.find(x=>x.id===id); if(!item||!confirm(`Archivdatei „${item.fileName}“ löschen?`))return; csvArchive=csvArchive.filter(x=>x.id!==id); await deleteImportedReportPdf?.(id); await deleteDocumentReportsForArchive?.(id); saveArchive(); renderArchive(); showToast("Archivdatei gelöscht."); }
+async function deleteArchiveItem(id) { if(!requireAdmin("settingsHistoryView"))return; const item=csvArchive.find(x=>x.id===id); if(!item||!confirm(`Archivdatei „${item.fileName}“ löschen?`))return; csvArchive=csvArchive.filter(x=>x.id!==id); await deleteImportedReportPdf?.(id); await deleteDocumentReportsForArchive?.(id); saveArchive(); renderArchive(); showToast("Archivdatei gelöscht."); }
 async function exportArchiveBackup() {
   const name = `FFW-Wasser_Archiv-Backup_${today()}.json`;
   await shareOrDownloadJson(name, { version:"1.0", createdAt:new Date().toISOString(), items:csvArchive }, "Archiv-Backup wurde ausgegeben.");
 }
-async function importArchiveBackup(file) { if(!confirm("Das Einlesen ergänzt beziehungsweise ersetzt Einträge im CSV-Archiv. Wirklich fortfahren?")){byId("backupFileInput").value="";return;} try { const data=JSON.parse(await file.text()); if(!Array.isArray(data.items))throw new Error(); const valid=data.items.filter(x=>x&&x.id&&x.fileName&&typeof x.content==="string"); const map=new Map([...valid,...csvArchive].map(x=>[x.id,x])); csvArchive=[...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); saveArchive();renderArchive();showToast(`${valid.length} Archiveinträge wurden eingelesen.`); } catch { showToast("Die Backup-Datei ist ungültig.","error"); } finally { byId("backupFileInput").value=""; } }
+async function importArchiveBackup(file) { if(!requireAdmin("settingsHistoryView"))return; if(!confirm("Das Einlesen ergänzt beziehungsweise ersetzt Einträge im CSV-Archiv. Wirklich fortfahren?")){byId("backupFileInput").value="";return;} try { const data=JSON.parse(await file.text()); if(!Array.isArray(data.items))throw new Error(); const valid=data.items.filter(x=>x&&x.id&&x.fileName&&typeof x.content==="string"); const map=new Map([...valid,...csvArchive].map(x=>[x.id,x])); csvArchive=[...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); saveArchive();renderArchive();showToast(`${valid.length} Archiveinträge wurden eingelesen.`); } catch { showToast("Die Backup-Datei ist ungültig.","error"); } finally { byId("backupFileInput").value=""; } }
 
 async function shareOrDownloadJson(fileName, data, successMessage) {
   const content = JSON.stringify(data, null, 2);
@@ -63,13 +63,13 @@ function completeBackupPayload() {
     functionEntryEnabled:isFunctionEntryEnabled()
   });
 }
-async function exportCompleteBackup() {
-  const fileName = `FFW-Wasser_Komplett-Backup_${today()}.json`;
+async function exportCompleteBackup() { if(!requireAdmin("settingsFilesView"))return;
+  const fileName = `FFW-Wasser_App-Daten_${today()}.json`;
   const payload=completeBackupPayload();
   payload.data.importedPdfs=await exportImportedReportPdfs();
   payload.data.documentReports=await exportDocumentReports?.()||[];
   payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true};
-  await shareOrDownloadJson(fileName, payload, `Komplett-Backup wurde mit ${payload.data.importedPdfs.length} importierten PDF-Datei(en) ausgegeben.`);
+  await shareOrDownloadJson(fileName, payload, `App-Datensicherung wurde mit ${payload.data.importedPdfs.length} importierten PDF-Datei(en) ausgegeben.`);
 }
 function validBackupMember(member) {
   return member && typeof member.id === "string" && typeof member.lastName === "string" && typeof member.firstName === "string";
@@ -146,9 +146,9 @@ function refreshAfterCompleteBackupImport() {
   updates.forEach(([name,action])=>{try{action();}catch(error){console.error(`Anzeige ${name} konnte nicht aktualisiert werden`,error);failed.push(name);}});
   return failed;
 }
-async function importCompleteBackup(file) {
+async function importCompleteBackup(file) { if(!requireAdmin("settingsFilesView"))return;
   const input=byId("completeBackupFileInput");
-  if(!confirm("Das Komplett-Backup ersetzt Mitglieder, Einstellungen, Jahresziele, Tagesdaten und die Historie. Wirklich wiederherstellen?")){if(input)input.value="";return;}
+  if(!confirm("Diese App-Datensicherung ersetzt Mitglieder, Einstellungen, Jahresziele, Tagesdaten und die Historie. Getränkekonten und Getränke-PINs werden separat in OneDrive gesichert. Wirklich wiederherstellen?")){if(input)input.value="";return;}
   try{
     const backup=await parseCompleteBackupFile(file);
     const normalized=normalizeCompleteBackupData(backup.data);
@@ -193,7 +193,7 @@ function ensureArchiveCorrectionDialog(){
   byId("cancelCorrectionButton").addEventListener("click",()=>dialog.close());
   byId("correctionPerson").addEventListener("change",loadSelectedCorrectionRow);
   byId("correctionStatus").addEventListener("change",updateCorrectionRoleVisibility);
-  if(!byId("correctionDate")){const person=byId("correctionPerson");const label=document.createElement("label");label.htmlFor="correctionDate";label.textContent="Probetermin";const input=document.createElement("input");input.id="correctionDate";input.type="date";input.className="text-input";person.parentElement.insertBefore(input,person);person.parentElement.insertBefore(label,input);}
+  if(!byId("correctionDate")){const person=byId("correctionPerson");const label=document.createElement("label");label.htmlFor="correctionDate";label.textContent="Termindatum";const input=document.createElement("input");input.id="correctionDate";input.type="date";input.className="text-input";const personLabel=person.parentElement.querySelector('label[for="correctionPerson"]');person.parentElement.insertBefore(label,personLabel);label.insertAdjacentElement("afterend",input);const hint=document.createElement("p");hint.className="help-text";hint.textContent="Ein geändertes Termindatum gilt für den gesamten Bericht.";input.insertAdjacentElement("afterend",hint);}
   byId("saveCorrectionButton").addEventListener("click",saveArchiveCorrection);
 }
 function updateCorrectionRoleVisibility(){
@@ -224,7 +224,7 @@ function loadSelectedCorrectionRow(){
   roleSelect.value=allowedRoles.includes(row.role)?row.role:"";
   updateCorrectionRoleVisibility();
 }
-function correctArchiveItem(id){
+function correctArchiveItem(id){ if(!requireAdmin("settingsHistoryView"))return;
   const item=csvArchive.find(x=>x.id===id);if(!item)return;
   const rows=archiveRowsFromContent(item.content);if(!rows.length)return showToast("Keine korrigierbaren Einträge.","error");
   ensureArchiveCorrectionDialog();archiveCorrectionState={item,rows};
@@ -236,7 +236,7 @@ function pairedArchiveFileNames(item){
   const base=(item.baseFileName||current).replace(/_korrigiert-v\d+(?=\.csv$)/i,"").replace(/\.csv$/i,"");
   return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
 }
-async function saveArchiveCorrection(){
+async function saveArchiveCorrection(){ if(!requireAdmin("settingsHistoryView"))return;
   if(!archiveCorrectionState)return;
   const {item,rows}=archiveCorrectionState,index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
   const status=byId("correctionStatus").value,role=status==="Anwesend"?byId("correctionRole").value.trim():"";
@@ -347,7 +347,8 @@ function historyMonthLabel(key){
 }
 function renderHistory(){
   ensureHistoryView();
-  const sorted=[...csvArchive].sort((a,b)=>historyDateFromItem(b).localeCompare(historyDateFromItem(a))||String(b.createdAt).localeCompare(String(a.createdAt)));
+  const query=(byId("historySearch")?.value||"").trim().toLocaleLowerCase("de");
+  const sorted=csvArchive.filter(item=>[historyDisplayTitle(item),historyDateLabel(item),historyDateFromItem(item),item.sessionType,item.operationData?.location].join(" ").toLocaleLowerCase("de").includes(query)).sort((a,b)=>historyDateFromItem(b).localeCompare(historyDateFromItem(a))||String(b.createdAt).localeCompare(String(a.createdAt)));
   const years=new Map();
   sorted.forEach(item=>{
     const year=historyYearFromItem(item),month=historyMonthKey(item);
@@ -357,11 +358,12 @@ function renderHistory(){
   });
   const now=new Date(),currentYear=String(now.getFullYear()),currentMonth=`${currentYear}-${String(now.getMonth()+1).padStart(2,"0")}`;
   byId("historyEmpty").hidden=sorted.length>0;
+  byId("historyEmpty").textContent=query?"Kein Bericht gefunden. Suche nach Thema, Datum oder Einsatzart.":"Noch keine abgeschlossenen Termine oder Einsätze vorhanden.";
   byId("historyYears").innerHTML=[...years.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([year,months])=>{
     const yearCount=[...months.values()].reduce((sum,items)=>sum+items.length,0);
-    const yearOpen=year===currentYear?" open":"";
+    const yearOpen=query||year===currentYear?" open":"";
     const monthHtml=[...months.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([month,items])=>{
-      const monthOpen=month===currentMonth?" open":"";
+      const monthOpen=query||month===currentMonth?" open":"";
       return `<details class="history-month"${monthOpen}><summary><span>${escapeHtml(historyMonthLabel(month))}</span><small>${items.length} Bericht${items.length===1?"":"e"}</small><i aria-hidden="true"></i></summary><div class="history-list">${items.map(item=>{const date=historyDateLabel(item),topic=historyDisplayTitle(item);return `<article class="history-item${item.revisions?.length?" history-item-corrected":""}"><div class="history-item-details"><strong>${escapeHtml(date)} · ${escapeHtml(topic)}</strong><span>${escapeHtml(item.sessionType||"Probe")}</span><small>${escapeHtml(item.fileName)}${item.revisions?.length?` · ${item.revisions.length} Korrektur(en)`:""}</small></div><div class="history-item-actions"><button class="primary-button" type="button" data-history-pdf="${escapeHtml(item.id)}">${item.sessionType==="Einsatz"?"Einsatzbericht ansehen":"PDF ansehen"}</button><button class="secondary-button" type="button" data-history-csv="${escapeHtml(item.id)}">CSV ausgeben</button><button class="outline-button" type="button" data-history-correct="${escapeHtml(item.id)}" title="Aktualisiert CSV und zugehöriges PDF">${item.sessionType==="Einsatz"?"Einsatz korrigieren":"Eintrag korrigieren"}</button><button class="danger-button" type="button" data-history-delete="${escapeHtml(item.id)}">Löschen</button></div></article>`;}).join("")}</div></details>`;
     }).join("");
     return `<details class="history-year"${yearOpen}><summary class="history-year-heading"><h3>${escapeHtml(year)}</h3><span>${yearCount} Bericht${yearCount===1?"":"e"}</span><i aria-hidden="true"></i></summary><div class="history-months">${monthHtml}</div></details>`;

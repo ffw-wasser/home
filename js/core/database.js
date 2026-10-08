@@ -253,7 +253,7 @@ function renderPdfFolderStatus(){
   byId("choosePdfFolderButton").disabled=false;
   byId("clearPdfFolderButton").hidden=false;
   byId("clearPdfFolderButton").disabled=!pdfDirectoryHandle;
-  byId("pdfSupportHint").textContent="Neue PDF-Probenberichte werden direkt in diesem Ordner gespeichert.";
+  byId("pdfSupportHint").textContent="Optionale PDF-Einzel-Exporte werden direkt in diesem Ordner gespeichert.";
 }
 
 async function choosePdfFolder(){
@@ -280,7 +280,7 @@ function ensureArchiveStorageCenter(){
     center=document.createElement("section");
     center.id="archiveStorageCenter";
     center.className="archive-storage-center";
-    center.innerHTML=`<div class="archive-storage-heading"><div><p class="eyebrow">Dateiverwaltung</p><h3>Speicherorte und Backups</h3><p>Verwalte die Speicherorte für CSV-Auswertungen, PDF-Berichte und vollständige Datensicherungen.</p></div></div><div class="storage-location-group"><div class="storage-location-heading"><span>Probenabschluss</span><h4>CSV- und PDF-Dateien</h4><p>Für Auswertungsdateien und lesbare Berichte abgeschlossener Proben.</p></div><div class="archive-storage-grid archive-storage-output-grid" id="archiveStorageOutputGrid"></div></div><div class="storage-location-group"><div class="storage-location-heading"><span>Datensicherung</span><h4>Vollständige Backups</h4><p>Sichert Mitglieder, Einstellungen, Ziele, laufende Daten und die Historie.</p></div><div class="archive-storage-grid archive-storage-backup-grid" id="archiveStorageBackupGrid"></div></div>`;
+    center.innerHTML=`<div class="archive-storage-heading"><div><p class="eyebrow">Dateiverwaltung</p><h3>Speicherorte und Backups</h3><p>Lege die Ablage für Terminpakete und App-Datensicherungen fest.</p></div></div><div class="storage-location-group"><div class="storage-location-heading"><span>Terminabschluss</span><h4>Terminpakete und Einzel-Exporte</h4><p>Der Abschluss erstellt ein ZIP mit CSV und PDF. Auf dem iPad: Teilen → In Dateien sichern.</p></div><div class="archive-storage-grid archive-storage-output-grid" id="archiveStorageOutputGrid"></div></div><div class="storage-location-group"><div class="storage-location-heading"><span>Datensicherung</span><h4>App-Datensicherungen</h4><p>Sichert Mitglieder, Einstellungen, Ziele, laufende Daten und die Historie.</p></div><div class="archive-storage-grid archive-storage-backup-grid" id="archiveStorageBackupGrid"></div></div>`;
     const heading=filesView.querySelector(".screen-heading");
     heading?.insertAdjacentElement("afterend",center);
     if(!heading)filesView.prepend(center);
@@ -295,14 +295,14 @@ function ensureArchiveStorageCenter(){
 
   if(csvPanel){
     csvPanel.className="storage-card storage-file-card storage-card-csv";
-    const h=csvPanel.querySelector("h3");if(h)h.textContent="CSV-Auswertungen";
-    const help=csvPanel.querySelector(".help-text");if(help)help.textContent="Speicherort für CSV-Dateien abgeschlossener Proben.";
+    const h=csvPanel.querySelector("h3");if(h)h.textContent="Terminpakete";
+    const help=csvPanel.querySelector(".help-text");if(help)help.textContent="Zielordner für ZIP-Terminpakete. CSV-Einzel-Exporte nutzen ebenfalls diesen Ordner.";
     outputGrid?.appendChild(csvPanel);
   }
   if(pdfPanel){
     pdfPanel.className="storage-card storage-file-card storage-card-pdf";
-    const h=pdfPanel.querySelector("h3");if(h)h.textContent="PDF-Probenberichte";
-    const help=pdfPanel.querySelector(".help-text");if(help)help.textContent="Speicherort für lesbare PDF-Berichte abgeschlossener Proben.";
+    const h=pdfPanel.querySelector("h3");if(h)h.textContent="Optionale PDF-Einzel-Exporte";
+    const help=pdfPanel.querySelector(".help-text");if(help)help.textContent="Optionaler Zielordner für einzeln ausgegebene PDFs. Das Haupt-PDF bleibt im ZIP-Terminpaket.";
     outputGrid?.appendChild(pdfPanel);
   }
   if(exportCompleteButton&&importCompleteButton&&backupGrid){
@@ -311,7 +311,7 @@ function ensureArchiveStorageCenter(){
       completeBackupPanel=document.createElement("article");
       completeBackupPanel.id="completeBackupStorageCard";
       completeBackupPanel.className="storage-card storage-backup-card";
-      completeBackupPanel.innerHTML=`<div class="storage-card-heading"><span class="storage-card-kicker">Datensicherung</span><h3>Vollständige Backups</h3><p class="help-text">Speicherort festlegen sowie alle Anwendungsdaten sichern oder wiederherstellen.</p></div><div class="storage-folder-status backup-folder-status"><span class="storage-status-label">Ausgewählter Ordner</span><strong id="backupFolderName">Kein Backup-Ordner ausgewählt</strong><small id="backupSupportHint">Der gewählte Ordner wird für vollständige Backups verwendet.</small></div><div class="storage-card-actions storage-folder-actions" id="backupFolderActions"></div><div class="storage-card-actions storage-backup-actions" id="completeBackupActions"></div>`;
+      completeBackupPanel.innerHTML=`<div class="storage-card-heading"><span class="storage-card-kicker">Datensicherung</span><h3>App-Datensicherungen</h3><p class="help-text">App-Daten sichern; Getränkekonten und Getränke-PINs separat im OneDrive-Ordner Getraenke sichern.</p></div><div class="storage-folder-status backup-folder-status"><span class="storage-status-label">Ausgewählter Ordner</span><strong id="backupFolderName">Kein Backup-Ordner ausgewählt</strong><small id="backupSupportHint">Der gewählte Ordner wird für App-Datensicherungen verwendet.</small></div><div class="storage-card-actions storage-folder-actions" id="backupFolderActions"></div><div class="storage-card-actions storage-backup-actions" id="completeBackupActions"></div>`;
       backupGrid.appendChild(completeBackupPanel);
     }
     const folderActions=byId("backupFolderActions");
@@ -320,8 +320,8 @@ function ensureArchiveStorageCenter(){
     const clearBackupButton=byId("clearBackupFolderButton");
     if(chooseBackupButton){chooseBackupButton.textContent="Backup-Ordner auswählen";folderActions?.appendChild(chooseBackupButton);}
     if(clearBackupButton){clearBackupButton.textContent="Auswahl entfernen";folderActions?.appendChild(clearBackupButton);}
-    exportCompleteButton.textContent="Vollständiges Backup exportieren";
-    importCompleteButton.textContent="Vollständiges Backup importieren";
+    exportCompleteButton.textContent="App-Daten sichern";
+    importCompleteButton.textContent="App-Datensicherung wiederherstellen";
     backupActions?.append(exportCompleteButton,importCompleteButton);
     if(completeBackupInput)completeBackupPanel.appendChild(completeBackupInput);
   }

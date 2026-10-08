@@ -37,6 +37,24 @@ function app(){
   vm.runInContext(model,ctx);vm.runInContext(store,ctx);
   return {ctx,M:ctx.DrinksModel,S:ctx.DrinksStore,files,calls,storageWrites,setFolder:v=>folder=v};
 }
+
+test('Mitglied ändert eigene PIN ohne Administration; offene Beträge und Buchungen bleiben erhalten',async()=>{
+  const {ctx,M,S,storageWrites}=app();let a=await S.setPin('a','4826');
+  a=await S.book('a',drink(),JSON.stringify(a.pin));a=await S.book('a',pay(),JSON.stringify(a.pin));
+  ctx.adminUnlocked=false;
+  await assert.rejects(S.changeOwnPin('a','0000','7391'),/aktuelle PIN/);
+  const changed=await S.changeOwnPin('a','4826','7391');
+  assert.equal(M.totals(changed).balance,250);assert.equal(changed.bookings.length,2);
+  assert.equal(await M.verifyPin('7391',changed.pin),true);assert.equal(await M.verifyPin('4826',changed.pin),false);
+  assert.deepEqual(storageWrites,[]);
+});
+test('PIN-Selbständerung verkraftet Konflikte und eine verlorene Schreibantwort ohne Buchungsverlust',async()=>{
+  const {ctx,M,S}=app();let a=await S.setPin('a','4826');a=await S.book('a',drink(),JSON.stringify(a.pin));
+  ctx.adminUnlocked=false;ctx.forceConflict=1;ctx.loseReply=true;
+  const changed=await S.changeOwnPin('a','4826','7391');
+  assert.equal(await M.verifyPin('7391',changed.pin),true);assert.equal(changed.bookings.length,1);
+  await assert.rejects(S.book('a',drink('another-booking',1),JSON.stringify(a.pin)),/PIN wurde geändert/);
+});
 test('Striche in Cent, Teilzahlungen, vollständige Zahlung; gespeicherte Buchungen bleiben erhalten',()=>{
   const {M}=app(),start=M.empty('a');let a=M.append(start,drink());a=M.append(a,pay());
   assert.deepEqual(copy(M.totals(a)),{balance:250,count:5});a=M.append(a,pay('payment-0002',250,'paypal'));
@@ -80,7 +98,7 @@ test('Verlorene Schreibantwort wird nachgelesen und nicht doppelt gebucht',async
   const {ctx,S,M}=app(),a=await S.setPin('a','4826'),sig=JSON.stringify(a.pin);ctx.loseReply=true;const b=drink();await S.book('a',b,sig);await S.book('a',b,sig);assert.equal(M.totals(await S.read('a')).balance,750);
 });
 test('Dauerhafter Versionskonflikt endet begrenzt ohne Datenverlust',async()=>{
-  const {ctx,S,M}=app(),a=await S.setPin('a','4826');ctx.forceConflict=5;await assert.rejects(S.book('a',drink(),JSON.stringify(a.pin)),/gleichzeitig geändert/);assert.equal(M.totals(await S.read('a')).balance,0);
+  const {ctx,S,M}=app(),a=await S.setPin('a','4826');await S.rewards();ctx.forceConflict=5;await assert.rejects(S.book('a',drink(),JSON.stringify(a.pin)),/gleichzeitig geändert/);assert.equal(M.totals(await S.read('a')).balance,0);
 });
 test('Geänderte PIN sperrt eine bereits geöffnete Sitzung für neue Buchungen',async()=>{
   const {S}=app(),a=await S.setPin('a','4826');await S.setPin('a','7519');await assert.rejects(S.book('a',drink(),JSON.stringify(a.pin)),/PIN wurde geändert/);
@@ -95,4 +113,77 @@ test('Ausgelieferter Code enthält lokale QR-Erzeugung, Fass ohne Legende und ke
   const html=fs.readFileSync(require.resolve('../index.html'),'utf8');const ui=fs.readFileSync(require.resolve('../js/features/drinks/drinks.js'),'utf8');
   assert.match(html,/id="drinksTab"/);assert.match(html,/Die größten Deckel/);assert.doesNotMatch(html,/1 Bierglas = 1 Strich/);assert.match(ui,/qrcode\(0,'M'\)/);
   for(const source of [model,store,ui])assert.doesNotMatch(source,/localStorage|sessionStorage|indexedDB|safeStorage\.setItem|fetch\([^)]*(?:qr|paypal)/);
+});
+
+const rewardPolicy=(count=20,cents=300)=>({schemaVersion:1,id:'program-0001',revision:'revision-0001',startedAt:'2026-10-01T00:00:00Z',count,cents});
+const configure=(a,policy=rewardPolicy())=>a.files.set('bonus-einstellungen.json',{data:copy(policy),eTag:'"config-1"'});
+test('Bonus startet mit 20 Strichen und 3 Euro; Verwaltung ändert die Werte ausschließlich in OneDrive',async()=>{
+  const a=app(),p=await a.S.rewards();assert.equal(p.count,20);assert.equal(p.cents,300);
+  const changed=await a.S.saveRewards(10,150,p.revision);
+  assert.equal(changed.count,10);assert.equal(changed.cents,150);assert.equal(changed.id,p.id);assert.equal(changed.startedAt,p.startedAt);assert.notEqual(changed.revision,p.revision);
+  assert.deepEqual(a.storageWrites,[]);assert.equal(a.files.size,1);
+});
+test('Bonus-Einstellungen verhindern ungültige Werte, unberechtigte und veraltete Änderungen',async()=>{
+  const a=app(),p=await a.S.rewards();
+  for(const [count,cents] of [[0,300],[1.5,300],[20,0],[20,301.5],[10001,300],[20,100001]])await assert.rejects(a.S.saveRewards(count,cents,p.revision),/ungültig/);
+  a.ctx.adminUnlocked=false;await assert.rejects(a.S.saveRewards(10,150,p.revision),/Verwaltung/);a.ctx.adminUnlocked=true;
+  await a.S.saveRewards(10,150,p.revision);await assert.rejects(a.S.saveRewards(30,450,p.revision),/inzwischen geändert/);
+  assert.equal((await a.S.rewards()).count,10);
+});
+test('Teilzahlungen zählen centgenau; der 20. bezahlte Strich erzeugt 3 Euro für weitere Getränke',()=>{
+  const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);
+  a=M.appendWithReward(a,pay('payment-0019',2850),p);assert.equal(M.rewardState(a,p).progress,2850);
+  a=M.appendWithReward(a,pay('payment-part',149,'paypal'),p);assert.equal(M.rewardState(a,p).credit,0);
+  a=M.appendWithReward(a,pay('payment-last',1),p);assert.equal(M.totals(a).balance,0);assert.equal(M.rewardState(a,p).credit,300);assert.equal(M.rewardState(a,p).progress,0);
+  const before=a.bookings.length;a=M.appendWithReward(a,drink('drink-free-two',2),p);assert.equal(M.totals(a).balance,0);assert.equal(M.rewardState(a,p).credit,0);assert.equal(M.rewardState(a,p).progress,0);assert.equal(a.bookings.length,before+1);
+  a=M.appendWithReward(a,drink('drink-next-one',1),p);a=M.appendWithReward(a,pay('payment-next',150),p);assert.equal(M.rewardState(a,p).progress,150);
+});
+test('Eine große Zahlung erhält mehrere Bonusstufen, Restfortschritt bleibt erhalten',()=>{
+  const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-many',45),p);a=M.appendWithReward(a,pay('payment-many',6750),p);
+  assert.equal(M.rewardState(a,p).credit,600);assert.equal(M.rewardState(a,p).progress,750);assert.equal(a.bookings.at(-1).cycles,2);
+});
+test('Geänderte Bonuswerte erhalten Guthaben und Restfortschritt; Bonus verrechnet keine alten Schulden',()=>{
+  const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-fifty',50),p);a=M.appendWithReward(a,pay('payment-part1',3750),p);
+  assert.equal(M.totals(a).balance,3750);assert.equal(M.rewardState(a,p).credit,300);
+  const next={...p,count:10,cents:200,revision:'revision-0002'};a=M.appendWithReward(a,pay('payment-part2',750),next);
+  assert.equal(M.totals(a).balance,3000);assert.equal(M.rewardState(a,next).credit,500);assert.equal(M.rewardState(a,next).progress,0);
+  a=M.appendWithReward(a,drink('drink-use-credit',2),next);assert.equal(M.totals(a).balance,3000);assert.equal(M.rewardState(a,next).credit,200);
+});
+test('Bestehende Konten migrieren ohne rückwirkende Boni oder geänderte Altbuchungen',()=>{
+  const {M}=app(),p=rewardPolicy();let a=M.append(M.empty('a'),{...drink('old-drink-0020',20),createdAt:'2025-01-01T00:00:00Z'});
+  a=M.append(a,{...pay('old-payment-20',3000),createdAt:'2025-01-02T00:00:00Z'});const old=copy(a.bookings);
+  a=M.appendWithReward(a,drink('new-drink-0020',20),p);a=M.appendWithReward(a,pay('new-payment-20',3000),p);
+  assert.equal(a.schemaVersion,2);assert.deepEqual(copy(a.bookings.slice(0,2)),old);assert.equal(a.bookings.filter(b=>b.type==='bonus').length,1);assert.equal(M.rewardState(a,p).credit,300);
+});
+test('Aufgeteilte Bar- und PayPal-Zahlungen erzeugen denselben Bonus wie eine Gesamtzahlung',()=>{
+  const {M}=app(),p=rewardPolicy();let split=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);let full=split;
+  for(let i=0;i<20;i++)split=M.appendWithReward(split,pay('split-payment-'+String(i).padStart(2,'0'),150,i%2?'cash':'paypal'),p);
+  full=M.appendWithReward(full,pay('payment-full',3000),p);assert.equal(M.rewardState(split,p).credit,M.rewardState(full,p).credit);assert.equal(split.bookings.filter(b=>b.type==='bonus').length,1);
+});
+test('Zahlung und Bonus bleiben atomar bei Versionskonflikt, verlorener Antwort und erneutem Klick',async()=>{
+  const a=app();configure(a);let account=await a.S.setPin('a','4826');const sig=JSON.stringify(account.pin);await a.S.book('a',drink('drink-0020',20),sig);
+  a.ctx.forceConflict=1;a.ctx.loseReply=true;const payment=pay('reward-payment-20',3000);await a.S.book('a',payment,sig);await a.S.book('a',payment,sig);
+  account=await a.S.read('a');assert.equal(account.bookings.length,3);assert.equal(account.bookings.filter(b=>b.type==='bonus').length,1);assert.equal(a.M.rewardState(account,rewardPolicy()).credit,300);assert.deepEqual(a.storageWrites,[]);
+});
+test('Zwei gleichzeitige Teilzahlungen vergeben den erreichten Bonus genau einmal',async()=>{
+  const a=app();configure(a);const account=await a.S.setPin('a','4826'),sig=JSON.stringify(account.pin);await a.S.book('a',drink('drink-0020',20),sig);
+  await Promise.all([a.S.book('a',pay('payment-concurrent-a',1500),sig),a.S.book('a',pay('payment-concurrent-b',1500),sig)]);
+  const saved=await a.S.read('a');assert.equal(a.M.totals(saved).balance,0);assert.equal(a.M.rewardState(saved,rewardPolicy()).credit,300);assert.equal(saved.bookings.filter(b=>b.type==='bonus').length,1);
+});
+test('Manipulierte, doppelte oder nicht gedeckte Bonusbuchungen werden abgelehnt',()=>{
+  const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);a=M.appendWithReward(a,pay('payment-full',3000),p);
+  for(const change of [{cents:301},{cycles:2,cents:600,qualifyingCents:6000},{paymentId:'missing-payment'},{policy:{...p,count:0}}]){
+    const bad=copy(a);Object.assign(bad.bookings.at(-1),change);assert.throws(()=>M.validate(bad,'a'));
+  }
+  assert.throws(()=>M.validate({...a,bookings:[...a.bookings,a.bookings.at(-1)]},'a'));
+});
+test('Gleichzeitiger Bonusstart nutzt eine gemeinsame Regel; parallele Verwaltungsänderungen überschreiben sich nicht',async()=>{
+  const a=app(),[one,two]=await Promise.all([a.S.rewards(),a.S.rewards()]);assert.equal(one.id,two.id);assert.equal(a.files.size,1);
+  const results=await Promise.allSettled([a.S.saveRewards(10,150,one.revision),a.S.saveRewards(30,450,two.revision)]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.match(results.find(r=>r.status==='rejected').reason.message,/inzwischen geändert/);
+});
+test('Verlorene Antwort beim Bonusstart und Speichern wird anhand der OneDrive-Version geprüft',async()=>{
+  const a=app();a.ctx.loseReply=true;const p=await a.S.rewards();assert.equal(p.count,20);assert.equal(a.files.size,1);
+  a.ctx.loseReply=true;const saved=await a.S.saveRewards(25,400,p.revision);assert.equal(saved.count,25);assert.equal((await a.S.rewards()).cents,400);
+  a.ctx.navigator.onLine=false;await assert.rejects(a.S.saveRewards(10,150,saved.revision),/Offline/);assert.equal(a.files.get('bonus-einstellungen.json').data.count,25);
 });

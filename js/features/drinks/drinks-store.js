@@ -2,12 +2,12 @@
 (function(global){
   'use strict';
   const M=global.DrinksModel, FOLDER='Getraenke';
-  let contextKey='',cache=new Map(),generation=0;
+  let contextKey='',cache=new Map(),generation=0,rewardCache=null;
   const clone=value=>JSON.parse(JSON.stringify(value));
   const notFound=e=>e?.status===404;
   const conflict=e=>[409,412].includes(e?.status);
   const itemUrl=(root,id)=>`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(id)}`;
-  function reset(){generation++;contextKey='';cache.clear();}
+  function reset(){generation++;contextKey='';cache.clear();rewardCache=null;}
   async function context(create=false){
     if(!oneDriveSignedIn())throw new Error('Bitte OneDrive verbinden. Getränke werden nur dort gespeichert.');
     if(navigator.onLine===false)throw new Error('Offline. Bitte vor dem Buchen die Internetverbindung herstellen.');
@@ -27,6 +27,40 @@
     return {root,key,folder,gen};
   }
   function assertCurrent(ctx){if(ctx.gen!==generation||ctx.key!==contextKey||!oneDriveSignedIn())throw new Error('OneDrive-Verbindung geändert. Bitte das Getränkekonto erneut öffnen.');}
+  const REWARDS_FILE='bonus-einstellungen.json';
+  async function readRewards(ctx){
+    const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${REWARDS_FILE}`;
+    for(let attempt=0;attempt<3;attempt++){
+      let item;try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return null;throw e;}
+      if(!item.file||!item.eTag)throw new Error('Die Bonus-Einstellungen besitzen keine gültige Dateiversion.');
+      const policy=M.validateRewardSettings(await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json());
+      const after=await(await odFetch(itemUrl(ctx.root,item.id)+'?$select=id,eTag')).json();assertCurrent(ctx);
+      if(after.eTag!==item.eTag)continue;
+      rewardCache=clone(policy);return {policy,item};
+    }
+    throw new Error('Die Bonus-Einstellungen werden gerade geändert. Bitte erneut laden.');
+  }
+  async function rewards(){
+    const ctx=await context(true);
+    for(let attempt=0;attempt<4;attempt++){
+      const old=await readRewards(ctx);if(old)return clone(old.policy);
+      const policy={schemaVersion:1,id:crypto.randomUUID(),revision:crypto.randomUUID(),startedAt:new Date().toISOString(),count:20,cents:300};
+      assertCurrent(ctx);
+      try{await odFetch(`${itemUrl(ctx.root,ctx.folder.id)}:/${REWARDS_FILE}:/content`,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':'"0"'},body:JSON.stringify(policy)},false);assertCurrent(ctx);rewardCache=clone(policy);return policy;}
+      catch(error){if(conflict(error))continue;const check=await readRewards(ctx).catch(()=>null);if(check)return clone(check.policy);throw error;}
+    }
+    throw new Error('Bonus-Einstellungen konnten nicht angelegt werden. Bitte erneut versuchen.');
+  }
+  async function saveRewards(count,cents,expectedRevision){
+    if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Verwaltung entsperren.');
+    const ctx=await context(true),old=await readRewards(ctx);
+    if(!old||old.policy.revision!==expectedRevision)throw new Error('Die Bonus-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');
+    const policy=M.validateRewardSettings({...old.policy,count,cents,revision:crypto.randomUUID()});
+    if(!adminUnlocked)throw new Error('Die Verwaltung wurde gesperrt.');assertCurrent(ctx);
+    try{await odFetch(itemUrl(ctx.root,old.item.id)+'/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':old.item.eTag},body:JSON.stringify(policy)},false);assertCurrent(ctx);rewardCache=clone(policy);return policy;}
+    catch(error){const check=await readRewards(ctx).catch(()=>null);if(check?.policy.revision===policy.revision)return clone(check.policy);if(conflict(error))throw new Error('Die Bonus-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');throw error;}
+  }
+  const cachedRewards=()=>rewardCache?clone(rewardCache):null;
   async function fileName(memberId){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(memberId)));return 'konto-'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')+'.json';}
   async function readWithContext(ctx,memberId){
     assertCurrent(ctx);
@@ -88,6 +122,16 @@
     throw Object.assign(new Error('Das Konto wurde gleichzeitig geändert. Bitte erneut speichern.'),{code:'conflict'});
   }
   async function setPin(memberId,pin){if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');const record=await M.createPin(pin);if(!adminUnlocked)throw new Error('Administration wurde gesperrt.');return mutate(memberId,a=>{if(!adminUnlocked)throw new Error('Administration wurde gesperrt.');return {...a,pin:record};});}
-  async function book(memberId,booking,pinSignature){if(!pinSignature)throw new Error('Bitte mit deiner Getränke-PIN anmelden.');return mutate(memberId,a=>M.append(a,booking),pinSignature);}
-  global.DrinksStore={read,list,cached,setPin,book,reset};
+  async function changeOwnPin(memberId,currentPin,newPin){
+    const account=await read(memberId);
+    if(!account.pin||!await M.verifyPin(currentPin,account.pin))throw Object.assign(new Error('Die aktuelle PIN stimmt nicht.'),{code:'wrongPin'});
+    const signature=JSON.stringify(account.pin),record=await M.createPin(newPin);
+    return mutate(memberId,a=>({...a,pin:record}),signature);
+  }
+  async function book(memberId,booking,pinSignature){
+    if(!pinSignature)throw new Error('Bitte mit deiner Getränke-PIN anmelden.');
+    if(!['drinks','payment'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
+    const policy=await rewards();return mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature);
+  }
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,reset,rewards,saveRewards,cachedRewards};
 })(typeof window==='undefined'?globalThis:window);

@@ -63,3 +63,9 @@
 @media(min-width:900px) and (orientation:landscape){#drinksView .dr-columns{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}#drinksView .dr-card{padding:24px}}
 @media(max-width:760px){#drinksView .dr-columns{grid-template-columns:1fr;gap:20px}#drinksView .dr-card{padding:18px}#drinksView .dr-member-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){#drinksView .dr-member-list,#drinksView .dr-payment-actions{grid-template-columns:1fr}#drinksView .dr-ranking-heading{gap:10px}#drinksView .dr-mascot{width:54px;height:66px}#drinksView .dr-rank-money{font-size:19px}#drinksView h3{font-size:20px}#drinksView .dr-add{font-size:24px}}
+
+#drinksView .dr-program{padding:12px 16px;border:1px solid #d4bd66;border-radius:12px;background:#fff7dc;font-weight:600;line-height:1.5}
+#drinksView .dr-bonus{margin-top:16px;border-top:1px solid var(--dr-line);padding-top:14px}#drinksView .dr-bonus p{font-size:16px;margin:8px 0}#drinksView .dr-bonus progress{display:block;width:100%;height:12px;accent-color:#24653b}#drinksView .dr-credit,.dr-thanks .dr-credit{padding:12px;border-radius:12px;background:#e6f4e8;color:#215835;font-weight:700}
+.ux-bonus-settings{max-width:780px}.ux-bonus-settings label{display:block;font-weight:700;margin-bottom:8px}.ux-bonus-settings input{width:100%;min-width:0}.ux-bonus-settings p{line-height:1.5}
+
+#drinksView #dr-credit{background:none;padding:0;font-size:16px;line-height:1.4;margin:8px 0 0}#drinksView .dr-bonus{margin-top:16px}#drinksView .dr-draft{padding:16px}

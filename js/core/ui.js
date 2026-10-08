@@ -11,14 +11,38 @@ function closeCompactMenu() {
   if (menu) menu.hidden = true;
   if (toggle) toggle.setAttribute("aria-expanded", "false");
 }
+function requireAdmin(target="settingsView") {
+  if(adminUnlocked){resetAdminTimeout();return true;}
+  pendingSettingsTarget=target;
+  byId("cloudSyncDialog")?.close();
+  showView("adminLoginView");
+  showToast("Zum Ändern bitte die Verwaltung entsperren.","error");
+  return false;
+}
+function lockAdministration(){
+  adminUnlocked=false;clearTimeout(adminTimeoutId);adminTimeoutId=null;
+  window.Usability?.adminState();
+  for(const id of ['settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView']){
+    if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id;showView('adminLoginView');break;}
+  }
+  for(const id of ['reminderDraftDialog','cloudSyncDialog'])byId(id)?.close();
+  renderOneDriveDialog?.();
+}
 function showView(viewId) {
-  if(window.Drinks?.beforeView(viewId)===false)return;
+  if(["settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView"].includes(viewId)&&!requireAdmin(viewId))return false;
+  if(window.DrinksRewards?.beforeView(viewId)===false)return false;
+  if(window.Usability?.beforeLeave(viewId)===false)return false;
+  if(window.Drinks?.beforeView(viewId)===false)return false;
+  if(viewId==="drinksView")lockAdministration();
+  clearTimeout(toastTimer);byId("toast")?.classList.remove("visible");
   closeCompactMenu();
   if(viewId!=="attendanceView")hideDocumentReportUi?.();
-  document.querySelectorAll("main.app-shell .view").forEach(view => view.hidden = view.id !== viewId);
+  document.querySelectorAll("main.app-shell > .view").forEach(view => view.hidden = view.id !== viewId);
   byId("attendanceTab").classList.toggle("active", viewId === "attendanceView");
-  if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.remove("active");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || viewId.startsWith("settings"));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
+  if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.toggle("active",viewId==="settingsHistoryView");if(byId("statisticsTab"))byId("statisticsTab").classList.toggle("active",viewId==="settingsStatisticsView");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
+  window.Usability?.adminState();
   window.scrollTo({ top: 0, behavior: "smooth" });
+  return true;
 }
 
 function renderSessionType() {
@@ -43,11 +67,11 @@ function renderSessionType() {
         ? "Nur Mitglieder des Ausschusses werden angezeigt. Die Erfassung verhält sich wie beim Unterricht."
         : isOperation
           ? "Bei Einsätzen werden ausschließlich anwesende Einsatzkräfte erfasst. Mehrere Einsätze am selben Tag bleiben getrennt."
-        : "Bei einer allgemeinen Probe wird das Mitglied direkt angemeldet. Die Funktion wird beim Start der Probe automatisch berechnet.";
+        : "Status bei den Personen markieren und anschließend Auswahl übernehmen. Funktionen werden beim Start der Taktik berechnet.";
 }
 function chooseSessionType(type) {
   const validTypes=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Einsatz"];
-  if(!validTypes.includes(type))return showToast("Unbekannter Terminart.","error");
+  if(!validTypes.includes(type))return showToast("Unbekannte Terminart.","error");
   pendingSessionType=type;
   const sessionTypes=byId("sessionTypes");
   if(sessionTypes)sessionTypes.dataset.selectedSessionType=type;
@@ -69,7 +93,7 @@ function chooseSessionType(type) {
         ? "Nur Mitglieder des Ausschusses werden angezeigt. Die Erfassung verhält sich wie beim Unterricht."
         : previewOperation
           ? "Nur anwesende Einsatzkräfte markieren. Einsatzdaten werden in Schritt 3 erfasst."
-        : "Bei einer allgemeinen Probe wird das Mitglied direkt angemeldet. Die Funktion wird beim Start der Probe automatisch berechnet.";
+        : "Status bei den Personen markieren und anschließend Auswahl übernehmen. Funktionen werden beim Start der Taktik berechnet.";
   const next=byId("continueToAttendanceButton");
   if(next){next.disabled=false;next.textContent=`Weiter mit ${type}`;}
   const headerType=byId("headerProbeType");if(headerType)headerType.textContent=type;

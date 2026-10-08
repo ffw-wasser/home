@@ -28,7 +28,7 @@ function removeTacticsMenuEntry(){
 function moveProbeStatusToHeader(){
   const brand=document.querySelector(".top-brand span");if(brand)brand.textContent="Feuerwehr Wasser";
   document.title="Feuerwehr Wasser";
-  const homeButton=byId("attendanceTab");if(homeButton)homeButton.textContent="Home";
+  const homeButton=byId("attendanceTab");if(homeButton)homeButton.textContent="Termin";
   const menuButton=byId("menuToggleButton");if(menuButton)menuButton.textContent="Menü";
 
   const original=byId("homeCurrentProbeStatus"),menu=byId("compactMenu");if(!original||!menu)return;
@@ -156,19 +156,11 @@ function buildSettingsSubpages(){
   renderArchive();
   renderHistory();
   const filesTitle=byId("settingsFilesView")?.querySelector(".screen-heading h2");if(filesTitle)filesTitle.textContent="Speicherorte und Backups";
-  const filesDescription=byId("settingsFilesView")?.querySelector(".screen-heading p:not(.eyebrow)");if(filesDescription)filesDescription.textContent="PDF-Speicherort und vollständige Datensicherungen verwalten.";
+  const filesDescription=byId("settingsFilesView")?.querySelector(".screen-heading p:not(.eyebrow)");if(filesDescription)filesDescription.textContent="Terminpakete, optionale Einzel-Exporte und App-Datensicherungen verwalten.";
 }
 
-function updateHelpForCurrentFeatures(){
-  const help=byId("helpView");if(!help)return;
-  const sections=[...help.querySelectorAll(".help-section")];
-  const completion=sections.find(section=>section.querySelector("h3")?.textContent.includes("Abschluss mit CSV und PDF"));
-  if(completion) completion.innerHTML=`<h3>Probe in drei Schritten durchführen</h3><p><strong>Schritt 1:</strong> Terminart auswählen und „Weiter zu Schritt 2“ anklicken. <strong>Schritt 2:</strong> Den Status direkt bei jeder Person markieren und anschließend mit „Auswahl übernehmen“ gesammelt speichern. „Anwesend“ ist voreingestellt. Mit „Weiter zu Schritt 3“ geht es weiter. <strong>Schritt 3:</strong> Bei einer Allgemeinen Probe erscheint die Taktik, bei Sonderprobe und Unterricht direkt der Abschluss. Beim Wechsel des Terminart werden Taktik und aktuelle Auswahl zurückgesetzt.</p><p>Der Kopfbereich zeigt nur während einer laufenden Probe die Terminart sowie die Anzahl anwesender und entschuldigter Personen. CSV, PDF und Archiv werden beim vollständigen Abschluss erzeugt beziehungsweise aktualisiert.</p>`;
-  const archive=sections.find(section=>section.querySelector("h3")?.textContent.includes("Archiv und Backups"));
-  if(archive) archive.innerHTML=`<h3>Archiv, Historie und Backups</h3><p>Der Menüpunkt „Historie“ zeigt abgeschlossene Probenberichte nach Kalenderjahr und Monat. Das aktuelle Jahr und der aktuelle Monat sind beim Öffnen aufgeklappt. Andere Jahres- und Monatsrubriken sind zunächst geschlossen und können über ihre Überschrift geöffnet werden. Innerhalb eines Monats stehen die Berichte nach Datum sortiert bereit. „PDF ansehen“ öffnet den jeweiligen Probenbericht. Im Bereich „Archiv & Backups“ ändert „Eintrag korrigieren“ Status oder Funktion einer Person in einer abgeschlossenen Probe. Dazu wird die Person aus einer Liste ausgewählt. Danach können Status und gegebenenfalls die Funktion angepasst werden. Die Änderung wird als neue Version dokumentiert und CSV sowie PDF werden erneut ausgegeben. Unter „Archiv & Backups“ werden die Speicherorte für CSV-Auswertungen, PDF-Berichte und Backups gemeinsam verwaltet. Jeder Dateityp kann einen eigenen Zielordner verwenden. Der neue Menüpunkt „Einstellungen“ dient als zentrale Übersicht und führt direkt zur Mitgliederverwaltung, zu den Funktionszielen, zum Passwort und zu den Speicherorten. Die eigentliche Administration enthält nur Mitglieder, jährliche Funktionsziele und das Passwort. Der aktuelle Probenstatus erscheint während einer laufenden Probe kompakt im Kopfbereich.</p>`;
-  const statistics=sections.find(section=>section.querySelector("h3")?.textContent.includes("Statistik und Offline-Nutzung"));
-  if(statistics) statistics.innerHTML=`<h3>Statistik, Kalenderjahr und Offline-Nutzung</h3><p>Die Statistik wertet automatisch nur das aktuelle Kalenderjahr aus. Mit dem Wechsel auf ein neues Jahr beginnt die Jahresstatistik neu. Berichte aus vergangenen Jahren bleiben in der Historie erhalten. Die getrennte Auswertung von Einsatzabteilung und Altersmannschaft bleibt bestehen. Nach einem Update die Web-App vollständig neu laden, damit der neue Offline-Cache aktiv wird.</p>`;
-}
+function updateHelpForCurrentFeatures(){}
+
 members = loadArray(KEYS.members, DEFAULT_MEMBERS);
 entries = loadArray(KEYS.entries, []);
 csvArchive = loadArray(KEYS.archive, []);
@@ -200,7 +192,7 @@ byId("finishAsTrainingButton")?.addEventListener("click",()=>finishTacticsAltern
 // Der zusätzliche Abbruchknopf ist redundant: Home und „Zurück zu Schritt 1“ übernehmen den Rückweg.
 const cancelTacticsCloseButton=byId("cancelTacticsCloseButton");
 if(cancelTacticsCloseButton)cancelTacticsCloseButton.remove();
-byId("statisticsTab").addEventListener("click", () => { renderStatistics(); showView("statisticsView"); });
+byId("statisticsTab").addEventListener("click", () => { renderStatistics(); showView("settingsStatisticsView"); });
 byId("statisticsPdfButton").addEventListener("click", exportStatisticsPdf);
 byId("statisticsYearSelect").addEventListener("change",event=>{selectedStatisticsYear=event.target.value;renderStatistics();const selected=byId("individualMemberSelect").value;if(selected)renderIndividualStatistics(selected);});
 byId("individualMemberSelect").addEventListener("change", event => renderIndividualStatistics(event.target.value));
@@ -220,6 +212,7 @@ byId("exportResetButton").addEventListener("click", requestCloseProbe);
 byId("addMemberButton").addEventListener("click", addMember);
 byId("changePinButton").addEventListener("click", changePin);
 byId("saveRoleTargetsButton").addEventListener("click", () => {
+  if(!requireAdmin("settingsGoalsView"))return;
   const targets = {};
   byId("roleTargetInputs").querySelectorAll("[data-role-target]").forEach(input => {
     targets[input.dataset.roleTarget] = Math.max(0, Math.min(99, Number.parseInt(input.value, 10) || 0));
