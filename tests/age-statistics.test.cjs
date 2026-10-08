@@ -95,25 +95,39 @@ test('Keine Berichte: Alterskamerad bleibt auswählbar und PDF-Vorschau zeigt ke
   assert.equal(byId('individualPresentCount').textContent, 0);
 });
 
-test('Geladener OneDrive-ZIP-Bericht aktualisiert auch die ausgewählte Alterskameraden-Statistik', async () => {
+test('Geladener OneDrive-ZIP-Bericht mit deutschem Datum aktualisiert die Alterskameraden-Statistik', async () => {
   const {context, byId} = app();
   byId('individualMemberSelect').value = age.id;
   const zip = new JSZip();
-  zip.file('probe.csv', report('Unterricht', 'Anwesend').content);
+  zip.file('probe.csv', report('Unterricht', ' anwesend ', name(age), '08.10.2026').content);
   const bytes = await zip.generateAsync({type: 'uint8array'});
+  const operationZip = new JSZip();
+  operationZip.file('einsatz.csv', 'Datum;Alarmzeit;Einsatzart;Name;Funktion\n07.10.2026;12:30;Brand;Aktiv Beispiel;GF');
+  const operationBytes = await operationZip.generateAsync({type: 'uint8array'});
+  const emptyOperationZip = new JSZip();
+  emptyOperationZip.file('einsatz.csv', 'Datum;Alarmzeit;Einsatzart;Name;Funktion');
+  emptyOperationZip.file('paket-info.json', JSON.stringify({type: 'Einsatz', createdAt: '2027-01-01', operationData: {date: '06.10.2026', type: 'Hilfeleistung', members: []}}));
+  const emptyOperationBytes = await emptyOperationZip.generateAsync({type: 'uint8array'});
   Object.assign(context, {
     oneDriveSignedIn: () => true, oneDriveResolveSharedRoot: async () => ({driveId: 'test', id: 'root'}),
-    odFetch: async url => url.includes('/children') ? {json: async () => ({value: [{id: 'zip', name: 'probe.zip', file: {}, lastModifiedDateTime: '2026-10-08T18:00:00Z'}]})} : {blob: async () => bytes},
+    odFetch: async url => url.includes('/children') ? {json: async () => ({value: [
+      {id: 'zip', name: 'probe.zip', file: {}, lastModifiedDateTime: '2027-01-01T18:00:00Z'},
+      {id: 'op-zip', name: 'einsatz.zip', file: {}, lastModifiedDateTime: '2027-01-01T18:00:00Z'},
+      {id: 'empty-op-zip', name: 'einsatz-ohne-teilnehmer.zip', file: {}, lastModifiedDateTime: '2027-01-01T18:00:00Z'}
+    ]})} : {blob: async () => url.includes('/empty-op-zip/') ? emptyOperationBytes : url.includes('/op-zip/') ? operationBytes : bytes},
     renderHistory() {}, showToast() {}, historyDateFromItem: item => item.originalReportDate,
   });
   context.document.getElementById = () => null;
   context.document.documentElement = {classList: {add() {}, remove() {}}};
   vm.runInContext(fs.readFileSync(require.resolve('../js/features/history/onedrive-history-live.js'), 'utf8'), context);
   await context.window.loadOneDriveHistory();
-  assert.equal(context.csvArchive.length, 1);
+  assert.equal(context.csvArchive.length, 3);
   assert.equal(byId('individualMemberSelect').value, age.id);
   assert.equal(byId('ageAttendanceRate').textContent, '100,0 %');
   assert.equal(byId('individualPresentCount').textContent, 1);
+  assert.equal(context.csvArchive[0].originalReportDate, '2026-10-08');
+  assert.equal(byId('averageAttendance').textContent, 2);
+  assert.equal(context.csvArchive.find(item => item.id.endsWith('empty-op-zip')).originalReportDate, '2026-10-06');
 });
 
 test('PDF-Ausgabe lässt sich für einen Alterskameraden auslösen', () => {
@@ -127,4 +141,43 @@ test('PDF-Ausgabe lässt sich für einen Alterskameraden auslösen', () => {
   context.exportIndividualStatisticsPdf();
   assert.equal(printed, true);
   assert.equal(byId('individualPresentCount').textContent, 1);
+});
+
+test('Deutsche Berichtsdaten und Status-Leerzeichen zählen für Alterskameraden im richtigen Jahr', () => {
+  const archive = [report('Unterricht', ' Anwesend ', name(age), '08.10.2026'), report('Sonderprobe', 'Entschuldigt', name(age), '07/10/2026')];
+  archive.forEach(item => item.createdAt = '2027-01-01T00:00:00Z');
+  const original = JSON.stringify(archive);
+  const {context, byId} = app(archive);
+  context.renderStatistics();
+  assert.equal(byId('ageAttendanceRate').textContent, '50,0 %');
+  assert.match(byId('ageAttendanceRanking').innerHTML, /1 Teilnahme/);
+  context.renderIndividualStatistics(age.id);
+  assert.equal(byId('individualPresentCount').textContent, 1);
+  assert.equal(byId('individualExcusedCount').textContent, 1);
+  assert.equal(JSON.stringify(archive), original);
+});
+
+test('Einsatz-Zähler erkennt CSV-Berichte ohne Archiv-Terminart und mit deutschem Datum', () => {
+  const {context, byId} = app([{id: 'op', createdAt: '2027-01-01', content: 'Datum;Alarmzeit;Einsatzart;Name;Funktion\n08.10.2026;12:30;Brand;Aktiv Beispiel;GF'}]);
+  context.renderStatistics();
+  assert.equal(byId('averageAttendance').textContent, 1);
+  assert.equal(byId('yearProbeCount').textContent, 0);
+  context.renderIndividualStatistics(active.id);
+  assert.equal(byId('individualPresentCount').textContent, 1);
+});
+
+test('Einsatz mit strukturierten Daten ohne Teilnehmer zählt als Einsatz, aber ohne Teilnahmen', () => {
+  const {context, byId} = app([{id: 'op-empty', createdAt: '2027-01-01', sessionType: 'Einsatz', operationData: {date: '08.10.2026', type: 'Brand', members: []}, content: 'Datum;Alarmzeit;Einsatzart;Name;Funktion'}]);
+  context.renderStatistics();
+  assert.equal(byId('averageAttendance').textContent, 1);
+  context.renderIndividualStatistics(active.id);
+  assert.equal(byId('individualPresentCount').textContent, 0);
+});
+
+test('Datumsnormalisierung erkennt Schaltjahre und verwirft ungültige Datumswerte', () => {
+  assert.equal(CsvEngine.normalizeDate('8.10.2026'), '2026-10-08');
+  assert.equal(CsvEngine.normalizeDate('29.02.2024'), '2024-02-29');
+  assert.equal(CsvEngine.normalizeDate('29.02.2026'), '');
+  assert.equal(CsvEngine.normalizeDate('2026-13-08'), '');
+  assert.equal(CsvEngine.normalizeDate('2026-10-08T12:30:00Z'), '2026-10-08');
 });
