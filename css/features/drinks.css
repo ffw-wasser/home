@@ -1,0 +1,65 @@
+#drinksView { --dr-green:#24653b; --dr-pale:#f2f7f2; --dr-muted:#4d6654; --dr-line:#cddbcf; color:#18291e; }
+#drinksView *, .dr-pin-editor * { box-sizing:border-box; }
+#drinksView [hidden] { display:none!important; }
+#drinksView .dr-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:22px; }
+#drinksView h2 { margin:0; font-size:30px; }
+#drinksView h3 { margin:0 0 10px; font-size:22px; }
+#drinksView p { margin:8px 0 16px; }
+#drinksView .dr-status { color:var(--dr-muted); min-height:24px; overflow-wrap:anywhere; }
+#drinksView .dr-error { color:#a3211b; min-height:24px; margin:12px 0; }
+#drinksView .dr-columns { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:start; gap:28px; }
+#drinksView .dr-columns > * { min-width:0; }
+#drinksView .dr-card { background:#fff; border:1px solid var(--dr-line); border-radius:18px; padding:22px; }
+#drinksView button, #drinksView input { font:inherit; }
+#drinksView button { min-height:52px; padding:14px 18px; border:1px solid var(--dr-line); border-radius:12px; color:#18291e; background:#fff; font-weight:600; touch-action:manipulation; cursor:pointer; }
+#drinksView button:disabled { opacity:.5; cursor:default; }
+#drinksView button:focus-visible, #drinksView input:focus-visible { outline:3px solid #1a5835; outline-offset:3px; }
+#drinksView .dr-primary { color:#fff; background:var(--dr-green); border-color:var(--dr-green); }
+#drinksView .dr-wide { width:100%; }
+#drinksView label { display:block; font-weight:600; margin-bottom:8px; }
+#drinksView input { width:100%; min-width:0; min-height:54px; font-size:20px; padding:12px 14px; border:1px solid var(--dr-line); background:#fff; color:#18291e; border-radius:10px; }
+#drinksView .dr-member-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px; }
+#drinksView .dr-member-list button { text-align:left; overflow-wrap:anywhere; }
+#drinksView .dr-ranking-heading { display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+#drinksView .dr-ranking-heading h3 { margin-bottom:4px; }
+#drinksView .dr-ranking-heading p { margin:0; color:var(--dr-muted); }
+#drinksView .dr-mascot { width:76px; height:86px; object-fit:contain; flex-shrink:0; transform:rotate(-7deg); }
+#drinksView .dr-ranking-list { list-style:none; padding:0; margin:0; display:grid; gap:16px; }
+#drinksView .dr-rank-row { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:10px; }
+#drinksView .dr-medal { font-size:28px; }
+#drinksView .dr-rank-money { font-size:22px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+#drinksView .dr-rank-name { overflow-wrap:anywhere; }
+#drinksView .dr-rank-track { grid-column:2 / 4; height:7px; background:var(--dr-pale); border-radius:5px; overflow:hidden; }
+#drinksView .dr-rank-fill { display:block; height:100%; background:var(--dr-green); border-radius:5px; }
+#drinksView .dr-ranking-foot { margin:16px 0 0; color:var(--dr-muted); font-size:14px; }
+#drinksView .dr-pin-screen { max-width:480px; margin:0 auto; }
+#drinksView .dr-balance { font-size:clamp(36px,4vw,52px); line-height:1.2; font-weight:700; font-variant-numeric:tabular-nums; margin:8px 0; }
+#drinksView .dr-muted { color:var(--dr-muted); }
+#drinksView .dr-draft { margin-top:20px; padding:20px; border-radius:16px; background:var(--dr-pale); }
+#drinksView .dr-draft-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+#drinksView .dr-draft-heading h3 { margin:0; }
+#drinksView .dr-beers { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:56px; margin-top:10px; font-size:32px; }
+#drinksView .dr-keg { width:48px; height:54px; object-fit:contain; }
+#drinksView .dr-beer-pop { animation:dr-cheers .35s ease-out; }
+@keyframes dr-cheers { 0%{transform:translateY(4px) scale(.7)}60%{transform:translateY(-3px) scale(1.15)}100%{transform:none} }
+@media(prefers-reduced-motion:reduce){#drinksView .dr-beer-pop{animation:none}}
+#drinksView .dr-add { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:94px; font-size:28px; }
+#drinksView .dr-add small { font-size:18px; white-space:nowrap; }
+#drinksView .dr-actions { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; }
+#drinksView .dr-payment-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:16px 0; }
+#drinksView .dr-payment-actions button { overflow-wrap:anywhere; }
+#drinksView .dr-total { margin:18px 0; font-size:19px; }
+#drinksView .dr-footer { display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
+#drinksView .dr-qr-box { margin-top:18px; padding:20px; border:1px solid var(--dr-line); border-radius:14px; background:#fff; text-align:center; }
+#drinksView .dr-qr-box canvas { width:min(100%,260px); height:auto; display:block; margin:0 auto 14px; image-rendering:pixelated; }
+#drinksView .dr-paypal-url { overflow-wrap:anywhere; color:#185b35; }
+#drinksView .dr-success { font-size:32px; }
+.dr-pin-editor { border:1px solid #cddbcf; padding:16px; margin:16px 0; border-radius:12px; min-width:0; background:#f4f8f4; }
+.dr-pin-editor legend { font-weight:700; }
+.dr-pin-editor label { display:block; }
+.dr-pin-editor input { display:block; width:100%; min-width:0; padding:12px; font-size:18px; margin:8px 0; }
+.dr-pin-editor button { min-height:48px; margin-top:10px; }
+.dr-pin-editor [data-dr-pin-status] { display:block; font-size:14px; margin-top:10px; overflow-wrap:anywhere; }
+@media(min-width:900px) and (orientation:landscape){#drinksView .dr-columns{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}#drinksView .dr-card{padding:24px}}
+@media(max-width:760px){#drinksView .dr-columns{grid-template-columns:1fr;gap:20px}#drinksView .dr-card{padding:18px}#drinksView .dr-member-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){#drinksView .dr-member-list,#drinksView .dr-payment-actions{grid-template-columns:1fr}#drinksView .dr-ranking-heading{gap:10px}#drinksView .dr-mascot{width:54px;height:66px}#drinksView .dr-rank-money{font-size:19px}#drinksView h3{font-size:20px}#drinksView .dr-add{font-size:24px}}
