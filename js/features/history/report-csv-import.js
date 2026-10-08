@@ -7,6 +7,7 @@
   function counts(rows){return {presentCount:rows.filter(r=>r.status==="Anwesend").length,excusedCount:rows.filter(r=>r.status==="Entschuldigt").length,missingCount:rows.filter(r=>r.status==="Fehlt").length};}
   function itemFromCsv(file,content){const rows=parseCsvRows(content)||[];if(!rows.length)throw new Error(`${file.name}: keine lesbaren Berichtsdaten`);const first=rows[0];return {id:makeId(),fileName:file.name,content,sessionType:first.sessionType||"Probe",topic:first.topic||"",createdAt:new Date(file.lastModified||Date.now()).toISOString(),...counts(rows)};}
   async function importHistoryFiles(files){
+    if(!requireAdmin("settingsHistoryView"))return;
     const list=[...files],csvFiles=list.filter(f=>/\.csv$/i.test(f.name)),pdfFiles=list.filter(f=>/\.pdf$/i.test(f.name));
     if(!csvFiles.length&&!pdfFiles.length)throw new Error("In den Speicherorten wurden keine CSV- oder PDF-Berichte gefunden.");
     const existingByKey=new Map((csvArchive||[]).map(item=>[reportKey(item),item]));
@@ -59,6 +60,7 @@
   }
   function updateHint(){const hint=get("historyImportHint"),button=get("importHistoryReportsButton");if(!hint||!button)return;const names=[csvDirectoryHandle?.name,pdfDirectoryHandle?.name].filter(Boolean);if(names.length){button.textContent="Alle Berichte aus den eingestellten Speicherorten einlesen";hint.textContent=`Verwendete Speicherorte: ${[...new Set(names)].join(" · ")}. CSV und PDF werden zusammengeführt; Duplikate werden übersprungen.`;}else{button.textContent=typeof window.showDirectoryPicker==="function"?"Berichtsordner auswählen und alle Dateien einlesen":"CSV- und PDF-Berichte auswählen";hint.textContent="Kein erreichbarer Speicherort ist hinterlegt. Beim Import wird deshalb ein Ordner beziehungsweise werden Dateien ausgewählt.";}}
   async function syncHistoryWithFiles(files){
+    if(!requireAdmin("settingsHistoryView"))return;
     const list=[...files],csvFiles=list.filter(file=>/\.csv$/i.test(file.name)),pdfFiles=list.filter(file=>/\.pdf$/i.test(file.name));
     if(!csvFiles.length)throw new Error("In den ausgewählten Speicherorten wurden keine CSV-Berichte gefunden. Das lokale Archiv wurde nicht verändert.");
     const incoming=[],incomingByKey=new Map();

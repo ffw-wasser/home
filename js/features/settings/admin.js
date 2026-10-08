@@ -1,7 +1,5 @@
 function logoutAdmin(showMessage = false) {
-  adminUnlocked = false;
-  clearTimeout(adminTimeoutId);
-  adminTimeoutId = null;
+  lockAdministration();
   showView("attendanceView");
   if (showMessage) showToast("Administration wurde nach 15 Minuten Inaktivität automatisch gesperrt.", "error");
 }
@@ -110,6 +108,8 @@ function login() {
   renderAdmin();
   showView(pendingSettingsTarget||"settingsMembersView");
   window.SmartWorkflow?.settings?.();
+  if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();
+  if(pendingSettingsTarget==="settingsRewardsView")window.DrinksRewards?.load();
   pendingSettingsTarget="";
 }
 
@@ -126,10 +126,13 @@ function loginArchive() {
   renderArchive();
   showView(pendingSettingsTarget||"settingsFilesView");
   window.SmartWorkflow?.settings?.();
+  if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();
+  if(pendingSettingsTarget==="settingsRewardsView")window.DrinksRewards?.load();
   pendingSettingsTarget="";
 }
 
 function addMember() {
+  if(!requireAdmin("settingsMembersView"))return;
   const lastName = byId("newLastName").value.trim();
   const firstName = byId("newFirstName").value.trim();
   if (!lastName || !firstName) return showToast("Bitte Nachname und Vorname eingeben.", "error");
@@ -144,11 +147,15 @@ function addMember() {
   showToast("Mitglied wurde hinzugefügt.");
 }
 function updateMember(id, row) {
+  if(!requireAdmin("settingsMembersView"))return;
   const lastName = row.querySelector("[data-last-name]").value.trim();
   const firstName = row.querySelector("[data-first-name]").value.trim();
   if (!lastName || !firstName) return showToast("Name darf nicht leer sein.", "error");
   const member = members.find(item => item.id === id);
   if (!member) return;
+  const driverDate=row.querySelector("[data-driver-license-checked]")?.value||"";
+  if(row.querySelectorAll("[data-machinist-vehicle]:checked").length&&!driverDate)return showToast("Bitte das Datum der letzten Führerscheinkontrolle eintragen.","error");
+  window.Usability?.savedMember(row);
   member.lastName = lastName;
   member.firstName = firstName;
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
@@ -172,6 +179,7 @@ function updateMember(id, row) {
   showToast("Mitglied wurde aktualisiert.");
 }
 function deleteMember(id) {
+  if(!requireAdmin("settingsMembersView"))return;
   const member = members.find(item => item.id === id);
   if (!member || !confirm(`${nameForTile(member)} wirklich löschen?`)) return;
   members = members.filter(item => item.id !== id);
@@ -183,9 +191,10 @@ function deleteMember(id) {
   showToast("Mitglied wurde gelöscht.");
 }
 function changePin() {
+  if(!requireAdmin("settingsSecurityView"))return;
   const first = byId("newPin").value.trim();
   const repeated = byId("repeatPin").value.trim();
-  if (first.length < 3) return showToast("Das Passwort muss mindestens 3 Zeichen enthalten. Ein einfaches Passwort wie 112 ist erlaubt.", "error");
+  if (first.length < 8) return showToast("Das Passwort muss mindestens 8 Zeichen enthalten.", "error");
   if (first !== repeated) return showToast("Die Passwörter stimmen nicht überein.", "error");
   safeStorage.setItem(KEYS.password, first);
   byId("newPin").value = "";

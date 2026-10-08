@@ -105,6 +105,7 @@
   }
 
   function historyStatus(text) {
+    window.Usability?.historyStatus(text);
     const status = document.getElementById("statisticsHistoryStatus");
     if (status) { status.textContent = text; status.hidden = !text; }
   }
@@ -128,7 +129,7 @@
       return false;
     }
     if (navigator.onLine === false) {
-      historyStatus("Offline. Die Statistik zeigt den zuletzt geladenen Stand. Sobald die Verbindung zurückkehrt, wird erneut synchronisiert.");
+      historyStatus("Offline. Historie und Statistik zeigen den zuletzt geladenen Stand. Sobald die Verbindung zurückkehrt, wird erneut synchronisiert.");
       if (manual) showToast("Offline. Bitte Internetverbindung prüfen.", "error");
       return false;
     }
@@ -170,6 +171,7 @@
       renderStatistics?.();
       window.oneDriveHistoryLastError = "";
       historyStatus("");
+      window.Usability?.historyStatus("",new Date().toISOString());
       if (manual) showToast(`Historie aus ${files.length} OneDrive-ZIP-Datei${files.length === 1 ? "" : "en"} geladen.`);
       return true;
     } catch (error) {
@@ -182,7 +184,7 @@
         : error.code === "invalidReportPackage" ? "Dieses ZIP-Paket ist nicht lesbar. Bitte die Datei in OneDrive prüfen oder neu exportieren."
         : "Bitte Internetverbindung prüfen und erneut synchronisieren.";
       const detail = `${failedFile ? " Datei: " + failedFile + "." : ""}${error.status ? " OneDrive-Fehler " + error.status + "." : ""}`;
-      const message = `Historie konnte nicht aktualisiert werden.${detail} Die Statistik zeigt den zuletzt geladenen Stand. ${hint}`;
+      const message = `Historie konnte nicht aktualisiert werden.${detail} Historie und Statistik zeigen den zuletzt geladenen Stand. ${hint}`;
       window.oneDriveHistoryLastError = message;
       historyStatus(message);
       if (manual) showToast(message, "error");

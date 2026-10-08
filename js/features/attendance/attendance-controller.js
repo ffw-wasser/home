@@ -114,6 +114,7 @@ function updateSelection() {
   document.querySelector(".current-selection")?.classList.toggle("training-selection", isTraining);
   if(byId("saveButton"))byId("saveButton").textContent=`Auswahl übernehmen (${pendingMemberStatuses.size})`;
   if(byId("saveButton"))byId("saveButton").disabled=pendingMemberStatuses.size===0;
+  window.Usability?.attendanceState();
   syncStep3ButtonState();
   if(byId("roleSaveButton"))byId("roleSaveButton").disabled = !(sessionType === "Allgemeine Probe" && selected && chosenRole);
   updateProbeWorkflow();
@@ -141,7 +142,7 @@ function renderEntries() {
       <td>${escapeHtml(entry.time)}</td>
       <td><strong>${escapeHtml(entry.displayName)}</strong></td>
       <td>${escapeHtml(entry.role === "Orga" ? "Organisation" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? entry.status : entry.role))}</td>
-      <td><button type="button" class="delete-entry" data-entry="${escapeHtml(entry.id)}" aria-label="Anmeldung löschen">✕</button></td>
+      <td><button type="button" class="outline-button" data-edit-entry="${escapeHtml(entry.id)}">Status ändern</button> <button type="button" class="delete-entry" data-entry="${escapeHtml(entry.id)}" aria-label="Anmeldung von ${escapeHtml(entry.displayName)} löschen">✕</button></td>
     </tr>`).join("");
   const presentCount = current.filter(entry => entry.status === "Anwesend").length;
   const excusedCount = current.filter(entry => entry.status === "Entschuldigt").length;
@@ -170,7 +171,9 @@ function renderAdmin() {
   };
   const activeMembers = members.filter(member => !member.ageDepartment);
   const ageMembers = members.filter(member => member.ageDepartment);
+  if(window.Usability?.hasMemberDraft())return;
   byId("memberAdmin").innerHTML = `<section class="admin-department admin-department-active"><div class="admin-department-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div>${activeMembers.map((member, index) => renderMemberCard(member, index)).join("")}</section>${ageMembers.length ? `<section class="admin-department admin-department-age"><div class="admin-department-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div>${ageMembers.map((member, index) => renderMemberCard(member, activeMembers.length + index)).join("")}</section>` : ""}`;
+  window.Usability?.members();
 }
 function saveAgeDepartmentAttendance(member) {
   if (!member || !member.ageDepartment) return false;
@@ -245,7 +248,7 @@ function commitPendingMemberStatuses(){
   };
   requestAnimationFrame(()=>requestAnimationFrame(scrollToActiveDepartment));
   setTimeout(scrollToActiveDepartment,180);
-  showToast(`${count} Personen wurden übernommen.`);return true;
+  showToast(`${count} Anmeldung${count===1?"":"en"} gespeichert.`);return true;
 }
 function chooseMember(id) {
   const clickedMember=members.find(member=>member.id===id);
@@ -377,12 +380,11 @@ function deleteEntry(id) {
 }
 
 function clearToday() {
-  if (!todayEntries().length) return showToast("Für heute sind keine Anmeldungen vorhanden.", "error");
-  if (!confirm("Alle heutigen Anmeldungen zurücksetzen? Mitglieder, Einstellungen und Archiv bleiben erhalten.")) return;
-  const sessionId=ensureCurrentSessionId();
-  entries = sessionType === "Einsatz"
-    ? entries.filter(entry => entry.operationId !== currentOperationId)
-    : entries.filter(entry => entry.sessionId !== sessionId);
+  if (!todayEntries().length) return showToast("Für diesen Termin sind keine Anmeldungen vorhanden.", "error");
+  if (!confirm("Alle Anmeldungen dieses Termins zurücksetzen? Mitglieder, Einstellungen und Archiv bleiben erhalten.")) return;
+  const ids=new Set(todayEntries().map(entry=>entry.id));
+  entries=entries.filter(entry=>!ids.has(entry.id));
+  pendingMemberStatuses.clear();
   chosenMemberId = "";
   chosenMemberIds.clear();
   chosenRole = "";
@@ -393,7 +395,7 @@ function clearToday() {
   renderAdmin();
   updateSelection();
   updateProbeWorkflow();
-  showToast("Alle heutigen Teilnehmer wurden zurückgesetzt und können neu eingetragen werden.");
+  showToast("Anmeldungen dieses Termins zurückgesetzt.");
 }
 
 function setupUnifiedHomeWorkflow(){
@@ -457,33 +459,19 @@ if(!window.__floatingAttendanceStatusBound){
   window.visualViewport?.addEventListener("resize",updateFloatingAttendanceStatusToolbar,{passive:true});
 }
 
-function resetAttendanceForReturnToHome(){
-  const currentEntries=todayEntries();
-  if(!currentEntries.length)return true;
-  if(!confirm("Beim Wechsel zu Schritt 1 oder Home werden alle aktuell erfassten Anwesenden zurückgesetzt. Wirklich fortfahren?"))return false;
-  const sessionId=ensureCurrentSessionId(),operationId=currentOperationId;
-  entries=sessionType==="Einsatz"&&operationId
-    ? entries.filter(entry=>entry.operationId!==operationId)
-    : entries.filter(entry=>entry.sessionId!==sessionId);
-  chosenMemberId="";chosenMemberIds.clear();chosenRole="";pendingMemberStatuses.clear();
-  saveEntries();
-  resetDocumentReportState?.();
-  if(sessionType==="Einsatz")resetOperationState?.();
-  renderEntries();renderMembers();renderRoles();renderAdmin();updateSelection();updateProbeWorkflow();updatePrimaryAction();
-  showToast("Alle erfassten Anwesenden wurden zurückgesetzt.");
-  return true;
-}
-function requestReturnToHomeStage(){
-  if(!resetAttendanceForReturnToHome())return false;
-  setHomeFlowStage(1);
-  return true;
+function requestReturnToHomeStage(){ return true; }
+function discardCurrentAttendanceSession(){
+  if(!confirm("Diesen laufenden Termin mit allen Anmeldungen und ungespeicherten Eingaben verwerfen? Abgeschlossene Berichte bleiben erhalten."))return false;
+  const ids=new Set(todayEntries().map(entry=>entry.id));
+  entries=entries.filter(entry=>!ids.has(entry.id));
+  pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";chosenRole="";
+  currentSessionId="";safeStorage.removeItem("fw_v1_current_session_id");
+  resetDocumentReportState?.();resetOperationState?.();
+  saveEntries();setHomeFlowStage(1);renderEntries();renderMembers();updateSelection();
+  showToast("Termin verworfen. Du kannst einen neuen Termin beginnen.");return true;
 }
 function setHomeFlowStage(stage){
-  // Schritt 1 verhält sich wie Home: Bereits erfasste Anwesenheiten werden
-  // nach Bestätigung vollständig zurückgesetzt, unabhängig von der Terminart.
-  if(stage===1&&homeFlowStage!==1&&todayEntries().length){
-    if(!resetAttendanceForReturnToHome())return false;
-  }
+  if(byId("operationReportForm")?.hidden===false)persistOperationDraft(collectOperationData());
   homeFlowStage=stage;
   const attendanceView=byId("attendanceView");
   attendanceView?.classList.toggle("workflow-stage-1",stage===1);
@@ -560,6 +548,9 @@ function continueToAttendance(){
   const selectedButton=byId("sessionTypes")?.querySelector("[data-session-type].selected,[data-session-type][aria-pressed='true']");
   const type=pendingSessionType||byId("sessionTypes")?.dataset.selectedSessionType||selectedButton?.dataset.sessionType||"";
   if(!type)return showToast("Bitte zuerst eine Terminart auswählen.","error");
+  const running=Boolean(currentSessionId||currentOperationId);
+  if(running&&type===sessionType){setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();return;}
+  if(running&&type!==sessionType&&!discardCurrentAttendanceSession())return;
   window.__sessionTypeTransitionRunning=true;
   sessionType=type;
   // Jeder Termin erhält eine eigene ID. Andere Termine desselben Tages bleiben erhalten.
@@ -628,7 +619,7 @@ function ensureStagedHomeFlow(){
   }
   if(!byId("homeFlowProgress")){
     const progress=document.createElement("nav");progress.id="homeFlowProgress";progress.className="home-flow-progress";progress.setAttribute("aria-label","Terminablauf");sessionPanel.parentElement.insertBefore(progress,sessionPanel);
-    progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){if(!requestReturnToHomeStage())return;requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3&&sessionType==="Einsatz"){ensureOperationForm?.().setAttribute("hidden","");showOperationForm?.();syncHomeFlowProgress(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;openOperationReportForm?.();syncHomeFlowProgress(4);}});
+    progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){setHomeFlowStage(1);requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3&&sessionType==="Einsatz"){ensureOperationForm?.().setAttribute("hidden","");showOperationForm?.();syncHomeFlowProgress(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;openOperationReportForm?.();syncHomeFlowProgress(4);}});
   }
   syncHomeFlowProgress(homeFlowStage);
 
@@ -644,7 +635,7 @@ function ensureStagedHomeFlow(){
   workspace.classList.add("home-flow-card","home-flow-stage-2");
   if(!byId("stage2Heading")){const h=document.createElement("div");h.id="stage2Heading";h.className="flow-stage-heading";workspace.prepend(h);}
   const stage2Heading=byId("stage2Heading");if(stage2Heading)stage2Heading.innerHTML=`<span>2</span><div><strong>Anwesenheit erfassen</strong><small>${escapeHtml(sessionType)}</small></div>`;
-  if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Probetermin</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{currentProbeDate=event.target.value||systemToday();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
+  if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Termindatum</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{currentProbeDate=event.target.value||systemToday();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
 
   const step3ActionButton=byId("exportResetButton");
   if(step3ActionButton){

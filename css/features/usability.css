@@ -1,0 +1,48 @@
+/* Einheitliche iPad-Bedienung: klare Aktionen, ruhige Karten, sichtbare Zustände. */
+:root{--ux-green:#24653b;--ux-ink:#23333c;--ux-line:#ccd6dc;--ux-muted:#4b5e69;--ux-red:#a3211b}
+body button,body a.primary-button,body a.outline-button{min-height:48px;touch-action:manipulation}
+body input:not([type=checkbox]):not([type=radio]),body select{min-height:48px;font-size:16px}
+body .outline-button,body .view-home-button,body .nav-button:not(.active){border-color:#aebbc2;background:#fff;color:var(--ux-ink)}
+body .primary-button,body .admin-save{background:var(--ux-green);border-color:var(--ux-green);color:#fff}
+body .danger-button{background:#fff;border-color:var(--ux-red);color:var(--ux-red)}
+body .help-text,body .storage-location-heading p,body .settings-subheading p,body .storage-card small{color:var(--ux-muted);font-size:16px;line-height:1.5}
+body :is(button,a,input,select,textarea,summary,[role=button]):focus-visible{outline:3px solid #155c96;outline-offset:3px}
+body [hidden]{display:none!important}
+body .home-flow-indicator{min-height:48px}
+body .cloud-sync-button,body .cloud-sync-close{min-height:48px;min-width:48px}
+body .member-status-action{min-width:48px;min-height:54px}
+.ux-search{margin:16px 0 22px;max-width:640px}.ux-search label{display:block;font-weight:700;margin-bottom:8px}.ux-search input{width:100%}.ux-search p{font-size:16px;color:var(--ux-muted);margin:8px 0}
+.ux-admin-state{display:flex;justify-content:space-between;align-items:center;gap:14px;background:#fff7df;border-bottom:1px solid #d3bb72;padding:8px 24px}.ux-admin-state button{background:#fff}
+.ux-save-status{padding:12px 16px;background:#eef5f0;color:#234d32;border-radius:10px;font-size:16px}.ux-save-status.is-pending{background:#fff5d9;color:#705116}
+.ux-other-actions{margin:16px 0;padding:12px;border:1px solid var(--ux-line);border-radius:12px}.ux-other-actions summary{font-weight:600;padding:12px;cursor:pointer}.ux-other-actions button{margin:12px 8px 4px 0}
+body .member-card.ux-member{background:#fff;border:1px solid var(--ux-line);border-top:1px solid var(--ux-line);box-shadow:none;border-radius:14px;padding:0;margin-bottom:12px}
+.ux-member>summary{display:flex;align-items:center;gap:12px;list-style:none;padding:16px;cursor:pointer;min-height:64px;background:#f6f8f9;border-radius:14px}.ux-member>summary::-webkit-details-marker{display:none}.ux-member>summary::before{content:'▸';font-size:20px}.ux-member[open]>summary::before{content:'▾'}.ux-member>summary strong{flex:1;overflow-wrap:anywhere}.ux-member>summary .member-card-number{display:none}.ux-member-open{font-size:14px;color:var(--ux-muted)}
+.ux-member>:not(summary){margin:16px!important}.ux-member-section{border:1px solid var(--ux-line);padding:12px;border-radius:10px}.ux-member-section>summary{min-height:48px;cursor:pointer;font-weight:600}.ux-member-status{font-size:16px;color:var(--ux-muted)}.ux-member[data-member-dirty] .ux-member-status{color:#705116}
+.ux-history-status{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border:1px solid var(--ux-line);border-radius:12px;background:#f6f8f9;margin:16px 0}.ux-history-status p{margin:0;line-height:1.5;overflow-wrap:anywhere}.ux-history-status button{flex-shrink:0}.ux-history-status.is-error{border-color:#c5a466;background:#fff6df}
+.ux-backup-scope{padding:16px 0;margin-bottom:16px;border-bottom:1px solid var(--ux-line)}.ux-backup-scope h3{margin-top:0}.ux-backup-scope p{font-size:16px;color:var(--ux-ink);line-height:1.5}.ux-backup-scope summary{padding:12px 0;font-weight:700;cursor:pointer}
+body #statisticsPdfButton{width:auto!important;min-height:48px!important;font-size:16px!important;padding:12px 18px!important;display:inline-flex}
+body .statistics-collapsible>summary{min-height:56px}.statistics-collapsible>summary small{font-size:14px}
+.ux-dialog-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}#entryStatusDialog{max-width:520px;width:calc(100% - 32px);border:1px solid var(--ux-line);border-radius:16px;padding:24px}#entryStatusDialog select{width:100%}#entryStatusDialog label{display:block;margin-bottom:8px}
+.ux-tactics-tools{padding:16px;border:1px solid var(--ux-line);border-radius:12px;background:#f6f8f9;margin-bottom:16px}.ux-tactics-tools p{margin:0 0 8px}.ux-tactics-tools button{margin-right:10px}.ux-tactics-selected{outline:3px solid #155c96!important;outline-offset:2px}
+body .crew-position{min-height:76px;cursor:pointer}body .crew-position small{font-size:14px}body .tactics-vehicle-image{max-height:140px;object-fit:contain}body [data-drag-member]{cursor:pointer;min-height:48px}
+.help-section{border:1px solid var(--ux-line);border-radius:12px;padding:0 18px;background:#fff}.help-section>summary{padding:18px 0;min-height:56px;font-size:19px;font-weight:700;cursor:pointer}.help-section p{font-size:16px;line-height:1.6}
+.ux-reminder-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:20px;padding:16px;border:1px solid var(--ux-line);border-radius:12px;margin-top:12px;background:#fff}.ux-reminder-row span{font-size:22px;font-weight:700}.ux-reminder-row strong{overflow-wrap:anywhere}
+.ux-reminder-dialog{width:min(680px,calc(100% - 32px));border:1px solid var(--ux-line);border-radius:16px;padding:24px}.ux-reminder-dialog textarea{width:100%;padding:12px;font:inherit;border:1px solid var(--ux-line);border-radius:10px}.ux-reminder-dialog label{display:block;margin-bottom:8px}.ux-dialog-actions a{text-decoration:none;display:inline-flex;align-items:center;padding:12px 16px;border-radius:9px}
+.dr-thanks{width:min(520px,calc(100% - 32px));padding:24px;text-align:center;border:0;border-radius:24px;background:#f3f8f2;overflow:hidden}.dr-thanks::backdrop{background:rgba(18,35,24,.5)}.dr-thanks>button{display:block;margin-left:auto}.dr-thanks h2{font-size:42px;color:#24653b;margin:8px 0}.dr-thanks p{font-size:22px}.dr-thanks .dr-muted{font-size:16px;color:#4b5e69}.dr-burst{position:relative;height:180px;display:grid;place-items:center}.dr-burst img{width:110px;height:130px;object-fit:contain;animation:keg-pop 900ms ease-in forwards}.dr-burst-pop{position:absolute;font-size:90px;animation:burst-pop 1300ms ease-out both}.dr-burst i{position:absolute;left:50%;top:50%;width:11px;height:20px;background:#d7a52f;border-radius:3px;animation:burst-confetti 1600ms ease-out both;animation-delay:calc(650ms + var(--delay))}.dr-burst i:nth-child(3n){background:#24653b}.dr-burst i:nth-child(3n+1){background:#d94c36}
+@keyframes keg-pop{0%{transform:scale(1)}50%{transform:rotate(-8deg) scale(1.12)}65%{transform:rotate(8deg) scale(1.18)}80%{opacity:1}100%{transform:scale(1.5);opacity:0}}
+@keyframes burst-pop{0%,48%{opacity:0;transform:scale(.1)}65%{opacity:1;transform:scale(1.25)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes burst-confetti{0%{opacity:0;transform:rotate(var(--angle)) translateY(0)}10%{opacity:1}100%{opacity:0;transform:rotate(var(--angle)) translateY(-140px) rotate(140deg)}}
+@media(prefers-reduced-motion:reduce){.dr-burst img{animation:none}.dr-burst-pop,.dr-burst i{display:none}.dr-thanks *{animation:none!important}}
+@media(max-width:700px){.ux-history-status,.ux-admin-state{align-items:stretch;flex-direction:column}.ux-reminder-row{grid-template-columns:minmax(0,1fr) auto}.ux-reminder-row button{grid-column:1/-1}.ux-member-open{display:none}.ux-dialog-actions>*{width:100%}}
+/* Vorrang vor früheren, ausdrücklich ausgeblendeten Menüeinträgen. */
+html body #compactMenu #historyTab,html body #compactMenu #statisticsTab{display:flex!important}
+html body .top-nav #attendanceTab,html body .top-nav #menuToggleButton,html body .top-nav #cloudSyncButton{height:auto!important;min-height:48px!important;max-height:none!important}
+html body .view-home-button,html body .outline-button{border-color:#aebbc2!important;background:#fff!important;color:#23333c!important}
+html body .home-flow-indicator{min-height:48px!important}
+html body .storage-location-heading p,html body .settings-subheading p{color:#4b5e69!important;font-size:16px!important}
+html body .tactics-visual{height:auto!important;min-height:0!important;padding:6px!important}
+html body .tactics-visual img{height:140px!important;max-height:140px!important;width:100%!important;object-fit:contain!important}
+#settingsView button.settings-menu-card{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:8px;text-align:left;padding:20px}
+
+.dr-burst-pop{width:110px;height:110px}.dr-burst-pop svg{display:block;width:100%;height:100%}
+@media(min-width:700px){.dr-own-new-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}}
