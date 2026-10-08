@@ -43,7 +43,7 @@ test('Vorhandenes OneDrive-ZIP erhält Thema in Archiv und Statistik', async () 
   zip.file('paket-info.json', JSON.stringify({csvName: 'sonderprobe.csv', type: 'Probe'}));
   const bytes = await zip.generateAsync({type: 'uint8array'});
   const statsSource = fs.readFileSync(require.resolve('../js/features/statistics/statistics.js'), 'utf8');
-  const historySource = fs.readFileSync(require.resolve('../js/onedrive-history-live.js'), 'utf8');
+  const historySource = fs.readFileSync(require.resolve('../js/features/history/onedrive-history-live.js'), 'utf8');
   const context = vm.createContext({
     CsvEngine, JSZip, Set, Map, console, csvArchive: [],
     window: {}, document: {getElementById: () => null, documentElement: {classList: {add(){}, remove(){}}}},

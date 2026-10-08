@@ -396,3 +396,11 @@ function removeLegacyDarkModeControls(){
   document.querySelectorAll("button,a").forEach(node=>{if(/^dark\s*mode$/i.test(String(node.textContent||"").trim()))node.remove();});
 }
 removeLegacyDarkModeControls();document.addEventListener("DOMContentLoaded",removeLegacyDarkModeControls);window.addEventListener("load",removeLegacyDarkModeControls,{once:true});
+
+/* Den Offline-Cache auch auf erstmals verwendeten Geräten aktivieren. */
+function registerAppServiceWorker(){
+  if(!("serviceWorker" in navigator)||!window.isSecureContext)return Promise.resolve(null);
+  return navigator.serviceWorker.register(new URL("service-worker.js",document.baseURI).href).catch(error=>{console.warn("Offline-Cache konnte nicht aktiviert werden",error);return null;});
+}
+if(document.readyState==="complete")registerAppServiceWorker();
+else window.addEventListener("load",registerAppServiceWorker,{once:true});

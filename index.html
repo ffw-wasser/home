@@ -2,7 +2,7 @@
 
 <html lang="de">
 <head>
-<meta charset="utf-8"/><meta name="ffw-build" content="report-dates-statistics-20261008"/>
+<meta charset="utf-8"/><meta name="ffw-build" content="plausibility-cleanup-20261008"/>
 <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
 <meta content="#c80000" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -54,7 +54,7 @@
 #attendanceSelectionWorkspace>.input-column{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:stretch!important;align-self:start!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;gap:12px!important}
 #attendanceSelectionWorkspace>.input-column>.members-panel:not([hidden]),#attendanceSelectionWorkspace>.input-column>.roles-panel:not([hidden]){position:static!important;inset:auto!important;align-self:stretch!important;margin:0!important;transform:none!important}
 </style>
-  <link href="css/patch-ios-history.css?v=20261007-1" rel="stylesheet"/>
+  
   <link href="css/layout/patch-ios-history.css?v=20261007-5" rel="stylesheet"/>
   <link href="css/layout/iphone-action-dock-fix.css?v=20261007-7" rel="stylesheet"/>
 </head>
@@ -269,10 +269,10 @@
 <section><h4>Termine nach Grund</h4><div class="metric-list" id="individualProbeTypes"></div><p class="empty-state" id="individualProbeTypesEmpty">Noch keine Proben im laufenden Jahr erfasst.</p></section><section class="individual-recent-section"><h4>Letzte Teilnahmen der ausgewählten Person</h4><div class="individual-recent-list" id="individualRecentVisits"></div><p class="empty-state" id="individualRecentVisitsEmpty">Noch keine Teilnahmen im laufenden Jahr erfasst.</p></section>
 
 </div>
-<p class="individual-report-note">Datengrundlage: abgeschlossene CSV-Dateien im lokalen Archiv dieses Browsers.</p>
+<p class="individual-report-note">Datengrundlage: geladene abgeschlossene Berichte.</p>
 </div>
 </article><section aria-labelledby="ageStatisticsTitle" class="age-statistics-section"><div class="panel-heading age-statistics-heading"><span class="step yellow">ALT</span><div><h3 id="ageStatisticsTitle">Statistik Altersmannschaft</h3><p>Getrennte Auswertung, ohne Einfluss auf die Statistik der aktiven Einsatzabteilung.</p></div></div><div class="statistics-kpis age-statistics-kpis"><article class="stat-kpi"><span>Mitglieder</span><strong id="ageTeamStrength">0</strong><small>Altersmannschaft</small></article><article class="stat-kpi"><span>Anwesenheit im Jahr</span><strong id="ageAttendanceRate">–</strong><small id="ageAttendanceDetail">Noch keine Teilnahmen</small></article><article class="stat-kpi"><span>Durchschnitt</span><strong id="ageAverageAttendance">–</strong><small>anwesende Alterskameraden je Probe</small></article><article class="stat-kpi"><span>Ø Teilnehmer</span><strong id="agePresentCount">–</strong><small id="ageStatusDetail">je Termin</small></article></div><article class="panel statistics-panel age-ranking-panel"><div class="panel-heading"><span class="step yellow">RANG</span><h3>Anwesenheit Altersmannschaft</h3></div><div class="ranking-list" id="ageAttendanceRanking"></div><p class="empty-state" id="ageAttendanceEmpty">Noch keine Mitglieder der Altersmannschaft vorhanden.</p></article></section>
-<div class="statistics-note"><strong>Datengrundlage:</strong> Die Statistik wertet die abgeschlossenen CSV-Dateien im lokalen Archiv dieses Browsers aus. Nicht exportierte Tagesdaten und Archive auf anderen Geräten sind nicht enthalten.</div>
+<div class="statistics-note"><strong>Datengrundlage:</strong> Die Statistik wertet die geladenen abgeschlossenen Berichte aus. Bei bestehender OneDrive-Verbindung werden die ZIP-Berichte beim Start und beim Zurückkehren zur App aktualisiert. Nicht abgeschlossene Tagesdaten sind nicht enthalten.</div>
 <article class="panel statistics-panel"><div class="panel-heading"><span class="step">!</span><h3>Offene Funktionsziele</h3></div><div class="open-functions-list" id="openFunctions"></div><p class="empty-state" id="openFunctionsEmpty">Alle eingestellten Funktionsziele sind erreicht.</p></article></section><section class="view login-view" hidden="" id="archiveLoginView"><article class="panel login-card"><p class="eyebrow">Geschützter Bereich</p><h2>Berichte &amp; Datensicherung</h2><p>Bitte denselben Admin-Passwort eingeben.</p><label for="archivePin">Passwort</label><input autocomplete="current-password" class="text-input" id="archivePin" maxlength="64" type="password"/><p class="error-box" hidden="" id="archivePinError">Falsches Passwort.</p><button class="primary-button" id="archiveLoginButton" type="button">Anmelden</button><button class="secondary-button full-width" id="cancelArchiveLoginButton" type="button">Abbrechen</button></article></section><section class="view archive-view" hidden="" id="archiveView"><div class="screen-heading"><div><p class="eyebrow">Datensicherung</p><h2>Berichte &amp; Datensicherung</h2><p>Abgeschlossene CSV-Dateien und Sicherungen zentral verwalten.</p></div><button class="outline-button view-home-button" data-home-button="" type="button">Zurück zu Home</button></div><article class="panel csv-archive-panel">
 <div class="panel-heading"><span class="step yellow">ARC</span><h3>Berichte &amp; Datensicherung</h3><span class="badge" id="archiveCount">0</span></div>
 <p class="help-text">Die letzten 30 erfolgreichen Exporte werden lokal gespeichert.</p>
@@ -322,26 +322,26 @@
 </main><footer class="app-footer">© 2026 FFW Wasser 2.0 · Produktiv</footer>
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 </div>
-<script src="js/core/config.js?v=20261006-v68-clean"></script>
+<script src="js/core/config.js?v=20261008-plausibility-cleanup"></script>
 <script src="js/core/onedrive-sync.js?v=20261008-history-startup"></script>
 <script src="js/core/storage.js?v=20260924-1"></script>
-<script src="js/core/database.js?v=20260924-2204"></script>
+<script src="js/core/database.js?v=20261008-plausibility-cleanup"></script>
 <script src="js/core/ui.js?v=20260924-2203"></script>
 <script src="js/features/attendance/attendance-controller.js?v=20261006-v81-pending-lock"></script>
 <script src="js/features/attendance/ipad-action-dock.js?v=20261006-final-80"></script>
 <script src="js/features/reports/csv-engine.js?v=20261008-report-dates"></script>
 <script src="js/features/reports/report-engine.js?v=20260920-1"></script>
-<script src="js/features/history/backup-engine.js?v=20260923-1"></script>
+<script src="js/features/history/backup-engine.js?v=20261008-plausibility-cleanup"></script>
 <script src="js/vendor/pdf-lib.min.js?v=20260930"></script>
 <script src="js/vendor/jszip.min.js?v=3.10.2"></script>
-  <script src="js/features/statistics/statistics-engine.js?v=20260924-2200"></script>
+  
 <script src="js/features/reports/ipad-document-editor.js?v=20260929-mobile-landscape"></script><script src="js/features/reports/document-report.js?v=20260930-step3-optional"></script><script src="js/features/reports/probe-pdf.js?v=20260919-25"></script><script src="js/features/reports/csv.js?v=20260924-2218"></script>
-<script src="js/features/history/archive.js?v=20260930-einsatzpdf-sicher"></script>
+<script src="js/features/history/archive.js?v=20261008-plausibility-cleanup"></script>
 <script src="js/features/history/report-csv-import.js?v=20260920-11"></script>
 <script src="js/features/settings/admin.js?v=produktv-2-0-atemschutz-3fach"></script>
 <script src="js/features/statistics/statistics.js?v=20261008-report-dates"></script><script src="js/features/tactics/tactics-engine.js?v=20260924-1629"></script><script src="js/features/tactics/tactics.js?v=produktv-2-0-grossansicht-namen"></script><script src="js/features/reports/operation-template-images.js?v=20260930-clean-final"></script><script src="js/features/reports/operation-docx-template.js?v=20261006-embedded"></script><script src="js/features/reports/operation-docx.js?v=20261001-crosses-casefix"></script>
   <script src="js/features/reports/operation-pdf-layout.js?v=20260930-boxlayout"></script><script src="js/features/reports/operation-pdf-worker-source.js?v=20261006-49"></script>
-  <script src="js/features/operations/operations.js?v=20261006-v68-clean"></script><script src="js/features/reports/zip-terminpakete.js?v=20260930-nur-zip"></script><script src="js/features/reports/termin-dateiname-fix.js?v=20261001-termin-datum"></script><script src="js/features/quality/quality-engine.js?v=20260929-quality-members-fix"></script><script src="js/app/app.js?v=20261008-topics-direct-start"></script>
+  <script src="js/features/operations/operations.js?v=20261006-v68-clean"></script><script src="js/features/reports/zip-terminpakete.js?v=20260930-nur-zip"></script><script src="js/features/reports/termin-dateiname-fix.js?v=20261001-termin-datum"></script><script src="js/features/quality/quality-engine.js?v=20261008-plausibility-cleanup"></script><script src="js/app/app.js?v=20261008-plausibility-cleanup"></script>
 <dialog class="probe-topic-dialog" id="probeTopicDialog"><form class="probe-topic-form" method="dialog"><p class="eyebrow">Probe abschließen</p><h2>Thema der Probe</h2><p id="probeTopicDescription">Bitte das Thema der Probe eintragen. Das Thema erscheint in CSV, PDF und Archiv.</p><label for="probeTopicInput">Thema *</label><textarea id="probeTopicInput" maxlength="300" placeholder="z. B. Löschangriff, Funkübung oder Fahrzeugkunde" required="" rows="4"></textarea><p class="probe-topic-error" hidden="" id="probeTopicError">Bitte ein Thema eingeben.</p><div class="probe-topic-actions"><button class="outline-button" id="cancelProbeTopicButton" type="button">Abbrechen</button><button class="primary-button" id="confirmProbeTopicButton" type="button">Weiter zum Abschluss</button></div></form></dialog><dialog class="archive-correction-dialog" id="archiveCorrectionDialog"><form class="archive-correction-form" method="dialog"><p class="eyebrow">Abgeschlossene Probe</p><h2>Eintrag korrigieren</h2><p>Person auswählen und die gewünschten Angaben ändern.</p><label for="correctionPerson">Person</label><select class="text-input" id="correctionPerson"></select><label for="correctionStatus">Status</label><select class="text-input" id="correctionStatus"><option>Anwesend</option><option>Entschuldigt</option><option>Betrifft nicht</option><option>Fehlt</option></select><label for="correctionRole" id="correctionRoleLabel">Funktion / Status</label><select class="text-input" id="correctionRole"><option value="">Ohne Funktion</option><option value="Orga">Orga</option><option value="Reserve">Reserve</option><option value="GF">GF</option><option value="Maschinist">Maschinist</option><option value="ATF">ATF</option><option value="ATM">ATM</option><option value="WTF">WTF</option><option value="WTM">WTM</option><option value="STF">STF</option><option value="STM">STM</option><option value="Melder">Melder</option></select><div class="probe-topic-actions"><button class="outline-button" id="cancelCorrectionButton" type="button">Abbrechen</button><button class="primary-button" id="saveCorrectionButton" type="button">Korrektur speichern</button></div></form></dialog><script src="js/features/quality/smart-workflow.js?v=20261002-quality-scope"></script>
 <script src="js/features/statistics/statistics-role-scope-fix.js?v=20261006-clean-light"></script>
 <script src="js/features/statistics/statistics-quality-term-fix.js?v=20261006-clean-light"></script>

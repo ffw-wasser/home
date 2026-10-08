@@ -95,6 +95,7 @@ function normalizeCompleteBackupData(data) {
     rfidId:String(member.rfidId||"").trim(),
     committeeMember:Boolean(member.committeeMember),
     atueQualified:Boolean(member.atueQualified),breathingClearance:Boolean(member.breathingClearance),breathingClearanceUntil:String(member.breathingClearanceUntil||""),
+    g263ValidUntil:String(member.g263ValidUntil||""),agtInstructionValidUntil:String(member.agtInstructionValidUntil||""),ffiValidUntil:String(member.ffiValidUntil||""),
     driverLicenseCheckedOn:String(member.driverLicenseCheckedOn||"")
   })).filter(member=>member.lastName&&member.firstName);
   if(!importedMembers.length)throw new Error("members");
