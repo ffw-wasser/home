@@ -2,7 +2,7 @@
 
 <html lang="de">
 <head>
-<meta charset="utf-8"/><meta name="ffw-build" content="topics-direct-start-private-cache-20261008"/>
+<meta charset="utf-8"/><meta name="ffw-build" content="history-startup-statistics-20261008"/>
 <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
 <meta content="#c80000" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -240,7 +240,7 @@
 <div class="tactics-close-actions" hidden="" id="tacticsCloseActions"><p>Besetzung prüfen. Erst danach wird die Probe abgeschlossen und CSV sowie PDF werden ausgegeben.</p><button class="primary-button" id="finalizeProbeButton" type="button">Probe abschließen · Terminpaket</button><button class="outline-button" id="cancelTacticsCloseButton" type="button">Noch nicht abschließen</button></div>
 <div class="tactics-note"><strong>Hinweis:</strong> Ausgangspunkt sind die anwesenden Personen. Für jede Person wird aus den persönlich freigeschalteten Funktionen und offenen Jahreszielen eine passende Funktion empfohlen. Anschließend werden die Empfehlungen möglichst auf LF10 und TSF verteilt. Die verantwortliche Führungskraft prüft und ändert die Besetzung bei Bedarf.</div>
 </section><section class="view statistics-view" hidden="" id="statisticsView">
-<div class="statistics-print-header"><img alt="Wappen Feuerwehr Wasser" src="icon-192.png"/><div><strong>Feuerwehr Wasser</strong><span>Statistik Feuerwehr Wasser 2.0 · Produktiv</span></div></div><div class="screen-heading statistics-heading"><div><p class="eyebrow">Auswertung</p><h2>Statistik</h2><p class="statistics-period" id="statisticsPeriod">Noch keine abgeschlossenen Termine oder Einsätze vorhanden.</p><label class="statistics-year-control" for="statisticsYearSelect"><span>Kalenderjahr</span><select class="text-input" id="statisticsYearSelect"></select></label></div><button class="primary-button" id="statisticsPdfButton" type="button">Statistik als PDF</button><button class="outline-button view-home-button" data-home-button="" type="button">Zurück zu Home</button></div>
+<div class="statistics-print-header"><img alt="Wappen Feuerwehr Wasser" src="icon-192.png"/><div><strong>Feuerwehr Wasser</strong><span>Statistik Feuerwehr Wasser 2.0 · Produktiv</span></div></div><div class="screen-heading statistics-heading"><div><p class="eyebrow">Auswertung</p><h2>Statistik</h2><p class="help-text" id="statisticsHistoryStatus" role="status" aria-live="polite" hidden=""></p><p class="statistics-period" id="statisticsPeriod">Noch keine abgeschlossenen Termine oder Einsätze vorhanden.</p><label class="statistics-year-control" for="statisticsYearSelect"><span>Kalenderjahr</span><select class="text-input" id="statisticsYearSelect"></select></label></div><button class="primary-button" id="statisticsPdfButton" type="button">Statistik als PDF</button><button class="outline-button view-home-button" data-home-button="" type="button">Zurück zu Home</button></div>
 <div class="statistics-kpis">
 <article class="stat-kpi"><span>Teilnahmequote bei Proben</span><strong id="yearAttendanceRate">–</strong><small id="yearAttendanceDetail">Anwesenheiten im Verhältnis zu möglichen Personenteilnahmen</small></article>
 <article class="stat-kpi"><span>Mannschaftsstärke</span><strong id="teamStrength">0</strong><small id="teamStrengthDetail">Einsatzabteilung</small></article>
@@ -323,7 +323,7 @@
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 </div>
 <script src="js/core/config.js?v=20261006-v68-clean"></script>
-<script src="js/core/onedrive-sync.js?v=20261007-8"></script>
+<script src="js/core/onedrive-sync.js?v=20261008-history-startup"></script>
 <script src="js/core/storage.js?v=20260924-1"></script>
 <script src="js/core/database.js?v=20260924-2204"></script>
 <script src="js/core/ui.js?v=20260924-2203"></script>
@@ -346,8 +346,7 @@
 <script src="js/features/statistics/statistics-role-scope-fix.js?v=20261006-clean-light"></script>
 <script src="js/features/statistics/statistics-quality-term-fix.js?v=20261006-clean-light"></script>
 <script src="js/core/ios-keyboard-fix.js?v=20261002-ios-keyboard"></script>
-  <script src="js/onedrive-history-live.js?v=20261007-1"></script>
-  <script src="js/features/history/onedrive-history-live.js?v=20261007-6"></script>
+  <script src="js/features/history/onedrive-history-live.js?v=20261008-history-startup"></script>
   <script src="js/features/attendance/iphone-action-dock-fix.js?v=20261007-7"></script>
 </body>
 </html>

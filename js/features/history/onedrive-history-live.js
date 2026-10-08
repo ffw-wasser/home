@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  let busy = false;
+  let pendingLoad = null;
   const pdfByReportId = new Map();
   const clone = value => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   const cleanName = name => String(name || "").split("/").pop();
@@ -44,7 +44,7 @@
     };
   }
 
-  async function reportFromZip(root, file) {
+  async function reportFromZip(root, file, nextPdfs) {
     const zip = await JSZip.loadAsync(await itemBlob(root, file));
     const infoEntry = zip.file("paket-info.json");
     const info = infoEntry ? JSON.parse(await infoEntry.async("string")) : {};
@@ -80,7 +80,7 @@
     } : undefined;
     const id = `onedrive-zip:${file.id}`;
     const pdfEntry = (info.pdfName && zip.file(info.pdfName)) || Object.values(zip.files).find(entry => !entry.dir && /\.pdf$/i.test(entry.name));
-    if (pdfEntry) pdfByReportId.set(id, await pdfEntry.async("blob"));
+    if (pdfEntry) nextPdfs.set(id, await pdfEntry.async("blob"));
     const operationData = info.operationData ? clone(info.operationData) : detectedOperationData;
     if (operationData && reportDate) operationData.date = reportDate;
     return {
@@ -100,16 +100,29 @@
     };
   }
 
-  async function loadOneDriveHistory({ manual = false } = {}) {
-    if (busy) return;
+  function historyStatus(text) {
+    const status = document.getElementById("statisticsHistoryStatus");
+    if (status) { status.textContent = text; status.hidden = !text; }
+  }
+
+  function loadOneDriveHistory(options = {}) {
+    // Navigation und Synchronisierung warten auf denselben laufenden Abruf.
+    if (pendingLoad) return pendingLoad;
+    pendingLoad = refreshOneDriveHistory(options).finally(() => { pendingLoad = null; });
+    return pendingLoad;
+  }
+
+  async function refreshOneDriveHistory({ manual = false } = {}) {
     if (!oneDriveSignedIn()) {
       csvArchive = [];
+      pdfByReportId.clear();
       renderHistory?.();
+      renderStatistics?.();
+      historyStatus("Bitte OneDrive verbinden, um Historie und Statistik zu laden.");
       if (manual) showToast("Bitte zuerst OneDrive verbinden.", "error");
-      return;
+      return false;
     }
-    busy = true;
-    pdfByReportId.clear();
+    historyStatus("Historie wird aus OneDrive geladen. Die Statistik aktualisiert sich anschließend automatisch.");
     document.documentElement.classList.add("onedrive-history-loading");
     try {
       const root = await oneDriveResolveSharedRoot();
@@ -120,28 +133,27 @@
         const current = newestByLogicalName.get(key);
         if (!current || String(file.lastModifiedDateTime || "") > String(current.lastModifiedDateTime || "")) newestByLogicalName.set(key, file);
       }
-      const reports = [];
+      const reports = [], nextPdfs = new Map();
       for (const file of newestByLogicalName.values()) {
-        try {
-          const report = await reportFromZip(root, file);
-          if (report) reports.push(report);
-        } catch (error) {
-          console.error("ZIP-Terminpaket konnte nicht gelesen werden", file.name, error);
-        }
+        const report = await reportFromZip(root, file, nextPdfs);
+        if (report) reports.push(report);
       }
-      // Ausschließlich die aktuell in OneDrive vorhandenen ZIP-Pakete anzeigen.
-      // Lokale Archiveinträge und die csvArchive-Kopie aus feuerwehr-wasser-daten.json werden bewusst ignoriert.
+      // Den bisherigen Stand erst nach einem vollständig erfolgreichen Abruf ersetzen.
+      // Quelle bleiben ausschließlich die aktuell in OneDrive vorhandenen ZIP-Pakete.
       csvArchive = reports.sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
+      pdfByReportId.clear();
+      nextPdfs.forEach((pdf, id) => pdfByReportId.set(id, pdf));
       renderHistory?.();
       renderStatistics?.();
+      historyStatus("");
       if (manual) showToast(`Historie aus ${files.length} OneDrive-ZIP-Datei${files.length === 1 ? "" : "en"} geladen.`);
+      return true;
     } catch (error) {
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
-      csvArchive = [];
-      renderHistory?.();
+      historyStatus("Historie konnte nicht aktualisiert werden. Die Statistik zeigt den zuletzt geladenen Stand. Bitte OneDrive und Internetverbindung prüfen.");
       showToast("Historie konnte nicht aus den OneDrive-ZIP-Dateien geladen werden.", "error");
+      return false;
     } finally {
-      busy = false;
       document.documentElement.classList.remove("onedrive-history-loading");
     }
   }

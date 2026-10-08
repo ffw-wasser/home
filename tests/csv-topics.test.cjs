@@ -46,7 +46,7 @@ test('Vorhandenes OneDrive-ZIP erhält Thema in Archiv und Statistik', async () 
   const historySource = fs.readFileSync(require.resolve('../js/onedrive-history-live.js'), 'utf8');
   const context = vm.createContext({
     CsvEngine, JSZip, Set, Map, console, csvArchive: [],
-    window: {}, document: {documentElement: {classList: {add(){}, remove(){}}}},
+    window: {}, document: {getElementById: () => null, documentElement: {classList: {add(){}, remove(){}}}},
     oneDriveSignedIn: () => true,
     oneDriveResolveSharedRoot: async () => ({driveId: 'test-drive', id: 'test-root'}),
     odFetch: async url => url.includes('/children')
