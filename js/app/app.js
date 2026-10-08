@@ -305,52 +305,8 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 else removeStandaloneAttendanceVersion();
 
 
-/* Sofortiger Seitenzugang ohne sichtbare Startseite vor der PIN-Eingabe. */
-(function setupInitialPageAccess(){
-  const unlockKey="fw_page_unlocked";
-  const gate=byId("pageAccessGate");
-  const form=byId("pageAccessForm");
-  const input=byId("pageAccessPin");
-  const error=byId("pageAccessError");
-  const reveal=()=>{
-    const content=byId("protectedAppContent");
-    if(content){content.hidden=false;content.removeAttribute("aria-hidden");}
-    gate?.remove();
-    setTimeout(()=>{showBreathingClearanceWarnings();showDriverLicenseControlWarnings();},350);
-    document.documentElement.classList.remove("page-access-pending");
-    document.body.classList.remove("page-access-pending");
-    byId("accessGateCriticalStyle")?.remove();
-  };
-  let alreadyUnlocked=false;
-  try{alreadyUnlocked=sessionStorage.getItem(unlockKey)==="1";}catch(storageError){}
-  if(alreadyUnlocked){reveal();return;}
-  if(!gate||!form||!input){return;}
-  form.addEventListener("submit",event=>{
-    event.preventDefault();
-    if(input.value!==adminPassword()){
-      if(error)error.hidden=false;
-      input.select();
-      return;
-    }
-    try{sessionStorage.setItem(unlockKey,"1");}catch(storageError){}
-    input.value="";
-    reveal();
-  });
-  const focusPinInput=()=>{
-    input.readOnly=false;
-    try{input.focus({preventScroll:true});}catch(focusError){input.focus();}
-    try{input.setSelectionRange(input.value.length,input.value.length);}catch(selectionError){}
-  };
-  input.addEventListener("input",()=>{input.value=input.value.slice(0,64);if(error)error.hidden=true;});
-  input.addEventListener("pointerdown",focusPinInput,{passive:true});
-  input.addEventListener("touchend",focusPinInput,{passive:true});
-  input.addEventListener("click",focusPinInput);
-  document.querySelector('label[for="pageAccessPin"]')?.addEventListener("click",focusPinInput);
-  gate.addEventListener("pageshow",focusPinInput);
-  // Automatischer Fokus ist nur Komfort. Auf iPadOS öffnet sich die Tastatur
-  // zuverlässig durch das direkte Antippen des sichtbaren PIN-Feldes.
-  requestAnimationFrame(()=>{try{input.focus({preventScroll:true});}catch(focusError){}});
-})();
+/* Direkter Start. Persönliche Daten stammen aus dem Gerätespeicher oder OneDrive. */
+setTimeout(()=>{showBreathingClearanceWarnings();showDriverLicenseControlWarnings();},350);
 
 
 /* Versionsanzeige der Fusszeile verbindlich setzen, auch bei altem HTML-Cache. */
