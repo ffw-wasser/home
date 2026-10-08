@@ -78,6 +78,28 @@ function statisticsArchiveData() {
     return {item,rows:operationRows.length?operationRows:parseCsvRows(item.content)};
   }).filter(data => data.rows.length);
 }
+function statisticsMemberNameKey(value){
+  return String(value||"").normalize("NFC").trim().replace(/\s+/g," ").replace(/\s*,\s*/g,", ").toLocaleLowerCase("de-DE");
+}
+function statisticsMemberNames(member){
+  return new Set([nameForStorage(member),nameForTile(member),`${member.firstName} ${member.lastName}`,`${member.lastName} ${member.firstName}`].map(statisticsMemberNameKey));
+}
+function statisticsRowMatchesMember(row,member){
+  const key=statisticsMemberNameKey(row.name);
+  return key!==""&&statisticsMemberNames(member).has(key)&&members.filter(item=>statisticsMemberNames(item).has(key)).length===1;
+}
+function statisticsAgeEvents(yearData){
+  return yearData.filter(data=>!statisticsIsOperation(data)&&(data.rows[0]?.sessionType||data.item.sessionType||"")!=="Ausschuss Sitzung");
+}
+function statisticsAgeRows(yearData,ageMembers=members.filter(member=>member.ageDepartment)){
+  return statisticsAgeEvents(yearData).flatMap(data=>ageMembers.flatMap(member=>{
+    const existing=data.rows.find(row=>statisticsRowMatchesMember(row,member));
+    // Ein ausdrücklich nicht betreffender Termin zählt nicht als Fehlzeit.
+    if(existing?.status==="Betrifft nicht")return [];
+    if(existing)return [{...existing,name:nameForStorage(member)}];
+    return [{date:data.rows[0]?.date||String(data.item.createdAt||"").slice(0,10),time:"",name:nameForStorage(member),sessionType:data.rows[0]?.sessionType||data.item.sessionType||"",status:"Fehlt",role:"",topic:data.item.topic||data.rows[0]?.topic||""}];
+  }));
+}
 function renderMetric(containerId, label, value, tone = "neutral") {
   return `<div class="metric-row metric-${tone}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
@@ -238,19 +260,8 @@ function renderStatistics() {
   const annualOperationCount=yearData.filter(statisticsIsOperation).length;
   byId("averageAttendance").textContent = annualOperationCount;
   byId("averageAttendanceDetail").textContent = annualOperationCount===1?"Einsatz im gewählten Kalenderjahr":"Einsätze im gewählten Kalenderjahr";
-  const ageEligibleEvents=probeYearData.filter(data=>{
-    const type=data.rows[0]?.sessionType||data.item.sessionType||"";
-    return type!=="Einsatz"&&type!=="Ausschuss Sitzung";
-  });
-  const ageRows=ageEligibleEvents.flatMap(data=>{
-    const date=data.rows[0]?.date||String(data.item.createdAt||"").slice(0,10),type=data.rows[0]?.sessionType||data.item.sessionType||"";
-    return ageMembers.map(member=>{
-      const names=[nameForStorage(member),nameForTile(member)];
-      const existing=data.rows.find(row=>names.includes(row.name));
-      if(existing&&existing.status!=="Betrifft nicht")return existing;
-      return {date,time:"",name:nameForStorage(member),sessionType:type,status:"Fehlt",role:"",topic:data.item.topic||data.rows[0]?.topic||""};
-    });
-  });
+  const ageEligibleEvents=statisticsAgeEvents(probeYearData);
+  const ageRows=statisticsAgeRows(probeYearData,ageMembers);
   const agePresentRows = ageRows.filter(row => row.status === "Anwesend");
   const ageExcusedRows = ageRows.filter(row => row.status === "Entschuldigt");
   const ageMissingRows = ageRows.filter(row => row.status === "Fehlt");
@@ -330,6 +341,7 @@ function renderStatistics() {
   arrangeStatisticsPage();
   ensureCollapsedStatisticsPanels();
   window.SmartWorkflow?.statistics?.();
+  if(byId("individualMemberSelect").value)renderIndividualStatistics(byId("individualMemberSelect").value);
 }
 
 
@@ -381,9 +393,9 @@ function normalizeStatisticsRole(role) {
 function populateIndividualMemberSelect() {
   const select = byId("individualMemberSelect");
   const current = select.value;
-  const activeMembers = members.filter(member => !member.ageDepartment);
-  select.innerHTML = `<option value="">Bitte auswählen</option>${activeMembers.map(member => `<option value="${escapeHtml(member.id)}">${escapeHtml(nameForTile(member))}</option>`).join("")}`;
-  if (activeMembers.some(member => member.id === current)) select.value = current;
+  const groups=[["Einsatzabteilung",members.filter(member=>!member.ageDepartment)],["Alterskameraden",members.filter(member=>member.ageDepartment)]];
+  select.innerHTML = `<option value="">Bitte auswählen</option>${groups.filter(([,items])=>items.length).map(([label,items])=>`<optgroup label="${label}">${items.map(member=>`<option value="${escapeHtml(member.id)}">${escapeHtml(nameForTile(member))}</option>`).join("")}</optgroup>`).join("")}`;
+  if (members.some(member => member.id === current)) select.value = current;
 }
 function ensureIndividualBreathingClearancePanel(){
   const preview=byId("individualStatisticsPreview");
@@ -400,7 +412,7 @@ function ensureIndividualBreathingClearancePanel(){
 }
 function renderIndividualBreathingClearance(member){
   const panel=ensureIndividualBreathingClearancePanel();if(!panel)return;
-  panel.hidden=!isAtmOrAtgQualified(member);if(panel.hidden)return;
+  panel.hidden=member.ageDepartment||!isAtmOrAtgQualified(member);if(panel.hidden)return;
   const today=systemToday(),state=breathingClearanceState(member,today),valid=hasValidBreathingClearance(member,today);
   const items=[
     ["G26.3",member.g263ValidUntil||member.breathingClearanceUntil||""],
@@ -420,12 +432,12 @@ function renderIndividualBreathingClearance(member){
 function renderIndividualStatistics(memberId) {
   const preview = byId("individualStatisticsPreview");
   const button = byId("individualStatisticsPdfButton");
-  const member = members.find(item => item.id === memberId && !item.ageDepartment);
+  const member = members.find(item => item.id === memberId);
   if (!member) { preview.hidden = true; button.disabled = true; return; }
   const year = selectedStatisticsYear || String(new Date().getFullYear());
   const yearData = statisticsArchiveData().filter(data => String(data.rows[0]?.date || data.item.createdAt || "").startsWith(year));
-  const names = new Set([nameForStorage(member), nameForTile(member)]);
-  const rows = yearData.flatMap(data => data.rows).filter(row => names.has(row.name));
+  const personalEvents=member.ageDepartment?statisticsAgeEvents(yearData):yearData;
+  const rows = member.ageDepartment?statisticsAgeRows(yearData,[member]):yearData.flatMap(data => data.rows).filter(row => statisticsRowMatchesMember(row,member));
   const present = rows.filter(row => row.status === "Anwesend");
   const excused = rows.filter(row => row.status === "Entschuldigt");
   const missing = rows.filter(row => row.status === "Fehlt");
@@ -433,7 +445,7 @@ function renderIndividualStatistics(memberId) {
   const rate = total ? present.length / total * 100 : null;
   byId("individualMemberName").textContent = nameForTile(member);
   renderIndividualBreathingClearance(member);
-  byId("individualStatisticsPeriod").textContent = `Kalenderjahr ${year} · ${yearData.filter(data=>(data.rows[0]?.sessionType||data.item.sessionType)!=="Einsatz").length} Übungen / Sitzungen · ${yearData.filter(data=>(data.rows[0]?.sessionType||data.item.sessionType)==="Einsatz").length} Einsätze`;
+  byId("individualStatisticsPeriod").textContent = member.ageDepartment?`Altersmannschaft · Kalenderjahr ${year} · ${personalEvents.length} Übungen / Unterricht`:`Kalenderjahr ${year} · ${yearData.filter(data=>(data.rows[0]?.sessionType||data.item.sessionType)!=="Einsatz").length} Übungen / Sitzungen · ${yearData.filter(data=>(data.rows[0]?.sessionType||data.item.sessionType)==="Einsatz").length} Einsätze`;
   byId("individualAttendanceRate").textContent = rate === null ? "–" : `${rate.toFixed(1).replace(".", ",")} %`;
   byId("individualAttendanceDetail").textContent = total ? `${present.length} von ${total} möglichen Teilnahmen` : "Noch keine Daten";
   byId("individualPresentCount").textContent = present.length;
@@ -441,13 +453,13 @@ function renderIndividualStatistics(memberId) {
   byId("individualMissingCount").textContent = missing.length;
 
   const usage = new Map();
-  present.forEach(row => statisticsRolesFromValue(row.role).forEach(role => usage.set(role,(usage.get(role)||0)+1)));
+  if(!member.ageDepartment)present.forEach(row => statisticsRolesFromValue(row.role).forEach(role => usage.set(role,(usage.get(role)||0)+1)));
   const usageRows = [...usage.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0],"de"));
   byId("individualRoleUsage").innerHTML = usageRows.map(([role,count]) => renderMetric("",role,count,"blue")).join("");
   byId("individualRoleUsageEmpty").hidden = usageRows.length > 0;
 
   const targets = getRoleTargets();
-  const targetRows = getMemberRoles(member).map(role => ({ role, target: targets[role] || 0, actual: usage.get(role) || 0 })).filter(item => item.target > 0);
+  const targetRows = (member.ageDepartment?[]:getMemberRoles(member)).map(role => ({ role, target: targets[role] || 0, actual: usage.get(role) || 0 })).filter(item => item.target > 0);
   byId("individualRoleTargets").innerHTML = targetRows.map(item => {
     const remaining = Math.max(0, item.target-item.actual);
     const tone = remaining ? "gold" : "green";
@@ -457,6 +469,9 @@ function renderIndividualStatistics(memberId) {
 
   renderIndividualOperationStatistics(rows);
   renderIndividualStatisticsCharts(rows);
+  ["individualRoleTargets","individualRoleUsage"].forEach(id=>{const section=byId(id)?.closest("section");if(section)section.hidden=Boolean(member.ageDepartment);});
+  const operationPanel=byId("individualOperationStatistics");if(operationPanel)operationPanel.hidden=Boolean(member.ageDepartment);
+  const roleChart=byId("individualVisualDashboard")?.querySelector("[data-individual-chart-roles]")?.closest("section");if(roleChart)roleChart.hidden=Boolean(member.ageDepartment);
 
   const types = new Map();
   rows.forEach(row => types.set(row.sessionType || "Unbekannt", (types.get(row.sessionType || "Unbekannt") || 0) + 1));

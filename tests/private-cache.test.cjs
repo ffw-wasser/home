@@ -9,7 +9,7 @@ function worker({offline = false, responseOk = true, cached = undefined} = {}) {
   const events = {}, writes = [], reads = [], deleted = [];
   const context = vm.createContext({URL, Promise,
     self: {registration: {scope: root}, clients: {claim: async () => {}}, skipWaiting: async () => {}, addEventListener: (name, fn) => events[name] = fn},
-    caches: {keys: async () => ['ffw-wasser-final-v8-1-pending-lock-20261006', 'other-app-cache', 'ffw-wasser-topics-private-cache-20261008'], delete: async key => deleted.push(key), open: async () => ({addAll: async () => {}, put: async (key, response) => writes.push(key), match: async key => {reads.push(key); return cached;}})},
+    caches: {keys: async () => ['ffw-wasser-final-v8-1-pending-lock-20261006', 'other-app-cache', 'ffw-wasser-topics-private-cache-20261008', 'ffw-wasser-age-statistics-20261008'], delete: async key => deleted.push(key), open: async () => ({addAll: async () => {}, put: async (key, response) => writes.push(key), match: async key => {reads.push(key); return cached;}})},
     fetch: async request => {if (offline) throw new Error('offline'); return {ok: responseOk, type: 'basic', url: request.url, clone(){return this;}};}
   });
   vm.runInContext(source, context);
@@ -56,7 +56,7 @@ test('Update entfernt alte OneDrive-haltige App-Caches', async () => {
   let activation;
   w.events.activate({waitUntil: p => activation = p});
   await activation;
-  assert.deepEqual(w.deleted, ['ffw-wasser-final-v8-1-pending-lock-20261006']);
+  assert.deepEqual(w.deleted, ['ffw-wasser-final-v8-1-pending-lock-20261006', 'ffw-wasser-topics-private-cache-20261008']);
 });
 
 test('Startseite öffnet ohne Passwort und verändert keine Nutzdaten', () => {
