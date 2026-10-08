@@ -58,3 +58,25 @@ die Worddatei enthält Autorenmetadaten. Diese Inhalte sind kein Mitgliederbesta
 aber öffentlich abrufbar. Die Vorlagen wurden in dieser Bereinigung nicht umgebaut.
 Das lokale Admin-Passwort schützt die Bedienoberfläche, keine öffentlich gehosteten
 Dateien. OneDrive-Zugriffsrechte werden unabhängig davon verwaltet.
+
+NACHTRAG – SPORADISCHE ONEDRIVE-HISTORIENFEHLER (08.10.2026)
+Die genaue Ursache der vom Gerät gemeldeten sporadischen Meldung ist ohne dessen
+Fehlerdetails nicht eindeutig belegt. Der Code brach bislang bei vorübergehenden
+Netzfehlern/502/503/504 sofort und bei 429 nach nur einer Wiederholung ab. Außerdem
+wurden beim erneuten Laden alle ZIPs vollständig neu heruntergeladen.
+Leseabrufe haben jetzt maximal drei Wiederholungen mit wachsender Pause; Retry-After
+wird berücksichtigt. Bei 401 wird die Anmeldung einmal erneuert. Gleichzeitige
+Abrufe teilen eine laufende Token-Erneuerung. Schreibabrufe werden bei unklaren
+Netzfehlern oder 5xx nicht automatisch wiederholt.
+Unveränderte ZIPs werden innerhalb derselben Sitzung anhand der Dateiversion
+wiederverwendet. Die Ordnerliste wird weiterhin aktuell aus OneDrive gelesen,
+geänderte Dateien werden neu geladen und gelöschte aus dem Zwischenspeicher entfernt.
+Ein gescheiterter oder unlesbarer ZIP-Abruf ersetzt keine bestehenden Berichte/PDFs.
+Die Statusanzeige und das OneDrive-Fenster nennen Datei/HTTP-Status, sofern vorhanden,
+sowie Hinweise zu Anmeldung, Freigaberechten, Drosselung oder unlesbaren ZIPs.
+Automatische Abrufe erzeugen keine zusätzliche allgemeine Fehlermeldung als Toast;
+manuelle Abrufe melden den Fehler sichtbar. Private Dateien werden nicht in den
+Service-Worker-Cache geschrieben; der neue Zwischenspeicher liegt nur im Arbeitsspeicher.
+Validierung: 61 Tests erfolgreich, einschließlich 20 neuer Netzwerk-/Anmeldungs-/
+Historienszenarien. Die sporadische Störung auf einem echten Nutzergerät wurde nicht
+reproduziert; die Fehlerfälle wurden automatisiert simuliert.

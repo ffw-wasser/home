@@ -24,7 +24,7 @@ function app(archive = []) {
     }
     return nodes.get(id);
   };
-  const context = vm.createContext({CsvEngine, JSZip, members: [active, age], csvArchive: archive,
+  const context = vm.createContext({navigator: {onLine: true},CsvEngine, JSZip, members: [active, age], csvArchive: archive,
     byId, nameForStorage: name, nameForTile: name, escapeHtml: String, AVAILABLE_ROLES: ['GF'],
     formatDisplayDate: String, getRoleTargets: () => ({GF: 2}), getMemberRoles: () => ['GF'],
     isAtmOrAtgQualified: () => false, window: {}, console, setTimeout,

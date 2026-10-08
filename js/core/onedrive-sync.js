@@ -12,21 +12,65 @@ function oneDriveStatus(text,state="offline"){const label=byId("cloudSyncLabel")
 function saveOneDriveSettings(){const clientId=(byId("oneDriveClientId")?.value||"").trim(),share=(byId("oneDriveShareUrl")?.value||"").trim();if(clientId)localStorage.setItem(OD_CLIENT_KEY,clientId);if(share)localStorage.setItem(OD_SHARE_KEY,share);else localStorage.removeItem(OD_SHARE_KEY);oneDriveSharedRoot=null;return {clientId,share};}
 async function oneDriveLogin(){const {clientId,share}=saveOneDriveSettings();if(!clientId)return showToast("Bitte zuerst die Client-ID eintragen.","error");if(!share)return showToast("Bitte den Link zum gemeinsamen OneDrive-Ordner eintragen.","error");localStorage.removeItem(OD_TOKEN_KEY);const verifier=odB64Url(crypto.getRandomValues(new Uint8Array(48))),state=odB64Url(crypto.getRandomValues(new Uint8Array(18))),challenge=await odChallenge(verifier);sessionStorage.setItem(OD_PKCE_KEY,JSON.stringify({verifier,state}));const c=odConfig(),url=new URL(c.authority+"/authorize");url.search=new URLSearchParams({client_id:c.clientId,response_type:"code",redirect_uri:odRedirect(),response_mode:"query",scope:c.scope,code_challenge:challenge,code_challenge_method:"S256",state,prompt:"consent"}).toString();location.assign(url.toString());}
 async function oneDriveHandleCallback(){const q=new URLSearchParams(location.search),code=q.get("code");if(!code)return;const saved=JSON.parse(sessionStorage.getItem(OD_PKCE_KEY)||"null");if(!saved||saved.state!==q.get("state"))throw new Error("Ungültiger Anmeldestatus");const c=odConfig(),body=new URLSearchParams({client_id:c.clientId,grant_type:"authorization_code",code,redirect_uri:odRedirect(),code_verifier:saved.verifier,scope:c.scope});const response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});const data=await response.json();if(!response.ok)throw new Error(data.error_description||"OneDrive-Anmeldung fehlgeschlagen");data.obtained_at=Date.now();localStorage.setItem(OD_TOKEN_KEY,JSON.stringify(data));sessionStorage.removeItem(OD_PKCE_KEY);history.replaceState({},"",location.pathname+location.hash);}
-async function oneDriveAccessToken(){let token=oneDriveTokens();if(!token)throw new Error("Nicht bei OneDrive angemeldet");if(Date.now()<(token.obtained_at||0)+(Number(token.expires_in||3600)-120)*1000)return token.access_token;if(!token.refresh_token)throw new Error("OneDrive-Anmeldung abgelaufen");const c=odConfig(),body=new URLSearchParams({client_id:c.clientId,grant_type:"refresh_token",refresh_token:token.refresh_token,scope:c.scope});const response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});const data=await response.json();if(!response.ok)throw new Error(data.error_description||"OneDrive-Anmeldung abgelaufen");data.refresh_token=data.refresh_token||token.refresh_token;data.obtained_at=Date.now();localStorage.setItem(OD_TOKEN_KEY,JSON.stringify(data));return data.access_token;}
+let oneDriveTokenRefresh=null;
+async function oneDriveAccessToken(force=false,rejectedToken=""){
+  const token=oneDriveTokens();
+  if(!token)throw new Error("Nicht bei OneDrive angemeldet");
+  if(force&&rejectedToken&&token.access_token!==rejectedToken)return token.access_token;
+  if(oneDriveTokenRefresh)return oneDriveTokenRefresh;
+  if(!force&&Date.now()<(token.obtained_at||0)+(Number(token.expires_in||3600)-120)*1000)return token.access_token;
+  if(!token.refresh_token)throw new Error("OneDrive-Anmeldung abgelaufen. Bitte erneut anmelden.");
+  const saved=localStorage.getItem(OD_TOKEN_KEY);
+  oneDriveTokenRefresh=(async()=>{
+    const c=odConfig(),body=new URLSearchParams({client_id:c.clientId,grant_type:"refresh_token",refresh_token:token.refresh_token,scope:c.scope});
+    const response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
+    const data=await response.json();
+    if(!response.ok){const error=new Error("OneDrive-Anmeldung konnte nicht erneuert werden. Bitte erneut anmelden.");error.status=response.status;error.code=data.error;throw error;}
+    if(localStorage.getItem(OD_TOKEN_KEY)!==saved)throw new Error("OneDrive-Anmeldung wurde während des Abrufs geändert. Bitte erneut synchronisieren.");
+    data.refresh_token=data.refresh_token||token.refresh_token;data.obtained_at=Date.now();
+    localStorage.setItem(OD_TOKEN_KEY,JSON.stringify(data));return data.access_token;
+  })().finally(()=>{oneDriveTokenRefresh=null;});
+  return oneDriveTokenRefresh;
+}
+function odRetryDelay(response,attempt){
+  const header=response?.headers?.get("Retry-After"),seconds=Number(header);
+  if(header&&Number.isFinite(seconds)&&seconds>=0)return seconds*1000;
+  const date=header?Date.parse(header):NaN;
+  if(Number.isFinite(date))return Math.max(0,date-Date.now());
+  return Math.min(1000*2**attempt,8000);
+}
 async function odFetch(url,options={},retry=true){
-  const wait=Math.max(0,oneDriveRetryUntil-Date.now());
-  if(wait)await new Promise(resolve=>setTimeout(resolve,wait));
-  const headers=new Headers(options.headers||{});
-  headers.set("Authorization","Bearer "+await oneDriveAccessToken());
-  const response=await fetch(url,{...options,headers});
-  if(response.status===429&&retry){
-    const seconds=Math.max(1,Number.parseInt(response.headers.get("Retry-After")||"5",10)||5);
-    oneDriveRetryUntil=Date.now()+seconds*1000;
-    await new Promise(resolve=>setTimeout(resolve,seconds*1000));
-    return odFetch(url,options,false);
+  const readable=["GET","HEAD"].includes(String(options.method||"GET").toUpperCase());
+  let attempts=0,authRetried=false,forcedToken="";
+  for(;;){
+    const wait=Math.max(0,oneDriveRetryUntil-Date.now());
+    if(wait)await new Promise(resolve=>setTimeout(resolve,wait));
+    const headers=new Headers(options.headers||{});
+    const token=forcedToken||await oneDriveAccessToken();forcedToken="";
+    headers.set("Authorization","Bearer "+token);
+    let response;
+    try{response=await fetch(url,{...options,headers});}
+    catch(error){
+      if(!retry||!readable||error?.name==="AbortError"||options.signal?.aborted||navigator.onLine===false||attempts>=3)throw error;
+      await new Promise(resolve=>setTimeout(resolve,odRetryDelay(null,attempts++)));continue;
+    }
+    if(response.status===401&&!authRetried){
+      authRetried=true;forcedToken=await oneDriveAccessToken(true,token);continue;
+    }
+    if(response.status===429)oneDriveRetryUntil=Date.now()+odRetryDelay(response,attempts);
+    const transient=response.status===429||(readable&&[502,503,504].includes(response.status));
+    if(retry&&transient&&attempts<3){
+      const delay=odRetryDelay(response,attempts++);
+      if(response.status!==429)await new Promise(resolve=>setTimeout(resolve,delay));
+      continue;
+    }
+    if(!response.ok){
+      let data={};try{data=JSON.parse(await response.text());}catch{}
+      const error=new Error(`OneDrive-Fehler ${response.status}${data.error?.code?" ("+data.error.code+")":""}`);
+      error.status=response.status;error.code=data.error?.code||"";throw error;
+    }
+    return response;
   }
-  if(!response.ok){const text=await response.text();throw new Error(text||`OneDrive-Fehler ${response.status}`);}
-  return response;
 }
 async function oneDriveResolveSharedRoot(){if(oneDriveSharedRoot)return oneDriveSharedRoot;const share=localStorage.getItem(OD_SHARE_KEY)||"";if(!share)throw new Error("Kein gemeinsamer OneDrive-Ordner eingerichtet");const response=await odFetch(`https://graph.microsoft.com/v1.0/shares/${odShareToken(share)}/driveItem?$select=id,name,parentReference,folder,remoteItem`,{headers:{Prefer:"redeemSharingLink"}});const item=await response.json(),resolved=item.remoteItem||item,driveId=resolved.parentReference?.driveId||item.parentReference?.driveId,id=resolved.id||item.id;if(!driveId||!id||!resolved.folder&&!item.folder)throw new Error("Der Freigabelink verweist nicht auf einen zugänglichen Ordner");oneDriveSharedRoot={driveId,id,name:resolved.name||item.name||"Gemeinsamer Ordner"};return oneDriveSharedRoot;}
 const odItemBase=(root=oneDriveSharedRoot)=>`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(root.id)}`;
@@ -50,7 +94,7 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
     // Auch bei einer fehlerhaften Datendatei versuchen, die Berichte zu laden.
     if(refreshHistory&&typeof window.loadOneDriveHistory==="function"){
       oneDriveStatus("Lädt Historie","syncing");
-      if(await window.loadOneDriveHistory()===false)throw new Error("OneDrive-Historie konnte nicht aktualisiert werden.");
+      if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
     }
     if(stateError)throw stateError;
     oneDriveLastError="";oneDriveStatus("Aktuell","online");
