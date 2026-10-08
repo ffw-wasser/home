@@ -13,8 +13,8 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
   zip.file('probe.pdf', 'test-pdf');
   const bytes = await zip.generateAsync({type: 'uint8array'});
   const store = new Map(), events = {}, status = {hidden: true, textContent: ''};
-  const calls = {callback: 0, read: 0, write: 0, apply: 0, list: 0, download: 0, statistics: 0};
-  const state = {signedIn, fail: false, empty: false, stateError: false, waitForList: null};
+  const calls = {callback: 0, read: 0, write: 0, apply: 0, list: 0, download: 0, statistics: 0, toast: []};
+  const state = {signedIn, fail: false, empty: false, stateError: false, waitForList: null, version: '2026-10-08T18:00:00Z', size: 100, corrupt: false, downloadError: null};
   const context = vm.createContext({
     window: {}, CsvEngine, JSZip, URL, URLSearchParams, Blob, setTimeout, clearTimeout,
     navigator: {onLine: online}, csvArchive: [],
@@ -23,7 +23,7 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
     document: {hidden: false, getElementById: id => id === 'statisticsHistoryStatus' ? status : null,
       documentElement: {classList: {add() {}, remove() {}}}, addEventListener: (name, fn) => events[name] = fn},
     addEventListener: (name, fn) => events[name] = fn,
-    renderHistory() {}, showToast() {}, historyDateFromItem: item => item.originalReportDate,
+    renderHistory() {}, showToast(message) {calls.toast.push(message);}, historyDateFromItem: item => item.originalReportDate,
     renderStatistics() {calls.statistics++;}
   });
   vm.runInContext(syncSource, context);
@@ -40,11 +40,12 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
         calls.list++;
         if (state.waitForList) await state.waitForList;
         if (state.fail) throw new Error('Network unavailable');
-        return {json: async () => ({value: state.empty ? [] : [{id: 'zip-1', name: 'probe.zip', file: {}, lastModifiedDateTime: '2026-10-08T18:00:00Z'}]})};
+        return {json: async () => ({value: state.empty ? [] : [{id: 'zip-1', name: 'probe.zip', file: {}, lastModifiedDateTime: state.version, size: state.size}]})};
       }
       calls.download++;
       if (state.fail) throw new Error('Download unavailable');
-      return {blob: async () => bytes};
+      if (state.downloadError) throw state.downloadError;
+      return {blob: async () => state.corrupt ? new Uint8Array([1,2,3]) : bytes};
     }
   });
   vm.runInContext(historySource, context);
@@ -135,4 +136,60 @@ test('Netzwerkfehler erhalten den letzten Bericht samt PDF; ein späterer Abruf 
   assert.equal(context.csvArchive.length, 0);
   assert.equal(await context.window.loadOneDriveHistoryPdf(previous[0]), null);
   assert.equal(status.hidden, true);
+});
+
+
+test('Unveränderte ZIPs werden nach erneutem Ordnerabruf ohne erneuten Download verwendet', async () => {
+  const {context, calls, state} = await app();
+  assert.equal(await context.window.loadOneDriveHistory(), true);
+  const first = context.csvArchive[0];
+  first.topic = 'lokal verändert';
+  assert.equal(await context.window.loadOneDriveHistory(), true);
+  assert.equal(calls.list, 2);assert.equal(calls.download, 1);
+  assert.equal(context.csvArchive[0].topic, 'Funkübung');
+  state.size++;
+  assert.equal(await context.window.loadOneDriveHistory(), true);
+  assert.equal(calls.download, 2);
+  state.version = '2026-10-09T18:00:00Z';
+  assert.equal(await context.window.loadOneDriveHistory(), true);
+  assert.equal(calls.download, 3);
+});
+
+test('ZIPs ohne Versionsinformationen werden nicht als unverändert angenommen', async () => {
+  const {context, calls, state} = await app();state.version='';
+  await context.window.loadOneDriveHistory();await context.window.loadOneDriveHistory();
+  assert.equal(calls.download, 2);
+});
+
+test('Geänderte defekte ZIP ersetzt weder bisherige Berichte noch PDFs', async () => {
+  const {context, state, status, calls} = await app();
+  await context.window.loadOneDriveHistory();const previous=context.csvArchive;
+  const pdf=await context.window.loadOneDriveHistoryPdf(previous[0]);
+  state.version='2026-10-09T18:00:00Z';state.corrupt=true;
+  assert.equal(await context.window.loadOneDriveHistory(),false);
+  assert.equal(context.csvArchive,previous);assert.equal(await context.window.loadOneDriveHistoryPdf(previous[0]),pdf);
+  assert.match(status.textContent,/probe.zip/);assert.match(status.textContent,/ZIP-Paket ist nicht lesbar/);assert.equal(calls.toast.length,0);
+  state.corrupt=false;assert.equal(await context.window.loadOneDriveHistory(),true);
+});
+
+test('Zugriffsfehler nennen Datei und Berechtigungen, manuell auch als Meldung', async () => {
+  const {context, state, status, calls} = await app();
+  state.downloadError=Object.assign(new Error('forbidden'),{status:403});
+  assert.equal(await context.window.loadOneDriveHistory({manual:true}),false);
+  assert.match(status.textContent,/probe.zip/);assert.match(status.textContent,/403/);
+  assert.match(status.textContent,/Zugriffsrechte/);assert.equal(calls.toast.length,1);
+  assert.equal(context.window.oneDriveHistoryLastError,status.textContent);
+});
+
+test('Offline-Historienaufruf erhält Daten und PDFs ohne Netzwerkabruf', async () => {
+  const {context, calls, status} = await app();await context.window.loadOneDriveHistory();
+  const previous=context.csvArchive;context.navigator.onLine=false;
+  assert.equal(await context.window.loadOneDriveHistory(),false);
+  assert.equal(context.csvArchive,previous);assert.equal(calls.list,1);assert.match(status.textContent,/Offline/);
+});
+
+test('Gelöschte ZIP entfernt den Sitzungszwischenspeicher; erneut angelegte ZIP wird geladen', async () => {
+  const {context, calls, state} = await app();await context.window.loadOneDriveHistory();
+  state.empty=true;await context.window.loadOneDriveHistory();assert.equal(context.csvArchive.length,0);
+  state.empty=false;await context.window.loadOneDriveHistory();assert.equal(calls.download,2);
 });
