@@ -12,6 +12,7 @@ function closeCompactMenu() {
   if (toggle) toggle.setAttribute("aria-expanded", "false");
 }
 function showView(viewId) {
+  if(window.Drinks?.beforeView(viewId)===false)return;
   closeCompactMenu();
   if(viewId!=="attendanceView")hideDocumentReportUi?.();
   document.querySelectorAll("main.app-shell .view").forEach(view => view.hidden = view.id !== viewId);

@@ -56,7 +56,7 @@ test('Update entfernt alte OneDrive-haltige App-Caches', async () => {
   let activation;
   w.events.activate({waitUntil: p => activation = p});
   await activation;
-  assert.deepEqual(w.deleted, ['ffw-wasser-final-v8-1-pending-lock-20261006', 'ffw-wasser-topics-private-cache-20261008', 'ffw-wasser-age-statistics-20261008', 'ffw-wasser-report-dates-statistics-20261008', 'ffw-wasser-plausibility-cleanup-20261008']);
+  assert.deepEqual(w.deleted, ['ffw-wasser-final-v8-1-pending-lock-20261006', 'ffw-wasser-topics-private-cache-20261008', 'ffw-wasser-age-statistics-20261008', 'ffw-wasser-report-dates-statistics-20261008', 'ffw-wasser-plausibility-cleanup-20261008', 'ffw-wasser-onedrive-resilience-20261008']);
 });
 
 test('Startseite öffnet ohne Passwort und verändert keine Nutzdaten', () => {

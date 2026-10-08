@@ -2,7 +2,7 @@
 
 <html lang="de">
 <head>
-<meta charset="utf-8"/><meta name="ffw-build" content="onedrive-resilience-20261008"/>
+<meta charset="utf-8"/><meta name="ffw-build" content="getraenke-20261008"/>
 <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
 <meta content="#c80000" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -57,6 +57,7 @@
   
   <link href="css/layout/patch-ios-history.css?v=20261007-5" rel="stylesheet"/>
   <link href="css/layout/iphone-action-dock-fix.css?v=20261007-7" rel="stylesheet"/>
+<link href="css/features/drinks.css?v=20261008-getraenke" rel="stylesheet"/>
 </head>
 <body>
 <div id="protectedAppContent">
@@ -64,11 +65,31 @@
 <div class="top-nav-actions"><button class="nav-button active start-nav-button" id="attendanceTab" type="button">Home</button><div class="compact-menu-wrap">
 <button aria-controls="compactMenu" aria-expanded="false" class="menu-toggle-button" id="menuToggleButton" type="button">Menü ☰</button>
 <div class="compact-menu" hidden="" id="compactMenu">
+<button class="compact-menu-button" id="drinksTab" type="button">Getränke</button>
 <button class="compact-menu-button" id="settingsTab" type="button">Einstellungen</button><button class="compact-menu-button" id="adminTab" type="button">Administration</button><button class="compact-menu-button" id="archiveTab" type="button">Berichte &amp; Datensicherung</button>
 <button class="compact-menu-button" id="statisticsTab" type="button">Statistik</button><button class="compact-menu-button" id="tacticsTab" type="button">Taktik</button><button class="compact-menu-button" id="helpTab" type="button">Hilfe</button>
 </div>
 </div></div><button aria-label="Taktik und Abschluss öffnen" class="topbar-start-button" disabled="" id="exportResetButton" type="button">Taktik &amp; Abschluss</button></nav>
 <main class="app-shell">
+<section class="view" id="drinksView" hidden>
+  <header class="dr-heading"><div><p class="eyebrow">Getränke</p><h2>Dein Deckel</h2></div><button id="dr-home" type="button">Zurück zu Home</button></header>
+  <section data-dr-screen="members">
+    <div class="dr-heading"><div><h3>Wer bist du?</h3><p>Wähle deinen Namen.</p></div><button id="dr-refresh" type="button">Aktualisieren</button></div>
+    <p id="dr-status" class="dr-status" aria-live="polite"></p>
+    <div class="dr-columns"><div class="dr-card"><label for="dr-search">Name suchen</label><input id="dr-search" type="search" autocomplete="off" placeholder="Vor- oder Nachname"><div class="dr-member-list" id="dr-members"></div></div>
+    <aside class="dr-card" aria-label="Ranking nach offenen Beträgen"><div class="dr-ranking-heading"><img class="dr-mascot" src="assets/drinks/bierfass.webp" alt=""><div><h3>Die größten Deckel</h3><p>Schon getrunken. Noch nicht bezahlt.</p></div></div><ol class="dr-ranking-list" id="dr-ranking"></ol><p class="dr-ranking-foot">Top 3 · aktuell offene Beträge</p></aside></div>
+  </section>
+  <section class="dr-pin-screen" data-dr-screen="pin" hidden><h3 data-dr-person></h3><p>Öffne dein persönliches Getränkekonto.</p><form id="dr-pin-form"><label for="dr-pin">Deine Getränke-PIN</label><input id="dr-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required><div class="dr-footer"><button class="dr-primary dr-wide" id="dr-pin-submit" type="submit">Konto öffnen</button><button id="dr-pin-back" type="button">Anderer Name</button></div></form></section>
+  <section data-dr-screen="account" hidden><div class="dr-heading"><h3 data-dr-person></h3><button id="dr-cancel" type="button">Anderes Mitglied</button></div>
+    <div class="dr-columns"><div><div class="dr-card"><div class="dr-muted">Bereits gebucht · offener Betrag</div><div class="dr-balance" id="dr-balance">0,00 €</div><div class="dr-muted" id="dr-count"></div></div><div class="dr-draft"><div class="dr-draft-heading"><h3>Neue Striche</h3><strong id="dr-draft-amount">0,00 €</strong></div><p id="dr-draft-count" aria-live="polite">0 neue Striche</p><div class="dr-beers" id="dr-beers" aria-hidden="true"></div></div></div>
+    <div class="dr-card"><button id="dr-add" class="dr-primary dr-wide dr-add" type="button"><span>+ 1 Strich</span><small>1,50 €</small></button><div class="dr-actions"><button id="dr-minus" type="button">− 1 Strich</button><button id="dr-reset" type="button">Neue Striche zurücksetzen</button></div><div class="dr-total">Offen nach dem Speichern: <strong id="dr-total"></strong></div><div class="dr-payment-actions"><button data-dr-pay="cash" type="button">Bar bezahlen</button><button data-dr-pay="paypal" type="button">PayPal bezahlen</button></div><button id="dr-save" class="dr-primary dr-wide" type="button">Fertig und speichern</button></div></div>
+  </section>
+  <section data-dr-screen="amount" hidden><div class="dr-heading"><div><h3 id="dr-payment-title">Bar bezahlen</h3><p data-dr-person></p></div></div><div class="dr-columns"><div class="dr-card"><div class="dr-muted">Offener Betrag</div><div class="dr-balance" id="dr-available"></div><div class="dr-actions"><button class="dr-primary" data-dr-amount="all" type="button">Alles</button><button data-dr-amount="500" type="button">5 €</button><button data-dr-amount="1000" type="button">10 €</button></div></div><div class="dr-card"><form id="dr-pay-form"><label for="dr-amount">Betrag in Euro</label><input id="dr-amount" type="text" inputmode="decimal" required><div class="dr-footer"><button class="dr-primary dr-wide" id="dr-pay-submit" type="submit">Weiter zur Bestätigung</button><button data-dr-back-account type="button">Zurück</button></div></form></div></div></section>
+  <section data-dr-screen="cash" hidden><div class="dr-heading"><h3>Bar bezahlen</h3></div><div class="dr-columns"><div class="dr-card"><div class="dr-balance" data-dr-payment></div><div class="dr-muted" data-dr-person></div></div><div class="dr-card"><p>Geld in die Getränkekasse legen und anschließend bestätigen.</p><button id="dr-cash-confirm" class="dr-primary dr-wide" type="button">Geld in die Kasse gelegt</button><div class="dr-footer"><button id="dr-cash-cancel" data-dr-back-account type="button">Abbrechen</button></div></div></div></section>
+  <section data-dr-screen="paypal" hidden><div class="dr-heading"><h3>Mit PayPal bezahlen</h3></div><div class="dr-columns"><div><div class="dr-card"><div class="dr-balance" data-dr-payment></div><div class="dr-muted" data-dr-person></div></div><div class="dr-qr-box"><canvas id="dr-qr" role="img" aria-label="QR-Code zum PayPal-Zahlungslink"></canvas><a class="dr-paypal-url" id="dr-paypal-link" href="https://paypal.me/FeuerwehrWasser" target="_blank" rel="noopener noreferrer">PayPal-Zahlungslink</a></div></div><div class="dr-card"><p>Mit der Handykamera scannen und im Browser bezahlen.</p><p>Prüfe den tatsächlich gesendeten Betrag. Bestätige erst nach der Zahlung.</p><button id="dr-paypal-confirm" class="dr-primary dr-wide" type="button">Zahlung durchgeführt</button><p class="dr-muted">PayPal bestätigt diesen Zahlungslink nicht automatisch an die Strichliste.</p><div class="dr-footer"><button id="dr-paypal-cancel" data-dr-back-account type="button">Abbrechen</button></div></div></div></section>
+  <section data-dr-screen="paid" hidden><div class="dr-heading"><h3>Zahlung eingetragen</h3></div><div class="dr-columns"><div class="dr-card"><span class="dr-success" aria-hidden="true">✓</span><div class="dr-balance" data-dr-payment></div><div id="dr-paid-method" class="dr-muted"></div><p>Neuer offener Betrag: <strong id="dr-paid-balance"></strong></p></div><div class="dr-card"><button id="dr-paid-next" class="dr-primary dr-wide" type="button">Fertig · nächstes Mitglied</button><div class="dr-footer"><button id="dr-paid-account" type="button">Zum Konto</button></div></div></div></section>
+  <p id="dr-error" class="dr-error" role="alert"></p>
+</section>
 <section class="view" id="attendanceView">
 <div class="participant-command-header"><div class="participant-title"><h2>Anwesenheit</h2></div><span class="header-session-type" id="headerSessionType">Allgemeine Probe</span></div>
 <article class="panel home-session-type-panel">
@@ -191,7 +212,7 @@
 <label for="repeatPin">Neues Passwort wiederholen</label>
 <input class="text-input" id="repeatPin" maxlength="64" type="password"/>
 <button class="primary-button" id="changePinButton" type="button">Passwort ändern</button>
-<p class="help-text">Einfache Passwörter ab 3 Zeichen sind erlaubt. Standard-Passwort bei der ersten Verwendung: 112</p>
+<p class="help-text">Verwende ein eigenes Admin-Passwort mit mindestens 8 Zeichen und gib es nur an berechtigte Personen weiter.</p>
 </article></div></section><section class="admin-section" id="admin-members"><header><span>4</span><div><h3>Mitglieder</h3><p>Mitglieder anlegen und persönliche Berechtigungen verwalten.</p></div></header><div class="admin-section-grid admin-members-grid"><article class="panel">
 <div class="panel-heading"><span class="step">+</span><h3>Mitglied hinzufügen</h3></div>
 <label for="newLastName">Nachname</label>
@@ -323,11 +344,11 @@
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 </div>
 <script src="js/core/config.js?v=20261008-plausibility-cleanup"></script>
-<script src="js/core/onedrive-sync.js?v=20261008-resilience"></script>
+<script src="js/core/onedrive-sync.js?v=20261008-getraenke"></script>
 <script src="js/core/storage.js?v=20260924-1"></script>
 <script src="js/core/database.js?v=20261008-plausibility-cleanup"></script>
-<script src="js/core/ui.js?v=20260924-2203"></script>
-<script src="js/features/attendance/attendance-controller.js?v=20261006-v81-pending-lock"></script>
+<script src="js/core/ui.js?v=20261008-getraenke"></script>
+<script src="js/features/attendance/attendance-controller.js?v=20261008-getraenke"></script>
 <script src="js/features/attendance/ipad-action-dock.js?v=20261006-final-80"></script>
 <script src="js/features/reports/csv-engine.js?v=20261008-report-dates"></script>
 <script src="js/features/reports/report-engine.js?v=20260920-1"></script>
@@ -341,7 +362,11 @@
 <script src="js/features/settings/admin.js?v=produktv-2-0-atemschutz-3fach"></script>
 <script src="js/features/statistics/statistics.js?v=20261008-report-dates"></script><script src="js/features/tactics/tactics-engine.js?v=20260924-1629"></script><script src="js/features/tactics/tactics.js?v=produktv-2-0-grossansicht-namen"></script><script src="js/features/reports/operation-template-images.js?v=20260930-clean-final"></script><script src="js/features/reports/operation-docx-template.js?v=20261006-embedded"></script><script src="js/features/reports/operation-docx.js?v=20261001-crosses-casefix"></script>
   <script src="js/features/reports/operation-pdf-layout.js?v=20260930-boxlayout"></script><script src="js/features/reports/operation-pdf-worker-source.js?v=20261006-49"></script>
-  <script src="js/features/operations/operations.js?v=20261006-v68-clean"></script><script src="js/features/reports/zip-terminpakete.js?v=20260930-nur-zip"></script><script src="js/features/reports/termin-dateiname-fix.js?v=20261001-termin-datum"></script><script src="js/features/quality/quality-engine.js?v=20261008-plausibility-cleanup"></script><script src="js/app/app.js?v=20261008-plausibility-cleanup"></script>
+  <script src="js/features/operations/operations.js?v=20261006-v68-clean"></script><script src="js/features/reports/zip-terminpakete.js?v=20260930-nur-zip"></script><script src="js/features/reports/termin-dateiname-fix.js?v=20261001-termin-datum"></script><script src="js/features/quality/quality-engine.js?v=20261008-plausibility-cleanup"></script><script src="js/vendor/qrcode.js?v=1.4.4"></script>
+<script src="js/features/drinks/drinks-model.js?v=20261008-getraenke"></script>
+<script src="js/features/drinks/drinks-store.js?v=20261008-getraenke"></script>
+<script src="js/features/drinks/drinks.js?v=20261008-getraenke"></script>
+<script src="js/app/app.js?v=20261008-getraenke"></script>
 <dialog class="probe-topic-dialog" id="probeTopicDialog"><form class="probe-topic-form" method="dialog"><p class="eyebrow">Probe abschließen</p><h2>Thema der Probe</h2><p id="probeTopicDescription">Bitte das Thema der Probe eintragen. Das Thema erscheint in CSV, PDF und Archiv.</p><label for="probeTopicInput">Thema *</label><textarea id="probeTopicInput" maxlength="300" placeholder="z. B. Löschangriff, Funkübung oder Fahrzeugkunde" required="" rows="4"></textarea><p class="probe-topic-error" hidden="" id="probeTopicError">Bitte ein Thema eingeben.</p><div class="probe-topic-actions"><button class="outline-button" id="cancelProbeTopicButton" type="button">Abbrechen</button><button class="primary-button" id="confirmProbeTopicButton" type="button">Weiter zum Abschluss</button></div></form></dialog><dialog class="archive-correction-dialog" id="archiveCorrectionDialog"><form class="archive-correction-form" method="dialog"><p class="eyebrow">Abgeschlossene Probe</p><h2>Eintrag korrigieren</h2><p>Person auswählen und die gewünschten Angaben ändern.</p><label for="correctionPerson">Person</label><select class="text-input" id="correctionPerson"></select><label for="correctionStatus">Status</label><select class="text-input" id="correctionStatus"><option>Anwesend</option><option>Entschuldigt</option><option>Betrifft nicht</option><option>Fehlt</option></select><label for="correctionRole" id="correctionRoleLabel">Funktion / Status</label><select class="text-input" id="correctionRole"><option value="">Ohne Funktion</option><option value="Orga">Orga</option><option value="Reserve">Reserve</option><option value="GF">GF</option><option value="Maschinist">Maschinist</option><option value="ATF">ATF</option><option value="ATM">ATM</option><option value="WTF">WTF</option><option value="WTM">WTM</option><option value="STF">STF</option><option value="STM">STM</option><option value="Melder">Melder</option></select><div class="probe-topic-actions"><button class="outline-button" id="cancelCorrectionButton" type="button">Abbrechen</button><button class="primary-button" id="saveCorrectionButton" type="button">Korrektur speichern</button></div></form></dialog><script src="js/features/quality/smart-workflow.js?v=20261002-quality-scope"></script>
 <script src="js/features/statistics/statistics-role-scope-fix.js?v=20261006-clean-light"></script>
 <script src="js/features/statistics/statistics-quality-term-fix.js?v=20261006-clean-light"></script>
