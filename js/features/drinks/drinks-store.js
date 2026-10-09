@@ -8,10 +8,11 @@
   const conflict=e=>[409,412].includes(e?.status);
   const itemUrl=(root,id)=>`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(id)}`;
   function reset(){generation++;contextKey='';cache.clear();rewardCache=null;}
-  async function context(create=false){
+  async function context(create=false,expectedSource=null){
     if(!oneDriveSignedIn())throw new Error('Bitte OneDrive verbinden. Getränke werden nur dort gespeichert.');
     if(navigator.onLine===false)throw new Error('Offline. Bitte vor dem Buchen die Internetverbindung herstellen.');
     const root=await oneDriveResolveSharedRoot(),key=root.driveId+':'+root.id;
+    assertSource({key},expectedSource);
     if(contextKey!==key){reset();contextKey=key;}
     const gen=generation;
     let folder;
@@ -27,6 +28,7 @@
     return {root,key,folder,gen};
   }
   function assertCurrent(ctx){if(ctx.gen!==generation||ctx.key!==contextKey||!oneDriveSignedIn())throw new Error('OneDrive-Verbindung geändert. Bitte das Getränkekonto erneut öffnen.');}
+  function assertSource(ctx,expected){if(expected&&ctx.key!==expected)throw Object.assign(new Error('Diese Buchung gehört zum vorherigen OneDrive-Ordner. Bitte die ursprüngliche Verbindung wiederherstellen und erneut prüfen.'),{code:'contextChanged'});}
   const REWARDS_FILE='bonus-einstellungen.json';
   async function readRewards(ctx){
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${REWARDS_FILE}`;
@@ -40,8 +42,9 @@
     }
     throw new Error('Die Bonus-Einstellungen werden gerade geändert. Bitte erneut laden.');
   }
-  async function rewards(){
-    const ctx=await context(true);
+  async function rewards(expectedSource=null){
+    const ctx=await context(true,expectedSource);
+    assertSource(ctx,expectedSource);
     for(let attempt=0;attempt<4;attempt++){
       const old=await readRewards(ctx);if(old)return clone(old.policy);
       const policy={schemaVersion:1,id:crypto.randomUUID(),revision:crypto.randomUUID(),startedAt:new Date().toISOString(),count:20,cents:300};
@@ -118,8 +121,9 @@
     }));
     assertCurrent(ctx);cache=next;return memberIds.map(id=>results.get(String(id)));
   }
-  async function mutate(memberId,change,expectedPin=null){
-    const ctx=await context(true);
+  async function mutate(memberId,change,expectedPin=null,expectedSource=null){
+    const ctx=await context(true,expectedSource);
+    assertSource(ctx,expectedSource);
     for(let attempt=0;attempt<4;attempt++){
       const {account,item}=await readWithContext(ctx,memberId);
       if(expectedPin&&JSON.stringify(account.pin)!==expectedPin)throw Object.assign(new Error('Deine PIN wurde geändert. Bitte erneut anmelden.'),{code:'pinChanged'});
@@ -147,11 +151,11 @@
     const signature=JSON.stringify(account.pin),record=newPin===null?null:await M.createPin(newPin);
     return mutate(memberId,a=>({...a,pin:record}),signature);
   }
-  async function book(memberId,booking,pinSignature){
+  async function book(memberId,booking,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
     if(!['drinks','payment'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
     if(booking.type==='payment'&&booking.confirmation!=='member')throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
-    const policy=await rewards(),account=await mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature);
+    const policy=await rewards(expectedSource),account=await mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature,expectedSource);
     // Publishing failure must never turn a confirmed ledger write into a failed payment.
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
@@ -189,5 +193,5 @@
     while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);for(const file of page.value||[])if(file.file&&/^handy-[a-f0-9]{64}\.json$/.test(file.name)){const record=await readMobileFile(file.name);if(record?.data?.memberId)ids.push(String(record.data.memberId));}url=page['@odata.nextLink'];}
     return ids;
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,adminPaypalPayment,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds};
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,adminPaypalPayment,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
 })(typeof window==='undefined'?globalThis:window);

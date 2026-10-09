@@ -160,6 +160,14 @@ test('Geänderte Dateiversion lädt aktuelle Buchungen und PIN; alte Sitzung ble
   assert.equal(calls.slice(start).filter(c=>c.url.endsWith('/content')).length,1);
   await assert.rejects(S.book('a',drink('drink-0003',1),'null'),/PIN wurde geändert/);
 });
+test('Wartende Kartenbuchung darf nach einem OneDrive-Ordnerwechsel nicht in einen anderen Ordner schreiben',async()=>{
+  const {ctx,S,calls}=app();await S.list(['a']);const source=S.sourceKey();assert.equal(source,'drive:root');
+  ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:'other-drive'});const start=calls.length;
+  await assert.rejects(S.book('a',drink(),'null',source),/ursprüngliche Verbindung/);
+  assert.equal(calls.slice(start).filter(c=>c.options.method==='PUT').length,0);
+  ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:'drive'});
+  const saved=await S.book('a',drink(),'null',source);assert.equal(saved.bookings.length,1);
+});
 test('Ausgelieferter Code enthält lokale QR-Erzeugung, Fass ohne Legende und keine neue persönliche Browserspeicherung',()=>{
   const html=fs.readFileSync(require.resolve('../index.html'),'utf8');const ui=fs.readFileSync(require.resolve('../js/features/drinks/drinks.js'),'utf8');
   assert.match(html,/id="drinksTab"/);assert.match(html,/Die größten Deckel/);assert.doesNotMatch(html,/1 Bierglas = 1 Strich/);assert.match(ui,/qrcode\(0,'M'\)/);
