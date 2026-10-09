@@ -133,5 +133,22 @@
     if(!['drinks','payment'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
     const policy=await rewards();return mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature);
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,reset,rewards,saveRewards,cachedRewards};
+  async function createMobileAccess(memberId,pinSignature,portalUrl){
+    const portal=new URL(portalUrl);
+    if(portal.protocol!=='https:'||portal.username||portal.password||portal.pathname!=='/'||portal.search||portal.hash)throw new Error('Ungültige Adresse für den Handyzugang.');
+    const ctx=await context(true),current=await readWithContext(ctx,memberId);
+    if(!pinSignature||!current.account.pin||JSON.stringify(current.account.pin)!==pinSignature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
+    const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));
+    const record={schemaVersion:1,memberId:String(memberId),revision:crypto.randomUUID(),tokenHash:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),createdAt:new Date().toISOString()};
+    const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${(await fileName(memberId)).replace('konto-','zugang-')}`;
+    let previous;try{previous=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(!notFound(e))throw e;}
+    if(previous&&(!previous.file||!previous.eTag))throw new Error('Der Handyzugang besitzt keine gültige Dateiversion.');
+    assertCurrent(ctx);
+    try{await odFetch(path+':/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':previous?.eTag||'"0"'},body:JSON.stringify(record)},false);}
+    catch(error){throw new Error(conflict(error)?'Der Zugang wurde gleichzeitig geändert. Bitte erneut erstellen.':'Zugang nicht bestätigt. Bitte einen neuen Zugang erstellen.');}
+    assertCurrent(ctx);
+    return portal.origin+'/#'+encodeURIComponent(JSON.stringify({id:String(memberId),token}));
+  }
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,reset,rewards,saveRewards,cachedRewards,createMobileAccess};
 })(typeof window==='undefined'?globalThis:window);

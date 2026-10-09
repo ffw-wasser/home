@@ -10,7 +10,7 @@ const drink=(id='drink-0001',count=5)=>({id,type:'drinks',count,cents:count*150,
 const pay=(id='payment-0001',cents=500,method='cash')=>({id,type:'payment',cents,method,confirmation:'member',createdAt:'2026-10-08T17:00:00Z'});
 function app(){
   const files=new Map(),calls=[],storageWrites=[];let folder=true,tag=0;
-  const ctx=vm.createContext({crypto:webcrypto,TextEncoder,console,navigator:{onLine:true},adminUnlocked:true,
+  const ctx=vm.createContext({crypto:webcrypto,TextEncoder,URL,console,navigator:{onLine:true},adminUnlocked:true,
     oneDriveSignedIn:()=>true,oneDriveResolveSharedRoot:async()=>({id:'root',driveId:'drive'}),
     localStorage:{setItem:(...args)=>storageWrites.push(args)},sessionStorage:{setItem:(...args)=>storageWrites.push(args)},
     odFetch:async(url,options={})=>{
@@ -186,4 +186,17 @@ test('Verlorene Antwort beim Bonusstart und Speichern wird anhand der OneDrive-V
   const a=app();a.ctx.loseReply=true;const p=await a.S.rewards();assert.equal(p.count,20);assert.equal(a.files.size,1);
   a.ctx.loseReply=true;const saved=await a.S.saveRewards(25,400,p.revision);assert.equal(saved.count,25);assert.equal((await a.S.rewards()).cents,400);
   a.ctx.navigator.onLine=false;await assert.rejects(a.S.saveRewards(10,150,saved.revision),/Offline/);assert.equal(a.files.get('bonus-einstellungen.json').data.count,25);
+});
+
+test('Privater Handyzugang bleibt gehasht in OneDrive; falsche PIN-Sitzung und Konflikte werden abgelehnt',async()=>{
+  const a=app();await a.S.setPin('member-a','1234');const signature=JSON.stringify((await a.S.read('member-a')).pin);
+  const accountBefore=copy(a.S.cached('member-a'));
+  const first=await a.S.createMobileAccess('member-a',signature,'https://deckel.example/');
+  const credentials=JSON.parse(decodeURIComponent(new URL(first).hash.slice(1)));assert.match(credentials.token,/^[a-f0-9]{64}$/);
+  const entry=[...a.files].find(([key])=>key.startsWith('zugang-'));assert.ok(entry);assert.equal(entry[1].data.memberId,'member-a');assert.equal(entry[1].data.token,undefined);assert.notEqual(entry[1].data.tokenHash,credentials.token);
+  const oldRevision=entry[1].data.revision;await a.S.createMobileAccess('member-a',signature,'https://deckel.example/');assert.notEqual(a.files.get(entry[0]).data.revision,oldRevision);
+  assert.deepEqual(copy(a.S.cached('member-a')),accountBefore);assert.equal(a.storageWrites.length,0);
+  await assert.rejects(a.S.createMobileAccess('member-a','wrong','https://deckel.example/'),/erneut/);
+  await assert.rejects(a.S.createMobileAccess('member-a',signature,'http://deckel.example/'),/Ungültige/);
+  a.ctx.forceConflict=1;await assert.rejects(a.S.createMobileAccess('member-a',signature,'https://deckel.example/'),/gleichzeitig/);
 });

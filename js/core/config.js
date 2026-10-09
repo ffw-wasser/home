@@ -112,3 +112,6 @@ const safeStorage = (() => {
     removeItem: key => { delete memoryStorage[key]; }
   };
 })();
+
+// Erst nach erfolgreicher OneDrive-Anbindung auf die HTTPS-Adresse des Handydienstes setzen.
+globalThis.DRINKS_MOBILE_ORIGIN = "";

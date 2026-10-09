@@ -11,12 +11,12 @@
   function lockAccount(){
     clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
-    signature='';clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
+    signature='';if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
     message(pending?'Konto gesperrt. Nach deiner PIN-Eingabe dieselbe Buchung erneut prüfen.':draft?'Konto gesperrt. Deine '+draft+' ungespeicherten Striche bleiben bis zum Neuladen erhalten. PIN eingeben, um fortzufahren.':'Konto gesperrt. Bitte deine PIN erneut eingeben.');
   }
   function touch(){clearTimeout(timer);if(memberId&&signature&&!busy)timer=setTimeout(lockAccount,60000);}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
-  function resetSession(){clearTimeout(timer);memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();updatePinDots();}
+  function resetSession(){clearTimeout(timer);if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();updatePinDots();}
   function reset(){openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
@@ -61,6 +61,7 @@
     root.querySelectorAll('[data-dr-amount]').forEach(b=>b.disabled=busy||totals.balance<=0||(b.dataset.drAmount!=='all'&&Number(b.dataset.drAmount)>totals.balance));
     el('cash-confirm').disabled=busy;el('paypal-confirm').disabled=busy;el('pay-submit').disabled=busy;
     el('cash-cancel').disabled=busy||Boolean(pending);el('paypal-cancel').disabled=busy||Boolean(pending);el('refresh').disabled=busy;
+    if(el('mobile-open'))el('mobile-open').disabled=busy||Boolean(pending);
     el('own-open').disabled=busy||Boolean(pending);el('own-save').disabled=busy;el('own-back').disabled=busy;
     el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':draft?'Fertig · '+draft+' Strich'+(draft===1?'':'e')+' speichern':'Fertig';
     for(const id of ['cash-confirm','paypal-confirm'])el(id).textContent=pending?.type==='payment'?'Speicherung erneut prüfen':id==='cash-confirm'?'Geld in die Kasse gelegt':'Zahlung durchgeführt';
@@ -185,6 +186,20 @@
     el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>run(confirmPayment));
     root.querySelectorAll('[data-dr-back-account]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;payment=0;render();screen('account');}));
     el('paid-next').addEventListener('click',finishSession);el('paid-account').addEventListener('click',()=>screen('account'));
+    el('mobile-open').hidden=!global.DRINKS_MOBILE_ORIGIN;
+    el('mobile-open').addEventListener('click',()=>{
+      if(busy||pending||!signature||!global.DRINKS_MOBILE_ORIGIN)return;
+      if(!confirm('Einen neuen privaten Handyzugang erstellen? Ein bisheriger Link wird dadurch ungültig. Deine ungespeicherten Striche bleiben erhalten.'))return;
+      run(async()=>{
+        const url=await S.createMobileAccess(memberId,signature,global.DRINKS_MOBILE_ORIGIN);
+        const qr=qrcode(0,'M');qr.addData(url);qr.make();
+        const canvas=el('mobile-qr'),count=qr.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;
+        const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.fillStyle='#111';
+        for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c))context.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);
+        screen('mobile');
+      });
+    });
+    el('mobile-back').addEventListener('click',()=>{el('mobile-qr').width=1;el('mobile-qr').height=1;screen('account');});
     el('own-open').addEventListener('click',()=>{if(busy||pending)return;clearPinInputs();screen('own-pin');el('own-current').focus();});
     el('own-back').addEventListener('click',()=>{clearPinInputs();screen('account');});
     el('own-form').addEventListener('submit',event=>{
