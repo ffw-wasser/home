@@ -37,6 +37,7 @@ function showView(viewId) {
   closeCompactMenu();
   if(viewId!=="attendanceView")hideDocumentReportUi?.();
   document.querySelectorAll("main.app-shell > .view").forEach(view => view.hidden = view.id !== viewId);
+  byId("drinksShortcut")?.classList.toggle("active",viewId==="drinksView");
   byId("attendanceTab").classList.toggle("active", viewId === "attendanceView");
   if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.toggle("active",viewId==="settingsHistoryView");if(byId("statisticsTab"))byId("statisticsTab").classList.toggle("active",viewId==="settingsStatisticsView");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
   window.scrollTo({ top: 0, behavior: "smooth" });

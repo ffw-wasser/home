@@ -45,3 +45,7 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 
 .dr-burst-pop{width:110px;height:110px}.dr-burst-pop svg{display:block;width:100%;height:100%}
 @media(min-width:700px){.dr-own-new-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}}
+
+.attendance-tools{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:14px 0}.attendance-tools label{flex:1 1 250px}.attendance-filters{display:flex;gap:8px}.attendance-tools small{flex-basis:100%}.attendance-recorded{background:#f2f7f2!important;gap:8px}.attendance-recorded button{min-height:44px}.smart-issues ul{columns:2;padding-left:22px}@media(max-width:600px){.smart-issues ul{columns:1}}
+
+#attendanceDraftStatus #attendanceCloudStatus{display:block;font-size:14px;margin-top:5px}.attendance-filters button{font-size:16px;white-space:nowrap}.attendance-filters button[aria-pressed=true]{background:#24653b;color:#fff;border-color:#24653b}
