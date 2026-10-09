@@ -211,5 +211,7 @@
     catch(error){if(box.isConnected)status.textContent='PIN-Status nicht geladen. '+(error.message||'OneDrive-Verbindung prüfen.');}
   }
   global.Drinks={open,reset,beforeView,adminFields,loadPinStatus,lock:lockAccount};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  // Der vollständige Getränke-Bereich steht vor diesem Script bereits im DOM.
+  // Den Direktzugang sofort binden, auch wenn weitere Scripts noch laden.
+  if(byId('drinksView'))init();else document.addEventListener('DOMContentLoaded',init,{once:true});
 })(window);
