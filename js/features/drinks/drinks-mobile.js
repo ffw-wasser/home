@@ -38,7 +38,7 @@
   async function flush(){if(working)return;working=true;try{while(pending.size){const id=pending.values().next().value;pending.delete(id);try{if(!await publish(id))setStatus(id,'Noch kein Handyzugang eingerichtet.');}catch{setStatus(id,'In OneDrive gespeichert. Die Handyansicht ist noch nicht aktualisiert. Bitte „Handyansicht aktualisieren“ wählen.');}}}finally{working=false;}}
   async function link(id,signature,rotate=false){
     const connection=await config();if(!connection)throw new Error('Die Handyansicht muss zuerst unter Einstellungen → Getränkeverwaltung → Handy-Deckel eingerichtet werden.');
-    const account=await S.read(id);if(!signature||!account.pin||JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
+    const account=await S.read(id);if(!signature||JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('PIN-Status geändert. Bitte dein Getränkekonto erneut öffnen.'),{code:'pinChanged'});
     const filename=await S.mobileFileName(id),old=await S.readMobileFile(filename);
     let record=old?.data;
     if(!record||rotate){record={...C.create(),memberId:id,revision:crypto.randomUUID()};if(old)record.alias=C.access(old.data).alias;await S.writeMobileFile(filename,record,old?.item?.eTag);}

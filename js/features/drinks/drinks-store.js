@@ -74,7 +74,22 @@
       const after=await(await odFetch(itemUrl(ctx.root,item.id)+'?$select=id,eTag')).json();
       assertCurrent(ctx);
       if(after.eTag!==item.eTag)continue;
-      const account=M.validate(data,memberId);cache.set(String(memberId),{account:clone(account),eTag:item.eTag});return {account,item};
+      let account=M.validate(data,memberId);
+      // Einmalige Umstellung: alte Pflicht-PINs entfernen, neue freiwillige PINs erhalten.
+      if(account.pinChoiceVersion!==1){
+        account={...account,pin:null,pinChoiceVersion:1};assertCurrent(ctx);
+        try{
+          const saved=await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':item.eTag},body:JSON.stringify(account)},false)).json();
+          assertCurrent(ctx);item.eTag=saved.eTag||'';
+        }catch(error){
+          if(conflict(error))continue;
+          // Bei verlorener Antwort erneut lesen; Buchungen niemals blind überschreiben.
+          const check=await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json();
+          if(check.pinChoiceVersion!==1)throw error;
+          continue;
+        }
+      }
+      cache.set(String(memberId),{account:clone(account),eTag:item.eTag});return {account,item};
     }
     throw new Error('Das Getränkekonto wird gerade geändert. Bitte erneut versuchen.');
   }
@@ -124,12 +139,12 @@
   async function setPin(memberId,pin){if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');const record=await M.createPin(pin);if(!adminUnlocked)throw new Error('Administration wurde gesperrt.');return mutate(memberId,a=>{if(!adminUnlocked)throw new Error('Administration wurde gesperrt.');return {...a,pin:record};});}
   async function changeOwnPin(memberId,currentPin,newPin){
     const account=await read(memberId);
-    if(!account.pin||!await M.verifyPin(currentPin,account.pin))throw Object.assign(new Error('Die aktuelle PIN stimmt nicht.'),{code:'wrongPin'});
-    const signature=JSON.stringify(account.pin),record=await M.createPin(newPin);
+    if(account.pin&&!await M.verifyPin(currentPin,account.pin))throw Object.assign(new Error('Die aktuelle PIN stimmt nicht.'),{code:'wrongPin'});
+    const signature=JSON.stringify(account.pin),record=newPin===null?null:await M.createPin(newPin);
     return mutate(memberId,a=>({...a,pin:record}),signature);
   }
   async function book(memberId,booking,pinSignature){
-    if(!pinSignature)throw new Error('Bitte mit deiner Getränke-PIN anmelden.');
+    if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
     if(!['drinks','payment'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
     if(booking.type==='payment'&&booking.confirmation!=='member')throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
     const policy=await rewards(),account=await mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature);

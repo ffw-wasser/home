@@ -11,10 +11,11 @@
   function lockAccount(){
     clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
+    if(!account?.pin){clearMobileQr();clearPinInputs();return;}
     signature='';clearMobileQr();clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
     message(pending?'Konto gesperrt. Nach deiner PIN-Eingabe dieselbe Buchung erneut prüfen.':draft?'Konto gesperrt. Deine '+draft+' ungespeicherten Striche bleiben bis zum Neuladen erhalten. PIN eingeben, um fortzufahren.':'Konto gesperrt. Bitte deine PIN erneut eingeben.');
   }
-  function touch(){clearTimeout(timer);if(memberId&&signature&&!busy)timer=setTimeout(lockAccount,60000);}
+  function touch(){clearTimeout(timer);if(memberId&&signature&&account?.pin&&!busy)timer=setTimeout(lockAccount,60000);}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
   function clearMobileQr(){if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}}
   function resetSession(){clearTimeout(timer);clearMobileQr();memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();setPinChecking(false);}
@@ -65,7 +66,12 @@
     root.querySelectorAll('[data-dr-amount]').forEach(b=>b.disabled=busy||totals.balance<=0||(b.dataset.drAmount!=='all'&&Number(b.dataset.drAmount)>totals.balance));
     el('cash-confirm').disabled=busy;el('paypal-confirm').disabled=busy;el('pay-submit').disabled=busy;
     el('cash-cancel').disabled=busy||Boolean(pending);el('paypal-cancel').disabled=busy||Boolean(pending);el('refresh').disabled=busy;
-    el('own-open').disabled=busy||Boolean(pending);el('own-save').disabled=busy;el('own-back').disabled=busy;
+    el('own-open').disabled=busy||Boolean(pending);el('own-save').disabled=busy;el('own-back').disabled=busy;el('own-remove').disabled=busy;
+    const protectedAccount=Boolean(account?.pin);
+    el('own-open').textContent=protectedAccount?'Meine PIN verwalten':'PIN freiwillig einrichten';
+    el('own-title').textContent=protectedAccount?'Meine PIN verwalten':'PIN freiwillig einrichten';
+    el('own-current-row').hidden=!protectedAccount;el('own-current').required=protectedAccount;
+    el('own-remove').hidden=!protectedAccount;
     el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':draft?'Fertig · '+draft+' Strich'+(draft===1?'':'e')+' speichern':'Fertig';
     el('cash-confirm').textContent=pending?.type==='payment'?'Speicherung erneut prüfen':'Geld in die Kasse gelegt';el('paypal-confirm').textContent='Fertig · Eingang wird geprüft';
     root.querySelectorAll('[data-dr-member]').forEach(button=>button.disabled=busy||!loaded);
@@ -73,7 +79,7 @@
   }
   async function run(action){if(busy)return;busy=true;message('');render();try{await action();}catch(error){
     if(['pinChanged','balanceChanged','conflict'].includes(error.code)||[400,403,404].includes(error.status))pending=null;
-    if(error.code==='pinChanged'){signature='';screen('pin');el('pin').value='';}
+    if(error.code==='pinChanged'){signature='';el('pin').value='';account=await S.read(memberId).catch(()=>account);if(account?.pin)screen('pin');else{signature=JSON.stringify(null);screen('account');}}
     if(error.code==='balanceChanged'){account=await S.read(memberId).catch(()=>account);payment=0;screen('account');}
     message(error.message||'OneDrive ist nicht erreichbar. Bitte erneut versuchen.');
   }finally{busy=false;render();if(lockAfterRun){lockAfterRun=false;lockAccount();}}}
@@ -127,7 +133,7 @@
     const bonus=account.bookings.find(b=>b.type==='bonus'&&b.paymentId===bookingId)?.cents||0;el('paid-bonus').hidden=!bonus;el('paid-bonus').textContent=bonus?'Treuebonus erreicht: '+euro(bonus)+' Guthaben für deine nächsten Getränke!':'';
     el('paid-method').textContent=method==='cash'?'Bar · vom Mitglied bestätigt':'PayPal · vom Mitglied bestätigt';el('paid-balance').textContent=euro(M.totals(account).balance);screen('paid');if(M.totals(account).balance===0)global.DrinksExtras?.celebrate(bonus,()=>{if(currentScreen==='paid'&&!root.hidden&&!busy)finishSession();});
   }
-  function adminFields(member){return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die PIN wird separat gespeichert. Sie ist kein Teil von „Mitglied speichern“.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN in OneDrive speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus OneDrive laden.</span></fieldset>`;}
+  function adminFields(member){return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie unter „Mein Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN in OneDrive speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus OneDrive laden.</span></fieldset>`;}
   async function saveAdminPin(button){
     if(!adminUnlocked)return showToast('Bitte zuerst die Administration entsperren.','error');
     const box=button.closest('.dr-pin-editor'),input=box.querySelector('[data-dr-new-pin]'),status=box.querySelector('[data-dr-pin-status]'),pin=input.value;
@@ -152,8 +158,8 @@
     el('pin').value='';setPinChecking(true);
     run(async()=>{
       const blocked=attempts.get(memberId);if(blocked?.until>Date.now())throw new Error('Zu viele PIN-Versuche. Bitte eine Minute warten.');
-      account=await S.read(memberId);if(!account.pin)throw new Error('Deine Getränke-PIN ist noch nicht eingerichtet. Bitte die Mitgliederverwaltung ansprechen.');
-      if(!await M.verifyPin(pin,account.pin)){const count=(blocked?.count||0)+1;attempts.set(memberId,{count:count>=5?0:count,until:count>=5?Date.now()+60000:0});throw new Error('Die PIN stimmt nicht.');}
+      account=await S.read(memberId);
+      if(account.pin&&!await M.verifyPin(pin,account.pin)){const count=(blocked?.count||0)+1;attempts.set(memberId,{count:count>=5?0:count,until:count>=5?Date.now()+60000:0});throw new Error('Die PIN stimmt nicht.');}
       attempts.delete(memberId);signature=JSON.stringify(account.pin);screen(pending?.type==='payment'?method:'account');
     }).finally(()=>setPinChecking(false));
   }
@@ -172,7 +178,12 @@
     byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
     el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
     el('search').addEventListener('input',renderPeople);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
-    el('members').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(!button||busy||!loaded)return;memberId=button.dataset.drMember;draft=0;account=null;signature='';el('pin').value='';render();screen('pin');el('pin').focus();});
+    el('members').addEventListener('click',event=>{
+      const button=event.target.closest('[data-dr-member]');if(!button||busy||!loaded)return;
+      memberId=button.dataset.drMember;draft=0;account=null;signature='';el('pin').value='';
+      el('status').textContent='Getränkekonto wird geöffnet …';
+      run(async()=>{account=await S.read(memberId);if(account.pin){screen('pin');}else{signature=JSON.stringify(null);screen('account');}el('status').textContent='Aktuell aus OneDrive geladen.';}).then(()=>{if(currentScreen==='pin')el('pin').focus();});
+    });
     el('pin-form').addEventListener('submit',event=>{event.preventDefault();submitPin();});
     el('pin').addEventListener('input',()=>{updatePinDots();if(/^\d{4}$/.test(el('pin').value))queueMicrotask(submitPin);});
     el('keypad').addEventListener('click',event=>{
@@ -212,7 +223,7 @@
     el('mobile-refresh').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
     el('mobile-rotate').addEventListener('click',()=>{if(!busy&&!pending&&confirm('Neuen Handyzugang erstellen? Der alte Link kann zukünftige Kontostände nicht mehr öffnen. Bereits gelesene Daten und alte GitHub-Versionen bleiben erhalten.'))showMobile(true);});
     document.addEventListener('deckel-status',event=>{if(event.detail.id===memberId&&el('mobile-status'))el('mobile-status').textContent=event.detail.text;});
-    el('own-open').addEventListener('click',()=>{if(busy||pending)return;clearPinInputs();screen('own-pin');el('own-current').focus();});
+    el('own-open').addEventListener('click',()=>{if(busy||pending)return;clearPinInputs();screen('own-pin');el(account?.pin?'own-current':'own-new').focus();});
     el('own-back').addEventListener('click',()=>{clearPinInputs();screen('account');});
     el('own-form').addEventListener('submit',event=>{
       event.preventDefault();const oldPin=el('own-current').value,newPin=el('own-new').value;
@@ -224,6 +235,11 @@
         catch(error){if(error.code==='wrongPin')throw error;throw new Error((error.message||'PIN-Änderung nicht bestätigt.')+' Bei unklarer Speicherung das Konto erneut öffnen und die neue PIN prüfen.');}
       });
     });
+    el('own-remove').addEventListener('click',()=>{
+      if(busy||pending)return;const oldPin=el('own-current').value;
+      if(!/^\d{4}$/.test(oldPin)){message('Zum Entfernen bitte deine aktuelle PIN eingeben.');el('own-current').focus();return;}
+      clearPinInputs();run(async()=>{if(!signature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');account=await S.changeOwnPin(memberId,oldPin,null);signature=JSON.stringify(null);screen('account');message('PIN entfernt. Du kannst deine Getränkekarte jetzt ohne PIN öffnen.');});
+    });
     byId('memberAdmin').addEventListener('click',event=>{const button=event.target.closest('[data-dr-save-pin]');if(button)saveAdminPin(button);});
     document.addEventListener('visibilitychange',()=>{if(document.hidden)lockAccount();});
     global.addEventListener('offline',()=>{if(!root.hidden)message(pending?'Keine Verbindung. Der Speicherstatus ist unklar. Verbindung herstellen und Speicherung erneut prüfen.':'Keine Verbindung. Neue Striche sind noch nicht gespeichert. Verbindung herstellen und erneut speichern.');});
@@ -234,7 +250,7 @@
   async function loadPinStatus(row){
     const box=row.querySelector('.dr-pin-editor'),status=box?.querySelector('[data-dr-pin-status]');if(!status)return;
     status.textContent='PIN-Status wird aus OneDrive geladen …';
-    try{const data=await S.read(row.dataset.memberId);if(!box.isConnected||box.dataset.dirty)return;status.textContent=data.pin?'PIN eingerichtet. Ein neuer Wert ersetzt sie.':'Noch keine Getränke-PIN eingerichtet.';}
+    try{const data=await S.read(row.dataset.memberId);if(!box.isConnected||box.dataset.dirty)return;status.textContent=data.pin?'Freiwillige PIN eingerichtet. Ein neuer Wert ersetzt sie.':'Ohne PIN nutzbar. Das Mitglied kann selbst eine PIN einrichten.';}
     catch(error){if(box.isConnected)status.textContent='PIN-Status nicht geladen. '+(error.message||'OneDrive-Verbindung prüfen.');}
   }
   global.Drinks={open,reset,beforeView,adminFields,loadPinStatus,lock:lockAccount,saveAdminPin};
