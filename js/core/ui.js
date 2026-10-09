@@ -13,7 +13,7 @@ function closeCompactMenu() {
 }
 function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   if(!allowDisconnected&&(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady())){
-    showToast("Bitte OneDrive verbinden und erfolgreich synchronisieren, bevor du diesen Verwaltungsbereich öffnest.","error");return false;
+    showToast("Bitte OneDrive verbinden und erfolgreich synchronisieren, bevor du diesen Verwaltungsbereich öffnest.","error");window.WorkflowUX?.connectionNotice();return false;
   }
   if(adminUnlocked){resetAdminTimeout();return true;}
   pendingSettingsTarget=target;
@@ -45,7 +45,7 @@ function showView(viewId) {
   byId("drinksShortcut")?.classList.toggle("active",viewId==="drinksView");
   byId("attendanceTab").classList.toggle("active", viewId === "attendanceView");
   if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.toggle("active",viewId==="settingsHistoryView");if(byId("statisticsTab"))byId("statisticsTab").classList.toggle("active",viewId==="settingsStatisticsView");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
   return true;
 }
 

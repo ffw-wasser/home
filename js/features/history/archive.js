@@ -28,7 +28,7 @@ async function shareOrDownloadJson(fileName, data, successMessage) {
   try {
     if (await writeJsonToBackupFolder(fileName, content)) {
       showToast(`${successMessage} ${fileName} wurde in „${backupDirectoryHandle.name}“ gespeichert.`);
-      return;
+      return "saved";
     }
   } catch (error) {
     showToast("Direktes Speichern war nicht möglich. Teilen oder Download wird verwendet.", "error");
@@ -39,11 +39,11 @@ async function shareOrDownloadJson(fileName, data, successMessage) {
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file] });
         showToast(`${successMessage} ${fileName} wurde geteilt.`);
-        return;
+        return "shared";
       }
     }
   } catch (error) {
-    if (error?.name === "AbortError") return;
+    if (error?.name === "AbortError") return "cancelled";
   }
   try {
     const url = URL.createObjectURL(blob);
@@ -51,7 +51,7 @@ async function shareOrDownloadJson(fileName, data, successMessage) {
     link.href = url; link.download = fileName; link.rel = "noopener"; link.style.display = "none";
     document.body.appendChild(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    showToast(`${successMessage} ${fileName} wurde heruntergeladen.`);
+    showToast(`${successMessage} ${fileName} Download wurde gestartet.`);return "downloaded";
   } catch (error) {
     showToast("Backup konnte nicht ausgegeben werden.", "error");
   }
@@ -69,7 +69,7 @@ async function exportCompleteBackup() { if(!requireAdmin("settingsFilesView"))re
   payload.data.importedPdfs=await exportImportedReportPdfs();
   payload.data.documentReports=await exportDocumentReports?.()||[];
   payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true};
-  await shareOrDownloadJson(fileName, payload, `App-Datensicherung wurde mit ${payload.data.importedPdfs.length} importierten PDF-Datei(en) ausgegeben.`);
+  const result=await shareOrDownloadJson(fileName, payload, `App-Datensicherung wurde mit ${payload.data.importedPdfs.length} importierten PDF-Datei(en) ausgegeben.`);if(["saved","shared","downloaded"].includes(result))window.WorkflowUX?.backupResult(fileName,payload,result);
 }
 function validBackupMember(member) {
   return member && typeof member.id === "string" && typeof member.lastName === "string" && typeof member.firstName === "string";
@@ -345,10 +345,15 @@ function historyMonthLabel(key){
   const date=new Date(`${key}-01T12:00:00`);
   return date.toLocaleDateString("de-DE",{month:"long"}).replace(/^./,c=>c.toLocaleUpperCase("de-DE"));
 }
+let historyFilterSignature='',historyGroupState=new Map();
 function renderHistory(){
   ensureHistoryView();
+  const type=byId('historyTypeFilter')?.value||'',from=byId('historyFromFilter')?.value||'',to=byId('historyToFilter')?.value||'';
+  const filterSignature=JSON.stringify([byId('historySearch')?.value||'',type,from,to]);
+  if(filterSignature===historyFilterSignature)document.querySelectorAll('#historyYears details[data-history-group]').forEach(node=>historyGroupState.set(node.dataset.historyGroup,node.open));else historyGroupState.clear();
+  historyFilterSignature=filterSignature;
   const query=(byId("historySearch")?.value||"").trim().toLocaleLowerCase("de");
-  const sorted=csvArchive.filter(item=>[historyDisplayTitle(item),historyDateLabel(item),historyDateFromItem(item),item.sessionType,item.operationData?.location].join(" ").toLocaleLowerCase("de").includes(query)).sort((a,b)=>historyDateFromItem(b).localeCompare(historyDateFromItem(a))||String(b.createdAt).localeCompare(String(a.createdAt)));
+  const sorted=csvArchive.filter(item=>(!type||item.sessionType===type)&&(!from||historyDateFromItem(item)>=from)&&(!to||historyDateFromItem(item)<=to)).filter(item=>[historyDisplayTitle(item),historyDateLabel(item),historyDateFromItem(item),item.sessionType,item.operationData?.location].join(" ").toLocaleLowerCase("de").includes(query)).sort((a,b)=>historyDateFromItem(b).localeCompare(historyDateFromItem(a))||String(b.createdAt).localeCompare(String(a.createdAt)));
   const years=new Map();
   sorted.forEach(item=>{
     const year=historyYearFromItem(item),month=historyMonthKey(item);
@@ -358,15 +363,15 @@ function renderHistory(){
   });
   const now=new Date(),currentYear=String(now.getFullYear()),currentMonth=`${currentYear}-${String(now.getMonth()+1).padStart(2,"0")}`;
   byId("historyEmpty").hidden=sorted.length>0;
-  byId("historyEmpty").textContent=query?"Kein Bericht gefunden. Suche nach Thema, Datum oder Einsatzart.":"Noch keine abgeschlossenen Termine oder Einsätze vorhanden.";
+  byId("historyEmpty").textContent=query||type||from||to?"Kein Bericht gefunden. Suche nach Thema, Datum oder Einsatzart.":"Noch keine abgeschlossenen Termine oder Einsätze vorhanden.";
   byId("historyYears").innerHTML=[...years.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([year,months])=>{
     const yearCount=[...months.values()].reduce((sum,items)=>sum+items.length,0);
-    const yearOpen=query||year===currentYear?" open":"";
+    const yearOpen=historyGroupState.has(year)?historyGroupState.get(year)?" open":"":query||type||from||to||year===currentYear?" open":"";
     const monthHtml=[...months.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([month,items])=>{
-      const monthOpen=query||month===currentMonth?" open":"";
-      return `<details class="history-month"${monthOpen}><summary><span>${escapeHtml(historyMonthLabel(month))}</span><small>${items.length} Bericht${items.length===1?"":"e"}</small><i aria-hidden="true"></i></summary><div class="history-list">${items.map(item=>{const date=historyDateLabel(item),topic=historyDisplayTitle(item);return `<article class="history-item${item.revisions?.length?" history-item-corrected":""}"><div class="history-item-details"><strong>${escapeHtml(date)} · ${escapeHtml(topic)}</strong><span>${escapeHtml(item.sessionType||"Probe")}</span><small>${escapeHtml(item.fileName)}${item.revisions?.length?` · ${item.revisions.length} Korrektur(en)`:""}</small></div><div class="history-item-actions"><button class="primary-button" type="button" data-history-pdf="${escapeHtml(item.id)}">${item.sessionType==="Einsatz"?"Einsatzbericht ansehen":"PDF ansehen"}</button><button class="secondary-button" type="button" data-history-csv="${escapeHtml(item.id)}">CSV ausgeben</button><button class="outline-button" type="button" data-history-correct="${escapeHtml(item.id)}" title="Aktualisiert CSV und zugehöriges PDF">${item.sessionType==="Einsatz"?"Einsatz korrigieren":"Eintrag korrigieren"}</button><button class="danger-button" type="button" data-history-delete="${escapeHtml(item.id)}">Löschen</button></div></article>`;}).join("")}</div></details>`;
+      const monthOpen=historyGroupState.has(month)?historyGroupState.get(month)?" open":"":query||type||from||to||month===currentMonth?" open":"";
+      return `<details class="history-month" data-history-group="${escapeHtml(month)}"${monthOpen}><summary><span>${escapeHtml(historyMonthLabel(month))}</span><small>${items.length} Bericht${items.length===1?"":"e"}</small><i aria-hidden="true"></i></summary><div class="history-list">${items.map(item=>{const date=historyDateLabel(item),topic=historyDisplayTitle(item);return `<article class="history-item${item.revisions?.length?" history-item-corrected":""}"><div class="history-item-details"><strong>${escapeHtml(date)} · ${escapeHtml(topic)}</strong><span>${escapeHtml(item.sessionType||"Probe")}</span><small>${escapeHtml(item.fileName)}${item.revisions?.length?` · ${item.revisions.length} Korrektur(en)`:""}</small></div><div class="history-item-actions"><button class="primary-button" type="button" data-history-pdf="${escapeHtml(item.id)}">${item.sessionType==="Einsatz"?"Einsatzbericht ansehen":"PDF ansehen"}</button><button class="secondary-button" type="button" data-history-csv="${escapeHtml(item.id)}">CSV ausgeben</button><button class="outline-button" type="button" data-history-correct="${escapeHtml(item.id)}" title="Aktualisiert CSV und zugehöriges PDF">${item.sessionType==="Einsatz"?"Einsatz korrigieren":"Eintrag korrigieren"}</button><button class="danger-button" type="button" data-history-delete="${escapeHtml(item.id)}">Löschen</button></div></article>`;}).join("")}</div></details>`;
     }).join("");
-    return `<details class="history-year"${yearOpen}><summary class="history-year-heading"><h3>${escapeHtml(year)}</h3><span>${yearCount} Bericht${yearCount===1?"":"e"}</span><i aria-hidden="true"></i></summary><div class="history-months">${monthHtml}</div></details>`;
+    return `<details class="history-year" data-history-group="${escapeHtml(year)}"${yearOpen}><summary class="history-year-heading"><h3>${escapeHtml(year)}</h3><span>${yearCount} Bericht${yearCount===1?"":"e"}</span><i aria-hidden="true"></i></summary><div class="history-months">${monthHtml}</div></details>`;
   }).join("");
   window.SmartWorkflow?.history?.();
 }

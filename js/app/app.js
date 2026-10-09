@@ -79,7 +79,7 @@ function ensureSettingsNavigation(){
     pageButton.addEventListener("click",()=>{
       const target=pageButton.dataset.settingsPage;
       pendingSettingsTarget=target;
-      if((pageButton.hasAttribute("data-protected")||pageButton.hasAttribute("data-archive-protected"))&&!oneDriveAdministrationReady()){showToast("Bitte zuerst OneDrive verbinden und erfolgreich synchronisieren.","error");pendingSettingsTarget="";return;}
+      if((pageButton.hasAttribute("data-protected")||pageButton.hasAttribute("data-archive-protected"))&&!oneDriveAdministrationReady()){showToast("Bitte zuerst OneDrive verbinden und erfolgreich synchronisieren.","error");pendingSettingsTarget="";window.WorkflowUX?.connectionNotice();return;}
       if(pageButton.hasAttribute("data-protected")&&!adminUnlocked)return showView("adminLoginView");
       if(pageButton.hasAttribute("data-archive-protected")&&!adminUnlocked)return showView("archiveLoginView");
       showView(target);
@@ -279,24 +279,11 @@ updateHelpForCurrentFeatures();
 })();
 
 
-/* Service Worker voruebergehend deaktiviert: verhindert alte UI aus dem Cache. */
+/* Sitzungen ohne dauerhaften Gerätespeicher ausdrücklich kennzeichnen. */
 if (!safeStorage.persistent) {
   setTimeout(() => showToast("Safari erlaubt hier keine dauerhafte Speicherung. Die Sitzung funktioniert, Daten können nach dem Schließen verloren gehen.", "error"), 700);
 }
 
-/* Alte freistehende Versionsbezeichnungen entfernen, nicht umbenennen. */
-function removeStandaloneAttendanceVersion(){
-  if(!document.body)return;
-  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-  const remove=[];
-  while(walker.nextNode()){
-    const node=walker.currentNode;
-    if(/^\s*Anwesenheit\s*(?:1\.3|2\.0)\s*$/i.test(node.nodeValue||""))remove.push(node);
-  }
-  remove.forEach(node=>node.remove());
-}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",removeStandaloneAttendanceVersion,{once:true});
-else removeStandaloneAttendanceVersion();
 
 
 /* Direkter Start. Persönliche Daten stammen aus dem Gerätespeicher oder OneDrive. */
@@ -307,7 +294,8 @@ setTimeout(()=>{showBreathingClearanceWarnings();showDriverLicenseControlWarning
 // Einsatzstatistik wird getrennt durch statistics.js dargestellt.
 function enforceFooterVersion(){
   const footer=document.querySelector(".app-footer");
-  if(footer)footer.textContent="© 2026 Feuerwehr Wasser 2.0 · Produktiv";
+  const version=document.querySelector('meta[name="app-version"]')?.content;
+  if(footer&&version)footer.textContent="© 2026 Feuerwehr Wasser · Version "+version;
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enforceFooterVersion,{once:true});
 else enforceFooterVersion();

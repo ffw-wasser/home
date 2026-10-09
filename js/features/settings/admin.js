@@ -180,7 +180,7 @@ function updateMember(id, row) {
   renderMembers();
   renderAdmin();
   updateSelection();
-  showToast("Mitglied wurde aktualisiert.");
+  showToast("Mitglied auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt.");return true;
 }
 function deleteMember(id) {
   if(!requireAdmin("settingsMembersView"))return;

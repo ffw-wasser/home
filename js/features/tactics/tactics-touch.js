@@ -11,6 +11,13 @@
         node.setAttribute('tabindex','0');node.setAttribute('role','button');
         node.setAttribute('aria-label',node.dataset.dragMember?`${node.textContent.trim()} auswählen oder als Ziel wählen`:node.id==='reserveCrew'?'In die Reserve verschieben':`${node.dataset.dropRole} auf ${node.dataset.dropVehicle} als Ziel wählen`);
         node.classList.toggle('ux-tactics-selected',Boolean(selected)&&node.dataset.dragMember===selected);
+        if(node.dataset.dropVehicle||node.id==='reserveCrew'){
+          const member=findTacticsMember(selected),source=currentTacticsSlots.find(slot=>slot.member?.id===selected),vehicle=node.dataset.dropVehicle,role=node.dataset.dropRole;
+          const displaced=currentTacticsSlots.find(slot=>slot.vehicle===vehicle&&slot.role===role)?.member;
+          const allowed=Boolean(member)&&(node.id==='reserveCrew'||vehicle==='ATUE'?node.id==='reserveCrew'||breathingProtectionPlanned&&member.atueQualified:memberMayFillSlot(member,vehicle,role)&&(!source||!displaced||memberMayFillSlot(displaced,source.vehicle,source.role)));
+          node.classList.toggle('workflow-tactics-target',Boolean(selected)&&Boolean(allowed));
+          node.classList.toggle('workflow-tactics-unavailable',Boolean(selected)&&!allowed);
+        }
       });
       byId('tacticsTouchCancel').hidden=!selected;byId('tacticsTouchUndo').hidden=!undo;
     }
@@ -22,8 +29,8 @@
       const snapshot={slots:currentTacticsSlots.map(slot=>({...slot})),atue:currentAtueMember};
       const vehicle=target.id==='reserveCrew'||!target.dataset.dropVehicle?'RESERVE':target.dataset.dropVehicle;
       const signature=()=>JSON.stringify([currentTacticsSlots.map(s=>[s.vehicle,s.role,s.member?.id]),currentAtueMember?.id]);
-      const before=signature();manualMoveTacticsMember(selected,vehicle,target.dataset.dropRole||'');
-      if(before!==signature()){undo=snapshot;clear();byId('tacticsTouchStatus').textContent='Besetzung geändert. Bitte prüfen; Rücknahme ist möglich.';annotate();}
+      const moving=findTacticsMember(selected),displaced=target.dataset.dragMember?findTacticsMember(target.dataset.dragMember):null;const before=signature();manualMoveTacticsMember(selected,vehicle,target.dataset.dropRole||'');
+      if(before!==signature()){undo=snapshot;clear();byId('tacticsTouchStatus').textContent=displaced?nameForTile(moving)+' und '+nameForTile(displaced)+' getauscht. Rücknahme ist möglich.':nameForTile(moving)+' auf '+(vehicle==='RESERVE'?'Reserve':vehicle+' '+(target.dataset.dropRole||''))+' verschoben. Rücknahme ist möglich.';annotate();}
     }
     view.addEventListener('click',activate);
     view.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)&&event.target.matches('[data-drop-vehicle],[data-drag-member],#reserveCrew')){event.preventDefault();activate(event);}});

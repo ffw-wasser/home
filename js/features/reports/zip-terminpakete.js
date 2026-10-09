@@ -31,7 +31,7 @@ function ensureIpadTerminPackageDialog(){
 function finishIpadTerminPackageSave(result){
   const pending=pendingTerminPackageSave;if(!pending)return;
   pendingTerminPackageSave=null;try{pending.dialog.close();}catch{pending.dialog.removeAttribute("open");}
-  pending.resolve(result);
+  window.WorkflowUX?.packageReady(pending.fileName,pending.blob,result);pending.resolve(result);
 }
 async function sharePendingTerminPackage(){
   const pending=pendingTerminPackageSave;if(!pending)return;
@@ -83,7 +83,7 @@ async function saveTerminPackage(fileName,blob,overwriteRequired=false){
   // abgelaufener Verzeichnis-Handle darf den ZIP-Download nicht mehr verhindern.
   try{
     if(!(blob instanceof Blob)||!blob.size)throw new Error("Das ZIP-Paket ist leer.");
-    downloadBlob(fileName,blob);
+    downloadBlob(fileName,blob);window.WorkflowUX?.packageReady(fileName,blob,"downloaded");
     return "downloaded";
   }catch(error){
     console.error("ZIP-Download fehlgeschlagen",error);
@@ -106,7 +106,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   if(!current.length)return showToast("Es sind noch keine Anmeldungen vorhanden.","error");
   const organizers=current.filter(e=>e.status==="Anwesend"&&e.role==="Orga").length,present=current.filter(e=>e.status==="Anwesend"&&e.role!=="Orga").length,excused=current.filter(e=>e.status==="Entschuldigt").length;
   const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missingMembers=exportMembers.filter(m=>!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))),missing=missingMembers.length;
-  if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Als Fehlt exportiert",String(missing)]],[],{people:missingMembers.map(nameForTile)});if(!approved){setHomeFlowStage(2);showView("attendanceView");return;}}
+  if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Dokumentseiten",String(typeof pendingDocumentReport!=="undefined"?pendingDocumentReport?.pageCount||0:0)],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Als Fehlt exportiert",String(missing)]],[],{people:missingMembers.map(nameForTile),actions:[{label:"Datum bearbeiten",run:()=>{setHomeFlowStage(2);showView("attendanceView");byId("probeDateInput")?.focus();}},{label:"Thema bearbeiten",run:()=>openProbeTopicDialog()},{label:"Anwesenheit bearbeiten",run:()=>{setHomeFlowStage(2);showView("attendanceView");byId("attendanceSearch")?.focus();}}]});if(!approved){setHomeFlowStage(2);showView("attendanceView");return;}}
   if(!exportMembers.length)return showToast(committeeExport?"Es sind keine Ausschussmitglieder eingerichtet.":"Es gibt keine Mitglieder für den Export.","error");
   const exportType=current[0]?.sessionType||sessionType,entryByName=new Map(current.map(e=>[e.storedName||e.displayName,e]));
   const rows=exportMembers.map(member=>{const name=nameForStorage(member),entry=entryByName.get(name)||entryByName.get(nameForTile(member));if(!entry)return[today(),"",name,exportType,"Fehlt",""];if(entry.status==="Entschuldigt")return[entry.date,entry.time,name,exportType,"Entschuldigt",""];if(entry.status==="Betrifft nicht")return[entry.date,entry.time,name,exportType,"Betrifft nicht",""];if(entry.role==="Orga")return[entry.date,entry.time,name,exportType,"Anwesend","Orga"];if(exportType==="Sonderprobe")return[entry.date,entry.time,name,exportType,"Anwesend","Anwesend"];if(exportType==="Unterricht")return[entry.date,entry.time,name,exportType,"Anwesend","Unterricht"];if(exportType==="Ausschuss Sitzung")return[entry.date,entry.time,name,exportType,"Anwesend","Ausschuss Sitzung"];return[entry.date,entry.time,name,exportType,"Anwesend",csvRoleForEntry(entry,member)];});
@@ -116,7 +116,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Probe"}),result=await saveTerminPackage(`${base}.zip`,packageResult.zipBlob);
   if(result==="failed"||result==="cancelled")return showToast("Das Terminpaket konnte nicht gespeichert werden. Die Tagesdaten bleiben erhalten.","error");
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
-  const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");showToast("Probe abgeschlossen: Das ZIP-Terminpaket wurde gespeichert und der Tag zurückgesetzt.");
+  const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");showToast("Termin abgeschlossen. ZIP erstellt und an Teilen / Download übergeben. Bitte die Ablage prüfen.");
 };
 
 /* Einsatzabschluss: direkt speichern, archivieren und anschließend zu Home zurückkehren. */
@@ -161,7 +161,7 @@ window.finishOperationZip=async function(){
       if(result==="failed"||result==="cancelled"){showToast("Das Einsatz-Terminpaket konnte nicht gespeichert werden. Daten bleiben erhalten.","error");return false;}
       const item={id:previous?.id||makeId(),packageFileName:zipName,fileName:csvName,pdfFileName:pdfName,content:csv,sessionType:"Einsatz",topic:`${d.type} · ${d.location}`,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),presentCount:(Array.isArray(d.members)?d.members.length:0),excusedCount:0,missingCount:0,operationData:d,hasImportedPdf:true,revisions:[...(previous?.revisions||[]),...(previous?[{correctedAt:new Date().toISOString(),reason:"Einsatzbericht korrigiert",previousOperationData:previous.operationData}]:[])]};
       try{await saveImportedReportPdf(item.id,new File([packageResult.finalPdf],pdfName,{type:"application/pdf"}));await commitPendingDocumentReport?.(item.id);csvArchive=previous?csvArchive.map(entry=>entry.id===item.id?item:entry):[item,...csvArchive];saveArchive();}catch(error){console.error("Lokales Einsatzarchiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
-      entries=entries.filter(e=>e.operationId!==currentOperationId);saveEntries();resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();setHomeFlowStage(1);showView("attendanceView");showToast(previous?"Korrigiertes Einsatz-Terminpaket wurde gespeichert.":"Einsatz-Terminpaket wurde gespeichert.");return true;
+      entries=entries.filter(e=>e.operationId!==currentOperationId);saveEntries();resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();setHomeFlowStage(1);showView("attendanceView");showToast(previous?"Korrigiertes Einsatz-Terminpaket erstellt. Bitte die Ablage prüfen.":"Einsatz-Terminpaket erstellt. Bitte die Ablage prüfen.");return true;
     });
     if(!completed)showToast("Finales Speichern abgebrochen. Einsatzdaten bleiben zur Bearbeitung erhalten.","error");
   }catch(error){console.error("Einsatzabschluss fehlgeschlagen",error);try{if(typeof collectOperationData==="function")persistOperationDraft?.(collectOperationData());}catch(saveError){console.warn("Einsatzbericht konnte nach dem Fehler nicht erneut gesichert werden",saveError);}const raw=String(error?.message||error||""),message=/Failed to fetch/i.test(raw)?"PDF konnte nicht über OneDrive erzeugt werden. Bitte Internetverbindung und OneDrive-Anmeldung prüfen. Alle Protokolleinträge wurden gespeichert.":`${raw||"Unbekannter Fehler"} Alle Protokolleinträge wurden gespeichert.`;showToast(`Einsatz konnte nicht abgeschlossen werden. ${message}`,"error");}

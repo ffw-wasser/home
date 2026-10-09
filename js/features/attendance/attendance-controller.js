@@ -113,7 +113,7 @@ function updateSelection() {
   if(byId("participantCount"))byId("participantCount").textContent = selectedMultiMembers.length;
   if(byId("participantList"))byId("participantList").innerHTML = selectedMultiMembers.length ? selectedMultiMembers.map(member => `<li>${escapeHtml(nameForTile(member))}</li>`).join("") : "<li>Noch keine Mitglieder ausgewählt</li>";
   document.querySelector(".current-selection")?.classList.toggle("training-selection", isTraining);
-  if(byId("saveButton"))byId("saveButton").textContent=`Auswahl übernehmen (${pendingMemberStatuses.size})`;
+  if(byId("saveButton"))byId("saveButton").textContent=pendingMemberStatuses.size?`${pendingMemberStatuses.size} Markierung${pendingMemberStatuses.size===1?"":"en"} übernehmen`:"Auswahl übernehmen";
   if(byId("saveButton"))byId("saveButton").disabled=pendingMemberStatuses.size===0;
   window.Usability?.attendanceState();
   syncStep3ButtonState();
@@ -206,6 +206,7 @@ function saveQuickMemberStatus(id,status){
   const already=todayEntries().some(entry=>entry.storedName===nameForStorage(member)||entry.displayName===nameForTile(member));if(already)return false;
   const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!allowed.includes(status))return false;
+  window.WorkflowUX?.beforeSelection();
   if(pendingMemberStatuses.get(id)===status)pendingMemberStatuses.delete(id);else pendingMemberStatuses.set(id,status);
   chosenMemberIds=new Set(pendingMemberStatuses.keys());
 
@@ -232,7 +233,7 @@ function commitPendingMemberStatuses(){
   const time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),isOperation=sessionType==="Einsatz";
   let count=0;
   pendingMemberStatuses.forEach((status,id)=>{const member=members.find(item=>item.id===id);if(!member)return;entries.unshift({id:makeId(),date:today(),time,displayName:nameForTile(member),storedName:nameForStorage(member),role:status==="Orga"?"Orga":sessionType==="Ausschuss Sitzung"&&status==="Anwesend"?"Ausschuss Sitzung":sessionType==="Unterricht"&&status==="Anwesend"?"Unterricht":"",status:status==="Orga"?"Anwesend":status,sessionType,sessionId:isOperation?"":ensureCurrentSessionId(),operationId:isOperation?currentOperationId:""});count++;});
-  saveEntries();pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";
+  saveEntries();window.WorkflowUX?.clearSelectionUndo();pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";
   renderMembers();renderEntries();renderAdmin();updateSelection();updateProbeWorkflow();updatePrimaryAction();
   const scrollToActiveDepartment=()=>{
     const target=document.querySelector("#members .member-section-active .member-section-heading") || document.querySelector("#members .member-section-active") || byId("members");
@@ -425,7 +426,7 @@ function updateProbeWorkflow(){
   const membersPanel=document.querySelector(".members-panel"),rolesPanel=byId("rolesPanel");
   if(membersPanel)membersPanel.hidden=false;if(rolesPanel){rolesPanel.hidden=true;rolesPanel.style.setProperty("display","none","important");rolesPanel.setAttribute("aria-hidden","true");}
   if(byId("selectedStatusBar"))byId("selectedStatusBar").hidden=true;
-  if(byId("saveButton")){byId("saveButton").hidden=false;byId("saveButton").disabled=pendingMemberStatuses.size===0;byId("saveButton").textContent=`Auswahl übernehmen (${pendingMemberStatuses.size})`;}
+  if(byId("saveButton")){byId("saveButton").hidden=false;byId("saveButton").disabled=pendingMemberStatuses.size===0;byId("saveButton").textContent=pendingMemberStatuses.size?`${pendingMemberStatuses.size} Markierung${pendingMemberStatuses.size===1?"":"en"} übernehmen`:"Auswahl übernehmen";}
   if(byId("batchSelectionHint"))byId("batchSelectionHint").hidden=true;
   if(byId("participantOverview"))byId("participantOverview").hidden=chosenMemberIds.size===0;
   if(byId("roleSaveButton"))byId("roleSaveButton").hidden=true;
@@ -541,7 +542,7 @@ function setHomeFlowStage(stage){
   }
   updatePrimaryAction();
   window.syncHeaderProbeSummary?.();
-  syncHomeFlowProgress(stage);
+  syncHomeFlowProgress(stage);window.WorkflowUX?.attendance();
 }
 
 function continueToAttendance(){

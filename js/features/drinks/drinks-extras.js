@@ -19,7 +19,7 @@
   async function load(){
     if(!requireAdmin('settingsRemindersView'))return;
     const view=byId('settingsRemindersView'),status=byId('remindersStatus'),list=byId('remindersList');
-    status.textContent='Offene Beträge werden aus OneDrive geladen …';list.replaceChildren();reminders=[];
+    status.textContent='Offene Beträge werden aus OneDrive geladen …';byId('remindersTotal').textContent='';byId('remindersRecent').replaceChildren();list.replaceChildren();reminders=[];
     try{
       const data=await oneDriveReadState();if(!adminUnlocked)return;
       if(!Array.isArray(data?.members))throw new Error('Mitgliederdatei nicht lesbar.');
@@ -27,14 +27,23 @@
       await DrinksStore.list(people.map(p=>p.id));if(!adminUnlocked)return;
       reminders=people.map(p=>({...p,cents:DrinksModel.totals(DrinksStore.cached(p.id)).balance})).filter(p=>p.cents>0).sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name,'de'));
       status.textContent=reminders.length?`${reminders.length} offene Deckel · Stand: ${new Date().toLocaleString('de-DE')}`:'Alle Deckel sind bezahlt.';
-      for(const row of reminders){
+      const sum=reminders.reduce((n,row)=>n+row.cents,0);byId('remindersTotal').textContent='Insgesamt offen: '+euro(sum)+' · '+reminders.length+' Deckel';
+      const recent=people.flatMap(p=>(DrinksStore.cached(p.id)?.bookings||[]).filter(b=>b.type==='payment').map(b=>({...b,name:p.name}))).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5);
+      const recentList=byId('remindersRecent');recentList.replaceChildren();for(const item of recent){const li=document.createElement('li');li.textContent=item.name+' · '+euro(item.cents)+' · '+(item.method==='cash'?'Bar':'PayPal bestätigt')+' · '+new Date(item.createdAt).toLocaleString('de-DE');recentList.append(li);}if(!recent.length){const li=document.createElement('li');li.textContent='Noch keine bestätigten Zahlungen.';recentList.append(li);}
+      renderReminders();
+    }catch(error){status.textContent='Beträge konnten nicht geladen werden. '+error.message;}
+  }
+  function renderReminders(){
+    const list=byId('remindersList');list.replaceChildren();const query=(byId('remindersSearch')?.value||'').trim().toLocaleLowerCase('de');const order=byId('remindersOrder')?.value||'amount';
+    const shown=reminders.filter(row=>row.name.toLocaleLowerCase('de').includes(query)).sort((a,b)=>order==='name'?a.name.localeCompare(b.name,'de'):order==='small'?a.cents-b.cents:b.cents-a.cents);
+    for(const row of shown){
         const article=document.createElement('article');article.className='ux-reminder-row';
         const name=document.createElement('strong');name.textContent=row.name;const amount=document.createElement('span');amount.textContent=euro(row.cents);
         const button=document.createElement('button');button.className='outline-button';button.type='button';button.textContent='Erinnerung vorbereiten';button.onclick=()=>prepare(row);
         const payment=document.createElement('button');payment.className='primary-button';payment.type='button';payment.textContent='PayPal-Eingang eintragen';payment.onclick=()=>openPaypal(row);
-        article.append(name,amount,payment,button);list.append(article);
+        article.dataset.reminderMember=row.id;const device=document.createElement('small');device.dataset.deviceStatus='';device.textContent='Handy-Erinnerungen: Status unter „Erinnerung vorbereiten“ prüfen.';article.append(name,amount,payment,button,device);list.append(article);
       }
-    }catch(error){status.textContent='Beträge konnten nicht geladen werden. '+error.message;}
+    if(!shown.length){const empty=document.createElement('p');empty.textContent=reminders.length?'Kein passendes Mitglied gefunden.':'Keine offenen Deckel.';list.append(empty);}
   }
   function openPaypal(row){
     if(!requireAdmin('settingsRemindersView')||paypalBusy)return;
@@ -74,13 +83,14 @@
   function prepare(row){
     if(!requireAdmin('settingsRemindersView'))return;
     let dialog=byId('reminderDraftDialog');
-    if(!dialog){dialog=document.createElement('dialog');dialog.id='reminderDraftDialog';dialog.className='ux-reminder-dialog';dialog.innerHTML='<h2>Erinnerung vorbereiten</h2><p>Text prüfen und bei Bedarf selbst weitergeben.</p><label for="reminderDraftText">Nachricht</label><textarea id="reminderDraftText" rows="12" readonly></textarea><p id="reminderCopyStatus" role="status"></p><h3>Direkt aufs Handy</h3><p id="pushDeviceStatus" role="status"></p><p>Sendet eine neutrale Benachrichtigung an die freiwillig angemeldeten Geräte. Der Betrag steht nicht auf dem Sperrbildschirm.</p><button id="sendDeckelReminder" class="primary-button" type="button">Handy-Erinnerung senden</button><p id="pushSendStatus" role="status"></p><div class="ux-dialog-actions"><button class="outline-button" type="button" data-copy>Text kopieren</button><button class="outline-button" type="button" data-close>Schließen</button></div>';document.body.append(dialog);byId('sendDeckelReminder').onclick=sendReminder;dialog.addEventListener('cancel',event=>{if(pushBusy)event.preventDefault();});dialog.querySelector('[data-close]').onclick=()=>{if(!pushBusy)dialog.close();};dialog.querySelector('[data-copy]').onclick=async()=>{if(!requireAdmin('settingsRemindersView'))return;const input=byId('reminderDraftText');try{await navigator.clipboard.writeText(input.value);byId('reminderCopyStatus').textContent='Text kopiert.';}catch(error){input.select();byId('reminderCopyStatus').textContent='Text markieren und mit der Kopierfunktion des Geräts übernehmen.';}};}
+    if(!dialog){dialog=document.createElement('dialog');dialog.id='reminderDraftDialog';dialog.className='ux-reminder-dialog';dialog.innerHTML='<h2>Erinnerung vorbereiten</h2><p>Text prüfen und bei Bedarf selbst weitergeben.</p><label for="reminderDraftText">Nachricht</label><textarea id="reminderDraftText" rows="12" readonly></textarea><p id="reminderCopyStatus" role="status"></p><h3>Vorschau der Handy-Erinnerung</h3><blockquote>Feuerwehr Wasser · Dein Deckel<br>🍺 Dein Deckel wartet auf dich. Tippe hier, um ihn anzusehen.</blockquote><p id="pushDeviceStatus" role="status"></p><p>Sendet eine neutrale Benachrichtigung an die freiwillig angemeldeten Geräte. Der Betrag steht nicht auf dem Sperrbildschirm.</p><button id="sendDeckelReminder" class="primary-button" type="button">Handy-Erinnerung senden</button><p id="pushSendStatus" role="status"></p><div class="ux-dialog-actions"><button class="outline-button" type="button" data-copy>Text kopieren</button><button class="outline-button" type="button" data-close>Schließen</button></div>';document.body.append(dialog);byId('sendDeckelReminder').onclick=sendReminder;dialog.addEventListener('cancel',event=>{if(pushBusy)event.preventDefault();});dialog.querySelector('[data-close]').onclick=()=>{if(!pushBusy)dialog.close();};dialog.querySelector('[data-copy]').onclick=async()=>{if(!requireAdmin('settingsRemindersView'))return;const input=byId('reminderDraftText');try{await navigator.clipboard.writeText(input.value);byId('reminderCopyStatus').textContent='Text kopiert.';}catch(error){input.select();byId('reminderCopyStatus').textContent='Text markieren und mit der Kopierfunktion des Geräts übernehmen.';}};}
     reminderRow=row;byId('reminderDraftText').value=text(row);byId('reminderCopyStatus').textContent='';byId('pushSendStatus').textContent='';byId('sendDeckelReminder').disabled=false;byId('sendDeckelReminder').textContent=pushIntents.has(row.id)?'Versandstatus erneut prüfen':'Handy-Erinnerung senden';dialog.showModal();loadPushStatus(row);
   }
   async function loadPushStatus(row){
     const button=byId('sendDeckelReminder'),status=byId('pushDeviceStatus');button.disabled=true;status.textContent='Angemeldete Geräte prüfen …';
     try{const info=await DrinksPush.status(row.id);if(reminderRow!==row||!byId('reminderDraftDialog').open||pushBusy)return;button.disabled=!info.configured||!info.devices;status.textContent=!info.configured?'Noch kein Versanddienst verbunden. Bitte unter Getränkeverwaltung → Handy-Erinnerungen einrichten.':!info.devices?'Das Mitglied hat noch keine Handy-Erinnerungen aktiviert.':info.devices+' angemeldete Gerät'+(info.devices===1?'':'e')+(info.lastSent?' · Letzter Versandversuch: '+new Date(info.lastSent).toLocaleString('de-DE'):' · Noch keine Erinnerung versendet.');}
     catch(error){if(reminderRow===row){status.textContent=error.message;button.disabled=true;}}
+    if(reminderRow===row){const card=[...byId('remindersList').children].find(n=>n.dataset.reminderMember===row.id);const inline=card?.querySelector('[data-device-status]');if(inline)inline.textContent=status.textContent;}
   }
   async function sendReminder(){
     if(pushBusy||!reminderRow||!requireAdmin('settingsRemindersView'))return;
@@ -98,8 +108,8 @@
     byId('drinksSettingsMembersButton').onclick=()=>showView('settingsMembersView');
     byId('settingsDrinksView').querySelector('[data-drinks-settings-back]').onclick=()=>showView('settingsView');
     const view=document.createElement('section');view.id='settingsRemindersView';view.className='view settings-subpage';view.hidden=true;
-    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel &amp; PayPal</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><div id="remindersList"></div>';
-    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;
+    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel &amp; PayPal</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><p id="remindersTotal" class="workflow-kpi"></p><div class="workflow-history-filters"><label>Mitglied suchen<input id="remindersSearch" class="text-input" type="search" placeholder="Vor- oder Nachname"></label><label>Sortieren<select id="remindersOrder" class="text-input"><option value="amount">Größter Betrag zuerst</option><option value="small">Kleinster Betrag zuerst</option><option value="name">Name</option></select></label></div><details class="workflow-recent"><summary>Zuletzt bestätigte Zahlungen</summary><ul id="remindersRecent"></ul></details><div id="remindersList"></div>';
+    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;byId('remindersSearch').oninput=renderReminders;byId('remindersOrder').onchange=renderReminders;
     const button=document.createElement('button');button.type='button';button.className='primary-button';button.textContent='Deckel und PayPal öffnen';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('drinksSettingsPaymentsCard').append(button);
   }
   window.DrinksExtras={celebrate,loadReminders:load};

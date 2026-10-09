@@ -7,7 +7,7 @@
   const el=id=>byId('dr-'+id);
   const name=id=>people.find(p=>p.id===id)?.name||'Mitglied';
   const message=text=>{if(el('error'))el('error').textContent=text||'';};
-  function screen(value){currentScreen=value;root.dataset.screen=value;root.querySelectorAll('[data-dr-screen]').forEach(e=>e.hidden=e.dataset.drScreen!==value);message('');touch();}
+  function screen(value){root.querySelector('.dr-account-tools')?.removeAttribute('open');currentScreen=value;root.dataset.screen=value;root.querySelectorAll('[data-dr-screen]').forEach(e=>e.hidden=e.dataset.drScreen!==value);message('');touch();}
   function lockAccount(){
     clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
@@ -49,7 +49,8 @@
     const totals=account?M.totals(account):{balance:0,count:0};const reward=global.DrinksRewards?.render(account,draft)||{credit:0};const projected=totals.balance+Math.max(0,draft*M.PRICE-reward.credit);root.querySelectorAll('[data-dr-person]').forEach(e=>e.textContent=name(memberId));
     if(el('mobile-status'))el('mobile-status').textContent=global.DrinksMobile?.status(memberId)||'';
     for(const id of ['mobile-open','mobile-back','mobile-refresh','mobile-rotate'])if(el(id))el(id).disabled=busy||Boolean(pending);
-    renderRecent();root.querySelectorAll('[data-dr-booked-notice]').forEach(node=>{node.hidden=!bookedNotice;node.textContent=bookedNotice;});el('dock-summary').textContent=draft+' neue Striche · Danach offen: '+euro(projected);
+    renderRecent();root.querySelectorAll('[data-dr-booked-notice]').forEach(node=>{node.hidden=!bookedNotice;node.textContent=bookedNotice;});el('dock-summary').textContent=draft?draft+' neue Striche · Noch nicht gespeichert · Danach offen: '+euro(projected):'Gespeicherter Deckel: '+euro(totals.balance);
+    if(el('mobile-retry')){el('mobile-retry').hidden=!global.DrinksMobile?.status(memberId).includes('noch nicht aktualisiert');el('mobile-retry').disabled=busy||Boolean(pending);}
     el('balance').textContent=euro(totals.balance);el('count').textContent=totals.count+' bisher gebuchte Getränke';el('draft-count').textContent=draft+' neue Striche'+(draft?' · Noch nicht gespeichert':'');el('draft-amount').textContent=euro(draft*M.PRICE);el('total').textContent=euro(projected);
     const beerRow=el('beers');beerRow.replaceChildren();
     for(let i=0;i<Math.floor(draft/5);i++){const image=document.createElement('img');image.className='dr-keg';image.src='assets/drinks/bierfass.webp';image.alt='';beerRow.append(image);}
@@ -132,8 +133,8 @@
     const box=button.closest('.dr-pin-editor'),input=box.querySelector('[data-dr-new-pin]'),status=box.querySelector('[data-dr-pin-status]'),pin=input.value;
     if(!/^\d{4}$/.test(pin)){status.textContent='Bitte vier Ziffern eingeben.';input.focus();return;}
     button.disabled=true;input.value='';delete box.dataset.dirty;status.textContent='PIN wird in OneDrive gespeichert …';
-    try{await S.setPin(button.dataset.drSavePin,pin);status.textContent='PIN in OneDrive gespeichert.';showToast('Getränke-PIN gespeichert.');}
-    catch(error){status.textContent=error.message||'PIN konnte nicht gespeichert werden. Bitte erneut eingeben.';}
+    try{await S.setPin(button.dataset.drSavePin,pin);status.textContent='PIN in OneDrive gespeichert.';showToast('Getränke-PIN gespeichert.');return true;}
+    catch(error){status.textContent=error.message||'PIN konnte nicht gespeichert werden. Bitte erneut eingeben.';return false;}
     finally{button.disabled=false;}
   }
   function finishSession(){resetSession();screen('members');render();renderPeople();window.scrollTo({top:0,behavior:'smooth'});}
@@ -160,6 +161,7 @@
   function init(){
     root=byId('drinksView');if(!root)return;
     byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
+    el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
     el('search').addEventListener('input',renderPeople);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
     el('members').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(!button||busy||!loaded)return;memberId=button.dataset.drMember;draft=0;account=null;signature='';el('pin').value='';render();screen('pin');el('pin').focus();});
     el('pin-form').addEventListener('submit',event=>{event.preventDefault();submitPin();});
@@ -226,7 +228,7 @@
     try{const data=await S.read(row.dataset.memberId);if(!box.isConnected||box.dataset.dirty)return;status.textContent=data.pin?'PIN eingerichtet. Ein neuer Wert ersetzt sie.':'Noch keine Getränke-PIN eingerichtet.';}
     catch(error){if(box.isConnected)status.textContent='PIN-Status nicht geladen. '+(error.message||'OneDrive-Verbindung prüfen.');}
   }
-  global.Drinks={open,reset,beforeView,adminFields,loadPinStatus,lock:lockAccount};
+  global.Drinks={open,reset,beforeView,adminFields,loadPinStatus,lock:lockAccount,saveAdminPin};
   // Der vollständige Getränke-Bereich steht vor diesem Script bereits im DOM.
   // Den Direktzugang sofort binden, auch wenn weitere Scripts noch laden.
   if(byId('drinksView'))init();else document.addEventListener('DOMContentLoaded',init,{once:true});

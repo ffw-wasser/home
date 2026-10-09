@@ -19,9 +19,9 @@ Barzahlungen werden nach **Geld in die Kasse gelegt** direkt eingetragen. Für
 PayPal erzeugt die App den QR-Code auf dem Gerät zu
 `https://paypal.me/FeuerwehrWasser/<Betrag>EUR`. Der Link enthält keine Namen.
 Eine App auf dem eigenen Handy ist nicht erforderlich, aber PayPal kann eine
-Anmeldung im Browser verlangen. **Zahlung durchgeführt** dokumentiert die
-Bestätigung des Mitglieds; ein PayPal.Me-Link liefert keine automatische
-Zahlungsbestätigung. Der tatsächlich gezahlte Betrag kann vor der Bestätigung über **Tatsächlich gezahlten Betrag ändern** angepasst werden. Ein weiterer Server ist nicht erforderlich.
+Anmeldung im Browser verlangen. Ein PayPal.Me-Link liefert keine automatische
+Zahlungsbestätigung. Die Verwaltung prüft den Eingang im PayPal-Konto und bucht
+den tatsächlich erhaltenen Betrag unter **Einstellungen → Getränke → Offene Deckel & PayPal**. Erst danach sinkt der offene Betrag. Ein Zahlungsserver ist nicht erforderlich.
 
 PIN-Ableitungen und Getränkebuchungen liegen ausschließlich im Unterordner
 **Getraenke** des bereits verbundenen OneDrive-Ordners. Im Browser bleiben sie
@@ -38,7 +38,7 @@ Getränkekonten. Für deren Sicherung und Wiederherstellung den vollständigen
 OneDrive-Unterordner **Getraenke** einschließlich aller Kontodateien sichern.
 Bei einem Mitglieder-Import vorhandene Mitgliedskennungen beibehalten.
 
-QR-Bibliothek: qrcode-generator 1.4.4 von Kazuhiko Arase (MIT), lokal unter
+QR-Bibliothek: qrcode-generator 2.0.4 von Kazuhiko Arase (MIT), lokal unter
 `js/vendor/qrcode.js`; Lizenz unter `js/vendor/qrcode-LICENSE.txt`.
 
 ## Bedienung und Verwaltung
@@ -62,8 +62,8 @@ Bedienung oder beim Verbergen der App. Nach erneuter PIN-Eingabe bleiben die
 Striche im Arbeitsspeicher verfügbar. Neuladen/Schließen kann sie verwerfen.
 Unklare Buchungen werden weiterhin mit derselben Buchungsnummer geprüft.
 
-**Einstellungen → Offene Deckel erinnern** lädt aktuelle Beträge aus OneDrive
-und bietet einzelne Erinnerungstexte zum Prüfen und Kopieren. Es gibt keine
+**Einstellungen → Getränke → Offene Deckel erinnern** lädt aktuelle Beträge aus OneDrive
+und bietet einzelne Erinnerungstexte zum Prüfen und Kopieren. Optional ist manueller Push-Versand nach Einrichtung des kostenlosen Versanddienstes und Zustimmung des Handy-Nutzers möglich (siehe cloudflare/push/README.md). Es gibt keine
 E-Mail-Funktion, keinen automatischen Versand und keine zusätzlichen
 Kontaktadressen im Browser oder Repository.
 
@@ -103,13 +103,14 @@ Mit Node.js aus diesem Ordner ausführen:
 node --test tests/*.test.cjs
 ```
 
-Der aktuelle Prüfbericht liegt in `PRUEFBERICHT-FINAL.txt`. Die umfangreichen aktiven
+Die aktuelle Umsetzung und Prüfung stehen in `UX-VERBESSERUNGEN.md`.
+`PRUEFBERICHT-FINAL.txt` dokumentiert einen früheren Projektstand. Die umfangreichen aktiven
 CSS-Schichten bleiben wegen ihrer Reihenfolge und dynamischen UI-Nutzung erhalten.
 Die im Bericht beschriebenen offenen Punkte sind keine Freigabe aller Praxisabläufe.
 
 ## Getränke-Treuebonus
 
-Standard: Nach 20 regulär bezahlten Strichen (30 € bestätigten Zahlungen) gibt es 3 € Getränkeguthaben. Unter **Einstellungen → Getränke-Bonus** kann die Verwaltung Menge und Gutschrift ändern. Die gemeinsame Datei `Getraenke/bonus-einstellungen.json` wird beim ersten Bonusaufruf mit diesen Werten angelegt. Zahlungen vor diesem Start zählen nicht rückwirkend. Teilzahlungen zählen in Cent; Guthabenverbrauch zählt nicht als erneute Zahlung. Eine Gutschrift bezahlt automatisch weitere Striche, nicht bereits bestehende offene Beträge. Der Verbrauch und der Fortschritt bleiben auch bei Änderungen der Bonuswerte erhalten; neue Werte gelten ab der nächsten Zahlung.
+Standard: Nach 20 regulär bezahlten Strichen (30 € bestätigten Zahlungen) gibt es 3 € Getränkeguthaben. Unter **Einstellungen → Getränke → Getränke-Bonus** kann die Verwaltung Menge und Gutschrift ändern. Die gemeinsame Datei `Getraenke/bonus-einstellungen.json` wird beim ersten Bonusaufruf mit diesen Werten angelegt. Zahlungen vor diesem Start zählen nicht rückwirkend. Teilzahlungen zählen in Cent; Guthabenverbrauch zählt nicht als erneute Zahlung. Eine Gutschrift bezahlt automatisch weitere Striche, nicht bereits bestehende offene Beträge. Der Verbrauch und der Fortschritt bleiben auch bei Änderungen der Bonuswerte erhalten; neue Werte gelten ab der nächsten Zahlung.
 
 Zahlung und verdiente Bonusbuchung werden zusammen mit derselben bedingten OneDrive-Schreiboperation gespeichert. Wiederholungen, verlorene Antworten und parallele Buchungen erzeugen keine doppelten Gutschriften. Konten werden beim ersten neuen Buchen auf Schema 2 erweitert; Buchungen und PIN bleiben erhalten. Alte Clients mit Schema 1 lehnen diese Konten ab, anstatt Gutschriften falsch als Zahlung zu verrechnen. Den gesamten OneDrive-Ordner **Getraenke** einschließlich Bonus-Einstellungen sichern. Im Browser werden weder Bonus-Fortschritt noch Guthaben oder Einstellungen dauerhaft gespeichert.
 
@@ -119,8 +120,18 @@ Direktzugang „Getränke“, große PIN-Tastatur mit automatischer Öffnung nac
 
 Die Anwesenheit hat Namenssuche und „Noch offen“ / „Alle Mitglieder“. Der Speicherhinweis unterscheidet Gerätespeicherung von bestätigter OneDrive-Synchronisierung. Änderungen während einer laufenden Synchronisierung werden nachgesendet; nach einem Fehlschlag bleibt der Stand unbestätigt. Dies ersetzt keine Konfliktauflösung für gleichzeitige Änderungen der allgemeinen Datendatei auf mehreren Geräten. Die Abschlussprüfung nennt die Personen, die im CSV als „Fehlt“ erscheinen, einschließlich unmarkierter Altersmitglieder. Nicht übernommene Statusauswahl muss vor dem Export gespeichert werden.
 
-Prüfung dieser Änderung: 100 Node-Tests und isolierte Browserabläufe mit OneDrive-Testdaten, inklusive QR-Decodierung, PIN-Sperre/Entwurf, Bonus/Teilzahlung, Suche/Filter, Abschlussabbruch und mehreren Bildschirmbreiten. Kein Schreiben in produktive Konten. Das reale iPad mit Safari und Microsoft-Anmeldung benötigt ergänzend eine Praxisprüfung.
+Historische Prüfung dieser Änderung: 100 Node-Tests und isolierte Browserabläufe mit OneDrive-Testdaten, inklusive QR-Decodierung, PIN-Sperre/Entwurf, Bonus/Teilzahlung, Suche/Filter, Abschlussabbruch und mehreren Bildschirmbreiten. Kein Schreiben in produktive Konten. Das reale iPad mit Safari und Microsoft-Anmeldung benötigt ergänzend eine Praxisprüfung.
 
 ## Persönlicher Handy-Deckel
 
-Die Anwendung enthält eine verschlüsselte Handyansicht ohne Server und Microsoft-Anmeldung. Vor dem ersten QR-Zugang muss die Administration ein separates öffentliches Daten-Repository und einen darauf begrenzten GitHub-Schreibzugang unter Einstellungen → Handy-Deckel verbinden. Anleitung, Datenumfang und Grenzen der Linkrotation: [README-HANDY-DECKEL.md](README-HANDY-DECKEL.md). Die PayPal-Schaltfläche öffnet eine Zahlung; die Administration trägt den geprüften Eingang am Gerätehaus-iPad unter Offene Deckel & PayPal ein.
+Die Anwendung enthält eine verschlüsselte Handyansicht ohne Server und Microsoft-Anmeldung. Vor dem ersten QR-Zugang muss die Administration ein separates öffentliches Daten-Repository und einen darauf begrenzten GitHub-Schreibzugang unter Einstellungen → Getränke → Handy-Deckel verbinden. Anleitung, Datenumfang und Grenzen der Linkrotation: [README-HANDY-DECKEL.md](README-HANDY-DECKEL.md). Die PayPal-Schaltfläche öffnet eine Zahlung; die Administration trägt den geprüften Eingang am Gerätehaus-iPad unter Offene Deckel & PayPal ein.
+
+## Versionspflege
+
+Der aktuelle Release steht in `app-release.json`. Nach einer Änderung der Version
+`node scripts/update-release.cjs` ausführen: Alle geladenen CSS-/JS-Dateien und
+der Offline-Cache erhalten gemeinsam denselben Build. Die Fußzeile zeigt die
+App-Version. Daten-, Backup- und Buchungsschemata behalten ihre eigenen
+Versionsnummern für die Wiederherstellung bestehender Daten.
+
+QR-Generator: offizieller Release [js2.0.4](https://github.com/kazuhikoarase/qrcode-generator/releases/tag/js2.0.4); ZIP-Bibliothek: JSZip 3.10.2; PDF-Bibliothek: pdf-lib 1.17.1. Alte eigenständige Versionsanzeigen und doppelte Status-Overrides wurden entfernt. Benötigte Safari- und Daten-Kompatibilitätswege bleiben bestehen.

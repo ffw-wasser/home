@@ -127,3 +127,14 @@ body.ios-keyboard-visible #probeTopicDialog #probeTopicInput{
   max-height:150px!important;
   scroll-margin:12px;
 }
+
+body.ios-keyboard-visible dialog.ios-keyboard-host{
+ position:fixed!important;top:calc(var(--ios-visual-top,0px) + 12px)!important;bottom:auto!important;
+ left:0!important;right:0!important;margin:0 auto!important;
+ max-height:calc(var(--ios-visual-height,100dvh) - 24px)!important;overflow:auto!important;
+ overscroll-behavior:contain;
+}
+body.ios-keyboard-visible dialog.ios-keyboard-host textarea:not([readonly]){scroll-margin:12px;min-height:88px!important;max-height:150px!important}
+body.ios-keyboard-visible .ios-keyboard-host input{scroll-margin:18px}
+
+body.ios-input-keyboard-open.ios-keyboard-visible main.app-shell{padding-bottom:calc(var(--ios-keyboard-height,0px) + 100px)!important}

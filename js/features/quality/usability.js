@@ -14,7 +14,7 @@
     const count=pendingMemberStatuses.size;
     hint.textContent=count?`${count} Änderung${count===1?'':'en'} noch nicht übernommen`:`${todayEntries().length} Anmeldung${todayEntries().length===1?'':'en'} für diesen Termin übernommen`;
     const cloud=document.createElement('small');cloud.id='attendanceCloudStatus';cloud.textContent=(count?'Letzter übernommener Stand: ':'')+getAppStorageState().text;hint.append(cloud);
-    hint.classList.toggle('is-pending',count>0);
+    hint.classList.toggle('is-pending',count>0);window.WorkflowUX?.attendance();
   }
   function filterMembers(){
     const query=memberQuery.trim().toLocaleLowerCase('de');let count=0;
@@ -35,8 +35,21 @@
       const row=document.createElement('details');row.className='admin-row member-card ux-member';row.dataset.memberId=id;
       const summary=document.createElement('summary');summary.innerHTML=header.innerHTML+'<span class="ux-member-open">Bearbeiten</span>';
       header.remove();row.append(summary);while(article.firstChild)row.append(article.firstChild);article.replaceWith(row);
-      row.querySelector('[data-save-member]').textContent='Mitglied speichern';
-      const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten gespeichert · PIN separat speichern';row.querySelector('.member-card-actions').before(dirty);
+      row.querySelector('[data-save-member]').textContent='Nur Mitgliederdaten speichern';
+      const all=document.createElement('button');all.type='button';all.className='primary-button';all.dataset.saveMemberAll=id;all.textContent='Änderungen speichern';row.querySelector('.member-card-actions').prepend(all);
+      all.onclick=async()=>{
+        if(!requireAdmin('settingsMembersView'))return;
+        const pin=row.querySelector('[data-dr-new-pin]')?.value||'';
+        if(pin&&!/^\d{4}$/.test(pin)){row.querySelector('[data-dr-pin-status]').textContent='Bitte vier Ziffern eingeben.';row.querySelector('[data-dr-new-pin]').focus();return;}
+        if(updateMember(id,row)!==true)return;
+        const fresh=[...byId('memberAdmin').querySelectorAll('[data-member-id]')].find(n=>n.dataset.memberId===id);if(!fresh)return;
+        const outcome=fresh.querySelector('.ux-member-status');
+        if(pin){const input=fresh.querySelector('[data-dr-new-pin]'),button=fresh.querySelector('[data-dr-save-pin]');input.value=pin;fresh.dataset.pinOutcome='PIN wird gespeichert …';outcome.textContent='Mitgliederdaten: '+getAppStorageState().text+' · '+fresh.dataset.pinOutcome;
+          const saved=await window.Drinks.saveAdminPin(button);if(!fresh.isConnected)return;fresh.dataset.pinOutcome=saved?'PIN in OneDrive gespeichert':'PIN nicht gespeichert · bitte erneut eingeben';
+        }
+        outcome.textContent='Mitgliederdaten: '+getAppStorageState().text+' · '+(fresh.dataset.pinOutcome||'PIN unverändert');
+      };
+      const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in OneDrive';row.querySelector('.member-card-actions').before(dirty);
       // Names are the quick edit. Qualifications remain grouped inside native disclosures.
       const roles=row.querySelector('.member-role-editor'),safety=row.querySelector('.member-safety-settings');
       for(const [node,title] of [[roles,'Funktionen und Fahrberechtigungen'],[safety,'Nachweise und Atemschutz']]){

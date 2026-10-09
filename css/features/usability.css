@@ -66,3 +66,17 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
     padding:6px 8px!important;font-size:13px!important;white-space:nowrap!important;
   }
 }
+
+.workflow-session,.workflow-connection{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;margin:12px 0;border:1px solid #b8cec0;border-radius:12px;background:#f0f7f1}
+.workflow-session p,.workflow-connection p{margin:0;line-height:1.45}.workflow-connection{background:#fff7e4;border-color:#ddc88f}
+.workflow-session[hidden],.workflow-connection[hidden]{display:none!important}
+.workflow-actions{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.workflow-actions button{min-height:48px}
+.workflow-package-receipt{margin:12px 0!important}.workflow-package-receipt [data-name]{overflow-wrap:anywhere;font-weight:700}
+.workflow-history-filters{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:12px 0}.workflow-history-filters label{display:grid;gap:6px;flex:1 1 160px;min-width:0}.workflow-history-filters input,.workflow-history-filters select{width:100%;min-width:0;min-height:48px;font-size:16px}
+.workflow-kpi{font-size:21px;font-weight:800}.workflow-recent{margin:16px 0}.workflow-recent summary{padding:12px;cursor:pointer;font-weight:700}.workflow-recent li{margin:10px 0}
+.ux-reminder-row [data-device-status]{grid-column:1/-1;color:#4b5e69}.ux-reminder-dialog blockquote{padding:14px;margin:12px 0;background:#f0f7f1;border-radius:12px;line-height:1.5}
+.dr-account-tools summary{padding:12px 16px;min-height:48px;cursor:pointer;border:1px solid #cddbcf;border-radius:9px;font-weight:700}.dr-account-tools[open] .dr-actions{padding-top:10px}.dr-account-tools .dr-actions{flex-direction:column}
+.workflow-tactics-target{outline:3px solid #2c7a46!important;outline-offset:2px}.workflow-tactics-unavailable{opacity:.65}.workflow-tactics-target:focus-visible{outline-width:5px!important}
+#smartSetupWizard [data-setup]{flex-wrap:wrap}#smartSetupWizard [data-setup] button{margin-left:auto;min-height:48px}
+@media(max-width:760px){.workflow-session,.workflow-connection{align-items:stretch;flex-direction:column}.workflow-session button,.workflow-connection button{width:100%}.workflow-actions>button{flex:1 1 170px}.workflow-history-filters label{flex-basis:100%}.dr-account-tools{max-width:100%}}
+.ux-reminder-dialog{max-height:calc(100vh - 24px)!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;box-sizing:border-box!important;overscroll-behavior:contain}

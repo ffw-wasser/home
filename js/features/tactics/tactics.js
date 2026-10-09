@@ -219,15 +219,15 @@ function refreshTacticsManualView() {
 function findTacticsMember(id){return members.find(member=>member.id===id)||null;}
 function manualMoveTacticsMember(memberId,targetVehicle,targetRole){
   const member=findTacticsMember(memberId); if(!member)return;
-  if(targetVehicle==="ATUE"){if(!breathingProtectionPlanned)return showToast("Bitte zuerst Atemschutz für diese Probe aktivieren.","error");if(!member.atueQualified)return showToast("Diese Person ist nicht für die Atemschutzüberwachung freigeschaltet.","error");const source=currentTacticsSlots.find(slot=>slot.member?.id===memberId);if(source)source.member=null;const displaced=currentAtueMember;currentAtueMember=member;if(displaced&&source)source.member=displaced;refreshTacticsManualView();updateTacticsRecommendationAfterManualChange();return;}
+  if(targetVehicle==="ATUE"){if(!breathingProtectionPlanned)return showToast("Bitte zuerst Atemschutz für diese Probe aktivieren.","error");if(!member.atueQualified)return showToast("Diese Person ist nicht für die Atemschutzüberwachung freigeschaltet.","error");const source=currentTacticsSlots.find(slot=>slot.member?.id===memberId);const displaced=currentAtueMember;if(displaced&&source&&!memberMayFillSlot(displaced,source.vehicle,source.role))return showToast(deniedTacticsSlotMessage(displaced,source.vehicle,source.role),"error");if(source)source.member=null;currentAtueMember=member;if(displaced&&source)source.member=displaced;refreshTacticsManualView();updateTacticsRecommendationAfterManualChange();return;}
   if(BREATHING_ROLES.has(targetRole)&&breathingProtectionPlanned&&!hasValidBreathingClearance(member,today())){const state=breathingClearanceState(member,today()),label=state==="expired"?`am ${member.breathingClearanceUntil} abgelaufen`:"nicht gültig hinterlegt";if(!confirm(`Warnung: Die Atemschutzfreigabe von ${nameForTile(member)} ist ${label}. Trotzdem manuell auf ${targetRole} setzen?`))return;}
-  if(currentAtueMember?.id===memberId)currentAtueMember=null;
   if(targetVehicle!=="RESERVE"&&!memberMayFillSlot(member,targetVehicle,targetRole))return showToast(deniedTacticsSlotMessage(member,targetVehicle,targetRole),"error");
   const source=currentTacticsSlots.find(slot=>slot.member?.id===memberId)||null;
-  if(targetVehicle==="RESERVE"){if(source)source.member=null;refreshTacticsManualView();updateTacticsRecommendationAfterManualChange();return;}
+  if(targetVehicle==="RESERVE"){if(currentAtueMember?.id===memberId)currentAtueMember=null;if(source)source.member=null;refreshTacticsManualView();updateTacticsRecommendationAfterManualChange();return;}
   const target=currentTacticsSlots.find(slot=>slot.vehicle===targetVehicle&&slot.role===targetRole); if(!target)return;
   const displaced=target.member;
   if(source&&displaced&&!memberMayFillSlot(displaced,source.vehicle,source.role))return showToast(deniedTacticsSlotMessage(displaced,source.vehicle,source.role),"error");
+  if(currentAtueMember?.id===memberId)currentAtueMember=null;
   target.member=member; if(source)source.member=displaced||null;
   refreshTacticsManualView();
   updateTacticsRecommendationAfterManualChange();
