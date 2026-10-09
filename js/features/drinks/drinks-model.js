@@ -80,6 +80,17 @@
     if(booking.type==='payment'&&booking.cents>totals(account).balance)throw Object.assign(new Error('Der offene Betrag wurde inzwischen geändert. Bitte den Zahlungsbetrag neu wählen.'),{code:'balanceChanged'});
     return validate({...account,schemaVersion:Math.max(account.schemaVersion,booking.drink?4:booking.type==='correction'?3:1),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
+  function appendMany(account,bookings){
+    validate(account,account.memberId);
+    if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>b?.type!=='drinks'))throw new Error('Ungültige Getränkesammlung.');
+    const existing=new Map(account.bookings.map(b=>[b.id,b])),ids=new Set(),added=[];
+    for(const b of bookings){
+      if(ids.has(b.id))throw new Error('Doppelte Buchungsnummer in der Sammlung.');ids.add(b.id);
+      const old=existing.get(b.id);if(old){if(JSON.stringify(old)!==JSON.stringify(b))throw new Error('Buchungsnummer bereits anders verwendet.');}else added.push({...b});
+    }
+    if(!added.length)return account;
+    return validate({...account,schemaVersion:Math.max(2,account.schemaVersion,added.some(b=>b.drink)?4:1),bookings:[...account.bookings,...added]},account.memberId);
+  }
   function appendWithReward(account,booking,policy){
     validateRewardSettings(policy);
     // Both entries are one conditional OneDrive write; retries never grant twice.
@@ -108,5 +119,5 @@
   }
   function parseEuro(raw){const text=String(raw||'').trim().replace(',','.');if(!/^\d+(\.\d{1,2})?$/.test(text))return null;const cents=Math.round(Number(text)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;}
   function paypalUrl(cents){if(!Number.isSafeInteger(cents)||cents<=0)throw new Error('Ungültiger Zahlungsbetrag.');return 'https://paypal.me/FeuerwehrWasser/'+(cents/100).toFixed(2)+'EUR';}
-  global.DrinksModel={PRICE,WINE_PRICE,unitPrice,empty,validate,totals,today,day,ledger,append,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
+  global.DrinksModel={PRICE,WINE_PRICE,unitPrice,empty,validate,totals,today,day,ledger,append,appendMany,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
 })(typeof window==='undefined'?globalThis:window);

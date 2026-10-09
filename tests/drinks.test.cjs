@@ -354,3 +354,15 @@ test('Weinzahlungen nutzen denselben Geldbetrag für Bonusfortschritt; Verbrauch
  a=M.appendWithReward(a,{...pay('wine-payment-bonus',300),createdAt:'2026-10-09T12:01:00Z'},p);
  assert.equal(a.bookings.filter(b=>b.type==='bonus').length,1);assert.equal(M.rewardState(a,p).credit,300);
 });
+test('OK-Sammlung erhält Reihenfolge und rechnet Bonusguthaben centgenau in einem Schreiben an',async()=>{
+ const {M,S,calls}=app();const now=new Date().toISOString();await S.rewards();const policy=rewardPolicy(2,300);let a=M.appendWithReward(M.empty('a'),wine('order-paid-wine',1,now),policy);
+ a=M.appendWithReward(a,{...pay('order-payment-001',300),createdAt:now},policy);
+ // The pure model must apply existing credit once across the whole sequence.
+ const entries=[{...drink('ordered-beer-001',1),createdAt:now},wine('ordered-wine-001',1,now),{...drink('ordered-beer-002',1),createdAt:now}];
+ const next=M.appendMany(a,entries);assert.equal(M.totals(next).balance,300);assert.equal(M.rewardState(next,policy).credit,0);assert.deepEqual(copy(next.bookings.slice(-3)),entries);
+ const before=calls.length;await S.bookMany('ordered-member',entries,'null');const writes=calls.slice(before).filter(c=>c.options.method==='PUT');assert.equal(writes.length,1);assert.equal(JSON.parse(writes[0].options.body).bookings.length,3);
+});
+test('OK-Sammlung lehnt doppelte Nummern oder eine Zahlung ab, ohne gültige Teile zu übernehmen',()=>{
+ const {M}=app(),a=M.empty('a'),entry=drink('batch-duplicate-001',1);
+ assert.throws(()=>M.appendMany(a,[entry,entry]),/Doppelte/);assert.throws(()=>M.appendMany(a,[entry,pay()]),/Ungültige/);assert.equal(a.bookings.length,0);
+});

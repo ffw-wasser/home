@@ -59,3 +59,16 @@ test('Verschlüsselte Handyansicht benennt Wein und Weinkorrektur ohne Buchungsk
  const record=C.create(),snapshot=ctx.DrinksMobile.snapshot(ctx.account,ctx.policy),result=await C.open(await C.seal(snapshot,record),record);
  assert.equal(result.balance,1050);assert.equal(result.bookings[0].drink,'wine');assert.equal(result.bookings[1].drink,'wine');assert.ok(!JSON.stringify(result).includes('wine-mobile-001'));
 });
+test('Bestehender QR wartet nicht auf erneute Veröffentlichung und verwendet den geprüften Erinnerungszugang erneut',async()=>{
+ const {ctx}=app(),D=ctx.DrinksMobile;let preparations=0;ctx.DrinksPush={prepare:async()=>{preparations++;return {origin:'https://test.account.workers.dev',capability:'x'.repeat(43)};}};
+ await D.connect('ffw-wasser/deckel-daten','github_pat_fixture');const sig=JSON.stringify(ctx.account.pin),first=await D.link('member-test',sig);
+ const original=ctx.fetch;let release;const hold=new Promise(resolve=>release=resolve);ctx.fetch=async(url,options)=>{if(options?.method==='PUT'&&url.includes('/deckel/'))await hold;return original(url,options);};
+ try{const second=await Promise.race([D.link('member-test',sig),new Promise((_,reject)=>setTimeout(()=>reject(Error('QR waited for publishing')),500))]);assert.equal(second,first);assert.equal(preparations,1);}finally{release();}
+ await new Promise(resolve=>setTimeout(resolve,10));
+});
+test('QR aus dem Arbeitsspeicher prüft PIN und Schlüssel erneut; gleichzeitiger Zugangswechsel gibt keinen veralteten QR frei',async()=>{
+ const {ctx,files}=app(),D=ctx.DrinksMobile;await D.connect('ffw-wasser/deckel-daten','github_pat_fixture');const sig=JSON.stringify(ctx.account.pin);
+ await D.link('member-test',sig);ctx.account.pin=await ctx.DrinksModel.createPin('7519');await assert.rejects(D.link('member-test',sig),/PIN/);
+ const signature=JSON.stringify(ctx.account.pin);ctx.DrinksPush={prepare:async()=>{const saved=files.get('handy-member-test.json');saved.data.revision='other-revision';saved.data.key='c'.repeat(64);return null;}};
+ await assert.rejects(D.link('member-test',signature,true),/gerade geändert/);
+});

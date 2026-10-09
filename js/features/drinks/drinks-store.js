@@ -164,8 +164,8 @@
   }
   async function bookMany(memberId,bookings,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
-    if(!Array.isArray(bookings)||!bookings.length||bookings.length>2||bookings.some(b=>b?.type!=='drinks'))throw new Error('Ungültige Getränkesammlung.');
-    const policy=await rewards(expectedSource),account=await mutate(memberId,a=>bookings.reduce((next,b)=>M.appendWithReward(next,b,policy),a),pinSignature,expectedSource);
+    if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>b?.type!=='drinks'))throw new Error('Ungültige Getränkesammlung.');
+    const account=await mutate(memberId,a=>M.appendMany(a,bookings),pinSignature,expectedSource);
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
   async function adminPaypalPayment(memberId,booking){

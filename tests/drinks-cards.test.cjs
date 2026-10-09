@@ -14,7 +14,7 @@ async function fixture(options={}){
   class ClockDate extends Date{constructor(value){super(value===undefined?now:value);}static now(){return now;}}
   const context=vm.createContext({console,crypto:webcrypto,TextEncoder,Date:ClockDate,innerHeight:844,
     setTimeout:(fn,delay)=>{timers.set(++nextTimer,{fn,until:now+delay});return nextTimer;},clearTimeout:id=>timers.delete(id),
-    byId:id=>nodes[id],showView(){root.hidden=false;return true;},showToast(){},
+    confirm:()=>allowDiscard,byId:id=>nodes[id],showView(){root.hidden=false;return true;},showToast(){},
     oneDriveReadState:async()=>({members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]}),
     document:{hidden:false,createElement:tag=>new Node(tag),addEventListener:(name,fn)=>documentEvents[name]=fn},
     addEventListener:(name,fn)=>globalEvents[name]=fn,scrollTo(){}});
@@ -23,13 +23,18 @@ async function fixture(options={}){
   if(options.pin)accounts.get('a').pin=await M.createPin('4826');if(options.secondPin)accounts.get('b').pin=await M.createPin('7391');
   if(options.balance)accounts.set('a',M.append(accounts.get('a'),{id:'drink-fixture-001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T11:00:00Z'}));
   const clone=x=>JSON.parse(JSON.stringify(x));for(const [id,a] of accounts)cache.set(id,clone(a));
-  let fail=null,loseReply=false,gate=null,readCount=0;
+  let fail=null,failMember='',loseReply=false,gate=null,readCount=0,allowDiscard=true;const writes=[];
   const S={cached:id=>clone(cache.get(id)||M.empty(id)),rewards:async()=>options.policy||null,cachedRewards:()=>options.policy||null,list:async()=>[],
     read:async id=>{readCount++;cache.set(id,clone(accounts.get(id)));return clone(accounts.get(id));},
     book:async(id,booking,sig)=>{books.push({id,booking:clone(booking),sig});if(gate){const g=gate;gate=null;await g;}if(fail){const e=fail;fail=null;throw e;}
       cache.set(id,clone(accounts.get(id)));if(JSON.stringify(accounts.get(id).pin)!==sig)throw Object.assign(new Error('PIN wurde geändert.'),{code:'pinChanged'});
       const value=options.policy?M.appendWithReward(accounts.get(id),booking,options.policy):M.append(accounts.get(id),booking);accounts.set(id,value);cache.set(id,clone(value));if(loseReply){loseReply=false;throw new Error('Antwort verloren');}return clone(value);}};
-  S.bookMany=async(id,entries,sig)=>{const value=entries.reduce((a,b)=>M.append(a,b),accounts.get(id));for(const booking of entries)books.push({id,booking:clone(booking),sig});accounts.set(id,value);cache.set(id,clone(value));return clone(value);};
+  S.bookMany=async(id,entries,sig)=>{
+    writes.push({id,entries:clone(entries)});for(const booking of entries)books.push({id,booking:clone(booking),sig});
+    if(gate){const g=gate;gate=null;await g;}if(fail){const e=fail;fail=null;throw e;}if(id===failMember){failMember='';throw Error('Offline');}
+    cache.set(id,clone(accounts.get(id)));if(JSON.stringify(accounts.get(id).pin)!==sig)throw Object.assign(new Error('PIN wurde geändert.'),{code:'pinChanged'});
+    const value=M.appendMany(accounts.get(id),entries);accounts.set(id,value);cache.set(id,clone(value));if(loseReply){loseReply=false;throw Error('Antwort verloren');}return clone(value);
+  };
   context.DrinksStore=S;context.document.readyState='loading';vm.runInContext(source('js/features/drinks/drinks-rewards.js'),context);vm.runInContext(source('js/features/drinks/drinks.js'),context);await context.Drinks.open();
   const card=id=>nodes['dr-members'].children.find(n=>n.dataset.drCard===id);
   const button=(id,action)=>descendants(card(id)).find(n=>n.dataset.drCardAction===action);
@@ -37,153 +42,109 @@ async function fixture(options={}){
   const pin=value=>{nodes['dr-pin'].value=value;nodes['dr-pin-form'].handlers.submit({preventDefault(){}});};
   const status=id=>descendants(card(id)).find(n=>n.className==='dr-member-status').textContent;
   const lock=id=>descendants(card(id)).find(n=>n.className==='dr-member-lock').textContent;
-  return {context,M,S,nodes,root,accounts,books,click,pin,status,lock,card,button,documentEvents,globalEvents,readCount:()=>readCount,
+  return {writes,confirm(){assert.equal(nodes['dr-confirm'].disabled,false);nodes['dr-confirm'].handlers.click();},discardAllowed(value){allowDiscard=value;},failMember:id=>failMember=id,context,M,S,nodes,root,accounts,books,click,pin,status,lock,card,button,documentEvents,globalEvents,readCount:()=>readCount,
     failNext:e=>fail=e,loseReply:()=>loseReply=true,hold:()=>{let done;gate=new Promise(resolve=>done=resolve);return done;},
     advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.until<=now){timers.delete(id);t.fn();}}};
 }
-test('Karten zeigen Namen und Betrag; ein Tippen speichert ohne Kontowechsel',async()=>{
-  const f=await fixture();assert.equal(f.nodes['dr-members'].children.length,2);f.click('a','add');
-  assert.equal(f.root.dataset.screen,'members');await wait(()=>f.status('a')==='Gespeichert ✓');
-  assert.equal(f.accounts.get('a').bookings.length,1);assert.equal(f.M.totals(f.accounts.get('a')).balance,150);assert.equal(f.books.length,1);
+test('Hauptmaske sammelt alle Einträge und überträgt pro Mitglied erst nach OK',async()=>{
+ const f=await fixture();f.click('a','add');f.click('a','wine');f.click('a','add');f.click('b','wine');
+ assert.equal(f.writes.length,0);assert.equal(f.books.length,0);assert.match(f.nodes['dr-main-summary'].textContent,/4 Einträge für 2/);
+ assert.equal(f.nodes['dr-main-confirm'].hidden,false);assert.equal(f.button('a','pay').disabled,true);
+ f.confirm();await wait(()=>f.status('b')==='Gespeichert ✓');assert.equal(f.writes.length,2);assert.equal(f.writes[0].entries.length,3);
+ assert.deepEqual(f.writes[0].entries.map(b=>b.drink||'beer'),['beer','wine','beer']);assert.equal(f.M.totals(f.accounts.get('a')).balance,600);assert.equal(f.M.totals(f.accounts.get('b')).balance,300);assert.equal(f.nodes['dr-main-confirm'].hidden,true);
 });
-test('Drei schnelle Tipps werden genau dreimal gespeichert, auch bei unterschiedlichen Mitgliedern',async()=>{
-  const f=await fixture(),release=f.hold();f.click('a','add');f.click('a','add');f.click('b','add');
-  assert.match(f.status('a'),/2 Getränke/);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
-  release();await wait(()=>f.status('b')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,2);assert.equal(f.accounts.get('b').bookings.length,1);
-  assert.equal(new Set(f.books.map(b=>b.booking.id)).size,3);assert.equal(f.context.Drinks.beforeView('attendanceView'),true);
+test('Eintrag rückgängig machen entfernt die letzte vorgemerkte Eingabe, unabhängig von Getränketyp',async()=>{
+ const f=await fixture();f.click('a','add');f.click('a','wine');f.click('a','add');f.click('a','undo');
+ assert.match(f.nodes['dr-main-summary'].textContent,/2 Einträge/);assert.equal(f.writes.length,0);f.click('a','undo');f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');
+ assert.equal(f.writes[0].entries.length,1);assert.equal(f.M.totals(f.accounts.get('a')).balance,150);
 });
-test('PIN-Aktion bucht erst nach richtiger PIN und benötigt bei weiteren Tipps keine zweite PIN',async()=>{
-  const f=await fixture({pin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.books.length,0);
-  f.pin('0000');await wait(()=>f.nodes['dr-error'].textContent.includes('stimmt nicht'));assert.equal(f.books.length,0);
-  f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.root.dataset.screen,'members');assert.equal(f.accounts.get('a').bookings.length,1);
-  assert.match(f.lock('a'),/Entsperrt/);f.click('a','add');await wait(()=>f.accounts.get('a').bookings.length===2);
-  await wait(()=>!f.button('a','account').disabled);f.advance(60001);assert.match(f.lock('a'),/PIN geschützt/);f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.accounts.get('a').bookings.length,2);
+test('Fünf Weingläser werden zu einem Weinfass und fünf Bierstriche zu einem Bierfass',async()=>{
+ const f=await fixture();for(let i=0;i<5;i++)f.click('a','add');for(let i=0;i<6;i++)f.click('a','wine');
+ const staged=descendants(f.card('a')).find(n=>n.className?.includes('dr-member-staged'));assert.equal(staged.children.length,3);
+ assert.equal(staged.children[0].alt,'Bierfass · 5 Striche');assert.equal(staged.children[1].alt,'Weinfass · 5 Gläser');assert.equal(staged.children[2].textContent,'🍷');
+ f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');const saved=descendants(f.card('a')).find(n=>n.className==='dr-member-glasses');assert.equal(saved.children.length,3);assert.equal(f.M.totals(f.accounts.get('a')).balance,2550);
 });
-test('PIN-Abbruch verwirft die vorgemerkte Aktion; beim Verbergen werden Freigaben gesperrt',async()=>{
-  const f=await fixture({pin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.nodes['dr-pin-back'].handlers.click();assert.equal(f.books.length,0);
-  f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');
-  f.context.document.hidden=true;f.documentEvents.visibilitychange();f.context.document.hidden=false;assert.match(f.lock('a'),/PIN geschützt/);
-  f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.books.length,1);
+test('Freiwillige PIN schützt Vormerkung und OK; abgelaufene Freigabe wird vor Übertragung erneut verlangt',async()=>{
+ const f=await fixture({pin:true});f.click('a','wine');await wait(()=>f.root.dataset.screen==='pin');f.pin('0000');await wait(()=>f.nodes['dr-error'].textContent.includes('stimmt nicht'));
+ assert.equal(f.writes.length,0);f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);assert.equal(f.writes.length,0);
+ f.advance(60001);f.confirm();await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.writes.length,0);f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.M.totals(f.accounts.get('a')).balance,300);
 });
-test('Unklare Antwort wird mit derselben Buchungsnummer geprüft und nicht doppelt gebucht',async()=>{
-  const f=await fixture();f.loseReply();f.click('a','add');await wait(()=>f.status('a').includes('nicht bestätigt'));
-  assert.equal(f.accounts.get('a').bookings.length,1);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
-  f.click('a','retry');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,1);
-  assert.equal(f.books[0].booking.id,f.books[1].booking.id);
+test('Abbruch einer PIN-Eingabe übernimmt nichts und erhält bereits vorgemerkte Einträge',async()=>{
+ const f=await fixture({pin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.nodes['dr-pin-back'].handlers.click();assert.equal(f.nodes['dr-main-confirm'].hidden,true);
+ f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
+ f.advance(60001);f.confirm();await wait(()=>f.root.dataset.screen==='pin');f.nodes['dr-pin-back'].handlers.click();assert.match(f.nodes['dr-main-summary'].textContent,/1 Einträge/);assert.equal(f.writes.length,0);
 });
-test('PIN-Änderung auf anderem Gerät erzwingt Freigabe der wartenden Buchung',async()=>{
-  const f=await fixture();f.accounts.get('a').pin=await f.M.createPin('4826');f.click('a','add');await wait(()=>f.status('a').includes('nicht bestätigt'));assert.equal(f.accounts.get('a').bookings.length,0);
-  f.click('a','retry');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,1);
-  assert.equal(f.books[0].booking.id,f.books[1].booking.id);
+test('Mehrere gesperrte Mitglieder werden vor dem gemeinsamen OK nacheinander freigegeben',async()=>{
+ const f=await fixture({pin:true,secondPin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
+ f.click('b','wine');await wait(()=>f.root.dataset.screen==='pin');f.pin('7391');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
+ f.advance(60001);f.confirm();await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='pin'&&!f.nodes['dr-pin'].disabled);assert.equal(f.writes.length,0);
+ f.pin('7391');await wait(()=>f.status('b')==='Gespeichert ✓');assert.equal(f.writes.length,2);
 });
-test('Bezahlen erfordert PIN und Bestätigung; bloßes Öffnen erzeugt keine Zahlung',async()=>{
-  const f=await fixture({pin:true,balance:true});f.click('a','pay');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.books.length,0);
-  f.pin('4826');await wait(()=>f.root.dataset.screen==='amount');assert.equal(f.books.length,0);f.nodes['dr-amount'].value='5,00';
-  f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');assert.equal(f.books.length,0);
-  f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid');assert.equal(f.M.totals(f.accounts.get('a')).balance,250);
+test('Verlorene OK-Antwort wird mit denselben Nummern geprüft, ohne Doppelbuchung oder Rücknahme unklarer Einträge',async()=>{
+ const f=await fixture();f.click('a','add');f.click('a','wine');f.loseReply();f.confirm();await wait(()=>f.status('a').includes('nicht bestätigt'));
+ assert.equal(f.M.totals(f.accounts.get('a')).balance,450);assert.equal(f.button('a','undo').disabled,true);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
+ f.click('a','retry');await wait(()=>f.status('a')==='Gespeichert ✓');assert.deepEqual(f.writes[0].entries,f.writes[1].entries);assert.equal(f.accounts.get('a').bookings.length,2);
 });
-test('Wartende Tipps bleiben nach einem Verbindungsfehler erhalten und werden in Reihenfolge fortgesetzt',async()=>{
-  const f=await fixture(),release=f.hold();f.failNext(new Error('Offline'));f.click('a','add');f.click('a','add');f.click('b','add');release();
-  await wait(()=>f.status('a').includes('nicht bestätigt'));assert.equal(f.accounts.get('a').bookings.length,0);
-  f.click('a','retry');await wait(()=>f.status('b')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,2);assert.equal(f.accounts.get('b').bookings.length,1);
-  assert.equal(f.books[0].booking.id,f.books[1].booking.id);
+test('Teilweise erfolgreicher Gesamtabschluss wiederholt nur unbestätigte Mitglieder',async()=>{
+ const f=await fixture();f.click('a','add');f.click('b','wine');f.failMember('b');f.confirm();await wait(()=>f.status('b').includes('nicht bestätigt'));
+ assert.equal(f.accounts.get('a').bookings.length,1);assert.equal(f.accounts.get('b').bookings.length,0);f.click('b','retry');await wait(()=>f.status('b')==='Gespeichert ✓');
+ assert.deepEqual(f.writes.map(w=>w.id),['a','b','b']);assert.deepEqual(f.writes[1].entries,f.writes[2].entries);assert.equal(f.M.totals(f.accounts.get('a')).balance,150);
 });
-test('Jede PIN-Karte hat eine eigene Frist; fremde Karten bleiben nach einem Ablauf freigegeben',async()=>{
-  const f=await fixture({pin:true,secondPin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');await wait(()=>!f.button('a','account').disabled);
-  f.advance(10000);f.click('b','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('7391');await wait(()=>f.status('b')==='Gespeichert ✓');await wait(()=>!f.button('b','account').disabled);
-  f.advance(50001);assert.match(f.lock('a'),/PIN geschützt/);assert.match(f.lock('b'),/Entsperrt/);
+test('PIN-Änderung während einer Vormerkung verlangt neue Freigabe bei derselben wartenden Sammlung',async()=>{
+ const f=await fixture();f.click('a','wine');f.accounts.get('a').pin=await f.M.createPin('4826');f.confirm();await wait(()=>f.status('a').includes('nicht bestätigt'));
+ assert.equal(f.accounts.get('a').bookings.length,0);f.click('a','retry');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.deepEqual(f.writes[0].entries,f.writes[1].entries);
 });
-test('Verbergen während des Speicherns entsperrt die PIN-Karte nach Abschluss nicht erneut',async()=>{
-  const f=await fixture({pin:true}),release=f.hold();f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.books.length===1);
-  f.context.document.hidden=true;f.documentEvents.visibilitychange();release();await wait(()=>f.status('a')==='Gespeichert ✓');f.context.document.hidden=false;
-  assert.match(f.lock('a'),/PIN geschützt/);assert.equal(f.accounts.get('a').bookings.length,1);
+test('Verbergen beim Speichern entsperrt keine PIN-Karte nach dem Abschluss',async()=>{
+ const f=await fixture({pin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
+ const release=f.hold();f.confirm();await wait(()=>f.writes.length===1);f.context.document.hidden=true;f.documentEvents.visibilitychange();release();await wait(()=>f.status('a')==='Gespeichert ✓');assert.match(f.lock('a'),/PIN geschützt/);
 });
-test('Aktualisieren nach einer unklaren Speicherung erhält die Buchungsnummer und ermöglicht Wiederholung',async()=>{
-  const f=await fixture();f.loseReply();f.click('a','add');await wait(()=>f.status('a').includes('nicht bestätigt'));
-  await f.context.Drinks.open();assert.match(f.status('a'),/nicht bestätigt/);f.click('a','retry');await wait(()=>f.status('a')==='Gespeichert ✓');
-  assert.equal(f.accounts.get('a').bookings.length,1);assert.equal(f.books[0].booking.id,f.books[1].booking.id);
+test('Aktualisieren bei unklarem OK behält die Buchungsnummern für die Prüfung',async()=>{
+ const f=await fixture();f.click('a','add');f.loseReply();f.confirm();await wait(()=>f.status('a').includes('nicht bestätigt'));await f.context.Drinks.open();
+ f.click('a','retry');await wait(()=>f.status('a')==='Gespeichert ✓');assert.deepEqual(f.writes[0].entries,f.writes[1].entries);assert.equal(f.accounts.get('a').bookings.length,1);
 });
-
-test('Mitglied sammelt mehrere Striche mit Fassanzeige und speichert erst mit Fertig',async()=>{
-  const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
-  for(let i=0;i<7;i++)f.nodes['dr-add'].handlers.click();assert.equal(f.books.length,0);
-  assert.equal(f.nodes['dr-beers'].children.length,3);assert.equal(f.nodes['dr-beers'].children[0].className,'dr-keg');
-  f.nodes['dr-minus'].handlers.click();assert.match(f.nodes['dr-draft-count'].textContent,/6 neue/);
-  f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');assert.equal(f.books.length,1);assert.equal(f.books[0].booking.count,6);
+test('Gespeicherte Einträge werden in tatsächlicher Eingabereihenfolge einschließlich Preis rückgängig gemacht',async()=>{
+ const f=await fixture();f.click('a','wine');f.click('a','add');f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');await wait(()=>!f.button('a','undo').disabled);
+ f.click('a','undo');await wait(()=>f.root.dataset.screen==='members'&&f.accounts.get('a').bookings.length===3);assert.equal(f.M.totals(f.accounts.get('a')).balance,300);
+ await wait(()=>!f.button('a','undo').disabled);f.click('a','undo');await wait(()=>f.accounts.get('a').bookings.length===4);assert.equal(f.accounts.get('a').bookings[3].cents,300);assert.equal(f.M.totals(f.accounts.get('a')).balance,0);
 });
-test('Heutige Korrektur bleibt im Mitgliedsmenü; ungespeicherte Striche bleiben erhalten',async()=>{
-  const f=await fixture({balance:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
-  f.nodes['dr-add'].handlers.click();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.books.length===1&&!f.nodes['dr-add'].disabled);
-  assert.equal(f.M.totals(f.accounts.get('a')).count,4);assert.match(f.nodes['dr-today-count'].textContent,/4 heute/);assert.match(f.nodes['dr-draft-count'].textContent,/1 neue/);
-  assert.equal(f.root.dataset.screen,'account');f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');assert.equal(f.M.totals(f.accounts.get('a')).count,5);
-});
-test('Unklare Korrektur wird mit derselben Nummer erneut geprüft und nicht doppelt gerechnet',async()=>{
-  const f=await fixture({balance:true,pin:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
-  f.loseReply();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.nodes['dr-error'].textContent.includes('Antwort verloren'));
-  assert.equal(f.nodes['dr-save'].disabled,true);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
-  f.nodes['dr-today-undo'].handlers.click();await wait(()=>!f.nodes['dr-save'].disabled);assert.equal(f.books[0].booking.id,f.books[1].booking.id);assert.equal(f.M.totals(f.accounts.get('a')).count,4);
-});
-
-test('Bonusrest ist direkt auf Karten und im Konto sichtbar und berücksichtigt Teilzahlungen',async()=>{
-  const policy={schemaVersion:1,id:'program-fixture',revision:'revision-fixture',startedAt:'2026-10-01T00:00:00Z',count:20,cents:300};
-  const f=await fixture({policy,balance:true});const a=f.accounts.get('a');
-  f.accounts.set('a',f.M.appendWithReward(a,{id:'payment-fixture',type:'payment',method:'cash',confirmation:'member',cents:500,createdAt:'2026-10-09T11:20:00Z'},policy));
-  f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
-  assert.match(f.nodes['dr-bonus-text'].textContent,/25,00 €/);assert.match(f.nodes['dr-bonus-text'].textContent,/Teilzahlungen/);
-  const cardBonus=descendants(f.card('a')).find(n=>n.className==='dr-member-bonus');assert.equal(cardBonus.hidden,false);assert.equal(cardBonus.textContent,f.nodes['dr-bonus-text'].textContent);
-  f.nodes['dr-cancel'].handlers.click();f.accounts.set('a',f.M.appendWithReward(f.accounts.get('a'),{id:'payment-fixture-rest',type:'payment',method:'cash',confirmation:'member',cents:250,createdAt:'2026-10-09T11:25:00Z'},policy));
-  f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);assert.match(f.nodes['dr-bonus-text'].textContent,/Noch 15 bezahlte Striche/);
-});
-test('PIN-Sperre verliert weder Sammelentwurf noch die Nummer einer unklaren Korrektur',async()=>{
-  const f=await fixture({pin:true,balance:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
-  f.nodes['dr-add'].handlers.click();f.loseReply();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.nodes['dr-error'].textContent.includes('Antwort verloren'));
-  f.context.document.hidden=true;f.documentEvents.visibilitychange();f.context.document.hidden=false;assert.equal(f.root.dataset.screen,'pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-today-undo'].disabled);
-  f.nodes['dr-today-undo'].handlers.click();await wait(()=>!f.nodes['dr-save'].disabled);assert.equal(f.books[0].booking.id,f.books[1].booking.id);assert.match(f.nodes['dr-draft-count'].textContent,/1 neue/);assert.equal(f.M.totals(f.accounts.get('a')).count,4);
-});
-
-test('Wein wird mit einem Tippen für 3 Euro auf derselben Karte gespeichert und respektiert PIN',async()=>{
- const f=await fixture({pin:true});f.click('a','wine');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.books.length,0);
- f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.books[0].booking.drink,'wine');assert.equal(f.M.totals(f.accounts.get('a')).balance,300);
- assert.equal(f.root.dataset.screen,'members');
-});
-test('Bier und Wein sammeln gemeinsam; nur Bier wird zur Fassanzeige und Wein lässt sich separat abziehen',async()=>{
+test('Kontoentwurf benutzt dieselbe Glas-Fass-Logik und entfernt zuletzt eingegebenen Wein',async()=>{
  const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
- for(let i=0;i<5;i++)f.nodes['dr-add'].handlers.click();for(let i=0;i<3;i++)f.nodes['dr-wine-add'].handlers.click();
- f.nodes['dr-wine-minus'].handlers.click();assert.match(f.nodes['dr-draft-amount'].textContent,/13,50/);
- assert.equal(f.nodes['dr-beers'].children.length,3);assert.equal(f.nodes['dr-beers'].children[0].className,'dr-keg');assert.equal(f.nodes['dr-beers'].children[1].textContent,'🍷');
- assert.equal(f.books.length,0);f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');
- assert.equal(f.M.totals(f.accounts.get('a')).balance,1350);assert.equal(f.M.totals(f.accounts.get('a')).count,7);assert.equal(f.books.length,2);
+ for(let i=0;i<5;i++)f.nodes['dr-wine-add'].handlers.click();assert.equal(f.nodes['dr-beers'].children.length,1);assert.equal(f.nodes['dr-beers'].children[0].alt,'Weinfass · 5 Gläser');
+ f.nodes['dr-add'].handlers.click();f.nodes['dr-minus'].handlers.click();assert.match(f.nodes['dr-draft-count'].textContent,/5 Wein/);assert.equal(f.writes.length,0);
+ f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');assert.equal(f.writes.length,1);assert.equal(f.writes[0].entries.length,5);assert.equal(f.M.totals(f.accounts.get('a')).balance,1500);
 });
-test('Heutiger Wein zeigt die passende Rücknahme und korrigiert 3 Euro statt 1,50 Euro',async()=>{
- const f=await fixture();f.click('a','wine');await wait(()=>f.status('a')==='Gespeichert ✓');await wait(()=>!f.button('a','account').disabled);
- f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
- assert.match(f.nodes['dr-today-undo'].textContent,/Wein.*3,00/);f.nodes['dr-wine-add'].handlers.click();
- f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.books.length===2&&!f.nodes['dr-add'].disabled);
- assert.equal(f.books[1].booking.cents,300);assert.equal(f.books[1].booking.drink,'wine');assert.equal(f.M.totals(f.accounts.get('a')).balance,0);assert.match(f.nodes['dr-draft-count'].textContent,/1 Wein/);
+test('Bezahlen überträgt vorgemerkte Konto-Einträge nicht ohne OK',async()=>{
+ const f=await fixture({balance:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);f.nodes['dr-add'].handlers.click();
+ assert.equal(f.nodes['dr-partial'].disabled,true);f.nodes['dr-partial'].handlers.click();await wait(()=>f.nodes['dr-error'].textContent.includes('zuerst mit OK'));assert.equal(f.writes.length,0);assert.equal(f.books.length,0);
 });
-
-test('Hauptseite zeigt Wein als Glas und Bier als Fass; heutige Rücknahme funktioniert direkt auf der Karte',async()=>{
- const f=await fixture();f.accounts.set('a',f.M.append(f.M.append(f.M.empty('a'),{id:'main-beer-001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T11:00:00Z'}),{id:'main-wine-001',type:'drinks',drink:'wine',count:2,cents:600,createdAt:'2026-10-09T11:01:00Z'}));
- f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);f.nodes['dr-cancel'].handlers.click();
- const glasses=descendants(f.card('a')).find(n=>n.className==='dr-member-glasses');assert.equal(glasses.children.length,3);assert.equal(glasses.children[0].className,'dr-keg');assert.equal(glasses.children[1].textContent,'🍷');
- f.click('a','undo');await wait(()=>f.root.dataset.screen==='members'&&f.books.length===1);assert.equal(f.books[0].booking.cents,300);assert.equal(f.M.totals(f.accounts.get('a')).balance,1050);
- assert.equal(glasses.children.filter(n=>n.textContent==='🍷').length,1);
+test('Ablehnen von Verwerfen erhält vorgemerkte Einträge beim Verlassen und Aktualisieren',async()=>{
+ const f=await fixture();f.click('a','wine');f.discardAllowed(false);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);await f.context.Drinks.open();assert.equal(f.writes.length,0);
+ assert.match(f.nodes['dr-main-summary'].textContent,/1 Einträge/);f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.M.totals(f.accounts.get('a')).balance,300);
 });
-async function payFixtureInFull(f){
- f.click('a','pay');await wait(()=>f.root.dataset.screen==='amount');f.nodes['dr-amount'].value='7,50';
- f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');
- f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid'&&!f.nodes['dr-cash-confirm'].disabled);
-}
-test('Vollzahlung kehrt ohne Tippen nach 3 Sekunden zurück, auch wenn die Dankesanimation fehlt oder fehlschlägt',async()=>{
- for(const failed of [false,true]){
-  const f=await fixture({balance:true});if(failed)f.context.DrinksExtras={celebrate(){throw Error('Animation unavailable');}};
-  await payFixtureInFull(f);assert.equal(f.M.totals(f.accounts.get('a')).balance,0);assert.equal(f.nodes['dr-error'].textContent,'');
-  f.advance(2999);assert.equal(f.root.dataset.screen,'paid');f.advance(1);assert.equal(f.root.dataset.screen,'members');assert.equal(f.books.length,1);
- }
+async function payFixtureInFull(f){f.click('a','pay');await wait(()=>f.root.dataset.screen==='amount');f.nodes['dr-amount'].value='7,50';f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid'&&!f.nodes['dr-cash-confirm'].disabled);}
+test('Vollzahlung kehrt nach 3 Sekunden zurück, selbst bei fehlender Dankesanimation',async()=>{
+ const f=await fixture({balance:true});await payFixtureInFull(f);f.advance(3000);assert.equal(f.root.dataset.screen,'members');assert.equal(f.M.totals(f.accounts.get('a')).balance,0);
 });
-test('Ein alter Dankesabschluss schließt kein inzwischen geöffnetes Konto',async()=>{
- const f=await fixture({balance:true});let done;f.context.DrinksExtras={celebrate(bonus,callback){done=callback;},dismiss(){}};
- await payFixtureInFull(f);f.nodes['dr-paid-account'].handlers.click();f.advance(5000);done();assert.equal(f.root.dataset.screen,'account');
- f.nodes['dr-cancel'].handlers.click();f.click('b','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
- done();assert.equal(f.root.dataset.screen,'account');
+test('Treuebonus zählt ausschließlich tatsächliche Zahlungen, keine vorgemerkten Getränke',async()=>{
+ const policy={schemaVersion:1,id:'program-fixture',revision:'revision-fixture',startedAt:'2026-10-01T00:00:00Z',count:20,cents:300},f=await fixture({balance:true,policy});
+ const bonus=()=>descendants(f.card('a')).find(n=>n.className==='dr-member-bonus').textContent;f.click('a','wine');assert.match(bonus(),/30,00/);f.click('a','undo');f.click('a','pay');await wait(()=>f.root.dataset.screen==='amount');
+ f.nodes['dr-amount'].value='5,00';f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid');
+ assert.equal(f.M.totals(f.accounts.get('a')).balance,250);f.nodes['dr-paid-next'].handlers.click();assert.match(bonus(),/25,00/);
+});
+test('Bezahlung eines PIN-Kontos verlangt PIN und Bestätigung und schreibt erst nach Geld-in-Kasse',async()=>{
+ const f=await fixture({balance:true,pin:true});f.click('a','pay');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.books.length,0);
+ f.pin('4826');await wait(()=>f.root.dataset.screen==='amount');assert.equal(f.books.length,0);f.nodes['dr-amount'].value='5,00';f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');assert.equal(f.books.length,0);
+ f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid');assert.equal(f.M.totals(f.accounts.get('a')).balance,250);
+});
+test('Handy-QR zeigt sofort Vorbereitung an und wird erst nach geprüftem Zugang gezeichnet',async()=>{
+ const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+ let ready;const link=new Promise(resolve=>ready=resolve);f.context.DrinksMobile={link:async()=>link,status:()=>''};
+ f.context.qrcode=()=>({addData(){},make(){},getModuleCount:()=>21,isDark:()=>false});f.nodes['dr-mobile-qr'].getContext=()=>({fillRect(){}});
+ f.nodes['dr-mobile-open'].handlers.click();assert.equal(f.root.dataset.screen,'mobile');assert.equal(f.nodes['dr-mobile-qr'].width,1);assert.match(f.nodes['dr-mobile-status'].textContent,/vorbereitet/);
+ ready('https://example.invalid/deckel');await wait(()=>f.nodes['dr-mobile-qr'].width>1);assert.equal(f.root.dataset.screen,'mobile');
+});
+test('Abgelaufene PIN schützt auch das Rückgängigmachen vorgemerkter Einträge',async()=>{
+ const f=await fixture({pin:true});f.click('a','wine');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
+ f.advance(60001);f.click('a','undo');await wait(()=>f.root.dataset.screen==='pin');assert.match(f.nodes['dr-main-summary'].textContent,/1 Einträge/);assert.equal(f.writes.length,0);
+ f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-pin'].disabled);assert.equal(f.nodes['dr-main-confirm'].hidden,true);assert.equal(f.writes.length,0);
 });

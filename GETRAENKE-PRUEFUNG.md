@@ -75,3 +75,34 @@ vollständige Sicherung den gesamten OneDrive-Unterordner Getraenke sichern.
 - Der bisher dauerhaft angezeigte Danke-Hinweis in der Handyansicht verschwindet nach 3 Sekunden. Kontostand und Buchungen bleiben sichtbar. Aktualisieren desselben bezahlten Deckels startet den Hinweis nicht erneut; nach neuen offenen Beträgen und anschließender Begleichung erscheint er wieder kurz.
 - Die iPad-Zahlungsansicht hat einen eigenen Abschlusstimer: Die Rückkehr zur Getränke-Hauptseite hängt nicht mehr vom Laden oder Ausführen der Animation ab. Das Verlassen der Zahlungsansicht entfernt den alten Timer und eine noch offene Animation; alte Abschlüsse schließen kein neues Mitgliedskonto.
 - 193 automatisierte Prüfungen bestanden, einschließlich Zeitablauf, fehlender/fehlerhafter Animation, manueller Navigation, erneutem Bezahlen und Verbergen der Handyansicht. Keine neue Prüfung auf physischen Geräten.
+
+## Ergänzung · Version 2026.10.09.12
+
+### Verhalten und Plausibilität
+
+- Die Hauptmaske merkt Bier und Wein für mehrere Mitglieder vor. Erst der gemeinsame OK-Button überträgt die Einträge. Zahlung/Konto öffnen bleibt während einer Vormerkung gesperrt, damit keine versehentliche Übertragung beim Bezahlen stattfindet.
+- „Eintrag rückgängig machen“ entfernt zuerst die zuletzt vorgemerkte Eingabe dieses Mitglieds. Ohne Vormerkung wird der letzte heute gespeicherte Eintrag unveränderlich korrigiert. Freiwillige PIN-Freigaben gelten auch für Rücknahmen; abgelaufene Freigaben werden vor OK erneut angefordert.
+- Alle einzelnen Getränke bleiben in Eingabereihenfolge erhalten. Sammelbuchungen schreiben pro Mitglied nur eine OneDrive-Dateiversion. Bier kostet unverändert 150 Cent, Wein 300 Cent. Preis und Reihenfolge bleiben auch bei gemischten Rücknahmen korrekt.
+- Fünf Bierstriche und fünf Weingläser werden jeweils als Fass gezeigt. Große Mengen haben eine kompakte, ausdrücklich bezifferte Darstellung statt stillschweigend abgeschnittener Mengen.
+- Bonusguthaben wird über die gesamte Sammlung nur einmal verbraucht; Vormerkungen erzeugen weder Schulden noch Treuebonus. Der Treuebonus zählt weiterhin tatsächliche bestätigte Zahlungen.
+- Mehrere Mitglieder werden nacheinander bestätigt; es gibt keine Transaktion über mehrere OneDrive-Dateien. Bei einem Teilfehler bleiben erfolgreiche Konten bestätigt. Nur unbestätigte Sammlungen werden mit denselben IDs erneut geprüft; Bearbeitung/Rücknahme unklarer Buchungen ist gesperrt.
+- Die Comicfigur ersetzt ausschließlich das Bild bei „Die größten Deckel“. Die mit dem integrierten Bildgenerator erstellte Illustration zeigt einen freundlichen fiktiven Feuerwehrkameraden mit roter Knollennase, Schnurrbart, schiefem Helm und einem Stapel flacher bedruckter Karton-Bierdeckel. Das transparente WebP liegt unter `assets/drinks/deckel-kamerad.webp`.
+
+- Offene Beträge heißen auf Mitgliederkarten, Zahlungsmaske und Handy „Schulden“. Echte positive Getränkegutschriften bleiben separat als „Gutschrift“ bezeichnet und sind auf dem Handy bei null ausgeblendet. Salden, Preise und Bonusberechnung bleiben unverändert.
+
+### QR-Bereitstellung
+
+- Die Handyansicht öffnet sofort mit einem Vorbereitungsstatus statt erst nach sämtlichen Netzwerkoperationen.
+- Bestehende Zugänge warten nicht mehr auf die vollständige GitHub-Neuveröffentlichung. Kontostände werden im Hintergrund aktualisiert. Ein für fünf Minuten im Arbeitsspeicher wiederverwendeter QR-Zugang spart die erneute Cloudflare-Bereitstellung; PIN, OneDrive-Quelle, Zugangsrevision, Alias und Schlüssel werden trotzdem frisch geprüft.
+- Neue oder erneuerte Zugänge warten weiterhin auf die erste erfolgreiche verschlüsselte Veröffentlichung. Unabhängige Abfragen laufen parallel. Ein gleichzeitiger PIN-/Schlüssel-/Quellenwechsel verhindert die Ausgabe eines veralteten QR-Codes.
+- Es wurden keine persönlichen Kontostände oder Schlüssel zusätzlich im Browser gespeichert. Ein erster Zugriff bleibt von OneDrive, GitHub und dem Erinnerungsdienst abhängig. Keine reale Netzwerklatenz am Benutzergerät gemessen.
+
+### Prüfung
+
+`node --test tests/*.test.cjs`: 195 Prüfungen bestanden. Die angepassten UI-Prüfungen testen Sammeln ohne Schreibzugriff, gemeinsames OK, Wein-Fassanzeige, letzte Eingabe statt pauschalem Minus, mehrere PIN-Konten, abgelaufene PIN, Teilfehler, verlorene Antworten, unveränderte Buchungsnummern bei Wiederholung, Bezahlung ohne implizite Übertragung, Bonus, Dankesabschluss und sofortige QR-Vorbereitung. Hinzu kommen die bisherigen Prüfungen für Cent-Rechnung, Berliner Tagesgrenzen, parallele OneDrive-Zugriffe, Verschlüsselung, Gerätezulassung, Push-Versand und Datenschutz.
+
+Die UI-/Netzwerkabläufe wurden mit simulierten DOM- und OneDrive-/GitHub-Antworten geprüft. Ein Browser für neue Layoutprüfungen ist in dieser Umgebung nicht installiert; keine neue Prüfung auf einem physischen iPad oder Android/iPhone. Es wurden keine echten Mitgliedsbuchungen oder Zahlungen ausgelöst.
+
+### Weiterer sinnvoller Schritt
+
+Bei einer nächsten Erweiterung kann die Anzeige eines bereits vorhandenen Handy-Deckels vollständig von der Erreichbarkeit des Erinnerungsdienstes getrennt werden. Dann könnte der QR zunächst nur den Kontozugang anbieten und Erinnerungen erst ergänzen, sobald der Dienst verfügbar ist. Diese weitergehende Änderung am Anmeldeablauf ist in dieser Version nicht enthalten.

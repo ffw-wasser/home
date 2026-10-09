@@ -3,6 +3,7 @@
   'use strict';
   const S=global.DrinksStore,M=global.DrinksModel,C=global.DeckelCrypto;
   let pending=new Set(),working=false,lastStatus=new Map();
+  const linkCache=new Map();
   const repoValid=repo=>/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)&&repo!=='ffw-wasser/home';
   const setStatus=(id,text)=>{lastStatus.set(id,text);document.dispatchEvent(new CustomEvent('deckel-status',{detail:{id,text}}));};
   async function gh(config,path,options={}){
@@ -17,14 +18,14 @@
     const totals=M.totals(account),reward=M.rewardState(account,policy);
     return {version:1,balance:totals.balance,credit:reward.credit,needed:reward.needed,bonusCents:policy.cents,updatedAt:new Date().toISOString(),bookings:account.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...(['drinks','correction'].includes(b.type)?{count:b.count,...((b.drink==='wine'||b.type==='correction'&&account.bookings.find(t=>t.id===b.targetId)?.drink==='wine')?{drink:'wine'}:{})}:b.type==='payment'?{method:b.method}:{})}))};
   }
-  async function publish(id){
-    const connection=await config();if(!connection)return false;
-    const filename=await S.mobileFileName(id),path='/contents/deckel/';
+  async function publish(id,prepared=null){
+    const connection=prepared?.connection||await config();if(!connection)return false;
+    const filename=prepared?.filename||await S.mobileFileName(id),path='/contents/deckel/';
     for(let attempt=0;attempt<3;attempt++){
-      const saved=await S.readMobileFile(filename);if(!saved)return false;
+      const saved=attempt===0&&prepared?.record?{data:prepared.record}:await S.readMobileFile(filename);if(!saved)return false;
       const record=C.access(saved.data);if(record.memberId!==id)throw new Error('Handyzugang gehört zu einem anderen Konto.');
-      let previous;try{previous=await gh(connection,path+record.alias+'.json?ref=main');}catch(error){if(error.status!==404)throw error;}
-      const account=await S.read(id),policy=await S.rewards(),data=snapshot(account,policy);
+      const [previous,account,policy]=await Promise.all([gh(connection,path+record.alias+'.json?ref=main').catch(error=>{if(error.status!==404)throw error;return null;}),S.read(id),S.rewards()]);
+      const data=snapshot(account,policy);
       const envelope=await C.seal(data,record),check=await S.readMobileFile(filename);
       if(check?.data.revision!==record.revision)continue;
       try{
@@ -37,18 +38,26 @@
   function queue(id){pending.add(String(id));setStatus(String(id),'Handyansicht wird aktualisiert …');flush();}
   async function flush(){if(working)return;working=true;try{while(pending.size){const id=pending.values().next().value;pending.delete(id);try{if(!await publish(id))setStatus(id,'Noch kein Handyzugang eingerichtet.');}catch{setStatus(id,'In OneDrive gespeichert. Die Handyansicht ist noch nicht aktualisiert. Bitte „Handyansicht aktualisieren“ wählen.');}}}finally{working=false;}}
   async function link(id,signature,rotate=false){
-    const connection=await config();if(!connection)throw new Error('Die Handyansicht muss zuerst unter Einstellungen → Getränkeverwaltung → Handy-Deckel eingerichtet werden.');
-    const account=await S.read(id);if(!signature||JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('PIN-Status geändert. Bitte dein Getränkekonto erneut öffnen.'),{code:'pinChanged'});
-    const filename=await S.mobileFileName(id),old=await S.readMobileFile(filename);
-    let record=old?.data;
-    if(!record||rotate){record={...C.create(),memberId:id,revision:crypto.randomUUID()};if(old)record.alias=C.access(old.data).alias;await S.writeMobileFile(filename,record,old?.item?.eTag);}
+    const [connection,account,filename]=await Promise.all([config(),S.read(id),S.mobileFileName(id)]);
+    if(!connection)throw new Error('Die Handyansicht muss zuerst unter Einstellungen → Getränkeverwaltung → Handy-Deckel eingerichtet werden.');
+    if(!signature||JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('PIN-Status geändert. Bitte dein Getränkekonto erneut öffnen.'),{code:'pinChanged'});
+    const sourceKey=S.sourceKey?.()||'',old=await S.readMobileFile(filename);let record=old?.data;
+    const created=!record||rotate;
+    if(created){record={...C.create(),memberId:id,revision:crypto.randomUUID()};if(old)record.alias=C.access(old.data).alias;await S.writeMobileFile(filename,record,old?.item?.eTag);linkCache.delete(String(id));}
     C.access(record);if(record.memberId!==id)throw new Error('Handyzugang gehört zu einem anderen Konto.');
-    const check=await S.read(id);if(JSON.stringify(check.pin)!==signature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
-    if(!await publish(id))throw new Error('Die Handyansicht konnte nicht veröffentlicht werden.');
-    const current=await S.readMobileFile(filename);if(current?.data.revision!==record.revision)throw new Error('Der Zugang wurde gerade geändert. Bitte erneut öffnen.');
-    const url=new URL('deckel.html',location.href);url.search='';const push=await global.DrinksPush?.prepare(record);
-    const latest=await S.readMobileFile(filename);if(latest?.data.revision!==record.revision)throw new Error('Der Zugang wurde gerade geändert. Bitte erneut öffnen.');
-    url.hash=new URLSearchParams({r:connection.repo,a:record.alias,k:record.key,...(push?{p:push.origin,c:push.capability}:{})}).toString();return url.href;
+    const known=linkCache.get(String(id));let push,url;
+    if(!created&&known?.revision===record.revision&&known.key===record.key&&known.sourceKey===sourceKey&&known.until>Date.now())url=new URL(known.url);
+    else{
+      if(created){const result=await Promise.all([publish(id,{connection,filename,record}),global.DrinksPush?.prepare(record)]);if(!result[0])throw new Error('Die Handyansicht konnte nicht veröffentlicht werden.');push=result[1];}
+      else push=await global.DrinksPush?.prepare(record);
+      url=new URL('deckel.html',location.href);url.search='';url.hash=new URLSearchParams({r:connection.repo,a:record.alias,k:record.key,...(push?{p:push.origin,c:push.capability}:{})}).toString();
+    }
+    // Fresh authority and key checks also apply when the QR URL is reused from RAM.
+    const [current,check]=await Promise.all([S.readMobileFile(filename),S.read(id)]);
+    if(current?.data.revision!==record.revision||current.data.key!==record.key||current.data.alias!==record.alias||S.sourceKey&&S.sourceKey()!==sourceKey)throw new Error('Der Zugang oder die OneDrive-Verbindung wurde gerade geändert. Bitte erneut öffnen.');
+    if(JSON.stringify(check.pin)!==signature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
+    linkCache.set(String(id),{revision:record.revision,key:record.key,sourceKey,url:url.href,until:Date.now()+300000});
+    if(!created)queue(id);return url.href;
   }
   async function connect(repo,token){
     if(!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');
