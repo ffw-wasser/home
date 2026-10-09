@@ -22,14 +22,14 @@ function requireAdmin(target="settingsView") {
 function lockAdministration(){
   if(byId('deckel-token'))byId('deckel-token').value='';
   adminUnlocked=false;clearTimeout(adminTimeoutId);adminTimeoutId=null;
-  for(const id of ['settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']){
+  for(const id of ['settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id;showView('adminLoginView');break;}
   }
   for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
   renderOneDriveDialog?.();
 }
 function showView(viewId) {
-  if(["settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView"].includes(viewId)&&!requireAdmin(viewId))return false;
+  if(["settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView"].includes(viewId)&&!requireAdmin(viewId))return false;
   if(window.DrinksRewards?.beforeView(viewId)===false)return false;
   if(window.Usability?.beforeLeave(viewId)===false)return false;
   if(window.Drinks?.beforeView(viewId)===false)return false;

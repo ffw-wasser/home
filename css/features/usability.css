@@ -41,7 +41,9 @@ html body .home-flow-indicator{min-height:48px!important}
 html body .storage-location-heading p,html body .settings-subheading p{color:#4b5e69!important;font-size:16px!important}
 html body .tactics-visual{height:auto!important;min-height:0!important;padding:6px!important}
 html body .tactics-visual img{height:140px!important;max-height:140px!important;width:100%!important;object-fit:contain!important}
-#settingsView button.settings-menu-card{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:8px;text-align:left;padding:20px}
+#settingsDrinksView .settings-menu-card{display:flex;flex-direction:column;align-items:flex-start}
+#settingsDrinksView .settings-menu-card p{flex:1}
+#settingsDrinksView .settings-menu-card button{width:100%}
 
 .dr-burst-pop{width:110px;height:110px}.dr-burst-pop svg{display:block;width:100%;height:100%}
 @media(min-width:700px){.dr-own-new-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}}
@@ -51,3 +53,5 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 #attendanceDraftStatus #attendanceCloudStatus{display:block;font-size:14px;margin-top:5px}.attendance-filters button{font-size:16px;white-space:nowrap}.attendance-filters button[aria-pressed=true]{background:#24653b;color:#fff;border-color:#24653b}
 
 #adminPaypalDialog .admin-paypal-check{display:flex;align-items:center;gap:12px;min-height:48px;margin-top:16px;cursor:pointer}#adminPaypalDialog input[type="checkbox"]{appearance:auto!important;-webkit-appearance:checkbox!important;display:inline-block!important;position:static!important;width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;padding:0!important;margin:0!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;accent-color:#176b36}
+
+#settingsDrinksView .settings-menu-card>.step.yellow{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:max-content;max-width:100%;height:auto;min-height:30px;padding:6px 12px;white-space:normal;line-height:1.2;box-sizing:border-box}

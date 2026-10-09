@@ -77,10 +77,12 @@
     byId('reminderDraftText').value=text(row);byId('reminderCopyStatus').textContent='';dialog.showModal();
   }
   function initialize(){
+    byId('drinksSettingsMembersButton').onclick=()=>showView('settingsMembersView');
+    byId('settingsDrinksView').querySelector('[data-drinks-settings-back]').onclick=()=>showView('settingsView');
     const view=document.createElement('section');view.id='settingsRemindersView';view.className='view settings-subpage';view.hidden=true;
-    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel &amp; PayPal</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zu Einstellungen</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><div id="remindersList"></div>';
-    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsView');byId('refreshReminders').onclick=load;
-    const button=document.createElement('button');button.type='button';button.className='settings-menu-card';button.innerHTML='<strong>Offene Deckel &amp; PayPal</strong><span>PayPal-Eingänge eintragen und Mitglieder erinnern</span>';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('settingsView').querySelector('.settings-menu-grid-management').append(button);
+    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel &amp; PayPal</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><div id="remindersList"></div>';
+    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;
+    const button=document.createElement('button');button.type='button';button.className='primary-button';button.textContent='Deckel und PayPal öffnen';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('drinksSettingsPaymentsCard').append(button);
   }
   window.DrinksExtras={celebrate,loadReminders:load};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();

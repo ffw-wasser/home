@@ -58,7 +58,7 @@
   <link href="css/layout/patch-ios-history.css?v=20261007-5" rel="stylesheet"/>
   <link href="css/layout/iphone-action-dock-fix.css?v=20261007-7" rel="stylesheet"/>
 <link href="css/features/drinks.css?v=20261009-header" rel="stylesheet"/>
-<link href="css/features/usability.css?v=20261009-admin-paypal" rel="stylesheet"/>
+<link href="css/features/usability.css?v=20261009-drinks-settings" rel="stylesheet"/>
 </head>
 <body>
 <div id="protectedAppContent">
@@ -160,13 +160,21 @@
 <div class="settings-group"><div class="settings-group-heading"><span>Verwaltung</span><h3>Personen und Vorgaben</h3></div><div class="settings-menu-grid settings-menu-grid-management">
 <article class="panel settings-menu-card"><span class="step yellow">PERSON</span><h3>Mitglieder</h3><p>Mitglieder, Funktionen und Fahrzeugberechtigungen verwalten.</p><button class="primary-button" data-protected="" data-settings-page="settingsMembersView" type="button">Mitglieder öffnen</button></article>
 <article class="panel settings-menu-card"><span class="step yellow">ZIEL</span><h3>Funktionsziele</h3><p>Jährliche Mindestziele für die einzelnen Funktionen festlegen.</p><button class="primary-button" data-protected="" data-settings-page="settingsGoalsView" type="button">Ziele öffnen</button></article>
+<article class="panel settings-menu-card"><span class="step yellow">GETRÄNKE</span><h3>Getränkeverwaltung</h3><p>Offene Deckel, PayPal-Eingänge, Getränke-Bonus und Handyzugriff verwalten.</p><button class="primary-button" data-protected="" data-settings-page="settingsDrinksView" type="button">Getränkeverwaltung öffnen</button></article>
 <article class="panel settings-menu-card"><span class="step yellow">PASS</span><h3>Sicherheit</h3><p>Das Admin-Passwort für geschützte Bereiche ändern.</p><button class="primary-button" data-protected="" data-settings-page="settingsSecurityView" type="button">Sicherheit öffnen</button></article>
 </div></div>
 <div class="settings-group"><div class="settings-group-heading"><span>Daten</span><h3>Berichte und Sicherung</h3></div><div class="settings-menu-grid settings-menu-grid-data">
 <article class="panel settings-menu-card"><span class="step yellow">AUSWERTUNG</span><h3>Statistik</h3><p>Teilnahmen und Funktionen auswerten.</p><button class="primary-button" data-settings-page="settingsStatisticsView" type="button">Statistik öffnen</button></article>
 <article class="panel settings-menu-card"><span class="step yellow">HISTORIE</span><h3>Historie</h3><p>Abgeschlossene Termine und Einsätze nach Jahr und Monat aufrufen.</p><button class="primary-button" data-settings-page="settingsHistoryView" type="button">Historie öffnen</button></article>
 <article class="panel settings-menu-card" id="qualityStatusCard"><span class="step yellow">SICHER</span><h3>Qualität und Sicherheit</h3><p>Plausibilitätsprüfung und automatische Sicherungspunkte verwalten.</p><div class="quality-status-list"><span>Abschlussprüfung aktiv</span><span>Datenversion 3</span></div><button class="primary-button" id="restoreSafetySnapshotMenuButton" type="button">Letzten Sicherungspunkt wiederherstellen</button></article><article class="panel settings-menu-card"><span class="step yellow">DATEI</span><h3>Berichte und Datensicherung</h3><p>Terminpakete, Einzel-Exporte und App-Datensicherungen verwalten.</p><button class="primary-button" data-archive-protected="" data-settings-page="settingsFilesView" type="button">Berichte und Sicherung öffnen</button></article>
-</div></div></section><section class="view login-view" hidden="" id="adminLoginView">
+</div></div></section><section class="view settings-view" hidden="" id="settingsDrinksView">
+<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>Getränkeverwaltung</h2><p>Wähle den Bereich, den du verwalten möchtest.</p></div><button class="outline-button" data-drinks-settings-back="" type="button">Zurück zu Einstellungen</button></div>
+<div class="settings-menu-grid">
+<article class="panel settings-menu-card" id="drinksSettingsPaymentsCard"><span class="step yellow">DECKEL</span><h3>Offene Deckel &amp; PayPal</h3><p>Offene Beträge ansehen, geprüfte PayPal-Eingänge eintragen und Erinnerungen vorbereiten.</p></article>
+<article class="panel settings-menu-card" id="drinksSettingsRewardsCard"><span class="step yellow">BONUS</span><h3>Getränke-Bonus</h3><p>Die Anzahl bezahlter Striche und die Höhe der Gutschrift festlegen.</p></article>
+<article class="panel settings-menu-card"><span class="step yellow">PIN</span><h3>Mitglieder &amp; Getränke-PINs</h3><p>Persönliche Getränke-PINs bei den jeweiligen Mitgliedern einrichten oder zurücksetzen.</p><button class="primary-button" id="drinksSettingsMembersButton" type="button">Mitgliederverwaltung öffnen</button></article>
+<article class="panel settings-menu-card" id="drinksSettingsMobileCard"><span class="step yellow">HANDY</span><h3>Handy-Deckel</h3><p>Die verschlüsselte Handyansicht einrichten und Kontostände aktualisieren.</p></article>
+</div></section><section class="view login-view" hidden="" id="adminLoginView">
 <article class="panel login-card">
 <p class="eyebrow">Geschützter Bereich</p>
 <h2>Administration</h2>
@@ -337,7 +345,7 @@
 <script src="js/core/onedrive-sync.js?v=20261009-smart"></script>
 <script src="js/core/storage.js?v=20260924-1"></script>
 <script src="js/core/database.js?v=20261009-ux"></script>
-<script src="js/core/ui.js?v=20261009-admin-paypal"></script>
+<script src="js/core/ui.js?v=20261009-drinks-settings"></script>
 <script src="js/features/attendance/attendance-controller.js?v=20261009-smart"></script>
 <script src="js/features/attendance/ipad-action-dock.js?v=20261006-final-80"></script>
 <script src="js/features/reports/csv-engine.js?v=20261008-report-dates"></script>
@@ -356,7 +364,7 @@
 <script src="js/features/drinks/drinks-model.js?v=20261009-admin-paypal"></script>
 <script src="js/features/drinks/drinks-store.js?v=20261009-admin-paypal"></script>
 <script src="js/features/drinks/deckel-crypto.js?v=20261009"></script>
-<script src="js/features/drinks/drinks-mobile.js?v=20261009"></script>
+<script src="js/features/drinks/drinks-mobile.js?v=20261009-drinks-settings"></script>
 <script src="js/features/drinks/drinks.js?v=20261009-admin-paypal"></script>
 <script src="js/app/app.js?v=20261009-ux"></script>
 <dialog class="probe-topic-dialog" id="probeTopicDialog"><form class="probe-topic-form" method="dialog"><p class="eyebrow">Probe abschließen</p><h2>Thema der Probe</h2><p id="probeTopicDescription">Bitte das Thema der Probe eintragen. Das Thema erscheint in CSV, PDF und Archiv.</p><label for="probeTopicInput">Thema *</label><textarea id="probeTopicInput" maxlength="300" placeholder="z. B. Löschangriff, Funkübung oder Fahrzeugkunde" required="" rows="4"></textarea><p class="probe-topic-error" hidden="" id="probeTopicError">Bitte ein Thema eingeben.</p><div class="probe-topic-actions"><button class="outline-button" id="cancelProbeTopicButton" type="button">Abbrechen</button><button class="primary-button" id="confirmProbeTopicButton" type="button">Weiter zum Abschluss</button></div></form></dialog><dialog class="archive-correction-dialog" id="archiveCorrectionDialog"><form class="archive-correction-form" method="dialog"><p class="eyebrow">Abgeschlossene Probe</p><h2>Eintrag korrigieren</h2><p>Person auswählen und die gewünschten Angaben ändern.</p><label for="correctionPerson">Person</label><select class="text-input" id="correctionPerson"></select><label for="correctionStatus">Status</label><select class="text-input" id="correctionStatus"><option>Anwesend</option><option>Entschuldigt</option><option>Betrifft nicht</option><option>Fehlt</option></select><label for="correctionRole" id="correctionRoleLabel">Funktion / Status</label><select class="text-input" id="correctionRole"><option value="">Ohne Funktion</option><option value="Orga">Orga</option><option value="Reserve">Reserve</option><option value="GF">GF</option><option value="Maschinist">Maschinist</option><option value="ATF">ATF</option><option value="ATM">ATM</option><option value="WTF">WTF</option><option value="WTM">WTM</option><option value="STF">STF</option><option value="STM">STM</option><option value="Melder">Melder</option></select><div class="probe-topic-actions"><button class="outline-button" id="cancelCorrectionButton" type="button">Abbrechen</button><button class="primary-button" id="saveCorrectionButton" type="button">Korrektur speichern</button></div></form></dialog><script src="js/features/quality/smart-workflow.js?v=20261009-smart"></script>
@@ -367,8 +375,8 @@
   <script src="js/features/attendance/iphone-action-dock-fix.js?v=20261007-7"></script>
 <script src="js/features/quality/usability.js?v=20261009-smart"></script>
 <script src="js/features/tactics/tactics-touch.js?v=20261009-ux"></script>
-<script src="js/features/drinks/drinks-extras.js?v=20261009-admin-paypal"></script>
-<script src="js/features/drinks/drinks-rewards.js?v=20261009-encrypted"></script>
+<script src="js/features/drinks/drinks-extras.js?v=20261009-drinks-settings"></script>
+<script src="js/features/drinks/drinks-rewards.js?v=20261009-drinks-settings"></script>
 <script src="js/features/attendance/attendance-smart.js?v=20261009-smart"></script>
 </body>
 </html>
