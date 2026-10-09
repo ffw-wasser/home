@@ -144,6 +144,22 @@ test('Offline und ohne Administration werden weder PINs noch Buchungen gespeiche
 test('Liste nutzt unveränderte Dateiversionen; Abmelden entfernt Finanzdaten aus dem Arbeitsspeicher',async()=>{
   const {S,calls}=app(),a=await S.setPin('a','4826');await S.book('a',drink(),JSON.stringify(a.pin));await S.list(['a']);const before=calls.filter(c=>c.url.endsWith('/content')).length;await S.list(['a']);assert.equal(calls.filter(c=>c.url.endsWith('/content')).length,before);assert.equal(S.cached('a').bookings.length,1);S.reset();assert.equal(S.cached('a').bookings.length,0);
 });
+test('Unverändertes Konto öffnet nach frischer Versionsprüfung ohne erneuten Download',async()=>{
+  const {S,calls}=app();const first=await S.book('a',drink(),'null');await S.list(['a']);
+  const start=calls.length;const opened=await S.read('a'),requests=calls.slice(start);
+  assert.equal(requests.filter(c=>c.url.endsWith('/content')).length,0);
+  assert.equal(requests.filter(c=>c.url.includes('konto-')).length,1);
+  assert.deepEqual(copy(opened),copy(first));opened.bookings.length=0;
+  assert.equal((await S.read('a')).bookings.length,1);
+});
+test('Geänderte Dateiversion lädt aktuelle Buchungen und PIN; alte Sitzung bleibt gesperrt',async()=>{
+  const {S,M,files,calls}=app();await S.book('a',drink(),'null');await S.list(['a']);
+  const file=[...files.values()].find(f=>f.data.memberId==='a');file.data=M.append(file.data,drink('drink-0002',1));
+  file.data.pin=await M.createPin('4826');file.eTag='"remote-change"';const start=calls.length;
+  const opened=await S.read('a');assert.equal(opened.bookings.length,2);assert.ok(opened.pin);
+  assert.equal(calls.slice(start).filter(c=>c.url.endsWith('/content')).length,1);
+  await assert.rejects(S.book('a',drink('drink-0003',1),'null'),/PIN wurde geändert/);
+});
 test('Ausgelieferter Code enthält lokale QR-Erzeugung, Fass ohne Legende und keine neue persönliche Browserspeicherung',()=>{
   const html=fs.readFileSync(require.resolve('../index.html'),'utf8');const ui=fs.readFileSync(require.resolve('../js/features/drinks/drinks.js'),'utf8');
   assert.match(html,/id="drinksTab"/);assert.match(html,/Die größten Deckel/);assert.doesNotMatch(html,/1 Bierglas = 1 Strich/);assert.match(ui,/qrcode\(0,'M'\)/);
