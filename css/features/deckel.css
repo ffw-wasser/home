@@ -4,3 +4,4 @@
 
 .push-settings{margin:24px 0;padding:16px;background:#fff8ed;border:1px solid #e6d8c0;border-radius:16px}.push-settings p{font-size:14px;line-height:1.5}.push-settings button{margin-top:10px;width:100%}
 .deckel-card #updated{display:block;max-width:230px;margin:10px 0;font-size:12px;line-height:1.4;color:#685247}
+.install-card{margin:24px 0;padding:20px;background:#fff8ed;border:1px solid #e6d8c0;border-radius:18px}.install-card h2{font-size:20px;margin:0 0 10px}.install-card p{font-size:14px;line-height:1.5}.install-card ol{list-style:decimal;padding-left:22px;margin:16px 0}.install-card li{background:none;border-radius:0;padding:0 0 0 4px;font-size:14px;line-height:1.5;margin:10px 0}.install-card #installStatus:empty{display:none}.install-card #installStatus{color:#685247}

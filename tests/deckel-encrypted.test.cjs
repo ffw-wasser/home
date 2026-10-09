@@ -51,3 +51,11 @@ test('Handy-Deckel veröffentlicht und entschlüsselt Korrekturen mit aktualisie
   const envelope=await ctx.DeckelCrypto.seal(snapshot,record),opened=await ctx.DeckelCrypto.open(envelope,record);
   assert.equal(opened.balance,600);assert.equal(opened.bookings[0].type,'correction');assert.equal(opened.bookings[0].count,1);
 });
+
+test('Verschlüsselte Handyansicht benennt Wein und Weinkorrektur ohne Buchungskennungen',async()=>{
+ const {ctx}=app(),M=ctx.DrinksModel,C=ctx.DeckelCrypto;
+ ctx.account=M.append(ctx.account,{id:'wine-mobile-001',type:'drinks',drink:'wine',count:2,cents:600,createdAt:'2026-10-09T12:00:00Z'});
+ ctx.account=M.append(ctx.account,{id:'wine-mobile-correction',type:'correction',drink:'wine',targetId:'wine-mobile-001',count:1,cents:300,createdAt:'2026-10-09T12:01:00Z'});
+ const record=C.create(),snapshot=ctx.DrinksMobile.snapshot(ctx.account,ctx.policy),result=await C.open(await C.seal(snapshot,record),record);
+ assert.equal(result.balance,1050);assert.equal(result.bookings[0].drink,'wine');assert.equal(result.bookings[1].drink,'wine');assert.ok(!JSON.stringify(result).includes('wine-mobile-001'));
+});

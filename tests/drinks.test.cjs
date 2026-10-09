@@ -317,3 +317,40 @@ test('Gleichzeitige Korrekturen können denselben Strich nicht doppelt zurückge
   const results=await Promise.allSettled(['correct-first','correct-second'].map(id=>a.S.book('a',correction('drink-today',id,1,now),'null')));
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(a.M.totals(await a.S.read('a')).balance,0);
 });
+
+const wine=(id='wine-booking-001',count=1,createdAt='2026-10-09T12:00:00Z')=>({id,type:'drinks',drink:'wine',count,cents:count*300,createdAt});
+test('Wein kostet 3 Euro pro Glas; alte Buchungen behalten 1,50 Euro und bleiben unverändert',()=>{
+ const {M}=app(),old=M.append(M.empty('a'),drink()),before=copy(old.bookings);
+ const a=M.append(old,wine('wine-booking-001',2));assert.equal(a.schemaVersion,4);
+ assert.deepEqual(copy(M.totals(a)),{balance:1350,count:7});assert.deepEqual(copy(a.bookings.slice(0,1)),before);
+ for(const b of [{...wine(),cents:150},{...wine(),drink:'unknown'}, {...drink('invalid-beer-001'),cents:1500}])assert.throws(()=>M.append(old,b),/ungültig/);
+});
+test('Weinkorrektur nimmt genau 3 Euro zurück, einschließlich bezahltem Betrag und Bonusguthaben',()=>{
+ const {M}=app(),p=rewardPolicy(2,300);let a=M.append(M.empty('a'),wine());
+ a=M.appendWithReward(a,{...pay('wine-payment-001',300),createdAt:'2026-10-09T12:01:00Z'},p);
+ const originals=copy(a.bookings),c={id:'wine-correction-001',type:'correction',drink:'wine',targetId:'wine-booking-001',count:1,cents:300,createdAt:'2026-10-09T12:02:00Z'};
+ assert.throws(()=>M.append(a,{...c,cents:150}),/korrigiert/);assert.throws(()=>M.append(a,{...c,drink:'beer'}),/korrigiert/);
+ a=M.append(a,c);assert.deepEqual(copy(a.bookings.slice(0,2)),originals.slice(0,2));assert.equal(a.schemaVersion,4);
+ assert.deepEqual(copy(M.totals(a)),{balance:0,count:0});assert.equal(M.rewardState(a,p).credit,600);
+ assert.deepEqual(copy(M.append(a,c)),copy(a));
+ a=M.append(a,wine('wine-credit-booking',2,'2026-10-09T12:03:00Z'));assert.equal(M.rewardState(a,p).credit,0);assert.equal(M.totals(a).balance,0);
+});
+test('Gemischte Sammlung wird in einem OneDrive-Schreibvorgang gespeichert; Wiederholung nach verlorener Antwort zählt einmal',async()=>{
+ const {ctx,S,M,calls}=app(),entries=[drink('mixed-beer-001',5),wine('mixed-wine-001',2)];await S.rewards();const start=calls.length;
+ ctx.loseReply=true;ctx.forceConflict=1;const a=await S.bookMany('a',entries,'null');assert.equal(M.totals(a).balance,1350);assert.equal(a.bookings.length,2);
+ const writes=calls.slice(start).filter(c=>c.options.method==='PUT'&&c.options.body.includes('mixed-beer-001'));
+ assert.ok(writes.length>=1);for(const write of writes)assert.equal(JSON.parse(write.options.body).bookings.length,2);
+ await S.bookMany('a',entries,'null');assert.equal((await S.read('a')).bookings.length,2);
+});
+test('Ungültiger Wein und geänderte PIN speichern keinen Teil einer gemischten Sammlung',async()=>{
+ const {S,M}=app();await assert.rejects(S.bookMany('a',[drink('atomic-beer-001',1),{...wine(),cents:150}],'null'),/ungültig/);
+ assert.equal(M.totals(await S.read('a')).balance,0);const a=await S.setPin('a','4826');
+ await assert.rejects(S.bookMany('a',[drink('atomic-beer-001',1),wine()],'null'),/PIN wurde geändert/);
+ assert.equal(M.totals(await S.read('a')).balance,0);assert.ok(a.pin);
+});
+test('Weinzahlungen nutzen denselben Geldbetrag für Bonusfortschritt; Verbrauch allein gewährt keinen Bonus',()=>{
+ const {M}=app(),p=rewardPolicy(2,300);let a=M.appendWithReward(M.empty('a'),wine(),p);
+ assert.equal(M.rewardState(a,p).needed,300);assert.equal(M.rewardState(a,p).credit,0);
+ a=M.appendWithReward(a,{...pay('wine-payment-bonus',300),createdAt:'2026-10-09T12:01:00Z'},p);
+ assert.equal(a.bookings.filter(b=>b.type==='bonus').length,1);assert.equal(M.rewardState(a,p).credit,300);
+});

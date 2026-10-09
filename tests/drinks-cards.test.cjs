@@ -29,6 +29,7 @@ async function fixture(options={}){
     book:async(id,booking,sig)=>{books.push({id,booking:clone(booking),sig});if(gate){const g=gate;gate=null;await g;}if(fail){const e=fail;fail=null;throw e;}
       cache.set(id,clone(accounts.get(id)));if(JSON.stringify(accounts.get(id).pin)!==sig)throw Object.assign(new Error('PIN wurde geändert.'),{code:'pinChanged'});
       const value=options.policy?M.appendWithReward(accounts.get(id),booking,options.policy):M.append(accounts.get(id),booking);accounts.set(id,value);cache.set(id,clone(value));if(loseReply){loseReply=false;throw new Error('Antwort verloren');}return clone(value);}};
+  S.bookMany=async(id,entries,sig)=>{const value=entries.reduce((a,b)=>M.append(a,b),accounts.get(id));for(const booking of entries)books.push({id,booking:clone(booking),sig});accounts.set(id,value);cache.set(id,clone(value));return clone(value);};
   context.DrinksStore=S;context.document.readyState='loading';vm.runInContext(source('js/features/drinks/drinks-rewards.js'),context);vm.runInContext(source('js/features/drinks/drinks.js'),context);await context.Drinks.open();
   const card=id=>nodes['dr-members'].children.find(n=>n.dataset.drCard===id);
   const button=(id,action)=>descendants(card(id)).find(n=>n.dataset.drCardAction===action);
@@ -47,7 +48,7 @@ test('Karten zeigen Namen und Betrag; ein Tippen speichert ohne Kontowechsel',as
 });
 test('Drei schnelle Tipps werden genau dreimal gespeichert, auch bei unterschiedlichen Mitgliedern',async()=>{
   const f=await fixture(),release=f.hold();f.click('a','add');f.click('a','add');f.click('b','add');
-  assert.match(f.status('a'),/2 Striche/);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
+  assert.match(f.status('a'),/2 Getränke/);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
   release();await wait(()=>f.status('b')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,2);assert.equal(f.accounts.get('b').bookings.length,1);
   assert.equal(new Set(f.books.map(b=>b.booking.id)).size,3);assert.equal(f.context.Drinks.beforeView('attendanceView'),true);
 });
@@ -138,4 +139,33 @@ test('PIN-Sperre verliert weder Sammelentwurf noch die Nummer einer unklaren Kor
   f.nodes['dr-add'].handlers.click();f.loseReply();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.nodes['dr-error'].textContent.includes('Antwort verloren'));
   f.context.document.hidden=true;f.documentEvents.visibilitychange();f.context.document.hidden=false;assert.equal(f.root.dataset.screen,'pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-today-undo'].disabled);
   f.nodes['dr-today-undo'].handlers.click();await wait(()=>!f.nodes['dr-save'].disabled);assert.equal(f.books[0].booking.id,f.books[1].booking.id);assert.match(f.nodes['dr-draft-count'].textContent,/1 neue/);assert.equal(f.M.totals(f.accounts.get('a')).count,4);
+});
+
+test('Wein wird mit einem Tippen für 3 Euro auf derselben Karte gespeichert und respektiert PIN',async()=>{
+ const f=await fixture({pin:true});f.click('a','wine');await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.books.length,0);
+ f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.books[0].booking.drink,'wine');assert.equal(f.M.totals(f.accounts.get('a')).balance,300);
+ assert.equal(f.root.dataset.screen,'members');
+});
+test('Bier und Wein sammeln gemeinsam; nur Bier wird zur Fassanzeige und Wein lässt sich separat abziehen',async()=>{
+ const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+ for(let i=0;i<5;i++)f.nodes['dr-add'].handlers.click();for(let i=0;i<3;i++)f.nodes['dr-wine-add'].handlers.click();
+ f.nodes['dr-wine-minus'].handlers.click();assert.match(f.nodes['dr-draft-amount'].textContent,/13,50/);
+ assert.equal(f.nodes['dr-beers'].children.length,3);assert.equal(f.nodes['dr-beers'].children[0].className,'dr-keg');assert.equal(f.nodes['dr-beers'].children[1].textContent,'🍷');
+ assert.equal(f.books.length,0);f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');
+ assert.equal(f.M.totals(f.accounts.get('a')).balance,1350);assert.equal(f.M.totals(f.accounts.get('a')).count,7);assert.equal(f.books.length,2);
+});
+test('Heutiger Wein zeigt die passende Rücknahme und korrigiert 3 Euro statt 1,50 Euro',async()=>{
+ const f=await fixture();f.click('a','wine');await wait(()=>f.status('a')==='Gespeichert ✓');await wait(()=>!f.button('a','account').disabled);
+ f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+ assert.match(f.nodes['dr-today-undo'].textContent,/Wein.*3,00/);f.nodes['dr-wine-add'].handlers.click();
+ f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.books.length===2&&!f.nodes['dr-add'].disabled);
+ assert.equal(f.books[1].booking.cents,300);assert.equal(f.books[1].booking.drink,'wine');assert.equal(f.M.totals(f.accounts.get('a')).balance,0);assert.match(f.nodes['dr-draft-count'].textContent,/1 Wein/);
+});
+
+test('Hauptseite zeigt Wein als Glas und Bier als Fass; heutige Rücknahme funktioniert direkt auf der Karte',async()=>{
+ const f=await fixture();f.accounts.set('a',f.M.append(f.M.append(f.M.empty('a'),{id:'main-beer-001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T11:00:00Z'}),{id:'main-wine-001',type:'drinks',drink:'wine',count:2,cents:600,createdAt:'2026-10-09T11:01:00Z'}));
+ f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);f.nodes['dr-cancel'].handlers.click();
+ const glasses=descendants(f.card('a')).find(n=>n.className==='dr-member-glasses');assert.equal(glasses.children.length,3);assert.equal(glasses.children[0].className,'dr-keg');assert.equal(glasses.children[1].textContent,'🍷');
+ f.click('a','undo');await wait(()=>f.root.dataset.screen==='members'&&f.books.length===1);assert.equal(f.books[0].booking.cents,300);assert.equal(f.M.totals(f.accounts.get('a')).balance,1050);
+ assert.equal(glasses.children.filter(n=>n.textContent==='🍷').length,1);
 });

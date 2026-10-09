@@ -56,3 +56,16 @@ Mitgliedsbestätigung und kein automatischer Zahlungsnachweis.
 
 Getränkekonten sind nicht Teil des bisherigen JSON-Anwendungsbackups. Für eine
 vollständige Sicherung den gesamten OneDrive-Unterordner Getraenke sichern.
+
+## Ergänzung vom 09.10.2026 · Version 2026.10.09.10
+
+- Wein als eigene Kategorie mit 300 Cent pro Glas; bisherige Bierstriche bleiben bei 150 Cent. Alte Buchungen werden nicht umgeschrieben.
+- Direkte Mitgliedskarten zeigen heutige Bierstriche/Fässer und Weingläser. Weinbuchung und heutige Rücknahme sind auf der Getränke-Hauptseite bedienbar; freiwillige PIN wird berücksichtigt.
+- Bier und Wein können gemeinsam vorgemerkt werden. Gemischte Sammlungen werden atomar in einer OneDrive-Dateiversion gespeichert und mit denselben Buchungsnummern erneut geprüft.
+- Korrekturen verwenden den Preis des ursprünglichen Getränks. Bezahlte Beträge und verbrauchtes Bonusguthaben werden als Guthaben zurückgegeben. Der Bonus zählt weiterhin tatsächliche Zahlungen; Wein für 3 Euro entspricht zwei Einheiten à 1,50 Euro.
+- Verschlüsselte Handyansichten enthalten die Getränkekategorie ohne Buchungs- oder Mitgliederkennung.
+- Bierdeckel-Symbol mit regulären, Apple- und maskierbaren PNG-Icons. Die erste QR-Ansicht zeigt eine Installationshilfe. Android bietet den nativen Dialog nach ausdrücklichem Tippen an, sofern verfügbar; iOS zeigt die Schritte über Teilen. Kein automatisches Installieren oder Anfordern von Benachrichtigungen.
+- Persönliche Installationslinks werden nach Nutzeraktion ausschließlich auf dem eigenen Handy gespeichert. Öffentliche Manifeste enthalten keine Schlüssel. Erinnerungen lassen sich deaktivieren, ohne den gespeicherten Installationslink zu entfernen.
+- `node --test tests/*.test.cjs`: 188 Tests bestanden. Abgedeckt sind gemischte Preise, Tageskorrekturen, Bonus, atomare Speicherung bei Konflikten/verlorenen Antworten, direkte Karten und Installationsabläufe. Keine neue Prüfung auf physischen iOS-/Android-Geräten durchgeführt.
+
+- Dankesdialog schließt nach 3 Sekunden automatisch (mit Bonus nach 4,5 Sekunden), entfernt das Symbol und kehrt zur Getränke-Hauptseite zurück. Vorzeitiges Schließen und Verbergen der App lösen die Rückkehr höchstens einmal aus.

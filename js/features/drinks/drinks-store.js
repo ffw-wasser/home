@@ -162,6 +162,12 @@
     // Publishing failure must never turn a confirmed ledger write into a failed payment.
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
+  async function bookMany(memberId,bookings,pinSignature,expectedSource=null){
+    if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
+    if(!Array.isArray(bookings)||!bookings.length||bookings.length>2||bookings.some(b=>b?.type!=='drinks'))throw new Error('Ungültige Getränkesammlung.');
+    const policy=await rewards(expectedSource),account=await mutate(memberId,a=>bookings.reduce((next,b)=>M.appendWithReward(next,b,policy),a),pinSignature,expectedSource);
+    try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
+  }
   async function adminPaypalPayment(memberId,booking){
     if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');
     if(booking?.type!=='payment'||booking.method!=='paypal'||booking.confirmation!=='admin')throw new Error('Ungültiger PayPal-Eingang.');
@@ -196,5 +202,5 @@
     while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);for(const file of page.value||[])if(file.file&&/^handy-[a-f0-9]{64}\.json$/.test(file.name)){const record=await readMobileFile(file.name);if(record?.data?.memberId)ids.push(String(record.data.memberId));}url=page['@odata.nextLink'];}
     return ids;
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,adminPaypalPayment,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
 })(typeof window==='undefined'?globalThis:window);

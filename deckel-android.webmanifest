@@ -27,5 +27,6 @@
       "purpose": "maskable"
     }
   ],
-  "id": "./deckel.html"
+  "id": "./deckel.html",
+  "start_url": "./deckel.html"
 }

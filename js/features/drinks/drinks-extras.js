@@ -3,7 +3,8 @@
   'use strict';
   let reminderRow=null,pushBusy=false;const pushIntents=new Map();
   let timer,reminders=[],onDone=null,paypalRow=null,paypalPending=null,paypalBusy=false;
-  function finishThanks(){clearTimeout(timer);const dialog=byId('drinksThanksDialog');dialog?.close();const fn=onDone;onDone=null;fn?.();}
+  function finishThanks(){clearTimeout(timer);const dialog=byId('drinksThanksDialog');if(dialog?.open)dialog.close();dialog?.remove();const fn=onDone;onDone=null;fn?.();}
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)finishThanks();});
   const euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   function celebrate(bonus=0,done=null){
     let dialog=byId('drinksThanksDialog');
@@ -13,7 +14,7 @@
       document.body.append(dialog);dialog.querySelector('button').onclick=finishThanks;dialog.addEventListener('cancel',event=>{event.preventDefault();finishThanks();});
     }
     const message=dialog.querySelector('[data-thanks-bonus]');message.hidden=!bonus;message.textContent=bonus?'Treuebonus: '+euro(bonus)+' für deine nächsten Getränke!':'';
-    onDone=done;clearTimeout(timer);dialog.showModal();timer=setTimeout(finishThanks,5500);
+    onDone=done;clearTimeout(timer);dialog.showModal();timer=setTimeout(finishThanks,bonus?4500:3000);
   }
   function text(row){return `Hallo ${row.name},\n\nauf deinem Getränkedeckel bei der Feuerwehr Wasser sind aktuell ${euro(row.cents)} offen. Du kannst den Betrag im Gerätehaus bar oder per PayPal begleichen.\n\nPayPal: ${DrinksModel.paypalUrl(row.cents)}\nDie Verwaltung trägt den PayPal-Eingang nach Prüfung ein. Bitte bei der Zahlung deinen Namen angeben.\n\nVielen Dank!\nFeuerwehr Wasser`;}
   async function load(){
