@@ -87,3 +87,24 @@ https://developer.apple.com/documentation/usernotifications/sending-web-push-not
 
 Vor Nutzung: echten Empfang auf iPhone/Android, Öffnen des korrekten Deckels, Abmeldung und Sperrbildschirm prüfen.
 Fokusmodus, Handy-Einstellungen und Browser dürfen Push unterdrücken. Gerätetest ist durch Node-/Browser-Mocks nicht ersetzbar.
+
+## Versanddiagnose
+
+Wenn ein Gerät angemeldet bleibt, aber der Versand nicht angenommen wird, den aktuellen Worker-Code veröffentlichen und in Cloudflare unter Observability die Worker-Logs für einen eigenen manuellen Test öffnen. Der Worker protokolliert ausschließlich `Deckel-Push abgelehnt` mit HTTP-Status und bekannten Protokollgründen oder `Deckel-Push Netzwerkfehler` mit `timeout`/`network`, einem bekannten Fehlernamen und einer festen Fehlerkategorie. Rohe Fehlermeldungen, Geräte-Endpunkte, zufällige Kontokennungen, Namen, Beträge und Schlüssel werden nicht in diese Diagnoseausgaben aufgenommen. Nach Abschluss der Diagnose Workers Logs wieder deaktivieren.
+
+404/410 entfernt abgelaufene Geräte; das eigene Handy dann über „Erinnerungen deaktivieren“ und „Erinnerungen erlauben“ neu anmelden. Bei 401/403 den protokollierten Grund prüfen, bevor Schlüssel verändert werden. Einen unbekannten oder fehlgeschlagenen Versand über „Versandstatus erneut prüfen“ prüfen; neue Test-Erinnerungen frühestens nach einer Minute starten. Annahme durch den Push-Dienst ist noch keine Empfangsbestätigung auf dem Handy.
+
+### Cloudflare-Kompatibilität beim Versand
+
+Der Versand verwendet `redirect: "manual"`. Die Cloudflare-Laufzeit unterstützt `redirect: "error"` nicht und wirft damit bereits vor der Netzwerkanfrage einen TypeError. Weiterleitungen (HTTP 3xx) zählen weiterhin als fehlgeschlagener Versand; Zugangsdaten werden nicht an andere Ziele weitergereicht. Nach manueller Aktualisierung des Workers mit Deploy einen neuen Versandversuch starten.
+
+## Hinweis am Home-Bildschirm-Symbol
+
+Eine neue Erinnerung setzt auf Geräten mit Badging API die Zahl **1**. Mehrere Erinnerungen ersetzen denselben Hinweis; die Zahl zeigt einen ungelesenen Hinweis, keine offenen Striche oder Beträge. Beim Antippen der Nachricht wird die Zahl entfernt. Beim Öffnen über das App-Symbol wird sie nach erfolgreichem Laden des sichtbaren Deckels entfernt; die zugehörige Deckel-Benachrichtigung wird dabei ebenfalls geschlossen. Ein fehlgeschlagener Datenabruf quittiert den Hinweis nicht.
+
+Auf iPhone/iPad ab iOS/iPadOS 16.4 benötigt dies eine zum Home-Bildschirm hinzugefügte Web-App und erlaubte Mitteilungen. Unter Einstellungen → Mitteilungen → Mein Deckel müssen Kennzeichen erlaubt sein. Chrome auf Android unterstützt die Badging API nicht; installierte Web-Apps erhalten den vom System angezeigten Benachrichtigungspunkt. Eine numerische Anzeige kann dort nicht durch unsere Web-App vorgegeben werden. Ohne Badge-Unterstützung bleiben Push-Erinnerungen verfügbar.
+
+Die Symbolanzeige ist lokal und benötigt keine Änderung am Cloudflare-Worker oder an seinen Schlüsseln. Nach einem Website-Update den Handy-Deckel mit Internetverbindung öffnen, schließen und erneut öffnen, damit der neue Service Worker aktiv wird. Anschließend eine echte Erinnerung senden und prüfen, ob Zahl/Punkt erscheint und beim Öffnen verschwindet.
+
+https://webkit.org/blog/14112/badging-for-home-screen-web-apps/
+https://developer.chrome.com/docs/capabilities/web-apis/badging-api

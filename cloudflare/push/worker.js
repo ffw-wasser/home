@@ -59,9 +59,29 @@ export default {
     await env.DB.prepare("INSERT INTO sends(id,alias,status,accepted,failed,created_at) VALUES(?,?,'pending',0,0,?)").bind(data.requestId,data.alias,now).run();
     let accepted=0,failed=0;
     for(const device of devices){
-     try{const url=endpoint(device.endpoint);const response=await fetch(url,{method:'POST',headers:{Authorization:await vapid(env,url),TTL:'86400',Urgency:'normal',Topic:'deckel-reminder'},body:null,redirect:'error',signal:AbortSignal.timeout(8000)});
-      if(response.ok)accepted++;else {failed++;if([404,410].includes(response.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,data.alias).run();}
-     }catch{failed++;}
+     try{const url=endpoint(device.endpoint);const response=await fetch(url,{method:'POST',headers:{Authorization:await vapid(env,url),TTL:'86400',Urgency:'normal',Topic:'deckel-reminder'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});
+      if(response.ok)accepted++;else {
+       failed++;
+       // Only protocol errors, never endpoints, account IDs or credentials.
+       let reason='';try{const error=await response.json();const known=['BadAuthorizationHeader','BadJwtToken','BadVapidPublicKey','BadTtl','BadTopic','BadUrgency','BadCryptoKey','BadEncryption','BadContentEncoding','BadRequest','PayloadTooLarge','ExpiredToken','Unregistered','NotFound','Forbidden','TooManyRequests'];if(known.includes(error.reason))reason=error.reason;}catch{}
+       console.warn('Deckel-Push abgelehnt',JSON.stringify({httpStatus:response.status,...(reason?{reason}:{})}));
+       if([404,410].includes(response.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,data.alias).run();
+      }
+     }catch(error){
+      failed++;
+      const knownNames=['Error','TypeError','SyntaxError','DataError','OperationError','InvalidAccessError','NotSupportedError','TimeoutError','AbortError'];
+      const message=String(error?.message||'');
+      const reason=!/^B[A-Za-z0-9_-]{86}$/.test(env.VAPID_PUBLIC_KEY)?'public-key-format':
+       /header/i.test(message)?'header':
+       /JWK|key data|private key/i.test(message)?'signing-key':
+       /timeout.*not a function/i.test(message)?'timeout-api':
+       /network connection lost/i.test(message)?'connection-lost':
+       /DNS|resolve hostname|name resolution/i.test(message)?'dns':
+       /TLS|SSL|certificate/i.test(message)?'tls':
+       /redirect/i.test(message)?'redirect':
+       /fetch failed/i.test(message)?'fetch-failed':'unknown';
+      console.warn('Deckel-Push Netzwerkfehler',JSON.stringify({code:['TimeoutError','AbortError'].includes(error?.name)?'timeout':'network',name:knownNames.includes(error?.name)?error.name:'unknown',reason}));
+     }
     }
     const status=accepted?'accepted':'failed';await env.DB.prepare('UPDATE sends SET status=?,accepted=?,failed=? WHERE id=?').bind(status,accepted,failed,data.requestId).run();
     await env.DB.prepare('DELETE FROM sends WHERE created_at<?').bind(now-30*86400000).run();

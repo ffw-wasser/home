@@ -6,10 +6,10 @@ async function fixture(){
  const DB={prepare,async batch(stmts){db.exec('BEGIN');try{const result=stmts.map(s=>s.sync());db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}};
  const keys=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
  const env={DB,ADMIN_TOKEN:'a'.repeat(64),INVITE_SECRET:'b'.repeat(64),VAPID_PRIVATE_JWK:JSON.stringify(await webcrypto.subtle.exportKey('jwk',keys.privateKey)),VAPID_PUBLIC_KEY:Buffer.from(await webcrypto.subtle.exportKey('raw',keys.publicKey)).toString('base64url')};
- const sends=[],clock={now:Date.now()},ctx=vm.createContext({crypto:webcrypto,TextEncoder,URL,Request,Response,AbortSignal,JSON,btoa,atob,Uint8Array,Date:class extends Date{static now(){return clock.now;}},fetch:async(url,options)=>{sends.push({url,options});return new Response(null,{status:ctx.pushStatus||201});}});
+ const sends=[],warnings=[],clock={now:Date.now()},ctx=vm.createContext({console:{warn:(...args)=>warnings.push(args)},crypto:webcrypto,TextEncoder,URL,Request,Response,AbortSignal,JSON,btoa,atob,Uint8Array,Date:class extends Date{static now(){return clock.now;}},fetch:async(url,options)=>{if(!['manual','follow'].includes(options.redirect))throw new TypeError('Invalid redirect value, must be one of follow or manual');sends.push({url,options});if(ctx.pushFailure)throw ctx.pushFailure;return new Response(ctx.pushError?JSON.stringify(ctx.pushError):null,{status:ctx.pushStatus||201});}});
  vm.runInContext(fs.readFileSync(require.resolve('../cloudflare/push/worker.js'),'utf8').replace('export default {','globalThis.worker={'),ctx);
  async function call(path,data={},token=env.ADMIN_TOKEN,origin='https://ffw-wasser.github.io') {const r=await ctx.worker.fetch(new Request('https://test.account.workers.dev'+path,{method:path==='/health'?'GET':'POST',headers:{Origin:origin,Authorization:'Bearer '+token,'Content-Type':'application/json'},...(path==='/health'?{}:{body:JSON.stringify(data)})}),env);return {status:r.status,data:await r.json(),headers:r.headers};}
- const alias='1'.repeat(32),revision='revision-old-0001';return {db,env,ctx,clock,keys,sends,call,alias,revision};
+ const alias='1'.repeat(32),revision='revision-old-0001';return {db,env,ctx,clock,keys,sends,warnings,call,alias,revision};
 }
 test('Push: Geräte-Anmeldung erfordert den eingeschränkten Zugang; Admin-Endpunkte sind geschützt',async()=>{
  const f=await fixture(),{call,alias,revision}=f;
@@ -25,7 +25,7 @@ test('Push: Geräte-Anmeldung erfordert den eingeschränkten Zugang; Admin-Endpu
 test('Manueller Versand: leere Payload, gültige VAPID-Signatur, Dublettenschutz und Cooldown',async()=>{
  const f=await fixture(),{call,alias,revision,sends}=f;const {data}=await call('/admin/account',{alias,revision});
  await call('/subscribe',{alias,endpoint:'https://web.push.apple.com/fixture'},data.capability);
- const request={alias,requestId:'request-00001'};const result=await call('/admin/send',request);assert.equal(result.data.accepted,1);assert.equal(sends.length,1);assert.equal(sends[0].options.body,null);assert.equal(sends[0].options.redirect,'error');
+ const request={alias,requestId:'request-00001'};const result=await call('/admin/send',request);assert.equal(result.data.accepted,1);assert.equal(sends.length,1);assert.equal(sends[0].options.body,null);assert.equal(sends[0].options.redirect,'manual');
  const auth=sends[0].options.headers.Authorization;const token=auth.match(/^vapid t=([^,]+), k=/)[1],parts=token.split('.');const claims=JSON.parse(Buffer.from(parts[1],'base64url'));assert.equal(claims.aud,'https://web.push.apple.com');assert.equal(Buffer.from(parts[2],'base64url').length,64);assert.equal(await webcrypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},f.keys.publicKey,Buffer.from(parts[2],'base64url'),new TextEncoder().encode(parts.slice(0,2).join('.'))),true);
  assert.equal((await call('/admin/send',request)).data.duplicate,true);assert.equal(sends.length,1);assert.equal((await call('/admin/send',{alias,requestId:'request-00002'})).status,429);
  f.clock.now+=61000;f.ctx.pushStatus=410;const expired=await call('/admin/send',{alias,requestId:'request-00002'});assert.equal(expired.data.accepted,0);assert.equal((await call('/admin/status',{alias})).data.devices,0);f.db.close();
@@ -61,4 +61,47 @@ test('Service Worker zeigt einen neutralen Hinweis und holt den persönlichen Li
  vm.runInContext(fs.readFileSync(require.resolve('../service-worker.js'),'utf8'),ctx);let promise;
  events.push({waitUntil:p=>promise=p});await promise;assert.match(shown[0].options.body,/Dein Deckel/);assert.ok(!JSON.stringify(shown).includes('a'.repeat(64)));assert.equal(shown[0].options.data,undefined);
  events.notificationclick({notification:{close(){}},waitUntil:p=>promise=p});await promise;assert.deepEqual(opened,[url]);
+});
+
+test('Push-Diagnose protokolliert HTTP-Status und bekannte Gründe ohne geheime Werte',async()=>{
+ const f=await fixture(),{call,alias,revision,warnings}=f,cap=(await call('/admin/account',{alias,revision})).data.capability;
+ const endpoint='https://web.push.apple.com/secret-endpoint';await call('/subscribe',{alias,endpoint},cap);
+ f.ctx.pushStatus=403;f.ctx.pushError={reason:'BadJwtToken'};
+ const result=await call('/admin/send',{alias,requestId:'diagnostic-0001'});assert.equal(result.data.accepted,0);assert.equal(result.data.failed,1);
+ assert.deepEqual(JSON.parse(warnings[0][1]),{httpStatus:403,reason:'BadJwtToken'});
+ const log=JSON.stringify(warnings);for(const secret of [alias,endpoint,cap,f.env.ADMIN_TOKEN,f.env.VAPID_PRIVATE_JWK])assert.ok(!log.includes(secret));
+ assert.equal((await call('/admin/status',{alias})).data.devices,1);
+ const before=warnings.length;await call('/admin/send',{alias,requestId:'diagnostic-0001'});assert.equal(warnings.length,before);
+ f.clock.now+=61000;f.ctx.pushError={reason:'secret-endpoint'};await call('/admin/send',{alias,requestId:'diagnostic-0002'});assert.deepEqual(JSON.parse(warnings.at(-1)[1]),{httpStatus:403});f.db.close();
+});
+test('Push-Diagnose unterscheidet Timeout ohne Netzwerkdetails oder Geräteadressen zu protokollieren',async()=>{
+ const f=await fixture(),{call,alias,revision,warnings}=f,cap=(await call('/admin/account',{alias,revision})).data.capability;
+ await call('/subscribe',{alias,endpoint:'https://web.push.apple.com/secret-endpoint'},cap);
+ f.ctx.pushFailure=Object.assign(new Error('secret-endpoint'),{name:'TimeoutError'});
+ const result=await call('/admin/send',{alias,requestId:'timeout-diagnostic'});assert.equal(result.data.failed,1);
+ assert.deepEqual(JSON.parse(warnings[0][1]),{code:'timeout',name:'TimeoutError',reason:'unknown'});assert.ok(!JSON.stringify(warnings).includes('secret-endpoint'));f.db.close();
+});
+test('Push-Diagnose benennt Schlüssel- und Headerfehler ohne rohe Fehlermeldungen zu speichern',async()=>{
+ const f=await fixture(),{call,alias,revision,warnings}=f,cap=(await call('/admin/account',{alias,revision})).data.capability;
+ await call('/subscribe',{alias,endpoint:'https://web.push.apple.com/secret-endpoint'},cap);
+ f.ctx.pushFailure=new TypeError('Invalid header value secret-endpoint '+f.env.ADMIN_TOKEN);
+ await call('/admin/send',{alias,requestId:'header-diagnostic'});
+ assert.deepEqual(JSON.parse(warnings.at(-1)[1]),{code:'network',name:'TypeError',reason:'header'});
+ f.clock.now+=61000;f.env.VAPID_PUBLIC_KEY+='\n';
+ await call('/admin/send',{alias,requestId:'key-diagnostic'});
+ assert.equal(JSON.parse(warnings.at(-1)[1]).reason,'public-key-format');
+ f.clock.now+=61000;f.env.VAPID_PUBLIC_KEY=f.env.VAPID_PUBLIC_KEY.trim();f.env.VAPID_PRIVATE_JWK='invalid-json';
+ const before=f.sends.length;await call('/admin/send',{alias,requestId:'private-diagnostic'});
+ assert.equal(f.sends.length,before);assert.equal(JSON.parse(warnings.at(-1)[1]).name,'SyntaxError');
+ const log=JSON.stringify(warnings);for(const secret of ['secret-endpoint',f.env.ADMIN_TOKEN,'invalid-json',alias,cap])assert.ok(!log.includes(secret));f.db.close();
+});
+
+test('Push: Weiterleitungen bleiben erfolglos und werden nicht mit Zugangsdaten verfolgt',async()=>{
+ const f=await fixture(),{call,alias,revision,warnings}=f,cap=(await call('/admin/account',{alias,revision})).data.capability;
+ await call('/subscribe',{alias,endpoint:'https://web.push.apple.com/secret-endpoint'},cap);
+ f.ctx.pushStatus=302;
+ const result=await call('/admin/send',{alias,requestId:'redirect-diagnostic'});
+ assert.equal(result.data.accepted,0);assert.equal(result.data.failed,1);assert.equal(f.sends.length,1);
+ assert.equal(f.sends[0].options.redirect,'manual');assert.deepEqual(JSON.parse(warnings[0][1]),{httpStatus:302});
+ assert.equal((await call('/admin/status',{alias})).data.devices,1);f.db.close();
 });
