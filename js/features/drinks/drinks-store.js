@@ -70,6 +70,10 @@
       let item;
       try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return {account:M.empty(memberId),item:null};throw e;}
       if(!item.file||!item.eTag)throw new Error('Die Getränkedatei besitzt keine gültige Dateiversion.');
+      assertCurrent(ctx);
+      const known=cache.get(String(memberId));
+      // Dateiversion frisch prüfen; bereits geladene, unveränderte Konten nicht erneut herunterladen.
+      if(known?.eTag===item.eTag&&known.account.pinChoiceVersion===1)return {account:clone(known.account),item};
       const data=await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json();
       const after=await(await odFetch(itemUrl(ctx.root,item.id)+'?$select=id,eTag')).json();
       assertCurrent(ctx);

@@ -75,9 +75,10 @@
     el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':draft?'Fertig · '+draft+' Strich'+(draft===1?'':'e')+' speichern':'Fertig';
     el('cash-confirm').textContent=pending?.type==='payment'?'Speicherung erneut prüfen':'Geld in die Kasse gelegt';el('paypal-confirm').textContent='Fertig · Eingang wird geprüft';
     root.querySelectorAll('[data-dr-member]').forEach(button=>button.disabled=busy||!loaded);
-    renderRanking();touch();
+    if(currentScreen==='members')renderRanking();touch();
   }
   async function run(action){if(busy)return;busy=true;message('');render();try{await action();}catch(error){
+    if(currentScreen==='opening'){screen('members');el('status').textContent='Konto konnte nicht geöffnet werden. Bitte deinen Namen erneut wählen.';}
     if(['pinChanged','balanceChanged','conflict'].includes(error.code)||[400,403,404].includes(error.status))pending=null;
     if(error.code==='pinChanged'){signature='';el('pin').value='';account=await S.read(memberId).catch(()=>account);if(account?.pin)screen('pin');else{signature=JSON.stringify(null);screen('account');}}
     if(error.code==='balanceChanged'){account=await S.read(memberId).catch(()=>account);payment=0;screen('account');}
@@ -181,7 +182,7 @@
     el('members').addEventListener('click',event=>{
       const button=event.target.closest('[data-dr-member]');if(!button||busy||!loaded)return;
       memberId=button.dataset.drMember;draft=0;account=null;signature='';el('pin').value='';
-      el('status').textContent='Getränkekonto wird geöffnet …';
+      screen('opening');
       run(async()=>{account=await S.read(memberId);if(account.pin){screen('pin');}else{signature=JSON.stringify(null);screen('account');}el('status').textContent='Aktuell aus OneDrive geladen.';}).then(()=>{if(currentScreen==='pin')el('pin').focus();});
     });
     el('pin-form').addEventListener('submit',event=>{event.preventDefault();submitPin();});
