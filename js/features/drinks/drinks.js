@@ -3,7 +3,7 @@
   'use strict';
   const M=global.DrinksModel,S=global.DrinksStore;
   const euro=cents=>(cents/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  let root,people=[],account=null,memberId='',signature='',draft=0,method='cash',payment=0,pending=null,busy=false,loaded=false,currentScreen='members',lockAfterRun=false,bookedNotice='',timer,attempts=new Map(),openNumber=0;
+  let root,people=[],account=null,memberId='',signature='',draft=0,method='cash',payment=0,pending=null,busy=false,pinChecking=false,loaded=false,currentScreen='members',lockAfterRun=false,bookedNotice='',timer,attempts=new Map(),openNumber=0;
   const el=id=>byId('dr-'+id);
   const name=id=>people.find(p=>p.id===id)?.name||'Mitglied';
   const message=text=>{if(el('error'))el('error').textContent=text||'';};
@@ -17,7 +17,7 @@
   function touch(){clearTimeout(timer);if(memberId&&signature&&!busy)timer=setTimeout(lockAccount,60000);}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
   function clearMobileQr(){if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}}
-  function resetSession(){clearTimeout(timer);clearMobileQr();memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();updatePinDots();}
+  function resetSession(){clearTimeout(timer);clearMobileQr();memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();setPinChecking(false);}
   function reset(){openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
@@ -61,7 +61,7 @@
     root.querySelectorAll('[data-dr-pay]').forEach(b=>{b.disabled=busy||Boolean(pending)||projected<=0;b.textContent=(draft?'Speichern & ':'')+(b.dataset.drPay==='cash'?'alles bar':'alles per PayPal');});
     root.querySelectorAll('[data-dr-payment]').forEach(e=>e.textContent=euro(payment));
     root.querySelectorAll('[data-dr-rest]').forEach(e=>e.textContent='Danach bleiben '+euro(Math.max(0,totals.balance-payment))+' offen.');
-    el('paypal-change').disabled=busy||Boolean(pending);el('pin-back').disabled=busy||Boolean(pending);el('available').textContent=euro(totals.balance);
+    el('paypal-change').disabled=busy||Boolean(pending);el('pin').disabled=busy;el('pin-back').disabled=busy||Boolean(pending);el('available').textContent=euro(totals.balance);
     root.querySelectorAll('[data-dr-amount]').forEach(b=>b.disabled=busy||totals.balance<=0||(b.dataset.drAmount!=='all'&&Number(b.dataset.drAmount)>totals.balance));
     el('cash-confirm').disabled=busy;el('paypal-confirm').disabled=busy;el('pay-submit').disabled=busy;
     el('cash-cancel').disabled=busy||Boolean(pending);el('paypal-cancel').disabled=busy||Boolean(pending);el('refresh').disabled=busy;
@@ -138,15 +138,24 @@
     finally{button.disabled=false;}
   }
   function finishSession(){resetSession();screen('members');render();renderPeople();window.scrollTo({top:0,behavior:'smooth'});}
-  function updatePinDots(){const length=el('pin')?.value.length||0;root?.querySelectorAll('.dr-pin-dot').forEach((node,i)=>node.classList.toggle('is-filled',i<length));if(el('pin-progress'))el('pin-progress').textContent=length+' von 4 Ziffern eingegeben';}
+  function updatePinDots(){const length=pinChecking?4:(el('pin')?.value.length||0);root?.querySelectorAll('.dr-pin-dot').forEach((node,i)=>node.classList.toggle('is-filled',i<length));if(el('pin-progress'))el('pin-progress').textContent=pinChecking?'Vier Ziffern eingegeben. PIN wird geprüft.':length+' von 4 Ziffern eingegeben';}
+  function setPinChecking(value){
+    pinChecking=Boolean(value);
+    if(el('pin-check-status'))el('pin-check-status').hidden=!pinChecking;
+    if(el('keypad'))el('keypad').setAttribute('aria-busy',String(pinChecking));
+    updatePinDots();
+  }
   function submitPin(){
-    if(busy||currentScreen!=='pin')return;const pin=el('pin').value;if(!/^\d{4}$/.test(pin))return;el('pin').value='';updatePinDots();
+    if(busy||pinChecking||currentScreen!=='pin')return;
+    const pin=el('pin').value;if(!/^\d{4}$/.test(pin))return;
+    // PIN sofort aus dem Eingabefeld entfernen; vier Punkte während der Prüfung beibehalten.
+    el('pin').value='';setPinChecking(true);
     run(async()=>{
       const blocked=attempts.get(memberId);if(blocked?.until>Date.now())throw new Error('Zu viele PIN-Versuche. Bitte eine Minute warten.');
       account=await S.read(memberId);if(!account.pin)throw new Error('Deine Getränke-PIN ist noch nicht eingerichtet. Bitte die Mitgliederverwaltung ansprechen.');
       if(!await M.verifyPin(pin,account.pin)){const count=(blocked?.count||0)+1;attempts.set(memberId,{count:count>=5?0:count,until:count>=5?Date.now()+60000:0});throw new Error('Die PIN stimmt nicht.');}
       attempts.delete(memberId);signature=JSON.stringify(account.pin);screen(pending?.type==='payment'?method:'account');
-    });
+    }).finally(()=>setPinChecking(false));
   }
   function renderRecent(){
     const list=el('recent');if(!list)return;list.replaceChildren();
