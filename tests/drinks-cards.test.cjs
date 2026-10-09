@@ -169,3 +169,21 @@ test('Hauptseite zeigt Wein als Glas und Bier als Fass; heutige Rücknahme funkt
  f.click('a','undo');await wait(()=>f.root.dataset.screen==='members'&&f.books.length===1);assert.equal(f.books[0].booking.cents,300);assert.equal(f.M.totals(f.accounts.get('a')).balance,1050);
  assert.equal(glasses.children.filter(n=>n.textContent==='🍷').length,1);
 });
+async function payFixtureInFull(f){
+ f.click('a','pay');await wait(()=>f.root.dataset.screen==='amount');f.nodes['dr-amount'].value='7,50';
+ f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');
+ f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid'&&!f.nodes['dr-cash-confirm'].disabled);
+}
+test('Vollzahlung kehrt ohne Tippen nach 3 Sekunden zurück, auch wenn die Dankesanimation fehlt oder fehlschlägt',async()=>{
+ for(const failed of [false,true]){
+  const f=await fixture({balance:true});if(failed)f.context.DrinksExtras={celebrate(){throw Error('Animation unavailable');}};
+  await payFixtureInFull(f);assert.equal(f.M.totals(f.accounts.get('a')).balance,0);assert.equal(f.nodes['dr-error'].textContent,'');
+  f.advance(2999);assert.equal(f.root.dataset.screen,'paid');f.advance(1);assert.equal(f.root.dataset.screen,'members');assert.equal(f.books.length,1);
+ }
+});
+test('Ein alter Dankesabschluss schließt kein inzwischen geöffnetes Konto',async()=>{
+ const f=await fixture({balance:true});let done;f.context.DrinksExtras={celebrate(bonus,callback){done=callback;},dismiss(){}};
+ await payFixtureInFull(f);f.nodes['dr-paid-account'].handlers.click();f.advance(5000);done();assert.equal(f.root.dataset.screen,'account');
+ f.nodes['dr-cancel'].handlers.click();f.click('b','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+ done();assert.equal(f.root.dataset.screen,'account');
+});

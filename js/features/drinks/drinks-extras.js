@@ -113,6 +113,6 @@
     document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;byId('remindersSearch').oninput=renderReminders;byId('remindersOrder').onchange=renderReminders;
     const button=document.createElement('button');button.type='button';button.className='primary-button';button.textContent='Deckel und PayPal öffnen';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('drinksSettingsPaymentsCard').append(button);
   }
-  window.DrinksExtras={celebrate,loadReminders:load};
+  window.DrinksExtras={celebrate,dismiss:()=>{onDone=null;finishThanks();},loadReminders:load};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();

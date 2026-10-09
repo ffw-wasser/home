@@ -17,3 +17,7 @@ test('Verbergen der App schließt den Dank; neuer Dank erhält einen neuen Timer
  const f=fixture();let old=0,current=0;f.ctx.DrinksExtras.celebrate(0,()=>old++);f.advance(1000);f.ctx.DrinksExtras.celebrate(0,()=>current++);
  f.advance(2000);assert.equal(old,0);assert.equal(current,0);f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(current,1);assert.equal(f.dialog(),undefined);f.advance(10000);assert.equal(current,1);
 });
+test('Explizites Beenden entfernt Animation und Timer ohne den alten Abschluss erneut aufzurufen',()=>{
+ const f=fixture();let returned=0;f.ctx.DrinksExtras.celebrate(0,()=>returned++);f.ctx.DrinksExtras.dismiss();
+ assert.equal(f.dialog(),undefined);assert.equal(returned,0);f.advance(10000);assert.equal(returned,0);
+});

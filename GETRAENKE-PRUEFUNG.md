@@ -69,3 +69,9 @@ vollständige Sicherung den gesamten OneDrive-Unterordner Getraenke sichern.
 - `node --test tests/*.test.cjs`: 188 Tests bestanden. Abgedeckt sind gemischte Preise, Tageskorrekturen, Bonus, atomare Speicherung bei Konflikten/verlorenen Antworten, direkte Karten und Installationsabläufe. Keine neue Prüfung auf physischen iOS-/Android-Geräten durchgeführt.
 
 - Dankesdialog schließt nach 3 Sekunden automatisch (mit Bonus nach 4,5 Sekunden), entfernt das Symbol und kehrt zur Getränke-Hauptseite zurück. Vorzeitiges Schließen und Verbergen der App lösen die Rückkehr höchstens einmal aus.
+
+## Ergänzung · Version 2026.10.09.11
+
+- Der bisher dauerhaft angezeigte Danke-Hinweis in der Handyansicht verschwindet nach 3 Sekunden. Kontostand und Buchungen bleiben sichtbar. Aktualisieren desselben bezahlten Deckels startet den Hinweis nicht erneut; nach neuen offenen Beträgen und anschließender Begleichung erscheint er wieder kurz.
+- Die iPad-Zahlungsansicht hat einen eigenen Abschlusstimer: Die Rückkehr zur Getränke-Hauptseite hängt nicht mehr vom Laden oder Ausführen der Animation ab. Das Verlassen der Zahlungsansicht entfernt den alten Timer und eine noch offene Animation; alte Abschlüsse schließen kein neues Mitgliedskonto.
+- 193 automatisierte Prüfungen bestanden, einschließlich Zeitablauf, fehlender/fehlerhafter Animation, manueller Navigation, erneutem Bezahlen und Verbergen der Handyansicht. Keine neue Prüfung auf physischen Geräten.
