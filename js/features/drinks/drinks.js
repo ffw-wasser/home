@@ -3,20 +3,20 @@
   'use strict';
   const M=global.DrinksModel,S=global.DrinksStore;
   const euro=cents=>(cents/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  let root,people=[],account=null,memberId='',signature='',draft=0,method='cash',payment=0,pending=null,busy=false,loaded=false,currentScreen='members',lockAfterRun=false,timer,attempts=new Map(),openNumber=0;
+  let root,people=[],account=null,memberId='',signature='',draft=0,method='cash',payment=0,pending=null,busy=false,loaded=false,currentScreen='members',lockAfterRun=false,bookedNotice='',timer,attempts=new Map(),openNumber=0;
   const el=id=>byId('dr-'+id);
   const name=id=>people.find(p=>p.id===id)?.name||'Mitglied';
   const message=text=>{if(el('error'))el('error').textContent=text||'';};
-  function screen(value){currentScreen=value;root.querySelectorAll('[data-dr-screen]').forEach(e=>e.hidden=e.dataset.drScreen!==value);message('');touch();}
+  function screen(value){currentScreen=value;root.dataset.screen=value;root.querySelectorAll('[data-dr-screen]').forEach(e=>e.hidden=e.dataset.drScreen!==value);message('');touch();}
   function lockAccount(){
     clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
-    signature='';clearPinInputs();screen('pin');
+    signature='';clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
     message(pending?'Konto gesperrt. Nach deiner PIN-Eingabe dieselbe Buchung erneut prüfen.':draft?'Konto gesperrt. Deine '+draft+' ungespeicherten Striche bleiben bis zum Neuladen erhalten. PIN eingeben, um fortzufahren.':'Konto gesperrt. Bitte deine PIN erneut eingeben.');
   }
   function touch(){clearTimeout(timer);if(memberId&&signature&&!busy)timer=setTimeout(lockAccount,60000);}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
-  function resetSession(){clearTimeout(timer);memberId='';account=null;signature='';draft=0;payment=0;pending=null;if(el('pin'))el('pin').value='';clearPinInputs();}
+  function resetSession(){clearTimeout(timer);memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();updatePinDots();}
   function reset(){openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
@@ -46,21 +46,23 @@
   }
   function render(animate=false){
     const totals=account?M.totals(account):{balance:0,count:0};const reward=global.DrinksRewards?.render(account,draft)||{credit:0};const projected=totals.balance+Math.max(0,draft*M.PRICE-reward.credit);root.querySelectorAll('[data-dr-person]').forEach(e=>e.textContent=name(memberId));
+    renderRecent();root.querySelectorAll('[data-dr-booked-notice]').forEach(node=>{node.hidden=!bookedNotice;node.textContent=bookedNotice;});el('dock-summary').textContent=draft+' neue Striche · Danach offen: '+euro(projected);
     el('balance').textContent=euro(totals.balance);el('count').textContent=totals.count+' bisher gebuchte Getränke';el('draft-count').textContent=draft+' neue Striche'+(draft?' · Noch nicht gespeichert':'');el('draft-amount').textContent=euro(draft*M.PRICE);el('total').textContent=euro(projected);
     const beerRow=el('beers');beerRow.replaceChildren();
     for(let i=0;i<Math.floor(draft/5);i++){const image=document.createElement('img');image.className='dr-keg';image.src='assets/drinks/bierfass.webp';image.alt='';beerRow.append(image);}
     for(let i=0;i<draft%5;i++){const glass=document.createElement('span');glass.textContent='🍺';beerRow.append(glass);}
     if(animate)beerRow.lastElementChild?.classList.add('dr-beer-pop');
+    el('partial').disabled=busy||Boolean(pending)||projected<=0;root.querySelectorAll('[data-dr-digit],[data-dr-method],[data-dr-edit-amount]').forEach(b=>b.disabled=busy||Boolean(pending));
     el('minus').disabled=busy||Boolean(pending)||!draft;el('reset').disabled=busy||Boolean(pending)||!draft;el('add').disabled=busy||Boolean(pending);el('save').disabled=busy;el('cancel').disabled=busy||Boolean(pending);
-    root.querySelectorAll('[data-dr-pay]').forEach(b=>{b.disabled=busy||Boolean(pending)||projected<=0;b.textContent=(draft?'Speichern & ':'')+(b.dataset.drPay==='cash'?'bar bezahlen':'PayPal bezahlen');});
+    root.querySelectorAll('[data-dr-pay]').forEach(b=>{b.disabled=busy||Boolean(pending)||projected<=0;b.textContent=(draft?'Speichern & ':'')+(b.dataset.drPay==='cash'?'alles bar':'alles per PayPal');});
     root.querySelectorAll('[data-dr-payment]').forEach(e=>e.textContent=euro(payment));
     root.querySelectorAll('[data-dr-rest]').forEach(e=>e.textContent='Danach bleiben '+euro(Math.max(0,totals.balance-payment))+' offen.');
     el('paypal-change').disabled=busy||Boolean(pending);el('pin-back').disabled=busy||Boolean(pending);el('available').textContent=euro(totals.balance);
     root.querySelectorAll('[data-dr-amount]').forEach(b=>b.disabled=busy||totals.balance<=0||(b.dataset.drAmount!=='all'&&Number(b.dataset.drAmount)>totals.balance));
-    el('cash-confirm').disabled=busy;el('paypal-confirm').disabled=busy;el('pay-submit').disabled=busy;el('pin-submit').disabled=busy;
+    el('cash-confirm').disabled=busy;el('paypal-confirm').disabled=busy;el('pay-submit').disabled=busy;
     el('cash-cancel').disabled=busy||Boolean(pending);el('paypal-cancel').disabled=busy||Boolean(pending);el('refresh').disabled=busy;
     el('own-open').disabled=busy||Boolean(pending);el('own-save').disabled=busy;el('own-back').disabled=busy;
-    el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':'Fertig und speichern';
+    el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':draft?'Fertig · '+draft+' Strich'+(draft===1?'':'e')+' speichern':'Fertig';
     for(const id of ['cash-confirm','paypal-confirm'])el(id).textContent=pending?.type==='payment'?'Speicherung erneut prüfen':id==='cash-confirm'?'Geld in die Kasse gelegt':'Zahlung durchgeführt';
     root.querySelectorAll('[data-dr-member]').forEach(button=>button.disabled=busy||!loaded);
     renderRanking();touch();
@@ -74,7 +76,7 @@
   async function open(){
     if(busy||pending){showToast('Die aktuelle Buchung bitte zuerst fertig speichern.','error');return;}
     if(draft&&!confirm('Neue Striche verwerfen und zur Namensauswahl zurückkehren?'))return;
-    showView('drinksView');resetSession();screen('members');el('search').value='';loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
+    if(showView('drinksView')===false)return;resetSession();screen('members');el('search').value='';loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
     const number=++openNumber;
     await run(async()=>{
       const data=await oneDriveReadState();
@@ -88,15 +90,23 @@
     renderPeople();
   }
   async function commitDraft(){
-    if(!draft&&!pending)return;
+    if(!draft&&!pending)return 0;
+    const count=pending?.count||draft;
     if(pending&&pending.type!=='drinks')throw new Error('Bitte zuerst die Zahlung fertig speichern.');
     if(!pending)pending={id:crypto.randomUUID(),type:'drinks',count:draft,cents:draft*M.PRICE,createdAt:new Date().toISOString()};
-    account=await S.book(memberId,pending,signature);pending=null;draft=0;
+    account=await S.book(memberId,pending,signature);pending=null;draft=0;return count;
   }
-  async function beginPayment(value){
-    await commitDraft();account=await S.read(memberId);if(JSON.stringify(account.pin)!==signature)throw new Error('Deine PIN wurde geändert. Bitte erneut anmelden.');
+  function amountScreen(){
+    el('payment-title').textContent='Teilbetrag bezahlen';el('pay-submit').textContent=method==='cash'?'Weiter zur Bestätigung':'Zahlungslink anzeigen';
+    root.querySelectorAll('[data-dr-method]').forEach(b=>{b.classList.toggle('dr-primary',b.dataset.drMethod===method);b.setAttribute('aria-pressed',String(b.dataset.drMethod===method));});
+    screen('amount');
+  }
+  async function beginPayment(value,partial=false){
+    const count=await commitDraft();if(count)bookedNotice=count+' neue Strich'+(count===1?' ist':'e sind')+' in OneDrive gespeichert. Sie bleiben auch bei Abbruch der Zahlung gebucht.';
+    account=await S.read(memberId);if(JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('Deine PIN wurde geändert. Bitte erneut anmelden.'),{code:'pinChanged'});
     const balance=M.totals(account).balance;if(balance<=0)throw new Error('Dein Deckel ist bereits bezahlt.');
-    method=value;payment=0;el('payment-title').textContent=method==='cash'?'Bar bezahlen':'Mit PayPal bezahlen';el('pay-submit').textContent=method==='cash'?'Weiter zur Bestätigung':'Zahlungslink anzeigen';el('amount').value=(balance/100).toFixed(2).replace('.',',');screen('amount');
+    method=value;payment=partial?0:balance;el('amount').value=(balance/100).toFixed(2).replace('.',',');
+    if(partial)amountScreen();else {if(method==='paypal')showPaypal();screen(method);}
   }
   function showPaypal(){
     const url=M.paypalUrl(payment),qr=qrcode(0,'M');qr.addData(url);qr.make();
@@ -111,7 +121,7 @@
     if(pending.type!=='payment')throw new Error('Bitte zuerst die Striche speichern.');
     const bookingId=pending.id;account=await S.book(memberId,pending,signature);pending=null;
     const bonus=account.bookings.find(b=>b.type==='bonus'&&b.paymentId===bookingId)?.cents||0;el('paid-bonus').hidden=!bonus;el('paid-bonus').textContent=bonus?'Treuebonus erreicht: '+euro(bonus)+' Guthaben für deine nächsten Getränke!':'';
-    el('paid-method').textContent=method==='cash'?'Bar · vom Mitglied bestätigt':'PayPal · vom Mitglied bestätigt';el('paid-balance').textContent=euro(M.totals(account).balance);screen('paid');if(M.totals(account).balance===0)global.DrinksExtras?.celebrate(bonus);
+    el('paid-method').textContent=method==='cash'?'Bar · vom Mitglied bestätigt':'PayPal · vom Mitglied bestätigt';el('paid-balance').textContent=euro(M.totals(account).balance);screen('paid');if(M.totals(account).balance===0)global.DrinksExtras?.celebrate(bonus,()=>{if(currentScreen==='paid'&&!root.hidden&&!busy)finishSession();});
   }
   function adminFields(member){return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die PIN wird separat gespeichert. Sie ist kein Teil von „Mitglied speichern“.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN in OneDrive speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus OneDrive laden.</span></fieldset>`;}
   async function saveAdminPin(button){
@@ -123,34 +133,58 @@
     catch(error){status.textContent=error.message||'PIN konnte nicht gespeichert werden. Bitte erneut eingeben.';}
     finally{button.disabled=false;}
   }
-  function init(){
-    root=byId('drinksView');if(!root)return;
-    byId('drinksTab').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
-    el('search').addEventListener('input',renderPeople);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
-    el('members').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(!button||busy||!loaded)return;memberId=button.dataset.drMember;draft=0;account=null;signature='';el('pin').value='';render();screen('pin');el('pin').focus();});
-    el('pin-form').addEventListener('submit',event=>{event.preventDefault();const pin=el('pin').value;el('pin').value='';run(async()=>{
+  function finishSession(){resetSession();screen('members');render();renderPeople();window.scrollTo({top:0,behavior:'smooth'});}
+  function updatePinDots(){const length=el('pin')?.value.length||0;root?.querySelectorAll('.dr-pin-dot').forEach((node,i)=>node.classList.toggle('is-filled',i<length));if(el('pin-progress'))el('pin-progress').textContent=length+' von 4 Ziffern eingegeben';}
+  function submitPin(){
+    if(busy||currentScreen!=='pin')return;const pin=el('pin').value;if(!/^\d{4}$/.test(pin))return;el('pin').value='';updatePinDots();
+    run(async()=>{
       const blocked=attempts.get(memberId);if(blocked?.until>Date.now())throw new Error('Zu viele PIN-Versuche. Bitte eine Minute warten.');
       account=await S.read(memberId);if(!account.pin)throw new Error('Deine Getränke-PIN ist noch nicht eingerichtet. Bitte die Mitgliederverwaltung ansprechen.');
       if(!await M.verifyPin(pin,account.pin)){const count=(blocked?.count||0)+1;attempts.set(memberId,{count:count>=5?0:count,until:count>=5?Date.now()+60000:0});throw new Error('Die PIN stimmt nicht.');}
       attempts.delete(memberId);signature=JSON.stringify(account.pin);screen(pending?.type==='payment'?method:'account');
-    });});
-    el('pin-back').addEventListener('click',()=>{resetSession();screen('members');});
+    });
+  }
+  function renderRecent(){
+    const list=el('recent');if(!list)return;list.replaceChildren();
+    let credit=0;const rows=[];
+    for(const b of account?.bookings||[]){
+      const used=b.type==='drinks'?Math.min(credit,b.cents):0;if(b.type==='bonus')credit+=b.cents;if(b.type==='drinks')credit-=used;
+      rows.push({booking:b,text:b.type==='drinks'?b.count+' Strich'+(b.count===1?'':'e')+' · '+euro(b.cents)+(used?' · '+euro(used)+' aus Guthaben':''):b.type==='bonus'?'Treuebonus · +'+euro(b.cents)+' Guthaben':(b.method==='cash'?'Barzahlung':'PayPal bestätigt')+' · '+euro(b.cents)});
+    }
+    for(const row of rows.slice(-5).reverse()){const li=document.createElement('li'),title=document.createElement('strong'),date=document.createElement('small');title.textContent=row.text;date.textContent=new Date(row.booking.createdAt).toLocaleString('de-DE');li.append(title,date);list.append(li);}
+    if(!list.children.length){const li=document.createElement('li');li.textContent='Noch keine Buchungen vorhanden.';list.append(li);}
+  }
+  function init(){
+    root=byId('drinksView');if(!root)return;
+    byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
+    el('search').addEventListener('input',renderPeople);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
+    el('members').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(!button||busy||!loaded)return;memberId=button.dataset.drMember;draft=0;account=null;signature='';el('pin').value='';render();screen('pin');el('pin').focus();});
+    el('pin-form').addEventListener('submit',event=>{event.preventDefault();submitPin();});
+    el('pin').addEventListener('input',()=>{updatePinDots();if(/^\d{4}$/.test(el('pin').value))queueMicrotask(submitPin);});
+    el('keypad').addEventListener('click',event=>{
+      const button=event.target.closest('[data-dr-digit]');if(!button||busy)return;
+      const value=button.dataset.drDigit,input=el('pin');input.value=value==='clear'?'':value==='back'?input.value.slice(0,-1):(input.value+value).slice(0,4);
+      updatePinDots();if(/^\d{4}$/.test(input.value))submitPin();
+    });
+    el('pin-back').addEventListener('click',()=>{if(busy||pending)return;if(draft&&!confirm('Deine '+draft+' neuen Striche sind noch nicht gespeichert. Verwerfen und einen anderen Namen wählen?'))return;finishSession();});
     el('add').addEventListener('click',()=>{if(busy||pending)return;draft++;render(true);});
     el('minus').addEventListener('click',()=>{if(busy||pending)return;draft=Math.max(0,draft-1);render();});
     el('reset').addEventListener('click',()=>{if(busy||pending)return;draft=0;render();});
-    el('save').addEventListener('click',()=>run(async()=>{await commitDraft();resetSession();screen('members');renderPeople();showToast('Striche in OneDrive gespeichert.');}));
+    el('save').addEventListener('click',()=>run(async()=>{const count=await commitDraft();finishSession();if(count)showToast(count+' Strich'+(count===1?'':'e')+' in OneDrive gespeichert.');else showToast('Getränkekonto geschlossen.');}));
     el('cancel').addEventListener('click',()=>{if(busy||pending)return;if(draft&&!confirm('Neue Striche verwerfen? Bereits gebuchte Beträge bleiben erhalten.'))return;resetSession();screen('members');});
     root.querySelectorAll('[data-dr-pay]').forEach(b=>b.addEventListener('click',()=>run(()=>beginPayment(b.dataset.drPay))));
+    el('partial').addEventListener('click',()=>run(()=>beginPayment('cash',true)));
+    root.querySelectorAll('[data-dr-method]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;method=b.dataset.drMethod;amountScreen();}));
     root.querySelectorAll('[data-dr-amount]').forEach(b=>b.addEventListener('click',()=>{const max=M.totals(account).balance,value=b.dataset.drAmount==='all'?max:Math.min(Number(b.dataset.drAmount),max);el('amount').value=(value/100).toFixed(2).replace('.',',');}));
     el('pay-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
       const cents=M.parseEuro(el('amount').value);account=await S.read(memberId);
       if(!cents||cents>M.totals(account).balance)throw new Error('Bitte einen Betrag zwischen 0,01 € und '+euro(M.totals(account).balance)+' eingeben.');
       payment=cents;if(method==='paypal')showPaypal();screen(method);
     });});
-    el('paypal-change').addEventListener('click',()=>{if(busy||pending)return;el('amount').value=(payment/100).toFixed(2).replace('.',',');screen('amount');});
+    root.querySelectorAll('[data-dr-edit-amount]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;el('amount').value=(payment/100).toFixed(2).replace('.',',');amountScreen();}));
     el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>run(confirmPayment));
     root.querySelectorAll('[data-dr-back-account]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;payment=0;render();screen('account');}));
-    el('paid-next').addEventListener('click',()=>{resetSession();render();screen('members');});el('paid-account').addEventListener('click',()=>screen('account'));
+    el('paid-next').addEventListener('click',finishSession);el('paid-account').addEventListener('click',()=>screen('account'));
     el('own-open').addEventListener('click',()=>{if(busy||pending)return;clearPinInputs();screen('own-pin');el('own-current').focus();});
     el('own-back').addEventListener('click',()=>{clearPinInputs();screen('account');});
     el('own-form').addEventListener('submit',event=>{
@@ -167,6 +201,7 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden)lockAccount();});
     global.addEventListener('offline',()=>{if(!root.hidden)message(pending?'Keine Verbindung. Der Speicherstatus ist unklar. Verbindung herstellen und Speicherung erneut prüfen.':'Keine Verbindung. Neue Striche sind noch nicht gespeichert. Verbindung herstellen und erneut speichern.');});
     global.addEventListener('beforeunload',event=>{if(draft||pending||busy){event.preventDefault();event.returnValue='';}});
+    const dockViewport=()=>{const v=global.visualViewport;root.style.setProperty('--dr-keyboard-offset',(v?Math.max(0,innerHeight-v.height-v.offsetTop):0)+'px');};global.visualViewport?.addEventListener('resize',dockViewport);global.visualViewport?.addEventListener('scroll',dockViewport);dockViewport();
     render();
   }
   async function loadPinStatus(row){

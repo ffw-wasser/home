@@ -38,7 +38,7 @@
     const box=byId('dr-bonus');box.hidden=!account||!p;
     if(p){
       byId('dr-bonus-progress').max=state.threshold;byId('dr-bonus-progress').value=Math.min(state.progress,state.threshold);
-      byId('dr-bonus-text').textContent=state.needed?`${Math.min(Math.floor(state.progress/DrinksModel.PRICE),p.count)} von ${p.count} bezahlten Strichen · Noch ${euro(state.needed)} bis zu ${euro(p.cents)} Bonus.`:'Bonusziel erreicht. Die nächste Zahlung löst den Bonus nach den aktuellen Einstellungen aus.';
+      byId('dr-bonus-text').textContent=state.needed?state.needed%DrinksModel.PRICE===0?`Noch ${state.needed/DrinksModel.PRICE} bezahlte Striche bis zu ${euro(p.cents)} Bonus.`:`Noch ${euro(state.needed)} regulär bezahlen bis zu ${euro(p.cents)} Bonus.`:'Bonusziel erreicht. Die nächste Zahlung löst den Bonus nach den aktuellen Einstellungen aus.';
     }
     byId('dr-credit').hidden=!state.credit;byId('dr-credit').textContent=`Dein Getränkeguthaben: ${euro(state.credit)} · Wird für neue Striche genutzt.`;
     const used=Math.min(state.credit,draft*DrinksModel.PRICE);byId('dr-draft-credit').hidden=!used;byId('dr-draft-credit').textContent=`Davon werden ${euro(used)} mit deinem Guthaben bezahlt.`;

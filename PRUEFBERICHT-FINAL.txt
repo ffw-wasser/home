@@ -1,3 +1,45 @@
+PRÜFBERICHT – AKTUELLER BEDIENSTAND
+Stand: 09.10.2026
+Ausgangscommit: e5e0c70f25d8df6564b06b0e778f488600d74fd1
+
+Die früheren Prüfungen unten dokumentieren ihre jeweiligen historischen Stände.
+Die damaligen Testzahlen und Browsergrenzen beschreiben nicht diesen aktuellen Stand.
+
+AKTUELL UMGESETZT
+- Getränke-Direktzugang; große PIN-Tastatur, vier Punkte und automatische Öffnung.
+- Abschlussbutton dauerhaft erreichbar; kein Schreiben bei null neuen Strichen.
+- Vollzahlung direkt zu Barbestätigung oder PayPal-QR, Teilbetrag separat.
+- Hinweis: Beim Öffnen der Zahlung sind neue Striche bereits gespeichert.
+- Schutz vor unbestätigtem Verwerfen nach Kontosperre und Namenswechsel.
+- Bonus/Guthaben kompakt beim Betrag; letzte fünf Buchungen nur bei Bedarf.
+- Dank nach Vollzahlung kehrt nach 5,5 Sekunden oder Fertig zur Namensauswahl zurück.
+- Anwesenheit mit Suche und Filter; Statusänderung auch in Alle Mitglieder.
+- Abschlussprüfung nennt die tatsächlich als Fehlt exportierten Personen.
+- Ein gemeinsamer Speicherhinweis unterscheidet lokalen Stand und bestätigten
+  OneDrive-Stand. Während eines Abrufs/Schreibens eintreffende Änderungen werden
+  nicht durch die Antwort überschrieben und bei Bedarf erneut synchronisiert.
+- Redundanten PIN-Öffnen-Button, doppelte Statusbox und Bonus-CSS-Regeln entfernt.
+
+VALIDIERUNG
+100 Node-Tests erfolgreich, einschließlich sieben neuer Prüfungen zu laufenden
+Synchronisierungen, fehlerhaften Schreibvorgängen und Abschlussvorschau.
+Vier isolierte Browserdurchläufe erfolgreich: bestehende Bedienabläufe, Getränke,
+Treuebonus und neue Fehler-/Bedienregressionen. OneDrive vollständig simuliert;
+keine produktiven Mitgliederdaten oder Zahlungen geändert. QR-Code unabhängig
+decodiert; Layouts von 320 bis 1180 Pixeln ohne horizontale Überläufe. Auf 1024x768
+liegen Bonus und Abschlussbutton innerhalb der sichtbaren Höhe.
+Getränkekonten, PIN-Ableitungen und Bonus bleiben ausschließlich in OneDrive bzw.
+im Sitzungsarbeitsspeicher; keine dauerhafte Browserablage dieser Daten.
+
+GRENZEN
+Reales iPad/Safari, Kamera, Teilen-Dialog und echte Microsoft-Anmeldung wurden in
+wechselnden Praxiszuständen nicht geprüft. Die allgemeine OneDrive-Datendatei nutzt
+weiter Zeitstempelvergleich und führt parallele Geräteänderungen nicht feldweise
+zusammen. PayPal-Zahlungen werden vom Mitglied ausdrücklich bestätigt; es gibt
+keine automatische PayPal-Bestätigung. E-Mail bleibt außerhalb der Anwendung.
+
+--- HISTORISCHE PRÜFBERICHTE ---
+
 PRÜFBERICHT – FEUERWEHR WASSER
 Stand: 08.10.2026
 Ausgangscommit: ea7d08216bbd50c5ad444267b1928aa23d32299d

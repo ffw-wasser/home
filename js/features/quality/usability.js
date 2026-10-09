@@ -12,7 +12,8 @@
   function attendanceState(){
     const hint=byId('attendanceDraftStatus');if(!hint)return;
     const count=pendingMemberStatuses.size;
-    hint.textContent=count?`${count} Änderung${count===1?'':'en'} noch nicht übernommen`:`${todayEntries().length} Anmeldung${todayEntries().length===1?'':'en'} für diesen Termin gespeichert`;
+    hint.textContent=count?`${count} Änderung${count===1?'':'en'} noch nicht übernommen`:`${todayEntries().length} Anmeldung${todayEntries().length===1?'':'en'} für diesen Termin übernommen`;
+    const cloud=document.createElement('small');cloud.id='attendanceCloudStatus';cloud.textContent=(count?'Letzter übernommener Stand: ':'')+getAppStorageState().text;hint.append(cloud);
     hint.classList.toggle('is-pending',count>0);
   }
   function filterMembers(){
@@ -111,6 +112,6 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&adminUnlocked)lockAdministration();});
     window.addEventListener('beforeunload',event=>{if(dirtyRows().length||pendingMemberStatuses.size){event.preventDefault();event.returnValue='';}});
   }
-  window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>dirtyRows().length>0,attendanceState,members:renderMemberList,statistics,historyStatus};
+  window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>dirtyRows().length>0,attendanceState,editEntry:entryEditor,members:renderMemberList,statistics,historyStatus};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();

@@ -96,6 +96,7 @@ async function packageFilesFromZip(file){const zip=await JSZip.loadAsync(file),f
 
 /* Probe-/Terminabschluss: nur ein ZIP-Paket nach außen speichern. */
 window.closeDay=async function(topic=currentClosingTopic){
+  if(typeof pendingMemberStatuses!=="undefined"&&pendingMemberStatuses.size)return showToast("Bitte zuerst die Auswahl übernehmen.","error");
   topic=String(topic||"").trim();if(!topic){openProbeTopicDialog();return;}
   const allCurrent=[...todayEntries()];
   const committeeExport=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
@@ -104,9 +105,8 @@ window.closeDay=async function(topic=currentClosingTopic){
   const current=committeeExport?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   if(!current.length)return showToast("Es sind noch keine Anmeldungen vorhanden.","error");
   const organizers=current.filter(e=>e.status==="Anwesend"&&e.role==="Orga").length,present=current.filter(e=>e.status==="Anwesend"&&e.role!=="Orga").length,excused=current.filter(e=>e.status==="Entschuldigt").length;
-  const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),openPreview=exportMembers.filter(m=>!m.ageDepartment&&!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))).length;
-  if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Ohne Status",String(openPreview)]],openPreview?[`${openPreview} Person${openPreview===1?" ist":"en sind"} noch ohne Status.`]:[]);if(!approved)return;}
-  const recorded=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missing=exportMembers.filter(m=>!m.ageDepartment&&!recorded.has(nameForStorage(m))&&!recorded.has(nameForTile(m))).length;
+  const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missingMembers=exportMembers.filter(m=>!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))),missing=missingMembers.length;
+  if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Als Fehlt exportiert",String(missing)]],[],{people:missingMembers.map(nameForTile)});if(!approved){setHomeFlowStage(2);showView("attendanceView");return;}}
   if(!exportMembers.length)return showToast(committeeExport?"Es sind keine Ausschussmitglieder eingerichtet.":"Es gibt keine Mitglieder für den Export.","error");
   const exportType=current[0]?.sessionType||sessionType,entryByName=new Map(current.map(e=>[e.storedName||e.displayName,e]));
   const rows=exportMembers.map(member=>{const name=nameForStorage(member),entry=entryByName.get(name)||entryByName.get(nameForTile(member));if(!entry)return[today(),"",name,exportType,"Fehlt",""];if(entry.status==="Entschuldigt")return[entry.date,entry.time,name,exportType,"Entschuldigt",""];if(entry.status==="Betrifft nicht")return[entry.date,entry.time,name,exportType,"Betrifft nicht",""];if(entry.role==="Orga")return[entry.date,entry.time,name,exportType,"Anwesend","Orga"];if(exportType==="Sonderprobe")return[entry.date,entry.time,name,exportType,"Anwesend","Anwesend"];if(exportType==="Unterricht")return[entry.date,entry.time,name,exportType,"Anwesend","Unterricht"];if(exportType==="Ausschuss Sitzung")return[entry.date,entry.time,name,exportType,"Anwesend","Ausschuss Sitzung"];return[entry.date,entry.time,name,exportType,"Anwesend",csvRoleForEntry(entry,member)];});
