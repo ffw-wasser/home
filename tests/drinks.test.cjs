@@ -48,6 +48,41 @@ test('Mitglied ändert eigene PIN ohne Administration; offene Beträge und Buchu
   assert.equal(await M.verifyPin('7391',changed.pin),true);assert.equal(await M.verifyPin('4826',changed.pin),false);
   assert.deepEqual(storageWrites,[]);
 });
+test('Ohne PIN buchen, selbst eine PIN einrichten und mit aktueller PIN wieder entfernen',async()=>{
+  const {ctx,M,S}=app();ctx.adminUnlocked=false;
+  const first=await S.book('a',drink(),'null');assert.equal(first.pin,null);
+  const protectedAccount=await S.changeOwnPin('a','','4826');
+  assert.equal(await M.verifyPin('4826',protectedAccount.pin),true);
+  await assert.rejects(S.book('a',drink('drink-0002'),'null'),/PIN wurde geändert/);
+  await assert.rejects(S.changeOwnPin('a','0000',null),/aktuelle PIN/);
+  const openAccount=await S.changeOwnPin('a','4826',null);
+  assert.equal(openAccount.pin,null);assert.deepEqual(copy(openAccount.bookings),copy(first.bookings));
+  await S.book('a',pay(),'null');assert.equal(M.totals(await S.read('a')).balance,250);
+});
+test('Alte Pflicht-PINs werden einmalig entfernt; Striche, Zahlungen und Guthaben bleiben exakt erhalten',async()=>{
+  const {ctx,M,S,files}=app();configure({files});let a=await S.setPin('a','4826');
+  a=await S.book('a',drink('drink-0020',20),JSON.stringify(a.pin));
+  a=await S.book('a',pay('payment-0020',3000),JSON.stringify(a.pin));
+  const file=[...files.values()].find(f=>f.data.memberId==='a');delete file.data.pinChoiceVersion;
+  const before=copy(file.data.bookings);ctx.adminUnlocked=false;S.reset();
+  const migrated=(await S.list(['a']))[0];assert.equal(migrated.pin,null);assert.equal(migrated.pinChoiceVersion,1);
+  assert.equal([...files.values()].find(f=>f.data.memberId==='a').data.pin,null);assert.deepEqual(copy(migrated.bookings),before);assert.equal(M.rewardState(migrated,await S.rewards()).credit,300);
+  const chosen=await S.changeOwnPin('a','','7391');S.reset();await S.list(['a']);
+  assert.equal(await M.verifyPin('7391',(await S.read('a')).pin),true);
+  assert.deepEqual(copy(chosen.bookings),before);
+});
+test('PIN-Umstellung übersteht Versionskonflikt und verlorene Antwort ohne Buchungsverlust',async()=>{
+  const {ctx,S,files}=app();let a=await S.setPin('a','4826');a=await S.book('a',drink(),JSON.stringify(a.pin));
+  const file=[...files.values()].find(f=>f.data.memberId==='a');delete file.data.pinChoiceVersion;
+  const before=copy(file.data.bookings);ctx.forceConflict=1;ctx.loseReply=true;S.reset();
+  const migrated=await S.read('a');assert.equal(migrated.pin,null);assert.deepEqual(copy(migrated.bookings),before);
+});
+test('Offline werden alte PINs nicht verändert; fehlende Sitzung erlaubt keine Buchung',async()=>{
+  const {ctx,S,files}=app();await S.setPin('a','4826');
+  const file=[...files.values()].find(f=>f.data.memberId==='a');delete file.data.pinChoiceVersion;
+  ctx.navigator.onLine=false;await assert.rejects(S.read('a'),/Offline/);assert.ok(file.data.pin);
+  ctx.navigator.onLine=true;await assert.rejects(S.book('a',drink(),''),/Getränkekonto öffnen/);
+});
 test('PIN-Selbständerung verkraftet Konflikte und eine verlorene Schreibantwort ohne Buchungsverlust',async()=>{
   const {ctx,M,S}=app();let a=await S.setPin('a','4826');a=await S.book('a',drink(),JSON.stringify(a.pin));
   ctx.adminUnlocked=false;ctx.forceConflict=1;ctx.loseReply=true;

@@ -34,3 +34,13 @@ test('QR bleibt stabil, Rotation schützt neue Stände; nur verschlüsselte Date
 test('Veröffentlichung braucht Administration und verweigert das Code-Repository',async()=>{
   const {ctx}=app();ctx.adminUnlocked=false;await assert.rejects(ctx.DrinksMobile.connect('ffw-wasser/deckel-daten','github_pat_fixture'),/Administration/);ctx.adminUnlocked=true;await assert.rejects(ctx.DrinksMobile.connect('ffw-wasser/home','github_pat_fixture'),/ungültig/);await assert.rejects(ctx.DrinksMobile.connect('evil.example/repo','github_pat_fixture'),/ungültig/);
 });
+test('Handy-Deckel funktioniert ohne PIN und verweigert veralteten PIN-Status',async()=>{
+  const {ctx,publicFiles}=app(),D=ctx.DrinksMobile;
+  await D.connect('ffw-wasser/deckel-daten','github_pat_fixture');ctx.account.pin=null;
+  const link=await D.link('member-test','null'),params=new URLSearchParams(new URL(link).hash.slice(1));
+  const record={version:1,alias:params.get('a'),key:params.get('k')};
+  const envelope=JSON.parse(atob(publicFiles.get('deckel/'+record.alias+'.json').content));
+  assert.equal((await ctx.DeckelCrypto.open(envelope,record)).balance,750);
+  await assert.rejects(D.link('member-test',''),/PIN/);
+  ctx.account.pin=await ctx.DrinksModel.createPin('4826');await assert.rejects(D.link('member-test','null'),/PIN/);
+});

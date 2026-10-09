@@ -4,7 +4,7 @@
   const PRICE=150, ITERATIONS=150000;
   const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
   const bytes=value=>new Uint8Array(value.match(/../g).map(x=>parseInt(x,16)));
-  function empty(memberId){return {schemaVersion:1,memberId:String(memberId),pin:null,bookings:[]};}
+  function empty(memberId){return {schemaVersion:1,memberId:String(memberId),pinChoiceVersion:1,pin:null,bookings:[]};}
   function validate(account,memberId){
     if(!account||![1,2].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die OneDrive-Datei prüfen.');
     if(account.pin!==null&&(!account.pin||account.pin.algorithm!=='PBKDF2-SHA256'||account.pin.iterations!==ITERATIONS||!/^[a-f0-9]{32}$/.test(account.pin.salt)||!/^[a-f0-9]{64}$/.test(account.pin.hash)))throw new Error('Die Getränke-PIN ist nicht lesbar.');
