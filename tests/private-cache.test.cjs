@@ -62,7 +62,7 @@ test('Update entfernt alte OneDrive-haltige App-Caches', async () => {
 test('Startseite öffnet ohne Passwort und verändert keine Nutzdaten', () => {
   const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
   const app = fs.readFileSync(require.resolve('../js/app/app.js'), 'utf8');
-  assert.match(html, /<div id="protectedAppContent">/);
+  assert.match(html, /<div id="protectedAppContent"(?:\s+[^>]*)?>/);
   assert.doesNotMatch(html, /pageAccessGate|pageAccessForm|page-access-pending/);
   assert.doesNotMatch(app, /setupInitialPageAccess|fw_page_unlocked/);
   assert.match(app, /members = loadArray\(KEYS.members, DEFAULT_MEMBERS\)/);

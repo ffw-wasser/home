@@ -42,3 +42,7 @@ Release 2026.10.09.1: gemeinsame Versionsquelle in `app-release.json`, einheitli
 ## Korrektur des Termin-Rückwegs
 
 Release 2026.10.09.2: Der Kopfbutton „Termin“ öffnet wieder Schritt 1 (Terminart auswählen). Eine reine Terminartauswahl erzeugt keine sichtbare Fortsetzen-Karte. Bereits übernommene Anmeldungen, ungespeicherte Markierungen und Berichtsentwürfe bleiben erhalten und können über „Termin fortsetzen“ wieder geöffnet werden. 123 automatisierte Tests bestanden; alle fünf Terminarten im Browser bei 390 und 1024 Pixeln geprüft, einschließlich Auswahlabbruch, Rückweg und Fortsetzen ohne Verlust des Entwurfs.
+
+## Startansicht mit Wappen
+
+Release 2026.10.09.3: Das Wappen verdeckt den Aufbau der Anwendung bis zum Abschluss des Ladens und zwei Layout-Frames. Die Startgestaltung ist direkt im HTML enthalten; die App-Oberfläche ist währenddessen unsichtbar und nicht bedienbar. Microsoft-Anmeldung und Cloud-Synchronisierung laufen unabhängig davon weiter. Bei verzögertem Laden kann erneut geladen werden; bei fehlenden App-Dateien wird keine unvollständige Oberfläche freigegeben. 127 automatisierte Tests bestanden; Normalstart, verzögertes Laden mit sichtbarem Wappen und Datei-Ladefehler zusätzlich im Browser geprüft.
