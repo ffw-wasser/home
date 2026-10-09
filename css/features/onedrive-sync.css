@@ -160,7 +160,7 @@
     min-width:0!important;
     gap:5px!important;
   }
-  .top-nav #attendanceTab{display:none!important}
+  .top-nav #attendanceTab{display:inline-flex!important;align-items:center!important;justify-content:center!important}
   .top-nav #cloudSyncButton.cloud-sync-button{
     order:70!important;
     display:grid!important;

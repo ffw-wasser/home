@@ -57,3 +57,12 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 #settingsDrinksView .settings-menu-card>.step.yellow{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:max-content;max-width:100%;height:auto;min-height:30px;padding:6px 12px;white-space:normal;line-height:1.2;box-sizing:border-box}
 
 .privacy-cleanup-panel{max-width:640px;margin:48px auto;padding:24px}.privacy-cleanup-panel button{margin-top:16px}
+
+/* Keep both main destinations in the iPhone header. */
+@media(max-width:760px){
+  html body .top-nav .top-nav-actions{flex-wrap:wrap!important}
+  html body .top-nav #attendanceTab,html body .top-nav #drinksShortcut,html body .top-nav #menuToggleButton{
+    flex:0 0 auto!important;min-width:0!important;width:auto!important;
+    padding:6px 8px!important;font-size:13px!important;white-space:nowrap!important;
+  }
+}
