@@ -108,3 +108,22 @@
     bottom: calc(76px + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* Keep the topic dialog inside the visible area above the iPad keyboard. */
+body.ios-keyboard-visible #probeTopicDialog.ios-keyboard-host{
+  position:fixed!important;
+  top:calc(var(--ios-visual-top,0px) + 12px)!important;
+  bottom:auto!important;
+  left:0!important;right:0!important;
+  margin:0 auto!important;
+  max-height:calc(var(--ios-visual-height,100dvh) - 24px)!important;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+}
+body.ios-keyboard-visible #probeTopicDialog .probe-topic-form{padding:14px!important;gap:8px!important}
+body.ios-keyboard-visible #probeTopicDialog #probeTopicInput{
+  min-height:88px!important;
+  height:clamp(88px,calc(var(--ios-visual-height,100dvh) - 260px),150px)!important;
+  max-height:150px!important;
+  scroll-margin:12px;
+}
