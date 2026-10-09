@@ -55,3 +55,5 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 #adminPaypalDialog .admin-paypal-check{display:flex;align-items:center;gap:12px;min-height:48px;margin-top:16px;cursor:pointer}#adminPaypalDialog input[type="checkbox"]{appearance:auto!important;-webkit-appearance:checkbox!important;display:inline-block!important;position:static!important;width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;padding:0!important;margin:0!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;accent-color:#176b36}
 
 #settingsDrinksView .settings-menu-card>.step.yellow{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:max-content;max-width:100%;height:auto;min-height:30px;padding:6px 12px;white-space:normal;line-height:1.2;box-sizing:border-box}
+
+.privacy-cleanup-panel{max-width:640px;margin:48px auto;padding:24px}.privacy-cleanup-panel button{margin-top:16px}

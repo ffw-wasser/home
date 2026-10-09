@@ -11,7 +11,10 @@ function closeCompactMenu() {
   if (menu) menu.hidden = true;
   if (toggle) toggle.setAttribute("aria-expanded", "false");
 }
-function requireAdmin(target="settingsView") {
+function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
+  if(!allowDisconnected&&(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady())){
+    showToast("Bitte OneDrive verbinden und erfolgreich synchronisieren, bevor du diesen Verwaltungsbereich öffnest.","error");return false;
+  }
   if(adminUnlocked){resetAdminTimeout();return true;}
   pendingSettingsTarget=target;
   byId("cloudSyncDialog")?.close();

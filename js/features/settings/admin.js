@@ -106,6 +106,7 @@ function login() {
   byId("adminPin").value = "";
   byId("pinError").hidden = true;
   renderAdmin();
+  if(!oneDriveAdministrationReady())pendingSettingsTarget="settingsView";
   showView(pendingSettingsTarget||"settingsMembersView");
   window.SmartWorkflow?.settings?.();
   if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();
@@ -115,6 +116,7 @@ function login() {
 }
 
 function loginArchive() {
+  if(!oneDriveAdministrationReady())return showToast("Bitte zuerst OneDrive verbinden und erfolgreich synchronisieren.","error");
   if (byId("archivePin").value !== adminPin()) {
     byId("archivePinError").hidden = false;
     byId("archivePin").select();

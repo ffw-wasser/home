@@ -1,6 +1,7 @@
 "use strict";
 (() => {
-  let pendingLoad = null;
+  let pendingLoad = null,loadEpoch=0;
+  window.clearOneDriveHistory=()=>{loadEpoch++;pdfByReportId.clear();reportCache.clear();cacheRoot="";csvArchive=[];window.oneDriveHistoryLastError="";};
   const pdfByReportId = new Map();
   let reportCache = new Map(), cacheRoot = "";
   const clone = value => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
@@ -118,6 +119,7 @@
   }
 
   async function refreshOneDriveHistory({ manual = false } = {}) {
+    const epoch=loadEpoch;
     if (!oneDriveSignedIn()) {
       csvArchive = [];
       pdfByReportId.clear();
@@ -163,6 +165,7 @@
       failedFile = "";
       // Den bisherigen Stand erst nach einem vollständig erfolgreichen Abruf ersetzen.
       // Quelle bleiben ausschließlich die aktuell in OneDrive vorhandenen ZIP-Pakete.
+      if(epoch!==loadEpoch||!oneDriveSignedIn())return false;
       csvArchive = reports.sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
       reportCache = nextCache;
       pdfByReportId.clear();
@@ -175,6 +178,7 @@
       if (manual) showToast(`Historie aus ${files.length} OneDrive-ZIP-Datei${files.length === 1 ? "" : "en"} geladen.`);
       return true;
     } catch (error) {
+      if(epoch!==loadEpoch)return false;
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
       const hint = error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
         ? "Bitte OneDrive erneut anmelden."

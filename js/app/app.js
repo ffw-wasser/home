@@ -79,6 +79,7 @@ function ensureSettingsNavigation(){
     pageButton.addEventListener("click",()=>{
       const target=pageButton.dataset.settingsPage;
       pendingSettingsTarget=target;
+      if((pageButton.hasAttribute("data-protected")||pageButton.hasAttribute("data-archive-protected"))&&!oneDriveAdministrationReady()){showToast("Bitte zuerst OneDrive verbinden und erfolgreich synchronisieren.","error");pendingSettingsTarget="";return;}
       if(pageButton.hasAttribute("data-protected")&&!adminUnlocked)return showView("adminLoginView");
       if(pageButton.hasAttribute("data-archive-protected")&&!adminUnlocked)return showView("archiveLoginView");
       showView(target);
