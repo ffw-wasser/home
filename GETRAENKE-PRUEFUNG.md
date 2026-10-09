@@ -106,3 +106,37 @@ Die UI-/Netzwerkabläufe wurden mit simulierten DOM- und OneDrive-/GitHub-Antwor
 ### Weiterer sinnvoller Schritt
 
 Bei einer nächsten Erweiterung kann die Anzeige eines bereits vorhandenen Handy-Deckels vollständig von der Erreichbarkeit des Erinnerungsdienstes getrennt werden. Dann könnte der QR zunächst nur den Kontozugang anbieten und Erinnerungen erst ergänzen, sobald der Dienst verfügbar ist. Diese weitergehende Änderung am Anmeldeablauf ist in dieser Version nicht enthalten.
+
+
+## Ergänzung · Version 2026.10.09.13
+
+### Verständnis und Bedienung
+
+- Einheitliche Begriffe: Bier, Glas/Gläser Wein, Schulden und Getränkegutschrift. Hauptaktion „+1 Bier“; Bonusfortschritt wird als noch zu bezahlender Eurobetrag angegeben. Die Bonusberechnung bleibt an tatsächlich bestätigte Zahlungen gebunden.
+- Erfassung ausschließlich auf den Mitgliederkarten; Konto enthält Buchungen, Bonus, PIN und Handyzugang. Bier/Wein und ihre Fässer sind als getrennte Gruppen dargestellt. Vormerkungen lassen sich filtern, im gemeinsamen Überblick prüfen und verwerfen. Gesperrte Konto-/Zahlungsaktionen werden erklärt.
+- Neue Getränke und heutige Rücknahmen vollständig unbezahlter Tippfehler werden erst mit OK gemeinsam übertragen. Ganz oder teilweise bezahlte sowie mit Gutschrift verrechnete Buchungen sind für Mitglieder gesperrt. Bei älteren Mehrfachbuchungen schützt jede Teilzahlung die gesamte ursprüngliche Buchung. Geldzahlungen werden für diese Prüfung ältesten offenen Getränken zuerst zugeordnet.
+- Schutz liegt zusätzlich im Modell und in jeder bedingten OneDrive-Speicherung: Eine gleichzeitig eingehende Zahlung verhindert die gesamte betroffene Sammlung aus Rücknahmen und neuen Getränken. Als sicher abgelehnte Rücknahmen können verworfen werden; unklar gespeicherte Vorgänge bleiben bis zur Prüfung gesperrt. Gleiche Buchungsnummern verhindern doppelte Übertragung.
+- Alte Korrekturen, Zahlungen, PINs und Bonuswerte werden nicht umgeschrieben. Bestehende Kontodateien bleiben mit ihrer bisherigen Rechnung lesbar. Historische Rücknahmen bezahlter Getränke sind lediglich nicht erneut erlaubt.
+- „Bezahlen“ zeigt Gesamtschulden mit direkter Barbestätigung, PayPal-Zugang und optionalem Teilbetrag. Keine Zahlung wird beim Öffnen gebucht. Bei PayPal wird ausdrücklich auf die spätere Verbuchung durch die Verwaltung hingewiesen.
+
+### Admin-Löschung
+
+- Neuer geschützter Bereich „Buchungen verwalten“: Mitglied wählen, gespeichertes Getränk oder Zahlung prüfen, Grund angeben und Löschung bestätigen. Admins dürfen auch alte und bezahlte Getränke entfernen. Automatische Bonus- und Korrekturbuchungen bleiben als Nachweise sichtbar.
+- Löschungen sind nachvollziehbare Stornos; Originalbuchungen bleiben unverändert. Getränkelöschungen reduzieren den Verbrauch und passen Schulden bzw. Gutschrift an. Zahlungslöschungen heben die Zahlung und deren eigenen Treuebonus auf; bereits verwendeter Bonus erhöht nötigenfalls die Schulden. Bereits gelöschte Zahlungen können nicht erneut storniert werden.
+- Kontoschema 5 ergänzt Admin-Korrekturen und Zahlungsstornos. Mitgliedswege lehnen diese privilegierten Einträge ab. Adminfreigabe und ursprüngliche OneDrive-Quelle werden bei jeder Speicherung erneut geprüft. Bei verlorener Antwort dieselbe Löschung mit derselben Nummer prüfen; Abbrechen und neue Buchung sind bis dahin gesperrt. Die Admin-Sperre entfernt private Dialog- und Buchungsanzeigen.
+
+### Statistik ohne Mitgliedsnamen
+
+- Die Jahresstatistik zeigt Bier, Gläser Wein und Gesamtmenge, optional je Monat. Berliner Kalendergrenzen gelten auch bei Jahreswechsel. Rücknahmen und Admin-Löschungen von Getränken werden abgezogen; Zahlungen und Bonus ändern die Mengen nicht.
+- Alle privaten Kontodateien werden gelesen, auch Konten früherer Mitglieder. Der Abruf schreibt weder Konten noch PINs um. Aggregate enthalten keine Namen, Mitgliederkennungen oder Buchungsnummern und werden nicht separat öffentlich veröffentlicht. Daten bleiben ausschließlich im Arbeitsspeicher und werden beim Abmelden oder Quellenwechsel entfernt.
+- Statistik und PDF berücksichtigen das gewählte Jahr; der PDF-Aufruf wartet auf den Verbrauchsabruf. Während einer Aktualisierung bleiben gleiche Jahresdaten sichtbar. Fehler und Alter des letzten Abrufs werden angezeigt. Verspätete Antworten anderer Jahre oder nach Abmelden werden verworfen.
+
+### Handy, QR und Hinweise
+
+- Kontostand-QR benötigt den Erinnerungsdienst nicht. Erinnerungszugang wird erst auf ausdrückliche Aktion ergänzt. PIN, Quelle, Alias, Revision und Schlüssel werden weiterhin frisch geprüft. Erste Veröffentlichung und Verschlüsselung bleiben Voraussetzung für einen neuen Zugang.
+- Ladestatus und Fehler stehen innerhalb der sichtbaren QR-Ansicht. Technische Einrichtungstexte sind aufklappbar. Der Handy-Deckel hält bei Aktualisierungen den zuvor geprüften Stand sichtbar, zeigt bei Fehlern dessen Alter und entfernt ihn bei Zugangswechsel oder Verbergen.
+- Installation, Kontozugang und freiwillige Benachrichtigungen sind getrennt erklärt. Deaktivieren von Erinnerungen erhält den persönlichen Deckel-Zugang. Admin-Löschgründe und private Buchungskennungen gelangen nicht in Handy-Snapshots.
+
+### Verifikation
+
+`node --test tests/*.test.cjs`: 214 Prüfungen bestanden. Die automatisierte Gesamtprüfung deckt Modell, Store, Mitglieder-UI, Admin-UI, Statistik, Jahreswechsel, Zahlungs-/Bonusstornos, Konflikte, verlorene Antworten, QR, Verschlüsselung und Handyaktualisierungen ab. Keine echten Mitgliederbuchungen, Zahlungen, Löschungen oder Erinnerungen wurden für Tests ausgeführt. DOM- und Netzantworten sind simuliert; eine neue Sichtprüfung auf physischen iPad-/Handygeräten steht aus.

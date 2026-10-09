@@ -48,3 +48,9 @@ test('Lokaler Installationslink bleibt erhalten wenn Push deaktiviert wird; frem
  await D.saveLink(personal);await D.write({url:personal,capability:'fixture'});await D.clear();assert.equal(await D.read(),null);assert.equal(await D.readLink(),personal);assert.deepEqual(writes,['link','device']);
  assert.throws(()=>D.saveLink('https://evil.invalid/deckel.html'+new URL(personal).hash),/Ungültiger/);
 });
+
+test('Erinnerungen deaktivieren erhält auch einen bisher nur mit Push gespeicherten persönlichen Deckel-Zugang',async()=>{
+ const url=personal+'&p=https%3A%2F%2Ftest.account.workers.dev&c='+ 'x'.repeat(43),nodes={},events=[],state={saved:{url,alias:'a'.repeat(32),origin:'https://test.account.workers.dev',capability:'x'.repeat(43),endpoint:'https://push.fixture/device',registered:true},link:null};
+ const node=()=>({hidden:false,disabled:false,textContent:''}),c=vm.createContext({URL,URLSearchParams,AbortController,setTimeout,clearTimeout,location:{hash:new URL(url).hash,href:url},document:{hidden:false,getElementById:id=>nodes[id]||(nodes[id]=node())},addEventListener(){},navigator:{userAgent:'Android',platform:'',serviceWorker:{getRegistration:async()=>({pushManager:{getSubscription:async()=>({unsubscribe:async()=>{events.push('unsubscribe');return true;}})}})}},matchMedia:()=>({matches:true}),Notification:{permission:'granted'},PushManager:{},DeckelDevice:{read:async()=>state.saved,saveLink:async value=>{events.push('saveLink');state.link=value;},clear:async()=>{events.push('clear');state.saved=null;}},fetch:async()=>({ok:true,json:async()=>({})})});c.window=c;
+ vm.runInContext(read('js/features/drinks/deckel-push.js'),c);await nodes.pushDisable.onclick();assert.equal(state.saved,null);assert.equal(state.link,url);assert.ok(events.indexOf('saveLink')<events.indexOf('clear'));assert.match(nodes.pushStatus.textContent,/Deckel-Zugang bleibt/);
+});

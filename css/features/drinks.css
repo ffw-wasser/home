@@ -117,3 +117,33 @@ html body .top-nav #drinksShortcut{width:auto;flex:0 0 auto;min-height:48px!impo
 #drinksView .dr-main-confirm{position:fixed;left:20px;right:20px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1100;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;max-width:1180px;margin:auto;padding:14px 18px;border:1px solid #cddbcf;border-radius:16px;background:#fff;box-shadow:0 4px 24px #14251b29}#drinksView .dr-main-confirm[hidden]{display:none}#drinksView .dr-main-confirm button{min-height:52px}#drinksView [data-dr-screen=members]{padding-bottom:110px}#drinksView .dr-member-draft-label{margin:12px 0 4px;font-size:15px;line-height:1.4;font-weight:700;color:#762c44}#drinksView .dr-member-draft-label[hidden]{display:none}#drinksView .dr-member-staged{padding:8px;border:1px dashed #bd8c2e;border-radius:10px;background:#fff8e6}#drinksView .dr-wine-keg{filter:hue-rotate(305deg)}@media(max-width:600px){#drinksView .dr-main-confirm{left:12px;right:12px;grid-template-columns:1fr;gap:8px;padding:12px}#drinksView [data-dr-screen=members]{padding-bottom:160px}}
 
 #drinksView .dr-glasses-more{font-size:14px;line-height:1.3;font-weight:700}
+
+/* Klare Hauptmaske: zwei Getränkeaktionen, gemeinsame Bestätigung. */
+#drinksView .dr-error:empty,#drinksView .dr-member-status:empty{display:none}
+#drinksView .dr-member-more{flex:0 0 auto;min-height:44px;padding:8px 12px;font-size:15px}
+#drinksView .dr-member-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#drinksView .dr-member-actions button,#drinksView .dr-member-actions button:first-child{font-size:17px;min-height:58px;line-height:1.35;padding:10px}
+#drinksView .dr-member-actions button:last-child{grid-column:1/-1;min-height:46px}
+#drinksView .dr-member-action-hint{font-size:13px;line-height:1.45;color:#526458;margin-top:8px}
+#drinksView .dr-member-discard{min-height:42px;font-size:14px;margin-top:8px}
+#drinksView .dr-glass-group{display:flex;align-items:center;flex-wrap:wrap;gap:5px;max-width:100%;padding:4px 8px;border-left:3px solid #24653b;background:#f2f7f2;border-radius:6px}
+#drinksView .dr-glass-group>small:first-child{font-size:13px;flex-basis:100%;color:#24653b;font-weight:700}
+#drinksView .dr-glass-group[data-drink=wine]{border-color:#a63c63;background:#faf0f4}
+#drinksView .dr-glass-group[data-drink=wine]>small:first-child{color:#762c44}
+#drinksView .dr-filter-button{margin:12px 0 0;min-height:44px;font-size:15px}
+#drinksView .dr-filter-button[aria-pressed=true]{background:#e6f4e8;border-color:#24653b}
+#drinksView .dr-main-actions{display:flex;flex-wrap:wrap;gap:8px}
+#drinksView .dr-main-actions button{flex:1 1 auto}
+#drinksView .dr-confirm-overview{font-size:14px;margin-top:6px}
+#drinksView .dr-confirm-overview summary{cursor:pointer;padding:6px 0}
+#drinksView .dr-confirm-overview ul{max-height:120px;overflow:auto;padding-left:20px;margin:8px 0;line-height:1.6}
+#drinksView [data-dr-screen=members]{padding-bottom:var(--dr-dock-space,180px)}
+#drinksView[data-has-staged=false] [data-dr-screen=members]{padding-bottom:0}
+#drinksView [data-dr-screen=account]{padding-bottom:0}
+#drinksView [data-dr-screen=account] .dr-wide+button{margin-top:12px}
+.dr-admin-details{margin:16px 0;padding:12px 16px;border:1px solid #cddbcf;border-radius:12px;line-height:1.5}
+.dr-admin-details summary{cursor:pointer;font-weight:700;min-height:36px}
+@media(max-width:600px){#drinksView .dr-main-confirm{max-height:45vh;overflow:auto}#drinksView [data-dr-screen=members]{padding-bottom:var(--dr-dock-space,260px)}#drinksView .dr-main-actions{flex-direction:column}}
+@media(max-width:360px){#drinksView .dr-member-actions{grid-template-columns:1fr}}
+.drinks-consumption-panel .statistics-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.dr-consumption-months{margin-top:18px}.dr-consumption-months summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}.dr-consumption-table{overflow-x:auto;margin-top:12px}.dr-consumption-table table{width:100%;border-collapse:collapse}.dr-consumption-table th,.dr-consumption-table td{padding:10px;border-bottom:1px solid #cddbcf;text-align:right;font-variant-numeric:tabular-nums}.dr-consumption-table th:first-child,.dr-consumption-table td:first-child{text-align:left}@media print{#drinksStatisticsRefresh{display:none}.dr-consumption-months>summary{display:none}.dr-consumption-months>*:not(summary){display:block!important}}
+.dr-admin-booking{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;margin-top:10px;border:1px solid #cddbcf;border-radius:12px;background:#fff}.dr-admin-booking>div{display:flex;flex-direction:column;gap:6px;min-width:0}.dr-admin-booking small{font-size:14px;color:#526458}.dr-admin-booking button{flex-shrink:0}.dr-voided{opacity:.6}.dr-voided strong{text-decoration:line-through}#dr-admin-member{max-width:600px}#dr-admin-retry{margin:12px 0}@media(max-width:600px){.dr-admin-booking{align-items:stretch;flex-direction:column}}

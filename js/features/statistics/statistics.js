@@ -1,5 +1,5 @@
 let selectedStatisticsYear=String(new Date().getFullYear());
-function availableStatisticsYears(){const years=new Set([String(new Date().getFullYear())]);statisticsArchiveData().forEach(data=>{const year=data.date.slice(0,4);if(/^\d{4}$/.test(year))years.add(year);});return [...years].sort((a,b)=>b.localeCompare(a));}
+function availableStatisticsYears(){const years=new Set([String(new Date().getFullYear()),...(globalThis.DrinksConsumption?.years()||[])]);statisticsArchiveData().forEach(data=>{const year=data.date.slice(0,4);if(/^\d{4}$/.test(year))years.add(year);});return [...years].sort((a,b)=>b.localeCompare(a));}
 function renderStatisticsYearSelect(){const select=byId("statisticsYearSelect");if(!select)return;const years=availableStatisticsYears();if(!years.includes(selectedStatisticsYear))selectedStatisticsYear=years[0];select.innerHTML=years.map(year=>`<option value="${year}"${year===selectedStatisticsYear?" selected":""}>${year}</option>`).join("");}
 function parseCsvRows(content) { return CsvEngine.parse(content); }
 function statisticsRolesFromValue(value){
@@ -233,6 +233,7 @@ function renderStatistics() {
   renderStatisticsYearSelect();
   populateIndividualMemberSelect();
   const year = selectedStatisticsYear || String(new Date().getFullYear());
+  globalThis.DrinksConsumption?.load(year);
   const all = statisticsArchiveData();
   const yearData = all.filter(data => data.date.startsWith(year));
   const probeYearData=yearData.filter(data=>!statisticsIsOperation(data)),allYearRows=probeYearData.flatMap(data=>data.rows),presentYearRows=allYearRows.filter(row=>row.status==="Anwesend"),assignmentTotal=statisticsAssignmentCount(presentYearRows),changedRows=presentYearRows.filter(row=>/2\. Füllung:/.test(row.role||""));
@@ -373,14 +374,18 @@ function renderDriverLicenseStatistics(){
   panel.querySelector("[data-driver-list]").innerHTML=items.sort((a,b)=>order[a.state]-order[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>{const date=driverLicenseDueDate(item.member);const label=item.state==="missing"?"Nicht dokumentiert":item.state==="overdue"?`Überfällig seit ${date}`:item.state==="soon"?`Fällig bis ${date}`:`Gültig bis ${date}`;return renderMetric("",nameForTile(item.member),label,tone[item.state]);}).join("");
 }
 
-function exportStatisticsPdf() {
+async function exportStatisticsPdf() {
   renderStatistics();
-  const originalTitle = document.title;
   const year = selectedStatisticsYear;
+  await globalThis.DrinksConsumption?.load(year);
+  if(year!==selectedStatisticsYear){showToast("Kalenderjahr geändert. Bitte die PDF erneut öffnen.","error");return;}
+  const originalTitle = document.title;
+  const consumptionDetails=document.querySelector(".dr-consumption-months"),consumptionWasOpen=consumptionDetails?.open;if(consumptionDetails)consumptionDetails.open=true;
   document.title = `Feuerwehr-Wasser_Statistik_${year}`;
   document.body.classList.add("printing-statistics");
   const cleanup = () => {
     document.body.classList.remove("printing-statistics");
+    if(consumptionDetails)consumptionDetails.open=consumptionWasOpen;
     document.title = originalTitle;
     window.removeEventListener("afterprint", cleanup);
   };

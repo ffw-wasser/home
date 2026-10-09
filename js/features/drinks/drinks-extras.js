@@ -10,7 +10,7 @@
     let dialog=byId('drinksThanksDialog');
     if(!dialog){
       dialog=document.createElement('dialog');dialog.id='drinksThanksDialog';dialog.className='dr-thanks';
-      dialog.innerHTML='<button type="button" class="outline-button" aria-label="Dankesnachricht schließen und weiter">Fertig</button><div class="dr-burst" aria-hidden="true"><img src="assets/drinks/bierfass.webp" alt=""><span class="dr-burst-pop"><svg viewBox="0 0 120 120" aria-hidden="true"><path fill="#e85c28" d="M60 3 70 30 93 12 88 41 117 40 97 61 116 84 87 83 91 113 68 93 57 118 48 91 22 110 29 82 2 78 24 60 5 38 34 38 28 10 51 30Z"/><path fill="#ffd65c" d="m60 25 9 24 23-8-15 20 19 18-27-4-9 23-8-24-25 9 15-22-18-15 26 2Z"/></svg></span>'+Array.from({length:16},(_,i)=>`<i style="--angle:${i*22.5}deg;--delay:${i%3*35}ms"></i>`).join('')+'</div><h2>Danke!</h2><p>Dein Deckel ist bezahlt. 🍻</p><p data-thanks-bonus class="dr-credit" hidden></p><p class="dr-muted">Zahlung in OneDrive gespeichert.</p>';
+      dialog.innerHTML='<button type="button" class="outline-button" aria-label="Dankesnachricht schließen und weiter">Zurück zu Getränken</button><div class="dr-burst" aria-hidden="true"><img src="assets/drinks/bierfass.webp" alt=""><span class="dr-burst-pop"><svg viewBox="0 0 120 120" aria-hidden="true"><path fill="#e85c28" d="M60 3 70 30 93 12 88 41 117 40 97 61 116 84 87 83 91 113 68 93 57 118 48 91 22 110 29 82 2 78 24 60 5 38 34 38 28 10 51 30Z"/><path fill="#ffd65c" d="m60 25 9 24 23-8-15 20 19 18-27-4-9 23-8-24-25 9 15-22-18-15 26 2Z"/></svg></span>'+Array.from({length:16},(_,i)=>`<i style="--angle:${i*22.5}deg;--delay:${i%3*35}ms"></i>`).join('')+'</div><h2>Danke!</h2><p>Dein Deckel ist bezahlt. 🍻</p><p data-thanks-bonus class="dr-credit" hidden></p><p class="dr-muted">Zahlung gespeichert.</p>';
       document.body.append(dialog);dialog.querySelector('button').onclick=finishThanks;dialog.addEventListener('cancel',event=>{event.preventDefault();finishThanks();});
     }
     const message=dialog.querySelector('[data-thanks-bonus]');message.hidden=!bonus;message.textContent=bonus?'Treuebonus: '+euro(bonus)+' für deine nächsten Getränke!':'';
@@ -20,7 +20,7 @@
   async function load(){
     if(!requireAdmin('settingsRemindersView'))return;
     const view=byId('settingsRemindersView'),status=byId('remindersStatus'),list=byId('remindersList');
-    status.textContent='Offene Beträge werden aus OneDrive geladen …';byId('remindersTotal').textContent='';byId('remindersRecent').replaceChildren();list.replaceChildren();reminders=[];
+    status.textContent='Schulden werden geladen …';byId('remindersTotal').textContent='';byId('remindersRecent').replaceChildren();list.replaceChildren();reminders=[];
     try{
       const data=await oneDriveReadState();if(!adminUnlocked)return;
       if(!Array.isArray(data?.members))throw new Error('Mitgliederdatei nicht lesbar.');
@@ -28,9 +28,9 @@
       await DrinksStore.list(people.map(p=>p.id));if(!adminUnlocked)return;
       reminders=people.map(p=>({...p,cents:DrinksModel.totals(DrinksStore.cached(p.id)).balance})).filter(p=>p.cents>0).sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name,'de'));
       status.textContent=reminders.length?`${reminders.length} offene Deckel · Stand: ${new Date().toLocaleString('de-DE')}`:'Alle Deckel sind bezahlt.';
-      const sum=reminders.reduce((n,row)=>n+row.cents,0);byId('remindersTotal').textContent='Insgesamt offen: '+euro(sum)+' · '+reminders.length+' Deckel';
+      const sum=reminders.reduce((n,row)=>n+row.cents,0);byId('remindersTotal').textContent='Schulden gesamt: '+euro(sum)+' · '+reminders.length+' Deckel';
       const recent=people.flatMap(p=>(DrinksStore.cached(p.id)?.bookings||[]).filter(b=>b.type==='payment').map(b=>({...b,name:p.name}))).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5);
-      const recentList=byId('remindersRecent');recentList.replaceChildren();for(const item of recent){const li=document.createElement('li');li.textContent=item.name+' · '+euro(item.cents)+' · '+(item.method==='cash'?'Bar':'PayPal bestätigt')+' · '+new Date(item.createdAt).toLocaleString('de-DE');recentList.append(li);}if(!recent.length){const li=document.createElement('li');li.textContent='Noch keine bestätigten Zahlungen.';recentList.append(li);}
+      const recentList=byId('remindersRecent');recentList.replaceChildren();for(const item of recent){const li=document.createElement('li');li.textContent=item.name+' · '+euro(item.cents)+' · '+(item.method==='cash'?'Bar':'PayPal verbucht')+' · '+new Date(item.createdAt).toLocaleString('de-DE');recentList.append(li);}if(!recent.length){const li=document.createElement('li');li.textContent='Noch keine bestätigten Zahlungen.';recentList.append(li);}
       renderReminders();
     }catch(error){status.textContent='Beträge konnten nicht geladen werden. '+error.message;}
   }
@@ -56,7 +56,7 @@
       document.body.append(dialog);byId('adminPaypalClose').onclick=()=>{if(paypalBusy)return;if(paypalPending&&!confirm('Der Speicherstatus ist noch unklar. Vor einer weiteren Buchung dieses Kontos bitte den Verlauf prüfen. Trotzdem schließen?'))return;paypalPending=null;dialog.close();};
       dialog.addEventListener('cancel',event=>{event.preventDefault();byId('adminPaypalClose').click();});byId('adminPaypalForm').onsubmit=savePaypal;
     }
-    paypalRow=row;paypalPending=null;byId('adminPaypalPerson').textContent=row.name;byId('adminPaypalBalance').textContent='Aktuell offen: '+euro(row.cents);byId('adminPaypalAmount').value=(row.cents/100).toFixed(2).replace('.',',');byId('adminPaypalReference').value='';byId('adminPaypalChecked').checked=false;byId('adminPaypalStatus').textContent='';paypalControls(false);dialog.showModal();
+    paypalRow=row;paypalPending=null;byId('adminPaypalPerson').textContent=row.name;byId('adminPaypalBalance').textContent='Aktuelle Schulden: '+euro(row.cents);byId('adminPaypalAmount').value=(row.cents/100).toFixed(2).replace('.',',');byId('adminPaypalReference').value='';byId('adminPaypalChecked').checked=false;byId('adminPaypalStatus').textContent='';paypalControls(false);dialog.showModal();
   }
   function paypalControls(busy){
     for(const id of ['adminPaypalAmount','adminPaypalReference','adminPaypalChecked'])byId(id).disabled=busy||Boolean(paypalPending);
@@ -72,12 +72,12 @@
       if(!byId('adminPaypalChecked').checked){status.textContent='Bitte zuerst Zahlungseingang und Mitglied prüfen.';return;}
       paypalPending={id:reference?'paypal-admin-'+reference:crypto.randomUUID(),type:'payment',method:'paypal',confirmation:'admin',cents,createdAt:new Date().toISOString()};
     }
-    paypalBusy=true;paypalControls(true);status.textContent='Zahlung wird in OneDrive gespeichert …';
+    paypalBusy=true;paypalControls(true);status.textContent='Zahlung wird gespeichert …';
     try{
       const account=await DrinksStore.adminPaypalPayment(paypalRow.id,paypalPending),amount=paypalPending.cents;paypalPending=null;
-      byId('adminPaypalDialog').close();showToast(euro(amount)+' PayPal-Eingang gespeichert. Noch offen: '+euro(DrinksModel.totals(account).balance)+'.');await load();
+      byId('adminPaypalDialog').close();showToast(euro(amount)+' PayPal-Eingang gespeichert. Verbleibende Schulden: '+euro(DrinksModel.totals(account).balance)+'.');await load();
     }catch(error){
-      if(['balanceChanged','conflict'].includes(error.code)){paypalPending=null;const account=await DrinksStore.read(paypalRow.id).catch(()=>null);if(account){paypalRow.cents=DrinksModel.totals(account).balance;byId('adminPaypalBalance').textContent='Aktuell offen: '+euro(paypalRow.cents);}}
+      if(['balanceChanged','conflict'].includes(error.code)){paypalPending=null;const account=await DrinksStore.read(paypalRow.id).catch(()=>null);if(account){paypalRow.cents=DrinksModel.totals(account).balance;byId('adminPaypalBalance').textContent='Aktuelle Schulden: '+euro(paypalRow.cents);}}
       status.textContent=(error.message||'Speicherung nicht bestätigt.')+(paypalPending?' Dieselbe Zahlung über „Speicherung erneut prüfen“ prüfen.':'');
     }finally{paypalBusy=false;paypalControls(false);}
   }
@@ -89,7 +89,7 @@
   }
   async function loadPushStatus(row){
     const button=byId('sendDeckelReminder'),status=byId('pushDeviceStatus');button.disabled=true;status.textContent='Angemeldete Geräte prüfen …';
-    try{const info=await DrinksPush.status(row.id);if(reminderRow!==row||!byId('reminderDraftDialog').open||pushBusy)return;button.disabled=!info.configured||!info.devices;status.textContent=!info.configured?'Noch kein Versanddienst verbunden. Bitte unter Getränkeverwaltung → Handy-Erinnerungen einrichten.':!info.devices?'Das Mitglied hat noch keine Handy-Erinnerungen aktiviert.':info.devices+' angemeldete Gerät'+(info.devices===1?'':'e')+(info.lastSent?' · Letzter Versandversuch: '+new Date(info.lastSent).toLocaleString('de-DE'):' · Noch keine Erinnerung versendet.');}
+    try{const info=await DrinksPush.status(row.id);if(reminderRow!==row||!byId('reminderDraftDialog').open||pushBusy)return;button.disabled=!info.configured||!info.devices;status.textContent=!info.configured?'Noch kein Versanddienst verbunden. Bitte unter Getränkeverwaltung → Handy-Erinnerungen einrichten.':!info.devices?'Das Mitglied hat noch keine Handy-Erinnerungen aktiviert.':info.devices+' angemeldetes Gerät'+(info.devices===1?'':'e')+(info.lastSent?' · Letzter Versandversuch: '+new Date(info.lastSent).toLocaleString('de-DE'):' · Noch keine Erinnerung versendet.');}
     catch(error){if(reminderRow===row){status.textContent=error.message;button.disabled=true;}}
     if(reminderRow===row){const card=[...byId('remindersList').children].find(n=>n.dataset.reminderMember===row.id);const inline=card?.querySelector('[data-device-status]');if(inline)inline.textContent=status.textContent;}
   }
@@ -109,7 +109,7 @@
     byId('drinksSettingsMembersButton').onclick=()=>showView('settingsMembersView');
     byId('settingsDrinksView').querySelector('[data-drinks-settings-back]').onclick=()=>showView('settingsView');
     const view=document.createElement('section');view.id='settingsRemindersView';view.className='view settings-subpage';view.hidden=true;
-    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel &amp; PayPal</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><p id="remindersTotal" class="workflow-kpi"></p><div class="workflow-history-filters"><label>Mitglied suchen<input id="remindersSearch" class="text-input" type="search" placeholder="Vor- oder Nachname"></label><label>Sortieren<select id="remindersOrder" class="text-input"><option value="amount">Größter Betrag zuerst</option><option value="small">Kleinster Betrag zuerst</option><option value="name">Name</option></select></label></div><details class="workflow-recent"><summary>Zuletzt bestätigte Zahlungen</summary><ul id="remindersRecent"></ul></details><div id="remindersList"></div>';
+    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Schulden, PayPal &amp; Erinnerungen</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><p id="remindersTotal" class="workflow-kpi"></p><div class="workflow-history-filters"><label>Mitglied suchen<input id="remindersSearch" class="text-input" type="search" placeholder="Vor- oder Nachname"></label><label>Sortieren<select id="remindersOrder" class="text-input"><option value="amount">Größter Betrag zuerst</option><option value="small">Kleinster Betrag zuerst</option><option value="name">Name</option></select></label></div><details class="workflow-recent"><summary>Zuletzt bestätigte Zahlungen</summary><ul id="remindersRecent"></ul></details><div id="remindersList"></div>';
     document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;byId('remindersSearch').oninput=renderReminders;byId('remindersOrder').onchange=renderReminders;
     const button=document.createElement('button');button.type='button';button.className='primary-button';button.textContent='Deckel und PayPal öffnen';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('drinksSettingsPaymentsCard').append(button);
   }

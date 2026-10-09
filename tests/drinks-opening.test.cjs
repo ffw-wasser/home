@@ -30,8 +30,8 @@ async function fixture(){
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 test('Namensauswahl zeigt sofort Ladeansicht und verhindert doppelte Abfragen',async()=>{
   const f=await fixture();f.choose();assert.equal(f.root.dataset.screen,'opening');assert.equal(f.person.textContent,'Test, Mitglied');
-  assert.equal(f.nodes['dr-add'].disabled,true);f.choose();assert.equal(f.reads(),1);
-  f.resolve({pin:null,bookings:[]});await flush();assert.equal(f.root.dataset.screen,'account');assert.equal(f.nodes['dr-add'].disabled,false);
+  assert.equal(f.nodes['dr-mobile-open'].disabled,true);f.choose();assert.equal(f.reads(),1);
+  f.resolve({pin:null,bookings:[]});await flush();assert.equal(f.root.dataset.screen,'account');assert.equal(f.nodes['dr-mobile-open'].disabled,false);
 });
 test('Geschütztes Konto öffnet nach dem Laden die PIN-Eingabe',async()=>{
   const f=await fixture();f.choose();f.resolve({pin:{hash:'fixture'},bookings:[]});await flush();assert.equal(f.root.dataset.screen,'pin');

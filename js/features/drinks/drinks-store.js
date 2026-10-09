@@ -154,9 +154,10 @@
   async function book(memberId,booking,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
     if(!['drinks','payment','correction'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
+    if(booking.type==='correction'&&booking.confirmation!==undefined)throw new Error('Bezahlte Buchungen dürfen nur durch die Administration gelöscht werden.');
     if(booking.type==='payment'&&booking.confirmation!=='member')throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
     const policy=await rewards(expectedSource),account=await mutate(memberId,a=>{
-      if(booking.type==='correction'&&!a.bookings.some(b=>b.id===booking.id)&&M.day(booking.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(new Error('Nur heute gebuchte Striche können zurückgenommen werden.'),{code:'correctionChanged'});
+      if(booking.type==='correction'&&!a.bookings.some(b=>b.id===booking.id)&&M.day(booking.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(new Error('Nur heute gebuchte, vollständig unbezahlte Getränke können zurückgenommen werden.'),{code:'correctionChanged'});
       return M.appendWithReward(a,booking,policy);
     },pinSignature,expectedSource);
     // Publishing failure must never turn a confirmed ledger write into a failed payment.
@@ -164,8 +165,11 @@
   }
   async function bookMany(memberId,bookings,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
-    if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>b?.type!=='drinks'))throw new Error('Ungültige Getränkesammlung.');
-    const account=await mutate(memberId,a=>M.appendMany(a,bookings),pinSignature,expectedSource);
+    if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>!['drinks','correction'].includes(b?.type)))throw new Error('Ungültige Getränkesammlung.');
+    const account=await mutate(memberId,a=>{
+      for(const b of bookings)if(b.type==='correction'&&!a.bookings.some(old=>old.id===b.id)&&M.day(b.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(new Error('Die Rücknahme ist abgelaufen. Nur heutige, vollständig unbezahlte Getränke können zurückgenommen werden.'),{code:'correctionChanged'});
+      return M.appendMany(a,bookings);
+    },pinSignature,expectedSource);
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
   async function adminPaypalPayment(memberId,booking){
@@ -177,6 +181,12 @@
       if(found){if(found.type==='payment'&&found.method==='paypal'&&found.confirmation==='admin'&&found.cents===booking.cents)return a;throw new Error('Dieser Zahlungscode wurde bereits mit einem anderen Betrag verwendet.');}
       return M.appendWithReward(a,booking,policy);
     });
+    try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
+  }
+  async function adminDelete(memberId,booking,expectedSource=null){
+    const admin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');};admin();
+    if(!['correction','payment-reversal'].includes(booking?.type)||booking.confirmation!=='admin')throw new Error('Ungültige Admin-Löschung.');
+    const account=await mutate(memberId,a=>{admin();return M.append(a,booking);},null,expectedSource);
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
   function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
@@ -202,5 +212,24 @@
     while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);for(const file of page.value||[])if(file.file&&/^handy-[a-f0-9]{64}\.json$/.test(file.name)){const record=await readMobileFile(file.name);if(record?.data?.memberId)ids.push(String(record.data.memberId));}url=page['@odata.nextLink'];}
     return ids;
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
+  async function consumption(year){
+    const ctx=await context(),accounts=[];if(!ctx.folder){assertCurrent(ctx);return {...M.consumption([],year),sourceKey:ctx.key};}
+    const files=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=id,name,eTag,file';
+    while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);files.push(...(page.value||[]).filter(f=>f.file&&/^konto-[a-f0-9]{64}\.json$/.test(f.name)));url=page['@odata.nextLink'];}
+    await Promise.all(Array.from({length:Math.min(4,files.length)},async()=>{
+      while(files.length){const file=files.shift();let stable=false;
+        for(let attempt=0;attempt<3;attempt++){
+          const before=await(await odFetch(itemUrl(ctx.root,file.id)+'?$select=id,eTag')).json();
+          const data=await(await odFetch(itemUrl(ctx.root,file.id)+'/content',{cache:'no-store'})).json();
+          const after=await(await odFetch(itemUrl(ctx.root,file.id)+'?$select=id,eTag')).json();assertCurrent(ctx);
+          if(!before.eTag||after.eTag!==before.eTag)continue;
+          M.validate(data,data.memberId);if(await fileName(data.memberId)!==file.name)throw new Error('Ein Getränkekonto ist nicht eindeutig zugeordnet.');
+          accounts.push(data);stable=true;break;
+        }
+        if(!stable)throw new Error('Getränkekonten werden gerade geändert. Bitte erneut laden.');
+      }
+    }));
+    assertCurrent(ctx);return {...M.consumption(accounts,year),sourceKey:ctx.key};
+  }
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
 })(typeof window==='undefined'?globalThis:window);

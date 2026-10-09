@@ -287,21 +287,16 @@ test('Heutige Striche richten sich an Berliner Mitternacht und Sommerzeit',()=>{
   a=M.append(a,correction('drink-0001','correct-midnight',1,'2026-10-09T21:59:59Z'));assert.equal(M.totals(a).count,4);
   assert.equal(M.day('2026-01-08T23:10:00Z'),M.day('2026-01-09T12:00:00Z'));
 });
-test('Korrektur bezahlter Striche gibt Guthaben zurück, ohne Zahlung oder Bonus zu ändern',()=>{
-  const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);
-  a=M.appendWithReward(a,pay('payment-0020',3000),p);const original=copy(a.bookings);
-  a=M.appendWithReward(a,correction('drink-0020'),p);
-  assert.deepEqual(copy(M.totals(a)),{balance:0,count:19});assert.equal(M.rewardState(a,p).credit,450);
-  assert.equal(a.schemaVersion,3);assert.deepEqual(copy(a.bookings.slice(0,3)),original);
-  a=M.appendWithReward(a,drink('drink-0021',3),p);assert.equal(M.rewardState(a,p).credit,0);assert.equal(M.totals(a).balance,0);
-  assert.equal(a.bookings.filter(b=>b.type==='bonus').length,1);
+test('Mitglieder können bezahlte Buchungen nicht zurücknehmen; alte Korrekturen bleiben unverändert lesbar',()=>{
+ const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);a=M.appendWithReward(a,pay('payment-0020',3000),p);const original=copy(a);
+ assert.throws(()=>M.appendWithReward(a,correction('drink-0020'),p),/bereits ganz oder teilweise bezahlt/);assert.deepEqual(copy(a),original);
+ const historical={...a,schemaVersion:3,bookings:[...a.bookings,correction('drink-0020')]};M.validate(historical,'a');assert.equal(M.totals(historical).count,19);assert.equal(M.rewardState(historical,p).credit,450);
 });
-test('Korrektur gibt verbrauchtes Bonusguthaben zurück und verrechnet gemischte Buchungen centgenau',()=>{
-  const {M}=app(),p={...rewardPolicy(),cents:100};let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);
-  a=M.appendWithReward(a,pay('payment-0020',3000),p);a=M.appendWithReward(a,drink('drink-0021',2),p);
-  assert.equal(M.totals(a).balance,200);a=M.appendWithReward(a,correction('drink-0021'),p);
-  assert.equal(M.totals(a).balance,50);assert.equal(M.rewardState(a,p).credit,0);
-  a=M.appendWithReward(a,correction('drink-0021','correct-0002'),p);assert.equal(M.totals(a).balance,0);assert.equal(M.rewardState(a,p).credit,100);
+test('Teilweise bezahlte oder mit Bonus verrechnete Buchungen sind geschützt; unabhängige unbezahlte Einträge bleiben korrigierbar',()=>{
+ const {M}=app(),p={...rewardPolicy(),cents:100};let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);a=M.appendWithReward(a,pay('payment-0020',3000),p);a=M.appendWithReward(a,drink('drink-0021',2),p);
+ assert.throws(()=>M.append(a,correction('drink-0021')),/bereits ganz oder teilweise bezahlt/);
+ a=M.append(a,drink('unpaid-new-beer',1));assert.equal(M.correctable(a,'2026-10-08T18:00:00Z').targetId,'unpaid-new-beer');a=M.append(a,correction('unpaid-new-beer'));assert.equal(M.totals(a).balance,200);
+ let partial=M.append(M.empty('b'),drink('partial-drinks',5));partial=M.append(partial,pay('partial-payment',1));assert.throws(()=>M.append(partial,correction('partial-drinks')),/bereits ganz oder teilweise bezahlt/);
 });
 test('Korrektur in OneDrive übersteht verlorene Antwort, Konflikte und parallele Rücknahmen',async()=>{
   const a=app(),now=new Date().toISOString(),d={...drink('drink-today',1),createdAt:now};await a.S.book('a',d,'null');
@@ -325,15 +320,10 @@ test('Wein kostet 3 Euro pro Glas; alte Buchungen behalten 1,50 Euro und bleiben
  assert.deepEqual(copy(M.totals(a)),{balance:1350,count:7});assert.deepEqual(copy(a.bookings.slice(0,1)),before);
  for(const b of [{...wine(),cents:150},{...wine(),drink:'unknown'}, {...drink('invalid-beer-001'),cents:1500}])assert.throws(()=>M.append(old,b),/ungültig/);
 });
-test('Weinkorrektur nimmt genau 3 Euro zurück, einschließlich bezahltem Betrag und Bonusguthaben',()=>{
- const {M}=app(),p=rewardPolicy(2,300);let a=M.append(M.empty('a'),wine());
- a=M.appendWithReward(a,{...pay('wine-payment-001',300),createdAt:'2026-10-09T12:01:00Z'},p);
- const originals=copy(a.bookings),c={id:'wine-correction-001',type:'correction',drink:'wine',targetId:'wine-booking-001',count:1,cents:300,createdAt:'2026-10-09T12:02:00Z'};
- assert.throws(()=>M.append(a,{...c,cents:150}),/korrigiert/);assert.throws(()=>M.append(a,{...c,drink:'beer'}),/korrigiert/);
- a=M.append(a,c);assert.deepEqual(copy(a.bookings.slice(0,2)),originals.slice(0,2));assert.equal(a.schemaVersion,4);
- assert.deepEqual(copy(M.totals(a)),{balance:0,count:0});assert.equal(M.rewardState(a,p).credit,600);
- assert.deepEqual(copy(M.append(a,c)),copy(a));
- a=M.append(a,wine('wine-credit-booking',2,'2026-10-09T12:03:00Z'));assert.equal(M.rewardState(a,p).credit,0);assert.equal(M.totals(a).balance,0);
+test('Unbezahlter Wein wird centgenau korrigiert; bezahlter Wein bleibt für Mitglieder geschützt',()=>{
+ const {M}=app(),p=rewardPolicy(2,300),a=M.append(M.empty('a'),wine()),c={id:'wine-correction-001',type:'correction',drink:'wine',targetId:'wine-booking-001',count:1,cents:300,createdAt:'2026-10-09T12:02:00Z'};
+ assert.throws(()=>M.append(a,{...c,cents:150}),/korrigiert/);assert.throws(()=>M.append(a,{...c,drink:'beer'}),/korrigiert/);const corrected=M.append(a,c);assert.equal(M.totals(corrected).balance,0);assert.equal(M.append(corrected,c),corrected);
+ const paid=M.appendWithReward(a,{...pay('wine-payment-001',300),createdAt:'2026-10-09T12:01:00Z'},p);assert.throws(()=>M.append(paid,c),/bereits ganz oder teilweise bezahlt/);assert.equal(M.rewardState(paid,p).credit,300);
 });
 test('Gemischte Sammlung wird in einem OneDrive-Schreibvorgang gespeichert; Wiederholung nach verlorener Antwort zählt einmal',async()=>{
  const {ctx,S,M,calls}=app(),entries=[drink('mixed-beer-001',5),wine('mixed-wine-001',2)];await S.rewards();const start=calls.length;
@@ -365,4 +355,42 @@ test('OK-Sammlung erhält Reihenfolge und rechnet Bonusguthaben centgenau in ein
 test('OK-Sammlung lehnt doppelte Nummern oder eine Zahlung ab, ohne gültige Teile zu übernehmen',()=>{
  const {M}=app(),a=M.empty('a'),entry=drink('batch-duplicate-001',1);
  assert.throws(()=>M.appendMany(a,[entry,entry]),/Doppelte/);assert.throws(()=>M.appendMany(a,[entry,pay()]),/Ungültige/);assert.equal(a.bookings.length,0);
+});
+
+const adminRemoval=(targetId,id='admin-removal-001',extra={})=>({id,type:'correction',targetId,count:1,cents:150,confirmation:'admin',reason:'Fehlerhafte Buchung',createdAt:'2026-10-09T18:00:00Z',...extra});
+test('Verwaltung darf auch alte bezahlte Getränke löschen; Mitglieder können Admin-Löschungen nicht einschleusen',async()=>{
+ const {S,M}=app();await S.book('a',drink('admin-paid-drink',1),'null');await S.book('a',pay('admin-paid-cash',150),'null');const entry=adminRemoval('admin-paid-drink');
+ await assert.rejects(S.book('a',entry,'null'),/Administration/);await assert.rejects(S.bookMany('a',[entry],'null'),/Ungültige/);
+ const next=await S.adminDelete('a',entry);assert.equal(next.schemaVersion,5);assert.equal(M.totals(next).count,0);assert.equal(M.rewardState(next,null).credit,150);assert.equal((await S.adminDelete('a',entry)).bookings.length,3);
+});
+test('Admin-Löschung verlangt Freigabe, Grund und ursprüngliche OneDrive-Quelle',async()=>{
+ const {S,ctx}=app();await S.book('a',drink('admin-restricted-drink',1),'null');const entry=adminRemoval('admin-restricted-drink');ctx.adminUnlocked=false;await assert.rejects(S.adminDelete('a',entry),/Administration/);ctx.adminUnlocked=true;
+ await assert.rejects(S.adminDelete('a',{...entry,reason:''}),/ungültig/);await assert.rejects(S.adminDelete('a',entry,'other:folder'),/vorherigen OneDrive/);assert.equal((await S.read('a')).bookings.length,1);
+});
+test('Admin-Zahlungslöschung nimmt Bonus zurück und funktioniert idempotent bei verlorener Antwort',async()=>{
+ const {S,M,ctx}=app();await S.book('a',drink('admin-twenty-beer',20),'null');const now=new Date().toISOString();await S.book('a',{...pay('admin-full-payment',3000),createdAt:now},'null');
+ const entry=adminRemoval('admin-full-payment','admin-payment-reversal',{type:'payment-reversal',cents:3000,createdAt:now});delete entry.count;ctx.loseReply=true;
+ const next=await S.adminDelete('a',entry);assert.equal(M.totals(next).balance,3000);assert.equal(M.rewardState(next,S.cachedRewards()).credit,0);assert.equal(M.rewardState(next,S.cachedRewards()).progress,0);
+ assert.equal((await S.adminDelete('a',entry)).bookings.length,4);await assert.rejects(S.adminDelete('a',{...entry,id:'second-payment-reversal'}),/bereits gelöscht/);
+ await S.book('a',{...pay('replacement-payment',3000),createdAt:now},'null');const repaid=await S.read('a');assert.equal(M.rewardState(repaid,S.cachedRewards()).credit,300);assert.equal(M.totals(repaid).balance,0);
+});
+test('Löschen einer bereits ausgegebenen Bonuszahlung stellt Schulden ohne negatives Guthaben wieder her',()=>{
+ const {M}=app(),p=rewardPolicy(2,300);let a=M.append(M.empty('a'),wine('admin-funded-wine'));a=M.appendWithReward(a,{...pay('admin-funded-payment',300),createdAt:'2026-10-09T12:01:00Z'},p);a=M.append(a,wine('admin-credit-wine',1,'2026-10-09T12:02:00Z'));
+ const reversal=adminRemoval('admin-funded-payment','admin-funded-reversal',{type:'payment-reversal',cents:300});delete reversal.count;a=M.append(a,reversal);assert.equal(M.totals(a).balance,600);assert.equal(M.rewardState(a,p).credit,0);assert.equal(M.rewardState(a,p).progress,0);
+});
+test('Getränk und Zahlung können in beiden Reihenfolgen gelöscht werden, ohne Schulden oder Gutschrift zu erfinden',()=>{
+ const {M}=app();for(const reverseFirst of [true,false]){let a=M.append(M.empty('a'),drink('admin-order-drink',1));a=M.append(a,pay('admin-order-payment',150));const d=adminRemoval('admin-order-drink'),r=adminRemoval('admin-order-payment','admin-order-reversal',{type:'payment-reversal'});delete r.count;
+ for(const b of reverseFirst?[r,d]:[d,r])a=M.append(a,b);assert.equal(M.totals(a).balance,0);assert.equal(M.totals(a).count,0);assert.equal(M.rewardState(a,null).credit,0);}
+});
+test('Verbrauch wird ohne Namen nach Berliner Kalenderjahr und Monat gesammelt; Zahlungen zählen nicht als Verbrauch',()=>{
+ const {M}=app();let a=M.append(M.empty('member-private-a'),{...drink('stats-old-beer',2),createdAt:'2025-12-31T22:30:00Z'});a=M.append(a,{...drink('stats-new-beer',3),createdAt:'2025-12-31T23:30:00Z'});a=M.append(a,pay('stats-payment',150));a=M.append(a,adminRemoval('stats-new-beer'));
+ const b=M.append(M.empty('member-private-b'),wine('stats-wine',2));const data=M.consumption([a,b],'2026');assert.equal(data.beer,2);assert.equal(data.wine,2);assert.equal(data.total,4);assert.equal(data.months[0].beer,2);assert.equal(data.months[9].wine,2);assert.equal(M.consumption([a,b],'2025').beer,2);assert.ok(!JSON.stringify(data).includes('member-private'));assert.ok(!JSON.stringify(data).includes('stats-new-beer'));
+});
+test('Verbrauch liest alle Kontodateien einschließlich früherer Mitglieder, ohne Konten oder PINs umzuschreiben',async()=>{
+ const {S,M,calls,files}=app();await S.book('previous-member',drink('stats-previous-member',3),'null');await S.book('current-member',wine('stats-current-member',2),'null');const file=[...files.values()].find(f=>f.data.memberId==='previous-member');delete file.data.pinChoiceVersion;const before=JSON.stringify([...files]),start=calls.length;
+ const data=await S.consumption('2026');assert.equal(data.beer,3);assert.equal(data.wine,2);assert.equal(JSON.stringify([...files]),before);assert.ok(calls.slice(start).every(c=>!c.options.method||c.options.method==='GET'));assert.ok(!JSON.stringify(data).includes('previous-member'));assert.equal(M.validate(file.data,'previous-member'),file.data);
+});
+test('Eine Zahlung zwischen Vormerkung und OK verhindert die gesamte Sammlung einer Rücknahme plus neuer Getränke',async()=>{
+ const {S,M}=app(),now=new Date().toISOString(),d={...drink('batch-unpaid-drink',1),createdAt:now};await S.book('a',d,'null');await S.book('a',{...pay('batch-later-payment',150),createdAt:now},'null');const c=correction(d.id,'batch-correction',1,now);
+ await assert.rejects(S.bookMany('a',[c,{...drink('batch-new-beer',1),createdAt:now}],'null'),/bereits ganz oder teilweise bezahlt/);assert.equal((await S.read('a')).bookings.length,2);assert.equal(M.totals(await S.read('a')).balance,0);
 });

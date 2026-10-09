@@ -7,7 +7,7 @@ async function fixture(){
  const data={balance:0,credit:0,needed:300,bonusCents:300,bookings:[],updatedAt:'2026-10-09T16:00:00Z'},ctx=vm.createContext({URL,URLSearchParams,Date,AbortController,Promise,
   setTimeout:(fn,delay)=>{timers.set(++next,{fn,at:now+delay});return next;},clearTimeout:id=>timers.delete(id),location:{href:url.href,hash:url.hash},
   document:{hidden:false,getElementById:id=>nodes.get(id)||nodes.set(id,element()).get(id),createElement:element,addEventListener:(name,fn)=>events[name]=fn},addEventListener:(name,fn)=>events[name]=fn,
-  DeckelCrypto:{access(){},open:async()=>structuredClone(data)},fetch:async()=>({ok:true,text:async()=> '{}'})});
+  DeckelCrypto:{access(){},open:async()=>structuredClone(data)},fetch:async()=>{if(ctx.failedLoad)throw new TypeError('Failed to fetch');return {ok:true,text:async()=> '{}'};}});
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/deckel-view.js'),'utf8'),ctx);await flush();
  return {ctx,data,nodes,events,async reload(){nodes.get('refresh').onclick();await flush();},advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }
@@ -21,4 +21,10 @@ test('Handy bedankt sich nach einer neuen Begleichung erneut und entfernt den Hi
  f.data.balance=0;await f.reload();assert.equal(f.nodes.get('thanks').hidden,false);
  f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('thanks').hidden,true);
  f.ctx.document.hidden=false;f.events.visibilitychange();await flush();assert.equal(f.nodes.get('thanks').hidden,true);assert.equal(f.nodes.get('account').hidden,false);
+});
+
+test('Aktualisieren hält den geprüften Kontostand sichtbar; Netzfehler zeigen Alter statt leerer Ansicht',async()=>{
+ const f=await fixture();f.data.balance=450;await f.reload();const balance=f.nodes.get('balance').textContent;f.ctx.failedLoad=true;
+ const loading=f.nodes.get('refresh').onclick();assert.equal(f.nodes.get('account').hidden,false);await loading;assert.equal(f.nodes.get('balance').textContent,balance);assert.equal(f.nodes.get('account').hidden,false);assert.match(f.nodes.get('status').textContent,/Angezeigt bleibt der Stand/);assert.match(f.nodes.get('status').textContent,/Verbindung prüfen/);
+ f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('account').hidden,true);assert.equal(f.nodes.get('balance').textContent,'');
 });
