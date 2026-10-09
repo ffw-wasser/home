@@ -52,9 +52,9 @@ auch durch Person und Zielplatz antippen bedienen, mit Rücknahme der letzten
 Änderung durch Antippen.
 
 Historienkorrekturen, Löschen, Sicherungswiederherstellung und OneDrive-Einrichtung
-erfordern die Verwaltung. Lesen und Aktualisieren bleiben frei. Der sichtbare
-Button **Verwaltung sperren** beendet die Freigabe; Getränke und das Verbergen
-der App sperren sie ebenfalls. Neue Admin-Passwörter brauchen acht Zeichen,
+erfordern die Verwaltung. Lesen und Aktualisieren bleiben frei. Nach 15 Minuten
+ohne Bedienung, beim Öffnen von Getränke und beim Verbergen der App wird die
+Verwaltung automatisch gesperrt. Neue Admin-Passwörter brauchen acht Zeichen,
 persönliche Getränke-PINs vier Ziffern.
 
 Getränkekonten sperren sich auch mit offenen Strichen nach 60 Sekunden ohne

@@ -9,11 +9,6 @@
     dirtyRows().forEach(row=>{delete row.dataset.memberDirty;delete row.dataset.dirty;});renderAdmin();return true;
   }
   function savedMember(row){delete row.dataset.memberDirty;}
-  function adminState(){
-    const bar=byId('administrationState');if(!bar)return;
-    bar.hidden=!adminUnlocked;
-    document.body.classList.toggle('administration-open',adminUnlocked);
-  }
   function attendanceState(){
     const hint=byId('attendanceDraftStatus');if(!hint)return;
     const count=pendingMemberStatuses.size;
@@ -100,7 +95,6 @@
       const clean=button.cloneNode(true);button.replaceWith(clean);clean.textContent=text;clean.onclick=fn;
     }
     for(const id of ['drinksTab','historyTab','statisticsTab','settingsTab','helpTab'])byId('compactMenu').append(byId(id));
-    const bar=document.createElement('div');bar.id='administrationState';bar.className='ux-admin-state';bar.innerHTML='<strong>Verwaltung geöffnet</strong><button class="outline-button" type="button">Verwaltung sperren</button>';document.querySelector('main.app-shell').before(bar);bar.querySelector('button').onclick=()=>{if(!beforeLeave('attendanceView'))return;logoutAdmin();showToast('Verwaltung gesperrt.');};adminState();
     const hint=document.createElement('p');hint.id='attendanceDraftStatus';hint.className='ux-save-status';hint.setAttribute('role','status');byId('members')?.before(hint);attendanceState();
     const actions=document.createElement('details');actions.className='ux-other-actions';actions.innerHTML='<summary>Weitere Aktionen</summary><button class="danger-button" type="button" id="discardCurrentSessionButton">Termin verwerfen</button>';
     const reset=byId('resetTodayParticipantsButton');if(reset){reset.before(actions);actions.append(reset);}else byId('attendanceView').append(actions);
@@ -117,6 +111,6 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&adminUnlocked)lockAdministration();});
     window.addEventListener('beforeunload',event=>{if(dirtyRows().length||pendingMemberStatuses.size){event.preventDefault();event.returnValue='';}});
   }
-  window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>dirtyRows().length>0,adminState,attendanceState,members:renderMemberList,statistics,historyStatus};
+  window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>dirtyRows().length>0,attendanceState,members:renderMemberList,statistics,historyStatus};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();

@@ -12,7 +12,6 @@ body .home-flow-indicator{min-height:48px}
 body .cloud-sync-button,body .cloud-sync-close{min-height:48px;min-width:48px}
 body .member-status-action{min-width:48px;min-height:54px}
 .ux-search{margin:16px 0 22px;max-width:640px}.ux-search label{display:block;font-weight:700;margin-bottom:8px}.ux-search input{width:100%}.ux-search p{font-size:16px;color:var(--ux-muted);margin:8px 0}
-.ux-admin-state{display:flex;justify-content:space-between;align-items:center;gap:14px;background:#fff7df;border-bottom:1px solid #d3bb72;padding:8px 24px}.ux-admin-state button{background:#fff}
 .ux-save-status{padding:12px 16px;background:#eef5f0;color:#234d32;border-radius:10px;font-size:16px}.ux-save-status.is-pending{background:#fff5d9;color:#705116}
 .ux-other-actions{margin:16px 0;padding:12px;border:1px solid var(--ux-line);border-radius:12px}.ux-other-actions summary{font-weight:600;padding:12px;cursor:pointer}.ux-other-actions button{margin:12px 8px 4px 0}
 body .member-card.ux-member{background:#fff;border:1px solid var(--ux-line);border-top:1px solid var(--ux-line);box-shadow:none;border-radius:14px;padding:0;margin-bottom:12px}
@@ -33,7 +32,7 @@ body .crew-position{min-height:76px;cursor:pointer}body .crew-position small{fon
 @keyframes burst-pop{0%,48%{opacity:0;transform:scale(.1)}65%{opacity:1;transform:scale(1.25)}100%{opacity:0;transform:scale(1.6)}}
 @keyframes burst-confetti{0%{opacity:0;transform:rotate(var(--angle)) translateY(0)}10%{opacity:1}100%{opacity:0;transform:rotate(var(--angle)) translateY(-140px) rotate(140deg)}}
 @media(prefers-reduced-motion:reduce){.dr-burst img{animation:none}.dr-burst-pop,.dr-burst i{display:none}.dr-thanks *{animation:none!important}}
-@media(max-width:700px){.ux-history-status,.ux-admin-state{align-items:stretch;flex-direction:column}.ux-reminder-row{grid-template-columns:minmax(0,1fr) auto}.ux-reminder-row button{grid-column:1/-1}.ux-member-open{display:none}.ux-dialog-actions>*{width:100%}}
+@media(max-width:700px){.ux-history-status{align-items:stretch;flex-direction:column}.ux-reminder-row{grid-template-columns:minmax(0,1fr) auto}.ux-reminder-row button{grid-column:1/-1}.ux-member-open{display:none}.ux-dialog-actions>*{width:100%}}
 /* Vorrang vor früheren, ausdrücklich ausgeblendeten Menüeinträgen. */
 html body #compactMenu #historyTab,html body #compactMenu #statisticsTab{display:flex!important}
 html body .top-nav #attendanceTab,html body .top-nav #menuToggleButton,html body .top-nav #cloudSyncButton{height:auto!important;min-height:48px!important;max-height:none!important}
