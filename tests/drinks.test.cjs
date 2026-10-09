@@ -271,3 +271,49 @@ test('Gleichzeitige PayPal-Vollzahlungen der Administration können ein Konto ni
   const results=await Promise.allSettled([a.S.adminPaypalPayment('member-a',payment),a.S.adminPaypalPayment('member-a',{...payment,id:'paypal-admin-TWO'})]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(a.M.totals(await a.S.read('member-a')).balance,0);
 });
+
+const correction=(targetId,id='correct-0001',count=1,createdAt='2026-10-08T18:00:00Z')=>({id,type:'correction',targetId,count,cents:count*150,createdAt});
+test('Heutige Striche korrigieren erhält Originale und ist bei Wiederholung idempotent',()=>{
+  const {M}=app(),original=M.append(M.empty('a'),drink()),entry=correction('drink-0001');
+  const a=M.append(original,entry);assert.deepEqual(copy(M.totals(a)),{balance:600,count:4});assert.equal(a.schemaVersion,3);
+  assert.deepEqual(copy(a.bookings[0]),copy(original.bookings[0]));assert.equal(M.append(a,entry),a);
+  assert.equal(M.today(a,'2026-10-08T19:00:00Z').count,4);assert.equal(M.today(a,'2026-10-09T12:00:00Z').count,0);
+  assert.throws(()=>M.append(a,correction('drink-0001','correct-0002',5)),/korrigiert/);
+  assert.throws(()=>M.append(a,correction('drink-0001','correct-0003',1,'2026-10-09T12:00:00Z')),/korrigiert/);
+});
+test('Heutige Striche richten sich an Berliner Mitternacht und Sommerzeit',()=>{
+  const {M}=app();let a=M.append(M.empty('a'),{...drink(),createdAt:'2026-10-08T22:10:00Z'});
+  assert.equal(M.today(a,'2026-10-09T21:59:59Z').count,5);assert.equal(M.today(a,'2026-10-09T22:00:00Z').count,0);
+  a=M.append(a,correction('drink-0001','correct-midnight',1,'2026-10-09T21:59:59Z'));assert.equal(M.totals(a).count,4);
+  assert.equal(M.day('2026-01-08T23:10:00Z'),M.day('2026-01-09T12:00:00Z'));
+});
+test('Korrektur bezahlter Striche gibt Guthaben zurück, ohne Zahlung oder Bonus zu ändern',()=>{
+  const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);
+  a=M.appendWithReward(a,pay('payment-0020',3000),p);const original=copy(a.bookings);
+  a=M.appendWithReward(a,correction('drink-0020'),p);
+  assert.deepEqual(copy(M.totals(a)),{balance:0,count:19});assert.equal(M.rewardState(a,p).credit,450);
+  assert.equal(a.schemaVersion,3);assert.deepEqual(copy(a.bookings.slice(0,3)),original);
+  a=M.appendWithReward(a,drink('drink-0021',3),p);assert.equal(M.rewardState(a,p).credit,0);assert.equal(M.totals(a).balance,0);
+  assert.equal(a.bookings.filter(b=>b.type==='bonus').length,1);
+});
+test('Korrektur gibt verbrauchtes Bonusguthaben zurück und verrechnet gemischte Buchungen centgenau',()=>{
+  const {M}=app(),p={...rewardPolicy(),cents:100};let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);
+  a=M.appendWithReward(a,pay('payment-0020',3000),p);a=M.appendWithReward(a,drink('drink-0021',2),p);
+  assert.equal(M.totals(a).balance,200);a=M.appendWithReward(a,correction('drink-0021'),p);
+  assert.equal(M.totals(a).balance,50);assert.equal(M.rewardState(a,p).credit,0);
+  a=M.appendWithReward(a,correction('drink-0021','correct-0002'),p);assert.equal(M.totals(a).balance,0);assert.equal(M.rewardState(a,p).credit,100);
+});
+test('Korrektur in OneDrive übersteht verlorene Antwort, Konflikte und parallele Rücknahmen',async()=>{
+  const a=app(),now=new Date().toISOString(),d={...drink('drink-today',1),createdAt:now};await a.S.book('a',d,'null');
+  const c=correction(d.id,'correct-today',1,now);a.ctx.forceConflict=1;a.ctx.loseReply=true;
+  const corrected=await a.S.book('a',c,'null');assert.equal(a.M.totals(corrected).count,0);
+  await a.S.book('a',c,'null');assert.equal((await a.S.read('a')).bookings.length,2);
+  await assert.rejects(a.S.book('a',correction(d.id,'correct-other',1,now),'null'),/korrigiert/);
+  const yesterday=new Date(Date.now()-86400000).toISOString();await a.S.book('b',{...d,createdAt:yesterday},'null');
+  await assert.rejects(a.S.book('b',correction(d.id,'correct-old',1,yesterday),'null'),/Nur heute/);
+});
+test('Gleichzeitige Korrekturen können denselben Strich nicht doppelt zurückgeben',async()=>{
+  const a=app(),now=new Date().toISOString();await a.S.book('a',{...drink('drink-today',1),createdAt:now},'null');
+  const results=await Promise.allSettled(['correct-first','correct-second'].map(id=>a.S.book('a',correction('drink-today',id,1,now),'null')));
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(a.M.totals(await a.S.read('a')).balance,0);
+});

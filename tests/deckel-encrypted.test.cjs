@@ -44,3 +44,10 @@ test('Handy-Deckel funktioniert ohne PIN und verweigert veralteten PIN-Status',a
   await assert.rejects(D.link('member-test',''),/PIN/);
   ctx.account.pin=await ctx.DrinksModel.createPin('4826');await assert.rejects(D.link('member-test','null'),/PIN/);
 });
+
+test('Handy-Deckel veröffentlicht und entschlüsselt Korrekturen mit aktualisiertem Kontostand',async()=>{
+  const {ctx}=app(),M=ctx.DrinksModel;ctx.account=M.append(ctx.account,{id:'correction-mobile',type:'correction',targetId:'drink-0001',count:1,cents:150,createdAt:'2026-10-09T12:00:00Z'});
+  const record=ctx.DeckelCrypto.create(),snapshot=ctx.DrinksMobile.snapshot(ctx.account,ctx.policy);
+  const envelope=await ctx.DeckelCrypto.seal(snapshot,record),opened=await ctx.DeckelCrypto.open(envelope,record);
+  assert.equal(opened.balance,600);assert.equal(opened.bookings[0].type,'correction');assert.equal(opened.bookings[0].count,1);
+});

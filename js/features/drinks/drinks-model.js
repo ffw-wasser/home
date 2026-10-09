@@ -5,16 +5,39 @@
   const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
   const bytes=value=>new Uint8Array(value.match(/../g).map(x=>parseInt(x,16)));
   function empty(memberId){return {schemaVersion:1,memberId:String(memberId),pinChoiceVersion:1,pin:null,bookings:[]};}
+  const dayFormat=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'});
+  const day=value=>dayFormat.format(new Date(value));
+  function correctionError(){return Object.assign(new Error('Diese heutigen Striche wurden inzwischen korrigiert. Bitte den aktuellen Stand prüfen.'),{code:'correctionChanged'});}
+  function applyEntry(s,b){
+    if(b.type==='drinks'){
+      const used=Math.min(s.credit,b.cents);s.credit-=used;s.balance+=b.cents-used;s.count+=b.count;
+      s.usages.set(b.id,used);
+      s.drinks.set(b.id,{booking:b,count:b.count,charged:b.cents-used});
+    }else if(b.type==='payment')s.balance-=b.cents;
+    else if(b.type==='bonus')s.credit+=b.cents;
+    else if(b.type==='correction'){
+      const target=s.drinks.get(b.targetId);
+      if(!target||!Number.isSafeInteger(b.count)||b.count<1||b.count>target.count||b.cents!==b.count*PRICE||day(target.booking.createdAt)!==day(b.createdAt)||Date.parse(b.createdAt)<Date.parse(target.booking.createdAt))throw correctionError();
+      // Reverse the last units of this booking. Return consumed credit and any
+      // amount already paid as credit; never alter payment or bonus entries.
+      const charged=Math.min(target.charged,b.cents),debt=Math.min(s.balance,charged);
+      s.balance-=debt;s.credit+=b.cents-debt;s.count-=b.count;
+      target.count-=b.count;target.charged-=charged;
+    }
+    return s;
+  }
+  function state(){return {balance:0,count:0,credit:0,drinks:new Map(),usages:new Map()};}
   function validate(account,memberId){
-    if(!account||![1,2].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die OneDrive-Datei prüfen.');
+    if(!account||![1,2,3].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die OneDrive-Datei prüfen.');
     if(account.pin!==null&&(!account.pin||account.pin.algorithm!=='PBKDF2-SHA256'||account.pin.iterations!==ITERATIONS||!/^[a-f0-9]{32}$/.test(account.pin.salt)||!/^[a-f0-9]{64}$/.test(account.pin.hash)))throw new Error('Die Getränke-PIN ist nicht lesbar.');
-    const ids=new Set(),rewards=new Map(),rewardedPayments=new Set();let balance=0,credit=0;
+    const ids=new Set(),rewards=new Map(),rewardedPayments=new Set(),s=state();
     for(const b of account.bookings){
       if(!b||typeof b.id!=='string'||!/^[-a-zA-Z0-9]{8,150}$/.test(b.id)||ids.has(b.id)||!Number.isSafeInteger(b.cents)||b.cents<=0||!Number.isFinite(Date.parse(b.createdAt)))throw new Error('Eine Getränkebuchung ist ungültig.');
       ids.add(b.id);
-      if(b.type==='drinks'&&Number.isSafeInteger(b.count)&&b.count>0&&b.cents===b.count*PRICE){const used=Math.min(credit,b.cents);credit-=used;balance+=b.cents-used;}
-      else if(b.type==='payment'&&['cash','paypal'].includes(b.method)&&(b.confirmation==='member'||(account.schemaVersion===2&&b.method==='paypal'&&b.confirmation==='admin')))balance-=b.cents;
-      else if(b.type==='bonus'&&account.schemaVersion===2){
+      if(b.type==='drinks'&&Number.isSafeInteger(b.count)&&b.count>0&&b.cents===b.count*PRICE){}
+      else if(b.type==='payment'&&['cash','paypal'].includes(b.method)&&(b.confirmation==='member'||(account.schemaVersion>=2&&b.method==='paypal'&&b.confirmation==='admin'))){}
+      else if(b.type==='correction'&&account.schemaVersion===3){}
+      else if(b.type==='bonus'&&account.schemaVersion>=2){
         const payment=account.bookings.find(p=>p.id===b.paymentId);
         if(!payment||payment.type!=='payment'||!ids.has(payment.id)||rewardedPayments.has(payment.id)||b.id!=='bonus-'+payment.id||b.createdAt!==payment.createdAt||!Number.isSafeInteger(b.cycles)||b.cycles<1)throw new Error('Eine Bonusbuchung ist ungültig.');
         validateRewardSettings(b.policy);
@@ -22,20 +45,20 @@
         const key=b.policy.id,used=(rewards.get(key)||0)+b.qualifyingCents;
         const paid=account.bookings.filter(p=>ids.has(p.id)&&p.type==='payment'&&Date.parse(p.createdAt)>=Date.parse(b.policy.startedAt)).reduce((n,p)=>n+p.cents,0);
         if(used>paid)throw new Error('Eine Bonusbuchung ist nicht durch Zahlungen gedeckt.');
-        rewards.set(key,used);rewardedPayments.add(payment.id);credit+=b.cents;
+        rewards.set(key,used);rewardedPayments.add(payment.id);
       }
       else throw new Error('Eine Getränkebuchung ist ungültig.');
-      if(!Number.isSafeInteger(balance)||balance<0||!Number.isSafeInteger(credit))throw new Error('Der Getränkestand ist ungültig. Bitte die OneDrive-Datei prüfen.');
+      applyEntry(s,b);
+      if(!Number.isSafeInteger(s.balance)||s.balance<0||!Number.isSafeInteger(s.credit)||s.credit<0||!Number.isSafeInteger(s.count)||s.count<0)throw new Error('Der Getränkestand ist ungültig. Bitte die OneDrive-Datei prüfen.');
     }
     return account;
   }
   function ledger(account){
-    return account.bookings.reduce((s,b)=>{
-      if(b.type==='drinks'){const used=Math.min(s.credit,b.cents);s.credit-=used;s.balance+=b.cents-used;s.count+=b.count;}
-      else if(b.type==='payment')s.balance-=b.cents;
-      else if(b.type==='bonus')s.credit+=b.cents;
-      return s;
-    },{balance:0,count:0,credit:0});
+    return account.bookings.reduce(applyEntry,state());
+  }
+  function today(account,now=new Date().toISOString()){
+    const entries=Array.from(ledger(account).drinks.values()).filter(t=>t.count>0&&day(t.booking.createdAt)===day(now));
+    return {count:entries.reduce((n,t)=>n+t.count,0),targetId:entries.at(-1)?.booking.id||''};
   }
   function totals(account){const {balance,count}=ledger(account);return {balance,count};}
   function validateRewardSettings(p){
@@ -54,13 +77,13 @@
     const found=account.bookings.find(b=>b.id===booking.id);
     if(found){if(JSON.stringify(found)!==JSON.stringify(booking))throw new Error('Buchungsnummer bereits anders verwendet.');return account;}
     if(booking.type==='payment'&&booking.cents>totals(account).balance)throw Object.assign(new Error('Der offene Betrag wurde inzwischen geändert. Bitte den Zahlungsbetrag neu wählen.'),{code:'balanceChanged'});
-    return validate({...account,bookings:[...account.bookings,{...booking}]},account.memberId);
+    return validate({...account,schemaVersion:booking.type==='correction'?3:account.schemaVersion,bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendWithReward(account,booking,policy){
     validateRewardSettings(policy);
     // Both entries are one conditional OneDrive write; retries never grant twice.
     if(account.bookings.some(b=>b.id===booking.id))return append(account,booking);
-    let next=append({...account,schemaVersion:2},booking);
+    let next=append({...account,schemaVersion:Math.max(2,account.schemaVersion)},booking);
     if(booking.type!=='payment'||Date.parse(booking.createdAt)<Date.parse(policy.startedAt))return next;
     const state=rewardState(next,policy),cycles=Math.floor(state.progress/state.threshold);
     if(!cycles)return next;
@@ -84,5 +107,5 @@
   }
   function parseEuro(raw){const text=String(raw||'').trim().replace(',','.');if(!/^\d+(\.\d{1,2})?$/.test(text))return null;const cents=Math.round(Number(text)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;}
   function paypalUrl(cents){if(!Number.isSafeInteger(cents)||cents<=0)throw new Error('Ungültiger Zahlungsbetrag.');return 'https://paypal.me/FeuerwehrWasser/'+(cents/100).toFixed(2)+'EUR';}
-  global.DrinksModel={PRICE,empty,validate,totals,append,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
+  global.DrinksModel={PRICE,empty,validate,totals,today,day,ledger,append,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
 })(typeof window==='undefined'?globalThis:window);
