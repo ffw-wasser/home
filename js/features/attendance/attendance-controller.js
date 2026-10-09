@@ -461,7 +461,7 @@ if(!window.__floatingAttendanceStatusBound){
   window.visualViewport?.addEventListener("resize",updateFloatingAttendanceStatusToolbar,{passive:true});
 }
 
-function requestReturnToHomeStage(){ return true; }
+function requestReturnToHomeStage(){ setHomeFlowStage(1); return true; }
 function discardCurrentAttendanceSession(){
   if(!confirm("Diesen laufenden Termin mit allen Anmeldungen und ungespeicherten Eingaben verwerfen? Abgeschlossene Berichte bleiben erhalten."))return false;
   const ids=new Set(todayEntries().map(entry=>entry.id));

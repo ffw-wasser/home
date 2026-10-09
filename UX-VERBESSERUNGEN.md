@@ -38,3 +38,7 @@ Die tatsächliche Bildschirmtastatur und Benachrichtigungsanzeige sind auf einem
 ## Versionsbereinigung
 
 Release 2026.10.09.1: gemeinsame Versionsquelle in `app-release.json`, einheitliche Build-URLs und Offline-Cache. Die Versionskonsistenz wird automatisch geprüft. QR-Generator vom offiziellen Release js2.0.4 übernommen; lokale Lizenz aktualisiert. Überholte DOM-Suche nach Versionsbezeichnungen, widersprüchlicher Service-Worker-Kommentar und doppelte Status-Overrides entfernt. Hilfetexte und README auf administrative PayPal-Buchung und aktuelle Einstellungswege angepasst. Daten- und Backup-Schemata bleiben unabhängig vom App-Release kompatibel.
+
+## Korrektur des Termin-Rückwegs
+
+Release 2026.10.09.2: Der Kopfbutton „Termin“ öffnet wieder Schritt 1 (Terminart auswählen). Eine reine Terminartauswahl erzeugt keine sichtbare Fortsetzen-Karte. Bereits übernommene Anmeldungen, ungespeicherte Markierungen und Berichtsentwürfe bleiben erhalten und können über „Termin fortsetzen“ wieder geöffnet werden. 123 automatisierte Tests bestanden; alle fünf Terminarten im Browser bei 390 und 1024 Pixeln geprüft, einschließlich Auswahlabbruch, Rückweg und Fortsetzen ohne Verlust des Entwurfs.

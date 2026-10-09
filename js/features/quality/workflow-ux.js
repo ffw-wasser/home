@@ -25,7 +25,9 @@
   const undo=byId('attendanceUndo');if(undo)undo.hidden=!selectionUndo;
   const summary=byId('workflowSessionSummary');
   const running=Boolean(currentSessionId||currentOperationId);
-  if(summary){summary.hidden=!running;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${todayEntries().length} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
+  const recorded=todayEntries().length;
+  const hasProgress=recorded>0||count>0||Boolean(currentClosingTopic)||Boolean(typeof currentOperationDraft!=='undefined'&&currentOperationDraft)||Boolean(typeof pendingDocumentReport!=='undefined'&&pendingDocumentReport?.pageCount);
+  if(summary){summary.hidden=!running||!hasProgress;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
  }
  function beforeSelection(){selectionKey=(currentSessionId||currentOperationId||'')+'|'+sessionType;selectionUndo=new Map(pendingMemberStatuses);}
  function clearSelectionUndo(){selectionUndo=null;}
