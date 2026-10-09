@@ -3,6 +3,10 @@
   'use strict';
   let policy=null,dirty=false,busy=false;
   const euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  function remainingText(state,p){
+    if(!state.needed)return 'Bonusziel erreicht. Die nächste bestätigte Zahlung löst den Bonus aus.';
+    return state.needed%DrinksModel.PRICE===0?`Noch ${state.needed/DrinksModel.PRICE} bezahlte Striche (${euro(state.needed)}) bis zum nächsten Bonus: ${euro(p.cents)}.`:`Noch ${euro(state.needed)} bezahlen bis zum nächsten Bonus: ${euro(p.cents)}. Teilzahlungen zählen mit.`;
+  }
   function beforeView(id){
     if(id==='settingsRewardsView'||byId('settingsRewardsView')?.hidden!==false||!dirty)return true;
     if(busy){showToast('Bitte die Speicherung der Bonus-Einstellungen abwarten.','error');return false;}
@@ -38,7 +42,7 @@
     const box=byId('dr-bonus');box.hidden=!account||!p;
     if(p){
       byId('dr-bonus-progress').max=state.threshold;byId('dr-bonus-progress').value=Math.min(state.progress,state.threshold);
-      byId('dr-bonus-text').textContent=state.needed?state.needed%DrinksModel.PRICE===0?`Noch ${state.needed/DrinksModel.PRICE} bezahlte Striche bis zu ${euro(p.cents)} Bonus.`:`Noch ${euro(state.needed)} regulär bezahlen bis zu ${euro(p.cents)} Bonus.`:'Bonusziel erreicht. Die nächste Zahlung löst den Bonus nach den aktuellen Einstellungen aus.';
+      byId('dr-bonus-text').textContent=remainingText(state,p);
     }
     byId('dr-credit').hidden=!state.credit;byId('dr-credit').textContent=`Dein Getränkeguthaben: ${euro(state.credit)} · Wird für neue Striche genutzt.`;
     const used=Math.min(state.credit,draft*DrinksModel.PRICE);byId('dr-draft-credit').hidden=!used;byId('dr-draft-credit').textContent=`Davon werden ${euro(used)} mit deinem Guthaben bezahlt.`;
@@ -52,6 +56,6 @@
     const button=document.createElement('button');button.className='primary-button';button.type='button';button.textContent='Bonus öffnen';button.onclick=()=>{if(showView('settingsRewardsView')!==false)load();};byId('drinksSettingsRewardsCard').append(button);
     addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefault();event.returnValue='';}});
   }
-  window.DrinksRewards={load,beforeView,render};
+  window.DrinksRewards={load,beforeView,render,remainingText};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();

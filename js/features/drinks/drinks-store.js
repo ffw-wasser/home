@@ -153,9 +153,12 @@
   }
   async function book(memberId,booking,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
-    if(!['drinks','payment'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
+    if(!['drinks','payment','correction'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
     if(booking.type==='payment'&&booking.confirmation!=='member')throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
-    const policy=await rewards(expectedSource),account=await mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature,expectedSource);
+    const policy=await rewards(expectedSource),account=await mutate(memberId,a=>{
+      if(booking.type==='correction'&&!a.bookings.some(b=>b.id===booking.id)&&M.day(booking.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(new Error('Nur heute gebuchte Striche können zurückgenommen werden.'),{code:'correctionChanged'});
+      return M.appendWithReward(a,booking,policy);
+    },pinSignature,expectedSource);
     // Publishing failure must never turn a confirmed ledger write into a failed payment.
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }

@@ -15,7 +15,7 @@
   async function config(){const value=await S.readMobileFile('handy-verbindung.json');return value?.data||null;}
   function snapshot(account,policy){
     const totals=M.totals(account),reward=M.rewardState(account,policy);
-    return {version:1,balance:totals.balance,credit:reward.credit,needed:reward.needed,bonusCents:policy.cents,updatedAt:new Date().toISOString(),bookings:account.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...(b.type==='drinks'?{count:b.count}:b.type==='payment'?{method:b.method}:{})}))};
+    return {version:1,balance:totals.balance,credit:reward.credit,needed:reward.needed,bonusCents:policy.cents,updatedAt:new Date().toISOString(),bookings:account.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...(['drinks','correction'].includes(b.type)?{count:b.count}:b.type==='payment'?{method:b.method}:{})}))};
   }
   async function publish(id){
     const connection=await config();if(!connection)return false;

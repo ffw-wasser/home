@@ -24,12 +24,12 @@ async function fixture(options={}){
   if(options.balance)accounts.set('a',M.append(accounts.get('a'),{id:'drink-fixture-001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T11:00:00Z'}));
   const clone=x=>JSON.parse(JSON.stringify(x));for(const [id,a] of accounts)cache.set(id,clone(a));
   let fail=null,loseReply=false,gate=null,readCount=0;
-  const S={cached:id=>clone(cache.get(id)||M.empty(id)),rewards:async()=>null,cachedRewards:()=>null,list:async()=>[],
+  const S={cached:id=>clone(cache.get(id)||M.empty(id)),rewards:async()=>options.policy||null,cachedRewards:()=>options.policy||null,list:async()=>[],
     read:async id=>{readCount++;cache.set(id,clone(accounts.get(id)));return clone(accounts.get(id));},
     book:async(id,booking,sig)=>{books.push({id,booking:clone(booking),sig});if(gate){const g=gate;gate=null;await g;}if(fail){const e=fail;fail=null;throw e;}
       cache.set(id,clone(accounts.get(id)));if(JSON.stringify(accounts.get(id).pin)!==sig)throw Object.assign(new Error('PIN wurde geändert.'),{code:'pinChanged'});
-      const value=M.append(accounts.get(id),booking);accounts.set(id,value);cache.set(id,clone(value));if(loseReply){loseReply=false;throw new Error('Antwort verloren');}return clone(value);}};
-  context.DrinksStore=S;vm.runInContext(source('js/features/drinks/drinks.js'),context);await context.Drinks.open();
+      const value=options.policy?M.appendWithReward(accounts.get(id),booking,options.policy):M.append(accounts.get(id),booking);accounts.set(id,value);cache.set(id,clone(value));if(loseReply){loseReply=false;throw new Error('Antwort verloren');}return clone(value);}};
+  context.DrinksStore=S;context.document.readyState='loading';vm.runInContext(source('js/features/drinks/drinks-rewards.js'),context);vm.runInContext(source('js/features/drinks/drinks.js'),context);await context.Drinks.open();
   const card=id=>nodes['dr-members'].children.find(n=>n.dataset.drCard===id);
   const button=(id,action)=>descendants(card(id)).find(n=>n.dataset.drCardAction===action);
   const click=(id,action)=>{const n=button(id,action);assert.ok(n&&!n.disabled,'Kartenaktion ist bedienbar: '+action);nodes['dr-members'].handlers.click({target:{closest:()=>n}});};
@@ -101,4 +101,41 @@ test('Aktualisieren nach einer unklaren Speicherung erhält die Buchungsnummer u
   const f=await fixture();f.loseReply();f.click('a','add');await wait(()=>f.status('a').includes('nicht bestätigt'));
   await f.context.Drinks.open();assert.match(f.status('a'),/nicht bestätigt/);f.click('a','retry');await wait(()=>f.status('a')==='Gespeichert ✓');
   assert.equal(f.accounts.get('a').bookings.length,1);assert.equal(f.books[0].booking.id,f.books[1].booking.id);
+});
+
+test('Mitglied sammelt mehrere Striche mit Fassanzeige und speichert erst mit Fertig',async()=>{
+  const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+  for(let i=0;i<7;i++)f.nodes['dr-add'].handlers.click();assert.equal(f.books.length,0);
+  assert.equal(f.nodes['dr-beers'].children.length,3);assert.equal(f.nodes['dr-beers'].children[0].className,'dr-keg');
+  f.nodes['dr-minus'].handlers.click();assert.match(f.nodes['dr-draft-count'].textContent,/6 neue/);
+  f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');assert.equal(f.books.length,1);assert.equal(f.books[0].booking.count,6);
+});
+test('Heutige Korrektur bleibt im Mitgliedsmenü; ungespeicherte Striche bleiben erhalten',async()=>{
+  const f=await fixture({balance:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+  f.nodes['dr-add'].handlers.click();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.books.length===1&&!f.nodes['dr-add'].disabled);
+  assert.equal(f.M.totals(f.accounts.get('a')).count,4);assert.match(f.nodes['dr-today-count'].textContent,/4 heute/);assert.match(f.nodes['dr-draft-count'].textContent,/1 neue/);
+  assert.equal(f.root.dataset.screen,'account');f.nodes['dr-save'].handlers.click();await wait(()=>f.root.dataset.screen==='members');assert.equal(f.M.totals(f.accounts.get('a')).count,5);
+});
+test('Unklare Korrektur wird mit derselben Nummer erneut geprüft und nicht doppelt gerechnet',async()=>{
+  const f=await fixture({balance:true,pin:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+  f.loseReply();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.nodes['dr-error'].textContent.includes('Antwort verloren'));
+  assert.equal(f.nodes['dr-save'].disabled,true);assert.equal(f.context.Drinks.beforeView('attendanceView'),false);
+  f.nodes['dr-today-undo'].handlers.click();await wait(()=>!f.nodes['dr-save'].disabled);assert.equal(f.books[0].booking.id,f.books[1].booking.id);assert.equal(f.M.totals(f.accounts.get('a')).count,4);
+});
+
+test('Bonusrest ist direkt auf Karten und im Konto sichtbar und berücksichtigt Teilzahlungen',async()=>{
+  const policy={schemaVersion:1,id:'program-fixture',revision:'revision-fixture',startedAt:'2026-10-01T00:00:00Z',count:20,cents:300};
+  const f=await fixture({policy,balance:true});const a=f.accounts.get('a');
+  f.accounts.set('a',f.M.appendWithReward(a,{id:'payment-fixture',type:'payment',method:'cash',confirmation:'member',cents:500,createdAt:'2026-10-09T11:20:00Z'},policy));
+  f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+  assert.match(f.nodes['dr-bonus-text'].textContent,/25,00 €/);assert.match(f.nodes['dr-bonus-text'].textContent,/Teilzahlungen/);
+  const cardBonus=descendants(f.card('a')).find(n=>n.className==='dr-member-bonus');assert.equal(cardBonus.hidden,false);assert.equal(cardBonus.textContent,f.nodes['dr-bonus-text'].textContent);
+  f.nodes['dr-cancel'].handlers.click();f.accounts.set('a',f.M.appendWithReward(f.accounts.get('a'),{id:'payment-fixture-rest',type:'payment',method:'cash',confirmation:'member',cents:250,createdAt:'2026-10-09T11:25:00Z'},policy));
+  f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);assert.match(f.nodes['dr-bonus-text'].textContent,/Noch 15 bezahlte Striche/);
+});
+test('PIN-Sperre verliert weder Sammelentwurf noch die Nummer einer unklaren Korrektur',async()=>{
+  const f=await fixture({pin:true,balance:true});f.click('a','account');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-add'].disabled);
+  f.nodes['dr-add'].handlers.click();f.loseReply();f.nodes['dr-today-undo'].handlers.click();await wait(()=>f.nodes['dr-error'].textContent.includes('Antwort verloren'));
+  f.context.document.hidden=true;f.documentEvents.visibilitychange();f.context.document.hidden=false;assert.equal(f.root.dataset.screen,'pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-today-undo'].disabled);
+  f.nodes['dr-today-undo'].handlers.click();await wait(()=>!f.nodes['dr-save'].disabled);assert.equal(f.books[0].booking.id,f.books[1].booking.id);assert.match(f.nodes['dr-draft-count'].textContent,/1 neue/);assert.equal(f.M.totals(f.accounts.get('a')).count,4);
 });
