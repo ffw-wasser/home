@@ -140,3 +140,33 @@ Bei einer nächsten Erweiterung kann die Anzeige eines bereits vorhandenen Handy
 ### Verifikation
 
 `node --test tests/*.test.cjs`: 214 Prüfungen bestanden. Die automatisierte Gesamtprüfung deckt Modell, Store, Mitglieder-UI, Admin-UI, Statistik, Jahreswechsel, Zahlungs-/Bonusstornos, Konflikte, verlorene Antworten, QR, Verschlüsselung und Handyaktualisierungen ab. Keine echten Mitgliederbuchungen, Zahlungen, Löschungen oder Erinnerungen wurden für Tests ausgeführt. DOM- und Netzantworten sind simuliert; eine neue Sichtprüfung auf physischen iPad-/Handygeräten steht aus.
+
+## Ergänzung · Version 2026.10.09.14
+
+### Geld und Treuepunkte
+
+- Einheitlicher Begriff „Treuepunkte“ in Hauptanwendung, Handyansicht, Verwaltung, Verlauf und Hilfe. Neue Punkte werden ausdrücklich gegen Getränke eingelöst; keine automatische Bonusverrechnung für neue Getränke.
+- Standard: 30,00 € bestätigte Geldzahlungen vergeben 2 Punkte. Ein Bier bzw. Glas Wein benötigt standardmäßig 1 Punkt. Verwaltung legt Zahlungsschwelle in Euro, vergebene Punkte und benötigte Punkte je Getränkeart unabhängig fest. Bier-Einheiten dienen nicht mehr als Einstellung oder Auslöser.
+- Nur bestätigte Geldzahlungen erzeugen Punkte, einschließlich Teil- und Vorauszahlungen. „Geld einzahlen“ funktioniert auch ohne Schulden. Bar wird nach Geld-in-Kasse bestätigt; PayPal erst durch die Verwaltung. Eingezahlte Restbeträge bleiben separat für spätere Getränke und werden nicht als Treuepunkte geführt.
+- Kontoschema 6 und Einstellungschema 2 ergänzen Vorauszahlung und ausdrückliche Punkteeinlösung. Alte Buchungen und bereits verrechnete Beträge bleiben unverändert lesbar. Noch verfügbare historische Bonuswerte werden exakt über eine feste Unterteilung angezeigt: 1,50 € bisheriger Bonuswert = 1 Punkt. Intern können dadurch Bruchteile bestehen, ohne Rundungsverlust.
+- Punkteeinlösungen werden vorgemerkt und erst mit gemeinsamem OK gespeichert. Frische Prüfung von PIN, Quelle, Punktebestand und Punktebedarf verhindert doppelte Ausgaben, manipulierte Punktekosten oder Einlösungen nach Einstellungsänderung. Wiederholungen verwenden dieselben Nummern. Bezahlte oder eingelöste Getränke sind für Mitglieder weiterhin geschützt.
+- Admin-Storno einer Zahlung nimmt auch deren Punkte zurück. Sind diese schon eingelöst, darf der Punktestand negativ werden; neue Punkte gleichen ihn aus. Geldschulden und Punkte bleiben getrennt. Storno eines Punktedrinks gibt dessen tatsächlich verwendete Punkte zurück. Historisch in Euro verwendete Bonusbeträge behalten ihre damalige Rechnung.
+
+### Verwaltung, Statistik und Ladeverhalten
+
+- Admins können mehrere Originalbuchungen auswählen und gemeinsam mit Vorschau, Grund und Bestätigung bereinigen. Der gesamte Storno einer Auswahl ist pro Konto eine bedingte OneDrive-Speicherung. Verlust einer Antwort, abgelaufene Freigabe und Quellenwechsel bleiben geschützt. Keine produktiven Konten werden durch die Veröffentlichung bereinigt.
+- Jahres- und Monatsstatistik zeigt Mengen und nominale Getränkewerte für Bier/Wein, einschließlich Punktedrinks. Jahresbezogene offene Beträge, aktuelle Gesamtschulden aller Jahre und eingezahlte Restbeträge werden getrennt gezeigt. Zahlungen sind keine Verbrauchsmenge und Getränkewerte keine Aussage über tatsächlich erhaltenes Geld. Keine Namen oder Einzelkonten in Statistik oder PDF.
+- Mitgliederkarten werden beim Start bzw. nach erfolgreicher OneDrive-Synchronisierung vorbereitet. Ein höchstens eine Minute alter vorbereiteter Stand wird wiederverwendet. Geänderte Dateiversionen werden geprüft; das Dateiverzeichnis ersetzt einen zusätzlichen Metadatenabruf pro Konto. Geldgetränkesammlungen benötigen keinen zusätzlichen Abruf der Punkte-Einstellungen. Vor Änderungen bleiben frische Konto-/Versionsprüfungen bestehen.
+- „Heute gespeichert …“ und zugehörige gespeicherte Tagesgrafiken sind entfernt. Nur neue Vormerkungen werden als Getränke gezeigt. Kontobetrag, eingezahlter Rest, Punkte und nötige Aktionen sind klar getrennt. Wiederholte Ledger-Auswertung pro Kartenrender ist reduziert; alte Entwurfsanzeigen sind entfernt.
+
+### Handy und iPhone
+
+- Letzte Buchungen sind standardmäßig eingeklappt. Treuepunkte haben eine eigene hervorgehobene Karte mit Geldfortschritt. Mehr Schulden zeigen mehrere runde Deckel; der genaue Betrag bleibt maßgeblich. Installationsanleitung steht aufklappbar hinter dem Kontostand.
+- Schmale Ansichten haben flexible Breiten, passende Schrift-/Buttongrößen und sichere Bildschirmränder. Der Deckelstapel überschreitet die Bildschirmbreite nicht. Einzahlung, Admin-Vorschau und Statistik passen auch im iPhone-Format.
+- Snapshots enthalten getrennte Geld-/Punktesummen, Punktebedarf und Geldfortschritt ohne private Kennungen, Gründe oder Namen. AES-GCM, feste Dateigröße und Authentifizierungsprüfung bleiben erhalten. Alte Snapshots ohne neue Felder werden bis zum nächsten Abgleich als noch nicht aktualisierte Punktedaten kenntlich gemacht.
+
+### Verifikation
+
+`node --test tests/*.test.cjs`: **236 Prüfungen bestanden**. Neue Prüfungen umfassen Vorauszahlungen ohne Schulden, geldbasierte Punkteziele, ausdrückliche Einlösung, parallele Ausgaben, Einstellungswechsel, historische Bonusbruchteile/-stornos, negative Punkte nach Zahlungsstorno, atomare Mehrfachstornos mit verlorener Antwort, anonyme Euro-Statistik und Hintergrund-Vorbereitung. Eine deterministische Prüfung untersucht zusätzlich 300 gemischte Buchungsfolgen und ihre Geld-/Punktebilanzen.
+
+WebKit-Browserprüfung mit fiktiven Mitgliedern: Hauptkarten, Vormerkungen und Handyansicht bei **320, 375, 390 und 430 Pixeln**; Einzahlung, Admin-Dialog und Statistik zusätzlich bei 390 Pixeln. Keine JavaScript-Fehler oder horizontale Überstände. Sichtprüfung der erzeugten Screenshots. Syntax, DOM-Verknüpfungen und gemeinsame Release-Nummer geprüft. Keine echten OneDrive-Buchungen, Zahlungen, Stornos oder Erinnerungen ausgelöst. WebKit-Emulation ersetzt keine abschließende Prüfung auf einem physischen iPhone/iPad.

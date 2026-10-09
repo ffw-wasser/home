@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 async function fixture(){
  const nodes=new Map(),events={},timers=new Map();let now=0,next=0;
- const element=()=>({hidden:false,disabled:false,textContent:'',children:[],classList:{toggle(){}},replaceChildren(){this.children=[];},removeAttribute(){},append(n){this.children.push(n);}});
+ const element=()=>({hidden:false,disabled:false,textContent:'',style:{setProperty(){}},children:[],classList:{toggle(){}},replaceChildren(){this.children=[];},removeAttribute(){},append(n){this.children.push(n);}});
  const url=new URL('https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/deckel-daten&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64));
  const data={balance:0,credit:0,needed:300,bonusCents:300,bookings:[],updatedAt:'2026-10-09T16:00:00Z'},ctx=vm.createContext({URL,URLSearchParams,Date,AbortController,Promise,
   setTimeout:(fn,delay)=>{timers.set(++next,{fn,at:now+delay});return next;},clearTimeout:id=>timers.delete(id),location:{href:url.href,hash:url.hash},

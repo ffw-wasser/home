@@ -2,41 +2,76 @@
 
 Statische Web-App für Anwesenheit, Taktik, Einsatzberichte und Jahresstatistik.
 
-## Getränke-Strichliste
+## Getränke
 
-Im Menü **Getränke** wählen Mitglieder ihren vorhandenen Namen und öffnen ihr
-Konto mit einer persönlichen vierstelligen PIN. Diese wird in **Einstellungen →
-Mitglieder** über **PIN in OneDrive speichern** eingerichtet oder geändert.
-Es gibt keine voreingestellte Getränke-PIN. Im persönlichen Konto können Mitglieder ihre PIN unter **Meine PIN ändern** mit der aktuellen PIN und zweimaliger neuer Eingabe selbst ändern. PIN-Ableitungen und Buchungen bleiben in OneDrive; die Änderung erhält alle Buchungen.
+Alle Mitgliederkarten stehen direkt im Menü **Getränke**. Bier kostet 1,50 €,
+Wein 3,00 €. Mehrere Getränke oder heutige, vollständig unbezahlte
+Fehleingaben werden vorgemerkt und erst mit **OK · Änderungen speichern**
+übertragen. Bezahlt, teilweise bezahlt, mit Vorauszahlung oder Treuepunkten
+verrechnete Einträge können Mitglieder nicht zurücknehmen. Fünf Bier bzw.
+Weingläser erscheinen als getrennte Fässer. Bereits gespeicherte Tagesmengen
+werden auf den Karten nicht zusätzlich angezeigt.
 
-Ein Strich kostet 1,50 €. Neue Striche lassen sich bis zum Speichern verringern
-oder zurücksetzen; bereits gebuchte Striche und Zahlungen werden nicht gelöscht.
-Fünf Biergläser werden als Comic-Bierfass angezeigt. Nach einer bestätigten vollständigen Zahlung explodiert das Fass kurz und bedankt sich auf dem iPad. Die Startansicht zeigt die
-drei größten offenen Deckel. Die Oberfläche verwendet auf dem iPad im Querformat
-zwei Spalten und große Tasten.
+Eine persönliche vierstellige PIN ist freiwillig. Mitglieder richten sie
+unter **Konto → PIN einrichten/verwalten** selbst ein oder entfernen sie mit
+der aktuellen PIN. Die Verwaltung kann sie unter **Einstellungen → Mitglieder**
+setzen. Es gibt keine Standard-PIN. PINs schützen die Bedienung; Dateizugriffe
+richten sich nach den OneDrive-Berechtigungen.
 
-Barzahlungen werden nach **Geld in die Kasse gelegt** direkt eingetragen. Für
-PayPal erzeugt die App den QR-Code auf dem Gerät zu
-`https://paypal.me/FeuerwehrWasser/<Betrag>EUR`. Der Link enthält keine Namen.
-Eine App auf dem eigenen Handy ist nicht erforderlich, aber PayPal kann eine
-Anmeldung im Browser verlangen. Ein PayPal.Me-Link liefert keine automatische
-Zahlungsbestätigung. Die Verwaltung prüft den Eingang im PayPal-Konto und bucht
-den tatsächlich erhaltenen Betrag unter **Einstellungen → Getränke → Offene Deckel & PayPal**. Erst danach sinkt der offene Betrag. Ein Zahlungsserver ist nicht erforderlich.
+**Bezahlen** zeigt Gesamtschulden und eine direkte Barbestätigung. **Geld
+einzahlen** erlaubt freie Beträge einschließlich Vorauszahlungen: Geld zuerst
+in die Getränkekasse legen und danach bestätigen. Der Restbetrag bleibt als
+**Eingezahlter Betrag** für spätere Getränke erhalten. PayPal öffnet einen
+QR-Code zu `paypal.me/FeuerwehrWasser`; die Verwaltung prüft den Eingang und
+verbucht ihn unter **Einstellungen → Getränkeverwaltung → Schulden, PayPal &
+Erinnerungen**. Für bezahlte Konten dort „Auch bezahlte Konten für Einzahlungen
+anzeigen“ wählen. PayPal wird nicht automatisch bestätigt.
 
-PIN-Ableitungen und Getränkebuchungen liegen ausschließlich im Unterordner
-**Getraenke** des bereits verbundenen OneDrive-Ordners. Im Browser bleiben sie
-nur im Arbeitsspeicher. OneDrive-Verbindung, Internet und Bearbeitungszugriff
-sind zum Buchen erforderlich. Jedes Mitglied hat eine Datei mit eindeutigen
-Buchungsnummern; Änderungen verwenden die OneDrive-Dateiversion. Eine verlorene
-Schreibantwort wird mit derselben Buchungsnummer nachgeprüft. Es gibt keine
-Offline-Buchungen. Die persönliche PIN schützt die Bedienung am iPad; der
-Zugriff auf die Dateien richtet sich nach den OneDrive-Berechtigungen.
+**Treuepunkte** sind getrennt vom Geldbetrag. Standard: 30,00 € bestätigte
+Einzahlungen vergeben 2 Punkte; 1 Punkt wird gegen 1 Bier oder 1 Glas Wein
+eingelöst. Unter **Einstellungen → Getränkeverwaltung → Treuepunkte** lassen
+sich Geldschwelle, vergebene Punkte und Punktebedarf für Bier/Wein unabhängig
+festlegen. Nur Geldzahlungen zählen, einschließlich Teil- und Vorauszahlungen.
+Getränke buchen und Punkte einlösen erzeugt keine neuen Punkte. Einlösungen
+werden ausdrücklich auf der Karte gewählt und erst mit OK gespeichert.
 
-Die bestehenden lokalen Mitglieder-/Teilnahme-Daten werden durch diese
-Erweiterung nicht migriert. Das bisherige JSON-Anwendungsbackup enthält keine
-Getränkekonten. Für deren Sicherung und Wiederherstellung den vollständigen
-OneDrive-Unterordner **Getraenke** einschließlich aller Kontodateien sichern.
-Bei einem Mitglieder-Import vorhandene Mitgliedskennungen beibehalten.
+Historische Bonuswerte bleiben erhalten: bisher noch verfügbare 1,50 €
+Bonuswert entsprechen 1 Treuepunkt. Bereits automatisch verrechnete Getränke
+und alte Buchungen werden nicht umgeschrieben. Neue Buchungen verwenden
+Kontoschema 6. Historische Schemata 1–5 bleiben lesbar; ältere App-Clients vor
+Nutzung neu laden. Geld- und Punktefortschritt bleiben ausschließlich in
+OneDrive und im Arbeitsspeicher.
+
+**Einstellungen → Getränkeverwaltung → Buchungen verwalten** erlaubt
+Administratoren Einzel- und Mehrfachstornos auch alter und bezahlter Getränke
+oder Zahlungen. Vorschau, Grund und Bestätigung sind erforderlich. Originale
+bleiben als Nachweise erhalten. Eine gelöschte Zahlung nimmt ihre Treuepunkte
+zurück; bereits eingelöste Punkte können einen negativen Punktestand ergeben,
+der durch zukünftige Punkte ausgeglichen wird. Getränkestornos erstatten
+gegebenenfalls Geld bzw. eingelöste Punkte. „Bereits gelöschte Einträge
+ausblenden“ hält den Verlauf übersichtlich.
+
+Die **Statistik** zeigt anonym die Mengen und nominalen Getränkewerte für
+Bier/Wein je Jahr und Monat, einschließlich mit Punkten bezahlter Getränke.
+Jahresbezogene offene Beträge, aktuelle Gesamtschulden aller Jahre und
+vorausbezahlte Restbeträge sind getrennt. Geldzahlungen selbst sind kein
+Getränkeverbrauch. Auch Konten früherer Mitglieder zählen mit; es werden keine
+Mitgliedsnamen oder Einzelkonten angezeigt.
+
+Getränkekonten und Einstellungen liegen privat im Unterordner **Getraenke**
+der konfigurierten OneDrive-/SharePoint-Ablage. Browser und Service Worker
+speichern diese Finanzdaten nicht dauerhaft. Dateiversionen schützen vor
+parallelem Überschreiben; bei verlorenen Antworten werden dieselben
+Buchungsnummern geprüft. Mehrfachstornos und Sammlungen sind pro Mitglied
+atomar, mehrere Mitglieder werden nacheinander gespeichert. Es gibt keine
+Offline-Buchungen. Das normale JSON-App-Backup enthält keine Getränkekonten:
+den gesamten OneDrive-Ordner **Getraenke** separat sichern und bestehende
+Mitgliederkennungen erhalten.
+
+Mitgliederkarten werden beim Start bzw. nach erfolgreicher OneDrive-Verbindung
+im Hintergrund vorbereitet. Ein aktueller vorbereiteter Stand öffnet ohne
+erneutes Laden aller Konten. Schreiben, PIN-Prüfungen, Punktekosten und QR-Zugang
+werden weiterhin frisch geprüft. Kontodaten bleiben dabei im Arbeitsspeicher.
 
 QR-Bibliothek: qrcode-generator 2.0.4 von Kazuhiko Arase (MIT), lokal unter
 `js/vendor/qrcode.js`; Lizenz unter `js/vendor/qrcode-LICENSE.txt`.
@@ -62,7 +97,7 @@ Bedienung oder beim Verbergen der App. Nach erneuter PIN-Eingabe bleiben die
 Striche im Arbeitsspeicher verfügbar. Neuladen/Schließen kann sie verwerfen.
 Unklare Buchungen werden weiterhin mit derselben Buchungsnummer geprüft.
 
-**Einstellungen → Getränke → Offene Deckel erinnern** lädt aktuelle Beträge aus OneDrive
+**Einstellungen → Getränkeverwaltung → Schulden, PayPal & Erinnerungen** lädt aktuelle Beträge aus OneDrive
 und bietet einzelne Erinnerungstexte zum Prüfen und Kopieren. Optional ist manueller Push-Versand nach Einrichtung des kostenlosen Versanddienstes und Zustimmung des Handy-Nutzers möglich (siehe cloudflare/push/README.md). Es gibt keine
 E-Mail-Funktion, keinen automatischen Versand und keine zusätzlichen
 Kontaktadressen im Browser oder Repository.
@@ -103,20 +138,19 @@ Mit Node.js aus diesem Ordner ausführen:
 node --test tests/*.test.cjs
 ```
 
-Die aktuelle Umsetzung und Prüfung stehen in `UX-VERBESSERUNGEN.md`.
+Die aktuelle Getränke-Umsetzung und Prüfung stehen in `GETRAENKE-PRUEFUNG.md`;
+weitere Bedienverbesserungen in `UX-VERBESSERUNGEN.md`.
 `PRUEFBERICHT-FINAL.txt` dokumentiert einen früheren Projektstand. Die umfangreichen aktiven
 CSS-Schichten bleiben wegen ihrer Reihenfolge und dynamischen UI-Nutzung erhalten.
 Die im Bericht beschriebenen offenen Punkte sind keine Freigabe aller Praxisabläufe.
 
-## Getränke-Treuebonus
+## Schnelle Bedienung
 
-Standard: Nach 20 regulär bezahlten Strichen (30 € bestätigten Zahlungen) gibt es 3 € Getränkeguthaben. Unter **Einstellungen → Getränke → Getränke-Bonus** kann die Verwaltung Menge und Gutschrift ändern. Die gemeinsame Datei `Getraenke/bonus-einstellungen.json` wird beim ersten Bonusaufruf mit diesen Werten angelegt. Zahlungen vor diesem Start zählen nicht rückwirkend. Teilzahlungen zählen in Cent; Guthabenverbrauch zählt nicht als erneute Zahlung. Eine Gutschrift bezahlt automatisch weitere Striche, nicht bereits bestehende offene Beträge. Der Verbrauch und der Fortschritt bleiben auch bei Änderungen der Bonuswerte erhalten; neue Werte gelten ab der nächsten Zahlung.
-
-Zahlung und verdiente Bonusbuchung werden zusammen mit derselben bedingten OneDrive-Schreiboperation gespeichert. Wiederholungen, verlorene Antworten und parallele Buchungen erzeugen keine doppelten Gutschriften. Konten werden beim ersten neuen Buchen auf Schema 2 erweitert; Buchungen und PIN bleiben erhalten. Alte Clients mit Schema 1 lehnen diese Konten ab, anstatt Gutschriften falsch als Zahlung zu verrechnen. Den gesamten OneDrive-Ordner **Getraenke** einschließlich Bonus-Einstellungen sichern. Im Browser werden weder Bonus-Fortschritt noch Guthaben oder Einstellungen dauerhaft gespeichert.
-
-## Schnelle Bedienung (09.10.2026)
-
-Direktzugang „Getränke“, große PIN-Tastatur mit automatischer Öffnung nach vier Ziffern und dauerhaft erreichbarer Abschlussbutton. „Alles bar“ und „Alles per PayPal“ überspringen die Betragsauswahl; eine ausdrückliche Zahlungsbestätigung bleibt nötig. „Teilbetrag“ erlaubt beide Zahlungsarten. Beim Öffnen einer Zahlung werden neue Striche bereits gebucht; der Hinweis erklärt, dass sie bei Zahlungsabbruch erhalten bleiben. Ein Namenswechsel nach Sperre fragt vor dem Verwerfen ungespeicherter Striche. Bonus und Guthaben stehen beim Betrag, die letzten fünf persönlichen Buchungen sind einklappbar. Der Dankdialog beendet eine vollständige Zahlung nach 5,5 Sekunden oder „Fertig“ und öffnet die Namensauswahl.
+Der Dankdialog endet nach vollständiger Zahlung nach 3 Sekunden, mit neuen
+Treuepunkten nach 4,5 Sekunden. Erfassung erfolgt ausschließlich auf den
+Mitgliederkarten; Konto enthält Verlauf, Punkte, PIN und Handyzugang.
+Vorgemerkte Änderungen lassen sich filtern, prüfen und verwerfen. Bezahlen
+oder Kontoöffnen überträgt keine Vormerkungen automatisch.
 
 Die Anwesenheit hat Namenssuche und „Noch offen“ / „Alle Mitglieder“. Der Speicherhinweis unterscheidet Gerätespeicherung von bestätigter OneDrive-Synchronisierung. Änderungen während einer laufenden Synchronisierung werden nachgesendet; nach einem Fehlschlag bleibt der Stand unbestätigt. Dies ersetzt keine Konfliktauflösung für gleichzeitige Änderungen der allgemeinen Datendatei auf mehreren Geräten. Die Abschlussprüfung nennt die Personen, die im CSV als „Fehlt“ erscheinen, einschließlich unmarkierter Altersmitglieder. Nicht übernommene Statusauswahl muss vor dem Export gespeichert werden.
 
@@ -124,7 +158,7 @@ Historische Prüfung dieser Änderung: 100 Node-Tests und isolierte Browserablä
 
 ## Persönlicher Handy-Deckel
 
-Die Anwendung enthält eine verschlüsselte Handyansicht ohne Server und Microsoft-Anmeldung. Vor dem ersten QR-Zugang muss die Administration ein separates öffentliches Daten-Repository und einen darauf begrenzten GitHub-Schreibzugang unter Einstellungen → Getränke → Handy-Deckel verbinden. Anleitung, Datenumfang und Grenzen der Linkrotation: [README-HANDY-DECKEL.md](README-HANDY-DECKEL.md). Die PayPal-Schaltfläche öffnet eine Zahlung; die Administration trägt den geprüften Eingang am Gerätehaus-iPad unter Offene Deckel & PayPal ein.
+Die Anwendung enthält eine verschlüsselte Handyansicht ohne Server und Microsoft-Anmeldung. Vor dem ersten QR-Zugang muss die Administration ein separates öffentliches Daten-Repository und einen darauf begrenzten GitHub-Schreibzugang unter Einstellungen → Getränkeverwaltung → Handy-Deckel verbinden. Anleitung, Datenumfang und Grenzen der Linkrotation: [README-HANDY-DECKEL.md](README-HANDY-DECKEL.md). Die PayPal-Schaltfläche öffnet eine Zahlung; die Administration trägt den geprüften Eingang am Gerätehaus-iPad unter Schulden, PayPal & Erinnerungen ein.
 
 ## Versionspflege
 

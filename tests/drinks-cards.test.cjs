@@ -22,6 +22,7 @@ async function fixture(options={}){
   const accounts=new Map([['a',M.empty('a')],['b',M.empty('b')]]),cache=new Map(),books=[];
   if(options.pin)accounts.get('a').pin=await M.createPin('4826');if(options.secondPin)accounts.get('b').pin=await M.createPin('7391');
   if(options.balance)accounts.set('a',M.append(accounts.get('a'),{id:'drink-fixture-001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T11:00:00Z'}));
+  if(options.prepaid){accounts.set('a',M.appendWithReward(accounts.get('a'),{id:'fixture-prepaid-payment',type:'payment',cents:options.prepaid,method:'cash',confirmation:'member',prepay:true,createdAt:'2026-10-09T10:00:00Z'},options.policy));}
   const clone=x=>JSON.parse(JSON.stringify(x));for(const [id,a] of accounts)cache.set(id,clone(a));
   let fail=null,failMember='',loseReply=false,gate=null,readCount=0,allowDiscard=true;const writes=[];
   const S={cached:id=>clone(cache.get(id)||M.empty(id)),rewards:async()=>options.policy||null,cachedRewards:()=>options.policy||null,list:async()=>[],
@@ -62,7 +63,7 @@ test('Fünf Weingläser werden zu einem Weinfass und fünf Bierstriche zu einem 
  const f=await fixture();for(let i=0;i<5;i++)f.click('a','add');for(let i=0;i<6;i++)f.click('a','wine');
  const staged=descendants(f.card('a')).find(n=>n.className?.includes('dr-member-staged'));assert.equal(staged.children.length,2);
  assert.equal(staged.children[0].children[1].alt,'Bierfass · 5 Bier');assert.equal(staged.children[1].children[1].alt,'Weinfass · 5 Gläser');assert.equal(staged.children[1].children[2].textContent,'🍷');
- f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');const saved=descendants(f.card('a')).find(n=>n.className==='dr-member-glasses');assert.equal(saved.children.length,2);assert.equal(f.M.totals(f.accounts.get('a')).balance,2550);
+ f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');const saved=descendants(f.card('a')).find(n=>n.className==='dr-member-glasses');assert.equal(saved,undefined);assert.equal(f.M.totals(f.accounts.get('a')).balance,2550);
 });
 test('Freiwillige PIN schützt Vormerkung und OK; abgelaufene Freigabe wird vor Übertragung erneut verlangt',async()=>{
  const f=await fixture({pin:true});f.click('a','wine');await wait(()=>f.root.dataset.screen==='pin');f.pin('0000');await wait(()=>f.nodes['dr-error'].textContent.includes('stimmt nicht'));
@@ -161,4 +162,19 @@ test('Vorgemerkte anzeigen macht Änderungen hinter einer Namenssuche sichtbar',
  const f=await fixture();f.click('a','wine');f.nodes['dr-search'].value='Beta';f.nodes['dr-search'].handlers.input();assert.equal(f.card('a'),undefined);assert.ok(f.card('b'));
  f.nodes['dr-staged-only'].handlers.click();assert.equal(f.nodes['dr-search'].value,'');assert.ok(f.card('a'));assert.equal(f.card('b'),undefined);assert.match(f.nodes['dr-main-details'].children[0].textContent,/Alpha.*Glas Wein/);
  f.click('a','undo');assert.equal(f.nodes['dr-main-confirm'].hidden,true);assert.equal(f.nodes['dr-members'].children[0].textContent,'Keine passenden Vormerkungen.');
+});
+const newPointsPolicy={schemaVersion:2,id:'ui-points-program',revision:'ui-points-revision',startedAt:'2026-10-01T00:00:00Z',thresholdCents:1000,awardUnits:150,beerUnits:150,wineUnits:150};
+test('Karten zeigen Punkte getrennt vom eingezahlten Betrag; ausdrückliche Einlösung ist erst mit OK gespeichert',async()=>{
+ const f=await fixture({policy:newPointsPolicy,prepaid:1000});const points=descendants(f.card('a')).find(n=>n.className==='dr-member-points');assert.match(points.textContent,/1 Treuepunkt/);assert.match(descendants(f.card('a')).find(n=>n.className==='dr-member-credit').textContent,/10,00/);
+ f.click('a','points-wine');assert.equal(f.writes.length,0);assert.match(f.nodes['dr-main-summary'].textContent,/1 Änderung/);assert.equal(f.button('a','points-beer').disabled,true);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,150);
+ f.confirm();await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.writes[0].entries[0].pointUnits,150);assert.equal(f.M.totals(f.accounts.get('a')).balance,0);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,0);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).prepaid,1000);assert.equal(f.button('a','undo').hidden,true);
+});
+test('Geld einzahlen funktioniert bei null Schulden und bestätigt freie Vorauszahlung erst nach Geld-in-Kasse',async()=>{
+ const f=await fixture({policy:newPointsPolicy});assert.equal(f.button('a','pay').disabled,true);f.click('a','deposit');await wait(()=>f.root.dataset.screen==='amount'&&!f.nodes['dr-pay-submit'].disabled);f.nodes['dr-amount'].value='20,00';f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');assert.equal(f.books.length,0);f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid');assert.equal(f.books[0].booking.prepay,true);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).prepaid,2000);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,300);
+});
+test('Vormerkung und Rücknahme einer Punkteeinlösung verändern den Bestand vor OK nicht',async()=>{
+ const f=await fixture({policy:newPointsPolicy,prepaid:1000});f.click('a','points-beer');f.click('a','undo');assert.equal(f.writes.length,0);assert.equal(f.nodes['dr-main-confirm'].hidden,true);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,150);assert.equal(f.button('a','points-wine').disabled,false);
+});
+test('Im Hintergrund vorbereitete Karten öffnen ohne erneutes Laden aller Mitglieder und Konten',async()=>{
+ const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,1);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,1);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
 });

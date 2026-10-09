@@ -34,44 +34,47 @@
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${REWARDS_FILE}`;
     for(let attempt=0;attempt<3;attempt++){
       let item;try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return null;throw e;}
-      if(!item.file||!item.eTag)throw new Error('Die Bonus-Einstellungen besitzen keine gültige Dateiversion.');
+      if(!item.file||!item.eTag)throw new Error('Die Treuepunkte-Einstellungen besitzen keine gültige Dateiversion.');
       const policy=M.validateRewardSettings(await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json());
       const after=await(await odFetch(itemUrl(ctx.root,item.id)+'?$select=id,eTag')).json();assertCurrent(ctx);
       if(after.eTag!==item.eTag)continue;
       rewardCache=clone(policy);return {policy,item};
     }
-    throw new Error('Die Bonus-Einstellungen werden gerade geändert. Bitte erneut laden.');
+    throw new Error('Die Treuepunkte-Einstellungen werden gerade geändert. Bitte erneut laden.');
   }
   async function rewards(expectedSource=null){
     const ctx=await context(true,expectedSource);
     assertSource(ctx,expectedSource);
     for(let attempt=0;attempt<4;attempt++){
       const old=await readRewards(ctx);if(old)return clone(old.policy);
-      const policy={schemaVersion:1,id:crypto.randomUUID(),revision:crypto.randomUUID(),startedAt:new Date().toISOString(),count:20,cents:300};
+      const policy={schemaVersion:2,id:crypto.randomUUID(),revision:crypto.randomUUID(),startedAt:new Date().toISOString(),thresholdCents:3000,awardUnits:300,beerUnits:150,wineUnits:150};
       assertCurrent(ctx);
       try{await odFetch(`${itemUrl(ctx.root,ctx.folder.id)}:/${REWARDS_FILE}:/content`,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':'"0"'},body:JSON.stringify(policy)},false);assertCurrent(ctx);rewardCache=clone(policy);return policy;}
       catch(error){if(conflict(error))continue;const check=await readRewards(ctx).catch(()=>null);if(check)return clone(check.policy);throw error;}
     }
-    throw new Error('Bonus-Einstellungen konnten nicht angelegt werden. Bitte erneut versuchen.');
+    throw new Error('Treuepunkte-Einstellungen konnten nicht angelegt werden. Bitte erneut versuchen.');
   }
   async function saveRewards(count,cents,expectedRevision){
+    let settings=typeof count==='object'?count:null;if(settings)expectedRevision=cents;
     if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Verwaltung entsperren.');
     const ctx=await context(true),old=await readRewards(ctx);
-    if(!old||old.policy.revision!==expectedRevision)throw new Error('Die Bonus-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');
-    const policy=M.validateRewardSettings({...old.policy,count,cents,revision:crypto.randomUUID()});
+    if(!old||old.policy.revision!==expectedRevision)throw new Error('Die Treuepunkte-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');
+    if(!settings){M.validateRewardSettings({...old.policy,schemaVersion:1,count,cents});settings={thresholdCents:count*M.PRICE,awardUnits:cents};}
+    const policy=M.validateRewardSettings(settings?{...M.rewardPolicy(old.policy),...settings,revision:crypto.randomUUID()}:{...old.policy,count,cents,revision:crypto.randomUUID()});
     if(!adminUnlocked)throw new Error('Die Verwaltung wurde gesperrt.');assertCurrent(ctx);
     try{await odFetch(itemUrl(ctx.root,old.item.id)+'/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':old.item.eTag},body:JSON.stringify(policy)},false);assertCurrent(ctx);rewardCache=clone(policy);return policy;}
-    catch(error){const check=await readRewards(ctx).catch(()=>null);if(check?.policy.revision===policy.revision)return clone(check.policy);if(conflict(error))throw new Error('Die Bonus-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');throw error;}
+    catch(error){const check=await readRewards(ctx).catch(()=>null);if(check?.policy.revision===policy.revision)return clone(check.policy);if(conflict(error))throw new Error('Die Treuepunkte-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');throw error;}
   }
+  async function previewRewards(){const ctx=await context();if(!ctx.folder)return null;return (await readRewards(ctx))?.policy||null;}
   const cachedRewards=()=>rewardCache?clone(rewardCache):null;
   async function fileName(memberId){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(memberId)));return 'konto-'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')+'.json';}
-  async function readWithContext(ctx,memberId){
+  async function readWithContext(ctx,memberId,listed=null){
     assertCurrent(ctx);
     if(!ctx.folder)return {account:M.empty(memberId),item:null};
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${await fileName(memberId)}`;
     for(let attempt=0;attempt<3;attempt++){
       let item;
-      try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return {account:M.empty(memberId),item:null};throw e;}
+      try{item=attempt===0&&listed?listed:await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return {account:M.empty(memberId),item:null};throw e;}
       if(!item.file||!item.eTag)throw new Error('Die Getränkedatei besitzt keine gültige Dateiversion.');
       assertCurrent(ctx);
       const known=cache.get(String(memberId));
@@ -115,7 +118,7 @@
         let account;
         if(!entry)account=M.empty(id);
         else if(old?.eTag===entry.eTag)account=clone(old.account);
-        else account=(await readWithContext(ctx,id)).account;
+        else account=(await readWithContext(ctx,id,entry)).account;
         assertCurrent(ctx);results.set(id,account);next.set(id,{account:clone(account),eTag:cache.get(id)?.eTag||entry?.eTag||''});
       }
     }));
@@ -153,10 +156,11 @@
   }
   async function book(memberId,booking,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
-    if(!['drinks','payment','correction'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
+    if(!['drinks','payment','correction'].includes(booking.type))throw new Error('Treuepunkte werden ausschließlich automatisch nach einer bestätigten Zahlung gebucht.');
     if(booking.type==='correction'&&booking.confirmation!==undefined)throw new Error('Bezahlte Buchungen dürfen nur durch die Administration gelöscht werden.');
-    if(booking.type==='payment'&&booking.confirmation!=='member')throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
-    const policy=await rewards(expectedSource),account=await mutate(memberId,a=>{
+    if(booking.type==='payment'&&(booking.confirmation!=='member'||booking.method!=='cash'))throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
+    const policy=M.rewardPolicy(await rewards(expectedSource)),account=await mutate(memberId,a=>{
+      if(booking.pointUnits!==undefined&&!a.bookings.some(b=>b.id===booking.id)&&booking.pointUnits!==booking.count*M.pointCost(policy,booking.drink||'beer'))throw Object.assign(new Error('Treuepunkte-Einstellung geändert. Bitte neu vormerken.'),{code:'pointsChanged'});
       if(booking.type==='correction'&&!a.bookings.some(b=>b.id===booking.id)&&M.day(booking.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(new Error('Nur heute gebuchte, vollständig unbezahlte Getränke können zurückgenommen werden.'),{code:'correctionChanged'});
       return M.appendWithReward(a,booking,policy);
     },pinSignature,expectedSource);
@@ -166,7 +170,9 @@
   async function bookMany(memberId,bookings,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
     if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>!['drinks','correction'].includes(b?.type)))throw new Error('Ungültige Getränkesammlung.');
+    const policy=bookings.some(b=>b.pointUnits!==undefined)?M.rewardPolicy(await rewards(expectedSource)):null;
     const account=await mutate(memberId,a=>{
+      for(const b of bookings)if(!a.bookings.some(old=>old.id===b.id)&&b.pointUnits!==undefined&&b.pointUnits!==b.count*M.pointCost(policy,b.drink||'beer'))throw Object.assign(new Error('Die Treuepunkte-Einstellung wurde geändert. Bitte die Einlösung neu vormerken.'),{code:'pointsChanged'});
       for(const b of bookings)if(b.type==='correction'&&!a.bookings.some(old=>old.id===b.id)&&M.day(b.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(new Error('Die Rücknahme ist abgelaufen. Nur heutige, vollständig unbezahlte Getränke können zurückgenommen werden.'),{code:'correctionChanged'});
       return M.appendMany(a,bookings);
     },pinSignature,expectedSource);
@@ -175,7 +181,7 @@
   async function adminPaypalPayment(memberId,booking){
     if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');
     if(booking?.type!=='payment'||booking.method!=='paypal'||booking.confirmation!=='admin')throw new Error('Ungültiger PayPal-Eingang.');
-    const policy=await rewards(),account=await mutate(memberId,a=>{
+    const policy=M.rewardPolicy(await rewards()),account=await mutate(memberId,a=>{
       if(!adminUnlocked)throw new Error('Administration wurde gesperrt.');
       const found=a.bookings.find(b=>b.id===booking.id);
       if(found){if(found.type==='payment'&&found.method==='paypal'&&found.confirmation==='admin'&&found.cents===booking.cents)return a;throw new Error('Dieser Zahlungscode wurde bereits mit einem anderen Betrag verwendet.');}
@@ -185,8 +191,9 @@
   }
   async function adminDelete(memberId,booking,expectedSource=null){
     const admin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');};admin();
-    if(!['correction','payment-reversal'].includes(booking?.type)||booking.confirmation!=='admin')throw new Error('Ungültige Admin-Löschung.');
-    const account=await mutate(memberId,a=>{admin();return M.append(a,booking);},null,expectedSource);
+    const entries=Array.isArray(booking)?booking:[booking];
+    if(!entries.length||entries.length>1000||entries.some(b=>!['correction','payment-reversal'].includes(b?.type)||b.confirmation!=='admin'))throw new Error('Ungültige Admin-Löschung.');
+    const account=await mutate(memberId,a=>{admin();return M.appendAdminMany(a,entries);},null,expectedSource);
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
   function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
@@ -231,5 +238,5 @@
     }));
     assertCurrent(ctx);return {...M.consumption(accounts,year),sourceKey:ctx.key};
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,previewRewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
 })(typeof window==='undefined'?globalThis:window);

@@ -66,7 +66,7 @@ test('Alte Pflicht-PINs werden einmalig entfernt; Striche, Zahlungen und Guthabe
   const file=[...files.values()].find(f=>f.data.memberId==='a');delete file.data.pinChoiceVersion;
   const before=copy(file.data.bookings);ctx.adminUnlocked=false;S.reset();
   const migrated=(await S.list(['a']))[0];assert.equal(migrated.pin,null);assert.equal(migrated.pinChoiceVersion,1);
-  assert.equal([...files.values()].find(f=>f.data.memberId==='a').data.pin,null);assert.deepEqual(copy(migrated.bookings),before);assert.equal(M.rewardState(migrated,await S.rewards()).credit,300);
+  assert.equal([...files.values()].find(f=>f.data.memberId==='a').data.pin,null);assert.deepEqual(copy(migrated.bookings),before);assert.equal(M.rewardState(migrated,await S.rewards()).pointUnits,300);
   const chosen=await S.changeOwnPin('a','','7391');S.reset();await S.list(['a']);
   assert.equal(await M.verifyPin('7391',(await S.read('a')).pin),true);
   assert.deepEqual(copy(chosen.bookings),before);
@@ -177,9 +177,9 @@ test('Ausgelieferter Code enthält lokale QR-Erzeugung, Fass ohne Legende und ke
 const rewardPolicy=(count=20,cents=300)=>({schemaVersion:1,id:'program-0001',revision:'revision-0001',startedAt:'2026-10-01T00:00:00Z',count,cents});
 const configure=(a,policy=rewardPolicy())=>a.files.set('bonus-einstellungen.json',{data:copy(policy),eTag:'"config-1"'});
 test('Bonus startet mit 20 Strichen und 3 Euro; Verwaltung ändert die Werte ausschließlich in OneDrive',async()=>{
-  const a=app(),p=await a.S.rewards();assert.equal(p.count,20);assert.equal(p.cents,300);
+  const a=app(),p=await a.S.rewards();assert.equal(p.thresholdCents,3000);assert.equal(p.awardUnits,300);
   const changed=await a.S.saveRewards(10,150,p.revision);
-  assert.equal(changed.count,10);assert.equal(changed.cents,150);assert.equal(changed.id,p.id);assert.equal(changed.startedAt,p.startedAt);assert.notEqual(changed.revision,p.revision);
+  assert.equal(changed.thresholdCents,1500);assert.equal(changed.awardUnits,150);assert.equal(changed.id,p.id);assert.equal(changed.startedAt,p.startedAt);assert.notEqual(changed.revision,p.revision);
   assert.deepEqual(a.storageWrites,[]);assert.equal(a.files.size,1);
 });
 test('Bonus-Einstellungen verhindern ungültige Werte, unberechtigte und veraltete Änderungen',async()=>{
@@ -187,7 +187,7 @@ test('Bonus-Einstellungen verhindern ungültige Werte, unberechtigte und veralte
   for(const [count,cents] of [[0,300],[1.5,300],[20,0],[20,301.5],[10001,300],[20,100001]])await assert.rejects(a.S.saveRewards(count,cents,p.revision),/ungültig/);
   a.ctx.adminUnlocked=false;await assert.rejects(a.S.saveRewards(10,150,p.revision),/Verwaltung/);a.ctx.adminUnlocked=true;
   await a.S.saveRewards(10,150,p.revision);await assert.rejects(a.S.saveRewards(30,450,p.revision),/inzwischen geändert/);
-  assert.equal((await a.S.rewards()).count,10);
+  assert.equal((await a.S.rewards()).thresholdCents,1500);
 });
 test('Teilzahlungen zählen centgenau; der 20. bezahlte Strich erzeugt 3 Euro für weitere Getränke',()=>{
   const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);
@@ -222,12 +222,12 @@ test('Aufgeteilte Bar- und PayPal-Zahlungen erzeugen denselben Bonus wie eine Ge
 test('Zahlung und Bonus bleiben atomar bei Versionskonflikt, verlorener Antwort und erneutem Klick',async()=>{
   const a=app();configure(a);let account=await a.S.setPin('a','4826');const sig=JSON.stringify(account.pin);await a.S.book('a',drink('drink-0020',20),sig);
   a.ctx.forceConflict=1;a.ctx.loseReply=true;const payment=pay('reward-payment-20',3000);await a.S.book('a',payment,sig);await a.S.book('a',payment,sig);
-  account=await a.S.read('a');assert.equal(account.bookings.length,3);assert.equal(account.bookings.filter(b=>b.type==='bonus').length,1);assert.equal(a.M.rewardState(account,rewardPolicy()).credit,300);assert.deepEqual(a.storageWrites,[]);
+  account=await a.S.read('a');assert.equal(account.bookings.length,3);assert.equal(account.bookings.filter(b=>b.type==='bonus').length,1);assert.equal(a.M.rewardState(account,rewardPolicy()).pointUnits,300);assert.deepEqual(a.storageWrites,[]);
 });
 test('Zwei gleichzeitige Teilzahlungen vergeben den erreichten Bonus genau einmal',async()=>{
   const a=app();configure(a);const account=await a.S.setPin('a','4826'),sig=JSON.stringify(account.pin);await a.S.book('a',drink('drink-0020',20),sig);
   await Promise.all([a.S.book('a',pay('payment-concurrent-a',1500),sig),a.S.book('a',pay('payment-concurrent-b',1500),sig)]);
-  const saved=await a.S.read('a');assert.equal(a.M.totals(saved).balance,0);assert.equal(a.M.rewardState(saved,rewardPolicy()).credit,300);assert.equal(saved.bookings.filter(b=>b.type==='bonus').length,1);
+  const saved=await a.S.read('a');assert.equal(a.M.totals(saved).balance,0);assert.equal(a.M.rewardState(saved,rewardPolicy()).pointUnits,300);assert.equal(saved.bookings.filter(b=>b.type==='bonus').length,1);
 });
 test('Manipulierte, doppelte oder nicht gedeckte Bonusbuchungen werden abgelehnt',()=>{
   const {M}=app(),p=rewardPolicy();let a=M.appendWithReward(M.empty('a'),drink('drink-0020',20),p);a=M.appendWithReward(a,pay('payment-full',3000),p);
@@ -242,9 +242,9 @@ test('Gleichzeitiger Bonusstart nutzt eine gemeinsame Regel; parallele Verwaltun
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.match(results.find(r=>r.status==='rejected').reason.message,/inzwischen geändert/);
 });
 test('Verlorene Antwort beim Bonusstart und Speichern wird anhand der OneDrive-Version geprüft',async()=>{
-  const a=app();a.ctx.loseReply=true;const p=await a.S.rewards();assert.equal(p.count,20);assert.equal(a.files.size,1);
-  a.ctx.loseReply=true;const saved=await a.S.saveRewards(25,400,p.revision);assert.equal(saved.count,25);assert.equal((await a.S.rewards()).cents,400);
-  a.ctx.navigator.onLine=false;await assert.rejects(a.S.saveRewards(10,150,saved.revision),/Offline/);assert.equal(a.files.get('bonus-einstellungen.json').data.count,25);
+  const a=app();a.ctx.loseReply=true;const p=await a.S.rewards();assert.equal(p.thresholdCents,3000);assert.equal(a.files.size,1);
+  a.ctx.loseReply=true;const saved=await a.S.saveRewards(25,400,p.revision);assert.equal(saved.thresholdCents,3750);assert.equal((await a.S.rewards()).awardUnits,400);
+  a.ctx.navigator.onLine=false;await assert.rejects(a.S.saveRewards(10,150,saved.revision),/Offline/);assert.equal(a.files.get('bonus-einstellungen.json').data.thresholdCents,3750);
 });
 
 test('Ein Fehler der optionalen Handy-Veröffentlichung macht eine bestätigte Buchung nicht rückgängig',async()=>{
@@ -261,7 +261,7 @@ test('Administration verbucht PayPal-Teilzahlungen ohne Mitglieder-PIN; Quittung
   account=await a.S.adminPaypalPayment('member-a',{...first,createdAt:new Date(Date.now()+1000).toISOString()});assert.equal(a.M.totals(account).balance,1500);assert.equal(account.bookings.filter(b=>b.id===first.id).length,1);
   await assert.rejects(a.S.adminPaypalPayment('member-a',{...first,cents:1000}),/anderen Betrag/);
   await assert.rejects(a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-TOOHIGH',cents:2000}),/offene Betrag/);
-  account=await a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-TXN000002'});assert.equal(a.M.totals(account).balance,0);assert.equal(a.M.rewardState(account,a.S.cachedRewards()).credit,300);
+  account=await a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-TXN000002'});assert.equal(a.M.totals(account).balance,0);assert.equal(a.M.rewardState(account,a.S.cachedRewards()).pointUnits,300);
   const ownSignature=JSON.stringify(account.pin);await assert.rejects(a.S.book('member-a',{...first,id:'paypal-admin-FORGED'},ownSignature),/Administration/);
   a.ctx.adminUnlocked=false;await assert.rejects(a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-LOCKED'}),/Administration/);
 });
@@ -361,7 +361,7 @@ const adminRemoval=(targetId,id='admin-removal-001',extra={})=>({id,type:'correc
 test('Verwaltung darf auch alte bezahlte Getränke löschen; Mitglieder können Admin-Löschungen nicht einschleusen',async()=>{
  const {S,M}=app();await S.book('a',drink('admin-paid-drink',1),'null');await S.book('a',pay('admin-paid-cash',150),'null');const entry=adminRemoval('admin-paid-drink');
  await assert.rejects(S.book('a',entry,'null'),/Administration/);await assert.rejects(S.bookMany('a',[entry],'null'),/Ungültige/);
- const next=await S.adminDelete('a',entry);assert.equal(next.schemaVersion,5);assert.equal(M.totals(next).count,0);assert.equal(M.rewardState(next,null).credit,150);assert.equal((await S.adminDelete('a',entry)).bookings.length,3);
+ const next=await S.adminDelete('a',entry);assert.equal(next.schemaVersion,6);assert.equal(M.totals(next).count,0);assert.equal(M.rewardState(next,null).credit,150);assert.equal((await S.adminDelete('a',entry)).bookings.length,3);
 });
 test('Admin-Löschung verlangt Freigabe, Grund und ursprüngliche OneDrive-Quelle',async()=>{
  const {S,ctx}=app();await S.book('a',drink('admin-restricted-drink',1),'null');const entry=adminRemoval('admin-restricted-drink');ctx.adminUnlocked=false;await assert.rejects(S.adminDelete('a',entry),/Administration/);ctx.adminUnlocked=true;
@@ -372,7 +372,7 @@ test('Admin-Zahlungslöschung nimmt Bonus zurück und funktioniert idempotent be
  const entry=adminRemoval('admin-full-payment','admin-payment-reversal',{type:'payment-reversal',cents:3000,createdAt:now});delete entry.count;ctx.loseReply=true;
  const next=await S.adminDelete('a',entry);assert.equal(M.totals(next).balance,3000);assert.equal(M.rewardState(next,S.cachedRewards()).credit,0);assert.equal(M.rewardState(next,S.cachedRewards()).progress,0);
  assert.equal((await S.adminDelete('a',entry)).bookings.length,4);await assert.rejects(S.adminDelete('a',{...entry,id:'second-payment-reversal'}),/bereits gelöscht/);
- await S.book('a',{...pay('replacement-payment',3000),createdAt:now},'null');const repaid=await S.read('a');assert.equal(M.rewardState(repaid,S.cachedRewards()).credit,300);assert.equal(M.totals(repaid).balance,0);
+ await S.book('a',{...pay('replacement-payment',3000),createdAt:now},'null');const repaid=await S.read('a');assert.equal(M.rewardState(repaid,S.cachedRewards()).pointUnits,300);assert.equal(M.totals(repaid).balance,0);
 });
 test('Löschen einer bereits ausgegebenen Bonuszahlung stellt Schulden ohne negatives Guthaben wieder her',()=>{
  const {M}=app(),p=rewardPolicy(2,300);let a=M.append(M.empty('a'),wine('admin-funded-wine'));a=M.appendWithReward(a,{...pay('admin-funded-payment',300),createdAt:'2026-10-09T12:01:00Z'},p);a=M.append(a,wine('admin-credit-wine',1,'2026-10-09T12:02:00Z'));
@@ -393,4 +393,84 @@ test('Verbrauch liest alle Kontodateien einschließlich früherer Mitglieder, oh
 test('Eine Zahlung zwischen Vormerkung und OK verhindert die gesamte Sammlung einer Rücknahme plus neuer Getränke',async()=>{
  const {S,M}=app(),now=new Date().toISOString(),d={...drink('batch-unpaid-drink',1),createdAt:now};await S.book('a',d,'null');await S.book('a',{...pay('batch-later-payment',150),createdAt:now},'null');const c=correction(d.id,'batch-correction',1,now);
  await assert.rejects(S.bookMany('a',[c,{...drink('batch-new-beer',1),createdAt:now}],'null'),/bereits ganz oder teilweise bezahlt/);assert.equal((await S.read('a')).bookings.length,2);assert.equal(M.totals(await S.read('a')).balance,0);
+});
+
+const pointsPolicy=()=>({schemaVersion:2,id:'points-policy-001',revision:'points-revision-001',startedAt:'2026-10-01T00:00:00Z',thresholdCents:1000,awardUnits:150,beerUnits:150,wineUnits:150});
+const modernDrink=(id,kind='beer',pointUnits=0)=>({...drink(id,1),drink:kind,cents:kind==='wine'?300:150,loyaltyVersion:2,...(pointUnits?{pointUnits}:{}),createdAt:'2026-10-09T10:00:00Z'});
+const deposit=(id,cents)=>({...pay(id,cents),prepay:true,createdAt:'2026-10-09T09:00:00Z'});
+const reversal=(id,target,cents)=>({id,type:'payment-reversal',targetId:target,cents,loyaltyVersion:2,confirmation:'admin',reason:'Fehlerhafte Einzahlung',createdAt:'2026-10-10T10:00:00Z'});
+test('Vorauszahlungen sind Geld, neue Treuepunkte getrennt; nur bestätigte Geldbeträge erreichen das Punkteziel',()=>{
+ const {M}=app(),p=pointsPolicy();let a=M.appendWithReward(M.empty('a'),deposit('points-deposit-001',1500),p);let r=M.rewardState(a,p);assert.equal(r.prepaid,1500);assert.equal(r.pointUnits,150);assert.equal(r.progress,500);
+ a=M.appendMany(a,[modernDrink('points-cash-wine','wine')]);r=M.rewardState(a,p);assert.equal(r.prepaid,1200);assert.equal(r.pointUnits,150);assert.equal(r.progress,500);assert.equal(M.totals(a).balance,0);
+ a=M.appendMany(a,[modernDrink('points-free-wine','wine',150)]);r=M.rewardState(a,p);assert.equal(r.pointUnits,0);assert.equal(r.prepaid,1200);assert.equal(r.progress,500);assert.equal(M.totals(a).balance,0);assert.equal(M.totals(a).count,2);
+ assert.throws(()=>M.appendMany(a,[modernDrink('points-insufficient','beer',150)]),/reichen nicht/);assert.equal(a.bookings.length,4);
+});
+test('Getränke ohne Geldzahlung vergeben keine Punkte; Teilzahlungen und verschiedene Getränke zählen den Geldbetrag',()=>{
+ const {M}=app(),p=pointsPolicy();p.thresholdCents=450;let a=M.appendMany(M.empty('a'),[modernDrink('points-beer-first'),modernDrink('points-wine-next','wine')]);assert.equal(M.rewardState(a,p).pointUnits,0);
+ a=M.appendWithReward(a,{...deposit('points-part-001',200),createdAt:'2026-10-09T11:00:00Z'},p);assert.equal(M.rewardState(a,p).needed,250);
+ a=M.appendWithReward(a,{...deposit('points-part-002',250),createdAt:'2026-10-09T11:01:00Z'},p);assert.equal(M.rewardState(a,p).pointUnits,150);assert.equal(M.totals(a).balance,0);assert.equal(M.rewardState(a,p).prepaid,0);
+});
+test('Historische Bonuswerte bleiben centgenau lesbar; neue Getränke verrechnen sie nicht automatisch',()=>{
+ const {M}=app(),p=rewardPolicy(2,300);let a=M.appendWithReward(M.append(M.empty('a'),drink('legacy-points-drink',2)),pay('legacy-points-pay',300),p);const old=copy(a.bookings);
+ a=M.appendMany(a,[modernDrink('modern-no-auto-use')]);assert.equal(M.totals(a).balance,150);assert.equal(M.rewardState(a,null).pointUnits,300);assert.equal(M.rewardState(a,null).prepaid,0);assert.deepEqual(copy(a.bookings.slice(0,3)),old);
+ a=M.appendMany(a,[modernDrink('modern-redeem-wine','wine',150)]);assert.equal(M.rewardState(a,null).pointUnits,150);assert.equal(M.totals(a).balance,150);
+});
+test('Teilweises Admin-Storno historisch mit Bonus bezahlter Sammelbuchungen gibt nur tatsächlich zurückgenommene Punkte zurück',()=>{
+ const {M}=app(),p=rewardPolicy(2,300);let a=M.appendWithReward(M.append(M.empty('a'),drink('legacy-earn-first',2)),pay('legacy-earn-payment',300),p);a=M.append(a,drink('legacy-five-drinks',5));
+ a=M.append(a,{...adminRemoval('legacy-five-drinks','legacy-return-last'),createdAt:'2026-10-10T10:00:00Z'});assert.equal(M.totals(a).balance,300);assert.equal(M.rewardState(a,null).pointUnits,0);
+ a=M.append(a,{...adminRemoval('legacy-five-drinks','legacy-return-rest'),count:4,cents:600,createdAt:'2026-10-10T10:01:00Z'});assert.equal(M.totals(a).balance,0);assert.equal(M.rewardState(a,null).pointUnits,300);
+});
+test('Löschung einer punktgebenden Vorauszahlung nimmt Geld und Punkte getrennt zurück; eingelöste Punkte werden negativ',()=>{
+ const {M}=app(),p=pointsPolicy();let a=M.appendWithReward(M.empty('a'),deposit('points-earned-deposit',1000),p);a=M.appendMany(a,[modernDrink('points-already-redeemed','wine',150),modernDrink('points-cash-consumed')]);
+ a=M.append(a,reversal('points-payment-delete','points-earned-deposit',1000));assert.equal(M.totals(a).balance,150);assert.equal(M.rewardState(a,p).prepaid,0);assert.equal(M.rewardState(a,p).pointUnits,-150);
+ a=M.append(a,{...adminRemoval('points-already-redeemed','points-drink-delete'),drink:'wine',cents:300,createdAt:'2026-10-10T10:01:00Z'});assert.equal(M.rewardState(a,p).pointUnits,0);assert.equal(M.totals(a).balance,150);
+});
+test('Historische Geldboni nach ausdrücklicher Punkteeinlösung werden bei Zahlungslöschung als Punkte zurückgenommen',()=>{
+ const {M}=app(),p=rewardPolicy(2,300);let a=M.appendWithReward(M.append(M.empty('a'),drink('legacy-point-earn',2)),pay('legacy-point-payment',300),p);a=M.appendMany(a,[modernDrink('legacy-point-wine','wine',150)]);
+ a=M.append(a,reversal('legacy-point-pay-delete','legacy-point-payment',300));assert.equal(M.totals(a).balance,300);assert.equal(M.rewardState(a,null).prepaid,0);assert.equal(M.rewardState(a,null).pointUnits,-150);
+ a=M.append(a,{...adminRemoval('legacy-point-wine','legacy-point-wine-delete'),drink:'wine',cents:300,createdAt:'2026-10-10T10:01:00Z'});assert.equal(M.rewardState(a,null).pointUnits,0);
+});
+test('Admin kann Bier, Wein und Zahlung atomar bereinigen; verlorene Antwort wiederholt keine Stornos',async()=>{
+ const {S,M,ctx}=app();await S.bookMany('a',[modernDrink('bulk-admin-beer'),modernDrink('bulk-admin-wine','wine')],'null');await S.book('a',{...deposit('bulk-admin-paid',450),createdAt:new Date().toISOString()},'null');
+ const entries=[{...adminRemoval('bulk-admin-beer','bulk-admin-remove-beer'),createdAt:'2027-01-01T10:00:00Z'},{...adminRemoval('bulk-admin-wine','bulk-admin-remove-wine'),drink:'wine',cents:300,createdAt:'2027-01-01T10:00:00Z'}, {...reversal('bulk-admin-remove-payment','bulk-admin-paid',450),createdAt:'2027-01-01T10:00:00Z'}];ctx.loseReply=true;
+ const a=await S.adminDelete('a',entries);assert.equal(M.totals(a).balance,0);assert.equal(M.totals(a).count,0);assert.equal(M.rewardState(a,null).prepaid,0);assert.equal((await S.adminDelete('a',entries)).bookings.length,6);
+});
+test('Eine ungültige Admin-Bereinigung übernimmt keine gültigen Teilstornos und benötigt Adminfreigabe',async()=>{
+ const {S,M,ctx}=app();await S.bookMany('a',[modernDrink('bulk-invalid-beer')],'null');const before=copy((await S.read('a')).bookings);
+ await assert.rejects(S.adminDelete('a',[adminRemoval('bulk-invalid-beer','bulk-valid-undo'),adminRemoval('missing-booking','bulk-invalid-undo')]),/zurückgenommen/);assert.deepEqual(copy((await S.read('a')).bookings),before);
+ ctx.adminUnlocked=false;await assert.rejects(S.adminDelete('a',[adminRemoval('bulk-invalid-beer')]),/Administration/);assert.equal(M.totals(await S.read('a')).balance,150);
+});
+test('Parallele Einlösungen können dieselben Treuepunkte nicht doppelt ausgeben',async()=>{
+ const {S,M}=app();let p=await S.rewards();p=await S.saveRewards({thresholdCents:1000,awardUnits:150,beerUnits:150,wineUnits:150},p.revision);await S.book('a',{...deposit('parallel-point-deposit',1000),createdAt:new Date().toISOString()},'null');
+ const results=await Promise.allSettled([S.bookMany('a',[modernDrink('parallel-point-a','beer',150)],'null'),S.bookMany('a',[modernDrink('parallel-point-b','wine',150)],'null')]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.match(results.find(r=>r.status==='rejected').reason.message,/reichen nicht/);assert.equal(M.rewardState(await S.read('a'),p).pointUnits,0);
+});
+test('Punktebedarf wird frisch geprüft; falscher Bedarf und Einstellungswechsel verhindern die gesamte Sammlung',async()=>{
+ const {S,M}=app();let p=await S.rewards();p=await S.saveRewards({thresholdCents:1000,awardUnits:300,beerUnits:150,wineUnits:300},p.revision);await S.book('a',{...deposit('changed-point-deposit',1000),createdAt:new Date().toISOString()},'null');
+ const before=copy((await S.read('a')).bookings);await assert.rejects(S.bookMany('a',[modernDrink('changed-point-cash'),modernDrink('changed-point-cheap-wine','wine',150)],'null'),/Einstellung wurde geändert/);assert.deepEqual(copy((await S.read('a')).bookings),before);
+ await S.saveRewards({wineUnits:150},p.revision);const a=await S.bookMany('a',[modernDrink('changed-point-wine-correct','wine',150)],'null');assert.equal(M.rewardState(a,null).pointUnits,150);
+});
+test('Statistik summiert Getränkewerte und aktuelle offene Geldbeträge ohne Namen; Punkte und Vorauszahlungen sind keine Umsätze',()=>{
+ const {M}=app(),p=pointsPolicy();let a=M.appendWithReward(M.empty('secret-member'),deposit('stats-money-first',1000),p);a=M.appendMany(a,[modernDrink('stats-free-wine','wine',150),modernDrink('stats-paid-beer')]);let b=M.appendMany(M.empty('private-second'),[modernDrink('stats-open-wine','wine')]);
+ const stats=M.consumption([a,b],'2026');assert.equal(stats.beerCents,150);assert.equal(stats.wineCents,600);assert.equal(stats.totalCents,750);assert.equal(stats.openCents,300);assert.equal(stats.outstandingCents,300);assert.equal(stats.prepaidCents,850);assert.equal(stats.months[9].totalCents,750);assert.ok(!JSON.stringify(stats).includes('secret-member'));assert.ok(!JSON.stringify(stats).includes('private-second'));
+});
+test('Hintergrund-Lesen überspringt doppelte Dateimetadaten und legt keine Einstellungen an',async()=>{
+ const {S,calls,files}=app();assert.equal(await S.previewRewards(),null);assert.equal(files.size,0);await S.bookMany('a',[modernDrink('prefetch-readonly-beer')],'null');S.reset();calls.length=0;await S.list(['a']);assert.equal(calls.filter(c=>c.options.method==='PUT').length,0);assert.equal(calls.filter(c=>c.url.includes('file-konto-')).length,2);
+});
+test('Gemischte Einzahlungen, Punktedrinks und Admin-Stornos erhalten Geld- und Punktebilanz über viele Reihenfolgen',()=>{
+ const {M}=app(),p=pointsPolicy();let seed=701;const rand=n=>{seed=(seed*1664525+1013904223)>>>0;return seed%n;};
+ for(let round=0;round<5;round++){let a=M.empty('a');for(let step=0;step<60;step++){
+   const s=M.ledger(a),prefix='random-'+round+'-'+step,action=rand(4),createdAt='2027-01-01T12:00:00Z';
+   if(action===0)a=M.appendWithReward(a,{...deposit(prefix+'-deposit',rand(1000)+1),createdAt},p);
+   else if(action===1){const kind=rand(2)?'beer':'wine',units=s.points>=150&&rand(2)?150:0;a=M.appendMany(a,[{...modernDrink(prefix+'-drink',kind,units),createdAt}]);}
+   else if(action===2){const targets=[...s.drinks.values()].filter(t=>t.count);if(targets.length){const t=targets[rand(targets.length)];a=M.append(a,{...adminRemoval(t.booking.id,prefix+'-delete'),drink:t.booking.drink,cents:M.unitPrice(t.booking),createdAt});}}
+   else {const payments=[...s.payments.values()].filter(b=>!s.reversedPayments.has(b.id));if(payments.length){const payment=payments[rand(payments.length)];a=M.append(a,{...reversal(prefix+'-reverse',payment.id,payment.cents),createdAt});}}
+   const after=M.ledger(a),cashDrinks=[...after.drinks.values()].reduce((n,t)=>n+(t.booking.pointUnits?0:t.count*M.unitPrice(t.booking)),0),cashPaid=[...after.payments.values()].filter(b=>!after.reversedPayments.has(b.id)).reduce((n,b)=>n+b.cents,0),awarded=[...after.bonuses.values()].filter(b=>!after.reversedPayments.has(b.paymentId)).reduce((n,b)=>n+b.cents,0),spent=[...after.drinks.values()].reduce((n,t)=>n+t.redeemed,0);
+   assert.equal(after.balance-(after.credit-after.rewardCredit),cashDrinks-cashPaid);assert.equal(after.points,awarded-spent);M.validate(a,'a');
+ }}
+});
+test('Rücknahme einer Einzahlung ordnet offene Geldbeträge ausschließlich Geldgetränken zu',()=>{
+ const {M}=app(),p=pointsPolicy();let a=M.appendWithReward(M.empty('a'),deposit('allocation-deposit',1000),p);a=M.appendMany(a,[modernDrink('allocation-free-wine','wine',150),modernDrink('allocation-cash-beer')]);a=M.append(a,reversal('allocation-delete-payment','allocation-deposit',1000));const state=M.ledger(a);assert.equal(state.drinks.get('allocation-free-wine').unpaid,0);assert.equal(state.drinks.get('allocation-cash-beer').unpaid,150);assert.equal(M.consumption([a],'2026').openCents,150);
+});
+test('Kleine historische Bonusbruchteile bleiben als Unterpunkte erhalten und werden bei neuen Getränken nicht gerundet oder automatisch genutzt',()=>{
+ const {M}=app(),p=rewardPolicy(1,1);let a=M.appendWithReward(M.append(M.empty('a'),drink('tiny-legacy-drink',1)),pay('tiny-legacy-payment',150),p);assert.equal(M.rewardState(a,null).pointUnits,1);a=M.appendMany(a,[modernDrink('tiny-new-cash-drink')]);assert.equal(M.rewardState(a,null).pointUnits,1);assert.equal(M.rewardState(a,null).prepaid,0);assert.equal(M.totals(a).balance,150);
 });

@@ -13,7 +13,7 @@
       dialog.innerHTML='<button type="button" class="outline-button" aria-label="Dankesnachricht schließen und weiter">Zurück zu Getränken</button><div class="dr-burst" aria-hidden="true"><img src="assets/drinks/bierfass.webp" alt=""><span class="dr-burst-pop"><svg viewBox="0 0 120 120" aria-hidden="true"><path fill="#e85c28" d="M60 3 70 30 93 12 88 41 117 40 97 61 116 84 87 83 91 113 68 93 57 118 48 91 22 110 29 82 2 78 24 60 5 38 34 38 28 10 51 30Z"/><path fill="#ffd65c" d="m60 25 9 24 23-8-15 20 19 18-27-4-9 23-8-24-25 9 15-22-18-15 26 2Z"/></svg></span>'+Array.from({length:16},(_,i)=>`<i style="--angle:${i*22.5}deg;--delay:${i%3*35}ms"></i>`).join('')+'</div><h2>Danke!</h2><p>Dein Deckel ist bezahlt. 🍻</p><p data-thanks-bonus class="dr-credit" hidden></p><p class="dr-muted">Zahlung gespeichert.</p>';
       document.body.append(dialog);dialog.querySelector('button').onclick=finishThanks;dialog.addEventListener('cancel',event=>{event.preventDefault();finishThanks();});
     }
-    const message=dialog.querySelector('[data-thanks-bonus]');message.hidden=!bonus;message.textContent=bonus?'Treuebonus: '+euro(bonus)+' für deine nächsten Getränke!':'';
+    const message=dialog.querySelector('[data-thanks-bonus]');message.hidden=!bonus;message.textContent=bonus?'⭐ '+DrinksModel.pointText(bonus)+' neue Treuepunkte für deine nächsten Getränke!':'';
     onDone=done;clearTimeout(timer);dialog.showModal();timer=setTimeout(finishThanks,bonus?4500:3000);
   }
   function text(row){return `Hallo ${row.name},\n\nauf deinem Getränkedeckel bei der Feuerwehr Wasser sind aktuell ${euro(row.cents)} offen. Du kannst den Betrag im Gerätehaus bar oder per PayPal begleichen.\n\nPayPal: ${DrinksModel.paypalUrl(row.cents)}\nDie Verwaltung trägt den PayPal-Eingang nach Prüfung ein. Bitte bei der Zahlung deinen Namen angeben.\n\nVielen Dank!\nFeuerwehr Wasser`;}
@@ -26,9 +26,9 @@
       if(!Array.isArray(data?.members))throw new Error('Mitgliederdatei nicht lesbar.');
       const people=data.members.map(p=>({id:String(p.id),name:[p.firstName,p.lastName].filter(Boolean).join(' ')}));
       await DrinksStore.list(people.map(p=>p.id));if(!adminUnlocked)return;
-      reminders=people.map(p=>({...p,cents:DrinksModel.totals(DrinksStore.cached(p.id)).balance})).filter(p=>p.cents>0).sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name,'de'));
-      status.textContent=reminders.length?`${reminders.length} offene Deckel · Stand: ${new Date().toLocaleString('de-DE')}`:'Alle Deckel sind bezahlt.';
-      const sum=reminders.reduce((n,row)=>n+row.cents,0);byId('remindersTotal').textContent='Schulden gesamt: '+euro(sum)+' · '+reminders.length+' Deckel';
+      reminders=people.map(p=>({...p,cents:DrinksModel.totals(DrinksStore.cached(p.id)).balance})).sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name,'de'));
+      status.textContent=reminders.some(p=>p.cents>0)?`${reminders.filter(p=>p.cents>0).length} offene Deckel · Stand: ${new Date().toLocaleString('de-DE')}`:'Alle Deckel sind bezahlt.';
+      const sum=reminders.reduce((n,row)=>n+row.cents,0);byId('remindersTotal').textContent='Schulden gesamt: '+euro(sum)+' · '+reminders.filter(p=>p.cents>0).length+' Deckel';
       const recent=people.flatMap(p=>(DrinksStore.cached(p.id)?.bookings||[]).filter(b=>b.type==='payment').map(b=>({...b,name:p.name}))).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5);
       const recentList=byId('remindersRecent');recentList.replaceChildren();for(const item of recent){const li=document.createElement('li');li.textContent=item.name+' · '+euro(item.cents)+' · '+(item.method==='cash'?'Bar':'PayPal verbucht')+' · '+new Date(item.createdAt).toLocaleString('de-DE');recentList.append(li);}if(!recent.length){const li=document.createElement('li');li.textContent='Noch keine bestätigten Zahlungen.';recentList.append(li);}
       renderReminders();
@@ -36,11 +36,11 @@
   }
   function renderReminders(){
     const list=byId('remindersList');list.replaceChildren();const query=(byId('remindersSearch')?.value||'').trim().toLocaleLowerCase('de');const order=byId('remindersOrder')?.value||'amount';
-    const shown=reminders.filter(row=>row.name.toLocaleLowerCase('de').includes(query)).sort((a,b)=>order==='name'?a.name.localeCompare(b.name,'de'):order==='small'?a.cents-b.cents:b.cents-a.cents);
+    const shown=reminders.filter(row=>(byId('remindersAll')?.checked||row.cents>0)&&row.name.toLocaleLowerCase('de').includes(query)).sort((a,b)=>order==='name'?a.name.localeCompare(b.name,'de'):order==='small'?a.cents-b.cents:b.cents-a.cents);
     for(const row of shown){
         const article=document.createElement('article');article.className='ux-reminder-row';
         const name=document.createElement('strong');name.textContent=row.name;const amount=document.createElement('span');amount.textContent=euro(row.cents);
-        const button=document.createElement('button');button.className='outline-button';button.type='button';button.textContent='Erinnerung vorbereiten';button.onclick=()=>prepare(row);
+        const button=document.createElement('button');button.className='outline-button';button.type='button';button.textContent='Erinnerung vorbereiten';button.disabled=row.cents<=0;button.onclick=()=>prepare(row);
         const payment=document.createElement('button');payment.className='primary-button';payment.type='button';payment.textContent='PayPal-Eingang eintragen';payment.onclick=()=>openPaypal(row);
         article.dataset.reminderMember=row.id;const device=document.createElement('small');device.dataset.deviceStatus='';device.textContent='Handy-Erinnerungen: Status unter „Erinnerung vorbereiten“ prüfen.';article.append(name,amount,payment,button,device);list.append(article);
       }
@@ -52,7 +52,7 @@
     let dialog=byId('adminPaypalDialog');
     if(!dialog){
       dialog=document.createElement('dialog');dialog.id='adminPaypalDialog';dialog.className='ux-reminder-dialog';
-      dialog.innerHTML='<form id="adminPaypalForm"><h2>PayPal-Eingang eintragen</h2><p id="adminPaypalPerson"></p><p id="adminPaypalBalance"></p><label for="adminPaypalAmount">Tatsächlich erhalten · Euro</label><input id="adminPaypalAmount" class="text-input" inputmode="decimal" autocomplete="off" required><label for="adminPaypalReference">PayPal-Transaktionscode · optional</label><input id="adminPaypalReference" class="text-input" autocomplete="off" maxlength="80" placeholder="Aus der PayPal-Zahlung"><p>Nur einen in PayPal geprüften Eingang eintragen. Teilzahlungen sind möglich. Der Zahlungscode verhindert ein erneutes Eintragen derselben Zahlung auf diesem Konto.</p><label class="admin-paypal-check"><input id="adminPaypalChecked" type="checkbox" required> Zahlung in PayPal erhalten und Mitglied geprüft</label><p id="adminPaypalStatus" role="status"></p><div class="ux-dialog-actions"><button id="adminPaypalSave" class="primary-button" type="submit">Zahlung eintragen</button><button id="adminPaypalClose" class="outline-button" type="button">Abbrechen</button></div></form>';
+      dialog.innerHTML='<form id="adminPaypalForm"><h2>PayPal-Eingang eintragen</h2><p id="adminPaypalPerson"></p><p id="adminPaypalBalance"></p><label for="adminPaypalAmount">Tatsächlich erhalten · Euro</label><input id="adminPaypalAmount" class="text-input" inputmode="decimal" autocomplete="off" required><label for="adminPaypalReference">PayPal-Transaktionscode · optional</label><input id="adminPaypalReference" class="text-input" autocomplete="off" maxlength="80" placeholder="Aus der PayPal-Zahlung"><p>Nur einen in PayPal geprüften Eingang eintragen. Teil- und Vorauszahlungen sind möglich. Der Restbetrag bleibt für spätere Getränke erhalten. Der Zahlungscode verhindert ein erneutes Eintragen derselben Zahlung auf diesem Konto.</p><label class="admin-paypal-check"><input id="adminPaypalChecked" type="checkbox" required> Zahlung in PayPal erhalten und Mitglied geprüft</label><p id="adminPaypalStatus" role="status"></p><div class="ux-dialog-actions"><button id="adminPaypalSave" class="primary-button" type="submit">Zahlung eintragen</button><button id="adminPaypalClose" class="outline-button" type="button">Abbrechen</button></div></form>';
       document.body.append(dialog);byId('adminPaypalClose').onclick=()=>{if(paypalBusy)return;if(paypalPending&&!confirm('Der Speicherstatus ist noch unklar. Vor einer weiteren Buchung dieses Kontos bitte den Verlauf prüfen. Trotzdem schließen?'))return;paypalPending=null;dialog.close();};
       dialog.addEventListener('cancel',event=>{event.preventDefault();byId('adminPaypalClose').click();});byId('adminPaypalForm').onsubmit=savePaypal;
     }
@@ -67,10 +67,10 @@
     const status=byId('adminPaypalStatus');
     if(!paypalPending){
       const cents=DrinksModel.parseEuro(byId('adminPaypalAmount').value),reference=byId('adminPaypalReference').value.trim().toUpperCase();
-      if(!cents||cents>paypalRow.cents){status.textContent='Bitte einen Betrag zwischen 0,01 € und '+euro(paypalRow.cents)+' eingeben.';return;}
+      if(!cents||cents>1000000){status.textContent='Bitte einen Betrag zwischen 0,01 € und 10.000,00 € eingeben.';return;}
       if(reference&&!/^[A-Z0-9-]{8,80}$/.test(reference)){status.textContent='Bitte den PayPal-Transaktionscode prüfen oder das Feld leer lassen.';return;}
       if(!byId('adminPaypalChecked').checked){status.textContent='Bitte zuerst Zahlungseingang und Mitglied prüfen.';return;}
-      paypalPending={id:reference?'paypal-admin-'+reference:crypto.randomUUID(),type:'payment',method:'paypal',confirmation:'admin',cents,createdAt:new Date().toISOString()};
+      paypalPending={id:reference?'paypal-admin-'+reference:crypto.randomUUID(),type:'payment',method:'paypal',confirmation:'admin',prepay:true,cents,createdAt:new Date().toISOString()};
     }
     paypalBusy=true;paypalControls(true);status.textContent='Zahlung wird gespeichert …';
     try{
@@ -109,8 +109,8 @@
     byId('drinksSettingsMembersButton').onclick=()=>showView('settingsMembersView');
     byId('settingsDrinksView').querySelector('[data-drinks-settings-back]').onclick=()=>showView('settingsView');
     const view=document.createElement('section');view.id='settingsRemindersView';view.className='view settings-subpage';view.hidden=true;
-    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Schulden, PayPal &amp; Erinnerungen</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><p id="remindersTotal" class="workflow-kpi"></p><div class="workflow-history-filters"><label>Mitglied suchen<input id="remindersSearch" class="text-input" type="search" placeholder="Vor- oder Nachname"></label><label>Sortieren<select id="remindersOrder" class="text-input"><option value="amount">Größter Betrag zuerst</option><option value="small">Kleinster Betrag zuerst</option><option value="name">Name</option></select></label></div><details class="workflow-recent"><summary>Zuletzt bestätigte Zahlungen</summary><ul id="remindersRecent"></ul></details><div id="remindersList"></div>';
-    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;byId('remindersSearch').oninput=renderReminders;byId('remindersOrder').onchange=renderReminders;
+    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Schulden, PayPal &amp; Erinnerungen</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zur Getränkeverwaltung</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><p id="remindersTotal" class="workflow-kpi"></p><div class="workflow-history-filters"><label>Mitglied suchen<input id="remindersSearch" class="text-input" type="search" placeholder="Vor- oder Nachname"></label><label>Sortieren<select id="remindersOrder" class="text-input"><option value="amount">Größter Betrag zuerst</option><option value="small">Kleinster Betrag zuerst</option><option value="name">Name</option></select></label></div><label><input id="remindersAll" type="checkbox"> Auch bezahlte Konten für Einzahlungen anzeigen</label><details class="workflow-recent"><summary>Zuletzt bestätigte Zahlungen</summary><ul id="remindersRecent"></ul></details><div id="remindersList"></div>';
+    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('refreshReminders').onclick=load;byId('remindersAll').onchange=renderReminders;byId('remindersSearch').oninput=renderReminders;byId('remindersOrder').onchange=renderReminders;
     const button=document.createElement('button');button.type='button';button.className='primary-button';button.textContent='Deckel und PayPal öffnen';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('drinksSettingsPaymentsCard').append(button);
   }
   window.DrinksExtras={celebrate,dismiss:()=>{onDone=null;finishThanks();},loadReminders:load};

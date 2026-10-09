@@ -20,7 +20,7 @@ async function fixture(){
     byId:id=>nodes[id],showView(){root.hidden=false;return true;},showToast(){},
     oneDriveReadState:async()=>({members:[{id:'a',lastName:'Test',firstName:'Mitglied'}]}),
     document:{hidden:false,createElement:()=>new Node(),addEventListener(){}},
-    DrinksModel:{PRICE:150,WINE_PRICE:300,today:()=>({count:0,beerCount:0,wineCount:0}),totals:()=>({balance:0,count:0})},
+    DrinksModel:{PRICE:150,WINE_PRICE:300,pointText:()=>'0',today:()=>({count:0,beerCount:0,wineCount:0}),totals:()=>({balance:0,count:0})},
     DrinksStore:{cached:()=>account,rewards:async()=>null,list:async()=>[],read:()=>{reads++;return read;}},
     addEventListener(){},scrollTo(){}});
   context.window=context;vm.runInContext(source,context);await context.Drinks.open();

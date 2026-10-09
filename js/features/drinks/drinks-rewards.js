@@ -1,57 +1,37 @@
-/* Treuebonus: gemeinsame Einstellungen und persönliche Fortschrittsanzeige. */
+/* Treuepunkte: bestätigte Geldzahlungen, ausdrücklich gegen Getränke einlösen. */
 (function(){
   'use strict';
   let policy=null,dirty=false,busy=false;
-  const euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  function remainingText(state,p){
-    if(!state.needed)return 'Bonusziel erreicht. Die nächste bestätigte Zahlung löst die Gutschrift aus.';
-    return `Noch ${euro(state.needed)} bezahlen bis zu ${euro(p.cents)} Treuebonus.`;
-  }
-  function beforeView(id){
-    if(id==='settingsRewardsView'||byId('settingsRewardsView')?.hidden!==false||!dirty)return true;
-    if(busy){showToast('Bitte die Speicherung der Bonus-Einstellungen abwarten.','error');return false;}
-    if(!confirm('Ungespeicherte Bonus-Einstellungen verwerfen?'))return false;
-    dirty=false;return true;
-  }
+  const M=DrinksModel,euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €',points=u=>M.pointText(u)+' '+(u===M.POINT_UNIT?'Treuepunkt':'Treuepunkte');
+  function remainingText(state,p){return state.needed?`Noch ${euro(state.needed)} einzahlen bis zu ${points(M.award(p))}.`:'Ziel erreicht. Die nächste bestätigte Einzahlung vergibt die Treuepunkte.';}
+  function beforeView(id){if(id==='settingsRewardsView'||byId('settingsRewardsView')?.hidden!==false||!dirty)return true;if(busy){showToast('Bitte die Speicherung der Treuepunkte-Einstellungen abwarten.','error');return false;}if(!confirm('Ungespeicherte Treuepunkte-Einstellungen verwerfen?'))return false;dirty=false;return true;}
+  const description=p=>`${euro(M.threshold(p))} Einzahlung → ${points(M.award(p))}. Bier: ${M.pointText(M.pointCost(p,'beer'))} Punkte · Wein: ${M.pointText(M.pointCost(p,'wine'))} Punkte.`;
   async function load(force=false){
-    if(!requireAdmin('settingsRewardsView')||busy||(!force&&dirty))return;
-    if(force&&dirty&&!confirm('Bonus-Eingaben verwerfen und neu aus OneDrive laden?'))return;
-    const status=byId('bonusSettingsStatus');busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Bonus-Einstellungen werden aus OneDrive geladen …';
-    try{
-      const next=await DrinksStore.rewards();if(!adminUnlocked)return;
-      policy=next;dirty=false;byId('bonusCount').value=policy.count;byId('bonusEuro').value=(policy.cents/100).toFixed(2).replace('.',',');
-      status.textContent=`In OneDrive gespeichert: ${policy.count} Bier-Einheiten bezahlt → ${euro(policy.cents)} Getränkegutschrift.`;
-    }catch(error){status.textContent=error.message||'Einstellungen konnten nicht geladen werden.';}
-    finally{busy=false;byId('bonusSettingsSave').disabled=!policy;}
+    if(!requireAdmin('settingsRewardsView')||busy||(!force&&dirty))return;if(force&&dirty&&!confirm('Eingaben verwerfen und neu aus OneDrive laden?'))return;
+    const status=byId('bonusSettingsStatus');busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden geladen …';
+    try{const next=await DrinksStore.rewards();if(!adminUnlocked)return;policy=M.rewardPolicy(next);dirty=false;byId('bonusCount').value=(policy.thresholdCents/100).toFixed(2).replace('.',',');byId('bonusEuro').value=policy.awardUnits/M.POINT_UNIT;byId('bonusBeer').value=policy.beerUnits/M.POINT_UNIT;byId('bonusWine').value=policy.wineUnits/M.POINT_UNIT;status.textContent='In OneDrive gespeichert: '+description(policy);}
+    catch(error){status.textContent=error.message||'Einstellungen konnten nicht geladen werden.';}finally{busy=false;byId('bonusSettingsSave').disabled=!policy;}
   }
   async function save(event){
-    event.preventDefault();if(!requireAdmin('settingsRewardsView')||busy||!policy)return;
-    const count=Number(byId('bonusCount').value),cents=DrinksModel.parseEuro(byId('bonusEuro').value),status=byId('bonusSettingsStatus');
-    try{DrinksModel.validateRewardSettings({...policy,count,cents});}catch(error){status.textContent=error.message;return;}
-    busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Einstellungen werden in OneDrive gespeichert …';
-    try{
-      policy=await DrinksStore.saveRewards(count,cents,policy.revision);dirty=false;
-      status.textContent=`In OneDrive gespeichert: ${policy.count} Bier-Einheiten bezahlt → ${euro(policy.cents)} Getränkegutschrift.`;
-      showToast('Treuebonus gespeichert.');globalThis.DrinksMobile?.refreshAll().catch(()=>{});
-    }catch(error){status.textContent=error.message||'Speicherung nicht bestätigt. Bitte erneut laden und prüfen.';}
-    finally{busy=false;byId('bonusSettingsSave').disabled=false;}
+    event.preventDefault();if(!requireAdmin('settingsRewardsView')||busy||!policy)return;const status=byId('bonusSettingsStatus');
+    const settings={thresholdCents:M.parseEuro(byId('bonusCount').value),awardUnits:Number(byId('bonusEuro').value)*M.POINT_UNIT,beerUnits:Number(byId('bonusBeer').value)*M.POINT_UNIT,wineUnits:Number(byId('bonusWine').value)*M.POINT_UNIT};
+    try{M.validateRewardSettings({...policy,...settings});}catch(error){status.textContent=error.message;return;}
+    busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden gespeichert …';
+    try{policy=await DrinksStore.saveRewards(settings,policy.revision);dirty=false;status.textContent='In OneDrive gespeichert: '+description(policy);showToast('Treuepunkte gespeichert.');globalThis.Drinks?.updateCards?.();globalThis.DrinksMobile?.refreshAll().catch(()=>{});}
+    catch(error){status.textContent=error.message||'Speicherung nicht bestätigt. Bitte erneut laden und prüfen.';}finally{busy=false;byId('bonusSettingsSave').disabled=false;}
   }
   function render(account){
-    const p=DrinksStore.cachedRewards(),state=DrinksModel.rewardState(account||DrinksModel.empty(''),p);
-    byId('dr-program').textContent=p?`Treuebonus: nach jeweils ${euro(p.count*DrinksModel.PRICE)} bestätigten Zahlungen gibt es ${euro(p.cents)} Getränkegutschrift. Bar, PayPal und Teilzahlungen zählen mit.`:'Treuebonus wird geladen …';
+    const p=DrinksStore.cachedRewards(),state=M.rewardState(account||M.empty(''),p);
+    byId('dr-program').textContent=p?'Treuepunkte: '+description(p)+' Nur bestätigte Geldzahlungen zählen; Einlösen erzeugt keine neuen Punkte.':'Treuepunkte werden geladen …';
     const box=byId('dr-bonus');box.hidden=!account||!p;
-    if(p){byId('dr-bonus-progress').max=state.threshold;byId('dr-bonus-progress').value=Math.min(state.progress,state.threshold);byId('dr-bonus-text').textContent=remainingText(state,p);}
-    byId('dr-credit').hidden=!state.credit;byId('dr-credit').textContent=`Getränkegutschrift: ${euro(state.credit)} · Wird automatisch für neue Getränke genutzt.`;
-    return state;
+    if(p){byId('dr-bonus-progress').max=state.threshold;byId('dr-bonus-progress').value=Math.min(state.progress,state.threshold);byId('dr-bonus-text').textContent=points(state.pointUnits)+' · '+remainingText(state,p);}
+    byId('dr-credit').hidden=!state.prepaid;byId('dr-credit').textContent='Eingezahlter Betrag: '+euro(state.prepaid)+' · Für spätere Getränke.';return state;
   }
   function initialize(){
     const view=document.createElement('section');view.id='settingsRewardsView';view.className='view settings-subpage';view.hidden=true;
-    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Treuebonus</h2><p>Eintragen, bezahlen und Getränkegutschrift sammeln.</p></div><button class="outline-button" type="button" data-back>Zurück zur Getränkeverwaltung</button></div><article class="panel ux-bonus-settings"><h3>Treuebonus festlegen</h3><form id="bonusSettingsForm"><div class="dr-own-new-pair"><div><label for="bonusCount">Bonusschwelle · Bier-Einheiten à 1,50 €</label><input id="bonusCount" class="text-input" type="number" inputmode="numeric" min="1" max="10000" step="1" value="20" required></div><div><label for="bonusEuro">Gutschrift in Euro</label><input id="bonusEuro" class="text-input" type="text" inputmode="decimal" value="3,00" required></div></div><p>Eine Bier-Einheit entspricht 1,50 € Zahlung. Ein bezahltes Glas Wein für 3,00 € zählt wie zwei Bier-Einheiten. Teilzahlungen zählen anteilig. Mit Gutschrift bezahlte Getränke zählen nicht erneut als Zahlung.</p><p>Der Bonus gilt für weitere Getränke und wird automatisch verrechnet. Änderungen gelten ab der nächsten Zahlung; bisheriger Fortschritt und vorhandene Gutschriften bleiben erhalten.</p><p>Gezählt werden bestätigte Zahlungen seit dem Start des Treuebonus. Frühere Zahlungen werden nicht nachträglich belohnt.</p><div class="ux-dialog-actions"><button id="bonusSettingsSave" class="primary-button" type="submit" disabled>Bonuseinstellungen speichern</button><button id="bonusSettingsReload" class="outline-button" type="button">Erneut laden</button></div></form><p id="bonusSettingsStatus" role="status">Standard: 20 Bier-Einheiten bezahlt → 3,00 € Getränkegutschrift.</p></article>';
-    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('bonusSettingsForm').onsubmit=save;byId('bonusSettingsReload').onclick=()=>load(true);
-    byId('bonusSettingsForm').oninput=()=>{dirty=true;byId('bonusSettingsStatus').textContent='Bonus-Einstellungen noch nicht gespeichert.';};
-    const button=document.createElement('button');button.className='primary-button';button.type='button';button.textContent='Bonus öffnen';button.onclick=()=>{if(showView('settingsRewardsView')!==false)load();};byId('drinksSettingsRewardsCard').append(button);
-    addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefault();event.returnValue='';}});
+    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Treuepunkte</h2><p>Geld einzahlen, Punkte sammeln und gegen Getränke einlösen.</p></div><button class="outline-button" type="button" data-back>Zurück zur Getränkeverwaltung</button></div><article class="panel ux-bonus-settings"><h3>Treuepunkte festlegen</h3><form id="bonusSettingsForm"><div class="dr-own-new-pair"><div><label for="bonusCount">Bestätigter Geldbetrag je Punktezuteilung · Euro</label><input id="bonusCount" class="text-input" type="text" inputmode="decimal" value="30,00" required></div><div><label for="bonusEuro">Treuepunkte je erreichtem Geldbetrag</label><input id="bonusEuro" class="text-input" type="number" min="0.01" step="any" value="2" required></div><div><label for="bonusBeer">Treuepunkte für 1 Bier</label><input id="bonusBeer" class="text-input" type="number" min="0.01" step="any" value="1" required></div><div><label for="bonusWine">Treuepunkte für 1 Glas Wein</label><input id="bonusWine" class="text-input" type="number" min="0.01" step="any" value="1" required></div></div><p>Nur tatsächlich bestätigte Bar- und PayPal-Einzahlungen zählen. Teilbeträge und Vorauszahlungen zählen mit. Getränke buchen oder Treuepunkte einlösen erzeugt keine neuen Punkte.</p><p>Mitglieder entscheiden auf ihrer Karte, wann sie Punkte gegen Bier oder Wein einlösen. Erst OK speichert die Einlösung. Änderungen gelten für die nächste Zahlung bzw. Einlösung; vorhandene Punkte und der erreichte Geldbetrag bleiben erhalten.</p><p>Frühere Bonuswerte werden wertgleich übernommen: 1,50 € entspricht 1 Treuepunkt. Bereits verrechnete Getränke bleiben unverändert. Bei Löschung einer punktgebenden Zahlung werden deren Punkte zurückgenommen; bereits eingelöste Punkte können dadurch einen negativen Punktestand ergeben.</p><div class="ux-dialog-actions"><button id="bonusSettingsSave" class="primary-button" type="submit" disabled>Treuepunkte speichern</button><button id="bonusSettingsReload" class="outline-button" type="button">Erneut laden</button></div></form><p id="bonusSettingsStatus" role="status">Standard: 30,00 € Einzahlung → 2 Treuepunkte. Ein Getränk benötigt 1 Punkt.</p></article>';
+    document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsDrinksView');byId('bonusSettingsForm').onsubmit=save;byId('bonusSettingsReload').onclick=()=>load(true);byId('bonusSettingsForm').oninput=()=>{dirty=true;byId('bonusSettingsStatus').textContent='Treuepunkte-Einstellungen noch nicht gespeichert.';};
+    const button=document.createElement('button');button.className='primary-button';button.type='button';button.textContent='Treuepunkte öffnen';button.onclick=()=>{if(showView('settingsRewardsView')!==false)load();};byId('drinksSettingsRewardsCard').append(button);addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefault();event.returnValue='';}});
   }
-  window.DrinksRewards={load,beforeView,render,remainingText};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
+  window.DrinksRewards={load,beforeView,render,remainingText};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();

@@ -3,8 +3,9 @@
   'use strict';
   let generation=0,last=null,inFlight=null,knownYears=[];
   const el=id=>document.getElementById('drinksStatistics'+id);
+  const euro=c=>(c/100).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
   const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-  function clear(){for(const id of ['Beer','Wine','Total'])if(el(id))el(id).textContent='–';el('Months')?.replaceChildren();}
+  function clear(){for(const id of ['Beer','Wine','Total','BeerCents','WineCents','TotalCents','OpenCents','OutstandingCents','PrepaidCents'])if(el(id))el(id).textContent='–';el('Months')?.replaceChildren();}
   function reset(){generation++;last=null;knownYears=[];inFlight=null;clear();if(el('Status'))el('Status').textContent='Zum Laden des Getränkeverbrauchs bitte OneDrive verbinden.';}
   async function load(year){
     if(!el('Status'))return;
@@ -15,8 +16,8 @@
       const data=await global.DrinksStore.consumption(year);
       if(number!==generation||data.sourceKey!==global.DrinksStore.sourceKey())return;
       last={year,sourceKey:data.sourceKey,loadedAt:new Date().toLocaleString('de-DE')};knownYears=data.years;
-      el('Beer').textContent=data.beer;el('Wine').textContent=data.wine;el('Total').textContent=data.total;el('Months').replaceChildren();
-      for(const month of data.months){const row=document.createElement('tr');for(const value of [months[month.month-1],month.beer,month.wine,month.total]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}el('Months').append(row);}
+      el('Beer').textContent=data.beer;el('Wine').textContent=data.wine;el('Total').textContent=data.total;for(const id of ['BeerCents','WineCents','TotalCents','OpenCents','OutstandingCents','PrepaidCents'])if(el(id))el(id).textContent=euro(data[id[0].toLowerCase()+id.slice(1)]||0);el('Months').replaceChildren();
+      for(const month of data.months){const row=document.createElement('tr');for(const value of [months[month.month-1],month.beer+' / '+euro(month.beerCents||0),month.wine+' / '+euro(month.wineCents||0),month.total+' / '+euro(month.totalCents||0),euro(month.openCents||0)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}el('Months').append(row);}
       el('Status').textContent='Kalenderjahr '+year+' · Stand: '+last.loadedAt+(data.total?'':' · Noch keine Getränke gespeichert.');
       global.renderStatisticsYearSelect?.();
     }catch(error){if(number!==generation)return;

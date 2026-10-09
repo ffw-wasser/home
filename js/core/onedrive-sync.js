@@ -114,7 +114,7 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
         applyOneDrivePayload(remote);oneDriveSyncedRevision=oneDriveLocalRevision;
         localStorage.setItem("fw_onedrive_local_updated",remote.updatedAt);localStorage.setItem("fw_onedrive_last_sync",new Date().toISOString());
       }else {const writeRevision=oneDriveLocalRevision;await oneDriveWriteState();oneDriveSyncedRevision=writeRevision;}
-      assertOneDriveSession(epoch);oneDriveAccessConfirmed=true;oneDriveStateConfirmed=oneDriveSyncedRevision===oneDriveLocalRevision;notifyAppStorageState();
+      assertOneDriveSession(epoch);window.Drinks?.preload?.();oneDriveAccessConfirmed=true;oneDriveStateConfirmed=oneDriveSyncedRevision===oneDriveLocalRevision;notifyAppStorageState();
     }catch(error){if(epoch!==oneDriveSessionEpoch)return;oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;stateError=error;notifyAppStorageState();}
     // ZIP-Berichte liefern die Statistik, unabhängig davon, welche Ansicht offen ist.
     // Auch bei einer fehlerhaften Datendatei versuchen, die Berichte zu laden.
