@@ -70,7 +70,7 @@ test('Offline-Registrierung verwendet den richtigen Projektpfad und fängt Ableh
 });
 
 test('Erste Offline-Installation lädt alle direkt benötigten öffentlichen App-Dateien',()=>{
-  const context=vm.createContext({self:{addEventListener(){}},console});
+  const context=vm.createContext({importScripts:()=>{},self:{addEventListener(){}},console});
   vm.runInContext(source('service-worker.js'),context);
   const core=vm.runInContext('CORE',context);
   const html=source('index.html');

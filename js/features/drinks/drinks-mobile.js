@@ -37,7 +37,7 @@
   function queue(id){pending.add(String(id));setStatus(String(id),'Handyansicht wird aktualisiert …');flush();}
   async function flush(){if(working)return;working=true;try{while(pending.size){const id=pending.values().next().value;pending.delete(id);try{if(!await publish(id))setStatus(id,'Noch kein Handyzugang eingerichtet.');}catch{setStatus(id,'In OneDrive gespeichert. Die Handyansicht ist noch nicht aktualisiert. Bitte „Handyansicht aktualisieren“ wählen.');}}}finally{working=false;}}
   async function link(id,signature,rotate=false){
-    const connection=await config();if(!connection)throw new Error('Die Handyansicht muss zuerst unter Einstellungen → Handy-Deckel eingerichtet werden.');
+    const connection=await config();if(!connection)throw new Error('Die Handyansicht muss zuerst unter Einstellungen → Getränkeverwaltung → Handy-Deckel eingerichtet werden.');
     const account=await S.read(id);if(!signature||!account.pin||JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
     const filename=await S.mobileFileName(id),old=await S.readMobileFile(filename);
     let record=old?.data;
@@ -46,7 +46,9 @@
     const check=await S.read(id);if(JSON.stringify(check.pin)!==signature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
     if(!await publish(id))throw new Error('Die Handyansicht konnte nicht veröffentlicht werden.');
     const current=await S.readMobileFile(filename);if(current?.data.revision!==record.revision)throw new Error('Der Zugang wurde gerade geändert. Bitte erneut öffnen.');
-    const url=new URL('deckel.html',location.href);url.search='';url.hash=new URLSearchParams({r:connection.repo,a:record.alias,k:record.key}).toString();return url.href;
+    const url=new URL('deckel.html',location.href);url.search='';const push=await global.DrinksPush?.prepare(record);
+    const latest=await S.readMobileFile(filename);if(latest?.data.revision!==record.revision)throw new Error('Der Zugang wurde gerade geändert. Bitte erneut öffnen.');
+    url.hash=new URLSearchParams({r:connection.repo,a:record.alias,k:record.key,...(push?{p:push.origin,c:push.capability}:{})}).toString();return url.href;
   }
   async function connect(repo,token){
     if(!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');

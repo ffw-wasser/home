@@ -1,0 +1,3 @@
+/* Run locally. Never paste the generated secret values in a chat or commit them. */
+const {webcrypto,randomBytes}=require('node:crypto');
+(async()=>{const pair=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);const jwk=await webcrypto.subtle.exportKey('jwk',pair.privateKey);const raw=await webcrypto.subtle.exportKey('raw',pair.publicKey);process.stdout.write(JSON.stringify({ADMIN_TOKEN:randomBytes(32).toString('hex'),INVITE_SECRET:randomBytes(32).toString('hex'),VAPID_PRIVATE_JWK:JSON.stringify(jwk),VAPID_PUBLIC_KEY:Buffer.from(raw).toString('base64url')},null,2)+'\n');})();

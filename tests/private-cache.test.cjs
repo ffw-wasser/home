@@ -7,7 +7,7 @@ const root = 'https://ffw-wasser.github.io/home/';
 
 function worker({offline = false, responseOk = true, cached = undefined} = {}) {
   const events = {}, writes = [], reads = [], deleted = [];
-  const context = vm.createContext({URL, Promise,
+  const context = vm.createContext({URL, Promise, importScripts:()=>{},
     self: {registration: {scope: root}, clients: {claim: async () => {}}, skipWaiting: async () => {}, addEventListener: (name, fn) => events[name] = fn},
     caches: {keys: async () => ['ffw-wasser-final-v8-1-pending-lock-20261006', 'other-app-cache', 'ffw-wasser-topics-private-cache-20261008', 'ffw-wasser-age-statistics-20261008', 'ffw-wasser-report-dates-statistics-20261008', 'ffw-wasser-plausibility-cleanup-20261008', 'ffw-wasser-onedrive-resilience-20261008'], delete: async key => deleted.push(key), open: async () => ({addAll: async () => {}, put: async (key, response) => writes.push(key), match: async key => {reads.push(key); return cached;}})},
     fetch: async request => {if (offline) throw new Error('offline'); return {ok: responseOk, type: 'basic', url: request.url, clone(){return this;}};}

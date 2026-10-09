@@ -147,7 +147,7 @@
     });
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
-  function mobileName(value){if(value!=='handy-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
+  function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
   async function mobileFileName(id){return (await fileName(id)).replace('konto-','handy-');}
   async function readMobileFile(filename){
     mobileName(filename);const ctx=await context();if(!ctx.folder)return null;

@@ -1,6 +1,7 @@
 /* Dank auf dem iPad und vom Verwalter vorbereitete Erinnerungstexte. */
 (function(){
   'use strict';
+  let reminderRow=null,pushBusy=false;const pushIntents=new Map();
   let timer,reminders=[],onDone=null,paypalRow=null,paypalPending=null,paypalBusy=false;
   function finishThanks(){clearTimeout(timer);const dialog=byId('drinksThanksDialog');dialog?.close();const fn=onDone;onDone=null;fn?.();}
   const euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
@@ -73,8 +74,25 @@
   function prepare(row){
     if(!requireAdmin('settingsRemindersView'))return;
     let dialog=byId('reminderDraftDialog');
-    if(!dialog){dialog=document.createElement('dialog');dialog.id='reminderDraftDialog';dialog.className='ux-reminder-dialog';dialog.innerHTML='<h2>Erinnerung vorbereiten</h2><p>Text prüfen und bei Bedarf selbst weitergeben.</p><label for="reminderDraftText">Nachricht</label><textarea id="reminderDraftText" rows="12" readonly></textarea><p id="reminderCopyStatus" role="status"></p><div class="ux-dialog-actions"><button class="outline-button" type="button" data-copy>Text kopieren</button><button class="outline-button" type="button" data-close>Schließen</button></div>';document.body.append(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.querySelector('[data-copy]').onclick=async()=>{if(!requireAdmin('settingsRemindersView'))return;const input=byId('reminderDraftText');try{await navigator.clipboard.writeText(input.value);byId('reminderCopyStatus').textContent='Text kopiert.';}catch(error){input.select();byId('reminderCopyStatus').textContent='Text markieren und mit der Kopierfunktion des Geräts übernehmen.';}};}
-    byId('reminderDraftText').value=text(row);byId('reminderCopyStatus').textContent='';dialog.showModal();
+    if(!dialog){dialog=document.createElement('dialog');dialog.id='reminderDraftDialog';dialog.className='ux-reminder-dialog';dialog.innerHTML='<h2>Erinnerung vorbereiten</h2><p>Text prüfen und bei Bedarf selbst weitergeben.</p><label for="reminderDraftText">Nachricht</label><textarea id="reminderDraftText" rows="12" readonly></textarea><p id="reminderCopyStatus" role="status"></p><h3>Direkt aufs Handy</h3><p id="pushDeviceStatus" role="status"></p><p>Sendet eine neutrale Benachrichtigung an die freiwillig angemeldeten Geräte. Der Betrag steht nicht auf dem Sperrbildschirm.</p><button id="sendDeckelReminder" class="primary-button" type="button">Handy-Erinnerung senden</button><p id="pushSendStatus" role="status"></p><div class="ux-dialog-actions"><button class="outline-button" type="button" data-copy>Text kopieren</button><button class="outline-button" type="button" data-close>Schließen</button></div>';document.body.append(dialog);byId('sendDeckelReminder').onclick=sendReminder;dialog.addEventListener('cancel',event=>{if(pushBusy)event.preventDefault();});dialog.querySelector('[data-close]').onclick=()=>{if(!pushBusy)dialog.close();};dialog.querySelector('[data-copy]').onclick=async()=>{if(!requireAdmin('settingsRemindersView'))return;const input=byId('reminderDraftText');try{await navigator.clipboard.writeText(input.value);byId('reminderCopyStatus').textContent='Text kopiert.';}catch(error){input.select();byId('reminderCopyStatus').textContent='Text markieren und mit der Kopierfunktion des Geräts übernehmen.';}};}
+    reminderRow=row;byId('reminderDraftText').value=text(row);byId('reminderCopyStatus').textContent='';byId('pushSendStatus').textContent='';byId('sendDeckelReminder').disabled=false;byId('sendDeckelReminder').textContent=pushIntents.has(row.id)?'Versandstatus erneut prüfen':'Handy-Erinnerung senden';dialog.showModal();loadPushStatus(row);
+  }
+  async function loadPushStatus(row){
+    const button=byId('sendDeckelReminder'),status=byId('pushDeviceStatus');button.disabled=true;status.textContent='Angemeldete Geräte prüfen …';
+    try{const info=await DrinksPush.status(row.id);if(reminderRow!==row||!byId('reminderDraftDialog').open||pushBusy)return;button.disabled=!info.configured||!info.devices;status.textContent=!info.configured?'Noch kein Versanddienst verbunden. Bitte unter Getränkeverwaltung → Handy-Erinnerungen einrichten.':!info.devices?'Das Mitglied hat noch keine Handy-Erinnerungen aktiviert.':info.devices+' angemeldete Gerät'+(info.devices===1?'':'e')+(info.lastSent?' · Letzter Versandversuch: '+new Date(info.lastSent).toLocaleString('de-DE'):' · Noch keine Erinnerung versendet.');}
+    catch(error){if(reminderRow===row){status.textContent=error.message;button.disabled=true;}}
+  }
+  async function sendReminder(){
+    if(pushBusy||!reminderRow||!requireAdmin('settingsRemindersView'))return;
+    const row=reminderRow,button=byId('sendDeckelReminder'),status=byId('pushSendStatus');
+    if(!pushIntents.has(row.id))pushIntents.set(row.id,crypto.randomUUID());
+    pushBusy=true;button.disabled=true;status.textContent='Offenen Deckel prüfen und Erinnerung versenden …';
+    try{const result=await DrinksPush.send(row.id,pushIntents.get(row.id));
+      if(result.status==='pending'){status.textContent='Der Versand wird noch geprüft. Bitte denselben Versandstatus erneut prüfen.';}
+      else if(result.accepted>0){pushIntents.delete(row.id);status.textContent='Vom Push-Dienst für '+result.accepted+' Gerät'+(result.accepted===1?'':'e')+' angenommen. Die Anzeige auf dem Handy hängt von dessen Einstellungen ab.'+(result.failed?' Für weitere Geräte nicht bestätigt.':'');}
+      else {pushIntents.delete(row.id);status.textContent='Versand nicht bestätigt. Das Handy könnte abgemeldet sein. Vor einer weiteren Erinnerung bitte prüfen.';}
+    }catch(error){status.textContent=(error.message||'Versand nicht bestätigt.')+' Bei unklarem Versandstatus denselben Vorgang erneut prüfen.';}
+    finally{pushBusy=false;button.disabled=false;button.textContent=pushIntents.has(row.id)?'Versandstatus erneut prüfen':'Handy-Erinnerung senden';}
   }
   function initialize(){
     byId('drinksSettingsMembersButton').onclick=()=>showView('settingsMembersView');

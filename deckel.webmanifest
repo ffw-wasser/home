@@ -1,0 +1,8 @@
+{
+ "name":"Mein Deckel · Feuerwehr Wasser",
+ "short_name":"Mein Deckel",
+ "description":"Persönlicher Getränkedeckel und freiwillige Handy-Erinnerungen",
+ "lang":"de-DE", "scope":"./", "display":"standalone",
+ "background_color":"#fff8ed", "theme_color":"#b9232d",
+ "icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]
+}

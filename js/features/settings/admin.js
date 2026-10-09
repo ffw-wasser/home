@@ -109,6 +109,7 @@ function login() {
   showView(pendingSettingsTarget||"settingsMembersView");
   window.SmartWorkflow?.settings?.();
   if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();
+  if(pendingSettingsTarget==="settingsPushView")window.DrinksPush?.loadSetup();
   if(pendingSettingsTarget==="settingsRewardsView")window.DrinksRewards?.load();
   pendingSettingsTarget="";
 }
@@ -127,6 +128,7 @@ function loginArchive() {
   showView(pendingSettingsTarget||"settingsFilesView");
   window.SmartWorkflow?.settings?.();
   if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();
+  if(pendingSettingsTarget==="settingsPushView")window.DrinksPush?.loadSetup();
   if(pendingSettingsTarget==="settingsRewardsView")window.DrinksRewards?.load();
   pendingSettingsTarget="";
 }

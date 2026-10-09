@@ -1,12 +1,12 @@
 # Persönlicher Handy-Deckel ohne Server
 
-Die Handyansicht `deckel.html` benötigt weder Installation noch Microsoft-Anmeldung. Sie zeigt den letzten vom Gerätehaus-iPad veröffentlichten Kontostand, Guthaben, Bonusfortschritt und fünf letzte Buchungen. PayPal öffnet den offenen Betrag für `paypal.me/FeuerwehrWasser`. Nach Prüfung des tatsächlichen PayPal-Eingangs trägt die Administration den Betrag unter Einstellungen → Offene Deckel & PayPal ein. Eine Teilzahlung reduziert den offenen Betrag entsprechend, eine vollständige Zahlung gleicht ihn aus. Treuebonus wird wie bei Mitgliederzahlungen berechnet; danach wird die Handyansicht automatisch zur Aktualisierung vorgemerkt. Die Handyansicht selbst kann weder Striche noch Zahlungen oder PINs verändern.
+Die Handyansicht `deckel.html` benötigt weder Installation noch Microsoft-Anmeldung. Sie zeigt den letzten vom Gerätehaus-iPad veröffentlichten Kontostand, Guthaben, Bonusfortschritt und fünf letzte Buchungen. PayPal öffnet den offenen Betrag für `paypal.me/FeuerwehrWasser`. Nach Prüfung des tatsächlichen PayPal-Eingangs trägt die Administration den Betrag unter Einstellungen → Getränkeverwaltung → Offene Deckel & PayPal ein. Eine Teilzahlung reduziert den offenen Betrag entsprechend, eine vollständige Zahlung gleicht ihn aus. Treuebonus wird wie bei Mitgliederzahlungen berechnet; danach wird die Handyansicht automatisch zur Aktualisierung vorgemerkt. Die Handyansicht selbst kann weder Striche noch Zahlungen oder PINs verändern.
 
 ## Einmalige Einrichtung durch die Administration
 
 1. Unter https://github.com/new als `ffw-wasser` ein **öffentliches**, separates Repository `deckel-daten` anlegen. README hinzufügen und Hauptzweig `main` verwenden. Keine GitHub Actions oder Pages für dieses Daten-Repository einrichten. Es dient nur als Ablage verschlüsselter Dateien.
 2. Unter https://github.com/settings/personal-access-tokens/new einen **Fine-grained personal access token** erstellen. Repository access: **Only select repositories**, ausschließlich `deckel-daten`. Repository permissions: **Contents → Read and write**. Keine weiteren Schreibrechte. Eine angemessene Ablaufzeit festlegen und den Zugang vor Ablauf erneuern.
-3. Am Gerätehaus-iPad OneDrive verbinden. In der Anwendung **Einstellungen → Handy-Deckel** öffnen, mit dem Administrationspasswort anmelden, Repository und Token eingeben und **Verbindung prüfen und in OneDrive speichern** wählen. Den Token ausschließlich dort eingeben, niemals im Chat oder in Quellcode. Er wird in `Getraenke/handy-verbindung.json` privat in OneDrive gespeichert.
+3. Am Gerätehaus-iPad OneDrive verbinden. In der Anwendung **Einstellungen → Getränkeverwaltung → Handy-Deckel** öffnen, mit dem Administrationspasswort anmelden, Repository und Token eingeben und **Verbindung prüfen und in OneDrive speichern** wählen. Den Token ausschließlich dort eingeben, niemals im Chat oder in Quellcode. Er wird in `Getraenke/handy-verbindung.json` privat in OneDrive gespeichert.
 
 Die bestehende ChatGPT-GitHub-Verbindung kann keinen Schreibzugang an die laufende iPad-Webseite übergeben. Deshalb ist diese einmalige Administrations-Einrichtung erforderlich. Die Erweiterung ist ohne sie eingebaut, kann aber noch keine persönlichen Zugänge veröffentlichen.
 
@@ -37,3 +37,9 @@ Keine Render-Dienste, Server, neuen Datenbanken, gekauften Domains oder kostenpf
 ## PayPal-Eingänge in der Administration
 
 Mitglied wählen, tatsächlich erhaltenen Betrag eingeben, optional den PayPal-Transaktionscode hinterlegen und den geprüften Eingang bestätigen. Es wird eine unveränderliche Zahlung mit `confirmation: admin` angehängt; der Kontostand wird nicht überschrieben. Mit demselben Transaktionscode kann dieselbe Zahlung auf diesem Konto nicht nochmals gebucht werden. Ein Code ist keine automatische PayPal-Verifikation und bietet keinen kontenübergreifenden Dublettenschutz. Bei unklarem Speicherstatus wird dieselbe Buchungsnummer erneut geprüft. Beträge über dem aktuell offenen Deckel werden abgelehnt. Ältere Clients, die Admin-Zahlungen noch nicht kennen, lehnen betroffene Konten ab; die Anwendung vor Nutzung der neuen Funktion neu laden.
+
+## Freiwillige manuelle Push-Erinnerungen
+
+Die reine Kontostand-Anzeige bleibt ohne Versandserver nutzbar. Für Handy-Popups ist zusätzlich der kostenlose Cloudflare-Dienst unter [cloudflare/push/README.md](cloudflare/push/README.md) einzurichten. Ohne diese Verbindung findet kein Push-Versand statt.
+
+Nur nach ausdrücklicher Aktivierung der Erinnerungen speichert das Handy den persönlichen Link lokal in IndexedDB. So öffnet ein Benachrichtigungsklick den eigenen Deckel. Technische Geräte-Adressen und zufällige Kennungen liegen zusätzlich bei Cloudflare. Der geheime Deckel-Link, Namen und Beträge werden nicht an den Versanddienst übertragen. Die Administration versendet ausschließlich manuell; es gibt keine automatischen Erinnerungen.
