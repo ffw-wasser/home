@@ -28,7 +28,7 @@
     try{
       policy=await DrinksStore.saveRewards(count,cents,policy.revision);dirty=false;
       status.textContent=`In OneDrive gespeichert: ${policy.count} bezahlte Striche → ${euro(policy.cents)} Getränkeguthaben.`;
-      showToast('Getränke-Bonus gespeichert.');
+      showToast('Getränke-Bonus gespeichert.');globalThis.DrinksMobile?.refreshAll().catch(()=>{});
     }catch(error){status.textContent=error.message||'Speicherung nicht bestätigt. Bitte erneut laden und prüfen.';}
     finally{busy=false;byId('bonusSettingsSave').disabled=false;}
   }

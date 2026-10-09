@@ -120,3 +120,7 @@ Direktzugang „Getränke“, große PIN-Tastatur mit automatischer Öffnung nac
 Die Anwesenheit hat Namenssuche und „Noch offen“ / „Alle Mitglieder“. Der Speicherhinweis unterscheidet Gerätespeicherung von bestätigter OneDrive-Synchronisierung. Änderungen während einer laufenden Synchronisierung werden nachgesendet; nach einem Fehlschlag bleibt der Stand unbestätigt. Dies ersetzt keine Konfliktauflösung für gleichzeitige Änderungen der allgemeinen Datendatei auf mehreren Geräten. Die Abschlussprüfung nennt die Personen, die im CSV als „Fehlt“ erscheinen, einschließlich unmarkierter Altersmitglieder. Nicht übernommene Statusauswahl muss vor dem Export gespeichert werden.
 
 Prüfung dieser Änderung: 100 Node-Tests und isolierte Browserabläufe mit OneDrive-Testdaten, inklusive QR-Decodierung, PIN-Sperre/Entwurf, Bonus/Teilzahlung, Suche/Filter, Abschlussabbruch und mehreren Bildschirmbreiten. Kein Schreiben in produktive Konten. Das reale iPad mit Safari und Microsoft-Anmeldung benötigt ergänzend eine Praxisprüfung.
+
+## Persönlicher Handy-Deckel
+
+Die Anwendung enthält eine verschlüsselte Handyansicht ohne Server und Microsoft-Anmeldung. Vor dem ersten QR-Zugang muss die Administration ein separates öffentliches Daten-Repository und einen darauf begrenzten GitHub-Schreibzugang unter Einstellungen → Handy-Deckel verbinden. Anleitung, Datenumfang und Grenzen der Linkrotation: [README-HANDY-DECKEL.md](README-HANDY-DECKEL.md). Die PayPal-Schaltfläche öffnet eine Zahlung; das Bestätigen bleibt am Gerätehaus-iPad.

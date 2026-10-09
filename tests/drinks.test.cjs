@@ -187,3 +187,9 @@ test('Verlorene Antwort beim Bonusstart und Speichern wird anhand der OneDrive-V
   a.ctx.loseReply=true;const saved=await a.S.saveRewards(25,400,p.revision);assert.equal(saved.count,25);assert.equal((await a.S.rewards()).cents,400);
   a.ctx.navigator.onLine=false;await assert.rejects(a.S.saveRewards(10,150,saved.revision),/Offline/);assert.equal(a.files.get('bonus-einstellungen.json').data.count,25);
 });
+
+test('Ein Fehler der optionalen Handy-Veröffentlichung macht eine bestätigte Buchung nicht rückgängig',async()=>{
+  const a=app();await a.S.setPin('member-a','1234');const signature=JSON.stringify((await a.S.read('member-a')).pin);
+  a.ctx.DrinksMobile={queue(){throw new Error('Publishing failed');}};
+  const saved=await a.S.book('member-a',drink('drink-mobile-001',2),signature);assert.equal(a.M.totals(saved).balance,300);assert.equal((await a.S.read('member-a')).bookings.length,1);
+});
