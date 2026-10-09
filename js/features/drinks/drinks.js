@@ -11,12 +11,13 @@
   function lockAccount(){
     clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
-    signature='';clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
+    signature='';clearMobileQr();clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
     message(pending?'Konto gesperrt. Nach deiner PIN-Eingabe dieselbe Buchung erneut prüfen.':draft?'Konto gesperrt. Deine '+draft+' ungespeicherten Striche bleiben bis zum Neuladen erhalten. PIN eingeben, um fortzufahren.':'Konto gesperrt. Bitte deine PIN erneut eingeben.');
   }
   function touch(){clearTimeout(timer);if(memberId&&signature&&!busy)timer=setTimeout(lockAccount,60000);}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
-  function resetSession(){clearTimeout(timer);memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();updatePinDots();}
+  function clearMobileQr(){if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}}
+  function resetSession(){clearTimeout(timer);clearMobileQr();memberId='';account=null;signature='';draft=0;payment=0;pending=null;bookedNotice='';if(el('pin'))el('pin').value='';clearPinInputs();updatePinDots();}
   function reset(){openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
@@ -46,6 +47,8 @@
   }
   function render(animate=false){
     const totals=account?M.totals(account):{balance:0,count:0};const reward=global.DrinksRewards?.render(account,draft)||{credit:0};const projected=totals.balance+Math.max(0,draft*M.PRICE-reward.credit);root.querySelectorAll('[data-dr-person]').forEach(e=>e.textContent=name(memberId));
+    if(el('mobile-status'))el('mobile-status').textContent=global.DrinksMobile?.status(memberId)||'';
+    for(const id of ['mobile-open','mobile-back','mobile-refresh','mobile-rotate'])if(el(id))el(id).disabled=busy||Boolean(pending);
     renderRecent();root.querySelectorAll('[data-dr-booked-notice]').forEach(node=>{node.hidden=!bookedNotice;node.textContent=bookedNotice;});el('dock-summary').textContent=draft+' neue Striche · Danach offen: '+euro(projected);
     el('balance').textContent=euro(totals.balance);el('count').textContent=totals.count+' bisher gebuchte Getränke';el('draft-count').textContent=draft+' neue Striche'+(draft?' · Noch nicht gespeichert':'');el('draft-amount').textContent=euro(draft*M.PRICE);el('total').textContent=euro(projected);
     const beerRow=el('beers');beerRow.replaceChildren();
@@ -63,7 +66,7 @@
     el('cash-cancel').disabled=busy||Boolean(pending);el('paypal-cancel').disabled=busy||Boolean(pending);el('refresh').disabled=busy;
     el('own-open').disabled=busy||Boolean(pending);el('own-save').disabled=busy;el('own-back').disabled=busy;
     el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':draft?'Fertig · '+draft+' Strich'+(draft===1?'':'e')+' speichern':'Fertig';
-    for(const id of ['cash-confirm','paypal-confirm'])el(id).textContent=pending?.type==='payment'?'Speicherung erneut prüfen':id==='cash-confirm'?'Geld in die Kasse gelegt':'Zahlung durchgeführt';
+    el('cash-confirm').textContent=pending?.type==='payment'?'Speicherung erneut prüfen':'Geld in die Kasse gelegt';el('paypal-confirm').textContent='Fertig · Eingang wird geprüft';
     root.querySelectorAll('[data-dr-member]').forEach(button=>button.disabled=busy||!loaded);
     renderRanking();touch();
   }
@@ -84,7 +87,7 @@
       const next=data.members.map(p=>({id:String(p.id||''),name:[p.lastName,p.firstName].filter(Boolean).join(', ')}));
       if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)throw new Error('Die Mitglieder benötigen eindeutige Kennungen und Namen.');
       await S.rewards();await S.list(next.map(p=>p.id));if(number!==openNumber)return;
-      people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Aktuell aus OneDrive geladen.';renderRanking();
+      global.DrinksMobile?.refreshAll().catch(()=>{});people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Aktuell aus OneDrive geladen.';renderRanking();
     });
     if(!loaded)el('status').textContent='Getränke konnten nicht geladen werden. OneDrive-Verbindung prüfen und aktualisieren.';
     renderPeople();
@@ -182,9 +185,22 @@
       payment=cents;if(method==='paypal')showPaypal();screen(method);
     });});
     root.querySelectorAll('[data-dr-edit-amount]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;el('amount').value=(payment/100).toFixed(2).replace('.',',');amountScreen();}));
-    el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>run(confirmPayment));
+    el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>{if(busy||pending)return;finishSession();showToast('Die Verwaltung trägt den geprüften PayPal-Eingang ein.');});
     root.querySelectorAll('[data-dr-back-account]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;payment=0;render();screen('account');}));
     el('paid-next').addEventListener('click',finishSession);el('paid-account').addEventListener('click',()=>screen('account'));
+    const showMobile=rotate=>run(async()=>{
+      if(!signature)throw new Error('Bitte erneut mit deiner PIN anmelden.');
+      clearMobileQr();const url=await global.DrinksMobile.link(memberId,signature,rotate);
+      const qr=qrcode(0,'M');qr.addData(url);qr.make();const canvas=el('mobile-qr'),count=qr.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;
+      const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.fillStyle='#111';
+      for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c))context.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);
+      screen('mobile');
+    });
+    el('mobile-open').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
+    el('mobile-back').addEventListener('click',()=>{if(busy)return;clearMobileQr();screen('account');});
+    el('mobile-refresh').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
+    el('mobile-rotate').addEventListener('click',()=>{if(!busy&&!pending&&confirm('Neuen Handyzugang erstellen? Der alte Link kann zukünftige Kontostände nicht mehr öffnen. Bereits gelesene Daten und alte GitHub-Versionen bleiben erhalten.'))showMobile(true);});
+    document.addEventListener('deckel-status',event=>{if(event.detail.id===memberId&&el('mobile-status'))el('mobile-status').textContent=event.detail.text;});
     el('own-open').addEventListener('click',()=>{if(busy||pending)return;clearPinInputs();screen('own-pin');el('own-current').focus();});
     el('own-back').addEventListener('click',()=>{clearPinInputs();screen('account');});
     el('own-form').addEventListener('submit',event=>{

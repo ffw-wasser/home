@@ -1,0 +1,17 @@
+'use strict';
+const $=id=>document.getElementById(id),euro=c=>(c/100).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+let generation=0;
+function credentials(){const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
+function clear(){ $('account').hidden=true;for(const id of ['balance','credit','bonus','updated'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href'); }
+async function load(){const number=++generation;clear();$('refresh').disabled=true;$('status').textContent='Dein Deckel wird geladen …';try{
+  const {repo,record}=credentials(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);let response,text;try{response=await fetch('https://raw.githubusercontent.com/'+repo+'/main/deckel/'+record.alias+'.json?t='+Date.now(),{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:controller.signal});if(response.ok)text=await response.text();}finally{clearTimeout(timer);}
+  if(!response.ok)throw new Error('Dein Deckel ist noch nicht verfügbar. Bitte am Gerätehaus-iPad aktualisieren.');
+  if(text.length>8000)throw new Error('Ungültige Deckel-Datei.');const data=await DeckelCrypto.open(JSON.parse(text),record);if(number!==generation)return;
+  $('coaster').classList.toggle('is-paid',data.balance===0);$('balance').textContent=euro(data.balance);$('thanks').hidden=data.balance!==0;$('credit').textContent='Dein Guthaben: '+euro(data.credit);$('bonus').textContent=data.needed%150===0?'Noch '+data.needed/150+' bezahlte Striche bis zu '+euro(data.bonusCents)+' Treuebonus.':'Noch '+euro(data.needed)+' regulär bezahlen bis zu '+euro(data.bonusCents)+' Treuebonus.';
+  $('paypal').hidden=data.balance<=0;$('payment-note').hidden=data.balance<=0;if(data.balance>0)$('paypal').href='https://paypal.me/FeuerwehrWasser/'+(data.balance/100).toFixed(2)+'EUR';
+  for(const b of data.bookings){const li=document.createElement('li');li.textContent=(b.type==='drinks'?b.count+' Strich'+(b.count===1?'':'e'):b.type==='bonus'?'Treuebonus':b.method==='cash'?'Barzahlung':'PayPal bestätigt')+' · '+euro(b.cents);const date=document.createElement('small');date.textContent=new Date(b.createdAt).toLocaleString('de-DE');li.append(date);$('bookings').append(li);}if(!data.bookings.length){const li=document.createElement('li');li.textContent='Noch keine Buchungen.';$('bookings').append(li);}
+  $('updated').textContent='Stand vom Gerätehaus: '+new Date(data.updatedAt).toLocaleString('de-DE');$('account').hidden=false;$('status').textContent='';
+}catch(error){if(number!==generation)return;clear();$('status').textContent=error.name==='OperationError'?'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.':error.message||'Keine Verbindung. Bitte erneut versuchen.';}finally{if(number===generation)$('refresh').disabled=false;}}
+$('refresh').onclick=load;globalThis.addEventListener('hashchange',load);document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;clear();$('refresh').disabled=false;}else load();});load();
+
+globalThis.addEventListener("pageshow",event=>{if(event.persisted)load();});

@@ -13,7 +13,7 @@
       if(!b||typeof b.id!=='string'||!/^[-a-zA-Z0-9]{8,150}$/.test(b.id)||ids.has(b.id)||!Number.isSafeInteger(b.cents)||b.cents<=0||!Number.isFinite(Date.parse(b.createdAt)))throw new Error('Eine Getränkebuchung ist ungültig.');
       ids.add(b.id);
       if(b.type==='drinks'&&Number.isSafeInteger(b.count)&&b.count>0&&b.cents===b.count*PRICE){const used=Math.min(credit,b.cents);credit-=used;balance+=b.cents-used;}
-      else if(b.type==='payment'&&['cash','paypal'].includes(b.method)&&b.confirmation==='member')balance-=b.cents;
+      else if(b.type==='payment'&&['cash','paypal'].includes(b.method)&&(b.confirmation==='member'||(account.schemaVersion===2&&b.method==='paypal'&&b.confirmation==='admin')))balance-=b.cents;
       else if(b.type==='bonus'&&account.schemaVersion===2){
         const payment=account.bookings.find(p=>p.id===b.paymentId);
         if(!payment||payment.type!=='payment'||!ids.has(payment.id)||rewardedPayments.has(payment.id)||b.id!=='bonus-'+payment.id||b.createdAt!==payment.createdAt||!Number.isSafeInteger(b.cycles)||b.cycles<1)throw new Error('Eine Bonusbuchung ist ungültig.');

@@ -1,7 +1,7 @@
 /* Dank auf dem iPad und vom Verwalter vorbereitete Erinnerungstexte. */
 (function(){
   'use strict';
-  let timer,reminders=[],onDone=null;
+  let timer,reminders=[],onDone=null,paypalRow=null,paypalPending=null,paypalBusy=false;
   function finishThanks(){clearTimeout(timer);const dialog=byId('drinksThanksDialog');dialog?.close();const fn=onDone;onDone=null;fn?.();}
   const euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   function celebrate(bonus=0,done=null){
@@ -14,7 +14,7 @@
     const message=dialog.querySelector('[data-thanks-bonus]');message.hidden=!bonus;message.textContent=bonus?'Treuebonus: '+euro(bonus)+' für deine nächsten Getränke!':'';
     onDone=done;clearTimeout(timer);dialog.showModal();timer=setTimeout(finishThanks,5500);
   }
-  function text(row){return `Hallo ${row.name},\n\nauf deinem Getränkedeckel bei der Feuerwehr Wasser sind aktuell ${euro(row.cents)} offen. Du kannst den Betrag im Gerätehaus bar oder per PayPal begleichen.\n\nPayPal: ${DrinksModel.paypalUrl(row.cents)}\nNach der PayPal-Zahlung bitte den tatsächlich gezahlten Betrag in der Getränke-Strichliste bestätigen.\n\nVielen Dank!\nFeuerwehr Wasser`;}
+  function text(row){return `Hallo ${row.name},\n\nauf deinem Getränkedeckel bei der Feuerwehr Wasser sind aktuell ${euro(row.cents)} offen. Du kannst den Betrag im Gerätehaus bar oder per PayPal begleichen.\n\nPayPal: ${DrinksModel.paypalUrl(row.cents)}\nDie Verwaltung trägt den PayPal-Eingang nach Prüfung ein. Bitte bei der Zahlung deinen Namen angeben.\n\nVielen Dank!\nFeuerwehr Wasser`;}
   async function load(){
     if(!requireAdmin('settingsRemindersView'))return;
     const view=byId('settingsRemindersView'),status=byId('remindersStatus'),list=byId('remindersList');
@@ -30,9 +30,45 @@
         const article=document.createElement('article');article.className='ux-reminder-row';
         const name=document.createElement('strong');name.textContent=row.name;const amount=document.createElement('span');amount.textContent=euro(row.cents);
         const button=document.createElement('button');button.className='outline-button';button.type='button';button.textContent='Erinnerung vorbereiten';button.onclick=()=>prepare(row);
-        article.append(name,amount,button);list.append(article);
+        const payment=document.createElement('button');payment.className='primary-button';payment.type='button';payment.textContent='PayPal-Eingang eintragen';payment.onclick=()=>openPaypal(row);
+        article.append(name,amount,payment,button);list.append(article);
       }
     }catch(error){status.textContent='Beträge konnten nicht geladen werden. '+error.message;}
+  }
+  function openPaypal(row){
+    if(!requireAdmin('settingsRemindersView')||paypalBusy)return;
+    if(paypalPending&&!confirm('Eine vorherige Zahlung hat einen unklaren Speicherstatus. Vor einer neuen Buchung den Kontoverlauf prüfen. Trotzdem eine neue Eingabe öffnen?'))return;
+    let dialog=byId('adminPaypalDialog');
+    if(!dialog){
+      dialog=document.createElement('dialog');dialog.id='adminPaypalDialog';dialog.className='ux-reminder-dialog';
+      dialog.innerHTML='<form id="adminPaypalForm"><h2>PayPal-Eingang eintragen</h2><p id="adminPaypalPerson"></p><p id="adminPaypalBalance"></p><label for="adminPaypalAmount">Tatsächlich erhalten · Euro</label><input id="adminPaypalAmount" class="text-input" inputmode="decimal" autocomplete="off" required><label for="adminPaypalReference">PayPal-Transaktionscode · optional</label><input id="adminPaypalReference" class="text-input" autocomplete="off" maxlength="80" placeholder="Aus der PayPal-Zahlung"><p>Nur einen in PayPal geprüften Eingang eintragen. Teilzahlungen sind möglich. Der Zahlungscode verhindert ein erneutes Eintragen derselben Zahlung auf diesem Konto.</p><label class="admin-paypal-check"><input id="adminPaypalChecked" type="checkbox" required> Zahlung in PayPal erhalten und Mitglied geprüft</label><p id="adminPaypalStatus" role="status"></p><div class="ux-dialog-actions"><button id="adminPaypalSave" class="primary-button" type="submit">Zahlung eintragen</button><button id="adminPaypalClose" class="outline-button" type="button">Abbrechen</button></div></form>';
+      document.body.append(dialog);byId('adminPaypalClose').onclick=()=>{if(paypalBusy)return;if(paypalPending&&!confirm('Der Speicherstatus ist noch unklar. Vor einer weiteren Buchung dieses Kontos bitte den Verlauf prüfen. Trotzdem schließen?'))return;paypalPending=null;dialog.close();};
+      dialog.addEventListener('cancel',event=>{event.preventDefault();byId('adminPaypalClose').click();});byId('adminPaypalForm').onsubmit=savePaypal;
+    }
+    paypalRow=row;paypalPending=null;byId('adminPaypalPerson').textContent=row.name;byId('adminPaypalBalance').textContent='Aktuell offen: '+euro(row.cents);byId('adminPaypalAmount').value=(row.cents/100).toFixed(2).replace('.',',');byId('adminPaypalReference').value='';byId('adminPaypalChecked').checked=false;byId('adminPaypalStatus').textContent='';paypalControls(false);dialog.showModal();
+  }
+  function paypalControls(busy){
+    for(const id of ['adminPaypalAmount','adminPaypalReference','adminPaypalChecked'])byId(id).disabled=busy||Boolean(paypalPending);
+    byId('adminPaypalClose').disabled=busy;byId('adminPaypalSave').disabled=busy;byId('adminPaypalSave').textContent=busy?'Wird gespeichert …':paypalPending?'Speicherung erneut prüfen':'Zahlung eintragen';
+  }
+  async function savePaypal(event){
+    event.preventDefault();if(paypalBusy||!paypalRow||!adminUnlocked)return;
+    const status=byId('adminPaypalStatus');
+    if(!paypalPending){
+      const cents=DrinksModel.parseEuro(byId('adminPaypalAmount').value),reference=byId('adminPaypalReference').value.trim().toUpperCase();
+      if(!cents||cents>paypalRow.cents){status.textContent='Bitte einen Betrag zwischen 0,01 € und '+euro(paypalRow.cents)+' eingeben.';return;}
+      if(reference&&!/^[A-Z0-9-]{8,80}$/.test(reference)){status.textContent='Bitte den PayPal-Transaktionscode prüfen oder das Feld leer lassen.';return;}
+      if(!byId('adminPaypalChecked').checked){status.textContent='Bitte zuerst Zahlungseingang und Mitglied prüfen.';return;}
+      paypalPending={id:reference?'paypal-admin-'+reference:crypto.randomUUID(),type:'payment',method:'paypal',confirmation:'admin',cents,createdAt:new Date().toISOString()};
+    }
+    paypalBusy=true;paypalControls(true);status.textContent='Zahlung wird in OneDrive gespeichert …';
+    try{
+      const account=await DrinksStore.adminPaypalPayment(paypalRow.id,paypalPending),amount=paypalPending.cents;paypalPending=null;
+      byId('adminPaypalDialog').close();showToast(euro(amount)+' PayPal-Eingang gespeichert. Noch offen: '+euro(DrinksModel.totals(account).balance)+'.');await load();
+    }catch(error){
+      if(['balanceChanged','conflict'].includes(error.code)){paypalPending=null;const account=await DrinksStore.read(paypalRow.id).catch(()=>null);if(account){paypalRow.cents=DrinksModel.totals(account).balance;byId('adminPaypalBalance').textContent='Aktuell offen: '+euro(paypalRow.cents);}}
+      status.textContent=(error.message||'Speicherung nicht bestätigt.')+(paypalPending?' Dieselbe Zahlung über „Speicherung erneut prüfen“ prüfen.':'');
+    }finally{paypalBusy=false;paypalControls(false);}
   }
   function prepare(row){
     if(!requireAdmin('settingsRemindersView'))return;
@@ -42,9 +78,9 @@
   }
   function initialize(){
     const view=document.createElement('section');view.id='settingsRemindersView';view.className='view settings-subpage';view.hidden=true;
-    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel erinnern</h2><p>Aktuelle offene Beträge ansehen und Erinnerungstexte kopieren.</p></div><button class="outline-button" data-back type="button">Zurück zu Einstellungen</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><div id="remindersList"></div>';
+    view.innerHTML='<div class="screen-heading"><div><p class="eyebrow">Getränkeverwaltung</p><h2>Offene Deckel &amp; PayPal</h2><p>PayPal-Eingänge eintragen und Erinnerungstexte vorbereiten.</p></div><button class="outline-button" data-back type="button">Zurück zu Einstellungen</button></div><button class="outline-button" type="button" id="refreshReminders">Beträge aktualisieren</button><p id="remindersStatus" role="status"></p><div id="remindersList"></div>';
     document.querySelector('main.app-shell').append(view);view.querySelector('[data-back]').onclick=()=>showView('settingsView');byId('refreshReminders').onclick=load;
-    const button=document.createElement('button');button.type='button';button.className='settings-menu-card';button.innerHTML='<strong>Offene Deckel erinnern</strong><span>Erinnerungen für Mitglieder vorbereiten</span>';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('settingsView').querySelector('.settings-menu-grid-management').append(button);
+    const button=document.createElement('button');button.type='button';button.className='settings-menu-card';button.innerHTML='<strong>Offene Deckel &amp; PayPal</strong><span>PayPal-Eingänge eintragen und Mitglieder erinnern</span>';button.onclick=()=>{if(showView('settingsRemindersView')!==false)load();};byId('settingsView').querySelector('.settings-menu-grid-management').append(button);
   }
   window.DrinksExtras={celebrate,loadReminders:load};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();

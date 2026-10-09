@@ -131,7 +131,44 @@
   async function book(memberId,booking,pinSignature){
     if(!pinSignature)throw new Error('Bitte mit deiner Getränke-PIN anmelden.');
     if(!['drinks','payment'].includes(booking.type))throw new Error('Eine Gutschrift wird ausschließlich automatisch nach einer Zahlung gebucht.');
-    const policy=await rewards();return mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature);
+    if(booking.type==='payment'&&booking.confirmation!=='member')throw new Error('Diese Zahlung muss durch die Administration eingetragen werden.');
+    const policy=await rewards(),account=await mutate(memberId,a=>M.appendWithReward(a,booking,policy),pinSignature);
+    // Publishing failure must never turn a confirmed ledger write into a failed payment.
+    try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,reset,rewards,saveRewards,cachedRewards};
+  async function adminPaypalPayment(memberId,booking){
+    if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');
+    if(booking?.type!=='payment'||booking.method!=='paypal'||booking.confirmation!=='admin')throw new Error('Ungültiger PayPal-Eingang.');
+    const policy=await rewards(),account=await mutate(memberId,a=>{
+      if(!adminUnlocked)throw new Error('Administration wurde gesperrt.');
+      const found=a.bookings.find(b=>b.id===booking.id);
+      if(found){if(found.type==='payment'&&found.method==='paypal'&&found.confirmation==='admin'&&found.cents===booking.cents)return a;throw new Error('Dieser Zahlungscode wurde bereits mit einem anderen Betrag verwendet.');}
+      return M.appendWithReward(a,booking,policy);
+    });
+    try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
+  }
+  function mobileName(value){if(value!=='handy-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
+  async function mobileFileName(id){return (await fileName(id)).replace('konto-','handy-');}
+  async function readMobileFile(filename){
+    mobileName(filename);const ctx=await context();if(!ctx.folder)return null;
+    const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${filename}`;
+    for(let attempt=0;attempt<3;attempt++){
+      let item;try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return null;throw e;}
+      if(!item.file||!item.eTag)throw new Error('Die Zugangsdatei besitzt keine gültige Dateiversion.');
+      const data=await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json();
+      const after=await(await odFetch(itemUrl(ctx.root,item.id)+'?$select=eTag')).json();assertCurrent(ctx);if(after.eTag===item.eTag)return {data,item};
+    }throw new Error('Zugang wird gerade geändert. Bitte erneut versuchen.');
+  }
+  async function writeMobileFile(filename,data,eTag){
+    mobileName(filename);const ctx=await context(true);assertCurrent(ctx);
+    try{await odFetch(`${itemUrl(ctx.root,ctx.folder.id)}:/${filename}:/content`,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':eTag||'"0"'},body:JSON.stringify(data)},false);assertCurrent(ctx);}
+    catch(e){throw new Error(conflict(e)?'Zugang wurde gleichzeitig geändert. Bitte erneut öffnen.':'Speicherung des Zugangs nicht bestätigt. Bitte erneut öffnen.');}
+  }
+  async function mobileIds(){
+    const ctx=await context();if(!ctx.folder)return [];
+    const ids=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=name,file';
+    while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);for(const file of page.value||[])if(file.file&&/^handy-[a-f0-9]{64}\.json$/.test(file.name)){const record=await readMobileFile(file.name);if(record?.data?.memberId)ids.push(String(record.data.memberId));}url=page['@odata.nextLink'];}
+    return ids;
+  }
+  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,adminPaypalPayment,reset,rewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds};
 })(typeof window==='undefined'?globalThis:window);

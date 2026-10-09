@@ -1,0 +1,36 @@
+const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const {webcrypto}=require('node:crypto');
+function app(){
+  const files=new Map(),publicFiles=new Map(),calls=[],ctx=vm.createContext({crypto:webcrypto,TextEncoder,TextDecoder,URL,URLSearchParams,btoa,atob,AbortSignal,AbortController,setTimeout,clearTimeout,Date,location:{href:'https://ffw-wasser.github.io/home/'},adminUnlocked:true,
+    document:{readyState:'loading',addEventListener(){},dispatchEvent(){}},CustomEvent:class{constructor(name,options){this.detail=options.detail}},
+    fetch:async(url,options={})=>{calls.push({url,options});const u=new URL(url);if(u.pathname==='/repos/ffw-wasser/deckel-daten')return {ok:true,json:async()=>({private:false,default_branch:'main'})};const name=u.pathname.split('/contents/')[1];const old=publicFiles.get(name);if(options.method==='PUT'){if(ctx.failWrite)return {ok:false,status:403};const body=JSON.parse(options.body);if(old&&body.sha!==old.sha)return {ok:false,status:409};const saved={sha:crypto.randomUUID(),content:body.content};publicFiles.set(name,saved);return {ok:true,json:async()=>saved};}return old?{ok:true,json:async()=>old}:{ok:false,status:404};},
+    DrinksStore:{readMobileFile:async name=>files.has(name)?structuredClone(files.get(name)):null,writeMobileFile:async(name,data,eTag)=>{const old=files.get(name);if(old&&old.item.eTag!==eTag)throw new Error('conflict');files.set(name,{data:structuredClone(data),item:{eTag:crypto.randomUUID()}});},mobileFileName:async id=>'handy-'+id+'.json',mobileIds:async()=>[],read:async()=>ctx.account,rewards:async()=>ctx.policy}
+  });
+  for(const name of ['drinks-model.js','deckel-crypto.js','drinks-mobile.js'])vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/'+name),'utf8'),ctx);
+  ctx.account={...ctx.DrinksModel.empty('member-test'),pin:{algorithm:'PBKDF2-SHA256',iterations:150000,salt:'a'.repeat(32),hash:'b'.repeat(64)},bookings:[{id:'drink-0001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T06:00:00Z'}]};
+  ctx.policy={schemaVersion:1,id:'reward-0001',revision:'revision-0001',startedAt:'2026-10-01T00:00:00Z',count:20,cents:300};return {ctx,files,publicFiles,calls};
+}
+test('AES-GCM: richtiger Schlüssel, feste Größe, frische Nonce, fremder Schlüssel und Manipulation',async()=>{
+  const {ctx}=app(),C=ctx.DeckelCrypto,record=C.create(),data=ctx.DrinksMobile.snapshot(ctx.account,ctx.policy);
+  const first=await C.seal(data,record),second=await C.seal(data,record);assert.notEqual(first.iv,second.iv);assert.equal(atob(first.data).length,4112);assert.equal((await C.open(first,record)).balance,750);
+  await assert.rejects(C.open(first,{...record,key:'c'.repeat(64)}));await assert.rejects(C.open(first,{...record,alias:'d'.repeat(32)}));
+  const changed=atob(first.data);await assert.rejects(C.open({...first,data:btoa(String.fromCharCode(changed.charCodeAt(0)^1)+changed.slice(1))},record));
+  assert.ok(!JSON.stringify(data).includes('member-test'));assert.equal(data.pin,undefined);assert.equal(data.bookings[0].id,undefined);
+});
+test('QR bleibt stabil, Rotation schützt neue Stände; nur verschlüsselte Daten werden an GitHub gesendet',async()=>{
+  const {ctx,files,publicFiles,calls}=app(),D=ctx.DrinksMobile;
+  await D.connect('ffw-wasser/deckel-daten','github_pat_fixture');
+  assert.equal(files.get('handy-verbindung.json').data.token,'github_pat_fixture');
+  const signature=JSON.stringify(ctx.account.pin),first=await D.link('member-test',signature),second=await D.link('member-test',signature);assert.equal(first,second);
+  assert.equal(new URL(first).search,'');assert.ok(!first.includes('member-test'));assert.ok(!first.includes('github_pat'));
+  const params=new URLSearchParams(new URL(first).hash.slice(1)),record={version:1,alias:params.get('a'),key:params.get('k')};
+  const envelope=JSON.parse(atob(publicFiles.get('deckel/'+record.alias+'.json').content));assert.equal((await ctx.DeckelCrypto.open(envelope,record)).balance,750);
+  for(const call of calls.filter(c=>c.options.method==='PUT')){assert.ok(!call.options.body.includes('member-test'));assert.ok(!call.options.body.includes(record.key));assert.ok(!call.options.body.includes('github_pat'));const decoded=atob(JSON.parse(call.options.body).content);assert.ok(!decoded.includes('balance'));assert.equal(JSON.parse(decoded).pin,undefined);assert.equal(JSON.parse(decoded).balance,undefined);}
+  const next=await D.link('member-test',signature,true);assert.notEqual(first,next);
+  const current=JSON.parse(atob(publicFiles.get('deckel/'+record.alias+'.json').content));await assert.rejects(ctx.DeckelCrypto.open(current,record));
+  await assert.rejects(D.link('member-test','wrong'),/PIN/);
+  ctx.failWrite=true;await assert.rejects(D.publish('member-test'),/Schreibrechte/);assert.equal(ctx.DrinksModel.totals(ctx.account).balance,750);
+});
+test('Veröffentlichung braucht Administration und verweigert das Code-Repository',async()=>{
+  const {ctx}=app();ctx.adminUnlocked=false;await assert.rejects(ctx.DrinksMobile.connect('ffw-wasser/deckel-daten','github_pat_fixture'),/Administration/);ctx.adminUnlocked=true;await assert.rejects(ctx.DrinksMobile.connect('ffw-wasser/home','github_pat_fixture'),/ungültig/);await assert.rejects(ctx.DrinksMobile.connect('evil.example/repo','github_pat_fixture'),/ungültig/);
+});
