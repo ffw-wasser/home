@@ -25,7 +25,7 @@ function lockAdministration(){
   for(const id of ['settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id;showView('adminLoginView');break;}
   }
-  for(const id of ['reminderDraftDialog','cloudSyncDialog'])byId(id)?.close();
+  for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
   renderOneDriveDialog?.();
 }
 function showView(viewId) {

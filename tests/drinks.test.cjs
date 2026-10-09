@@ -193,3 +193,22 @@ test('Ein Fehler der optionalen Handy-Veröffentlichung macht eine bestätigte B
   a.ctx.DrinksMobile={queue(){throw new Error('Publishing failed');}};
   const saved=await a.S.book('member-a',drink('drink-mobile-001',2),signature);assert.equal(a.M.totals(saved).balance,300);assert.equal((await a.S.read('member-a')).bookings.length,1);
 });
+test('Administration verbucht PayPal-Teilzahlungen ohne Mitglieder-PIN; Quittungscode verhindert doppelte Zahlung',async()=>{
+  const a=app();let account=await a.S.setPin('member-a','1234');await a.S.book('member-a',drink('drinks-admin-001',20),JSON.stringify(account.pin));
+  const first={...pay('paypal-admin-TXN000001',1500,'paypal'),confirmation:'admin',createdAt:new Date().toISOString()};
+  a.ctx.adminUnlocked=false;await assert.rejects(a.S.adminPaypalPayment('member-a',first),/Administration/);a.ctx.adminUnlocked=true;
+  a.ctx.forceConflict=1;a.ctx.loseReply=true;
+  account=await a.S.adminPaypalPayment('member-a',first);assert.equal(a.M.totals(account).balance,1500);
+  account=await a.S.adminPaypalPayment('member-a',{...first,createdAt:new Date(Date.now()+1000).toISOString()});assert.equal(a.M.totals(account).balance,1500);assert.equal(account.bookings.filter(b=>b.id===first.id).length,1);
+  await assert.rejects(a.S.adminPaypalPayment('member-a',{...first,cents:1000}),/anderen Betrag/);
+  await assert.rejects(a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-TOOHIGH',cents:2000}),/offene Betrag/);
+  account=await a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-TXN000002'});assert.equal(a.M.totals(account).balance,0);assert.equal(a.M.rewardState(account,a.S.cachedRewards()).credit,300);
+  const ownSignature=JSON.stringify(account.pin);await assert.rejects(a.S.book('member-a',{...first,id:'paypal-admin-FORGED'},ownSignature),/Administration/);
+  a.ctx.adminUnlocked=false;await assert.rejects(a.S.adminPaypalPayment('member-a',{...first,id:'paypal-admin-LOCKED'}),/Administration/);
+});
+test('Gleichzeitige PayPal-Vollzahlungen der Administration können ein Konto nicht doppelt begleichen',async()=>{
+  const a=app(),account=await a.S.setPin('member-a','1234');await a.S.book('member-a',drink('drinks-admin-001',2),JSON.stringify(account.pin));
+  const payment={...pay('paypal-admin-ONE',300,'paypal'),confirmation:'admin',createdAt:new Date().toISOString()};
+  const results=await Promise.allSettled([a.S.adminPaypalPayment('member-a',payment),a.S.adminPaypalPayment('member-a',{...payment,id:'paypal-admin-TWO'})]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(a.M.totals(await a.S.read('member-a')).balance,0);
+});

@@ -66,7 +66,7 @@
     el('cash-cancel').disabled=busy||Boolean(pending);el('paypal-cancel').disabled=busy||Boolean(pending);el('refresh').disabled=busy;
     el('own-open').disabled=busy||Boolean(pending);el('own-save').disabled=busy;el('own-back').disabled=busy;
     el('save').textContent=pending?.type==='drinks'?'Speicherung erneut prüfen':busy?'Wird gespeichert …':draft?'Fertig · '+draft+' Strich'+(draft===1?'':'e')+' speichern':'Fertig';
-    for(const id of ['cash-confirm','paypal-confirm'])el(id).textContent=pending?.type==='payment'?'Speicherung erneut prüfen':id==='cash-confirm'?'Geld in die Kasse gelegt':'Zahlung durchgeführt';
+    el('cash-confirm').textContent=pending?.type==='payment'?'Speicherung erneut prüfen':'Geld in die Kasse gelegt';el('paypal-confirm').textContent='Fertig · Eingang wird geprüft';
     root.querySelectorAll('[data-dr-member]').forEach(button=>button.disabled=busy||!loaded);
     renderRanking();touch();
   }
@@ -185,7 +185,7 @@
       payment=cents;if(method==='paypal')showPaypal();screen(method);
     });});
     root.querySelectorAll('[data-dr-edit-amount]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;el('amount').value=(payment/100).toFixed(2).replace('.',',');amountScreen();}));
-    el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>run(confirmPayment));
+    el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>{if(busy||pending)return;finishSession();showToast('Die Verwaltung trägt den geprüften PayPal-Eingang ein.');});
     root.querySelectorAll('[data-dr-back-account]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;payment=0;render();screen('account');}));
     el('paid-next').addEventListener('click',finishSession);el('paid-account').addEventListener('click',()=>screen('account'));
     const showMobile=rotate=>run(async()=>{

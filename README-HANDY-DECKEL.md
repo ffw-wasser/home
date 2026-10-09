@@ -1,6 +1,6 @@
 # Persönlicher Handy-Deckel ohne Server
 
-Die Handyansicht `deckel.html` benötigt weder Installation noch Microsoft-Anmeldung. Sie zeigt den letzten vom Gerätehaus-iPad veröffentlichten Kontostand, Guthaben, Bonusfortschritt und fünf letzte Buchungen. PayPal öffnet den offenen Betrag für `paypal.me/FeuerwehrWasser`. Eine Zahlung wird nicht automatisch bestätigt: sie muss am Gerätehaus-iPad eingetragen werden. Es gibt keine Möglichkeit, mit dem Handy Striche, Zahlungen oder PINs zu verändern.
+Die Handyansicht `deckel.html` benötigt weder Installation noch Microsoft-Anmeldung. Sie zeigt den letzten vom Gerätehaus-iPad veröffentlichten Kontostand, Guthaben, Bonusfortschritt und fünf letzte Buchungen. PayPal öffnet den offenen Betrag für `paypal.me/FeuerwehrWasser`. Nach Prüfung des tatsächlichen PayPal-Eingangs trägt die Administration den Betrag unter Einstellungen → Offene Deckel & PayPal ein. Eine Teilzahlung reduziert den offenen Betrag entsprechend, eine vollständige Zahlung gleicht ihn aus. Treuebonus wird wie bei Mitgliederzahlungen berechnet; danach wird die Handyansicht automatisch zur Aktualisierung vorgemerkt. Die Handyansicht selbst kann weder Striche noch Zahlungen oder PINs verändern.
 
 ## Einmalige Einrichtung durch die Administration
 
@@ -33,3 +33,7 @@ Keine Render-Dienste, Server, neuen Datenbanken, gekauften Domains oder kostenpf
 ## Prüfung
 
 `node --test tests/*.test.cjs` prüft die vorhandenen Abläufe sowie Verschlüsselung, falsche Schlüssel, Manipulation, Linkrotation, Veröffentlichungsfehler und Administrationsschutz. Browserprüfungen verwenden ausschließlich fiktive Mitglieder und simulierte OneDrive-/GitHub-Antworten. Vor dem ersten realen Mitgliedszugang die einmalige Verbindung am iPad einrichten und mit einem eigenen Konto den QR-Abruf prüfen. Keine echten Zahlungen als Test buchen.
+
+## PayPal-Eingänge in der Administration
+
+Mitglied wählen, tatsächlich erhaltenen Betrag eingeben, optional den PayPal-Transaktionscode hinterlegen und den geprüften Eingang bestätigen. Es wird eine unveränderliche Zahlung mit `confirmation: admin` angehängt; der Kontostand wird nicht überschrieben. Mit demselben Transaktionscode kann dieselbe Zahlung auf diesem Konto nicht nochmals gebucht werden. Ein Code ist keine automatische PayPal-Verifikation und bietet keinen kontenübergreifenden Dublettenschutz. Bei unklarem Speicherstatus wird dieselbe Buchungsnummer erneut geprüft. Beträge über dem aktuell offenen Deckel werden abgelehnt. Ältere Clients, die Admin-Zahlungen noch nicht kennen, lehnen betroffene Konten ab; die Anwendung vor Nutzung der neuen Funktion neu laden.
