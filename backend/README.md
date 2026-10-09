@@ -6,6 +6,12 @@ Vorbereitete Erweiterung, noch nicht für echte Mitgliederdaten freigeschaltet. 
 
 Ein Web Service aus `https://github.com/ffw-wasser/home.git`, Feature-Branch zum Testen, Region Frankfurt, kostenloser Plan. Build: `node --check backend/server.cjs`. Start: `node backend/server.cjs`. Health Check: `/health`. Ein schlafender kostenloser Dienst benötigt beim ersten Aufruf zusätzliche Zeit. Nur eine Instanz betreiben: die PIN-Versuchsbegrenzung liegt im Arbeitsspeicher.
 
+### Verbindliche Kostenbegrenzung
+
+Der Nutzer erlaubt ausschließlich einen vollständig kostenlosen Betrieb. Vor dem Anlegen des Dienstes muss bestätigt werden, dass im Render-Arbeitsbereich keine Zahlungsmethode hinterlegt ist. `plan: free` allein verhindert keine Zusatzkosten für Bandbreite oder Builds bei hinterlegter Zahlungsmethode. Ohne Zahlungsmethode pausiert Render bei ausgeschöpften Gratisgrenzen die Dienste beziehungsweise weitere Builds. Keine kostenpflichtigen Pläne, Datenbanken, Disks, eigenen Domains oder zusätzlichen Dienste einrichten; keine automatischen Upgrades. Den Dienst nicht durch künstliche regelmäßige Aufrufe wachhalten. Bei einer Gratissperre auf die nächste Abrechnungsperiode warten statt kostenpflichtig hochzustufen.
+
+Kostenreferenz: https://render.com/docs/free
+
 Server-Geheimnisse ausschließlich in Render Environment, niemals in GitHub, Browser-Code oder Chat:
 
 | Variable | Inhalt |
