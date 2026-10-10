@@ -8,6 +8,21 @@ const store=fs.readFileSync(require.resolve('../js/features/drinks/drinks-store.
 const copy=v=>JSON.parse(JSON.stringify(v));
 const drink=(id='drink-0001',count=5)=>({id,type:'drinks',count,cents:count*150,createdAt:'2026-10-08T16:00:00Z'});
 const pay=(id='payment-0001',cents=500,method='cash')=>({id,type:'payment',cents,method,confirmation:'member',createdAt:'2026-10-08T17:00:00Z'});
+test('Zentrale Store-Anbindung bucht mit Version und ohne OneDrive-Konto-Schreibzugriff',async()=>{
+ const {ctx,M,S,calls}=app();let account=M.empty('a'),version=0;
+ const policy={schemaVersion:2,id:'policy-001',revision:'policy-001',startedAt:'2020-01-01T00:00:00Z',thresholdCents:3000,awardUnits:300,beerUnits:150,wineUnits:150};
+ ctx.DrinksCentral={connection:async()=>({source:'drive:root'}),call:async(c,action,data)=>{if(action==='policy')return {policy};if(action==='read')return {account:copy(account),version};if(action==='write'){assert.equal(data.version,version);account=copy(data.account);return {version:++version};}if(action==='members')return {members:['a']};throw Error(action);}};
+ const saved=await S.bookMany('a',[drink()],'null');assert.equal(M.totals(saved).balance,750);assert.equal(version,1);assert.equal((await S.list(['a']))[0].bookings.length,1);assert.equal((await S.consumption('2026')).beer,5);assert.equal(calls.filter(c=>c.options.method==='PUT').length,0);
+});
+test('Übernahme sichert vollständigen Bestand und sperrt alte Dateiversionen ohne Buchungsverlust',async()=>{
+ const {S,files}=app();await S.book('a',drink(),'null');const before=await S.localMigrationSnapshot();assert.equal(before.entries.length,2);
+ await S.writeBackup('sicherung-fixture.json',{accounts:before.entries},before.source);assert.ok(files.has('sicherung-fixture.json'));await S.lockMigrationSnapshot(before);
+ const after=await S.localMigrationSnapshot();assert.ok(after.entries.every(e=>e.locked));assert.deepEqual(copy(after.entries.map(e=>e.account)),copy(before.entries.map(e=>e.account)));
+ await assert.rejects(S.read('a'),/aktuelle App-Version/);await S.lockMigrationSnapshot(after);
+});
+test('Konflikte bei Übernahme und fehlende Administration verhindern Überschreiben',async()=>{
+ const {ctx,S}=app();await S.book('a',drink(),'null');const before=await S.localMigrationSnapshot();ctx.forceConflict=1;await assert.rejects(S.lockMigrationSnapshot(before),/412/);assert.equal((await S.read('a')).bookings.length,1);ctx.adminUnlocked=false;await assert.rejects(S.writeBackup('sicherung-fixture.json',{},before.source),/Verwaltung/);
+});
 function app(){
   const files=new Map(),calls=[],storageWrites=[];let folder=true,tag=0;
   const ctx=vm.createContext({crypto:webcrypto,TextEncoder,console,navigator:{onLine:true},adminUnlocked:true,

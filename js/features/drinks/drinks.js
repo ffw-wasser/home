@@ -68,6 +68,7 @@
     if(!Number.isFinite(until))return;
     sessionTimer=setTimeout(()=>{for(const [id,s] of cardSessions)if(s.until<=Date.now())cardSessions.delete(id);renderCards();if(menuMemberId&&currentScreen==='members'&&!cardUnlocked(menuMemberId,S.cached(menuMemberId)))lockAccount(false);scheduleCardLocks();},Math.max(1,until-Date.now()));
   }
+  function fitNames(){if(!global.requestAnimationFrame)return;global.requestAnimationFrame(()=>{if(el('directory').hidden)return;for(const {tile} of cardNodes.values()){if(!tile.clientWidth)continue;for(const line of tile.querySelectorAll('.dr-name-last,.dr-name-first')){const base=line.classList.contains('dr-name-last')?26:22;line.style.fontSize=base+'px';if(line.scrollWidth>line.clientWidth)line.style.fontSize=Math.max(12,Math.floor(base*line.clientWidth/line.scrollWidth))+'px';}}});}
   function renderPeople(){
     const container=el('members');container.replaceChildren();el('directory').replaceChildren();cardNodes.clear();const query=el('search').value.toLocaleLowerCase('de-DE');
     for(const p of people.filter(p=>p.id===menuMemberId||(!stagedOnly||cardDrafts.has(p.id))&&p.name.toLocaleLowerCase('de-DE').includes(query))){
@@ -237,7 +238,7 @@
   }
   async function run(action){if(busy)return;busy=true;message('');render();try{await action();}catch(error){
     if(currentScreen==='opening'){screen('members');el('status').textContent='Konto konnte nicht geöffnet werden. Bitte deinen Namen erneut wählen.';}
-    if(['balanceChanged','correctionChanged','pointsChanged','conflict'].includes(error.code)||[400,403,404].includes(error.status))pending=null;
+    if(['balanceChanged','correctionChanged','pointsChanged','conflict','accessChanged'].includes(error.code)||[400,403,404].includes(error.status))pending=null;
     if(error.code==='pinChanged'){signature='';el('pin').value='';account=await S.read(memberId).catch(()=>account);if(account?.pin)screen('pin');else{signature=JSON.stringify(null);screen('account');}}
     if(error.code==='balanceChanged'){account=await S.read(memberId).catch(()=>account);payment=0;screen('account');}
     if(error.code==='correctionChanged'){account=await S.read(memberId).catch(()=>account);screen('account');}
@@ -351,7 +352,7 @@
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});
     el('discard-all').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;if(confirm('Alle vorgemerkten Änderungen verwerfen? Gespeicherte Buchungen bleiben erhalten.')){cardDrafts.clear();stagedOnly=false;renderPeople();render();}});
     el('cash-all').addEventListener('click',()=>run(async()=>{method='cash';await confirmPayment();}));
-    el('search').addEventListener('input',renderPeople);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
+    el('search').addEventListener('input',renderPeople);if(global.ResizeObserver)new global.ResizeObserver(fitNames).observe(el('directory'));global.addEventListener('resize',fitNames);document.fonts?.ready?.then(fitNames);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
     el('directory').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(button)selectCard(button.dataset.drMember,'menu');});
     el('all-members').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;menuMemberId='';resetSession();clearCardSessions();screen('members');renderPeople();render();focusCard();});
     el('members').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(button)selectCard(button.dataset.drMember,button.dataset.drCardAction||'account');});

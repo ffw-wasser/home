@@ -1,5 +1,7 @@
 # Manuelle Handy-Erinnerungen – kostenlose Einrichtung
 
+**Zentrale Kontenführung:** Für direkte Handy-Buchungen und Zurücksetzen siehe [CENTRAL.md](CENTRAL.md). Dafür zusätzlich `central.sql` ausführen und die mit `build.cjs` erzeugte `worker.bundle.js` veröffentlichen. Die folgende ursprüngliche Anleitung beschreibt nur den Erinnerungsdienst.
+
 Die App ist vorbereitet. Ohne eingerichteten Dienst findet kein Push-Versand statt.
 **Nur Workers Free und D1 Free verwenden. Kein Paid-Upgrade aktivieren.**
 Keine eigenen Domains, Cron-Jobs, Queues, kostenpflichtigen Add-ons oder Render-Ressourcen nötig.

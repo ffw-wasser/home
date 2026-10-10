@@ -1,4 +1,4 @@
-/* Cloudflare Workers Free + D1 Free. No balances, names or deckel keys here. */
+/* Cloudflare Workers Free + D1 Free. Financial records are encrypted at rest. */
 const ORIGIN='https://ffw-wasser.github.io',ALIAS=/^[a-f0-9]{32}$/,REV=/^[a-zA-Z0-9-]{8,80}$/;
 const enc=new TextEncoder();
 const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -19,11 +19,17 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');return reply({version:1,commandsVersion:1,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),publicKey:env.VAPID_PUBLIC_KEY});}
    if(request.method!=='POST')return reply({error:'Nicht gefunden.'},404);
    const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
+   if(globalThis.CentralLedger&&(path.startsWith('/admin/central/')||path==='/central/snapshot'||path.startsWith('/commands/'))){
+    const raw=await request.clone().text();if(raw.length>(admin?8000000:6000))return reply({error:'Anfrage zu groß.'},413);
+    const value=JSON.parse(raw);
+    try{const result=await globalThis.CentralLedger.route(path,value,env,auth,request.url);if(result!==null)return reply(result);}
+    catch(error){return reply({error:error.status?error.message:'Kontodienst derzeit nicht erreichbar. Bitte denselben Vorgang erneut prüfen.'},error.status||503);}
+   }
    const data=await body(request);
    if(path==='/admin/commands/pending'){
     const rows=(await env.DB.prepare("SELECT c.alias,c.revision,c.id,c.envelope,c.created_at FROM commands c JOIN accounts a ON a.alias=c.alias AND a.revision=c.revision WHERE c.status='pending' ORDER BY c.created_at,c.id LIMIT 20").all()).results;

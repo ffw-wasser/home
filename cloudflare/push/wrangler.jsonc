@@ -1,8 +1,8 @@
 {
   "name": "feuerwehr-wasser-deckel-push",
-  "main": "worker.js",
+  "main": "worker.bundle.js",
   "compatibility_date": "2026-10-09",
   "workers_dev": true,
   "observability": {"enabled": false},
-  "d1_databases": [{"binding": "DB", "database_name": "deckel-push", "database_id": "HIER-DATENBANK-ID-EINTRAGEN"}]
+  "d1_databases": [{"binding": "DB", "database_name": "deckel-push", "database_id": "16727697-72be-4794-b5de-afed7ffd0898"}]
 }

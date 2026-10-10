@@ -4,7 +4,7 @@
  async function sync(){
   if(working||document.hidden||!g.oneDriveSignedIn?.())return;working=true;
   try{
-   const config=await g.DrinksPush.config();if(!config)return;const source=S.sourceKey();const result=await g.DrinksPush.request(config,'/admin/commands/pending',{});if(!result.commands?.length)return;
+   if(await g.DrinksCentral?.connection())return;const config=await g.DrinksPush.config();if(!config)return;const source=S.sourceKey();const result=await g.DrinksPush.request(config,'/admin/commands/pending',{});if(!result.commands?.length)return;
    const records=new Map();for(const id of await S.mobileIds()){const saved=await S.readMobileFile(await S.mobileFileName(id));if(saved)records.set(saved.data.alias,{id,record:saved.data});}
    for(const job of result.commands){
     if(document.hidden||!g.oneDriveSignedIn?.()||S.sourceKey()!==source)break;

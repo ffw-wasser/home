@@ -8,7 +8,7 @@
   const conflict=e=>[409,412].includes(e?.status);
   const itemUrl=(root,id)=>`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(id)}`;
   function reset(){generation++;contextKey='';cache.clear();rewardCache=null;}
-  async function context(create=false,expectedSource=null){
+  async function context(create=false,expectedSource=null,localOnly=false){
     if(!oneDriveSignedIn())throw new Error('Bitte OneDrive verbinden. Getränke werden nur dort gespeichert.');
     if(navigator.onLine===false)throw new Error('Offline. Bitte vor dem Buchen die Internetverbindung herstellen.');
     const root=await oneDriveResolveSharedRoot(),key=root.driveId+':'+root.id;
@@ -25,12 +25,15 @@
       }
     }
     if(folder&&!folder.folder)throw new Error('Getraenke muss ein Ordner in OneDrive sein.');
-    return {root,key,folder,gen};
+    const ctx={root,key,folder,gen};
+    if(!localOnly&&global.DrinksCentral){const c=await global.DrinksCentral.connection();assertCurrent(ctx);if(c)ctx.central=c;}
+    return ctx;
   }
   function assertCurrent(ctx){if(ctx.gen!==generation||ctx.key!==contextKey||!oneDriveSignedIn())throw new Error('OneDrive-Verbindung geändert. Bitte das Getränkekonto erneut öffnen.');}
   function assertSource(ctx,expected){if(expected&&ctx.key!==expected)throw Object.assign(new Error('Diese Buchung gehört zum vorherigen OneDrive-Ordner. Bitte die ursprüngliche Verbindung wiederherstellen und erneut prüfen.'),{code:'contextChanged'});}
   const REWARDS_FILE='bonus-einstellungen.json';
   async function readRewards(ctx){
+    if(ctx.central){const r=await global.DrinksCentral.call(ctx.central,'policy');assertCurrent(ctx);rewardCache=M.validateRewardSettings(r.policy);return {policy:clone(rewardCache),item:{eTag:r.policy.revision}};}
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${REWARDS_FILE}`;
     for(let attempt=0;attempt<3;attempt++){
       let item;try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return null;throw e;}
@@ -62,13 +65,14 @@
     if(!settings){M.validateRewardSettings({...old.policy,schemaVersion:1,count,cents});settings={thresholdCents:count*M.PRICE,awardUnits:cents};}
     const policy=M.validateRewardSettings(settings?{...M.rewardPolicy(old.policy),...settings,revision:crypto.randomUUID()}:{...old.policy,count,cents,revision:crypto.randomUUID()});
     if(!adminUnlocked)throw new Error('Die Verwaltung wurde gesperrt.');assertCurrent(ctx);
-    try{await odFetch(itemUrl(ctx.root,old.item.id)+'/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':old.item.eTag},body:JSON.stringify(policy)},false);assertCurrent(ctx);rewardCache=clone(policy);return policy;}
+    try{if(ctx.central){await global.DrinksCentral.call(ctx.central,'policy-write',{policy,expectedRevision:old.policy.revision});assertCurrent(ctx);rewardCache=clone(policy);return policy;}await odFetch(itemUrl(ctx.root,old.item.id)+'/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':old.item.eTag},body:JSON.stringify(policy)},false);assertCurrent(ctx);rewardCache=clone(policy);return policy;}
     catch(error){const check=await readRewards(ctx).catch(()=>null);if(check?.policy.revision===policy.revision)return clone(check.policy);if(conflict(error))throw new Error('Die Treuepunkte-Einstellungen wurden inzwischen geändert. Bitte erneut laden.');throw error;}
   }
   async function previewRewards(){const ctx=await context();if(!ctx.folder)return null;return (await readRewards(ctx))?.policy||null;}
   const cachedRewards=()=>rewardCache?clone(rewardCache):null;
   async function fileName(memberId){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(memberId)));return 'konto-'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')+'.json';}
   async function readWithContext(ctx,memberId,listed=null){
+    if(ctx.central){const r=await global.DrinksCentral.call(ctx.central,'read',{memberId:String(memberId)});assertCurrent(ctx);const account=M.validate(r.account,memberId);cache.set(String(memberId),{account:clone(account),eTag:r.version});return {account,item:{eTag:r.version}};}
     assertCurrent(ctx);
     if(!ctx.folder)return {account:M.empty(memberId),item:null};
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${await fileName(memberId)}`;
@@ -107,6 +111,7 @@
   function cached(memberId){return cache.has(String(memberId))?clone(cache.get(String(memberId)).account):M.empty(memberId);}
   async function list(memberIds,{replaceCache=true}={}){
     const ctx=await context(),next=new Map();
+    if(ctx.central){const remaining=memberIds.map(String),result=new Map();await Promise.all(Array.from({length:Math.min(4,remaining.length)},async()=>{while(remaining.length){const id=remaining.shift();result.set(id,(await readWithContext(ctx,id)).account);}}));assertCurrent(ctx);return memberIds.map(id=>result.get(String(id)));}
     if(!ctx.folder){assertCurrent(ctx);if(replaceCache)cache=next;return memberIds.map(id=>M.empty(id));}
     const files=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=id,name,eTag,file';
     while(url){const data=await(await odFetch(url)).json();files.push(...(data.value||[]));url=data['@odata.nextLink'];}
@@ -123,7 +128,7 @@
         assertCurrent(ctx);results.set(id,account);next.set(id,{account:clone(account),eTag:cache.get(id)?.eTag||entry?.eTag||''});
       }
     }));
-    assertCurrent(ctx);cache=next;return memberIds.map(id=>results.get(String(id)));
+    assertCurrent(ctx);if(replaceCache)cache=next;return memberIds.map(id=>results.get(String(id)));
   }
   async function mutate(memberId,change,expectedPin=null,expectedSource=null){
     const ctx=await context(true,expectedSource);
@@ -133,10 +138,10 @@
       if(expectedPin&&JSON.stringify(account.pin)!==expectedPin)throw Object.assign(new Error('Deine PIN wurde geändert. Bitte erneut anmelden.'),{code:'pinChanged'});
       const next=change(clone(account));M.validate(next,memberId);
       if(JSON.stringify(next)===JSON.stringify(account))return account;
-      const url=item?itemUrl(ctx.root,item.id)+'/content':`${itemUrl(ctx.root,ctx.folder.id)}:/${await fileName(memberId)}:/content`;
+      const url=ctx.central?'':item?itemUrl(ctx.root,item.id)+'/content':`${itemUrl(ctx.root,ctx.folder.id)}:/${await fileName(memberId)}:/content`;
       assertCurrent(ctx);
       try{
-        const response=await odFetch(url,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':item?.eTag||'"0"'},body:JSON.stringify(next)},false);
+        const response=ctx.central?{json:async()=>{const r=await global.DrinksCentral.call(ctx.central,'write',{memberId:String(memberId),account:next,version:item.eTag,policyRevision:rewardCache?.revision||null});return {eTag:r.version};}}:await odFetch(url,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':item?.eTag||'"0"'},body:JSON.stringify(next)},false);
         const saved=await response.json();assertCurrent(ctx);cache.set(String(memberId),{account:clone(next),eTag:saved.eTag||''});return next;
       }catch(error){
         if(conflict(error))continue;
@@ -222,10 +227,10 @@
       return M.append(a,{id:prefix,type:'correction',targetId:command.targetId,count:1,cents:target.price,drink:target.drink,createdAt});
     },null,expectedSource);try{global.DrinksMobile?.queue(String(memberId));}catch{}return saved;
   }
-  function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
+  function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&value!=='konten-zentrale.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
   async function mobileFileName(id){return (await fileName(id)).replace('konto-','handy-');}
   async function readMobileFile(filename){
-    mobileName(filename);const ctx=await context();if(!ctx.folder)return null;
+    mobileName(filename);const ctx=await context(false,null,true);if(!ctx.folder)return null;
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${filename}`;
     for(let attempt=0;attempt<3;attempt++){
       let item;try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();}catch(e){if(notFound(e))return null;throw e;}
@@ -235,18 +240,18 @@
     }throw new Error('Zugang wird gerade geändert. Bitte erneut versuchen.');
   }
   async function writeMobileFile(filename,data,eTag){
-    mobileName(filename);const ctx=await context(true);assertCurrent(ctx);
+    mobileName(filename);const ctx=await context(true,null,true);assertCurrent(ctx);
     try{await odFetch(`${itemUrl(ctx.root,ctx.folder.id)}:/${filename}:/content`,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':eTag||'"0"'},body:JSON.stringify(data)},false);assertCurrent(ctx);}
     catch(e){throw new Error(conflict(e)?'Zugang wurde gleichzeitig geändert. Bitte erneut öffnen.':'Speicherung des Zugangs nicht bestätigt. Bitte erneut öffnen.');}
   }
   async function mobileIds(){
-    const ctx=await context();if(!ctx.folder)return [];
+    const ctx=await context(false,null,true);if(!ctx.folder)return [];
     const ids=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=name,file';
     while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);for(const file of page.value||[])if(file.file&&/^handy-[a-f0-9]{64}\.json$/.test(file.name)){const record=await readMobileFile(file.name);if(record?.data?.memberId)ids.push(String(record.data.memberId));}url=page['@odata.nextLink'];}
     return ids;
   }
   async function consumption(year){
-    const ctx=await context(),accounts=[];if(!ctx.folder){assertCurrent(ctx);return {...M.consumption([],year),sourceKey:ctx.key};}
+    const ctx=await context(),accounts=[];if(ctx.central){const result=await global.DrinksCentral.call(ctx.central,'members');for(const id of result.members)accounts.push((await readWithContext(ctx,id)).account);assertCurrent(ctx);return {...M.consumption(accounts,year),sourceKey:ctx.key};}if(!ctx.folder){assertCurrent(ctx);return {...M.consumption([],year),sourceKey:ctx.key};}
     const files=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=id,name,eTag,file';
     while(url){const page=await(await odFetch(url)).json();assertCurrent(ctx);files.push(...(page.value||[]).filter(f=>f.file&&/^konto-[a-f0-9]{64}\.json$/.test(f.name)));url=page['@odata.nextLink'];}
     await Promise.all(Array.from({length:Math.min(4,files.length)},async()=>{
@@ -264,5 +269,23 @@
     }));
     assertCurrent(ctx);return {...M.consumption(accounts,year),sourceKey:ctx.key};
   }
-  global.DrinksStore={applyMobileCommand,read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,previewRewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
+
+  async function localMigrationSnapshot(){
+    if(!adminUnlocked)throw Error('Bitte die Verwaltung entsperren.');
+    const ctx=await context(true,null,true),files=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=id,name,eTag,file';
+    while(url){const p=await(await odFetch(url)).json();files.push(...(p.value||[]).filter(f=>f.file&&(/^konto-[a-f0-9]{64}\.json$/.test(f.name)||f.name===REWARDS_FILE)));url=p['@odata.nextLink'];}
+    const entries=[];for(const f of files){const item=await(await odFetch(itemUrl(ctx.root,f.id)+'?$select=id,eTag')).json(),raw=await(await odFetch(itemUrl(ctx.root,f.id)+'/content',{cache:'no-store'})).json(),after=await(await odFetch(itemUrl(ctx.root,f.id)+'?$select=eTag')).json();assertCurrent(ctx);if(item.eTag!==after.eTag)throw Error('Es wurde gleichzeitig gebucht. Bitte die Übernahme erneut starten.');const data=raw.schemaVersion===99&&raw.migratedTo==='cloudflare'?raw.original:raw;if(f.name===REWARDS_FILE)M.validateRewardSettings(data);else{M.validate(data,data.memberId);if(await fileName(data.memberId)!==f.name)throw Error('Kontozuordnung ungültig.');}entries.push({name:f.name,item,account:data,locked:raw.schemaVersion===99});}
+    const policy=entries.find(x=>x.name===REWARDS_FILE)?.account;if(!policy)throw Error('Bitte Getränke einmal öffnen, damit die Treuepunkte-Einstellungen angelegt sind.');
+    return {source:ctx.key,entries,policy};
+  }
+  async function lockMigrationSnapshot(snapshot){
+    const ctx=await context(true,snapshot.source,true);for(const entry of snapshot.entries){if(!adminUnlocked)throw Error('Die Verwaltung wurde gesperrt.');assertCurrent(ctx);if(entry.locked)continue;await odFetch(itemUrl(ctx.root,entry.item.id)+'/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':entry.item.eTag},body:JSON.stringify({schemaVersion:99,migratedTo:'cloudflare',original:entry.account})},false);}
+  }
+  async function writeBackup(filename,data,expectedSource){
+    if(!adminUnlocked)throw Error('Bitte die Verwaltung entsperren.');if(!/^sicherung-[a-z0-9-]+\.json$/.test(filename))throw Error('Ungültiger Sicherungsname.');
+    const ctx=await context(true,expectedSource,true),path=itemUrl(ctx.root,ctx.folder.id)+':/'+filename;
+    assertCurrent(ctx);try{await odFetch(path+':/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':'"0"'},body:JSON.stringify(data)},false);}catch(error){if(conflict(error))throw Error('Sicherungsname bereits vorhanden. Bitte erneut starten.');const check=await(await odFetch(path+':/content',{cache:'no-store'})).json().catch(()=>null);if(JSON.stringify(check)!==JSON.stringify(data))throw error;}
+    const file=await(await odFetch(path+'?$select=id,eTag')).json(),verify=await(await odFetch(itemUrl(ctx.root,file.id)+'/content',{cache:'no-store'})).json();assertCurrent(ctx);if(JSON.stringify(verify)!==JSON.stringify(data))throw Error('Die Sicherung konnte nicht bestätigt werden.');return filename;
+  }
+  global.DrinksStore={localMigrationSnapshot,lockMigrationSnapshot,writeBackup,applyMobileCommand,read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,previewRewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
 })(typeof window==='undefined'?globalThis:window);

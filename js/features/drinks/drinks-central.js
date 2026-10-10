@@ -1,0 +1,49 @@
+/* Private service connection and verified OneDrive backups; never localStorage. */
+(function(g){
+ 'use strict';const S=g.DrinksStore,M=g.DrinksModel;let cached=null,loading=null;
+ const admin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw Error('Bitte die Verwaltung entsperren.');};
+ async function connection(){
+  let source=S.sourceKey();if(cached?.source===source&&cached.until>Date.now())return cached.value;
+  if(loading?.source===source)return loading.promise;
+  const promise=(async()=>{const saved=await S.readMobileFile('konten-zentrale.json');source=S.sourceKey();let value=null;if(saved){const c=await g.DrinksPush.config();if(!c)throw Error('Die zentrale Kontoverbindung fehlt.');value={...c,source};if(saved.data.source!==source||S.sourceKey()!==source)throw Error('Der Datenordner wurde geändert.');if(saved.data.state!=='active'){const status=await call(value,'status');if(status.state!=='active')throw Error('Die Kontenübernahme ist noch nicht fertig. Bitte in der Getränkeverwaltung fortsetzen.');}}cached={source,value,until:Date.now()+30000};return value;})();loading={source,promise};try{return await promise;}finally{if(loading?.promise===promise)loading=null;}
+ }
+ async function call(c,action,data={}){return g.DrinksPush.request(c,'/admin/central/'+action,{...data,source:c.source});}
+ async function accessRecords(){const result=[];for(const id of await S.mobileIds()){const saved=await S.readMobileFile(await S.mobileFileName(id));if(saved)result.push(saved.data);}return result;}
+ async function register(c,record){await g.DrinksPush.request(c,'/admin/account',{alias:record.alias,revision:record.revision});return call(c,'access',{record});}
+ async function marker(source,state){const old=await S.readMobileFile('konten-zentrale.json');await S.writeMobileFile('konten-zentrale.json',{version:1,source,state},old?.item?.eTag);cached=null;}
+ const filename=kind=>'sicherung-'+kind+'-'+crypto.randomUUID()+'.json';
+ async function migrate(progress=()=>{}){
+  admin();const c0=await g.DrinksPush.config();if(!c0)throw Error('Bitte zuerst den vorhandenen Cloudflare-Dienst unter Handy-Erinnerungen verbinden.');const c={...c0,source:S.sourceKey()};
+  const status=await call(c,'status');if(status.source&&status.source!==c.source)throw Error('Der Dienst ist mit einem anderen OneDrive-Ordner verbunden.');if(status.state==='active'){await marker(c.source,'active');return 'Die zentralen Konten sind bereits aktiv.';}
+  progress('Konten und Handyzugänge werden geprüft …');const snapshot=await S.localMigrationSnapshot(),records=await accessRecords(),accounts=snapshot.entries.filter(x=>x.name!=='bonus-einstellungen.json').map(x=>x.account);
+  if(new Set(accounts.map(a=>a.memberId)).size!==accounts.length)throw Error('Ein Konto ist mehrfach vorhanden.');
+  progress('Vollständige Sicherung wird in OneDrive erstellt und nachgelesen …');const backup=await S.writeBackup(filename('umstellung'),{version:1,kind:'before-central',createdAt:new Date().toISOString(),source:c.source,accounts,policy:snapshot.policy,access:records},c.source);admin();
+  await call(c,'start',{policy:snapshot.policy});await marker(c.source,'preparing');
+  for(let i=0;i<accounts.length;i++){admin();progress('Konten werden übernommen: '+(i+1)+' / '+accounts.length);const a=accounts[i];await call(c,'import',{account:a.pinChoiceVersion===1?a:{...a,pin:null,pinChoiceVersion:1}});}
+  for(const r of records){admin();await register(c,r);}
+  progress('Bisherigen Speicher gegen alte App-Versionen sichern …');admin();await S.lockMigrationSnapshot(snapshot);
+  const verify=await S.localMigrationSnapshot();if(verify.entries.length!==snapshot.entries.length||verify.entries.some(e=>!e.locked)||JSON.stringify(verify.policy)!==JSON.stringify(snapshot.policy))throw Error('Der Bestand hat sich geändert. Bitte Übernahme fortsetzen. Es wurde noch nicht aktiviert.');
+  admin();await call(c,'activate',{count:accounts.length,backup});await marker(c.source,'active');S.reset();return 'Übernahme abgeschlossen. Handy-Buchungen funktionieren jetzt ohne iPad. Sicherung: Getraenke/'+backup;
+ }
+ async function backup(progress=()=>{}){
+  admin();const c=await connection();if(!c)throw Error('Bitte zuerst die zentrale Kontenführung aktivieren.');
+  const start=await call(c,'members'),accounts=[];for(const id of start.members){admin();progress('Sicherung: '+(accounts.length+1)+' / '+start.members.length);accounts.push((await call(c,'read',{memberId:id})).account);}
+  const policy=(await call(c,'policy')).policy,access=await accessRecords(),end=await call(c,'status');if(end.seq!==start.seq)throw Error('Während der Sicherung wurde gebucht. Bitte erneut sichern.');
+  const name=await S.writeBackup(filename('konten'),{version:1,kind:'central-ledger',createdAt:new Date().toISOString(),source:c.source,seq:start.seq,accounts,policy,access},c.source);return {c,seq:start.seq,name,accounts};
+ }
+ async function prepareReset(ids,progress){const b=await backup(progress);const members=ids==='all'?b.accounts.map(a=>a.memberId):ids;if(!members.length||members.some(id=>!b.accounts.some(a=>a.memberId===id)))throw Error('Keine passenden Konten vorhanden.');const id=crypto.randomUUID();for(const memberId of members){admin();await call(b.c,'reset-stage',{id,memberId,seq:b.seq});}return {c:b.c,seq:b.seq,name:b.name,members,id};}
+ async function executeReset(plan){admin();if(S.sourceKey()!==plan.c.source)throw Error('Der OneDrive-Ordner wurde gewechselt.');await call(plan.c,'reset',{id:plan.id,members:plan.members,seq:plan.seq,backup:plan.name});S.reset();g.DrinksConsumption?.reset();g.Drinks?.reset();return plan.members.length;}
+ function init(){
+  const section=document.createElement('article');section.className='panel';section.innerHTML='<h3>Zentrale Getränkekonten & Sicherungen</h3><p>Cloudflare führt die Konten im kostenlosen Tarif. OneDrive enthält die Sicherungen. Nach der einmaligen Übernahme können Handys direkt buchen.</p><button type="button" id="central-migrate">Konten übernehmen / Übernahme fortsetzen</button><button type="button" id="central-backup">Jetzt in OneDrive sichern</button><p>Eine Sicherung entsteht bei der Übernahme und vor jedem Zurücksetzen. Weitere Sicherungen kannst du hier jederzeit erstellen.</p><details class="dr-admin-details"><summary>Testbuchungen zurücksetzen</summary><p>Setzt Getränke, Zahlungen, Guthaben, Schulden und Treuepunkte auf null. Mitglieder und Zugänge bleiben bestehen. Vorher wird der vollständige Bestand in OneDrive gesichert.</p><button type="button" id="central-load">Konten zur Auswahl laden</button><label for="central-member">Umfang</label><select id="central-member" class="text-input"><option value="">Bitte zuerst Konten laden</option></select><button type="button" id="central-reset" disabled>Sichern und Zurücksetzen vorbereiten</button></details><p id="central-status" role="status"></p>';
+  section.id='central-settings';document.getElementById('settingsMobileView')?.append(section);const shortcut=document.createElement('button');shortcut.type='button';shortcut.className='outline-button';shortcut.textContent='Testbuchungen zurücksetzen / Konten sichern';shortcut.onclick=()=>{if(showView('settingsMobileView')!==false){section.querySelector('details').open=true;section.scrollIntoView({block:'start'});}};setTimeout(()=>document.getElementById('settingsBookingsView')?.append(shortcut),0);
+  const $=id=>document.getElementById('central-'+id),say=text=>$('status').textContent=text;let busy=false,plan=null;
+  async function run(fn){if(busy)return;busy=true;for(const button of section.querySelectorAll('button'))button.disabled=true;try{admin();await fn();}catch(e){say(e.message||'Vorgang nicht bestätigt. Bitte erneut prüfen.');}finally{busy=false;for(const button of section.querySelectorAll('button'))button.disabled=false;$('reset').disabled=!$('member').value;$('member').disabled=Boolean(plan);$('reset').textContent=plan?'Unbestätigtes Zurücksetzen erneut prüfen':'Sichern und Zurücksetzen vorbereiten';}}
+  $('migrate').onclick=()=>run(async()=>say(await migrate(say)));
+  $('backup').onclick=()=>run(async()=>{const b=await backup(say);say('Sicherung geprüft: Getraenke/'+b.name);});
+  $('load').onclick=()=>run(async()=>{const c=await connection();if(!c)throw Error('Bitte zuerst die Konten übernehmen.');const [list,state]=await Promise.all([call(c,'members'),g.oneDriveReadState()]);const names=new Map(state.members.map(p=>[String(p.id),[p.lastName,p.firstName].filter(Boolean).join(' ')]));$('member').replaceChildren();for(const [value,text] of [['','Bitte Umfang auswählen'],['all','Alle Getränkekonten'],...list.members.map(id=>[id,names.get(id)||'Ehemaliges Mitglied · '+id])]){const option=document.createElement('option');option.value=value;option.textContent=text;$('member').append(option);}say(list.members.length+' Konten geladen. Bitte den Umfang auswählen.');});
+  $('member').onchange=()=>{$('reset').disabled=!$('member').value;};
+  $('reset').onclick=()=>run(async()=>{const scope=$('member').value;if(!scope)return;if(!plan){plan=await prepareReset(scope==='all'?'all':[scope],say);if(!confirm((scope==='all'?'ALLE '+plan.members.length+' Getränkekonten':$('member').selectedOptions[0].textContent)+' wirklich auf null setzen?\nAuch Guthaben und Treuepunkte werden zurückgesetzt.\nDie Sicherung wurde in OneDrive geprüft.')){plan=null;say('Abgebrochen. Keine Buchung wurde verändert.');return;}}try{const n=await executeReset(plan);plan=null;say(n+' Konten zurückgesetzt. Sicherung bleibt in OneDrive.');}catch(e){if(e.status===409)plan=null;throw e;}});
+ }
+ g.DrinksCentral={connection,call,register,migrate,backup,prepareReset,executeReset};
+ if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
+})(globalThis);
