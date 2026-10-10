@@ -24,7 +24,7 @@ test('Fehlende oder abgelehnte Badge-API verhindert weder Nachricht noch Öffnen
 });
 function page({badgeFails=false,failedLoad=false,hidden=false}={}){
  const nodes=new Map(),closed=[],calls=[];let clears=0;
- const node=()=>({hidden:false,disabled:false,textContent:'',style:{setProperty(){}},classList:{toggle(){}},replaceChildren(){},removeAttribute(){},append(){}});
+ const node=()=>({hidden:false,disabled:false,textContent:'',parentElement:{style:{setProperty(){}}},style:{setProperty(){}},classList:{toggle(){}},replaceChildren(){},removeAttribute(){},append(){}});
  const url=new URL('https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/deckel-daten&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64));
  const document={hidden,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);},createElement:node,addEventListener(){}};
  const ctx=vm.createContext({console,URL,URLSearchParams,AbortController,setTimeout,clearTimeout,Date,Promise,location:{href:url.href,hash:url.hash},document,
