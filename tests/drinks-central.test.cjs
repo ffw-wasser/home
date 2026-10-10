@@ -64,6 +64,7 @@ test('Central: concurrent write after backup aborts whole reset; 60 accounts fit
 test('Central client: migration, backups and reset use the real service contract',async()=>{
  const f=await fixture(),files=new Map(),backups=[],events=[];let locked=false,connected=false;
  f.ctx.adminUnlocked=true;
+ f.ctx.oneDriveReadState=async()=>({members:[{id:'member-1'}]});
  const original=f.ctx.DrinksModel.append(f.ctx.DrinksModel.empty('member-1'),{id:'drink-0001',type:'drinks',count:2,cents:300,createdAt:'2026-10-01T10:00:00Z'});
  f.ctx.DrinksStore={sourceKey:()=>connected?f.source:'',readMobileFile:async name=>{connected=true;return name.startsWith('handy-member')?{data:f.record}:files.get(name)||null;},writeMobileFile:async(name,data)=>{events.push('marker:'+data.state);files.set(name,{data});},mobileIds:async()=>['member-1'],mobileFileName:async()=> 'handy-member.json',localMigrationSnapshot:async()=>({source:f.source,policy:f.policy,entries:[{name:'bonus-einstellungen.json',account:f.policy,locked},{name:'konto-member.json',account:original,locked}]}),writeBackup:async(name,data,source)=>{assert.equal(source,f.source);events.push('backup');backups.push(data);return name;},lockMigrationSnapshot:async()=>{events.push('lock');locked=true;},reset:()=>{}};
  f.ctx.DrinksPush={config:async()=>{connected=true;return {origin:'https://test.account.workers.dev',token:f.env.ADMIN_TOKEN};},request:async(c,path,data)=>{const r=await f.call(path,data,c.token);if(r.status!==200)throw Object.assign(Error(r.data.error),{status:r.status});return r.data;}};

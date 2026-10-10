@@ -12,7 +12,7 @@ test('Zentrale Store-Anbindung bucht mit Version und ohne OneDrive-Konto-Schreib
  const {ctx,M,S,calls}=app();let account=M.empty('a'),version=0;
  const policy={schemaVersion:2,id:'policy-001',revision:'policy-001',startedAt:'2020-01-01T00:00:00Z',thresholdCents:3000,awardUnits:300,beerUnits:150,wineUnits:150};
  ctx.DrinksCentral={connection:async()=>({source:'drive:root'}),call:async(c,action,data)=>{if(action==='policy')return {policy};if(action==='read')return {account:copy(account),version};if(action==='write'){assert.equal(data.version,version);account=copy(data.account);return {version:++version};}if(action==='members')return {members:['a']};throw Error(action);}};
- const saved=await S.bookMany('a',[drink()],'null');assert.equal(M.totals(saved).balance,750);assert.equal(version,1);assert.equal((await S.list(['a']))[0].bookings.length,1);assert.equal((await S.consumption('2026')).beer,5);assert.equal(calls.filter(c=>c.options.method==='PUT').length,0);
+ const saved=await S.bookMany('a',[drink()],'null');assert.equal(M.totals(saved).balance,750);assert.equal(version,1);assert.equal((await S.list(['a']))[0].bookings.length,1);assert.equal((await S.consumption('2026')).beer,5);const writes=calls.filter(c=>c.options.method==='PUT');assert.equal(writes.length,1);assert.equal(JSON.parse(writes[0].options.body).schemaVersion,99);
 });
 test('Übernahme sichert vollständigen Bestand und sperrt alte Dateiversionen ohne Buchungsverlust',async()=>{
  const {S,files}=app();await S.book('a',drink(),'null');const before=await S.localMigrationSnapshot();assert.equal(before.entries.length,2);
@@ -22,6 +22,9 @@ test('Übernahme sichert vollständigen Bestand und sperrt alte Dateiversionen o
 });
 test('Konflikte bei Übernahme und fehlende Administration verhindern Überschreiben',async()=>{
  const {ctx,S}=app();await S.book('a',drink(),'null');const before=await S.localMigrationSnapshot();ctx.forceConflict=1;await assert.rejects(S.lockMigrationSnapshot(before),/412/);assert.equal((await S.read('a')).bookings.length,1);ctx.adminUnlocked=false;await assert.rejects(S.writeBackup('sicherung-fixture.json',{},before.source),/Verwaltung/);
+});
+test('Auch Mitglieder ohne bisheriges Konto erhalten eine Sperre für alte Apps',async()=>{
+ const {S}=app();await S.rewards();const before=await S.localMigrationSnapshot(['new-member']);assert.equal(before.entries.length,2);assert.equal(before.entries.find(e=>e.account.memberId==='new-member').item,null);await S.lockMigrationSnapshot(before);const after=await S.localMigrationSnapshot(['new-member']);assert.ok(after.entries.every(e=>e.locked));await assert.rejects(S.read('new-member'),/aktuelle App-Version/);
 });
 function app(){
   const files=new Map(),calls=[],storageWrites=[];let folder=true,tag=0;

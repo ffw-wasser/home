@@ -15,14 +15,14 @@
  async function migrate(progress=()=>{}){
   admin();const c0=await g.DrinksPush.config();if(!c0)throw Error('Bitte zuerst den vorhandenen Cloudflare-Dienst unter Handy-Erinnerungen verbinden.');const c={...c0,source:S.sourceKey()};
   const status=await call(c,'status');if(status.source&&status.source!==c.source)throw Error('Der Dienst ist mit einem anderen OneDrive-Ordner verbunden.');if(status.state==='active'){await marker(c.source,'active');return 'Die zentralen Konten sind bereits aktiv.';}
-  progress('Konten und Handyzugänge werden geprüft …');const snapshot=await S.localMigrationSnapshot(),records=await accessRecords(),accounts=snapshot.entries.filter(x=>x.name!=='bonus-einstellungen.json').map(x=>x.account);
+  progress('Konten und Handyzugänge werden geprüft …');const members=(await g.oneDriveReadState()).members.map(p=>String(p.id)),records=await accessRecords(),snapshot=await S.localMigrationSnapshot([...members,...records.map(r=>r.memberId)]),accounts=snapshot.entries.filter(x=>x.name!=='bonus-einstellungen.json').map(x=>x.account);
   if(new Set(accounts.map(a=>a.memberId)).size!==accounts.length)throw Error('Ein Konto ist mehrfach vorhanden.');
   progress('Vollständige Sicherung wird in OneDrive erstellt und nachgelesen …');const backup=await S.writeBackup(filename('umstellung'),{version:1,kind:'before-central',createdAt:new Date().toISOString(),source:c.source,accounts,policy:snapshot.policy,access:records},c.source);admin();
   await call(c,'start',{policy:snapshot.policy});await marker(c.source,'preparing');
   for(let i=0;i<accounts.length;i++){admin();progress('Konten werden übernommen: '+(i+1)+' / '+accounts.length);const a=accounts[i];await call(c,'import',{account:a.pinChoiceVersion===1?a:{...a,pin:null,pinChoiceVersion:1}});}
   for(const r of records){admin();await register(c,r);}
   progress('Bisherigen Speicher gegen alte App-Versionen sichern …');admin();await S.lockMigrationSnapshot(snapshot);
-  const verify=await S.localMigrationSnapshot();if(verify.entries.length!==snapshot.entries.length||verify.entries.some(e=>!e.locked)||JSON.stringify(verify.policy)!==JSON.stringify(snapshot.policy))throw Error('Der Bestand hat sich geändert. Bitte Übernahme fortsetzen. Es wurde noch nicht aktiviert.');
+  const latestMembers=(await g.oneDriveReadState()).members.map(p=>String(p.id)),verify=await S.localMigrationSnapshot(latestMembers);if(verify.entries.length!==snapshot.entries.length||verify.entries.some(e=>!e.locked)||JSON.stringify(verify.policy)!==JSON.stringify(snapshot.policy)||JSON.stringify(latestMembers.sort())!==JSON.stringify(members.sort()))throw Error('Der Bestand hat sich geändert. Bitte Übernahme fortsetzen. Es wurde noch nicht aktiviert.');
   admin();await call(c,'activate',{count:accounts.length,backup});await marker(c.source,'active');S.reset();return 'Übernahme abgeschlossen. Handy-Buchungen funktionieren jetzt ohne iPad. Sicherung: Getraenke/'+backup;
  }
  async function backup(progress=()=>{}){
