@@ -72,7 +72,7 @@
     const container=el('members');container.replaceChildren();el('directory').replaceChildren();cardNodes.clear();const query=el('search').value.toLocaleLowerCase('de-DE');
     for(const p of people.filter(p=>p.id===menuMemberId||(!stagedOnly||cardDrafts.has(p.id))&&p.name.toLocaleLowerCase('de-DE').includes(query))){
       const card=document.createElement('article');card.className='dr-member-card';card.dataset.drCard=p.id;card.tabIndex=-1;
-      const tile=document.createElement('button');tile.type='button';tile.className='dr-name-card';tile.dataset.drMember=p.id;tile.dataset.drCardAction='menu';tile.textContent=p.name;el('directory').append(tile);
+      const tile=document.createElement('button');tile.type='button';tile.className='dr-name-card';tile.dataset.drMember=p.id;tile.dataset.drCardAction='menu';const lastName=document.createElement('strong');lastName.className='dr-name-last';lastName.textContent=p.lastName;const firstName=document.createElement('span');firstName.className='dr-name-first';firstName.textContent=p.firstName;tile.append(lastName,firstName);el('directory').append(tile);
       const heading=document.createElement('div');heading.className='dr-member-heading';
       const title=document.createElement('h3');title.textContent=p.name;
       const more=document.createElement('button');more.type='button';more.className='dr-member-more';more.dataset.drMember=p.id;more.dataset.drCardAction='account';more.textContent='Konto';more.setAttribute('aria-label','Konto von '+p.name);heading.append(title,more);
@@ -250,9 +250,9 @@
     const number=++openNumber;
     await run(async()=>{
       let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;
-      const data=ready?{members:ready.people.map(p=>({id:p.id,lastName:p.name}))}:await oneDriveReadState();
+      const data=ready?{members:ready.people.map(p=>({id:p.id,lastName:p.lastName,firstName:p.firstName}))}:await oneDriveReadState();
       if(!data||!Array.isArray(data.members))throw new Error('Die Mitgliederdatei in OneDrive ist nicht lesbar.');
-      const next=data.members.map(p=>({id:String(p.id||''),name:[p.lastName,p.firstName].filter(Boolean).join(', ')}));
+      const next=data.members.map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));
       if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)throw new Error('Die Mitglieder benötigen eindeutige Kennungen und Namen.');
       if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
       people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Mitglieder geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
@@ -340,7 +340,7 @@
   }
   async function preload(){
     if(preloading)return preloading;if(preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.())return preloaded;if(typeof oneDriveSignedIn!=='function'||!oneDriveSignedIn()||stagedCount()||busy||pending||cardQueue.length)return null;const epoch=preloadEpoch;
-    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.map(p=>({id:String(p.id||''),name:[p.lastName,p.firstName].filter(Boolean).join(', ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
+    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
   }
   function init(){
     root=byId('drinksView');if(!root)return;
