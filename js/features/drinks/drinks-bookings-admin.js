@@ -46,7 +46,7 @@
     }
     busy=true;controls();el('delete-status').textContent='Löschung wird gespeichert …';
     try{const saved=await S.adminDelete(pending.memberId,pending.entry,pending.sourceKey),id=pending.memberId;pending=null;selected.clear();if(!adminUnlocked)return;account=saved;memberId=id;el('dialog').close();render();showToast('Bereinigung gespeichert. Beträge, Treuepunkte und Verbrauch wurden angepasst.');global.DrinksConsumption?.reset();}
-    catch(error){if(['correctionChanged','adminChanged'].includes(error.code)){pending=null;el('delete-status').textContent='Buchung inzwischen geändert. Bitte schließen und neu auswählen.';}else el('delete-status').textContent=errorText(error)+' Bitte dieselbe Löschung erneut prüfen.';}
+    catch(error){if(error.code==='rewardFunding'){pending=null;el('delete-status').textContent=errorText(error);}else if(['correctionChanged','adminChanged'].includes(error.code)){pending=null;el('delete-status').textContent='Buchung inzwischen geändert. Bitte schließen und neu auswählen.';}else el('delete-status').textContent=errorText(error)+' Bitte dieselbe Löschung erneut prüfen.';}
     finally{busy=false;controls();el('retry').hidden=!pending;}
   }
   function init(){

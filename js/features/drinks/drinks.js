@@ -6,9 +6,14 @@
   let root,people=[],account=null,memberId='',signature='',method='cash',payment=0,pending=null,busy=false,pinChecking=false,loaded=false,currentScreen='members',lockAfterRun=false,timer,attempts=new Map(),openNumber=0;
   let cardIntent=null,cardQueue=[],cardWorking=false,cardError=null,cardNotices=new Map(),cardSessions=new Map(),cardNodes=new Map(),sessionTimer;
   let accountSource='',paidTimer,stagedOnly=false;
-  const cardDrafts=new Map();let confirmRequested=false;
+  const cardDrafts=new Map();let confirmRequested=false,confirmTarget=null,activeCardId='',menuMemberId='';
+  function focusCard(id=activeCardId){
+    if(currentScreen!=='members'||root.hidden||document.hidden)return;
+    const card=menuMemberId?cardNodes.get(id)?.card:cardNodes.get(id)?.tile;if(!card)return;
+    card.focus({preventScroll:true});card.scrollIntoView?.({block:'start',behavior:'auto'});
+  }
   const drinkOf=x=>typeof x==='string'?x:x.drink,redeemed=x=>typeof x!=='string';
-  let preloaded=null,preloading=null,preloadEpoch=0;
+  let preloaded=null,preloading=null,preloadEpoch=0,rankingReady=false;
   const stagedCount=()=>Array.from(cardDrafts.values()).reduce((n,d)=>n+d.entries.length+d.corrections.length,0);
   function appendGlasses(row,beer,wine,limit=3){
     row.replaceChildren();
@@ -32,17 +37,18 @@
   const message=text=>{if(el('error'))el('error').textContent=userMessage(text)||'';};
   function screen(value){if(value!=='paid')clearTimeout(paidTimer);root.querySelector('.dr-account-tools')?.removeAttribute('open');currentScreen=value;root.dataset.screen=value;root.querySelectorAll('[data-dr-screen]').forEach(e=>e.hidden=e.dataset.drScreen!==value);message('');touch();}
   function lockAccount(all=true){
+    if(menuMemberId&&currentScreen==='members'){memberId=menuMemberId;account=S.cached(memberId);cardIntent={action:'menu'};}
     if(all)clearCardSessions();else{cardSessions.delete(memberId);renderCards();}clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
     if(!account?.pin){clearMobileQr();clearPinInputs();return;}
     signature='';clearMobileQr();clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
     message(pending?'Konto gesperrt. Nach deiner PIN-Eingabe dieselbe Buchung erneut prüfen.':'Konto gesperrt. Bitte deine PIN erneut eingeben. Vorgemerkte Einträge bleiben bis zum Neuladen erhalten.');
   }
-  function touch(){clearTimeout(timer);if(memberId&&signature&&account?.pin&&!busy){rememberCardSession(memberId,account,signature);timer=setTimeout(()=>lockAccount(false),60000);}}
+  function touch(){if(menuMemberId&&currentScreen==='members'&&!busy&&!document.hidden){const value=S.cached(menuMemberId);if(value.pin&&cardUnlocked(menuMemberId,value))rememberCardSession(menuMemberId,value,JSON.stringify(value.pin));}clearTimeout(timer);if(memberId&&signature&&account?.pin&&!busy){rememberCardSession(memberId,account,signature);timer=setTimeout(()=>lockAccount(false),60000);}}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
   function clearMobileQr(){if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}}
   function resetSession(){clearTimeout(paidTimer);global.DrinksExtras?.dismiss?.();cardIntent=null;clearTimeout(timer);clearMobileQr();memberId='';account=null;signature='';payment=0;pending=null;if(el('pin'))el('pin').value='';clearPinInputs();setPinChecking(false);}
-  function reset(){preloadEpoch++;preloaded=null;preloading=null;global.DrinksConsumption?.reset();cardDrafts.clear();confirmRequested=false;clearCardSessions();cardNotices.clear();openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
+  function reset(){menuMemberId='';preloadEpoch++;preloaded=null;preloading=null;global.DrinksConsumption?.reset();cardDrafts.clear();confirmRequested=false;clearCardSessions();cardNotices.clear();openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
     if(busy||pending||cardQueue.length){showToast('Die Getränkebuchung bitte zuerst fertig speichern oder erneut prüfen.','error');return false;}
@@ -60,12 +66,13 @@
   function scheduleCardLocks(){
     clearTimeout(sessionTimer);const until=Math.min(...Array.from(cardSessions.values(),s=>s.until));
     if(!Number.isFinite(until))return;
-    sessionTimer=setTimeout(()=>{for(const [id,s] of cardSessions)if(s.until<=Date.now())cardSessions.delete(id);renderCards();scheduleCardLocks();},Math.max(1,until-Date.now()));
+    sessionTimer=setTimeout(()=>{for(const [id,s] of cardSessions)if(s.until<=Date.now())cardSessions.delete(id);renderCards();if(menuMemberId&&currentScreen==='members'&&!cardUnlocked(menuMemberId,S.cached(menuMemberId)))lockAccount(false);scheduleCardLocks();},Math.max(1,until-Date.now()));
   }
   function renderPeople(){
-    const container=el('members');container.replaceChildren();cardNodes.clear();const query=el('search').value.toLocaleLowerCase('de-DE');
-    for(const p of people.filter(p=>(!stagedOnly||cardDrafts.has(p.id))&&p.name.toLocaleLowerCase('de-DE').includes(query))){
-      const card=document.createElement('article');card.className='dr-member-card';card.dataset.drCard=p.id;
+    const container=el('members');container.replaceChildren();el('directory').replaceChildren();cardNodes.clear();const query=el('search').value.toLocaleLowerCase('de-DE');
+    for(const p of people.filter(p=>p.id===menuMemberId||(!stagedOnly||cardDrafts.has(p.id))&&p.name.toLocaleLowerCase('de-DE').includes(query))){
+      const card=document.createElement('article');card.className='dr-member-card';card.dataset.drCard=p.id;card.tabIndex=-1;
+      const tile=document.createElement('button');tile.type='button';tile.className='dr-name-card';tile.dataset.drMember=p.id;tile.dataset.drCardAction='menu';tile.textContent=p.name;el('directory').append(tile);
       const heading=document.createElement('div');heading.className='dr-member-heading';
       const title=document.createElement('h3');title.textContent=p.name;
       const more=document.createElement('button');more.type='button';more.className='dr-member-more';more.dataset.drMember=p.id;more.dataset.drCardAction='account';more.textContent='Konto';more.setAttribute('aria-label','Konto von '+p.name);heading.append(title,more);
@@ -85,18 +92,21 @@
       const hint=document.createElement('small');hint.className='dr-member-action-hint';
       const lock=document.createElement('span');lock.className='dr-member-lock';
       const actions=document.createElement('div');actions.className='dr-member-actions';
-      const add=document.createElement('button');add.type='button';add.className='dr-primary';add.dataset.drMember=p.id;add.dataset.drCardAction='add';add.textContent='🍺 +1 Bier · 1,50 €';add.setAttribute('aria-label','Ein Bier für '+p.name+' vormerken');
-      const pay=document.createElement('button');pay.type='button';pay.dataset.drMember=p.id;pay.dataset.drCardAction='pay';pay.textContent='Bezahlen';pay.setAttribute('aria-label','Deckel von '+p.name+' bezahlen');const wine=document.createElement('button');wine.type='button';wine.className='dr-wine';wine.dataset.drMember=p.id;wine.dataset.drCardAction='wine';wine.textContent='🍷 +1 Wein · 3,00 €';wine.setAttribute('aria-label','Ein Glas Wein für '+p.name+' vormerken');actions.append(add,wine,pay,deposit);
+      const add=document.createElement('button');add.type='button';add.className='dr-primary';add.dataset.drMember=p.id;add.dataset.drCardAction='add';add.innerHTML='🍺 +1 Bier · <span class="dr-price">1,50&nbsp;€</span>';add.setAttribute('aria-label','Ein Bier für '+p.name+' vormerken');
+      const pay=document.createElement('button');pay.type='button';pay.dataset.drMember=p.id;pay.dataset.drCardAction='pay';pay.textContent='Bezahlen';pay.setAttribute('aria-label','Deckel von '+p.name+' bezahlen');const wine=document.createElement('button');wine.type='button';wine.className='dr-wine';wine.dataset.drMember=p.id;wine.dataset.drCardAction='wine';wine.innerHTML='🍷 +1 Wein · <span class="dr-price">3,00&nbsp;€</span>';wine.setAttribute('aria-label','Ein Glas Wein für '+p.name+' vormerken');actions.append(add,wine,pay,deposit);
       const status=document.createElement('p');status.className='dr-member-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
       const retry=document.createElement('button');retry.type='button';retry.className='dr-member-retry';retry.dataset.drMember=p.id;retry.dataset.drCardAction='retry';retry.textContent='Speicherung erneut prüfen';retry.hidden=true;
-      card.append(heading,label,balance,credit,points,bonus,progress,lock,actions,redeemActions,draftLabel,draftGlasses,undo,discard,hint,status,retry);container.append(card);cardNodes.set(p.id,{card,balance,credit,points,redeemBeer,redeemWine,redeemActions,deposit,bonus,progress,draftLabel,draftGlasses,undo,discard,hint,lock,add,wine,pay,more,status,retry});
+      const save=document.createElement('button');save.type='button';save.className='dr-primary dr-member-save';save.dataset.drMember=p.id;save.dataset.drCardAction='save';save.textContent='OK · Diese Karte speichern';
+      card.append(heading,label,balance,credit,points,bonus,progress,lock,actions,redeemActions,draftLabel,draftGlasses,save,undo,discard,hint,status,retry);container.append(card);cardNodes.set(p.id,{card,tile,balance,credit,points,redeemBeer,redeemWine,redeemActions,deposit,bonus,progress,draftLabel,draftGlasses,save,undo,discard,hint,lock,add,wine,pay,more,status,retry});
     }
-    if(!container.children.length){const p=document.createElement('p');p.textContent=stagedOnly?'Keine passenden Vormerkungen.':people.length?'Kein Mitglied gefunden. Suche nach Vor- oder Nachname.':loaded?'Noch keine Mitglieder vorhanden. Namen unter Einstellungen → Mitglieder anlegen.':'Mitglieder werden aus OneDrive geladen.';container.append(p);}
+    if(!container.children.length){const p=document.createElement('p');p.textContent=stagedOnly?'Keine passenden Vormerkungen.':people.length?'Kein Mitglied gefunden. Suche nach Vor- oder Nachname.':loaded?'Noch keine Mitglieder vorhanden. Namen unter Einstellungen → Mitglieder anlegen.':'Mitglieder werden aus OneDrive geladen.';container.append(p);const empty=document.createElement('p');empty.textContent=p.textContent;el('directory').append(empty);}
     renderCards();
   }
   function renderCards(){
     for(const [id,n] of cardNodes){
+      n.card.hidden=menuMemberId!==id;n.tile.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length);n.tile.dataset.draft=String(cardDrafts.has(id));n.tile.setAttribute('aria-label',name(id)+(cardDrafts.has(id)?' · Noch nicht gespeicherte Einträge':' · Eingabemenü öffnen'));
       const value=S.cached(id),unlocked=cardUnlocked(id,value),state=M.ledger?.(value),balance=state?.balance??M.totals(value).balance,policy=S.cachedRewards?.(),reward=policy?M.rewardState(value,policy,state):null,credit=(reward||M.rewardState?.(value,policy,state))?.prepaid||0;
+      n.card.hidden=menuMemberId!==id||Boolean(value.pin&&!unlocked);
       n.balance.textContent=euro(balance);n.card.dataset.paid=String(balance===0);n.credit.hidden=!credit;n.credit.textContent=credit?'Eingezahlter Betrag: '+euro(credit):'';
       n.bonus.hidden=n.progress.hidden=!reward;if(reward){n.bonus.textContent=global.DrinksRewards?.remainingText(reward,policy)||'Noch '+euro(reward.needed)+' bezahlen bis zu den nächsten Treuepunkten.';n.progress.max=reward.threshold;n.progress.value=Math.min(reward.progress,reward.threshold);}
       n.points.hidden=!reward;n.points.textContent=reward?'⭐ '+M.pointText(reward.pointUnits)+(reward.pointUnits===M.POINT_UNIT?' Treuepunkt':' Treuepunkte'):'';
@@ -104,21 +114,23 @@
       const staged=cardDrafts.get(id),entries=staged?.entries||[],corrections=staged?.corrections||[],beer=entries.filter(x=>drinkOf(x)==='beer').length,wine=entries.length-beer,cents=entries.filter(x=>!redeemed(x)).reduce((n,x)=>n+(drinkOf(x)==='wine'?M.WINE_PRICE:M.PRICE),0);
       const preview=previewSaved(id,value),projected=(preview===value?balance:M.totals(preview).balance)+Math.max(0,cents-credit);
       n.draftLabel.hidden=!entries.length&&!corrections.length;n.draftLabel.textContent=staged?'Vorgemerkt: '+draftDescription(staged)+'. Schulden nach OK: '+euro(projected):'';n.draftGlasses.hidden=!entries.length;appendGlasses(n.draftGlasses,beer,wine);n.draftGlasses.setAttribute('aria-label','Neue, noch nicht gespeicherte Getränke');
-      const target=correctionTarget(id,value,state);n.undo.hidden=!target.count&&!entries.length;n.undo.textContent='Eintrag rückgängig machen';n.undo.title=entries.length?'Letzte vorgemerkte Eingabe entfernen':target.count?'Rücknahme vormerken: '+(target.drink==='wine'?'1 Glas Wein':'1 Bier')+' vom '+new Date(target.createdAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'. Erst OK speichert.':'';
+      const target=correctionTarget(id,value,state);n.undo.hidden=!target.count&&!entries.length;n.undo.textContent=entries.length?'Letzte Vormerkung entfernen':'Gespeicherten Eintrag zurücknehmen';n.undo.title=entries.length?'Letzte vorgemerkte Eingabe entfernen':target.count?'Rücknahme vormerken: '+(target.drink==='wine'?'1 Glas Wein':'1 Bier')+' vom '+new Date(target.createdAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'. Erst OK speichert.':'';
       n.undo.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length);n.discard.hidden=!staged;n.discard.disabled=busy||Boolean(pending)||Boolean(cardQueue.length)&&!(['correctionChanged','pointsChanged'].includes(cardError?.code)&&cardQueue[0]?.memberId===id);
-      n.lock.hidden=!value.pin;n.lock.textContent=value.pin?(unlocked?'🔓 Änderungen freigegeben':'🔒 Änderungen mit PIN'):'';
+      n.lock.hidden=!value.pin;n.lock.textContent=value.pin?(unlocked?'🔓 Persönliche Karte freigegeben':'🔒 Zugang mit PIN'):'';
       const queued=cardQueue.filter(q=>q.memberId===id).reduce((n,q)=>n+q.bookings.length,0),failed=Boolean(cardError&&cardQueue[0]?.memberId===id);n.card.dataset.saving=String(Boolean(queued&&!failed));n.card.dataset.failed=String(failed);
       n.status.textContent=failed?'Speicherung nicht bestätigt. '+cardError.message:queued?'Einträge werden gespeichert …':staged?'Noch nicht gespeichert. Mit OK bestätigen.':cardNotices.get(id)||'';
+      n.save.hidden=!staged;n.save.disabled=busy||Boolean(pending)||Boolean(cardQueue.length);
       n.retry.hidden=!failed||['correctionChanged','pointsChanged'].includes(cardError?.code);n.retry.disabled=busy;n.retry.textContent=cardError?.code==='pinChanged'?'PIN eingeben und Speicherung prüfen':'Speicherung erneut prüfen';
       n.add.disabled=n.wine.disabled=!loaded||busy||Boolean(cardError)||Boolean(pending)||Boolean(cardQueue.length);
-      n.deposit.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length)||Boolean(stagedCount());n.pay.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length)||Boolean(stagedCount())||balance<=0;n.more.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length)||Boolean(stagedCount());
-      n.hint.hidden=!stagedCount();n.hint.textContent='Zum Bezahlen oder Kontoöffnen zuerst Vormerkungen mit OK speichern oder verwerfen.';
+      n.deposit.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length)||cardDrafts.has(id);n.pay.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length)||cardDrafts.has(id)||balance<=0;n.more.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length)||cardDrafts.has(id);
+      n.hint.hidden=!cardDrafts.has(id);n.hint.textContent='Vor dem Bezahlen oder Kontoöffnen deine Vormerkungen mit OK speichern oder verwerfen.';
     }
+    const inMenu=Boolean(menuMemberId);el('directory').hidden=inMenu;el('members').hidden=!inMenu;el('overview-tools').hidden=inMenu;el('all-members').hidden=!inMenu;el('all-members').disabled=busy||Boolean(pending)||Boolean(cardQueue.length);el('main-confirm').hidden=inMenu||!stagedCount()&&!cardQueue.length;root.dataset.memberMenu=String(inMenu);
     if(el('staged-only')){el('staged-only').setAttribute('aria-pressed',String(stagedOnly));el('staged-only').textContent=stagedOnly?'Alle Mitglieder anzeigen':'Vorgemerkte anzeigen'+(cardDrafts.size?' ('+cardDrafts.size+')':'');}
   }
   function queueDrink(id,sig,wine=false,usePoints=false){
     const staged=stagedFor(id);if(staged.entries.length+staged.corrections.length>=1000){showToast('Bitte diese Sammlung zuerst mit OK speichern.','error');return;}
-    const drink=wine?'wine':'beer';if(usePoints){const policy=S.cachedRewards?.(),cost=policy?M.pointCost(policy,drink):0,available=M.rewardState(S.cached(id),policy).pointUnits-staged.entries.reduce((n,x)=>n+(x.pointUnits||0),0);if(!cost||available<cost){if(!staged.entries.length&&!staged.corrections.length)cardDrafts.delete(id);showToast('Nicht genügend Treuepunkte.','error');return;}staged.entries.push({drink,pointUnits:cost});}else staged.entries.push(drink);staged.signature=sig;render();
+    const drink=wine?'wine':'beer';if(usePoints){const policy=S.cachedRewards?.(),cost=policy?M.pointCost(policy,drink):0,available=M.rewardState(S.cached(id),policy).pointUnits-staged.entries.reduce((n,x)=>n+(x.pointUnits||0),0);if(!cost||available<cost){if(!staged.entries.length&&!staged.corrections.length)cardDrafts.delete(id);showToast('Nicht genügend Treuepunkte.','error');return;}staged.entries.push({drink,pointUnits:cost});}else staged.entries.push(drink);staged.signature=sig;render();if(!menuMemberId)focusCard(id);
   }
   function undoStaged(id){const staged=cardDrafts.get(id);if(!staged?.entries.length)return false;staged.entries.pop();if(!staged.entries.length&&!staged.corrections.length)cardDrafts.delete(id);if(stagedOnly)renderPeople();render();return true;}
   function stageCorrection(id,sig){
@@ -132,11 +144,12 @@
     if(cardQueue.length){if(!['correctionChanged','pointsChanged'].includes(cardError?.code)||cardQueue[0]?.memberId!==id)return;cardQueue.shift();cardError=null;}
     cardDrafts.delete(id);cardNotices.delete(id);if(stagedOnly)renderPeople();render();
   }
-  function confirmCards(){
+  function confirmCards(onlyId=null){
     if(busy||pending||cardQueue.length||!stagedCount())return;
-    for(const [id] of cardDrafts){const value=S.cached(id);if(!cardUnlocked(id,value)){selectCard(id,'confirm');return;}}
+    confirmTarget=onlyId;
+    for(const [id] of cardDrafts){if(onlyId&&id!==onlyId)continue;const value=S.cached(id);if(!cardUnlocked(id,value)){selectCard(id,'confirm');return;}}
     const createdAt=new Date().toISOString();
-    for(const [id,staged] of cardDrafts){const bookings=[...staged.corrections,...staged.entries.map(entry=>{const drink=drinkOf(entry);return {id:crypto.randomUUID(),type:'drinks',count:1,drink,cents:drink==='wine'?M.WINE_PRICE:M.PRICE,loyaltyVersion:2,...(redeemed(entry)?{pointUnits:entry.pointUnits}:{}),createdAt};})];cardQueue.push({memberId:id,signature:staged.signature,sourceKey:staged.sourceKey,bookings});}
+    for(const [id,staged] of cardDrafts){if(onlyId&&id!==onlyId)continue;const bookings=[...staged.corrections,...staged.entries.map(entry=>{const drink=drinkOf(entry);return {id:crypto.randomUUID(),type:'drinks',count:1,drink,cents:drink==='wine'?M.WINE_PRICE:M.PRICE,loyaltyVersion:2,...(redeemed(entry)?{pointUnits:entry.pointUnits}:{}),createdAt};})];cardQueue.push({memberId:id,signature:staged.signature,sourceKey:staged.sourceKey,bookings});}
     render();flushCards();
   }
   async function flushCards(){
@@ -151,13 +164,14 @@
           if(memberId===next.memberId)account=saved;renderCards();
         }catch(error){cardError=error;cardError.message=userMessage(error);if(error.code==='pinChanged')cardSessions.delete(next.memberId);break;}
       }
-    }finally{cardWorking=false;busy=false;if(stagedOnly)renderPeople();render();if(lockAfterRun){lockAfterRun=false;lockAccount();}}
+    }finally{cardWorking=false;busy=false;if(stagedOnly){if(!cardDrafts.has(activeCardId))stagedOnly=false;renderPeople();}render();if(lockAfterRun){lockAfterRun=false;lockAccount();}focusCard();}
   }
-  function returnToCards(){resetSession();screen('members');renderCards();}
+  function returnToCards(){resetSession();screen('members');renderCards();focusCard();}
   async function performCardIntent(){
     const intent=cardIntent;cardIntent=null;if(!intent){screen(pending?.type==='payment'?method:'account');return;}
     const id=memberId,sig=signature;
-    if(['add','wine','points-beer','points-wine'].includes(intent.action)){returnToCards();queueDrink(id,sig,intent.action==='wine'||intent.action==='points-wine',intent.action.startsWith('points-'));}
+    if(intent.action==='menu'){menuMemberId=id;returnToCards();}
+    else if(['add','wine','points-beer','points-wine'].includes(intent.action)){returnToCards();queueDrink(id,sig,intent.action==='wine'||intent.action==='points-wine',intent.action.startsWith('points-'));}
     else if(intent.action==='confirm'){if(cardDrafts.has(id))cardDrafts.get(id).signature=sig;returnToCards();confirmRequested=true;}
     else if(intent.action==='retry'){if(cardQueue[0]?.memberId!==id)throw new Error('Bitte die ausstehende Buchung erneut prüfen.');cardQueue[0].signature=sig;cardError=null;returnToCards();}
     else if(intent.action==='undo'){if(cardDrafts.has(id))cardDrafts.get(id).signature=sig;if(undoStaged(id)){returnToCards();return;}stageCorrection(id,sig);returnToCards();}
@@ -168,6 +182,8 @@
   }
   function selectCard(id,action='account'){
     if(!loaded||pending||busy)return;
+    activeCardId=id;
+    if(action==='save'){confirmCards(id);return;}
     if(action==='undo'&&!cardQueue.length&&cardUnlocked(id,S.cached(id))&&undoStaged(id))return;
     if(['add','wine','points-beer','points-wine'].includes(action)&&!cardError){
       const value=S.cached(id);if(cardUnlocked(id,value)){queueDrink(id,JSON.stringify(value.pin),action==='wine'||action==='points-wine',action.startsWith('points-'));return;}
@@ -178,7 +194,7 @@
   }
   function renderRanking(){
     const list=el('ranking');list.replaceChildren();
-    if(!loaded){const p=document.createElement('li');p.textContent='Wird aus OneDrive geladen …';list.append(p);return;}
+    if(!loaded||!rankingReady){const p=document.createElement('li');p.textContent='Die Übersicht wird beim Aufklappen aktuell aus OneDrive geladen.';list.append(p);return;}
     const ranked=people.map(p=>({...p,balance:M.totals(S.cached(p.id)).balance})).filter(p=>p.balance>0).sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name,'de')).slice(0,3);
     if(!ranked.length){const p=document.createElement('li');p.textContent='Alle Deckel bezahlt. Prost! 🍻';list.append(p);return;}
     ranked.forEach((p,index)=>{
@@ -208,10 +224,10 @@
     el('own-open').textContent=el('own-title').textContent=protectedAccount?'Meine PIN verwalten':'PIN einrichten (freiwillig)';el('own-current-row').hidden=!protectedAccount;el('own-current').required=protectedAccount;el('own-remove').hidden=!protectedAccount;
     el('cash-confirm').textContent=pending?.type==='payment'?'Speicherung erneut prüfen':'Geld in die Kasse gelegt';el('paypal-confirm').textContent='Zurück zu Getränken';
     renderCards();
-    const total=stagedCount();root.dataset.hasStaged=String(Boolean(total||cardQueue.length));el('main-confirm').hidden=!total&&!cardQueue.length;el('main-summary').textContent=cardError?'Speicherung nicht bestätigt. Betroffene Karte prüfen.':cardQueue.length?'Einträge werden gespeichert …':total+' '+(total===1?'Änderung':'Änderungen')+' für '+cardDrafts.size+' Mitglied'+(cardDrafts.size===1?'':'er')+' · Noch nicht gespeichert';
+    const total=stagedCount();root.dataset.hasStaged=String(Boolean(total||cardQueue.length));el('main-confirm').hidden=Boolean(menuMemberId)||!total&&!cardQueue.length;el('main-summary').textContent=cardError?'Speicherung nicht bestätigt. Betroffene Karte prüfen.':cardQueue.length?'Einträge werden gespeichert …':total+' '+(total===1?'Änderung':'Änderungen')+' für '+cardDrafts.size+' Mitglied'+(cardDrafts.size===1?'':'er')+' · Noch nicht gespeichert';
     el('confirm').disabled=busy||Boolean(pending)||Boolean(cardQueue.length)||!total;el('confirm').textContent=busy?'Wird gespeichert …':'OK · Änderungen speichern';el('discard-all').disabled=busy||Boolean(pending)||Boolean(cardQueue.length);
     const summary=el('main-details');summary.replaceChildren();for(const [id,d] of cardDrafts){const li=document.createElement('li');li.textContent=name(id)+': '+draftDescription(d);summary.append(li);}
-    if(currentScreen==='members')renderRanking();touch();
+    if(currentScreen==='members'&&!menuMemberId)renderRanking();touch();
   }
   async function run(action){if(busy)return;busy=true;message('');render();try{await action();}catch(error){
     if(currentScreen==='opening'){screen('members');el('status').textContent='Konto konnte nicht geöffnet werden. Bitte deinen Namen erneut wählen.';}
@@ -220,11 +236,11 @@
     if(error.code==='balanceChanged'){account=await S.read(memberId).catch(()=>account);payment=0;screen('account');}
     if(error.code==='correctionChanged'){account=await S.read(memberId).catch(()=>account);screen('account');}
     message(userMessage(error));if(currentScreen==='mobile')el('mobile-status').textContent=userMessage(error)+(el('mobile-qr').width>1?' Dein angezeigter Kontozugang bleibt gültig.':'');
-  }finally{busy=false;render();if(lockAfterRun){lockAfterRun=false;lockAccount();}flushCards();if(confirmRequested){confirmRequested=false;confirmCards();}}}
+  }finally{busy=false;render();if(lockAfterRun){lockAfterRun=false;lockAccount();}flushCards();if(confirmRequested){confirmRequested=false;confirmCards(confirmTarget);}}}
   async function open(){
     if(busy||pending||(cardQueue.length&&!cardError)){showToast('Die aktuelle Buchung bitte zuerst fertig speichern.','error');return;}
     if(stagedCount()&&!confirm('Vorgemerkte Änderungen verwerfen und Getränkekarten neu laden?'))return;
-    if(showView('drinksView')===false)return;cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
+    if(showView('drinksView')===false)return;menuMemberId='';rankingReady=false;el('ranking-toggle')?.removeAttribute('open');cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
     const number=++openNumber;
     await run(async()=>{
       let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;
@@ -232,8 +248,8 @@
       if(!data||!Array.isArray(data.members))throw new Error('Die Mitgliederdatei in OneDrive ist nicht lesbar.');
       const next=data.members.map(p=>({id:String(p.id||''),name:[p.lastName,p.firstName].filter(Boolean).join(', ')}));
       if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)throw new Error('Die Mitglieder benötigen eindeutige Kennungen und Namen.');
-      if(!ready){await Promise.all([S.rewards(),S.list(next.map(p=>p.id))]);}else if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
-      global.DrinksMobile?.refreshAll().catch(()=>{});people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Kontostände geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
+      if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
+      people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Mitglieder geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
     });
     if(!loaded)el('status').textContent='Getränke konnten nicht geladen werden. OneDrive-Verbindung prüfen und aktualisieren.';
     renderPeople();
@@ -248,7 +264,7 @@
     screen('amount');
   }
   async function beginPayment(value,partial=false,deposit=false){
-    if(stagedCount())throw new Error('Bitte vorgemerkte Änderungen zuerst mit OK bestätigen.');
+    if(cardDrafts.has(memberId))throw new Error('Bitte deine vorgemerkten Änderungen zuerst mit OK bestätigen.');
     account=await S.read(memberId);if(JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('Deine PIN wurde geändert. Bitte erneut anmelden.'),{code:'pinChanged'});
     const balance=M.totals(account).balance;if(balance<=0&&!deposit)throw new Error('Dein Deckel ist bereits bezahlt.');
     method=value;payment=partial?0:balance;el('amount').value=((deposit?1000:balance)/100).toFixed(2).replace('.',',');
@@ -285,7 +301,7 @@
     catch(error){status.textContent=error.message||'PIN konnte nicht gespeichert werden. Bitte erneut eingeben.';return false;}
     finally{button.disabled=false;}
   }
-  function finishSession(){resetSession();screen('members');render();renderPeople();window.scrollTo({top:0,behavior:'smooth'});}
+  function finishSession(){if(menuMemberId&&!cardUnlocked(menuMemberId,S.cached(menuMemberId)))menuMemberId='';resetSession();screen('members');render();renderPeople();focusCard();}
   function updatePinDots(){const length=pinChecking?4:(el('pin')?.value.length||0);root?.querySelectorAll('.dr-pin-dot').forEach((node,i)=>node.classList.toggle('is-filled',i<length));if(el('pin-progress'))el('pin-progress').textContent=pinChecking?'Vier Ziffern eingegeben. PIN wird geprüft.':length+' von 4 Ziffern eingegeben';}
   function setPinChecking(value){
     pinChecking=Boolean(value);
@@ -317,17 +333,20 @@
   }
   async function preload(){
     if(preloading)return preloading;if(preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.())return preloaded;if(typeof oneDriveSignedIn!=='function'||!oneDriveSignedIn()||stagedCount()||busy||pending||cardQueue.length)return null;const epoch=preloadEpoch;
-    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.map(p=>({id:String(p.id||''),name:[p.lastName,p.firstName].filter(Boolean).join(', ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await Promise.all([S.previewRewards?.(),S.list(next.map(p=>p.id))]);if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
+    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.map(p=>({id:String(p.id||''),name:[p.lastName,p.firstName].filter(Boolean).join(', ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
   }
   function init(){
     root=byId('drinksView');if(!root)return;
     byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
     el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
-    el('confirm')?.addEventListener('click',confirmCards);
+    el('confirm')?.addEventListener('click',()=>confirmCards());
+    el('ranking-toggle')?.addEventListener('toggle',()=>{if(!el('ranking-toggle').open||busy||pending||cardQueue.length)return;run(async()=>{await S.list(people.map(p=>p.id));rankingReady=true;renderRanking();});});
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});
     el('discard-all').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;if(confirm('Alle vorgemerkten Änderungen verwerfen? Gespeicherte Buchungen bleiben erhalten.')){cardDrafts.clear();stagedOnly=false;renderPeople();render();}});
     el('cash-all').addEventListener('click',()=>run(async()=>{method='cash';await confirmPayment();}));
     el('search').addEventListener('input',renderPeople);root.addEventListener('pointerdown',touch,{passive:true});root.addEventListener('input',touch);
+    el('directory').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(button)selectCard(button.dataset.drMember,'menu');});
+    el('all-members').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;menuMemberId='';resetSession();clearCardSessions();screen('members');renderPeople();render();focusCard();});
     el('members').addEventListener('click',event=>{const button=event.target.closest('[data-dr-member]');if(button)selectCard(button.dataset.drMember,button.dataset.drCardAction||'account');});
     el('pin-form').addEventListener('submit',event=>{event.preventDefault();submitPin();});
     el('pin').addEventListener('input',()=>{updatePinDots();if(/^\d{4}$/.test(el('pin').value))queueMicrotask(submitPin);});
@@ -336,7 +355,7 @@
       const value=button.dataset.drDigit,input=el('pin');input.value=value==='clear'?'':value==='back'?input.value.slice(0,-1):(input.value+value).slice(0,4);
       updatePinDots();if(/^\d{4}$/.test(input.value))submitPin();
     });
-    el('pin-back').addEventListener('click',()=>{if(busy||pending)return;finishSession();});
+    el('pin-back').addEventListener('click',()=>{if(busy||pending)return;menuMemberId='';finishSession();});
     el('cancel').addEventListener('click',()=>{if(!busy&&!pending)returnToCards();});
     root.querySelectorAll('[data-dr-pay]').forEach(b=>b.addEventListener('click',()=>run(()=>beginPayment(b.dataset.drPay))));
     el('partial').addEventListener('click',()=>run(()=>beginPayment('cash',true)));
@@ -387,8 +406,6 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden)lockAccount();});
     global.addEventListener('offline',()=>{if(!root.hidden)message(pending?'Keine Verbindung. Der Speicherstatus ist unklar. Verbindung herstellen und Speicherung erneut prüfen.':'Keine Verbindung. Vorgemerkte Änderungen sind noch nicht gespeichert. Internetverbindung herstellen und erneut prüfen.');});
     global.addEventListener('beforeunload',event=>{if(stagedCount()||pending||busy||cardQueue.length){event.preventDefault();event.returnValue='';}});
-    const dockViewport=()=>{const v=global.visualViewport;root.style.setProperty('--dr-keyboard-offset',(v?Math.max(0,innerHeight-v.height-v.offsetTop):0)+'px');};global.visualViewport?.addEventListener('resize',dockViewport);global.visualViewport?.addEventListener('scroll',dockViewport);dockViewport();
-    if(global.ResizeObserver){const dockObserver=new global.ResizeObserver(()=>root.style.setProperty('--dr-dock-space',(el('main-confirm').offsetHeight+24)+'px'));dockObserver.observe(el('main-confirm'));}
     render();if(typeof oneDriveSignedIn==='function'&&oneDriveSignedIn())setTimeout(preload,0);
   }
   async function loadPinStatus(row){

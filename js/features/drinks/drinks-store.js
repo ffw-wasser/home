@@ -110,11 +110,12 @@
     if(!ctx.folder){assertCurrent(ctx);cache=next;return memberIds.map(id=>M.empty(id));}
     const files=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=id,name,eTag,file';
     while(url){const data=await(await odFetch(url)).json();files.push(...(data.value||[]));url=data['@odata.nextLink'];}
+    const filesByName=new Map(files.filter(f=>f.file).map(f=>[f.name,f]));
     const remaining=memberIds.map(String),results=new Map();
     await Promise.all(Array.from({length:Math.min(4,remaining.length)},async()=>{
       while(remaining.length){
         const id=remaining.shift();
-        const name=await fileName(id),entry=files.find(f=>f.file&&f.name===name),old=cache.get(id);
+        const name=await fileName(id),entry=filesByName.get(name),old=cache.get(id);
         let account;
         if(!entry)account=M.empty(id);
         else if(old?.eTag===entry.eTag)account=clone(old.account);
@@ -169,7 +170,7 @@
   }
   async function bookMany(memberId,bookings,pinSignature,expectedSource=null){
     if(!pinSignature)throw new Error('Bitte zuerst dein Getränkekonto öffnen.');
-    if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>!['drinks','correction'].includes(b?.type)))throw new Error('Ungültige Getränkesammlung.');
+    if(!Array.isArray(bookings)||!bookings.length||bookings.length>1000||bookings.some(b=>!['drinks','correction'].includes(b?.type)||b.type==='correction'&&b.confirmation!==undefined))throw new Error('Ungültige Getränkesammlung.');
     const policy=bookings.some(b=>b.pointUnits!==undefined)?M.rewardPolicy(await rewards(expectedSource)):null;
     const account=await mutate(memberId,a=>{
       for(const b of bookings)if(!a.bookings.some(old=>old.id===b.id)&&b.pointUnits!==undefined&&b.pointUnits!==b.count*M.pointCost(policy,b.drink||'beer'))throw Object.assign(new Error('Die Treuepunkte-Einstellung wurde geändert. Bitte die Einlösung neu vormerken.'),{code:'pointsChanged'});
@@ -189,11 +190,15 @@
     });
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
+  function rewardFundingGaps(account){
+    const state=M.ledger(account),policies=new Map(account.bookings.filter(b=>b.type==='bonus'&&b.policy.schemaVersion===2).map(b=>[b.policy.id,b.policy])),gaps=new Map();
+    for(const [id,policy] of policies){const paid=account.bookings.filter(b=>b.type==='payment'&&!state.reversedPayments.has(b.id)&&Date.parse(b.createdAt)>=Date.parse(policy.startedAt)).reduce((n,b)=>n+b.cents,0);const used=account.bookings.filter(b=>b.type==='bonus'&&b.policy.id===id&&!state.reversedPayments.has(b.paymentId)).reduce((n,b)=>n+b.qualifyingCents,0);gaps.set(id,Math.max(0,used-paid));}return gaps;
+  }
   async function adminDelete(memberId,booking,expectedSource=null){
     const admin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');};admin();
     const entries=Array.isArray(booking)?booking:[booking];
     if(!entries.length||entries.length>1000||entries.some(b=>!['correction','payment-reversal'].includes(b?.type)||b.confirmation!=='admin'))throw new Error('Ungültige Admin-Löschung.');
-    const account=await mutate(memberId,a=>{admin();return M.appendAdminMany(a,entries);},null,expectedSource);
+    const account=await mutate(memberId,a=>{admin();const next=M.appendAdminMany(a,entries),before=rewardFundingGaps(a);for(const [id,gap] of rewardFundingGaps(next))if(gap>(before.get(id)||0))throw Object.assign(new Error('Diese Teilzahlung hat zu später vergebenen Treuepunkten beigetragen. Eine einzelne Rücknahme ist hier noch nicht möglich. Eine gemeinsame Bereinigung ist nur sinnvoll, wenn auch die spätere Zahlung fehlerhaft ist. Es wurde nichts gespeichert.'),{code:'rewardFunding'});return next;},null,expectedSource);
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
   function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}

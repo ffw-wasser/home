@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=name=>fs.readFileSync(require.resolve('../'+name),'utf8');
 class Node{
   constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.value='';this.hidden=false;this.disabled=false;this.textContent='';this.handlers={};this.attributes={};this.classList={toggle(){},add(){}};this.style={setProperty(){}};}
-  addEventListener(type,handler){this.handlers[type]=handler;}replaceChildren(){this.children=[];}append(...nodes){this.children.push(...nodes);}setAttribute(k,v){this.attributes[k]=v;}focus(){}removeAttribute(){}querySelector(){return null;}querySelectorAll(){return [];}
+  addEventListener(type,handler){this.handlers[type]=handler;}replaceChildren(){this.children=[];}append(...nodes){this.children.push(...nodes);}setAttribute(k,v){this.attributes[k]=v;}focus(){this.focused=true;}scrollIntoView(options){this.scrolled=options;}removeAttribute(){}querySelector(){return null;}querySelectorAll(){return [];}
 }
 const descendants=n=>[n,...n.children.flatMap(descendants)];
 const wait=async predicate=>{const end=Date.now()+3000;while(!predicate()){if(Date.now()>end)throw Error('UI-Zustand nicht erreicht');await new Promise(resolve=>setTimeout(resolve,5));}};
@@ -43,7 +43,8 @@ async function fixture(options={}){
   const pin=value=>{nodes['dr-pin'].value=value;nodes['dr-pin-form'].handlers.submit({preventDefault(){}});};
   const status=id=>descendants(card(id)).find(n=>n.className==='dr-member-status').textContent;
   const lock=id=>descendants(card(id)).find(n=>n.className==='dr-member-lock').textContent;
-  return {writes,confirm(){assert.equal(nodes['dr-confirm'].disabled,false);nodes['dr-confirm'].handlers.click();},discardAllowed(value){allowDiscard=value;},failMember:id=>failMember=id,context,M,S,nodes,root,accounts,books,click,pin,status,lock,card,button,documentEvents,globalEvents,readCount:()=>readCount,
+  const menu=async id=>{const tile=nodes['dr-directory'].children.find(n=>n.dataset.drMember===id);assert.ok(tile&&!tile.disabled);nodes['dr-directory'].handlers.click({target:{closest:()=>tile}});await wait(()=>root.dataset.memberMenu==='true'&&root.dataset.screen==='members'&&!button(id,'add').disabled);};
+  return {menu,writes,confirm(){assert.equal(nodes['dr-confirm'].disabled,false);nodes['dr-confirm'].handlers.click();},discardAllowed(value){allowDiscard=value;},failMember:id=>failMember=id,context,M,S,nodes,root,accounts,books,click,pin,status,lock,card,button,documentEvents,globalEvents,readCount:()=>readCount,
     failNext:e=>fail=e,loseReply:()=>loseReply=true,hold:()=>{let done;gate=new Promise(resolve=>done=resolve);return done;},
     advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.until<=now){timers.delete(id);t.fn();}}};
 }
@@ -97,7 +98,7 @@ test('PIN-Änderung während einer Vormerkung verlangt neue Freigabe bei derselb
 });
 test('Verbergen beim Speichern entsperrt keine PIN-Karte nach dem Abschluss',async()=>{
  const f=await fixture({pin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
- const release=f.hold();f.confirm();await wait(()=>f.writes.length===1);f.context.document.hidden=true;f.documentEvents.visibilitychange();release();await wait(()=>f.status('a')==='Gespeichert ✓');assert.match(f.lock('a'),/Änderungen mit PIN/);
+ const release=f.hold();f.confirm();await wait(()=>f.writes.length===1);f.context.document.hidden=true;f.documentEvents.visibilitychange();release();await wait(()=>f.status('a')==='Gespeichert ✓');assert.match(f.lock('a'),/Zugang mit PIN/);
 });
 test('Aktualisieren bei unklarem OK behält die Buchungsnummern für die Prüfung',async()=>{
  const f=await fixture();f.click('a','add');f.loseReply();f.confirm();await wait(()=>f.status('a').includes('nicht bestätigt'));await f.context.Drinks.open();
@@ -176,5 +177,42 @@ test('Vormerkung und Rücknahme einer Punkteeinlösung verändern den Bestand vo
  const f=await fixture({policy:newPointsPolicy,prepaid:1000});f.click('a','points-beer');f.click('a','undo');assert.equal(f.writes.length,0);assert.equal(f.nodes['dr-main-confirm'].hidden,true);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,150);assert.equal(f.button('a','points-wine').disabled,false);
 });
 test('Im Hintergrund vorbereitete Karten öffnen ohne erneutes Laden aller Mitglieder und Konten',async()=>{
- const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,1);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,1);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
+ const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,0);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,0);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
+});
+
+test('Karten-OK speichert nur die ausgewählte Karte und hält deren Fokus',async()=>{
+ const f=await fixture();f.click('a','add');f.click('b','wine');await f.menu('a');f.click('a','save');await wait(()=>f.status('a')==='Gespeichert ✓');
+ assert.equal(f.accounts.get('a').bookings.length,1);assert.equal(f.accounts.get('b').bookings.length,0);assert.match(f.status('b'),/Noch nicht gespeichert/);assert.equal(f.card('a').focused,true);assert.equal(f.card('a').scrolled.block,'start');
+});
+test('Karten-OK behält seine Auswahl nach abgelaufener PIN',async()=>{
+ const f=await fixture({pin:true});f.click('a','add');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>!f.nodes['dr-confirm'].disabled);f.click('b','wine');f.advance(60001);f.click('a','save');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.accounts.get('b').bookings.length,0);
+});
+test('Nach Karten-OK bleibt eine zuvor gefilterte Karte sichtbar',async()=>{
+ const f=await fixture();f.click('a','wine');f.nodes['dr-staged-only'].handlers.click();await f.menu('a');f.click('a','save');await wait(()=>f.status('a')==='Gespeichert ✓');assert.ok(f.card('a'));assert.equal(f.card('a').focused,true);
+});
+
+test('Übersicht zeigt Namenskarten; persönliches Menü enthält nur das gewählte Mitglied',async()=>{
+ const f=await fixture();assert.equal(f.nodes['dr-directory'].children.length,2);assert.equal(f.nodes['dr-members'].hidden,true);assert.equal(f.card('a').hidden,true);
+ await f.menu('a');assert.equal(f.nodes['dr-directory'].hidden,true);assert.equal(f.card('a').hidden,false);assert.equal(f.card('b').hidden,true);f.click('a','wine');assert.equal(f.nodes['dr-main-confirm'].hidden,true);f.click('a','save');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.card('a').hidden,false);
+ f.nodes['dr-all-members'].handlers.click();assert.equal(f.nodes['dr-directory'].hidden,false);assert.equal(f.nodes['dr-members'].hidden,true);assert.equal(f.nodes['dr-directory'].children[0].focused,true);
+});
+test('Zurück zur Namensübersicht erhält ungespeicherte Eingaben und kennzeichnet das Mitglied',async()=>{
+ const f=await fixture();await f.menu('a');f.click('a','add');f.nodes['dr-all-members'].handlers.click();assert.equal(f.writes.length,0);assert.equal(f.nodes['dr-directory'].children[0].dataset.draft,'true');await f.menu('a');assert.match(f.status('a'),/Noch nicht gespeichert/);f.click('a','save');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,1);
+});
+
+test('Namensübersicht benötigt keinen Abruf aller Getränkekonten',async()=>{
+ const f=await fixture();let lists=0;f.S.list=async()=>{lists++;throw Error('Sammelabruf darf das Öffnen nicht blockieren');};await f.context.Drinks.open();assert.equal(lists,0);await f.menu('a');assert.ok(f.readCount()>0);assert.equal(lists,0);
+});
+test('Fremde Vormerkungen blockieren die Einzahlung im eigenen Menü nicht',async()=>{
+ const f=await fixture();await f.menu('a');f.click('a','add');f.nodes['dr-all-members'].handlers.click();await f.menu('b');assert.equal(f.button('b','deposit').disabled,false);f.click('b','deposit');await wait(()=>f.root.dataset.screen==='amount');assert.equal(f.accounts.get('a').bookings.length,0);
+});
+
+test('Freiwillige PIN schützt das Eingabemenü und sperrt nach Inaktivität oder Hintergrund erneut',async()=>{
+ const f=await fixture({pin:true});const tile=f.nodes['dr-directory'].children[0];f.nodes['dr-directory'].handlers.click({target:{closest:()=>tile}});await wait(()=>f.root.dataset.screen==='pin');assert.equal(f.card('a').hidden,true);
+ f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-pin'].disabled);assert.equal(f.card('a').hidden,false);f.advance(60001);assert.equal(f.root.dataset.screen,'pin');
+ f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-pin'].disabled);f.context.document.hidden=true;f.documentEvents.visibilitychange();assert.equal(f.root.dataset.screen,'pin');
+});
+
+test('PIN-Abbruch nach abgelaufener Freigabe führt zur Namensübersicht, nicht in die geschützte Karte',async()=>{
+ const f=await fixture({pin:true});const tile=f.nodes['dr-directory'].children[0];f.nodes['dr-directory'].handlers.click({target:{closest:()=>tile}});await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-pin'].disabled);f.advance(60001);assert.equal(f.root.dataset.screen,'pin');f.nodes['dr-pin-back'].handlers.click();assert.equal(f.nodes['dr-directory'].hidden,false);assert.equal(f.card('a').hidden,true);assert.equal(f.root.dataset.memberMenu,'false');
 });

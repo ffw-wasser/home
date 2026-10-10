@@ -474,3 +474,10 @@ test('Rücknahme einer Einzahlung ordnet offene Geldbeträge ausschließlich Gel
 test('Kleine historische Bonusbruchteile bleiben als Unterpunkte erhalten und werden bei neuen Getränken nicht gerundet oder automatisch genutzt',()=>{
  const {M}=app(),p=rewardPolicy(1,1);let a=M.appendWithReward(M.append(M.empty('a'),drink('tiny-legacy-drink',1)),pay('tiny-legacy-payment',150),p);assert.equal(M.rewardState(a,null).pointUnits,1);a=M.appendMany(a,[modernDrink('tiny-new-cash-drink')]);assert.equal(M.rewardState(a,null).pointUnits,1);assert.equal(M.rewardState(a,null).prepaid,0);assert.equal(M.totals(a).balance,150);
 });
+
+test('Frühere Teilzahlung lässt sich nicht mit ungedeckten Punkten stornieren; gemeinsame Bereinigung bleibt möglich',async()=>{
+ const {S,M}=app();await S.rewards();const now=new Date().toISOString();await S.book('a',{...deposit('funding-first-payment',1500),createdAt:now},'null');await S.book('a',{...deposit('funding-second-payment',1500),createdAt:now},'null');
+ const first={...reversal('funding-first-delete','funding-first-payment',1500),createdAt:new Date().toISOString()},second={...reversal('funding-second-delete','funding-second-payment',1500),createdAt:new Date().toISOString()};
+ await assert.rejects(S.adminDelete('a',first),e=>e.code==='rewardFunding');const unchanged=await S.read('a');assert.equal(unchanged.bookings.length,3);assert.equal(M.rewardState(unchanged,S.cachedRewards()).points,2);
+ const cleared=await S.adminDelete('a',[first,second]);assert.equal(M.rewardState(cleared,S.cachedRewards()).points,0);assert.equal(M.rewardState(cleared,S.cachedRewards()).prepaid,0);assert.equal((await S.adminDelete('a',[first,second])).bookings.length,5);
+});

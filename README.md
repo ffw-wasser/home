@@ -4,15 +4,26 @@ Statische Web-App für Anwesenheit, Taktik, Einsatzberichte und Jahresstatistik.
 
 ## Getränke
 
-Alle Mitgliederkarten stehen direkt im Menü **Getränke**. Bier kostet 1,50 €,
+Im Menü **Getränke** stehen große Namenskarten. Ein Klick auf den Namen
+öffnet das persönliche Eingabemenü. **Zurück zu allen Mitgliedern** führt
+zur Übersicht; offene Vormerkungen bleiben erhalten und werden dort farblich
+markiert. Bier kostet 1,50 €,
 Wein 3,00 €. Mehrere Getränke oder heutige, vollständig unbezahlte
 Fehleingaben werden vorgemerkt und erst mit **OK · Änderungen speichern**
-übertragen. Bezahlt, teilweise bezahlt, mit Vorauszahlung oder Treuepunkten
+übertragen. Jede Karte besitzt dafür einen eigenen OK-Button; dieser speichert
+nur diese Karte. Die Sammelbestätigung bleibt am Seitenende, ohne schwebendes
+Popup. Nach Eingabe, Speicherung und Rückkehr aus dem Konto bleibt die
+ausgewählte Karte im Fokus. Betrag und Eurozeichen bleiben zusammen.
+
+Bezahlt, teilweise bezahlt, mit Vorauszahlung oder Treuepunkten
 verrechnete Einträge können Mitglieder nicht zurücknehmen. Fünf Bier bzw.
 Weingläser erscheinen als getrennte Fässer. Bereits gespeicherte Tagesmengen
 werden auf den Karten nicht zusätzlich angezeigt.
 
-Eine persönliche vierstellige PIN ist freiwillig. Mitglieder richten sie
+Eine persönliche vierstellige PIN ist freiwillig und schützt den Zugang zum
+persönlichen Eingabemenü. Nach 60 Sekunden ohne Bedienung, beim Verbergen
+der App und beim Zurückgehen zur Namensübersicht wird die Freigabe gesperrt.
+Mitglieder richten sie
 unter **Konto → PIN einrichten/verwalten** selbst ein oder entfernen sie mit
 der aktuellen PIN. Die Verwaltung kann sie unter **Einstellungen → Mitglieder**
 setzen. Es gibt keine Standard-PIN. PINs schützen die Bedienung; Dateizugriffe
@@ -169,3 +180,11 @@ App-Version. Daten-, Backup- und Buchungsschemata behalten ihre eigenen
 Versionsnummern für die Wiederherstellung bestehender Daten.
 
 QR-Generator: offizieller Release [js2.0.4](https://github.com/kazuhikoarase/qrcode-generator/releases/tag/js2.0.4); ZIP-Bibliothek: JSZip 3.10.2; PDF-Bibliothek: pdf-lib 1.17.1. Alte eigenständige Versionsanzeigen und doppelte Status-Overrides wurden entfernt. Benötigte Safari- und Daten-Kompatibilitätswege bleiben bestehen.
+
+Prüfergebnisse und Grenzen beim Datenreset: [Getränkeprüfung](GETRAENKE-PRUEFUNG-2026-10-10.md).
+
+Teilzahlungsstornos, die später vergebene Punkte ohne ausreichende Zahlung
+stehen lassen würden, werden vor dem Speichern mit einer Erklärung abgewiesen.
+Eine gemeinsame Bereinigung ist möglich, sofern auch die beteiligten späteren
+Zahlungen tatsächlich fehlerhaft sind. Vorhandene Kontohistorien werden nicht
+automatisch umgerechnet.
