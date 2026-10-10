@@ -25,7 +25,7 @@
       const saved=attempt===0&&prepared?.record?{data:prepared.record}:await S.readMobileFile(filename);if(!saved)return false;
       const record=C.access(saved.data);if(record.memberId!==id)throw new Error('Handyzugang gehört zu einem anderen Konto.');
       const [previous,account,policy]=await Promise.all([gh(connection,path+record.alias+'.json?ref=main').catch(error=>{if(error.status!==404)throw error;return null;}),S.read(id),S.rewards()]);
-      const data=snapshot(account,policy);
+      const data=snapshot(account,policy);const access=await global.DrinksPush?.actions?.(record).catch(()=>null);if(access?.actionCapability)data.actions={origin:access.origin,capability:access.actionCapability,revision:record.revision};const undo=M.correctable(account);if(undo.count)data.undo={targetId:undo.targetId};
       const envelope=await C.seal(data,record),check=await S.readMobileFile(filename);
       if(check?.data.revision!==record.revision)continue;
       try{

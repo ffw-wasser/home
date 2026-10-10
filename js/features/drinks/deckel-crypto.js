@@ -8,6 +8,8 @@
   const unb64=value=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
   function access(value){if(value?.version!==1||!/^\w{32}$/.test(value.alias)||!/^[a-f0-9]{64}$/.test(value.key)||!/^[a-f0-9]{32}$/.test(value.alias))throw new Error('Ungültiger Handyzugang.');return value;}
   function validate(data){
+    if(data.actions&&(!/^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(data.actions.origin)||!/^[A-Za-z0-9_-]{43}$/.test(data.actions.capability)||!/^[a-zA-Z0-9-]{8,80}$/.test(data.actions.revision)))throw new Error('Ungültiger Buchungszugang.');
+    if(data.undo&&!/^[-a-zA-Z0-9]{8,150}$/.test(data.undo.targetId))throw new Error('Ungültige Rücknahme.');
     if(data?.version!==1||!['balance','credit','needed','bonusCents'].every(k=>Number.isSafeInteger(data[k])&&data[k]>=0)||!Number.isFinite(Date.parse(data.updatedAt))||!Array.isArray(data.bookings)||data.bookings.length>5)throw new Error('Ungültiger Kontostand.');
     if(data.progressCents!==undefined&&(!Number.isSafeInteger(data.progressCents)||data.progressCents<0))throw new Error('Ungültiger Fortschritt.');
     if(data.pointUnits!==undefined&&!Number.isSafeInteger(data.pointUnits)||['thresholdCents','awardUnits','beerUnits','wineUnits'].some(k=>data[k]!==undefined&&(!Number.isSafeInteger(data[k])||data[k]<=0)))throw new Error('Ungültige Treuepunkte.');

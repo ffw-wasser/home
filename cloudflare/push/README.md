@@ -108,3 +108,16 @@ Die Symbolanzeige ist lokal und benötigt keine Änderung am Cloudflare-Worker o
 
 https://webkit.org/blog/14112/badging-for-home-screen-web-apps/
 https://developer.chrome.com/docs/capabilities/web-apis/badging-api
+
+## Update: Eingaben vom persönlichen Handy (2026.10.10.2)
+
+1. In der vorhandenen D1-Konsole die beiden `CREATE ... IF NOT EXISTS commands`-Anweisungen am Ende von `schema.sql` ausführen. Bestehende Tabellen und Buchungen bleiben erhalten.
+2. Den bestehenden Worker mit dem aktuellen `worker.js` aktualisieren. Bestehende Secrets, Domain und DB-Bindung beibehalten. Keine neuen Zugangsdaten nötig.
+3. `/health` muss `commandsVersion: 1` melden; dabei wird auch die neue Tabelle geprüft.
+4. Die Gerätehaus-App aktualisieren, OneDrive verbinden und unter Getränkeverwaltung → Handy-Deckel **Alle Handyansichten aktualisieren** wählen. Danach auf dem persönlichen Handy aktualisieren. Der bisherige Link bleibt gültig.
+
+Bier, Wein, Punkteeinlösung, Bar-Einzahlung und Rücknahme werden mit dem persönlichen AES-Schlüssel verschlüsselt. Cloudflare erhält weder Klartextbeträge noch den Schlüssel. Die Buchungsberechtigung ist unabhängig von der Push-Berechtigung und liegt nur innerhalb des verschlüsselten Kontostands. Jeder Vorgang erhält eine feste ID. Die App speichert den verschlüsselten Auftrag vor dem ersten Senden im lokalen Gerätespeicher. Nach erfolgreicher Übernahme bleiben serverseitig ID, Hash und Status als Wiederholungsschutz erhalten; der verschlüsselte Inhalt wird entfernt. Ausstehende Aufträge bleiben bis zur Verarbeitung gespeichert. Ein neuer persönlicher Zugang sperrt alte Aufträge.
+
+Das iPad gleicht bei geöffnetem, sichtbarem Fenster etwa jede Minute ab. Es muss online und bei OneDrive angemeldet sein. Kontostand und Treuepunkte werden dort erneut geprüft und mit der normalen Versionskontrolle geschrieben. Erst nach erfolgreicher Kontoveröffentlichung erhält das Handy die Bestätigung. Bei fehlgeschlagener Veröffentlichung wird derselbe Vorgang wiederholt, ohne doppelte Buchung. Eine Browser-App kann bei gesperrtem iPad keine dauerhafte Hintergrundverarbeitung garantieren.
+
+Die Handyansicht zeigt bis dahin ausdrücklich „Wartet auf Synchronisierung“. Bereits übertragene Vorgänge nicht nochmals am iPad manuell buchen. Nach Ersetzen eines Links kann eine alte Vormerkung auf dem Handy erst nach ausdrücklicher Kontrolle am iPad entfernt werden. PayPal bleibt eine externe Zahlung, deren Eingang die Verwaltung bestätigt.

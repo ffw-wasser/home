@@ -1,6 +1,6 @@
 {
-  "version": "2026.10.10.1",
-  "build": "20261010.1",
+  "version": "2026.10.10.2",
+  "build": "20261010.2",
   "releasedOn": "2026-10-10",
   "vendors": {
     "qrcode-generator": "2.0.4",

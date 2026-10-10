@@ -170,3 +170,11 @@ html body .top-nav #drinksShortcut{width:auto;flex:0 0 auto;min-height:48px!impo
 #drinksView .dr-member-card[hidden],#drinksView .dr-name-list[hidden],#drinksView .dr-member-list[hidden],#drinksView .dr-back-members[hidden]{display:none!important}
 #drinksView[data-member-menu=true] .dr-ranking-details,#drinksView[data-member-menu=false] [data-dr-screen=members]>.help-text{display:none}
 @media(max-width:480px){#drinksView .dr-name-list{grid-template-columns:1fr;gap:12px}#drinksView .dr-name-card{min-height:100px}}
+
+/* Rangliste bleibt offen: oben am Desktop, seitlich bei ausreichender mobiler Breite. */
+#drinksView .dr-ranking-details{display:block;margin:0 0 20px;border:0;padding:0}
+#drinksView .dr-ranking-details .dr-card{margin:0;padding:16px}
+#drinksView #dr-ranking-refresh{font-size:14px;min-height:44px;margin-top:8px}
+#drinksView[data-member-menu=true] .dr-ranking-details{display:none}
+@media(min-width:650px) and (max-width:1023px){#drinksView[data-member-menu=false] .dr-members-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:20px;align-items:start}#drinksView .dr-members-main{grid-column:1;grid-row:1;min-width:0}#drinksView .dr-ranking-details{grid-column:2;grid-row:1;position:sticky;top:88px}#drinksView .dr-rank-row{flex-wrap:wrap}}
+@media(min-width:1024px){#drinksView .dr-ranking-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}

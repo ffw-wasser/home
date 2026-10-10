@@ -481,3 +481,32 @@ test('Frühere Teilzahlung lässt sich nicht mit ungedeckten Punkten stornieren;
  await assert.rejects(S.adminDelete('a',first),e=>e.code==='rewardFunding');const unchanged=await S.read('a');assert.equal(unchanged.bookings.length,3);assert.equal(M.rewardState(unchanged,S.cachedRewards()).points,2);
  const cleared=await S.adminDelete('a',[first,second]);assert.equal(M.rewardState(cleared,S.cachedRewards()).points,0);assert.equal(M.rewardState(cleared,S.cachedRewards()).prepaid,0);assert.equal((await S.adminDelete('a',[first,second])).bookings.length,5);
 });
+
+async function mobileFixture(){
+ const a=app();configure(a);a.ctx.DeckelCommands={validate:c=>c};
+ const record={version:1,alias:'1'.repeat(32),revision:'revision-phone-test',memberId:'a'};
+ await a.S.writeMobileFile(await a.S.mobileFileName('a'),record);
+ return {...a,job:()=>({id:webcrypto.randomUUID(),alias:record.alias,revision:record.revision,created_at:Date.now()})};
+}
+test('Handybuchung übersteht verlorene Antwort und Wiederholung ohne doppelte Striche oder Zahlungen',async()=>{
+ const a=await mobileFixture(),{S,M,ctx,job}=a,j=job(),command={version:1,kind:'drinks',entries:[{drink:'beer'},{drink:'wine'}]};
+ ctx.loseReply=true;await S.applyMobileCommand('a',j,command,S.sourceKey());await S.applyMobileCommand('a',j,command,S.sourceKey());
+ assert.equal(M.totals(await S.read('a')).balance,450);assert.equal((await S.read('a')).bookings.length,2);
+ const cash=job();await S.applyMobileCommand('a',cash,{version:1,kind:'cash',cents:1000},S.sourceKey());const before=copy(await S.read('a'));
+ await S.applyMobileCommand('a',cash,{version:1,kind:'cash',cents:1000},S.sourceKey());assert.deepEqual(copy(await S.read('a')),before);
+});
+test('Handybuchung prüft aktuelle Treuepunkte und den persönlichen Zugang',async()=>{
+ const {S,job}=await mobileFixture();
+ await assert.rejects(S.applyMobileCommand('a',job(),{version:1,kind:'drinks',entries:[{drink:'beer',pointUnits:150}]},S.sourceKey()),e=>e.code==='pointsChanged');
+ await assert.rejects(S.applyMobileCommand('a',{...job(),revision:'replaced-revision'},{version:1,kind:'cash',cents:100},S.sourceKey()),e=>e.code==='accessChanged');
+ assert.equal((await S.read('a')).bookings.length,0);
+});
+test('Handyrücknahme ist einmalig und lehnt einen inzwischen bezahlten Eintrag ab',async()=>{
+ const {S,M,job}=await mobileFixture(),j=job();
+ await S.applyMobileCommand('a',j,{version:1,kind:'drinks',entries:[{drink:'beer'}]},S.sourceKey());
+ const undo=job(),command={version:1,kind:'undo',targetId:'mobile-'+j.id+'-0'};
+ await S.applyMobileCommand('a',undo,command,S.sourceKey());await S.applyMobileCommand('a',undo,command,S.sourceKey());assert.equal(M.totals(await S.read('a')).balance,0);
+ const next=job();await S.applyMobileCommand('a',next,{version:1,kind:'drinks',entries:[{drink:'wine'}]},S.sourceKey());
+ await S.applyMobileCommand('a',job(),{version:1,kind:'cash',cents:300},S.sourceKey());
+ await assert.rejects(S.applyMobileCommand('a',job(),{version:1,kind:'undo',targetId:'mobile-'+next.id+'-0'},S.sourceKey()),e=>e.code==='correctionChanged');
+});

@@ -13,7 +13,7 @@
     card.focus({preventScroll:true});card.scrollIntoView?.({block:'start',behavior:'auto'});
   }
   const drinkOf=x=>typeof x==='string'?x:x.drink,redeemed=x=>typeof x!=='string';
-  let preloaded=null,preloading=null,preloadEpoch=0,rankingReady=false;
+  let preloaded=null,preloading=null,preloadEpoch=0,rankingReady=false,rankingLoading=false,rankingAccounts=null;
   const stagedCount=()=>Array.from(cardDrafts.values()).reduce((n,d)=>n+d.entries.length+d.corrections.length,0);
   function appendGlasses(row,beer,wine,limit=3){
     row.replaceChildren();
@@ -192,10 +192,16 @@
     memberId=id;account=null;signature='';el('pin').value='';cardIntent={action};screen('opening');
     run(async()=>{account=await S.read(id);accountSource=S.sourceKey?.()||'';if(account.pin&&!cardUnlocked(id,account)){screen('pin');}else{signature=JSON.stringify(account.pin);rememberCardSession(id,account,signature);await performCardIntent();}el('status').textContent='Kontostände geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});}).then(()=>{if(currentScreen==='pin')el('pin').focus();});
   }
+  async function loadRanking(){
+    if(!loaded||rankingLoading)return;const number=openNumber;rankingLoading=true;renderRanking();
+    try{const accounts=await S.list(people.map(p=>p.id),{replaceCache:false});if(number!==openNumber)return;rankingAccounts=new Map(accounts.map(a=>[a.memberId,a]));rankingReady=true;renderRanking();}
+    catch{if(number===openNumber){rankingReady=false;el('ranking').textContent='Offene Deckel konnten nicht geladen werden. Bitte aktualisieren.';}}
+    finally{rankingLoading=false;}
+  }
   function renderRanking(){
     const list=el('ranking');list.replaceChildren();
-    if(!loaded||!rankingReady){const p=document.createElement('li');p.textContent='Die Übersicht wird beim Aufklappen aktuell aus OneDrive geladen.';list.append(p);return;}
-    const ranked=people.map(p=>({...p,balance:M.totals(S.cached(p.id)).balance})).filter(p=>p.balance>0).sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name,'de')).slice(0,3);
+    if(!loaded||!rankingReady){const p=document.createElement('li');p.textContent=rankingLoading?'Offene Deckel werden geladen …':'Deckel noch nicht geladen. Bitte aktualisieren.';list.append(p);return;}
+    const ranked=people.map(p=>({...p,balance:M.totals((()=>{const fresh=S.cached(p.id),snapshot=rankingAccounts?.get(p.id);return !snapshot||fresh.bookings.length>=snapshot.bookings.length?fresh:snapshot;})()).balance})).filter(p=>p.balance>0).sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name,'de')).slice(0,3);
     if(!ranked.length){const p=document.createElement('li');p.textContent='Alle Deckel bezahlt. Prost! 🍻';list.append(p);return;}
     ranked.forEach((p,index)=>{
       const row=document.createElement('li');row.className='dr-rank-row';
@@ -240,7 +246,7 @@
   async function open(){
     if(busy||pending||(cardQueue.length&&!cardError)){showToast('Die aktuelle Buchung bitte zuerst fertig speichern.','error');return;}
     if(stagedCount()&&!confirm('Vorgemerkte Änderungen verwerfen und Getränkekarten neu laden?'))return;
-    if(showView('drinksView')===false)return;menuMemberId='';rankingReady=false;el('ranking-toggle')?.removeAttribute('open');cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
+    if(showView('drinksView')===false)return;menuMemberId='';rankingReady=false;rankingAccounts=null;cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
     const number=++openNumber;
     await run(async()=>{
       let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;
@@ -251,6 +257,7 @@
       if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
       people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Mitglieder geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
     });
+    if(loaded)loadRanking();
     if(!loaded)el('status').textContent='Getränke konnten nicht geladen werden. OneDrive-Verbindung prüfen und aktualisieren.';
     renderPeople();
   }
@@ -340,7 +347,7 @@
     byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
     el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
     el('confirm')?.addEventListener('click',()=>confirmCards());
-    el('ranking-toggle')?.addEventListener('toggle',()=>{if(!el('ranking-toggle').open||busy||pending||cardQueue.length)return;run(async()=>{await S.list(people.map(p=>p.id));rankingReady=true;renderRanking();});});
+    el('ranking-refresh')?.addEventListener('click',loadRanking);
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});
     el('discard-all').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;if(confirm('Alle vorgemerkten Änderungen verwerfen? Gespeicherte Buchungen bleiben erhalten.')){cardDrafts.clear();stagedOnly=false;renderPeople();render();}});
     el('cash-all').addEventListener('click',()=>run(async()=>{method='cash';await confirmPayment();}));
@@ -414,7 +421,7 @@
     try{const data=await S.read(row.dataset.memberId);if(!box.isConnected||box.dataset.dirty)return;status.textContent=data.pin?'Freiwillige PIN eingerichtet. Ein neuer Wert ersetzt sie.':'Ohne PIN nutzbar. Das Mitglied kann selbst eine PIN einrichten.';}
     catch(error){if(box.isConnected)status.textContent='PIN-Status nicht geladen. '+(error.message||'OneDrive-Verbindung prüfen.');}
   }
-  global.Drinks={open,preload,updateCards:renderCards,reset,beforeView,adminFields,loadPinStatus,lock:lockAccount,saveAdminPin};
+  global.Drinks={open,preload,updateCards:()=>{renderCards();if(rankingReady)renderRanking();},reset,beforeView,adminFields,loadPinStatus,lock:lockAccount,saveAdminPin};
   // Der vollständige Getränke-Bereich steht vor diesem Script bereits im DOM.
   // Den Direktzugang sofort binden, auch wenn weitere Scripts noch laden.
   if(byId('drinksView'))init();else document.addEventListener('DOMContentLoaded',init,{once:true});

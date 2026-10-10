@@ -105,9 +105,9 @@
   }
   async function read(memberId){const ctx=await context();return (await readWithContext(ctx,memberId)).account;}
   function cached(memberId){return cache.has(String(memberId))?clone(cache.get(String(memberId)).account):M.empty(memberId);}
-  async function list(memberIds){
+  async function list(memberIds,{replaceCache=true}={}){
     const ctx=await context(),next=new Map();
-    if(!ctx.folder){assertCurrent(ctx);cache=next;return memberIds.map(id=>M.empty(id));}
+    if(!ctx.folder){assertCurrent(ctx);if(replaceCache)cache=next;return memberIds.map(id=>M.empty(id));}
     const files=[];let url=itemUrl(ctx.root,ctx.folder.id)+'/children?$select=id,name,eTag,file';
     while(url){const data=await(await odFetch(url)).json();files.push(...(data.value||[]));url=data['@odata.nextLink'];}
     const filesByName=new Map(files.filter(f=>f.file).map(f=>[f.name,f]));
@@ -201,6 +201,27 @@
     const account=await mutate(memberId,a=>{admin();const next=M.appendAdminMany(a,entries),before=rewardFundingGaps(a);for(const [id,gap] of rewardFundingGaps(next))if(gap>(before.get(id)||0))throw Object.assign(new Error('Diese Teilzahlung hat zu später vergebenen Treuepunkten beigetragen. Eine einzelne Rücknahme ist hier noch nicht möglich. Eine gemeinsame Bereinigung ist nur sinnvoll, wenn auch die spätere Zahlung fehlerhaft ist. Es wurde nichts gespeichert.'),{code:'rewardFunding'});return next;},null,expectedSource);
     try{global.DrinksMobile?.queue(String(memberId));}catch{}return account;
   }
+  async function applyMobileCommand(memberId,job,command,expectedSource){
+    global.DeckelCommands.validate(command);
+    if(!/^[a-f0-9-]{36}$/.test(job.id)||!Number.isSafeInteger(job.created_at)||job.created_at>Date.now()+60000)throw Error('Ungültiger Handyauftrag.');
+    const record=(await readMobileFile(await mobileFileName(memberId)))?.data;
+    if(!record||record.alias!==job.alias||record.revision!==job.revision)throw Object.assign(Error('Handyzugang ersetzt.'),{code:'accessChanged'});
+    const policy=M.rewardPolicy(await rewards(expectedSource)),createdAt=new Date(job.created_at).toISOString(),prefix='mobile-'+job.id;
+    const saved=await mutate(memberId,a=>{
+      if(command.kind==='drinks'){
+        const entries=command.entries.map((x,i)=>({id:prefix+'-'+i,type:'drinks',count:1,drink:x.drink,cents:x.drink==='wine'?M.WINE_PRICE:M.PRICE,loyaltyVersion:2,...(x.pointUnits?{pointUnits:x.pointUnits}:{}),createdAt}));
+        for(const b of entries)if(!a.bookings.some(x=>x.id===b.id)&&b.pointUnits&&b.pointUnits!==M.pointCost(policy,b.drink))throw Object.assign(Error('Punktekosten geändert.'),{code:'pointsChanged'});
+        const required=entries.filter(b=>!a.bookings.some(x=>x.id===b.id)).reduce((n,b)=>n+(b.pointUnits||0),0);
+        if(required>M.rewardState(a,policy).pointUnits)throw Object.assign(Error('Treuepunkte inzwischen verwendet.'),{code:'pointsChanged'});
+        return M.appendMany(a,entries);
+      }
+      if(command.kind==='cash')return M.appendWithReward(a,{id:prefix,type:'payment',cents:command.cents,method:'cash',confirmation:'member',prepay:true,createdAt},policy);
+      const existing=a.bookings.find(b=>b.id===prefix);if(existing){if(existing.type!=='correction'||existing.targetId!==command.targetId)throw Error('Vorgangsnummer bereits verwendet.');return a;}
+      const target=M.correctable(a),original=a.bookings.find(b=>b.id===command.targetId);
+      if(!original||target.targetId!==command.targetId||M.day(original.createdAt)!==M.day(new Date().toISOString()))throw Object.assign(Error('Eintrag inzwischen bezahlt, geändert oder zu alt.'),{code:'correctionChanged'});
+      return M.append(a,{id:prefix,type:'correction',targetId:command.targetId,count:1,cents:target.price,drink:target.drink,createdAt});
+    },null,expectedSource);try{global.DrinksMobile?.queue(String(memberId));}catch{}return saved;
+  }
   function mobileName(value){if(value!=='handy-verbindung.json'&&value!=='push-verbindung.json'&&!/^handy-[a-f0-9]{64}\.json$/.test(value))throw new Error('Ungültige Zugangsdatei.');return value;}
   async function mobileFileName(id){return (await fileName(id)).replace('konto-','handy-');}
   async function readMobileFile(filename){
@@ -243,5 +264,5 @@
     }));
     assertCurrent(ctx);return {...M.consumption(accounts,year),sourceKey:ctx.key};
   }
-  global.DrinksStore={read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,previewRewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
+  global.DrinksStore={applyMobileCommand,read,list,cached,setPin,changeOwnPin,book,bookMany,adminPaypalPayment,adminDelete,consumption,reset,rewards,previewRewards,saveRewards,cachedRewards,readMobileFile,writeMobileFile,mobileFileName,mobileIds,sourceKey:()=>contextKey};
 })(typeof window==='undefined'?globalThis:window);

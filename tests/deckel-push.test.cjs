@@ -105,3 +105,30 @@ test('Push: Weiterleitungen bleiben erfolglos und werden nicht mit Zugangsdaten 
  assert.equal(f.sends[0].options.redirect,'manual');assert.deepEqual(JSON.parse(warnings[0][1]),{httpStatus:302});
  assert.equal((await call('/admin/status',{alias})).data.devices,1);f.db.close();
 });
+
+test('Handyqueue: getrennte Berechtigung, identische Wiederholung, Abschluss und Rotation',async()=>{
+ const f=await fixture(),{call,alias,revision}=f,access=(await call('/admin/account',{alias,revision})).data;
+ const request={alias,revision,id:webcrypto.randomUUID(),envelope:{version:1,iv:'A'.repeat(16),data:'A'.repeat(5484)}};
+ assert.equal((await call('/commands/submit',request,access.capability)).status,401);
+ assert.equal((await call('/admin/commands/pending',{},access.actionCapability)).status,401);
+ assert.equal((await call('/commands/submit',request,access.actionCapability)).data.status,'pending');
+ assert.equal((await call('/commands/submit',request,access.actionCapability)).data.status,'pending');
+ assert.equal((await call('/commands/submit',{...request,envelope:{...request.envelope,iv:'B'.repeat(16)}},access.actionCapability)).status,409);
+ assert.equal((await call('/admin/commands/pending')).data.commands.length,1);
+ assert.equal((await call('/admin/commands/ack',{alias,revision,id:request.id,status:'done'},access.actionCapability)).status,401);
+ await call('/admin/commands/ack',{alias,revision,id:request.id,status:'done'});
+ assert.equal((await call('/commands/status',request,access.actionCapability)).data.status,'done');
+ assert.equal((await call('/commands/submit',request,access.actionCapability)).data.status,'done');
+ assert.equal(f.db.prepare('SELECT envelope FROM commands').get().envelope,'');
+ assert.equal((await call('/admin/commands/pending')).data.commands.length,0);
+ await call('/admin/account',{alias,revision:'revision-replacement'});
+ assert.equal((await call('/commands/submit',request,access.actionCapability)).status,409);f.db.close();
+});
+test('Handyqueue begrenzt Rate und Anzahl ausstehender Aufträge',async()=>{
+ const f=await fixture(),{call,alias,revision}=f,cap=(await call('/admin/account',{alias,revision})).data.actionCapability;
+ const request=()=>({alias,revision,id:webcrypto.randomUUID(),envelope:{version:1,iv:'A'.repeat(16),data:'A'.repeat(5484)}});
+ assert.equal((await call('/commands/submit',request(),cap)).status,200);
+ assert.equal((await call('/commands/submit',request(),cap)).status,429);
+ for(let i=1;i<30;i++){f.clock.now+=2100;assert.equal((await call('/commands/submit',request(),cap)).status,200);}
+ f.clock.now+=2100;assert.equal((await call('/commands/submit',request(),cap)).status,429);f.db.close();
+});

@@ -177,7 +177,7 @@ test('Vormerkung und Rücknahme einer Punkteeinlösung verändern den Bestand vo
  const f=await fixture({policy:newPointsPolicy,prepaid:1000});f.click('a','points-beer');f.click('a','undo');assert.equal(f.writes.length,0);assert.equal(f.nodes['dr-main-confirm'].hidden,true);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,150);assert.equal(f.button('a','points-wine').disabled,false);
 });
 test('Im Hintergrund vorbereitete Karten öffnen ohne erneutes Laden aller Mitglieder und Konten',async()=>{
- const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,0);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,0);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
+ const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,0);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,1);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
 });
 
 test('Karten-OK speichert nur die ausgewählte Karte und hält deren Fokus',async()=>{
@@ -200,8 +200,8 @@ test('Zurück zur Namensübersicht erhält ungespeicherte Eingaben und kennzeich
  const f=await fixture();await f.menu('a');f.click('a','add');f.nodes['dr-all-members'].handlers.click();assert.equal(f.writes.length,0);assert.equal(f.nodes['dr-directory'].children[0].dataset.draft,'true');await f.menu('a');assert.match(f.status('a'),/Noch nicht gespeichert/);f.click('a','save');await wait(()=>f.status('a')==='Gespeichert ✓');assert.equal(f.accounts.get('a').bookings.length,1);
 });
 
-test('Namensübersicht benötigt keinen Abruf aller Getränkekonten',async()=>{
- const f=await fixture();let lists=0;f.S.list=async()=>{lists++;throw Error('Sammelabruf darf das Öffnen nicht blockieren');};await f.context.Drinks.open();assert.equal(lists,0);await f.menu('a');assert.ok(f.readCount()>0);assert.equal(lists,0);
+test('Namensübersicht bleibt trotz fehlgeschlagener Hintergrund-Rangliste bedienbar',async()=>{
+ const f=await fixture();let lists=0;f.S.list=async()=>{lists++;throw Error('Sammelabruf darf das Öffnen nicht blockieren');};await f.context.Drinks.open();assert.equal(lists,1);await f.menu('a');assert.ok(f.readCount()>0);assert.equal(lists,1);
 });
 test('Fremde Vormerkungen blockieren die Einzahlung im eigenen Menü nicht',async()=>{
  const f=await fixture();await f.menu('a');f.click('a','add');f.nodes['dr-all-members'].handlers.click();await f.menu('b');assert.equal(f.button('b','deposit').disabled,false);f.click('b','deposit');await wait(()=>f.root.dataset.screen==='amount');assert.equal(f.accounts.get('a').bookings.length,0);
