@@ -27,7 +27,7 @@
   const running=Boolean(currentSessionId||currentOperationId);
   const recorded=todayEntries().length;
   const hasProgress=recorded>0||count>0||Boolean(currentClosingTopic)||Boolean(typeof currentOperationDraft!=='undefined'&&currentOperationDraft)||Boolean(typeof pendingDocumentReport!=='undefined'&&pendingDocumentReport?.pageCount);
-  if(summary){summary.hidden=!running||!hasProgress;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
+  if(summary){summary.hidden=!running;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
  }
  function beforeSelection(){selectionKey=(currentSessionId||currentOperationId||'')+'|'+sessionType;selectionUndo=new Map(pendingMemberStatuses);}
  function clearSelectionUndo(){selectionUndo=null;}
@@ -56,8 +56,9 @@
  }
  function init(){
   initialized=true;
-  const view=byId('attendanceView'),summary=document.createElement('aside');summary.id='workflowSessionSummary';summary.className='workflow-session';summary.innerHTML='<p role="status"></p><button type="button" class="primary-button">Termin fortsetzen</button>';view.prepend(summary);
+  const view=byId('attendanceView'),summary=document.createElement('aside');summary.id='workflowSessionSummary';summary.className='workflow-session';summary.innerHTML='<p role="status"></p><div class="workflow-actions"><button type="button" class="primary-button">Termin fortsetzen</button><button type="button" class="outline-button" id="cancelCurrentTermButton">Termin abbrechen</button></div>';view.prepend(summary);
   summary.querySelector('button').onclick=()=>{setHomeFlowStage(2);showView('attendanceView');};
+  byId('cancelCurrentTermButton').onclick=()=>{if(discardCurrentAttendanceSession()){showView('attendanceView');attendance();}};
   const hint=byId('attendanceDraftStatus');if(hint){const actions=document.createElement('div');actions.className='workflow-actions';actions.innerHTML='<button id="attendanceUndo" type="button" class="outline-button" hidden>Letzte Markierung zurücknehmen</button><button id="attendanceSyncAction" type="button" class="outline-button">OneDrive verbinden</button>';hint.after(actions);byId('attendanceUndo').onclick=undoSelection;byId('attendanceSyncAction').onclick=()=>{if(!oneDriveSignedIn()||navigator.onLine===false)byId('cloudSyncButton')?.click();else syncOneDrive({manual:true,refreshHistory:false});};}
   const history=byId('historySearch')?.closest('.ux-search');if(history){const filters=document.createElement('div');filters.className='workflow-history-filters';filters.innerHTML='<label>Terminart<select id="historyTypeFilter" class="text-input"><option value="">Alle Terminarten</option>'+['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].map(t=>`<option>${t}</option>`).join('')+'</select></label><label>Von<input id="historyFromFilter" class="text-input" type="date"></label><label>Bis<input id="historyToFilter" class="text-input" type="date"></label><button type="button" class="outline-button">Filter zurücksetzen</button>';history.append(filters);filters.onchange=()=>renderHistory();filters.querySelector('button').onclick=()=>{filters.querySelectorAll('input,select').forEach(n=>n.value='');byId('historySearch').value='';renderHistory();};}
   const names={'probeTypes':'Welche Terminarten finden statt?','probeTopics':'Welche Themen wurden behandelt?','topVisitors':'Wer nimmt am häufigsten teil?','breathingClearanceList':'Welche Atemschutznachweise laufen ab?'};

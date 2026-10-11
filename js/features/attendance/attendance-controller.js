@@ -463,14 +463,20 @@ if(!window.__floatingAttendanceStatusBound){
 
 function requestReturnToHomeStage(){ setHomeFlowStage(1); return true; }
 function discardCurrentAttendanceSession(){
-  if(!confirm("Diesen laufenden Termin mit allen Anmeldungen und ungespeicherten Eingaben verwerfen? Abgeschlossene Berichte bleiben erhalten."))return false;
+  if(!currentSessionId&&!currentOperationId)return false;
+  if(!confirm("Termin wirklich abbrechen? Alle Anmeldungen, die Fahrzeugbesetzung und ungespeicherte Berichtsangaben dieses Termins werden verworfen. Abgeschlossene Berichte bleiben erhalten."))return false;
   const ids=new Set(todayEntries().map(entry=>entry.id));
   entries=entries.filter(entry=>!ids.has(entry.id));
   pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";chosenRole="";
   currentSessionId="";safeStorage.removeItem("fw_v1_current_session_id");
+  clearTimeout(operationDraftSaveTimer);
   resetDocumentReportState?.();resetOperationState?.();
+  operationAssignments={};operationAssignmentRoles={};currentClosingTopic='';currentProbeDate=systemToday();
+  tacticsClosingPending=false;currentTacticsAssignments=new Map();currentTacticsSlots=[];tacticsChangeSlots=[];tacticsDragSource=null;currentAtueMember=null;breathingProtectionPlanned=false;
+  const breathingInput=byId('breathingProtectionPlanned');if(breathingInput)breathingInput.checked=false;
+  window.WorkflowUX?.clearSelectionUndo?.();
   saveEntries();setHomeFlowStage(1);renderEntries();renderMembers();updateSelection();
-  showToast("Termin verworfen. Du kannst einen neuen Termin beginnen.");return true;
+  showToast("Termin abgebrochen. Du kannst einen neuen Termin beginnen.");return true;
 }
 function setHomeFlowStage(stage){
   if(byId("operationReportForm")?.hidden===false)persistOperationDraft(collectOperationData());
