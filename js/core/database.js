@@ -82,7 +82,7 @@ function setIpadStorageCardState(kind) {
   if(name){name.textContent="Auswahl beim Speichern";name.title="OneDrive-Ordner im iPad-Dialog auswählen";}
   if(choose){choose.hidden=true;choose.disabled=true;choose.setAttribute("aria-hidden","true");}
   if(clear){clear.hidden=true;clear.disabled=true;clear.setAttribute("aria-hidden","true");}
-  if(hint)hint.textContent=item.label+" Ein fester OneDrive-Ordner kann in iPad/Safari nicht dauerhaft an die Webseite gebunden werden. Im Teilen-Dialog bitte „In Dateien sichern“ und anschließend den gewünschten OneDrive-Ordner wählen.";
+  if(hint)hint.textContent="Beim Speichern: Teilen → In Dateien sichern → Ordner wählen.";
   name?.closest("article")?.classList.add("storage-card-ipad-mode");
 }
 
@@ -94,7 +94,7 @@ function renderBackupFolderStatus() {
   byId("chooseBackupFolderButton").disabled=false;
   byId("clearBackupFolderButton").hidden=false;
   byId("clearBackupFolderButton").disabled=!backupDirectoryHandle;
-  byId("backupSupportHint").textContent="Backups werden direkt in diesem Ordner gespeichert. Den übergeordneten Gerätepfad gibt der Browser nicht an die App weiter.";
+  byId("backupSupportHint").textContent="Sicherungen werden in diesem Ordner abgelegt.";
 }
 
 async function chooseBackupFolder() {
@@ -159,7 +159,7 @@ function renderCsvFolderStatus() {
   byId("chooseCsvFolderButton").disabled=false;
   byId("clearCsvFolderButton").hidden=false;
   byId("clearCsvFolderButton").disabled=!csvDirectoryHandle;
-  byId("csvSupportHint").textContent="CSV-Dateien werden direkt in diesem Ordner gespeichert. Den übergeordneten Gerätepfad gibt der Browser nicht an die App weiter.";
+  byId("csvSupportHint").textContent="Einzelne CSV-Dateien werden in diesem Ordner abgelegt.";
 }
 
 async function chooseCsvFolder() {
@@ -271,6 +271,7 @@ async function savePdfToSelectedFolder(fileName,blob){
 }
 
 function ensureArchiveStorageCenter(){
+  if(byId("zipStorageLayout")){renderCsvFolderStatus();renderPdfFolderStatus();renderBackupFolderStatus();return;}
   const filesView=byId("settingsFilesView")||byId("archiveView");
   if(!filesView)return;
   ensurePdfFolderControls();

@@ -82,3 +82,7 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 .ux-reminder-dialog{max-height:calc(100vh - 24px)!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;box-sizing:border-box!important;overscroll-behavior:contain}
 
 .drinks-settings-setup{margin-top:24px;padding:18px;border:1px solid #c6d2cd;border-radius:16px}.drinks-settings-setup>summary{cursor:pointer;font-weight:750;font-size:20px;min-height:44px}.drinks-settings-setup .settings-menu-grid{margin-top:16px}
+
+.storage-simple{max-width:960px;gap:18px}.storage-simple>.storage-card{display:block;margin:0;padding:20px}.storage-simple h3{margin:0 0 10px}.storage-more{margin-top:16px;border-top:1px solid #d5dde0;padding-top:6px}.storage-more>summary{cursor:pointer;min-height:48px;padding:12px 0;font-weight:700}.storage-save-location{font-weight:650}.storage-simple .storage-more .storage-card{box-shadow:none;border:1px solid #d5dde0}.storage-simple .ux-backup-scope{margin-top:16px;padding:0;border:0;background:none}.storage-simple .ux-backup-scope summary{cursor:pointer;padding:12px 0}.storage-simple [data-folder]{padding-bottom:12px}
+
+.storage-simple>.storage-card{background:#fff;border:1px solid #ccd5de;border-radius:16px}

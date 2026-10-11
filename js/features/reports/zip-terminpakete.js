@@ -214,34 +214,27 @@ const zipStorageStyle=document.createElement("style");zipStorageStyle.textConten
 `;document.head.appendChild(zipStorageStyle);
 
 function reorganizeStorageAndBackups(){
-  const page=byId("settingsFilesView")||byId("archiveView");
-  if(!page||byId("zipStorageLayout"))return;
-  const content=page.querySelector(".settings-subpage-content")||page;
-  const csvCard=byId("csvFolderName")?.closest("article");
-  const pdfCard=byId("pdfFolderName")?.closest("article");
-  const backupCard=byId("backupFolderName")?.closest("article");
-  const completeExport=byId("exportCompleteBackupButton");
-  const completeImport=byId("importCompleteBackupButton");
-  const importCard=byId("reportImportSettingsCard");
-
-  const layout=document.createElement("div");layout.id="zipStorageLayout";layout.className="zip-storage-layout";
-  const makeSection=(id,kicker,title,description)=>{const section=document.createElement("section");section.id=id;section.className="zip-storage-section";section.innerHTML=`<header class="zip-storage-heading"><span>${kicker}</span><h3>${title}</h3><p>${description}</p></header><div class="zip-storage-grid"></div>`;layout.appendChild(section);return section.querySelector(".zip-storage-grid");};
-  const packageGrid=makeSection("zipPackageStorage","1 · Terminpakete","Terminpakete speichern","Beim Abschluss wird eine ZIP-Datei mit CSV, Haupt-PDF und optionalem Zusatzbericht gespeichert.");
-  const recoveryGrid=makeSection("zipRecoveryStorage","2 · Wiederherstellung","Daten übernehmen oder wiederherstellen","Terminpakete, ältere Berichte und vollständige Datensicherungen einlesen.");
-  const backupGrid=makeSection("zipBackupStorage","3 · Datensicherung","Komplett-Backup","Mitglieder, Einstellungen, Historie und Dokumentberichte unabhängig von den Terminpaketen sichern.");
-
-  if(csvCard){csvCard.classList.add("zip-package-card");const heading=csvCard.querySelector("h3,h4");if(heading)heading.textContent="Speicherort für Terminpakete";const hint=byId("csvSupportHint");if(hint)hint.textContent=supportsPersistentDirectoryPicker?.()?"ZIP-Terminpakete werden direkt in diesem Ordner gespeichert.":"Beim Abschluss öffnet sich Teilen beziehungsweise „In Dateien sichern“ für das ZIP-Terminpaket.";const choose=byId("chooseCsvFolderButton");if(choose)choose.textContent="Ordner für Terminpakete auswählen";packageGrid.appendChild(csvCard);}
-  if(pdfCard)pdfCard.remove();
-  if(importCard)recoveryGrid.appendChild(importCard);
-
-  if(completeImport){const card=document.createElement("article");card.className="storage-card storage-backup-card";card.innerHTML=`<div class="storage-card-heading"><span class="storage-card-kicker">Vollständige Wiederherstellung</span><h3>Komplett-Backup einlesen</h3><p class="help-text">Ersetzt nach Bestätigung Mitglieder, Einstellungen, Tagesdaten, Historie und gespeicherte Dokumentberichte.</p></div><div class="storage-card-actions"></div>`;card.querySelector(".storage-card-actions").appendChild(completeImport);recoveryGrid.appendChild(card);}
-  if(backupCard){const heading=backupCard.querySelector("h3,h4");if(heading)heading.textContent="Speicherort für Komplett-Backups";backupGrid.appendChild(backupCard);}
-  if(completeExport){const card=document.createElement("article");card.className="storage-card storage-backup-card";card.innerHTML=`<div class="storage-card-heading"><span class="storage-card-kicker">Notfallsicherung</span><h3>Vollständige Datensicherung erstellen</h3><p class="help-text">Diese Sicherung ist unabhängig von einzelnen ZIP-Terminpaketen und dient der Wiederherstellung der gesamten Anwendung.</p></div><div class="storage-card-actions"></div>`;card.querySelector(".storage-card-actions").appendChild(completeExport);backupGrid.appendChild(card);}
-
-  content.querySelectorAll(".archive-storage-center,.archive-storage-backup-grid").forEach(node=>{if(node!==layout&&!node.contains(layout)&&node.children.length===0)node.remove();});
-  content.appendChild(layout);
-  const title=page.querySelector(".screen-heading h2");if(title)title.textContent="Speicherorte und Backups";
-  const description=page.querySelector(".screen-heading p:not(.eyebrow)");if(description)description.textContent="ZIP-Terminpakete, Wiederherstellung und vollständige Datensicherung getrennt verwalten.";
+  const page=byId('settingsFilesView')||byId('archiveView');if(!page||byId('zipStorageLayout'))return;
+  const content=page.querySelector('.settings-subpage-content')||page;
+  const csvCard=byId('csvFolderName')?.closest('article'),pdfCard=byId('pdfFolderName')?.closest('article'),backupCard=byId('backupFolderName')?.closest('article');
+  const completeExport=byId('exportCompleteBackupButton'),completeImport=byId('importCompleteBackupButton'),importCard=byId('reportImportSettingsCard');
+  if(!backupCard||!completeExport||!importCard)return;
+  const layout=document.createElement('div');layout.id='zipStorageLayout';layout.className='zip-storage-layout storage-simple';
+  layout.innerHTML='<article class="storage-card"><h3>Berichte</h3><p>Pro Termin eine ZIP-Datei mit CSV und PDF.</p><p class="storage-save-location"></p><details class="storage-more"><summary>Berichte importieren</summary><div data-import></div></details><details class="storage-more"><summary>Einzeldateien separat exportieren</summary><div class="zip-storage-grid" data-single></div></details></article><article class="storage-card" id="simpleAppBackup"><h3>App-Datensicherung</h3><p>Mitglieder, Einstellungen, laufende Daten und Berichte sichern.</p><div class="storage-card-actions" data-export></div><details class="storage-more"><summary>Speicherort ändern</summary><div data-folder></div></details><details class="storage-more"><summary>App-Datensicherung wiederherstellen</summary><p>Ersetzt nach Bestätigung die vorhandenen App-Daten.</p><div class="storage-card-actions" data-restore></div></details><div data-scope></div></article>';
+  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent||'')||(/Macintosh/i.test(navigator.userAgent||'')&&('ontouchend' in document));
+  if(!supportsPersistentDirectoryPicker())layout.querySelector('#simpleAppBackup>details>summary').textContent='Wo wird die Sicherung gespeichert?';
+  layout.querySelector('.storage-save-location').textContent=ios?'Speichern: Teilen → In Dateien sichern.':'Speicherort: Downloadordner des Browsers oder Auswahl beim Download.';
+  const importHeading=importCard.querySelector('h3');if(importHeading)importHeading.textContent='ZIP, CSV oder PDF einlesen';importCard.querySelectorAll('.help-text,.storage-card-kicker').forEach(n=>n.remove());layout.querySelector('[data-import]').append(importCard);
+  for(const card of [csvCard,pdfCard])if(card)layout.querySelector('[data-single]').append(card);
+  if(csvCard){const heading=csvCard.querySelector('h3');if(heading)heading.textContent='CSV-Einzelexport';const help=csvCard.querySelector('.help-text');if(help)help.textContent='Nur für separat exportierte CSV-Dateien.';}
+  completeExport.textContent='App-Daten jetzt sichern';layout.querySelector('[data-export]').append(completeExport);
+  completeImport.textContent='Sicherungsdatei auswählen';layout.querySelector('[data-restore]').append(completeImport);
+  const folder=layout.querySelector('[data-folder]');for(const node of [...backupCard.querySelectorAll('.storage-folder-status,#backupFolderActions,#completeBackupFileInput')])folder.append(node);
+  const scope=backupCard.querySelector('.ux-backup-scope');if(scope)layout.querySelector('[data-scope]').append(scope);
+  backupCard.remove();content.append(layout);
+  byId('archiveStorageCenter')?.remove();
+  const title=page.querySelector('.screen-heading h2');if(title)title.textContent='Berichte & Datensicherung';
+  const description=page.querySelector('.screen-heading p:not(.eyebrow)');if(description)description.remove();
 }
 const previousMoveReportImportToSettings=moveReportImportToSettings;
 moveReportImportToSettings=function(){previousMoveReportImportToSettings();setTimeout(reorganizeStorageAndBackups,0);};
