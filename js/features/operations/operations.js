@@ -65,15 +65,30 @@ function autoAssignOperationCrew(){
   const remaining=[...names];
   const take=(group,role,predicate=()=>true)=>{const capacity=OP_VEHICLE_CAPACITY[group]||0,occupied=Object.values(operationAssignments).filter(value=>value===group).length;if(capacity&&occupied>=capacity)return false;const index=remaining.findIndex(name=>predicate(operationMemberForName(name))&&operationRolesForName(name,group).includes(role)&&!operationRoleOwner(group,role,name));if(index<0)return false;const name=remaining.splice(index,1)[0];operationAssignments[name]=group;operationAssignmentRoles[name]=role;return true;};
   const fillVehicle=(group,capacity)=>{
-    take(group,"GF",member=>getMemberRoles(member).includes("GF"));
-    take(group,"Maschinist",member=>operationRolesForName(nameForStorage(member),group).includes("Maschinist"));
-    for(const role of OP_ROLE_ORDER.filter(value=>value!=="GF"&&value!=="Maschinist")){if(Object.values(operationAssignments).filter(value=>value===group).length>=capacity)break;take(group,role);}
+    const required=['GF','Maschinist','ATF','ATM','WTF','WTM'],matched=new Map();
+    // Match the whole Staffel before committing anyone to this vehicle.
+    // Reassign flexible members so they do not block a scarce qualification.
+    const match=(role,seen)=>{
+      for(const name of remaining){
+        if(seen.has(name)||!operationRolesForName(name,group).includes(role))continue;
+        seen.add(name);
+        if(!matched.has(name)||match(matched.get(name),seen)){matched.set(name,role);return true;}
+      }
+      return false;
+    };
+    if(!required.every(role=>match(role,new Set())))return false;
+    for(const [name,role] of matched){remaining.splice(remaining.indexOf(name),1);operationAssignments[name]=group;operationAssignmentRoles[name]=role;}
+    for(const role of OP_ROLE_ORDER.filter(value=>!required.includes(value))){if(Object.values(operationAssignments).filter(value=>value===group).length>=capacity)break;take(group,role);}
+    return true;
   };
-  fillVehicle("EM 5/42 LF10",OP_VEHICLE_CAPACITY["EM 5/42 LF10"]);
-  if(remaining.length>=2)fillVehicle("EM 5/47 TSF",OP_VEHICLE_CAPACITY["EM 5/47 TSF"]);
+  fillVehicle('EM 5/42 LF10',OP_VEHICLE_CAPACITY['EM 5/42 LF10']);
+  fillVehicle('EM 5/47 TSF',OP_VEHICLE_CAPACITY['EM 5/47 TSF']);
   remaining.forEach(name=>{operationAssignments[name]="Reserve Einsatzstelle";operationAssignmentRoles[name]="Reserve";});
   renderOperationAssignmentStep();
-  const errors=validateOperationAssignments();showToast(errors.length?"Vorschlag erstellt. Bitte die rot markierten Hinweise prüfen.":"Plausibler Besetzungsvorschlag wurde erstellt.",errors.length?"error":"success");
+  const errors=validateOperationAssignments();
+  const empty=operationVehicleGroups().filter(group=>!Object.values(operationAssignments).includes(group));
+  if(!errors.length&&empty.length){showToast(empty.length===2?'Keine vollständige Staffel möglich. Beide Fahrzeuge bleiben unbesetzt; alle Kräfte sind in der Reserve.':empty[0]+': Keine vollständige Staffel möglich. Das Fahrzeug bleibt unbesetzt; übrige Kräfte sind in der Reserve.','warning');return;}
+  showToast(errors.length?"Vorschlag erstellt. Bitte die rot markierten Hinweise prüfen.":"Plausibler Besetzungsvorschlag wurde erstellt.",errors.length?"error":"success");
 }
 function operationBaseRolesForName(name){
   const member=operationMemberForName(name),roles=member?[...new Set(getMemberRoles(member).filter(Boolean))]:[];
