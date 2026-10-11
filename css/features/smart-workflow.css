@@ -18,3 +18,5 @@
 .statistics-collapsible>summary{cursor:pointer}
 .statistics-collapsible[open]>summary small{font-size:0}.statistics-collapsible[open]>summary small::after{content:"Antippen zum Schließen";font-size:.78rem}
 @media(max-width:700px){.smart-quality-panel [data-quality-list] article{grid-template-columns:1fr;padding:10px}.smart-quality-panel [data-quality-list] article small{position:static;width:max-content;grid-row:1}.smart-quality-toggle{width:100%}}
+
+.smart-setup-card[hidden]{display:none!important}.smart-setup-status{margin:16px 18px}#smartSetupReview{margin-top:24px}#smartSetupReview>summary{cursor:pointer;padding:12px 0;font-weight:700}

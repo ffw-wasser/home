@@ -45,28 +45,46 @@
     window.Usability?.statistics();
   }
   function enhanceHistory(){document.querySelectorAll(".history-item").forEach(item=>{if(item.querySelector(".smart-history-status"))return;const small=item.querySelector("small");if(!small)return;const corrected=/Korrektur/.test(small.textContent);const badge=document.createElement("span");badge.className=`smart-history-status ${corrected?"corrected":"original"}`;badge.textContent=corrected?"korrigiert":"Original";small.insertAdjacentElement("afterend",badge);});}
+  const setupKey='fw_setup_completed_v1';
+  function setupState(){
+    const connected=typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady();
+    const secure=typeof passwordSecurityStatus==='function'&&passwordSecurityStatus().secure;
+    const count=typeof members!=='undefined'&&Array.isArray(members)?members.length:0;
+    let scope='',completed=false;
+    try{scope=JSON.stringify([localStorage.getItem('fw_onedrive_client_id')||'',localStorage.getItem('fw_onedrive_shared_folder_url')||'']);completed=localStorage.getItem(setupKey)===scope;}catch{}
+    const ready=connected&&secure&&count>0;
+    try{if(ready&&scope)localStorage.setItem(setupKey,scope);else if(!secure||(connected&&!count)){localStorage.removeItem(setupKey);completed=false;}}catch{}
+    return {connected,secure,count,complete:ready||(completed&&secure)};
+  }
+  function openSetupStep(key){
+    document.getElementById('smartSetupWizard')?.close();
+    if(key==='onedrive')document.getElementById('cloudSyncButton')?.click();
+    else showView(key==='password'?'settingsSecurityView':'settingsMembersView');
+  }
+  function nextSetupStep(state){return !state.connected?'onedrive':!state.secure?'password':'members';}
+  const setupLabels={onedrive:['OneDrive verbinden','Verbinde den gemeinsamen Datenordner.'],password:['Admin-Passwort festlegen','Lege ein eigenes Passwort mit mindestens 8 Zeichen fest.'],members:['Mitglieder laden oder anlegen','Öffne die Mitgliederverwaltung und prüfe die Mitgliederliste.']};
   function enhanceSettings(){
     const page=document.getElementById('settingsView');if(!page)return;
     let card=document.getElementById('smartSetupCard');
-    if(!card){card=document.createElement('article');card.id='smartSetupCard';card.className='panel smart-setup-card';card.innerHTML='<div><small>Einrichtungsstatus</small><h3></h3><p></p></div><div class="smart-setup-steps"><span data-state="members"></span><span data-state="cloud"></span><span>Backup separat prüfen</span></div>';page.querySelector('.screen-heading')?.after(card);}
-    const connected=typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady(),count=Array.isArray(members)?members.length:0;
-    card.querySelector('h3').textContent=connected&&count?'Anwendung verbunden':'Einrichtung vervollständigen';card.querySelector('p').textContent=count+' Mitglieder geladen · '+(connected?'OneDrive-Zugriff bestätigt':'OneDrive-Zugriff noch nicht bestätigt');
-    for(const [key,label,done] of [['members','Mitglieder',count>0],['cloud','OneDrive',connected]]){const item=card.querySelector('[data-state="'+key+'"]');item.textContent=label;item.classList.toggle('done',done);}
+    if(!card){card=document.createElement('article');card.id='smartSetupCard';card.className='panel smart-setup-card';card.innerHTML='<div><small>Einmalige Einrichtung</small><h3></h3><p></p></div><button type="button" class="primary-button"></button>';page.querySelector('.screen-heading')?.after(card);}
+    const state=setupState(),key=nextSetupStep(state),[label,help]=setupLabels[key];
+    card.hidden=state.complete;
+    card.querySelector('h3').textContent=label;card.querySelector('p').textContent=help;
+    const button=card.querySelector('button');button.textContent=label;button.onclick=()=>openSetupStep(key);
+    if(!document.getElementById('smartSetupReview')){const details=document.createElement('details');details.id='smartSetupReview';details.className='dr-admin-details';details.innerHTML='<summary>Einrichtung prüfen</summary><p>Verbindung, Passwort und Mitglieder prüfen. Sicherungen findest du unter „Berichte und Datensicherung“; Getränkekonten unter „Getränkeverwaltung → Sichern &amp; Zurücksetzen“.</p><button type="button" class="outline-button">Einrichtungsstatus anzeigen</button>';details.querySelector('button').onclick=()=>{updateSetupWizard();ensureSetupWizard().showModal();};page.append(details);}
+    const dialog=document.getElementById('smartSetupWizard');if(dialog?.open)updateSetupWizard();
   }
-  function syncOneDriveFreshness(){const el=document.getElementById("oneDriveDetail");if(!el)return;const last=localStorage.getItem("fw_onedrive_last_sync");if(last&&!el.textContent.includes("Letzte erfolgreiche")){const d=new Date(last);if(!Number.isNaN(d.getTime()))el.textContent+=` · Letzte erfolgreiche Synchronisierung: ${d.toLocaleString("de-DE")}`;}}
-  function ensureSetupWizard(){let d=document.getElementById("smartSetupWizard");if(d)return d;d=document.createElement("dialog");d.id="smartSetupWizard";d.className="smart-setup-wizard";d.innerHTML='<form method="dialog"><header><div><small>Geführte Einrichtung</small><h2>System startklar machen</h2></div><button value="cancel" aria-label="Schließen">×</button></header><ol><li data-setup="onedrive"><b>1</b><div><strong>OneDrive</strong><span>Gemeinsamen Datenordner verbinden und testen.</span></div></li><li data-setup="password"><b>2</b><div><strong>Admin-Passwort</strong><span>Nach bestätigter OneDrive-Verbindung das Standardpasswort ersetzen.</span></div></li><li data-setup="members"><b>3</b><div><strong>Mitglieder</strong><span>Mitgliederdaten aus dem verbundenen OneDrive-Ordner laden.</span></div></li><li data-setup="backup"><b>4</b><div><strong>Backup</strong><span>Speicherort und Wiederherstellung prüfen.</span></div></li></ol><footer><button value="cancel" class="primary-button">Fertig</button></footer></form>';document.body.appendChild(d);return d;}
-  function updateSetupWizard(){const d=ensureSetupWizard(),secure=typeof passwordSecurityStatus==="function"&&passwordSecurityStatus().secure,count=Array.isArray(members)?members.length:0,connected=typeof oneDriveAdministrationReady==="function"&&oneDriveAdministrationReady(),backed=Boolean(window.WorkflowUX?.backupChecked);[["password",secure],["members",count>0],["onedrive",connected],["backup",backed]].forEach(([key,done])=>d.querySelector(`[data-setup="${key}"]`)?.classList.toggle("done",done));}
-  function enhanceSettingsWizard(){const card=document.getElementById("smartSetupCard");if(!card||card.querySelector("button"))return;const button=document.createElement("button");button.type="button";button.className="primary-button";button.textContent="Einrichtungsassistent öffnen";button.onclick=()=>{updateSetupWizard();const wizard=ensureSetupWizard();
-      const routes={password:'settingsSecurityView',members:'settingsMembersView',backup:'settingsFilesView'};
-      wizard.querySelectorAll('[data-setup]').forEach(item=>{if(item.querySelector('button'))return;const open=document.createElement('button');open.type='button';open.className='outline-button';open.textContent=item.dataset.setup==='onedrive'?'OneDrive öffnen':'Öffnen';open.onclick=()=>{wizard.close();if(item.dataset.setup==='onedrive')document.getElementById('cloudSyncButton')?.click();else showView(routes[item.dataset.setup]);};item.append(open);});wizard.showModal();};card.appendChild(button);}
+  function syncOneDriveFreshness(){const el=document.getElementById('oneDriveDetail');if(!el)return;const last=localStorage.getItem('fw_onedrive_last_sync');if(last&&!el.textContent.includes('Letzte erfolgreiche')){const d=new Date(last);if(!Number.isNaN(d.getTime()))el.textContent+=' · Letzte erfolgreiche Synchronisierung: '+d.toLocaleString('de-DE');}}
+  function ensureSetupWizard(){let d=document.getElementById('smartSetupWizard');if(d)return d;d=document.createElement('dialog');d.id='smartSetupWizard';d.className='smart-setup-wizard';d.innerHTML='<form method="dialog"><header><h2>Einrichtung prüfen</h2><button value="cancel" aria-label="Schließen">×</button></header><p class="smart-setup-status" role="status"></p><ol><li data-setup="onedrive"><b>1</b><div><strong>OneDrive</strong><span></span></div></li><li data-setup="password"><b>2</b><div><strong>Admin-Passwort</strong><span></span></div></li><li data-setup="members"><b>3</b><div><strong>Mitglieder</strong><span></span></div></li></ol><footer><button value="cancel" class="primary-button">Schließen</button></footer></form>';document.body.appendChild(d);for(const item of d.querySelectorAll('[data-setup]')){const button=document.createElement('button');button.type='button';button.className='outline-button';button.textContent='Öffnen';button.onclick=()=>openSetupStep(item.dataset.setup);item.append(button);}return d;}
+  function updateSetupWizard(){const d=ensureSetupWizard(),state=setupState();d.querySelector('.smart-setup-status').textContent=state.complete?'Die Einrichtung ist abgeschlossen.':'Erledige den nächsten offenen Schritt.';for(const [key,done,text] of [['onedrive',state.connected,state.connected?'Verbindung bestätigt.':'Aktuell nicht verbunden.'],['password',state.secure,state.secure?'Eigenes Passwort eingerichtet.':'Eigenes Passwort festlegen.'],['members',state.count>0,state.count+' Mitglieder geladen.']]){const item=d.querySelector('[data-setup="'+key+'"]');item.classList.toggle('done',done);item.querySelector('span').textContent=text;item.querySelector('button').hidden=done;}}
   function enhanceCorrectionMode(){document.querySelectorAll(".archive-correction-dialog form,.operation-report-form").forEach(form=>{if(form.querySelector(".smart-edit-mode"))return;const tag=document.createElement("p");tag.className="smart-edit-mode";tag.textContent=form.closest(".archive-correction-dialog")?"Korrekturmodus · Änderungen werden vor dem Speichern geprüft":"Bearbeitungsmodus";form.prepend(tag);});}
-  function initialize(){enhanceHistory();enhanceSettings();syncOneDriveFreshness();enhanceSettingsWizard();enhanceCorrectionMode();}
+  function initialize(){enhanceHistory();enhanceSettings();syncOneDriveFreshness();enhanceCorrectionMode();}
   window.SmartWorkflow={
     initialize,
     statistics:enhanceStatistics,
     history:()=>{enhanceHistory();enhanceCorrectionMode();},
     operationForm:()=>{enhanceOperationForm();enhanceCorrectionMode();},
-    settings:()=>{enhanceSettings();syncOneDriveFreshness();enhanceSettingsWizard();},
+    settings:()=>{enhanceSettings();syncOneDriveFreshness();},
     confirm:askSmartConfirmation,
     confirmOperation:window.smartConfirmOperation
   };

@@ -1,7 +1,7 @@
 /* Explicit OneDrive logout removes local personal data, never remote files. */
 (function(global){
  'use strict';const MARKER='fw_privacy_cleanup_pending';
- const KEEP=new Set(['fw_v6_password','fw_v5_pin','fw_onedrive_client_id','fw_onedrive_shared_folder_url','fw_v1_function_entry_enabled','fw_v1_annual_role_targets',MARKER]);
+ const KEEP=new Set(['fw_setup_completed_v1','fw_v6_password','fw_v5_pin','fw_onedrive_client_id','fw_onedrive_shared_folder_url','fw_v1_function_entry_enabled','fw_v1_annual_role_targets',MARKER]);
  const DATABASES=['fw_v1_report_pdfs','ffw-document-reports','fw_v14_settings','ffw-deckel-reminders'];let running=null,clearing=false;
  function purge(store){if(!store)return;const keys=[];for(let i=0;i<store.length;i++){const key=store.key(i);if(key?.startsWith('fw_')&&!KEEP.has(key))keys.push(key);}for(const key of keys)store.removeItem(key);}
  function removeDatabase(name){if(typeof indexedDB==='undefined')return Promise.resolve();return new Promise((resolve,reject)=>{let req;const timer=setTimeout(()=>reject(new Error('Bitte weitere App-Fenster schließen und die Bereinigung erneut versuchen.')),5000);try{req=indexedDB.deleteDatabase(name);}catch(error){clearTimeout(timer);reject(error);return;}req.onsuccess=()=>{clearTimeout(timer);resolve();};req.onerror=()=>{clearTimeout(timer);reject(req.error||new Error('Lokale Berichte konnten nicht gelöscht werden.'));};});}
