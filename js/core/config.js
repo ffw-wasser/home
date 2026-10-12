@@ -71,6 +71,7 @@ let csvDirectoryHandle = null;
 let backupDirectoryHandle = null;
 let pdfDirectoryHandle = null;
 let adminTimeoutId = null;
+let adminUnlockUntil = 0;
 const ADMIN_TIMEOUT_MS = 15 * 60 * 1000;
 function isFunctionEntryEnabled() { return safeStorage.getItem(KEYS.functionEntry) !== "false"; }
 function getRoleTargets() {

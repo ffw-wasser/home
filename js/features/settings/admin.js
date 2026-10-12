@@ -6,6 +6,7 @@ function logoutAdmin(showMessage = false) {
 function resetAdminTimeout() {
   if (!adminUnlocked) return;
   clearTimeout(adminTimeoutId);
+  adminUnlockUntil = Date.now() + ADMIN_TIMEOUT_MS;
   adminTimeoutId = setTimeout(() => logoutAdmin(true), ADMIN_TIMEOUT_MS);
 }
 async function requestCloseProbe() {
