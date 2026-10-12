@@ -52,7 +52,7 @@
    const record=await open(env,row.payload,'access:'+data.alias);
    if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1}:{})};
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
@@ -105,7 +105,7 @@
    const a=M.validate(data.account,member(data.memberId)),current=await read(env,data.memberId);
    if(current.version!==data.version)fail('Das Konto wurde gleichzeitig geändert.');
    const additions=a.bookings.slice(current.account.bookings.length),policy=await open(env,m.policy,'policy');
-   if(additions.some(b=>b.type==='challenge'))fail('Challenge-Buchungen müssen gemeinsam durch den Spieldienst erfolgen.',400);
+   if(additions.some(b=>['challenge','challenge-reward'].includes(b.type)))fail('Challenge-Buchungen entstehen ausschließlich im Spieldienst.',400);
    if((data.policyRevision&&data.policyRevision!==policy.revision)||(!data.policyRevision&&additions.some(b=>b.type==='payment'||b.type==='bonus'||b.pointUnits)))fail('Die Treuepunkte-Einstellungen wurden geändert. Bitte neu laden.');
    // Ordinary writes must preserve the reset barrier and every existing entry.
    if((a.resetEpoch||'0')!==(current.account.resetEpoch||'0')||a.resetAt!==current.account.resetAt||JSON.stringify(a.bookings.slice(0,current.account.bookings.length))!==JSON.stringify(current.account.bookings))fail('Bestehende Buchungen dürfen nur über Zurücksetzen entfernt werden.');

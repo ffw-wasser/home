@@ -240,3 +240,15 @@ Die Fragenverwaltung erhält „Alle Fragen freigeben“. Nach ausdrücklicher B
 Die bestehende Dateiversions- und Revisionsprüfung schützt parallele Änderungen. Ein unbestätigter Schreibvorgang wird mit derselben vorbereiteten Revision erneut geprüft. Admin-Sperre, offene Bearbeitung, laufende Speicherung und unbestätigte Veröffentlichung verhindern neue Gesamtfreigaben. Anschließend weist die Oberfläche auf die getrennte Übertragung in den Spieldienst hin. Es wird kein Spiel gestartet und keine Buchung verändert.
 
 Prüfung: 28 fokussierte Tests für Gesamtfreigabe trotz Filter, unveränderte aktive Fragen, fehlende Zuordnung ohne Teiländerung, Abbruch, offene Bearbeitung, Admin-Sperre, verlorene Antwort, parallele Bearbeitung, bestehenden Fragenimport, Admin-Buchungsverwaltung, privaten Cache und Release-Konsistenz bestanden. Kein produktiver Fragenbestand wurde automatisch freigegeben oder veröffentlicht. Kein Cloudflare-Update erforderlich.
+
+## 2026.10.13.1 · persönliche Monats-Challenge
+
+- Gegeneinander samt Einsatz, Spielname, Spielcode und Beitritt entfernt. Alte Clients können keine neuen Duelle oder weiteren Duellantworten senden. Bereits verbuchte Ergebnisse bleiben unverändert.
+- Kategorie wählen und direkt starten. Sieben zufällige unterschiedliche Themen mit passenden Stufenfragen; GF hat Vorrang vor ALL. Profilstufe automatisch, fehlende Stufe ausdrücklich auswählen.
+- Ab 5/7 richtigen Antworten einmaliger Monatsbonus. Verwaltung legt 1–100 ganze Treuepunkte fest; ohne Einstellung keine gewertete Runde. Ein gewerteter Versuch pro Kalendermonat in Europe/Berlin, 30 Minuten Zeit.
+- Monatssperre an Mitglied statt Gerät gebunden. Startnummer, letzte Antwort, Datenbankkonflikt, SQL-Rollback, neuer Handyzugang, Konto-Reset und Monatsgrenze automatisiert geprüft. Alte Startaufträge beginnen im neuen Monat keine neue Runde.
+- Bonus ist eigener Punkte-Eintrag (Kontoschema 9); keine Geldgutschrift, Schulden- oder Verbrauchsänderung. Bestehende Punkte-Einlösung für Getränke bleibt verwendbar. Neue Bonus-Einträge in Handy- und Hauptansicht als Treuepunkte benannt.
+- Monats-Challenge direkt nach der Punktekarte, große Antwortflächen, Fortschritt und aufklappbare Erklärungen. Import und Stufenpflege in der Verwaltung eingeklappt. Veröffentlichter Fragenstand wird mit OneDrive verglichen.
+- Frische private Bank schreibfrei geprüft: 99/99 freigegeben; GF-Themen pro Kategorie Ausbildung 7, Technik 7, Fahrzeug 7, Allgemein 8. Keine Fragen oder Mitgliederdaten öffentlich veröffentlicht, keine privaten Änderungen vorgenommen.
+- Bestehende D1-Tabellen ausreichend; Worker muss aktualisiert werden, /health ergänzt challengeSoloVersion: 1. Danach Monatsbonus speichern und aktuelle Fragen übertragen.
+- Automatisierte Funktions- und Regressionstests bestanden. Keine Sichtprüfung auf physischen iPhone-/Android-Geräten; Browser-Binary-Download für lokale Sichtprüfung in dieser Umgebung fehlgeschlagen.
