@@ -52,7 +52,7 @@
    const record=await open(env,row.payload,'access:'+data.alias);
    if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1}:{})};
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){

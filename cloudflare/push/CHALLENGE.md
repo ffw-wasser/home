@@ -11,19 +11,28 @@ keine neuen Secrets und kein kostenpflichtiger Tarif sind erforderlich.
    Den bisherigen Editorinhalt durch den vollständigen Inhalt der neuen
    **worker.bundle.js** ersetzen und **Deploy** wählen. Nicht nur `worker.js`
    verwenden. DB-Bindung und bisherige Secrets unverändert lassen.
-3. `/health` öffnen: zusätzlich muss **challengeVersion: 1** erscheinen.
+3. `/health` öffnen: zusätzlich müssen **challengeVersion: 1** und
+   **challengeCategoriesVersion: 1** erscheinen.
    Ohne neue Tabellen bleiben die bisherigen Konten und Erinnerungen verfügbar;
    nur die Challenge ist nicht aktiviert.
 4. Auf dem Gerätehaus-iPad OneDrive verbinden und die Verwaltung entsperren.
    **Getränke → Verwaltung → Fragen & Antworten** öffnen. Den vorbereiteten
-   Fragenpool importieren, fachlich prüfen und mindestens sieben Fragen einzeln
+   Fragenpool öffnen: 50 Entwürfe sind bereits in `challenge-fragen.json`
+   eingetragen (10 Fahrzeug, 12 Ausbildung, 15 Technik, 13 Allgemein).
+   Fachlich prüfen und mindestens sieben Fragen je gewünschter Kategorie einzeln
    freigeben. Örtliche Fahrzeugangaben vor der Freigabe am Fahrzeug abgleichen.
+   Allgemein enthält fünf Fragen zur Geschichte der Feuerwehr Wasser. Funkfragen
+   behandeln ausschließlich Digitalfunk; konkrete Motorola-Tastenbelegungen sind
+   ohne örtliche Modellbestätigung nicht enthalten. Import ist nur bei einem
+   fehlenden Fragenpool erforderlich und ergänzt vorhandene Fragen.
 5. **Geprüfte Fragen in den Spieldienst übertragen** wählen. Entwürfe bleiben in
    OneDrive. Freigegebene Fragen und Lösungen werden verschlüsselt in D1 gespeichert.
    Nach weiteren Änderungen erneut übertragen. Bereits erstellte Runden behalten
    ihren eigenen unveränderlichen Fragenstand.
 6. Den persönlichen **Mein Deckel** am Handy auffrischen und **Deckelchallenge**
-   öffnen. Mit Spielnamen und frei wählbarem Einsatz eine Runde erstellen. Nur
+   öffnen. Eine Kategorie auswählen und mit Spielnamen und frei wählbarem Einsatz
+   eine Runde erstellen. Kategorien mit weniger als sieben veröffentlichten Fragen
+   bleiben gesperrt; Entwürfe zählen nicht mit. Nur
    den achtstelligen Spielcode teilen, niemals den persönlichen Deckellink!
    Andere Mitglieder treten über ihren eigenen Deckel bei und bestätigen den Einsatz.
    Der Gastgeber startet die Runde ab zwei Teilnehmern.
@@ -32,8 +41,10 @@ keine neuen Secrets und kein kostenpflichtiger Tarif sind erforderlich.
 
 - 2 bis 20 Teilnehmer; keine tägliche Begrenzung der Duelle. Mehrere Runden sind
   möglich und bleiben unter „Meine Runden“ (zuletzt 50 lokal geöffnet) erreichbar.
-- Alle beantworten dieselben sieben Fragen mit vier Antworten und einer Lösung.
-  Reihenfolge und Antwortpositionen werden für jede Runde neu gemischt.
+- Alle beantworten dieselben sieben Fragen aus der ausgewählten Kategorie mit
+  vier Antworten und einer Lösung. Sie werden zufällig und ohne Wiederholung
+  innerhalb der Runde ausgewählt. Reihenfolge und Antwortpositionen werden
+  für jede Runde neu gemischt. Kategorie und Fragen bleiben für die Runde fest.
   Ein Antippen speichert die endgültige Antwort. Keine Zeitwertung.
 - Die meisten richtigen Antworten gewinnen. Gleichstand teilt den möglichen
   Gewinn centgenau, begrenzt auf die bei der Abrechnung vorhandenen Schulden.

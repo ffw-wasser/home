@@ -19,7 +19,7 @@
  }
  function view(game,alias){
   const me=game.players.find(p=>p.alias===alias),done=game.status==='done';
-  return {version:1,gameId:game.id,code:game.code,status:game.status,stakeCents:game.stakeCents,expiresAt:game.expiresAt,isHost:game.host===alias,reason:game.reason||'',players:game.players.map(p=>({name:p.name,me:p.alias===alias,host:p.alias===game.host,progress:p.answers.length,...(done?{score:p.score,delta:p.delta}:{} )})),...(me&&game.status==='running'&&me.answers.length<7?{question:{index:me.answers.length,category:game.questions[me.answers.length].category,text:game.questions[me.answers.length].text,answers:game.questions[me.answers.length].answers}}:{}),...(done&&me?{review:game.questions.map((q,i)=>({text:q.text,answers:q.answers,correct:q.correct,selected:me.answers[i],explanation:q.explanation,source:q.source}))}:{})};
+  return {version:1,gameId:game.id,code:game.code,category:game.category||'Gemischte ältere Runde',status:game.status,stakeCents:game.stakeCents,expiresAt:game.expiresAt,isHost:game.host===alias,reason:game.reason||'',players:game.players.map(p=>({name:p.name,me:p.alias===alias,host:p.alias===game.host,progress:p.answers.length,...(done?{score:p.score,delta:p.delta}:{} )})),...(me&&game.status==='running'&&me.answers.length<7?{question:{index:me.answers.length,category:game.questions[me.answers.length].category,text:game.questions[me.answers.length].text,answers:game.questions[me.answers.length].answers}}:{}),...(done&&me?{review:game.questions.map((q,i)=>({text:q.text,answers:q.answers,correct:q.correct,selected:me.answers[i],explanation:q.explanation,source:q.source}))}:{})};
  }
  // The first CAS verifies ALL affected ledger versions before changing anything.
  // All later statements are guarded by its unique encrypted marker in one batch.
@@ -59,20 +59,26 @@
    if(!result.meta.changes)fail('Der Fragenstand wurde gleichzeitig geändert. Bitte erneut prüfen.');return {ok:true,count:questions.length};
   }
   const record=await actor(env,data,auth),action=path.slice('/challenge/'.length);
-  if(!['create','preview','join','get','start','answer','cancel'].includes(action))fail('Nicht gefunden.',404);
+  if(!['categories','create','preview','join','get','start','answer','cancel'].includes(action))fail('Nicht gefunden.',404);
+  if(action==='categories'){
+   const published=await pool(env),counts=new Map();for(const q of published?.value.questions||[])counts.set(q.category,(counts.get(q.category)||0)+1);
+   return {version:1,categories:[...counts].sort((a,b)=>a[0].localeCompare(b[0],'de')).map(([name,count])=>({name,count,available:count>=7}))};
+  }
   const digest=await hash(JSON.stringify({...data,action}));
   if(action==='create'){
    if(!uuid(data.id)||!Number.isSafeInteger(data.stakeCents)||data.stakeCents<1||data.stakeCents>100000||data.confirmedCents!==data.stakeCents)fail('Einsatz bitte ausdrücklich bestätigen: 0,01 bis 1000 Euro.',400);
    const previous=await env.DB.prepare('SELECT * FROM challenge_games WHERE id=?').bind(data.id).first();
    if(previous){const old=await L.open(env,previous.payload,'challenge:'+data.id);if(old.host!==record.alias||old.operations[data.id]!==digest)fail('Die Vorgangsnummer wurde bereits anders verwendet.');return view(old,record.alias);}
-   const published=await pool(env);if(!published||published.value.questions.length<7)fail('Die Verwaltung muss mindestens sieben geprüfte Fragen für die Challenge veröffentlichen.');
+   if(typeof data.category!=='string'||!data.category.trim()||data.category.length>80)fail('Bitte vor dem Erstellen eine Kategorie auswählen.',400);
+   const category=data.category.trim(),published=await pool(env),questions=published?.value.questions.filter(q=>q.category===category)||[];
+   if(questions.length<7)fail('Für diese Kategorie muss die Verwaltung mindestens sieben geprüfte Fragen veröffentlichen.');
    const a=await L.read(env,record.memberId);if(!a.version)fail('Das Getränkekonto ist noch nicht aktiv.');
-   const next={id:data.id,code:crypto.randomUUID().slice(0,8).toUpperCase(),status:'lobby',host:record.alias,stakeCents:data.stakeCents,createdAt:Date.now(),expiresAt:Date.now()+86400000,poolRevision:published.value.revision,questions:select(published.value.questions),players:[{alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',name:name(data.name),answers:[]}],operations:{[data.id]:digest}};
+   const next={id:data.id,code:crypto.randomUUID().slice(0,8).toUpperCase(),category,status:'lobby',host:record.alias,stakeCents:data.stakeCents,createdAt:Date.now(),expiresAt:Date.now()+86400000,poolRevision:published.value.revision,questions:select(questions),players:[{alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',name:name(data.name),answers:[]}],operations:{[data.id]:digest}};
    const payload=await L.seal(env,next,'challenge:'+next.id),results=await env.DB.batch([env.DB.prepare('INSERT OR IGNORE INTO challenge_games(id,code,payload,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=? AND state=\'active\')').bind(next.id,next.code,payload,Date.now(),meta.seq),env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND EXISTS(SELECT 1 FROM challenge_games WHERE id=? AND payload=?)').bind(meta.seq,next.id,payload)]);
    if(!results[0].meta.changes)fail('Die Runde konnte noch nicht bestätigt werden. Bitte denselben Vorgang erneut prüfen.',409,'retry');return view(next,record.alias);
   }
   const found=await game(env,data),old=found.value,me=old.players.find(p=>p.alias===record.alias);
-  if(action==='preview')return {version:1,gameId:old.id,code:old.code,status:old.status,stakeCents:old.stakeCents,joined:Boolean(me&&me.revision===record.revision),players:old.players.map(p=>({name:p.name})),expiresAt:old.expiresAt};
+  if(action==='preview')return {version:1,gameId:old.id,code:old.code,category:old.category||'Gemischte ältere Runde',status:old.status,stakeCents:old.stakeCents,joined:Boolean(me&&me.revision===record.revision),players:old.players.map(p=>({name:p.name})),expiresAt:old.expiresAt};
   if(action!=='join'&&(!me||me.revision!==record.revision))fail('Du gehörst nicht mit diesem Zugang zu dieser Runde.',403);
   if(action==='get'){
    if(['lobby','running'].includes(old.status)&&old.expiresAt<Date.now()){const next={...old,status:'cancelled',reason:'Zeit abgelaufen. Es wurde nichts übertragen.'};await commit(env,meta,found.row,next);return view(next,record.alias);}return view(old,record.alias);
