@@ -52,7 +52,7 @@
    const record=await open(env,row.payload,'access:'+data.alias);
    if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1}:{})};
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
@@ -81,7 +81,7 @@
    await env.DB.prepare("INSERT INTO ledgers(member,payload,version) SELECT ?,?,1 WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE state='staging') ON CONFLICT(member) DO UPDATE SET payload=excluded.payload,version=ledgers.version+1 WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE state='staging')").bind(a.memberId,payload).run();return {ok:true};
   }
   if(path==='/admin/central/access'){
-   const r=C.access(data.record);member(r.memberId);if(!REV.test(r.revision||''))fail('Ungültige Zugangsversion.',400);
+   const r=C.access(data.record);member(r.memberId);if(!REV.test(r.revision||'')||r.challengeLevel!==undefined&&r.challengeLevel!==null&&!['TM','TF','GF'].includes(r.challengeLevel))fail('Ungültige Zugangsversion oder Ausbildungsstufe.',400);
    const old=await account(env,r.alias);if(old?.revision!==r.revision)fail('Handyzugang zuerst beim Dienst anmelden.');
    const existing=await env.DB.prepare('SELECT payload FROM ledger_access WHERE alias=?').bind(r.alias).first();if(existing&&JSON.stringify(await open(env,existing.payload,'access:'+r.alias))===JSON.stringify(r))return {ok:true};
    const payload=await seal(env,r,'access:'+r.alias);

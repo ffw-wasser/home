@@ -20,10 +20,17 @@ function fixture(ui=false){
  };
  vm.runInContext(read('js/features/drinks/drinks-quiz-model.js'),c);vm.runInContext(read('js/features/drinks/drinks-quiz-admin.js'),c);
  if(ui)nodes.get('quiz-filter').value='all';
- const M=c.DrinksQuizModel,S=c.DrinksQuizQuestions.store,input={category:'LF10',text:'Beispielfrage?',answers:['eins','zwei','drei','vier'],correct:1,explanation:'Lösung',source:'Vor Ort',active:true};
+ const M=c.DrinksQuizModel,S=c.DrinksQuizQuestions.store,input={level:'TM',topic:'Gerätekunde',category:'LF10',text:'Beispielfrage?',answers:['eins','zwei','drei','vier'],correct:1,explanation:'Lösung',source:'Vor Ort',active:true};
  return {c,nodes,M,S,input,writes,disk:()=>disk,lose:()=>lost=true,fail:()=>failBefore=true,source:v=>source=v,replace:bank=>{disk=structuredClone(bank);tag='"'+(++sequence)+'"';}};
 }
 const plan=(old,bank)=>({bank,eTag:old.eTag,revision:old.bank.revision,source:old.source});
+test('Profilstufe folgt höchster Funktion; Veröffentlichung verlangt Thema und Stufe',()=>{
+ const f=fixture(),M=f.M;assert.equal(M.profileLevel({roles:['STM']}),'TM');assert.equal(M.profileLevel({roles:['WTF','ATM']}),'TF');assert.equal(M.profileLevel({roles:['STF','GF','STM']}),'GF');assert.equal(M.profileLevel({roles:['Melder','Maschinist']}),null);assert.equal(M.profileLevel(null),null);assert.throws(()=>M.prepare(M.empty(),{...f.input,level:null}),/Stufe|Ausbildungsstufe/);assert.throws(()=>M.prepare(M.empty(),{...f.input,topic:''}),/Thema/);assert.throws(()=>M.question({...M.prepare(M.empty(),f.input).questions[0],level:'admin'}));
+});
+test('Stufenvorlage ergänzt atomar, erhält bearbeitete und gelöschte Fragen und ist wiederholbar',()=>{
+ const f=fixture(),M=f.M,bank=M.prepare(M.empty(),{...f.input,active:false}),q=bank.questions[0],variant=M.prepare(M.empty(),{...f.input,level:'GF',text:'GF Fall?',active:false}).questions[0],template={schemaVersion:1,updates:[{expected:q,level:'ALL',topic:'Gerätekunde'}],questions:[variant]},first=M.mergeLevels(bank,template);assert.equal(first.updated,1);assert.equal(first.added,1);assert.equal(first.bank.questions[0].level,'ALL');assert.equal(first.bank.questions[0].active,false);const again=M.mergeLevels(first.bank,template);assert.equal(again.updated,0);assert.equal(again.added,0);assert.equal(again.bank.revision,first.bank.revision);
+ const edited=M.prepare(bank,{...f.input,text:'Örtlich angepasst',active:false},q.id),safe=M.mergeLevels(edited,template);assert.equal(safe.updated,0);assert.equal(safe.bank.questions[0].text,'Örtlich angepasst');const removed=M.remove(bank,q.id),other=M.mergeLevels(removed,template);assert.equal(other.bank.questions.some(x=>x.id===q.id),false);assert.throws(()=>M.mergeLevels(bank,{...template,questions:[{...variant,correct:7}]}));assert.equal(bank.questions[0].level,'TM');
+});
 test('Strenge Prüfung: Antworten, Lösung, Duplikate und Import werden atomar validiert',()=>{
  const f=fixture(),M=f.M;assert.throws(()=>M.prepare(M.empty(),{...f.input,correct:null}));assert.throws(()=>M.prepare(M.empty(),{...f.input,answers:['eins',' EINS ','drei','vier']}));
  const bank=M.prepare(M.empty(),f.input);assert.equal(bank.questions[0].version,1);const edit=M.prepare(bank,{...f.input,text:'Anders?'},bank.questions[0].id);assert.equal(edit.questions[0].version,2);assert.equal(edit.questions[0].id,bank.questions[0].id);
@@ -55,7 +62,7 @@ test('Import nach Admin-Sperre während Dateilesen wird verworfen',async()=>{
  const f=fixture(true);await f.c.DrinksQuizQuestions.load();let finish;const text=new Promise(r=>finish=r),q=f.M.prepare(f.M.empty(),f.input).questions[0];const loading=f.nodes.get('quiz-import-file').onchange({target:{files:[{size:100,text:()=>text}],value:''}});f.c.adminUnlocked=false;f.c.DrinksQuizQuestions.lock();finish(JSON.stringify({schemaVersion:1,questions:[q]}));await loading;assert.equal(f.writes.length,0);assert.equal(f.nodes.get('quiz-list').children.length,0);
 });
 test('Nur freigegebene Fragen werden übertragen; Admin-Sperre erlaubt dieselbe Veröffentlichung erneut zu prüfen',async()=>{
- const f=fixture(true),calls=[];let bank=f.M.empty();for(let i=0;i<3;i++)bank=f.M.prepare(bank,{...f.input,text:'Frage '+i,active:i!==2});f.replace(bank);await f.c.DrinksQuizQuestions.load();f.c.DrinksCentral={connection:async()=>({source:'drive:root',origin:'https://test.account.workers.dev'})};let fail=true;
+ const f=fixture(true),calls=[];let bank=f.M.empty();for(let i=0;i<3;i++)bank=f.M.prepare(bank,{...f.input,text:'Frage '+i,active:i!==2});f.replace(bank);await f.c.DrinksQuizQuestions.load();f.c.DrinksCentral={syncProfiles:async()=>0,connection:async()=>({source:'drive:root',origin:'https://test.account.workers.dev'})};let fail=true;
  f.c.DrinksPush={request:async(c,path,data)=>{if(path.endsWith('/status'))return {revision:null};calls.push(structuredClone(data));if(fail){fail=false;throw new TypeError('Network');}return {count:data.questions.length};}};
  await f.nodes.get('quiz-publish').onclick();assert.equal(f.nodes.get('quiz-retry').hidden,false);assert.equal(calls[0].questions.length,2);assert.equal(calls[0].questions.some(q=>!q.active),false);f.c.adminUnlocked=false;f.c.DrinksQuizQuestions.lock();assert.equal(f.nodes.get('quiz-list').children.length,0);f.c.adminUnlocked=true;await f.c.DrinksQuizQuestions.load();assert.deepEqual(calls[0],calls[1]);assert.equal(f.nodes.get('quiz-retry').hidden,true);assert.match(f.nodes.get('quiz-status').textContent,/2 Fragen/);
 });

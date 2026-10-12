@@ -11,21 +11,34 @@ keine neuen Secrets und kein kostenpflichtiger Tarif sind erforderlich.
    Den bisherigen Editorinhalt durch den vollständigen Inhalt der neuen
    **worker.bundle.js** ersetzen und **Deploy** wählen. Nicht nur `worker.js`
    verwenden. DB-Bindung und bisherige Secrets unverändert lassen.
-3. `/health` öffnen: zusätzlich müssen **challengeVersion: 1** und
-   **challengeCategoriesVersion: 1** erscheinen.
+3. `/health` öffnen: zusätzlich müssen **challengeVersion: 1**,
+   **challengeCategoriesVersion: 1** und **challengeLevelsVersion: 1** erscheinen.
+   Beim Update von Version 2026.10.12.4 sind keine weiteren SQL-Tabellen nötig.
    Ohne neue Tabellen bleiben die bisherigen Konten und Erinnerungen verfügbar;
    nur die Challenge ist nicht aktiviert.
 4. Auf dem Gerätehaus-iPad OneDrive verbinden und die Verwaltung entsperren.
    **Getränke → Verwaltung → Fragen & Antworten** öffnen. Den vorbereiteten
-   Fragenpool öffnen: 50 Entwürfe sind bereits in `challenge-fragen.json`
-   eingetragen (10 Fahrzeug, 12 Ausbildung, 15 Technik, 13 Allgemein).
-   Fachlich prüfen und mindestens sieben Fragen je gewünschter Kategorie einzeln
-   freigeben. Örtliche Fahrzeugangaben vor der Freigabe am Fahrzeug abgleichen.
+   Fragenpool öffnen: 100 Entwürfe sind in `challenge-fragen.json` eingetragen
+   (24 Fahrzeug, 21 Ausbildung, 28 Technik, 27 Allgemein). Die bisherigen 44
+   bearbeiteten Fragen bleiben erhalten; 56 Stufenvarianten wurden ergänzt.
+   Jeder Eintrag hat eine Ausbildungsstufe und ein gemeinsames Thema.
+   Fachlich prüfen und Fragen für mindestens sieben gemeinsame Themen je
+   gewünschter Kategorie freigeben. Für jede teilnehmende Stufe muss pro Thema
+   eine freigegebene passende Variante vorhanden sein. Örtliche LF10-Angaben
+   vor der Freigabe am Fahrzeug abgleichen. Herstellerkommentare wurden entfernt.
    Allgemein enthält fünf Fragen zur Geschichte der Feuerwehr Wasser. Funkfragen
    behandeln ausschließlich Digitalfunk; konkrete Motorola-Tastenbelegungen sind
    ohne örtliche Modellbestätigung nicht enthalten. Import ist nur bei einem
    fehlenden Fragenpool erforderlich und ergänzt vorhandene Fragen.
-5. **Geprüfte Fragen in den Spieldienst übertragen** wählen. Entwürfe bleiben in
+5. **Geprüfte Fragen in den Spieldienst übertragen** wählen. Dabei werden auch
+   die Mitgliederstufen aus den aktuell gespeicherten Profilen aktualisiert.
+   GF ergibt Gruppenführer; ATF/WTF/STF ergibt Truppführer; ATM/WTM/STM ergibt
+   Truppmann. Die höchste passende Funktion gilt. Ausschließlich die Stufe wird
+   verschlüsselt mit dem bestehenden Handyzugang gespeichert, keine Rollenliste
+   oder Namen. Bei fehlender passender Funktion wählen Mitglieder ihre Stufe
+   ausdrücklich am Handy. Nach einer Profiländerung **Mitgliederstufen
+   aktualisieren** wählen oder den Fragenpool erneut übertragen.
+   Entwürfe bleiben in
    OneDrive. Freigegebene Fragen und Lösungen werden verschlüsselt in D1 gespeichert.
    Nach weiteren Änderungen erneut übertragen. Bereits erstellte Runden behalten
    ihren eigenen unveränderlichen Fragenstand.
@@ -41,10 +54,17 @@ keine neuen Secrets und kein kostenpflichtiger Tarif sind erforderlich.
 
 - 2 bis 20 Teilnehmer; keine tägliche Begrenzung der Duelle. Mehrere Runden sind
   möglich und bleiben unter „Meine Runden“ (zuletzt 50 lokal geöffnet) erreichbar.
-- Alle beantworten dieselben sieben Fragen aus der ausgewählten Kategorie mit
-  vier Antworten und einer Lösung. Sie werden zufällig und ohne Wiederholung
-  innerhalb der Runde ausgewählt. Reihenfolge und Antwortpositionen werden
-  für jede Runde neu gemischt. Kategorie und Fragen bleiben für die Runde fest.
+- Alle beantworten sieben gemeinsame Themen aus der ausgewählten Kategorie.
+  Pro Thema erhält jede Ausbildungsstufe ihre eigene Frage; eine ausdrücklich
+  als „Alle Stufen“ zugeordnete Frage darf gemeinsam genutzt werden, etwa
+  Ortswissen. Eine stufenspezifische Variante hat Vorrang. Teilnehmer derselben
+  Stufe bekommen dieselben Fragen und Antwortpositionen. Die sieben Themen
+  werden beim Start zufällig und ohne Wiederholung gezogen; der komplette
+  Variantenpool wird bereits beim Erstellen eingefroren. Kategorie, persönliche
+  Stufe und Fragen bleiben für die Runde fest. Fehlende gemeinsame Themen
+  sperren den Beitritt, bevor irgendein Einsatz übertragen wird.
+  Jede richtige Antwort zählt einen Punkt; fachlich vergleichbare Schwierigkeit
+  muss bei der Fragenfreigabe beurteilt werden. Es gibt keine Zeitwertung.
   Ein Antippen speichert die endgültige Antwort. Keine Zeitwertung.
 - Die meisten richtigen Antworten gewinnen. Gleichstand teilt den möglichen
   Gewinn centgenau, begrenzt auf die bei der Abrechnung vorhandenen Schulden.

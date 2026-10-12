@@ -295,13 +295,17 @@
   'use strict';
   const uuid=value=>typeof value==='string'&&/^[-a-zA-Z0-9]{8,150}$/.test(value);
   const text=(value,max,label,required=true)=>{if(typeof value!=='string'||value.length>max||required&&!value.trim())throw Error(label+' fehlt oder ist zu lang.');return value;};
+  const levels=['TM','TF','GF','ALL'];
+  function profileLevel(member){const roles=Array.isArray(member?.roles)?member.roles:[];return roles.includes('GF')?'GF':roles.some(r=>['ATF','WTF','STF'].includes(r))?'TF':roles.some(r=>['ATM','WTM','STM'].includes(r))?'TM':null;}
   function question(q){
     if(!q||!uuid(q.id)||!Number.isSafeInteger(q.version)||q.version<1||typeof q.active!=='boolean'||!Number.isFinite(Date.parse(q.updatedAt)))throw Error('Eine Frage ist nicht lesbar.');
     text(q.category,80,'Kategorie');text(q.text,800,'Frage');text(q.explanation,2000,'Erklärung',false);text(q.source,500,'Quelle / Stand',false);
     if(!Array.isArray(q.answers)||q.answers.length!==4)throw Error('Bitte vier Antwortmöglichkeiten angeben.');
     q.answers.forEach(a=>text(a,300,'Antwort'));if(new Set(q.answers.map(a=>a.trim().normalize('NFC').toLocaleLowerCase('de-DE'))).size!==4)throw Error('Die vier Antworten müssen unterschiedlich sein.');
     if(!Number.isSafeInteger(q.correct)||q.correct<0||q.correct>3)throw Error('Bitte die richtige Antwort auswählen.');
-    return {id:q.id,version:q.version,category:q.category,text:q.text,answers:q.answers.slice(),correct:q.correct,explanation:q.explanation,source:q.source,active:q.active,updatedAt:q.updatedAt};
+    if(q.level!==undefined&&q.level!==null&&!levels.includes(q.level))throw Error('Ungültige Ausbildungsstufe.');
+    if(q.topic!==undefined&&q.topic!==null)text(q.topic,80,'Thema');
+    return {id:q.id,version:q.version,category:q.category,text:q.text,answers:q.answers.slice(),correct:q.correct,explanation:q.explanation,source:q.source,active:q.active,updatedAt:q.updatedAt,level:q.level||null,topic:q.topic||null};
   }
   function validate(bank){
     if(!bank||bank.schemaVersion!==1||!uuid(bank.revision)||!Number.isFinite(Date.parse(bank.updatedAt))||!Array.isArray(bank.questions)||bank.questions.length>1000)throw Error('Die Fragenbank ist nicht lesbar.');
@@ -312,19 +316,26 @@
   function prepare(bank,input,id=null){
     if(bank.revision!==null)validate(bank);
     const old=id?bank.questions.find(q=>q.id===id):null;if(id&&!old)throw Error('Die Frage wurde inzwischen entfernt. Bitte neu laden.');
-    const now=new Date().toISOString(),q=question({id:old?.id||crypto.randomUUID(),version:(old?.version||0)+1,category:input.category.trim(),text:input.text.trim(),answers:input.answers.map(a=>a.trim()),correct:input.correct,explanation:input.explanation.trim(),source:input.source.trim(),active:input.active,updatedAt:now});
+    if(input.active&&(!levels.includes(input.level)||!input.topic?.trim()))throw Error('Bitte vor der Freigabe Ausbildungsstufe und gemeinsames Thema zuordnen.');
+    const now=new Date().toISOString(),q=question({id:old?.id||crypto.randomUUID(),version:(old?.version||0)+1,category:input.category.trim(),text:input.text.trim(),answers:input.answers.map(a=>a.trim()),correct:input.correct,explanation:input.explanation.trim(),source:input.source.trim(),active:input.active,updatedAt:now,level:input.level||null,topic:input.topic?.trim()||null});
     return validate({schemaVersion:1,revision:crypto.randomUUID(),updatedAt:now,questions:old?bank.questions.map(x=>x.id===old.id?q:x):[...bank.questions,q]});
   }
   function remove(bank,id){validate(bank);if(!bank.questions.some(q=>q.id===id))throw Error('Die Frage wurde bereits entfernt. Bitte neu laden.');return validate({...bank,revision:crypto.randomUUID(),updatedAt:new Date().toISOString(),questions:bank.questions.filter(q=>q.id!==id)});}
   function importQuestions(bank,data){
     if(bank.revision!==null)validate(bank);
     if(!data||data.schemaVersion!==1||!Array.isArray(data.questions)||!data.questions.length||data.questions.length>1000)throw Error('Keine gültige Fragen-Importdatei.');
-    const incoming=data.questions.map(question),key=q=>(q.category+'\n'+q.text).trim().normalize('NFC').toLocaleLowerCase('de-DE'),seen=new Set(bank.questions.map(key)),now=new Date().toISOString(),added=[];
+    const incoming=data.questions.map(question),key=q=>(q.category+'\n'+(q.level||'')+'\n'+q.text).trim().normalize('NFC').toLocaleLowerCase('de-DE'),seen=new Set(bank.questions.map(key)),now=new Date().toISOString(),added=[];
     for(const q of incoming){if(seen.has(key(q)))continue;seen.add(key(q));added.push({...q,id:crypto.randomUUID(),version:1,active:false,updatedAt:now});}
     if(bank.questions.length+added.length>1000)throw Error('Die Fragenbank darf höchstens 1000 Fragen enthalten.');
     return {added:added.length,skipped:incoming.length-added.length,bank:added.length?validate({schemaVersion:1,revision:crypto.randomUUID(),updatedAt:now,questions:[...bank.questions,...added]}):bank};
   }
-  global.DrinksQuizModel={question,validate,empty,prepare,remove,importQuestions};
+  function mergeLevels(bank,template){
+    if(bank.revision!==null)bank=validate(bank);if(template?.schemaVersion!==1||!Array.isArray(template.updates)||!Array.isArray(template.questions))throw Error('Ungültige Stufenvorlage.');
+    const now=new Date().toISOString();let updated=0,skipped=0;const changes=new Map();for(const entry of template.updates){const expected=question(entry.expected),q=bank.questions.find(q=>q.id===expected.id);if(!q){skipped++;continue;}const replacement=entry.replacement||{};if(q.level===entry.level&&q.topic===entry.topic&&Object.entries(replacement).every(([key,value])=>JSON.stringify(q[key])===JSON.stringify(value)))continue;if(JSON.stringify(q)!==JSON.stringify(expected)){skipped++;continue;}const fields=Object.fromEntries(Object.entries(replacement).filter(([key])=>['text','explanation','source','answers'].includes(key))),next=question({...q,...fields,level:entry.level,topic:entry.topic,version:q.version+1,updatedAt:now});changes.set(q.id,next);updated++;}
+    const next={...bank,revision:crypto.randomUUID(),updatedAt:now,questions:bank.questions.map(q=>changes.get(q.id)||q)},imported=importQuestions(next,{schemaVersion:1,questions:template.questions});
+    return {bank:updated||imported.added?imported.bank:bank,updated,added:imported.added,skipped:skipped+imported.skipped};
+  }
+  global.DrinksQuizModel={question,validate,empty,prepare,remove,importQuestions,profileLevel,mergeLevels};
 })(typeof window==='undefined'?globalThis:window);
 
 /* No public questions or solution keys. Equal-score winners share only real debt. */
@@ -338,7 +349,7 @@
  function settle(players,questions,stake){
   if(!Array.isArray(players)||players.length<2||players.length>20||new Set(players.map(p=>p.alias)).size!==players.length||!Array.isArray(questions)||questions.length!==7||!Number.isSafeInteger(stake)||stake<1||stake>100000)throw Error('Ungültige Spielrunde.');
   const sorted=players.slice().sort((a,b)=>a.alias.localeCompare(b.alias));
-  const result=sorted.map(p=>{if(!Number.isSafeInteger(p.debt)||p.debt<0||!Array.isArray(p.answers)||p.answers.length!==7||p.answers.some(a=>!Number.isSafeInteger(a)||a<0||a>3))throw Error('Die Runde ist noch nicht vollständig.');return {alias:p.alias,score:p.answers.filter((a,i)=>a===questions[i].correct).length,delta:0};});
+  const result=sorted.map(p=>{const own=p.questions||questions;if(!Array.isArray(own)||own.length!==7||own.some(q=>!Number.isSafeInteger(q.correct)||q.correct<0||q.correct>3)||!Number.isSafeInteger(p.debt)||p.debt<0||!Array.isArray(p.answers)||p.answers.length!==7||p.answers.some(a=>!Number.isSafeInteger(a)||a<0||a>3))throw Error('Die Runde ist noch nicht vollständig.');return {alias:p.alias,score:p.answers.filter((a,i)=>a===own[i].correct).length,delta:0};});
   const best=Math.max(...result.map(p=>p.score)),winners=result.filter(p=>p.score===best),losers=result.filter(p=>p.score!==best);
   if(!losers.length)return result;
   const caps=winners.map(p=>sorted.find(x=>x.alias===p.alias).debt),pot=Math.min(stake*losers.length,caps.reduce((a,b)=>a+b,0)),gains=allocate(pot,caps),losses=allocate(pot,losers.map(()=>stake));
@@ -401,7 +412,7 @@
    const record=await open(env,row.payload,'access:'+data.alias);
    if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1}:{})};
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
@@ -430,7 +441,7 @@
    await env.DB.prepare("INSERT INTO ledgers(member,payload,version) SELECT ?,?,1 WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE state='staging') ON CONFLICT(member) DO UPDATE SET payload=excluded.payload,version=ledgers.version+1 WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE state='staging')").bind(a.memberId,payload).run();return {ok:true};
   }
   if(path==='/admin/central/access'){
-   const r=C.access(data.record);member(r.memberId);if(!REV.test(r.revision||''))fail('Ungültige Zugangsversion.',400);
+   const r=C.access(data.record);member(r.memberId);if(!REV.test(r.revision||'')||r.challengeLevel!==undefined&&r.challengeLevel!==null&&!['TM','TF','GF'].includes(r.challengeLevel))fail('Ungültige Zugangsversion oder Ausbildungsstufe.',400);
    const old=await account(env,r.alias);if(old?.revision!==r.revision)fail('Handyzugang zuerst beim Dienst anmelden.');
    const existing=await env.DB.prepare('SELECT payload FROM ledger_access WHERE alias=?').bind(r.alias).first();if(existing&&JSON.stringify(await open(env,existing.payload,'access:'+r.alias))===JSON.stringify(r))return {ok:true};
    const payload=await seal(env,r,'access:'+r.alias);
@@ -498,13 +509,18 @@
  const name=v=>{if(typeof v!=='string'||!v.trim()||v.length>40)fail('Bitte einen Spielnamen mit höchstens 40 Zeichen eingeben.',400);return v.trim();};
  function shuffled(values){const a=values.slice();for(let i=a.length-1;i>0;i--){const limit=Math.floor(0x100000000/(i+1))*(i+1);let n;do{n=crypto.getRandomValues(new Uint32Array(1))[0];}while(n>=limit);const j=n%(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
  function select(questions){return shuffled(questions).slice(0,7).map(q=>{const order=shuffled([0,1,2,3]);return {...q,answers:order.map(i=>q.answers[i]),correct:order.indexOf(q.correct)};});}
+ const levels=['TM','TF','GF'];
+ function level(record,data){const saved=levels.includes(record.challengeLevel)?record.challengeLevel:null;if(saved&&data.level&&data.level!==saved)fail('Die Ausbildungsstufe kommt aus deinem Mitgliederprofil. Bitte Deckel aktualisieren.',409);if(saved)return saved;if(!levels.includes(data.level))fail('Bitte deine Ausbildungsstufe auswählen.',400);return data.level;}
+ function topics(questions,requested){return [...new Set(questions.filter(q=>q.level&&q.topic).map(q=>q.topic))].filter(topic=>requested.every(l=>questions.some(q=>q.topic===topic&&(q.level===l||q.level==='ALL'))));}
+ function round(questions,requested){const common=shuffled(topics(questions,requested)).slice(0,7);if(common.length!==7)fail('Für diese Teilnehmerstufen fehlen sieben gemeinsame Themen mit freigegebenen Fragen.');const byLevel={};for(const l of requested)byLevel[l]=common.map(topic=>{const specific=questions.filter(q=>q.topic===topic&&q.level===l),eligible=specific.length?specific:questions.filter(q=>q.topic===topic&&q.level==='ALL');return select([shuffled(eligible)[0]])[0];});return {topics:common,byLevel};}
+ const ownQuestions=(game,player)=>game.levelsVersion===1?game.questionsByLevel?.[player?.level]||[]:game.questions;
  async function game(env,data){
   let row;if(uuid(data.gameId))row=await env.DB.prepare('SELECT * FROM challenge_games WHERE id=?').bind(data.gameId).first();else if(/^[A-F0-9]{8}$/.test(data.code||''))row=await env.DB.prepare('SELECT * FROM challenge_games WHERE code=?').bind(data.code).first();else fail('Bitte einen gültigen Spielcode eingeben.',400);
   if(!row)fail('Runde nicht gefunden. Bitte den Spielcode prüfen.',404);return {row,value:await L.open(env,row.payload,'challenge:'+row.id)};
  }
  function view(game,alias){
-  const me=game.players.find(p=>p.alias===alias),done=game.status==='done';
-  return {version:1,gameId:game.id,code:game.code,category:game.category||'Gemischte ältere Runde',status:game.status,stakeCents:game.stakeCents,expiresAt:game.expiresAt,isHost:game.host===alias,reason:game.reason||'',players:game.players.map(p=>({name:p.name,me:p.alias===alias,host:p.alias===game.host,progress:p.answers.length,...(done?{score:p.score,delta:p.delta}:{} )})),...(me&&game.status==='running'&&me.answers.length<7?{question:{index:me.answers.length,category:game.questions[me.answers.length].category,text:game.questions[me.answers.length].text,answers:game.questions[me.answers.length].answers}}:{}),...(done&&me?{review:game.questions.map((q,i)=>({text:q.text,answers:q.answers,correct:q.correct,selected:me.answers[i],explanation:q.explanation,source:q.source}))}:{})};
+  const me=game.players.find(p=>p.alias===alias),done=game.status==='done',own=ownQuestions(game,me);
+  return {version:1,gameId:game.id,code:game.code,levelsVersion:game.levelsVersion||0,level:me?.level||null,category:game.category||'Gemischte ältere Runde',status:game.status,stakeCents:game.stakeCents,expiresAt:game.expiresAt,isHost:game.host===alias,reason:game.reason||'',players:game.players.map(p=>({name:p.name,me:p.alias===alias,host:p.alias===game.host,progress:p.answers.length,...(done?{score:p.score,delta:p.delta}:{} )})),...(me&&game.status==='running'&&me.answers.length<7?{question:{index:me.answers.length,category:own[me.answers.length].category,text:own[me.answers.length].text,answers:own[me.answers.length].answers}}:{}),...(done&&me?{review:own.map((q,i)=>({text:q.text,answers:q.answers,correct:q.correct,selected:me.answers[i],explanation:q.explanation,source:q.source}))}:{})};
  }
  // The first CAS verifies ALL affected ledger versions before changing anything.
  // All later statements are guarded by its unique encrypted marker in one batch.
@@ -524,7 +540,7 @@
    if(r.memberId!==p.memberId||!a.version||(a.account.resetEpoch||'0')!==p.epoch){next.status='cancelled';next.reason='Ein Konto wurde zurückgesetzt oder geändert. Es wurde nichts übertragen.';return [];}
    accounts.push({id:p.memberId,version:a.version,account:a.account});
   }
-  const deltas=R.settle(next.players.map((p,i)=>({...p,debt:M.totals(accounts[i].account).balance})),next.questions,next.stakeCents),createdAt=new Date().toISOString();
+  const deltas=R.settle(next.players.map((p,i)=>({...p,questions:ownQuestions(next,p),debt:M.totals(accounts[i].account).balance})),next.questions,next.stakeCents),createdAt=new Date().toISOString();
   for(let i=0;i<next.players.length;i++){const p=next.players[i],result=deltas.find(r=>r.alias===p.alias);p.score=result.score;p.delta=result.delta;if(result.delta)accounts[i].account=M.appendChallenge(accounts[i].account,{id:'challenge-'+next.id,type:'challenge',gameId:next.id,code:next.code,confirmation:'challenge',direction:result.delta>0?'in':'out',cents:Math.abs(result.delta),score:result.score,createdAt});}
   next.status='done';next.completedAt=createdAt;return accounts;
  }
@@ -536,7 +552,7 @@
    if(path==='/admin/challenge/status')return {version:1,revision:old?.value.revision||null,count:old?.value.questions.length||0};
    if(path!=='/admin/challenge/publish')fail('Nicht gefunden.',404);
    if(!REV.test(data.revision||'')||!Array.isArray(data.questions)||data.questions.length>1000)fail('Ungültige Fragenbank.',400);
-   let questions;try{questions=data.questions.map(Q.question).filter(q=>q.active);if(new Set(questions.map(q=>q.id)).size!==questions.length)throw Error('Doppelte Fragen.');}catch{fail('Die Fragenbank ist nicht gültig.',400);}
+   let questions;try{questions=data.questions.map(Q.question).filter(q=>q.active);if(questions.some(q=>!q.level||!q.topic)||new Set(questions.map(q=>q.id)).size!==questions.length)throw Error('Stufenzuordnung fehlt oder doppelte Fragen.');}catch{fail('Die Fragenbank ist nicht gültig. Freigegebene Fragen benötigen Ausbildungsstufe und Thema.',400);}
    const value={revision:data.revision,questions};if(old?.value.revision===value.revision){if(JSON.stringify(old.value)!==JSON.stringify(value))fail('Diese Fragenversion wurde bereits anders verwendet.');return {ok:true,count:questions.length};}
    if((old?.value.revision||null)!==data.expectedRevision)fail('Der veröffentlichte Fragenstand wurde geändert. Bitte erneut prüfen.');
    const payload=await L.seal(env,value,'challenge-pool');let result;
@@ -546,8 +562,8 @@
   const record=await actor(env,data,auth),action=path.slice('/challenge/'.length);
   if(!['categories','create','preview','join','get','start','answer','cancel'].includes(action))fail('Nicht gefunden.',404);
   if(action==='categories'){
-   const published=await pool(env),counts=new Map();for(const q of published?.value.questions||[])counts.set(q.category,(counts.get(q.category)||0)+1);
-   return {version:1,categories:[...counts].sort((a,b)=>a[0].localeCompare(b[0],'de')).map(([name,count])=>({name,count,available:count>=7}))};
+   const published=await pool(env),questions=published?.value.questions||[],names=[...new Set(questions.map(q=>q.category))].sort((a,b)=>a.localeCompare(b,'de')),profileLevel=levels.includes(record.challengeLevel)?record.challengeLevel:null;
+   return {version:1,profileLevel,categories:names.map(name=>{const qs=questions.filter(q=>q.category===name),counts=Object.fromEntries(levels.map(l=>[l,topics(qs,[l]).length])),count=profileLevel?counts[profileLevel]:0;return {name,count,available:count>=7,counts};})};
   }
   const digest=await hash(JSON.stringify({...data,action}));
   if(action==='create'){
@@ -556,14 +572,14 @@
    if(previous){const old=await L.open(env,previous.payload,'challenge:'+data.id);if(old.host!==record.alias||old.operations[data.id]!==digest)fail('Die Vorgangsnummer wurde bereits anders verwendet.');return view(old,record.alias);}
    if(typeof data.category!=='string'||!data.category.trim()||data.category.length>80)fail('Bitte vor dem Erstellen eine Kategorie auswählen.',400);
    const category=data.category.trim(),published=await pool(env),questions=published?.value.questions.filter(q=>q.category===category)||[];
-   if(questions.length<7)fail('Für diese Kategorie muss die Verwaltung mindestens sieben geprüfte Fragen veröffentlichen.');
+   const ownLevel=level(record,data);if(topics(questions,[ownLevel]).length<7)fail('Für deine Stufe und diese Kategorie muss die Verwaltung Fragen für mindestens sieben Themen veröffentlichen.');
    const a=await L.read(env,record.memberId);if(!a.version)fail('Das Getränkekonto ist noch nicht aktiv.');
-   const next={id:data.id,code:crypto.randomUUID().slice(0,8).toUpperCase(),category,status:'lobby',host:record.alias,stakeCents:data.stakeCents,createdAt:Date.now(),expiresAt:Date.now()+86400000,poolRevision:published.value.revision,questions:select(questions),players:[{alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',name:name(data.name),answers:[]}],operations:{[data.id]:digest}};
+   const next={id:data.id,code:crypto.randomUUID().slice(0,8).toUpperCase(),category,levelsVersion:1,status:'lobby',host:record.alias,stakeCents:data.stakeCents,createdAt:Date.now(),expiresAt:Date.now()+86400000,poolRevision:published.value.revision,poolQuestions:questions,questions:[],players:[{alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',level:ownLevel,name:name(data.name),answers:[]}],operations:{[data.id]:digest}};
    const payload=await L.seal(env,next,'challenge:'+next.id),results=await env.DB.batch([env.DB.prepare('INSERT OR IGNORE INTO challenge_games(id,code,payload,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=? AND state=\'active\')').bind(next.id,next.code,payload,Date.now(),meta.seq),env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND EXISTS(SELECT 1 FROM challenge_games WHERE id=? AND payload=?)').bind(meta.seq,next.id,payload)]);
    if(!results[0].meta.changes)fail('Die Runde konnte noch nicht bestätigt werden. Bitte denselben Vorgang erneut prüfen.',409,'retry');return view(next,record.alias);
   }
   const found=await game(env,data),old=found.value,me=old.players.find(p=>p.alias===record.alias);
-  if(action==='preview')return {version:1,gameId:old.id,code:old.code,category:old.category||'Gemischte ältere Runde',status:old.status,stakeCents:old.stakeCents,joined:Boolean(me&&me.revision===record.revision),players:old.players.map(p=>({name:p.name})),expiresAt:old.expiresAt};
+  if(action==='preview')return {version:1,levelsVersion:old.levelsVersion||0,gameId:old.id,code:old.code,category:old.category||'Gemischte ältere Runde',status:old.status,stakeCents:old.stakeCents,joined:Boolean(me&&me.revision===record.revision),players:old.players.map(p=>({name:p.name})),expiresAt:old.expiresAt};
   if(action!=='join'&&(!me||me.revision!==record.revision))fail('Du gehörst nicht mit diesem Zugang zu dieser Runde.',403);
   if(action==='get'){
    if(['lobby','running'].includes(old.status)&&old.expiresAt<Date.now()){const next={...old,status:'cancelled',reason:'Zeit abgelaufen. Es wurde nichts übertragen.'};await commit(env,meta,found.row,next);return view(next,record.alias);}return view(old,record.alias);
@@ -577,9 +593,10 @@
    if(old.players.some(p=>p.memberId===record.memberId))fail('Dieses Mitglied ist bereits in der Runde.');
    if(data.confirmedCents!==old.stakeCents)fail('Bitte den angezeigten Einsatz ausdrücklich bestätigen.',400);
    const a=await L.read(env,record.memberId);if(!a.version)fail('Das Getränkekonto ist noch nicht aktiv.');const nickname=name(data.name);if(old.players.some(p=>p.name.toLocaleLowerCase('de-DE')===nickname.toLocaleLowerCase('de-DE')))fail('Diesen Spielnamen gibt es bereits. Bitte einen anderen wählen.');
-   next.players.push({alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',name:nickname,answers:[]});
+   const ownLevel=old.levelsVersion===1?level(record,data):null;if(old.levelsVersion===1&&topics(old.poolQuestions,[...new Set([...old.players.map(p=>p.level),ownLevel])]).length<7)fail('Für diese Kombination von Ausbildungsstufen fehlen sieben gemeinsame Themen. Die Verwaltung muss passende Varianten freigeben.');
+   next.players.push({alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',level:ownLevel,name:nickname,answers:[]});
   }else if(action==='start'){
-   if(old.host!==record.alias||old.status!=='lobby'||old.players.length<2)fail('Nur der Gastgeber startet mit mindestens zwei Teilnehmern.');next.status='running';next.expiresAt=Date.now()+30*60000;
+   if(old.host!==record.alias||old.status!=='lobby'||old.players.length<2)fail('Nur der Gastgeber startet mit mindestens zwei Teilnehmern.');if(old.levelsVersion===1){const selected=round(old.poolQuestions,[...new Set(old.players.map(p=>p.level))]);next.topics=selected.topics;next.questionsByLevel=selected.byLevel;next.questions=selected.byLevel[old.players[0].level];delete next.poolQuestions;}next.status='running';next.expiresAt=Date.now()+30*60000;
   }else if(action==='cancel'){
    next.status='cancelled';next.reason='Die Runde wurde abgebrochen. Es wurde nichts übertragen.';
   }else if(action==='answer'){
@@ -612,7 +629,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1}:{}),publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1}:{}),publicKey:env.VAPID_PUBLIC_KEY});}
    if(request.method!=='POST')return reply({error:'Nicht gefunden.'},404);
    const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);

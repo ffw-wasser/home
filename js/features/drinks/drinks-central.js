@@ -9,7 +9,8 @@
  }
  async function call(c,action,data={}){return g.DrinksPush.request(c,'/admin/central/'+action,{...data,source:c.source});}
  async function accessRecords(){const result=[];for(const id of await S.mobileIds()){const saved=await S.readMobileFile(await S.mobileFileName(id));if(saved)result.push(saved.data);}return result;}
- async function register(c,record){await g.DrinksPush.request(c,'/admin/account',{alias:record.alias,revision:record.revision});return call(c,'access',{record});}
+ async function register(c,record,profile){const original=S.sourceKey();if(profile===undefined){const state=await g.oneDriveReadState();profile=state.members.find(m=>String(m.id)===record.memberId);}if(original!==S.sourceKey()||c.source!==original)throw Error('Der Mitgliederordner wurde geändert.');const value={...record,challengeLevel:g.DrinksQuizModel.profileLevel(profile)};await g.DrinksPush.request(c,'/admin/account',{alias:value.alias,revision:value.revision});return call(c,'access',{record:value});}
+ async function syncProfiles(){admin();const c=await connection();if(!c)throw Error('Zentrale Kontenführung fehlt.');const source=S.sourceKey(),state=await g.oneDriveReadState(),records=await accessRecords();for(const r of records){admin();if(S.sourceKey()!==source)throw Error('Der Mitgliederordner wurde geändert.');await register(c,r,state.members.find(m=>String(m.id)===r.memberId)||null);}return records.length;}
  async function marker(source,state){const old=await S.readMobileFile('konten-zentrale.json');await S.writeMobileFile('konten-zentrale.json',{version:1,source,state},old?.item?.eTag);cached=null;}
  const filename=kind=>'sicherung-'+kind+'-'+crypto.randomUUID()+'.json';
  async function migrate(progress=()=>{}){
@@ -44,6 +45,6 @@
   $('member').onchange=()=>{$('reset').disabled=!$('member').value;};
   $('reset').onclick=()=>run(async()=>{const scope=$('member').value;if(!scope)return;if(!plan){plan=await prepareReset(scope==='all'?'all':[scope],say);if(!confirm((scope==='all'?'ALLE '+plan.members.length+' Getränkekonten':$('member').selectedOptions[0].textContent)+' wirklich auf null setzen?\nAuch Guthaben und Treuepunkte werden zurückgesetzt.\nDie Sicherung wurde in OneDrive geprüft.')){plan=null;say('Abgebrochen. Keine Buchung wurde verändert.');return;}}try{const n=await executeReset(plan);plan=null;say(n+' Konten zurückgesetzt. Sicherung bleibt in OneDrive.');}catch(e){if(e.status===409)plan=null;throw e;}});
  }
- g.DrinksCentral={connection,call,register,migrate,backup,prepareReset,executeReset};
+ g.DrinksCentral={connection,call,register,syncProfiles,migrate,backup,prepareReset,executeReset};
  if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 })(globalThis);
