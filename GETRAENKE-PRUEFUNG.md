@@ -179,3 +179,14 @@ WebKit-Browserprüfung mit fiktiven Mitgliedern: Hauptkarten, Vormerkungen und H
 - „Deckel anstupsen“ zeigt einen wechselnden Spruch und eine kurze Wackelanimation. Nach vier Sekunden kehrt der normale Deckelhinweis zurück. Beim Verbergen, Zugangswechsel oder Aktualisieren wird der Effekt beendet. Die Aktion sendet keine Buchung oder Netzwerkanfrage und verändert keinen Geldbetrag. Reduzierte Bewegung deaktiviert die Animation.
 - Lockerere Deckel- und Aktualisierungstexte; Zahlungen, Eintragungsaktionen, Treuepunkte und Fehlermeldungen bleiben sachlich nachvollziehbar. Bestehende Handybuchungen und Synchronisierung unverändert.
 - 16 gezielte Node-Prüfungen für Installation, Icon-Verweise/Abmessungen, Linkerhalt, Badge, Dankesanzeige, Datenaktualisierung, reinen Deckelspaß und gemeinsame Release-Version bestanden. Zusätzlich RGB-Farben, Manifeste und Syntax geprüft. Keine produktiven Konten oder Zahlungen verwendet. Vorhandene iPhone-Home-Symbole wurden nicht auf einem physischen Gerät aktualisiert.
+
+
+## 2026.10.12.2 – Private Fragenverwaltung für die Deckelchallenge
+
+Unter Getränkeverwaltung → Fragen & Antworten lassen sich Fragen mit vier Antworten, einer richtigen Lösung, Kategorie, Erklärung und Quelle anlegen, bearbeiten, löschen und fachlich freigeben. JSON-Import ergänzt bestehende Fragen; gleiche Kategorie/Fragestellung wird übersprungen. Importierte Fragen bleiben stets Entwürfe. Der separat bereitgestellte Fragenpool enthält 25 selbst formulierte Fragen und wird nicht öffentlich im Repository abgelegt. Die örtliche Zuordnung der Herstellerangaben zum LF10 sowie die tatsächliche Fahrzeugbeladung sind vor Freigabe zu prüfen. Die Bezeichnung TSF 16/25 stammt aus der örtlichen Vorgabe; allgemeine Gerätefragen behaupten keine Stückzahlen oder Lagerorte.
+
+Fragen und Lösungen werden ausschließlich in Getraenke/challenge-fragen.json im verbundenen OneDrive-/SharePoint-Ordner gespeichert. Kein Zugriff auf Getränke- oder Zahlungsbuchungen, keine Treuepunkteänderung, keine Veröffentlichung der Lösungen über Handy-Snapshots. Admin-Sperre und Wechsel der OneDrive-Anmeldung/Quelle entfernen die sichtbaren Fragen. Revision und Dateiversion verhindern das Überschreiben eines parallel geänderten Stands. Eine nicht bestätigte Speicherung wird mit derselben Revision erneut geprüft.
+
+Validierung: 8 automatisierte Tests für Schema, nicht destruktiven Import, ausschließlich importierte Entwürfe, Speicherung, parallele Änderungen, verlorene Antwort, Admin-Sperre, Quellenwechsel und unterbrochenes Dateilesen. Die verbundenen produktiven OneDrive-Daten wurden hierfür nicht verändert; die Graph-Zugriffe wurden simuliert.
+
+Diese Version stellt die Fragenverwaltung bereit. Mehrspielerpartien, Einsatzbestätigung, Gewinnerermittlung, Gleichstandregeln und die schuldenneutrale Übertragung des Spieleinsatzes sind noch nicht implementiert.

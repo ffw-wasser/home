@@ -26,15 +26,17 @@ function lockAdministration(){
   if(byId('pushAdminToken'))byId('pushAdminToken').value='';
   if(byId('deckel-token'))byId('deckel-token').value='';
   window.DrinksAdminBookings?.lock();
+  window.DrinksQuizQuestions?.lock();
   adminUnlocked=false;clearTimeout(adminTimeoutId);adminTimeoutId=null;
-  for(const id of ['settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']){
+  for(const id of ['settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id;showView('adminLoginView');break;}
   }
   for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
   renderOneDriveDialog?.();
 }
 function showView(viewId) {
-  if(["settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView"].includes(viewId)&&!requireAdmin(viewId))return false;
+  if(["settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView"].includes(viewId)&&!requireAdmin(viewId))return false;
+  if(window.DrinksQuizQuestions?.beforeView(viewId)===false)return false;
   if(window.DrinksAdminBookings?.beforeView(viewId)===false)return false;
   if(window.DrinksRewards?.beforeView(viewId)===false)return false;
   if(window.Usability?.beforeLeave(viewId)===false)return false;
@@ -48,6 +50,7 @@ function showView(viewId) {
   byId("attendanceTab").classList.toggle("active", viewId === "attendanceView");
   if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.toggle("active",viewId==="settingsHistoryView");if(byId("statisticsTab"))byId("statisticsTab").classList.toggle("active",viewId==="settingsStatisticsView");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
   window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
+  if(viewId==="settingsQuizQuestionsView")window.DrinksQuizQuestions?.load();
   return true;
 }
 

@@ -189,3 +189,20 @@ html body .top-nav #drinksShortcut{width:auto;flex:0 0 auto;min-height:48px!impo
 @media(max-width:480px){#drinksView .dr-directory-toolbar{gap:8px}#drinksView .dr-directory-toolbar>button{padding:12px 10px;font-size:14px}}
 
 #drinksView .dr-name-last,#drinksView .dr-name-first{white-space:nowrap;overflow-wrap:normal;line-height:1.3;width:100%;overflow:hidden;text-overflow:ellipsis}
+
+/* Private challenge question editor */
+#settingsQuizQuestionsView .quiz-toolbar{display:grid;gap:10px}
+#settingsQuizQuestionsView .quiz-editor{scroll-margin-top:90px}
+#settingsQuizQuestionsView .quiz-editor form{display:grid;gap:10px}
+#settingsQuizQuestionsView .quiz-answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#settingsQuizQuestionsView .quiz-answers>div{display:grid;gap:6px;min-width:0}
+#settingsQuizQuestionsView .text-input{width:100%;min-width:0;font-size:16px;box-sizing:border-box}
+#settingsQuizQuestionsView textarea{resize:vertical}
+#settingsQuizQuestionsView .quiz-approval{display:flex;align-items:center;gap:12px;min-height:44px}
+#settingsQuizQuestionsView .quiz-approval input{width:24px;height:24px;flex-shrink:0}
+#settingsQuizQuestionsView .quiz-question{padding:18px;border:1px solid var(--border,#ddd);border-radius:16px;background:var(--panel,#fff);margin:12px 0;overflow-wrap:anywhere}
+#settingsQuizQuestionsView .quiz-question ol{padding-left:24px}
+#settingsQuizQuestionsView .quiz-question li{padding:6px 0}
+#settingsQuizQuestionsView .quiz-correct{font-weight:700;color:#17613f}
+#settingsQuizQuestionsView [hidden]{display:none!important}
+@media(max-width:600px){#settingsQuizQuestionsView .quiz-answers{grid-template-columns:1fr}#settingsQuizQuestionsView .ux-dialog-actions{flex-wrap:wrap}#settingsQuizQuestionsView .screen-heading{flex-wrap:wrap}}
