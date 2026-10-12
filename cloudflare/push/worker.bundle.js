@@ -17,9 +17,10 @@
   const dayFormat=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'});
   const day=value=>dayFormat.format(new Date(value));
   function correctionError(){return Object.assign(new Error('Dieser Eintrag kann nicht zurückgenommen werden: Er wurde bereits ganz oder teilweise bezahlt, verrechnet oder korrigiert. Bitte den aktuellen Stand prüfen.'),{code:'correctionChanged'});}
-  function reduceUnpaid(s,cents,preferred=null,paid=true){
+  function reduceUnpaid(s,cents,preferred=null,paid=true,challenge=false){
     const targets=preferred?[preferred,...Array.from(s.drinks.values()).filter(t=>t!==preferred)]:s.drinks.values();
-    for(const target of targets){const used=Math.min(cents,target.unpaid);target.unpaid-=used;if(used&&paid)target.protected=true;cents-=used;if(!cents)break;}
+    for(const target of targets){const used=Math.min(cents,target.unpaid);target.unpaid-=used;if(used&&paid)target.protected=true;if(used&&challenge)target.challengeProtected=true;cents-=used;if(!cents)break;}
+    return cents;
   }
   function assertCorrectable(s,b){
     const target=s.drinks.get(b.targetId);
@@ -41,7 +42,7 @@
       const lot=s.legacyLots.get(b.targetId);if(lot)lot.remaining=0;
     }
     s.reversedPayments.add(b.targetId);
-    let remaining=debt;for(const target of s.drinks.values()){if(target.booking.pointUnits)continue;const used=Math.min(remaining,target.count*unitPrice(target.booking)-target.unpaid);target.unpaid+=used;target.charged=Math.max(target.charged,target.unpaid);remaining-=used;if(!remaining)break;}
+    let remaining=debt;for(const target of s.drinks.values()){if(target.booking.pointUnits)continue;const used=Math.min(remaining,target.count*unitPrice(target.booking)-target.unpaid);target.unpaid+=used;target.charged=Math.max(target.charged,target.unpaid);remaining-=used;if(!remaining)break;}s.challengeDebt+=remaining;
   }
   function applyEntry(s,b){
     if(b.type==='drinks'){
@@ -50,11 +51,16 @@
       const used=redeemed?0:Math.min(modern?s.credit-s.rewardCredit:s.credit,b.cents),rewardUsed=modern?0:Math.min(s.rewardCredit,used);const rewardAlloc=consumeLegacy(s,rewardUsed,'spent');s.credit-=used;s.rewardCredit-=rewardUsed;s.balance+=redeemed?0:b.cents-used;s.count+=b.count;
       s.usages.set(b.id,used);
       s.drinks.set(b.id,{booking:b,count:b.count,charged:redeemed?0:b.cents-used,unpaid:redeemed?0:b.cents-used,protected:used>0||redeemed>0,rewardUsed,rewardAlloc,redeemed});
-    }else if(b.type==='payment'){const paid=Math.min(s.balance,b.cents);s.balance-=paid;s.credit+=b.cents-paid;reduceUnpaid(s,paid);s.payments.set(b.id,b);}
+    }else if(b.type==='payment'){const paid=Math.min(s.balance,b.cents);s.balance-=paid;s.credit+=b.cents-paid;const remaining=reduceUnpaid(s,paid);s.challengeDebt=Math.max(0,s.challengeDebt-remaining);s.payments.set(b.id,b);}
+    else if(b.type==='challenge'){
+      if(b.direction==='in'){s.balance+=b.cents;s.challengeDebt+=b.cents;}
+      else{if(b.cents>s.balance)throw Error('Challenge-Gewinn übersteigt die Schulden.');s.balance-=b.cents;const used=Math.min(s.challengeDebt,b.cents);s.challengeDebt-=used;reduceUnpaid(s,b.cents-used,null,true,true);}
+    }
     else if(b.type==='bonus'){if(b.policy.schemaVersion===2)s.points+=b.cents;else{s.credit+=b.cents;s.rewardCredit+=b.cents;s.legacyLots.set(b.paymentId,{remaining:b.cents,spent:0,redeemed:0});}s.bonuses.set(b.paymentId,b);}
     else if(b.type==='payment-reversal')reversePayment(s,b);
     else if(b.type==='correction'){
       const target=s.drinks.get(b.targetId);
+      if(target?.challengeProtected)throw Object.assign(Error('Dieser Getränke-Eintrag wurde mit einer gemeinsamen Challenge verrechnet und kann nicht einzeln gelöscht werden.'),{code:'challengeLinked'});
       if(!target||!Number.isSafeInteger(b.count)||b.count<1||b.count>target.count||b.cents!==b.count*unitPrice(target.booking)||(b.drink||'beer')!==(target.booking.drink||'beer')||(b.confirmation!=='admin'&&day(target.booking.createdAt)!==day(b.createdAt))||Date.parse(b.createdAt)<Date.parse(target.booking.createdAt))throw correctionError();
       // Reverse the last units of this booking. Return consumed credit and any
       // amount already paid as credit; never alter payment or bonus entries.
@@ -69,10 +75,10 @@
     }
     return s;
   }
-  function state(){return {balance:0,count:0,credit:0,rewardCredit:0,points:0,legacyLots:new Map(),drinks:new Map(),usages:new Map(),payments:new Map(),bonuses:new Map(),reversedPayments:new Set()};}
+  function state(){return {balance:0,count:0,credit:0,rewardCredit:0,points:0,challengeDebt:0,legacyLots:new Map(),drinks:new Map(),usages:new Map(),payments:new Map(),bonuses:new Map(),reversedPayments:new Set()};}
   function validate(account,memberId){
-    if(!account||![1,2,3,4,5,6,7].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die aktuelle App-Version verwenden und den Speicher prüfen.');
-    if(account.schemaVersion===7&&(!/^[-a-zA-Z0-9]{8,80}$/.test(account.resetEpoch||'')||!Number.isFinite(Date.parse(account.resetAt))))throw new Error('Der Kontoneustart ist ungültig.');
+    if(!account||![1,2,3,4,5,6,7,8].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die aktuelle App-Version verwenden und den Speicher prüfen.');
+    if((account.schemaVersion===7||account.resetEpoch!==undefined||account.resetAt!==undefined)&&(!/^[-a-zA-Z0-9]{8,80}$/.test(account.resetEpoch||'')||!Number.isFinite(Date.parse(account.resetAt))))throw new Error('Der Kontoneustart ist ungültig.');
     if(account.pin!==null&&(!account.pin||account.pin.algorithm!=='PBKDF2-SHA256'||account.pin.iterations!==ITERATIONS||!/^[a-f0-9]{32}$/.test(account.pin.salt)||!/^[a-f0-9]{64}$/.test(account.pin.hash)))throw new Error('Die Getränke-PIN ist nicht lesbar.');
     const ids=new Set(),rewards=new Map(),rewardedPayments=new Set(),s=state();
     for(const b of account.bookings){
@@ -85,6 +91,7 @@
       if(b.type==='drinks'&&(b.drink===undefined||account.schemaVersion>=4&&['beer','wine'].includes(b.drink))&&Number.isSafeInteger(b.count)&&b.count>0&&b.cents===b.count*unitPrice(b)){}
       else if(b.type==='payment'&&['cash','paypal'].includes(b.method)&&(b.confirmation==='member'||(account.schemaVersion>=2&&b.method==='paypal'&&b.confirmation==='admin'))){}
       else if(b.type==='correction'&&account.schemaVersion>=3){}
+      else if(b.type==='challenge'&&account.schemaVersion>=8&&b.confirmation==='challenge'&&['in','out'].includes(b.direction)&&/^[a-f0-9-]{36}$/.test(b.gameId||'')&&b.id==='challenge-'+b.gameId&&/^[A-F0-9]{8}$/.test(b.code||'')&&Number.isSafeInteger(b.score)&&b.score>=0&&b.score<=7){}
       else if(b.type==='payment-reversal'&&account.schemaVersion>=5){const bonus=s.bonuses.get(b.targetId);if(bonus)rewards.set(bonus.policy.id,(rewards.get(bonus.policy.id)||0)-bonus.qualifyingCents);}
       else if(b.type==='bonus'&&account.schemaVersion>=2){
         const payment=account.bookings.find(p=>p.id===b.paymentId);
@@ -144,6 +151,7 @@
     validate(account,account.memberId);
     const found=account.bookings.find(b=>b.id===booking.id);
     if(found){if(JSON.stringify(found)!==JSON.stringify(booking))throw new Error('Buchungsnummer bereits anders verwendet.');return account;}
+    if(booking.type==='challenge')throw Error('Challenge-Buchungen entstehen ausschließlich im Spieldienst.');
     if(booking.type==='correction'&&booking.confirmation!=='admin')assertCorrectable(ledger(account),booking);
     if(booking.type==='payment'&&!booking.prepay&&booking.cents>totals(account).balance)throw Object.assign(new Error('Der offene Betrag wurde inzwischen geändert. Bitte den Zahlungsbetrag neu wählen.'),{code:'balanceChanged'});
     return validate({...account,schemaVersion:Math.max(account.schemaVersion,booking.loyaltyVersion===2||booking.prepay?6:booking.type==='payment-reversal'||booking.type==='correction'&&booking.confirmation==='admin'?5:booking.drink?4:booking.type==='correction'?3:1),bookings:[...account.bookings,{...booking}]},account.memberId);
@@ -165,6 +173,11 @@
     const existing=new Map(account.bookings.map(b=>[b.id,b])),seen=new Set(),added=[],s=ledger(account);
     for(const b of bookings){if(seen.has(b.id))throw new Error('Doppelte Buchungsnummer.');seen.add(b.id);const old=existing.get(b.id);if(old){if(JSON.stringify(old)!==JSON.stringify(b))throw new Error('Buchungsnummer bereits anders verwendet.');}else{applyEntry(s,b);added.push({...b});}}
     return added.length?validate({...account,schemaVersion:Math.max(added.some(b=>b.loyaltyVersion===2)?6:5,account.schemaVersion),bookings:[...account.bookings,...added]},account.memberId):account;
+  }
+  function appendChallenge(account,booking){
+    validate(account,account.memberId);if(booking.type!=='challenge')throw Error('Ungültige Challenge-Buchung.');const old=account.bookings.find(b=>b.id===booking.id);
+    if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Challenge bereits anders gebucht.');return account;}
+    return validate({...account,schemaVersion:8,bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendWithReward(account,booking,policy){
     validateRewardSettings(policy);
@@ -194,7 +207,7 @@
   }
   function parseEuro(raw){const text=String(raw||'').trim().replace(',','.');if(!/^\d+(\.\d{1,2})?$/.test(text))return null;const cents=Math.round(Number(text)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;}
   function paypalUrl(cents){if(!Number.isSafeInteger(cents)||cents<=0)throw new Error('Ungültiger Zahlungsbetrag.');return 'https://paypal.me/FeuerwehrWasser/'+(cents/100).toFixed(2)+'EUR';}
-  global.DrinksModel={PRICE,WINE_PRICE,POINT_UNIT,pointCost,pointText,rewardPolicy,threshold,award,unitPrice,empty,validate,totals,today,correctable,consumption,day,ledger,append,appendMany,appendAdminMany,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
+  global.DrinksModel={PRICE,WINE_PRICE,POINT_UNIT,pointCost,pointText,rewardPolicy,threshold,award,unitPrice,empty,validate,totals,today,correctable,consumption,day,ledger,append,appendMany,appendAdminMany,appendChallenge,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
 })(typeof window==='undefined'?globalThis:window);
 
 /* Public code, private keys: 256-bit AES-GCM, a fresh nonce for every snapshot. */
@@ -212,7 +225,7 @@
     if(data?.version!==1||!['balance','credit','needed','bonusCents'].every(k=>Number.isSafeInteger(data[k])&&data[k]>=0)||!Number.isFinite(Date.parse(data.updatedAt))||!Array.isArray(data.bookings)||data.bookings.length>5)throw new Error('Ungültiger Kontostand.');
     if(data.progressCents!==undefined&&(!Number.isSafeInteger(data.progressCents)||data.progressCents<0))throw new Error('Ungültiger Fortschritt.');
     if(data.pointUnits!==undefined&&!Number.isSafeInteger(data.pointUnits)||['thresholdCents','awardUnits','beerUnits','wineUnits'].some(k=>data[k]!==undefined&&(!Number.isSafeInteger(data[k])||data[k]<=0)))throw new Error('Ungültige Treuepunkte.');
-    for(const b of data.bookings)if(b.pointUnits!==undefined&&(!Number.isSafeInteger(b.pointUnits)||b.pointUnits<=0||b.type!=='drinks')||b.cancelled!==undefined&&typeof b.cancelled!=='boolean'||b.drink!==undefined&&!['beer','wine'].includes(b.drink)||!['drinks','payment','bonus','correction','payment-reversal'].includes(b.type)||!Number.isSafeInteger(b.cents)||b.cents<=0||!Number.isFinite(Date.parse(b.createdAt))||(['drinks','correction'].includes(b.type)&&(!Number.isSafeInteger(b.count)||b.count<1))||(b.type==='payment'&&!['cash','paypal'].includes(b.method)))throw new Error('Ungültige Buchung.');
+    for(const b of data.bookings)if(b.pointUnits!==undefined&&(!Number.isSafeInteger(b.pointUnits)||b.pointUnits<=0||b.type!=='drinks')||b.cancelled!==undefined&&typeof b.cancelled!=='boolean'||b.drink!==undefined&&!['beer','wine'].includes(b.drink)||!['drinks','payment','bonus','correction','payment-reversal','challenge'].includes(b.type)||!Number.isSafeInteger(b.cents)||b.cents<=0||!Number.isFinite(Date.parse(b.createdAt))||(['drinks','correction'].includes(b.type)&&(!Number.isSafeInteger(b.count)||b.count<1))||(b.type==='payment'&&!['cash','paypal'].includes(b.method))||(b.type==='challenge'&&(!['in','out'].includes(b.direction)||!/^[A-F0-9]{8}$/.test(b.code||''))))throw new Error('Ungültige Buchung.');
     return data;
   }
   function create(){return {version:1,alias:hex(crypto.getRandomValues(new Uint8Array(16))),key:hex(crypto.getRandomValues(new Uint8Array(32)))};}
@@ -272,9 +285,66 @@
  }
  function snapshot(a,p){
   const totals=M.totals(a),r=M.rewardState(a,p),state=M.ledger(a),undo=M.correctable(a);
-  return {version:1,balance:totals.balance,credit:r.prepaid,pointUnits:r.pointUnits,thresholdCents:r.threshold,progressCents:r.progress,awardUnits:M.award(p),beerUnits:M.pointCost(p,'beer'),wineUnits:M.pointCost(p,'wine'),needed:r.needed,bonusCents:M.award(p),updatedAt:new Date().toISOString(),...(undo.count?{undo:{targetId:undo.targetId}}:{}),bookings:a.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...((b.type==='payment'&&state.reversedPayments.has(b.id)||b.type==='bonus'&&state.reversedPayments.has(b.paymentId)||b.type==='drinks'&&state.drinks.get(b.id)?.count===0)?{cancelled:true}:{}),...(['drinks','correction'].includes(b.type)?{count:b.count,...(b.pointUnits?{pointUnits:b.pointUnits}:{}),...((b.drink==='wine'||b.type==='correction'&&a.bookings.find(t=>t.id===b.targetId)?.drink==='wine')?{drink:'wine'}:{})}:b.type==='payment'?{method:b.method}:{})}))};
+  return {version:1,balance:totals.balance,credit:r.prepaid,pointUnits:r.pointUnits,thresholdCents:r.threshold,progressCents:r.progress,awardUnits:M.award(p),beerUnits:M.pointCost(p,'beer'),wineUnits:M.pointCost(p,'wine'),needed:r.needed,bonusCents:M.award(p),updatedAt:new Date().toISOString(),...(undo.count?{undo:{targetId:undo.targetId}}:{}),bookings:a.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...(b.type==='challenge'?{direction:b.direction,code:b.code}:{}),...((b.type==='payment'&&state.reversedPayments.has(b.id)||b.type==='bonus'&&state.reversedPayments.has(b.paymentId)||b.type==='drinks'&&state.drinks.get(b.id)?.count===0)?{cancelled:true}:{}),...(['drinks','correction'].includes(b.type)?{count:b.count,...(b.pointUnits?{pointUnits:b.pointUnits}:{}),...((b.drink==='wine'||b.type==='correction'&&a.bookings.find(t=>t.id===b.targetId)?.drink==='wine')?{drink:'wine'}:{})}:b.type==='payment'?{method:b.method}:{})}))};
  }
  g.DrinksLedger={apply,snapshot};
+})(globalThis);
+
+/* Private question bank. Public code contains no questions or solution keys. */
+(function(global){
+  'use strict';
+  const uuid=value=>typeof value==='string'&&/^[-a-zA-Z0-9]{8,150}$/.test(value);
+  const text=(value,max,label,required=true)=>{if(typeof value!=='string'||value.length>max||required&&!value.trim())throw Error(label+' fehlt oder ist zu lang.');return value;};
+  function question(q){
+    if(!q||!uuid(q.id)||!Number.isSafeInteger(q.version)||q.version<1||typeof q.active!=='boolean'||!Number.isFinite(Date.parse(q.updatedAt)))throw Error('Eine Frage ist nicht lesbar.');
+    text(q.category,80,'Kategorie');text(q.text,800,'Frage');text(q.explanation,2000,'Erklärung',false);text(q.source,500,'Quelle / Stand',false);
+    if(!Array.isArray(q.answers)||q.answers.length!==4)throw Error('Bitte vier Antwortmöglichkeiten angeben.');
+    q.answers.forEach(a=>text(a,300,'Antwort'));if(new Set(q.answers.map(a=>a.trim().normalize('NFC').toLocaleLowerCase('de-DE'))).size!==4)throw Error('Die vier Antworten müssen unterschiedlich sein.');
+    if(!Number.isSafeInteger(q.correct)||q.correct<0||q.correct>3)throw Error('Bitte die richtige Antwort auswählen.');
+    return {id:q.id,version:q.version,category:q.category,text:q.text,answers:q.answers.slice(),correct:q.correct,explanation:q.explanation,source:q.source,active:q.active,updatedAt:q.updatedAt};
+  }
+  function validate(bank){
+    if(!bank||bank.schemaVersion!==1||!uuid(bank.revision)||!Number.isFinite(Date.parse(bank.updatedAt))||!Array.isArray(bank.questions)||bank.questions.length>1000)throw Error('Die Fragenbank ist nicht lesbar.');
+    const questions=bank.questions.map(question);if(new Set(questions.map(q=>q.id)).size!==questions.length)throw Error('Eine Frage ist doppelt vorhanden.');
+    return {schemaVersion:1,revision:bank.revision,updatedAt:bank.updatedAt,questions};
+  }
+  function empty(){return {schemaVersion:1,revision:null,updatedAt:null,questions:[]};}
+  function prepare(bank,input,id=null){
+    if(bank.revision!==null)validate(bank);
+    const old=id?bank.questions.find(q=>q.id===id):null;if(id&&!old)throw Error('Die Frage wurde inzwischen entfernt. Bitte neu laden.');
+    const now=new Date().toISOString(),q=question({id:old?.id||crypto.randomUUID(),version:(old?.version||0)+1,category:input.category.trim(),text:input.text.trim(),answers:input.answers.map(a=>a.trim()),correct:input.correct,explanation:input.explanation.trim(),source:input.source.trim(),active:input.active,updatedAt:now});
+    return validate({schemaVersion:1,revision:crypto.randomUUID(),updatedAt:now,questions:old?bank.questions.map(x=>x.id===old.id?q:x):[...bank.questions,q]});
+  }
+  function remove(bank,id){validate(bank);if(!bank.questions.some(q=>q.id===id))throw Error('Die Frage wurde bereits entfernt. Bitte neu laden.');return validate({...bank,revision:crypto.randomUUID(),updatedAt:new Date().toISOString(),questions:bank.questions.filter(q=>q.id!==id)});}
+  function importQuestions(bank,data){
+    if(bank.revision!==null)validate(bank);
+    if(!data||data.schemaVersion!==1||!Array.isArray(data.questions)||!data.questions.length||data.questions.length>1000)throw Error('Keine gültige Fragen-Importdatei.');
+    const incoming=data.questions.map(question),key=q=>(q.category+'\n'+q.text).trim().normalize('NFC').toLocaleLowerCase('de-DE'),seen=new Set(bank.questions.map(key)),now=new Date().toISOString(),added=[];
+    for(const q of incoming){if(seen.has(key(q)))continue;seen.add(key(q));added.push({...q,id:crypto.randomUUID(),version:1,active:false,updatedAt:now});}
+    if(bank.questions.length+added.length>1000)throw Error('Die Fragenbank darf höchstens 1000 Fragen enthalten.');
+    return {added:added.length,skipped:incoming.length-added.length,bank:added.length?validate({schemaVersion:1,revision:crypto.randomUUID(),updatedAt:now,questions:[...bank.questions,...added]}):bank};
+  }
+  global.DrinksQuizModel={question,validate,empty,prepare,remove,importQuestions};
+})(typeof window==='undefined'?globalThis:window);
+
+/* No public questions or solution keys. Equal-score winners share only real debt. */
+(function(g){
+ 'use strict';
+ function allocate(total,caps){
+  const values=caps.map(()=>0);let left=total,remaining=caps.map((_,i)=>i);
+  while(left&&remaining.length){const share=Math.floor(left/remaining.length),extra=left%remaining.length;let used=0;for(let j=0;j<remaining.length;j++){const i=remaining[j],n=Math.min(caps[i]-values[i],share+(j<extra?1:0));values[i]+=n;used+=n;}left-=used;remaining=remaining.filter(i=>values[i]<caps[i]);if(!used)break;}
+  return values;
+ }
+ function settle(players,questions,stake){
+  if(!Array.isArray(players)||players.length<2||players.length>20||new Set(players.map(p=>p.alias)).size!==players.length||!Array.isArray(questions)||questions.length!==7||!Number.isSafeInteger(stake)||stake<1||stake>100000)throw Error('Ungültige Spielrunde.');
+  const sorted=players.slice().sort((a,b)=>a.alias.localeCompare(b.alias));
+  const result=sorted.map(p=>{if(!Number.isSafeInteger(p.debt)||p.debt<0||!Array.isArray(p.answers)||p.answers.length!==7||p.answers.some(a=>!Number.isSafeInteger(a)||a<0||a>3))throw Error('Die Runde ist noch nicht vollständig.');return {alias:p.alias,score:p.answers.filter((a,i)=>a===questions[i].correct).length,delta:0};});
+  const best=Math.max(...result.map(p=>p.score)),winners=result.filter(p=>p.score===best),losers=result.filter(p=>p.score!==best);
+  if(!losers.length)return result;
+  const caps=winners.map(p=>sorted.find(x=>x.alias===p.alias).debt),pot=Math.min(stake*losers.length,caps.reduce((a,b)=>a+b,0)),gains=allocate(pot,caps),losses=allocate(pot,losers.map(()=>stake));
+  winners.forEach((p,i)=>p.delta=-gains[i]);losers.forEach((p,i)=>p.delta=losses[i]);return result;
+ }
+ g.DeckelChallengeRules={settle,allocate};
 })(globalThis);
 
 /* Encrypted authoritative ledger. All mutations share a D1 transaction/revision. */
@@ -331,7 +401,7 @@
    const record=await open(env,row.payload,'access:'+data.alias);
    if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,epoch:current.account.resetEpoch||'0'};
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
@@ -384,6 +454,7 @@
    const a=M.validate(data.account,member(data.memberId)),current=await read(env,data.memberId);
    if(current.version!==data.version)fail('Das Konto wurde gleichzeitig geändert.');
    const additions=a.bookings.slice(current.account.bookings.length),policy=await open(env,m.policy,'policy');
+   if(additions.some(b=>b.type==='challenge'))fail('Challenge-Buchungen müssen gemeinsam durch den Spieldienst erfolgen.',400);
    if((data.policyRevision&&data.policyRevision!==policy.revision)||(!data.policyRevision&&additions.some(b=>b.type==='payment'||b.type==='bonus'||b.pointUnits)))fail('Die Treuepunkte-Einstellungen wurden geändert. Bitte neu laden.');
    // Ordinary writes must preserve the reset barrier and every existing entry.
    if((a.resetEpoch||'0')!==(current.account.resetEpoch||'0')||a.resetAt!==current.account.resetAt||JSON.stringify(a.bookings.slice(0,current.account.bookings.length))!==JSON.stringify(current.account.bookings))fail('Bestehende Buchungen dürfen nur über Zurücksetzen entfernt werden.');
@@ -409,7 +480,109 @@
   }
   fail('Nicht gefunden.',404);
  }
- g.CentralLedger={route};
+ g.CentralLedger={route,meta,source,active,read,seal,open};
+})(globalThis);
+
+/* Private question snapshots and atomic, zero-sum multiplayer settlement. */
+(function(g){
+ 'use strict';const L=g.CentralLedger,M=g.DrinksModel,Q=g.DrinksQuizModel,R=g.DeckelChallengeRules;
+ const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v),fail=(s,status=409,code='rejected')=>{throw Object.assign(Error(s),{status,code});},copy=v=>JSON.parse(JSON.stringify(v)),checks=new WeakMap();
+ async function ready(env){const old=checks.get(env.DB);if(old&&old.until>Date.now())return old.ready;let ok=false;try{await env.DB.prepare('SELECT id FROM challenge_pool LIMIT 1').first();await env.DB.prepare('SELECT id FROM challenge_games LIMIT 1').first();ok=true;}catch{}checks.set(env.DB,{ready:ok,until:Date.now()+(ok?60000:5000)});return ok;}
+ async function actor(env,data,auth){
+  if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Handyzugang.',400);
+  const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(data.alias,data.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(data.alias).first();
+  if(!row||current?.revision!==data.revision||!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
+  return L.open(env,row.payload,'access:'+data.alias);
+ }
+ async function pool(env){const row=await env.DB.prepare('SELECT * FROM challenge_pool WHERE id=1').first();return row?{value:await L.open(env,row.payload,'challenge-pool'),version:row.version}:null;}
+ const name=v=>{if(typeof v!=='string'||!v.trim()||v.length>40)fail('Bitte einen Spielnamen mit höchstens 40 Zeichen eingeben.',400);return v.trim();};
+ function shuffled(values){const a=values.slice();for(let i=a.length-1;i>0;i--){const limit=Math.floor(0x100000000/(i+1))*(i+1);let n;do{n=crypto.getRandomValues(new Uint32Array(1))[0];}while(n>=limit);const j=n%(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+ function select(questions){return shuffled(questions).slice(0,7).map(q=>{const order=shuffled([0,1,2,3]);return {...q,answers:order.map(i=>q.answers[i]),correct:order.indexOf(q.correct)};});}
+ async function game(env,data){
+  let row;if(uuid(data.gameId))row=await env.DB.prepare('SELECT * FROM challenge_games WHERE id=?').bind(data.gameId).first();else if(/^[A-F0-9]{8}$/.test(data.code||''))row=await env.DB.prepare('SELECT * FROM challenge_games WHERE code=?').bind(data.code).first();else fail('Bitte einen gültigen Spielcode eingeben.',400);
+  if(!row)fail('Runde nicht gefunden. Bitte den Spielcode prüfen.',404);return {row,value:await L.open(env,row.payload,'challenge:'+row.id)};
+ }
+ function view(game,alias){
+  const me=game.players.find(p=>p.alias===alias),done=game.status==='done';
+  return {version:1,gameId:game.id,code:game.code,status:game.status,stakeCents:game.stakeCents,expiresAt:game.expiresAt,isHost:game.host===alias,reason:game.reason||'',players:game.players.map(p=>({name:p.name,me:p.alias===alias,host:p.alias===game.host,progress:p.answers.length,...(done?{score:p.score,delta:p.delta}:{} )})),...(me&&game.status==='running'&&me.answers.length<7?{question:{index:me.answers.length,category:game.questions[me.answers.length].category,text:game.questions[me.answers.length].text,answers:game.questions[me.answers.length].answers}}:{}),...(done&&me?{review:game.questions.map((q,i)=>({text:q.text,answers:q.answers,correct:q.correct,selected:me.answers[i],explanation:q.explanation,source:q.source}))}:{})};
+ }
+ // The first CAS verifies ALL affected ledger versions before changing anything.
+ // All later statements are guarded by its unique encrypted marker in one batch.
+ async function commit(env,meta,row,next,accounts=[]){
+  const payload=await L.seal(env,next,'challenge:'+next.id),clauses=['EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=? AND state=\'active\')'],params=[meta.seq];
+  for(const a of accounts){clauses.push('EXISTS(SELECT 1 FROM ledgers WHERE member=? AND version=?)');params.push(a.id,a.version);}
+  const first=env.DB.prepare('UPDATE challenge_games SET payload=?,version=version+1,updated_at=? WHERE id=? AND version=? AND '+clauses.join(' AND ')).bind(payload,Date.now(),next.id,row.version,...params),guard='EXISTS(SELECT 1 FROM challenge_games WHERE id=? AND payload=?)',statements=[first];
+  for(const a of accounts)statements.push(env.DB.prepare('UPDATE ledgers SET payload=?,version=version+1 WHERE member=? AND '+guard).bind(await L.seal(env,a.account,'ledger:'+a.id),a.id,next.id,payload));
+  statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+guard).bind(meta.seq,next.id,payload));
+  const results=await env.DB.batch(statements);if(!results[0].meta.changes)fail('Die Runde oder ein Konto wurde gleichzeitig geändert. Bitte denselben Vorgang erneut prüfen.',409,'retry');
+ }
+ async function settlement(env,next){
+  const accounts=[];for(const p of next.players){
+   const access=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(p.alias,p.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(p.alias).first();
+   if(!access||current?.revision!==p.revision){next.status='cancelled';next.reason='Ein Handyzugang wurde geändert. Es wurde nichts übertragen.';return [];}
+   const r=await L.open(env,access.payload,'access:'+p.alias),a=await L.read(env,p.memberId);
+   if(r.memberId!==p.memberId||!a.version||(a.account.resetEpoch||'0')!==p.epoch){next.status='cancelled';next.reason='Ein Konto wurde zurückgesetzt oder geändert. Es wurde nichts übertragen.';return [];}
+   accounts.push({id:p.memberId,version:a.version,account:a.account});
+  }
+  const deltas=R.settle(next.players.map((p,i)=>({...p,debt:M.totals(accounts[i].account).balance})),next.questions,next.stakeCents),createdAt=new Date().toISOString();
+  for(let i=0;i<next.players.length;i++){const p=next.players[i],result=deltas.find(r=>r.alias===p.alias);p.score=result.score;p.delta=result.delta;if(result.delta)accounts[i].account=M.appendChallenge(accounts[i].account,{id:'challenge-'+next.id,type:'challenge',gameId:next.id,code:next.code,confirmation:'challenge',direction:result.delta>0?'in':'out',cents:Math.abs(result.delta),score:result.score,createdAt});}
+  next.status='done';next.completedAt=createdAt;return accounts;
+ }
+ async function route(path,data,env,auth){
+  if(!await ready(env))fail('Die Challenge benötigt das Worker-Update und challenge.sql in der bestehenden D1-Datenbank.',503);
+  const meta=await L.meta(env);L.active(meta);
+  if(path.startsWith('/admin/challenge/')){
+   L.source(meta,data);const old=await pool(env);
+   if(path==='/admin/challenge/status')return {version:1,revision:old?.value.revision||null,count:old?.value.questions.length||0};
+   if(path!=='/admin/challenge/publish')fail('Nicht gefunden.',404);
+   if(!REV.test(data.revision||'')||!Array.isArray(data.questions)||data.questions.length>1000)fail('Ungültige Fragenbank.',400);
+   let questions;try{questions=data.questions.map(Q.question).filter(q=>q.active);if(new Set(questions.map(q=>q.id)).size!==questions.length)throw Error('Doppelte Fragen.');}catch{fail('Die Fragenbank ist nicht gültig.',400);}
+   const value={revision:data.revision,questions};if(old?.value.revision===value.revision){if(JSON.stringify(old.value)!==JSON.stringify(value))fail('Diese Fragenversion wurde bereits anders verwendet.');return {ok:true,count:questions.length};}
+   if((old?.value.revision||null)!==data.expectedRevision)fail('Der veröffentlichte Fragenstand wurde geändert. Bitte erneut prüfen.');
+   const payload=await L.seal(env,value,'challenge-pool');let result;
+   if(old)result=await env.DB.prepare('UPDATE challenge_pool SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.version).run();else result=await env.DB.prepare('INSERT OR IGNORE INTO challenge_pool(id,payload) VALUES(1,?)').bind(payload).run();
+   if(!result.meta.changes)fail('Der Fragenstand wurde gleichzeitig geändert. Bitte erneut prüfen.');return {ok:true,count:questions.length};
+  }
+  const record=await actor(env,data,auth),action=path.slice('/challenge/'.length);
+  if(!['create','preview','join','get','start','answer','cancel'].includes(action))fail('Nicht gefunden.',404);
+  const digest=await hash(JSON.stringify({...data,action}));
+  if(action==='create'){
+   if(!uuid(data.id)||!Number.isSafeInteger(data.stakeCents)||data.stakeCents<1||data.stakeCents>100000||data.confirmedCents!==data.stakeCents)fail('Einsatz bitte ausdrücklich bestätigen: 0,01 bis 1000 Euro.',400);
+   const previous=await env.DB.prepare('SELECT * FROM challenge_games WHERE id=?').bind(data.id).first();
+   if(previous){const old=await L.open(env,previous.payload,'challenge:'+data.id);if(old.host!==record.alias||old.operations[data.id]!==digest)fail('Die Vorgangsnummer wurde bereits anders verwendet.');return view(old,record.alias);}
+   const published=await pool(env);if(!published||published.value.questions.length<7)fail('Die Verwaltung muss mindestens sieben geprüfte Fragen für die Challenge veröffentlichen.');
+   const a=await L.read(env,record.memberId);if(!a.version)fail('Das Getränkekonto ist noch nicht aktiv.');
+   const next={id:data.id,code:crypto.randomUUID().slice(0,8).toUpperCase(),status:'lobby',host:record.alias,stakeCents:data.stakeCents,createdAt:Date.now(),expiresAt:Date.now()+86400000,poolRevision:published.value.revision,questions:select(published.value.questions),players:[{alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',name:name(data.name),answers:[]}],operations:{[data.id]:digest}};
+   const payload=await L.seal(env,next,'challenge:'+next.id),results=await env.DB.batch([env.DB.prepare('INSERT OR IGNORE INTO challenge_games(id,code,payload,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=? AND state=\'active\')').bind(next.id,next.code,payload,Date.now(),meta.seq),env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND EXISTS(SELECT 1 FROM challenge_games WHERE id=? AND payload=?)').bind(meta.seq,next.id,payload)]);
+   if(!results[0].meta.changes)fail('Die Runde konnte noch nicht bestätigt werden. Bitte denselben Vorgang erneut prüfen.',409,'retry');return view(next,record.alias);
+  }
+  const found=await game(env,data),old=found.value,me=old.players.find(p=>p.alias===record.alias);
+  if(action==='preview')return {version:1,gameId:old.id,code:old.code,status:old.status,stakeCents:old.stakeCents,joined:Boolean(me&&me.revision===record.revision),players:old.players.map(p=>({name:p.name})),expiresAt:old.expiresAt};
+  if(action!=='join'&&(!me||me.revision!==record.revision))fail('Du gehörst nicht mit diesem Zugang zu dieser Runde.',403);
+  if(action==='get'){
+   if(['lobby','running'].includes(old.status)&&old.expiresAt<Date.now()){const next={...old,status:'cancelled',reason:'Zeit abgelaufen. Es wurde nichts übertragen.'};await commit(env,meta,found.row,next);return view(next,record.alias);}return view(old,record.alias);
+  }
+  if(!uuid(data.id))fail('Ungültige Vorgangsnummer.',400);
+  if(old.operations[data.id]){if(old.operations[data.id]!==digest)fail('Die Vorgangsnummer wurde bereits anders verwendet.');return view(old,record.alias);}
+  if(!['lobby','running'].includes(old.status)||old.expiresAt<Date.now())fail('Diese Runde ist beendet oder abgelaufen. Bitte aktualisieren.');
+  const next=copy(old);next.operations[data.id]=digest;let affected=[];
+  if(action==='join'){
+   if(old.status!=='lobby'||old.players.length>=20)fail('Die Runde ist bereits gestartet oder voll.');
+   if(old.players.some(p=>p.memberId===record.memberId))fail('Dieses Mitglied ist bereits in der Runde.');
+   if(data.confirmedCents!==old.stakeCents)fail('Bitte den angezeigten Einsatz ausdrücklich bestätigen.',400);
+   const a=await L.read(env,record.memberId);if(!a.version)fail('Das Getränkekonto ist noch nicht aktiv.');const nickname=name(data.name);if(old.players.some(p=>p.name.toLocaleLowerCase('de-DE')===nickname.toLocaleLowerCase('de-DE')))fail('Diesen Spielnamen gibt es bereits. Bitte einen anderen wählen.');
+   next.players.push({alias:record.alias,revision:record.revision,memberId:record.memberId,epoch:a.account.resetEpoch||'0',name:nickname,answers:[]});
+  }else if(action==='start'){
+   if(old.host!==record.alias||old.status!=='lobby'||old.players.length<2)fail('Nur der Gastgeber startet mit mindestens zwei Teilnehmern.');next.status='running';next.expiresAt=Date.now()+30*60000;
+  }else if(action==='cancel'){
+   next.status='cancelled';next.reason='Die Runde wurde abgebrochen. Es wurde nichts übertragen.';
+  }else if(action==='answer'){
+   const player=next.players.find(p=>p.alias===record.alias);if(old.status!=='running'||data.index!==player.answers.length||data.index>=7||!Number.isSafeInteger(data.answer)||data.answer<0||data.answer>3)fail('Diese Antwort gehört nicht zur aktuellen Frage. Bitte aktualisieren.');
+   player.answers.push(data.answer);if(next.players.every(p=>p.answers.length===7))affected=await settlement(env,next);
+  }
+  await commit(env,meta,found.row,next,affected);return view(next,record.alias);
+ }
+ g.DeckelChallengeService={route,ready,view,commit,settlement};
 })(globalThis);
 
 /* Cloudflare Workers Free + D1 Free. Financial records are encrypted at rest. */
@@ -433,11 +606,16 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1}:{}),publicKey:env.VAPID_PUBLIC_KEY});}
    if(request.method!=='POST')return reply({error:'Nicht gefunden.'},404);
    const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
+   if(globalThis.DeckelChallengeService&&(path.startsWith('/challenge/')||path.startsWith('/admin/challenge/'))){
+    const raw=await request.text();if(raw.length>(admin?8000000:6000))return reply({error:'Anfrage zu groß.'},413);
+    try{const value=JSON.parse(raw);if(!value||Array.isArray(value)||typeof value!=='object')return reply({error:'Ungültige Anfrage.'},400);return reply(await globalThis.DeckelChallengeService.route(path,value,env,auth));}
+    catch(error){return reply({error:error.status?error.message:'Challenge derzeit nicht bestätigt. Bitte denselben Vorgang erneut prüfen.',code:error.status?(error.code==='retry'?'retry':'rejected'):'uncertain'},error.status||503);}
+   }
    if(globalThis.CentralLedger&&(path.startsWith('/admin/central/')||path==='/central/snapshot'||path.startsWith('/commands/'))){
     const raw=await request.clone().text();if(raw.length>(admin?8000000:6000))return reply({error:'Anfrage zu groß.'},413);
     const value=JSON.parse(raw);

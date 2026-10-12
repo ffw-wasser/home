@@ -7,5 +7,7 @@
  const commandKey=alias=>{if(!/^[a-f0-9]{32}$/.test(alias))throw Error("Ungültiger Zugang.");return "command:"+alias;};
  global.DeckelDevice={readCommand:alias=>access("readonly",undefined,commandKey(alias)),saveCommand:(alias,value)=>access("readwrite",value,commandKey(alias)),read:async()=>safe(await access('readonly')),write:value=>{if(!safe(value))throw new Error('Ungültiger persönlicher Deckel.');return access('readwrite',value);},clear:()=>access('readwrite',null),
   readLink:async()=>safe(await access('readonly',undefined,'link'))?.url||null,
+  readChallenge:alias=>access('readonly',undefined,'challenge:'+commandKey(alias)),
+  saveChallenge:(alias,value)=>access('readwrite',value,'challenge:'+commandKey(alias)),
   saveLink:url=>{const value={url};if(!safe(value))throw new Error('Ungültiger persönlicher Deckel.');return access('readwrite',value,'link');}};
 })(globalThis);
