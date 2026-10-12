@@ -40,7 +40,7 @@ test('App-Manifeste und Icons enthalten keine persönlichen Zugänge; Android ha
   for(const icon of manifest.icons){const data=fs.readFileSync(require.resolve('../'+icon.src));assert.equal(data.subarray(1,4).toString(),'PNG');assert.equal(data.readUInt32BE(16),Number(icon.sizes.split('x')[0]));assert.equal(data.readUInt32BE(20),Number(icon.sizes.split('x')[1]));}
   assert.ok(manifest.icons.some(icon=>icon.purpose==='maskable'));
  }
- assert.match(read('deckel.html'),/apple-touch-icon[^>]+deckel-icon-180\.png/);
+ assert.match(read('deckel.html'),/apple-touch-icon[^>]+deckel-home-v2-180\.png/);
 });
 test('Lokaler Installationslink bleibt erhalten wenn Push deaktiviert wird; fremde Adressen werden abgewiesen',async()=>{
  const state=new Map(),writes=[],ctx=vm.createContext({URL,URLSearchParams,Promise,location:{href:personal},indexedDB:{open(){const req={};queueMicrotask(()=>{req.result={close(){},transaction(){const tx={objectStore:()=>({get(key){return perform(()=>state.get(key));},put(value,key){return perform(()=>{writes.push(key);state.set(key,value);});},delete(key){return perform(()=>state.delete(key));}})};function perform(fn){const request={};queueMicrotask(()=>{request.result=fn();request.onsuccess();tx.oncomplete();});return request;}return tx;}};req.onsuccess();});return req;}}});

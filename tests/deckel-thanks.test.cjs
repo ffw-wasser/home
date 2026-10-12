@@ -28,3 +28,9 @@ test('Aktualisieren hält den geprüften Kontostand sichtbar; Netzfehler zeigen 
  const loading=f.nodes.get('refresh').onclick();assert.equal(f.nodes.get('account').hidden,false);await loading;assert.equal(f.nodes.get('balance').textContent,balance);assert.equal(f.nodes.get('account').hidden,false);assert.match(f.nodes.get('status').textContent,/Angezeigt bleibt der Stand/);assert.match(f.nodes.get('status').textContent,/Verbindung prüfen/);
  f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('account').hidden,true);assert.equal(f.nodes.get('balance').textContent,'');
 });
+
+test('Deckel anstupsen zeigt nur einen Spruch, verändert keinen Geldbetrag und endet nach vier Sekunden',async()=>{
+ const f=await fixture();f.data.balance=750;await f.reload();const amount=f.nodes.get('balance').textContent,normal=f.nodes.get('deckel-mood').textContent;let requests=0;f.ctx.fetch=async()=>{requests++;throw Error('Keine Anfrage durch einen Deckelspruch erlaubt');};
+ f.nodes.get('deckel-nudge').onclick();assert.notEqual(f.nodes.get('deckel-mood').textContent,normal);assert.equal(f.nodes.get('balance').textContent,amount);assert.equal(requests,0);f.advance(4000);assert.equal(f.nodes.get('deckel-mood').textContent,normal);assert.equal(f.nodes.get('balance').textContent,amount);
+ f.nodes.get('deckel-nudge').onclick();f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('deckel-mood').textContent,'');assert.equal(f.nodes.get('deckel-nudge').disabled,true);f.advance(4000);assert.equal(f.nodes.get('deckel-mood').textContent,'');
+});

@@ -1,15 +1,21 @@
 'use strict';
 const $=id=>document.getElementById(id),euro=c=>(c/100).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
 const pointText=u=>(u/150).toLocaleString('de-DE',{maximumFractionDigits:4});
-let generation=0,lastUpdated='',hasData=false,currentAccess='',thanksTimer,currentRequest=null;
+let generation=0,lastUpdated='',hasData=false,currentAccess='',thanksTimer,currentRequest=null,funTimer,mood='',quoteIndex=0;
 const thanked=new Set();
 function hideThanks(){clearTimeout(thanksTimer);$('thanks').hidden=true;}
 function showThanks(paid,alias){hideThanks();if(!paid){thanked.delete(alias);return;}if(thanked.has(alias))return;thanked.add(alias);$('thanks').hidden=false;thanksTimer=setTimeout(hideThanks,3000);}
+function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);if(hasData)$('deckel-mood').textContent=mood;}
+function nudgeDeckel(){
+ if(!hasData||$('refresh').disabled||document.hidden)return;
+ const sayings=['Ich bin ein Bierdeckel. Kein Untersetzer für Ausreden.','Ganz ruhig – ich wackle nur. Dein Betrag bleibt stehen.','Ich zähle mit. Fingerabdrücke kosten heute nichts.','Ein kleiner Stups für dich. Eine große Runde für den Deckel.','Bitte nicht knicken. Ich habe schon genug auf dem Deckel.'];
+ resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('deckel-mood').textContent=sayings[quoteIndex++%sayings.length];funTimer=setTimeout(resetNudge,4000);
+}
 function credentials(){const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
-function clear(){hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
+function clear(){resetNudge();mood='';$('deckel-mood').textContent='';$('deckel-nudge').disabled=true;hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
 async function load(){
- const number=++generation;currentRequest?.abort();$('refresh').disabled=true;hideThanks();$('status').textContent=hasData?'Aktueller Stand wird geprüft …':'Dein Deckel wird geladen …';
+ const number=++generation;currentRequest?.abort();resetNudge();$('refresh').disabled=true;$('deckel-nudge').disabled=true;hideThanks();$('status').textContent=hasData?'Deckel wird abgestaubt · Kontostand wird geprüft …':'Dein Deckel rollt an · Kontostand wird geladen …';
  try{
   await globalThis.DeckelPush?.restore();globalThis.DeckelInstall?.refresh();const {repo,record}=credentials(),access=repo+':'+record.alias+':'+record.key;
   if(access!==currentAccess){clear();lastUpdated='';currentAccess=access;}
@@ -18,7 +24,7 @@ async function load(){
   if(!response.ok)throw new Error('Dein Deckel ist noch nicht verfügbar. Bitte am Gerätehaus-iPad aktualisieren.');
   if(text.length>8000)throw new Error('Die Deckel-Datei konnte nicht geprüft werden. Bitte erneut aktualisieren.');const data=await DeckelCrypto.open(JSON.parse(text),record);if(number!==generation||document.hidden)return;
   const layers=data.balance?Math.min(5,Math.ceil(data.balance/1000)):0;$('deckel-stack').parentElement.style.setProperty('--stack-count',layers);$('deckel-stack').replaceChildren();for(let i=layers-1;i>=0;i--){const layer=document.createElement('span');layer.className='deckel-layer';layer.style.setProperty('--layer',i);$('deckel-stack').append(layer);}$('stack-note').textContent=layers?'Je höher der offene Betrag, desto höher der Stapel. Die Schichten sind symbolisch.':'';
-  $('deckel-mood').textContent=data.balance===0?'😎 Dein Deckel macht Feierabend.':data.balance<1000?'🍺 Dein Deckel sammelt fleißig mit.':data.balance<3000?'🧱 Dein Deckelturm wächst – Zeit zum Abräumen?':'🏗️ Dein Deckelturm braucht bald einen Kran. Zeit zum Bezahlen!';
+  mood=data.balance===0?'😎 Alles bezahlt. Dein Deckel macht jetzt Feierabend.':data.balance<1000?'🍺 Kleiner Deckel, große Pläne. Ich zähle mit.':data.balance<3000?'🧱 Dein Deckel übt Hochstapeln. Bezahlen hält ihn bodenständig.':'🏗️ Dein Deckelturm braucht bald einen Kran. Zeit zum Bezahlen!';$('deckel-mood').textContent=mood;
   $('coaster').classList.toggle('is-paid',data.balance===0);$('balance').textContent=euro(data.balance);$('balanceLabel').textContent=data.balance===0?'Alles bezahlt':'Deine Schulden';showThanks(data.balance===0,record.alias);
   $('credit').hidden=data.pointUnits===undefined||data.credit===0;$('credit').textContent='Eingezahlter Betrag: '+euro(data.credit)+' · Für deine nächsten Getränke.';
   const units=data.pointUnits??0,award=data.awardUnits??data.bonusCents;$('points').textContent=data.pointUnits===undefined?'–':pointText(units);$('bonus').textContent=data.needed?'Noch '+euro(data.needed)+' einzahlen bis zu '+pointText(award)+' neuen Treuepunkten.':'Ziel erreicht. Die nächste bestätigte Einzahlung vergibt neue Treuepunkte.';
@@ -26,11 +32,11 @@ async function load(){
   $('points-use').textContent=(data.pointUnits===undefined?'Treuepunkte und Einzahlungen werden beim nächsten Abgleich im Gerätehaus aktualisiert. ':'')+(units<0?'Bereits eingelöste Punkte wurden nach einer Zahlungslöschung zurückgenommen. Neue Punkte gleichen den Punktestand aus. ':'')+'Einlösen: Bier '+pointText(data.beerUnits??150)+((data.beerUnits??150)===150?' Punkt':' Punkte')+' · Wein '+pointText(data.wineUnits??150)+((data.wineUnits??150)===150?' Punkt.':' Punkte.');
   $('paypal').hidden=data.balance<=0;$('payment-note').hidden=data.balance<=0;if(data.balance>0)$('paypal').href='https://paypal.me/FeuerwehrWasser/'+(data.balance/100).toFixed(2)+'EUR';
   $('bookings').replaceChildren();for(const b of data.bookings){const li=document.createElement('li'),drink=b.count+(b.drink==='wine'?(b.count===1?' Glas Wein':' Gläser Wein'):' Bier');li.textContent=(b.type==='drinks'?drink:b.type==='correction'?'Rücknahme: '+drink:b.type==='payment-reversal'?'Admin: Zahlung gelöscht':b.type==='bonus'?'Treuepunkte':b.method==='cash'?'Barzahlung bestätigt':'PayPal verbucht')+(b.pointUnits?' · '+pointText(b.pointUnits)+' Treuepunkte':b.type==='bonus'?' · +'+pointText(b.cents)+' Punkte':' · '+euro(b.cents))+(b.cancelled?' · gelöscht':'');const date=document.createElement('small');date.textContent=new Date(b.createdAt).toLocaleString('de-DE');li.append(date);$('bookings').append(li);}if(!data.bookings.length){const li=document.createElement('li');li.textContent='Noch keine Buchungen.';$('bookings').append(li);}
-  $('updated').textContent=(data.actions?.central?'Aktueller Kontostand: ':'Übertragen vom Gerätehaus: ')+new Date(data.updatedAt).toLocaleString('de-DE');$('account').hidden=false;hasData=true;globalThis.DeckelActions?.render(data).catch(()=>{});$('status').textContent=lastUpdated===data.updatedAt?(data.actions?.central?'Dein Kontostand ist aktuell.':'Du siehst den zuletzt übertragenen Stand.'):lastUpdated?'Dein Deckel wurde aktualisiert.':'';lastUpdated=data.updatedAt;globalThis.DeckelPush?.markRead();
+  $('updated').textContent=(data.actions?.central?'Aktueller Kontostand: ':'Übertragen vom Gerätehaus: ')+new Date(data.updatedAt).toLocaleString('de-DE');$('account').hidden=false;hasData=true;globalThis.DeckelActions?.render(data).catch(()=>{});$('status').textContent=lastUpdated===data.updatedAt?(data.actions?.central?'Dein Kontostand ist aktuell.':'Du siehst den zuletzt übertragenen Stand.'):lastUpdated?'Deckel abgestaubt. Dein Kontostand wurde aktualisiert.':'';lastUpdated=data.updatedAt;globalThis.DeckelPush?.markRead();
  }catch(error){if(number!==generation||document.hidden)return;if(!hasData)clear();$('status').textContent=loadError(error)+(hasData?' Angezeigt bleibt der Stand vom '+new Date(lastUpdated).toLocaleString('de-DE')+'.':'');}
- finally{if(number===generation)$('refresh').disabled=false;}
+ finally{if(number===generation){$('refresh').disabled=false;$('deckel-nudge').disabled=!hasData||document.hidden;}}
 }
-globalThis.DeckelReload=load;$('refresh').onclick=load;
+$('deckel-nudge').onclick=nudgeDeckel;globalThis.DeckelReload=load;$('refresh').onclick=load;
 globalThis.addEventListener('hashchange',()=>{generation++;currentRequest?.abort();currentAccess='';lastUpdated='';clear();load();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;currentRequest?.abort();clear();$('refresh').disabled=false;}else load();});
 globalThis.addEventListener('pageshow',event=>{if(event.persisted)load();});load();
