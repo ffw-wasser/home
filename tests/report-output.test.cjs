@@ -48,3 +48,9 @@ test('Protokoll zeigt nur eigene Fahrzeuge mit Überschrift und Behörden nur al
 test('Wordprotokoll übernimmt individuelle Gerätehaus-Zeiten und Dauer',async()=>{
  const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);const blob=await c.OperationDocx.create({...sample,assignments:{'Person, Test':'Reserve Gerätehaus'},reserveTimes:{'Person, Test':{from:'2026-10-11T23:00',to:'2026-10-12T01:30'}}});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');assert.ok(xml.includes('11.10.2026 23:00 bis 12.10.2026 01:30 (2 Std. 30 Min.)'));
 });
+
+test('Gerätehausbesetzung steht im Wordbericht ohne Fahrzeugkreuze',async()=>{
+ const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
+ const blob=await c.OperationDocx.create({...sample,stationOnly:true,reportVehicles:[],assignments:{'Person, Test':'Reserve Gerätehaus'},assignmentRoles:{'Person, Test':'Gerätehausbesetzung'}});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');
+ assert.ok(xml.includes('Gerätehausbesetzung'));const vehicles=xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g).find(t=>t.includes('Eingesetzte Fahrzeuge'));assert.equal((vehicles.match(/<w:t>X<\/w:t>/g)||[]).length,0);
+});
