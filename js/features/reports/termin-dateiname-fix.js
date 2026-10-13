@@ -17,7 +17,8 @@
   const originalBuild=globalThis.buildTerminPackage;
   if(typeof originalBuild==="function"){
     globalThis.buildTerminPackage=async function(options){
-      const base=normalizedBase(options?.packageType,options?.operationData,options?.baseName);
+      const correcting=typeof editingOperationArchiveId!=="undefined"&&Boolean(editingOperationArchiveId);
+      const base=correcting?options.baseName:normalizedBase(options?.packageType,options?.operationData,options?.baseName);
       nextPackageFileName=`${base}.zip`;
       return originalBuild.call(this,{...options,baseName:base,csvName:`${base}.csv`,pdfName:`${base}.pdf`});
     };
@@ -31,3 +32,4 @@
     };
   }
 })();
+

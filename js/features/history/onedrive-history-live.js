@@ -98,6 +98,8 @@
       createdAt: file.lastModifiedDateTime || info.createdAt || new Date().toISOString(),
       originalReportDate: reportDate,
       operationData,
+      correctedAt:info.correctedAt||"",
+      revisions:Array.isArray(info.revisions)?clone(info.revisions):[],
       oneDriveLive: true,
       hasImportedPdf: Boolean(pdfEntry),
       ...(isOperation ? {presentCount:Math.max(0,matrix.length-1),excusedCount:0,missingCount:0} : counts(rows))
@@ -198,7 +200,7 @@
     }
   }
 
-  window.saveOneDriveHistoryCorrection = async (item, pdf) => {
+  window.saveOneDriveHistoryCorrection = async (item, pdf, {preserveAttachments=true}={}) => {
     // Vorhandene Datei anhand ihrer ID ersetzen, auch bei geändertem Termindatum.
     if(pendingLoad)await pendingLoad;
     const fileId=String(item.id||"").replace(/^onedrive-zip:/,"");
@@ -213,10 +215,10 @@
     const oldPdf=info.pdfName||Object.values(zip.files).find(entry=>!entry.dir&&/\.pdf$/i.test(entry.name))?.name;
     if(!oldCsv)throw new Error("Das Paket enthält keinen CSV-Bericht.");
     // Zusatzseiten des ursprünglichen Berichts nach dem neu erzeugten Hauptbericht erhalten.
-    if(oldPdf&&zip.file(oldPdf)&&globalThis.PDFLib?.PDFDocument){
+    if(preserveAttachments&&oldPdf&&zip.file(oldPdf)&&globalThis.PDFLib?.PDFDocument){
       const rows=CsvEngine.parse(await zip.file(oldCsv).async("string"));
       const c=counts(rows);
-      const oldMain=probePdfBlob(rows.map(row=>({time:row.time,name:row.name,status:row.status,role:row.role})),rows[0]?.sessionType||item.sessionType,{present:c.presentCount,excused:c.excusedCount,missing:c.missingCount,notApplicable:rows.filter(row=>row.status==="Betrifft nicht").length},rows[0]?.topic||"",rows[0]?.date||"");
+      const oldMain=item.operationData?await operationPdfBlob(info.operationData||item.operationData):probePdfBlob(rows.map(row=>({time:row.time,name:row.name,status:row.status,role:row.role})),rows[0]?.sessionType||item.sessionType,{present:c.presentCount,excused:c.excusedCount,missing:c.missingCount,notApplicable:rows.filter(row=>row.status==="Betrifft nicht").length},rows[0]?.topic||"",rows[0]?.date||"");
       const mainDocument=await PDFLib.PDFDocument.load(await oldMain.arrayBuffer());
       const previous=await PDFLib.PDFDocument.load(await zip.file(oldPdf).async("uint8array"));
       if(previous.getPageCount()>mainDocument.getPageCount()){
@@ -228,7 +230,7 @@
     }
     zip.remove(oldCsv);if(oldPdf)zip.remove(oldPdf);
     zip.file(item.fileName,item.content);zip.file(item.pdfFileName,pdf);
-    zip.file("paket-info.json",JSON.stringify({...info,csvName:item.fileName,pdfName:item.pdfFileName,correctedAt:item.correctedAt,revisions:item.revisions,files:Object.keys(zip.files)},null,2));
+    zip.file("paket-info.json",JSON.stringify({...info,operationData:item.operationData||info.operationData,csvName:item.fileName,pdfName:item.pdfFileName,correctedAt:item.correctedAt,revisions:item.revisions,files:Object.keys(zip.files)},null,2));
     const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
     await odFetch(url+"/content",{method:"PUT",headers:{"Content-Type":"application/zip",...(metadata.eTag?{"If-Match":metadata.eTag}:{})},body:blob});
     reportCache.delete(fileId);
@@ -236,4 +238,5 @@
   window.loadOneDriveHistory = loadOneDriveHistory;
   window.loadOneDriveHistoryPdf = async item => pdfByReportId.get(item?.id) || null;
 })();
+
 

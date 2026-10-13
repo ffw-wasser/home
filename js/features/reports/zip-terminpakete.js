@@ -146,6 +146,7 @@ window.finishOperationZip=async function(){
     if(check.warnings.length&&!confirm(check.warnings.join("\n")+"\n\nTrotzdem PDF-Vorschau erstellen?"))return;
 
     const previous=editingOperationArchiveId?csvArchive.find(entry=>entry.id===editingOperationArchiveId):null;
+    if(editingOperationArchiveId&&!previous)throw new Error("Der Originalbericht ist nicht mehr geladen. Bitte die Historie aktualisieren und die Korrektur erneut öffnen.");
     const stamp=(d.times.alarm||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})).replace(":","-");
     const generatedBase=`FFW-Wasser_${d.date}_${stamp}_Einsatz`;
     const previousBase=String(previous?.packageFileName||previous?.fileName||"").replace(/\.(zip|csv|pdf)$/i,"");
@@ -154,6 +155,20 @@ window.finishOperationZip=async function(){
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const pdf=await operationPdfBlob(d);
     const completed=await showOperationPdfPreview(pdf,pdfName,async()=>{
+      if(previous?.oneDriveLive){
+        const correctedAt=new Date().toISOString();
+        const item={...previous,content:csv,operationData:d,topic:`${d.type} · ${d.location}`,correctedAt,updatedAt:correctedAt,presentCount:d.members.length,
+          revisions:[...(previous.revisions||[]),{correctedAt,reason:"Einsatzbericht korrigiert"}]};
+        const attachment=typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null;
+        const finalPdf=attachment?.pdf?(await buildTerminPackage({baseName:base,csvName:previous.fileName,csvContent:csv,pdfName:previous.pdfFileName,pdfBlob:pdf,documentReport:attachment,packageType:"Einsatz",operationData:d})).finalPdf:pdf;
+        await window.saveOneDriveHistoryCorrection(item,finalPdf,{preserveAttachments:!attachment?.pdf});
+        await window.loadOneDriveHistory();
+        entries=entries.filter(entry=>entry.operationId!==currentOperationId);saveEntries();
+        resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();
+        setHomeFlowStage(1);showView("attendanceView");
+        showToast("Original-Terminpaket in OneDrive überschrieben und als korrigiert markiert.");
+        return true;
+      }
       // Neu und Korrektur speichern ausschließlich ein ZIP. Bei der Korrektur
       // bleibt der ursprüngliche Paketname erhalten, damit die Datei im
       // ausgewählten Ordner ersetzt statt als CSV/PDF-Doppel ausgegeben wird.
@@ -240,3 +255,4 @@ const previousMoveReportImportToSettings=moveReportImportToSettings;
 moveReportImportToSettings=function(){previousMoveReportImportToSettings();setTimeout(reorganizeStorageAndBackups,0);};
 document.addEventListener("DOMContentLoaded",()=>setTimeout(reorganizeStorageAndBackups,50));
 if(document.readyState!=="loading")setTimeout(reorganizeStorageAndBackups,50);
+
