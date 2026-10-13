@@ -1286,12 +1286,12 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 /* FFW 8.2: iPad-Touchstabilitaet */
 @media (min-width:700px) and (max-width:1400px) and (pointer:coarse){#attendanceSelectionWorkspace .member-status-action,#attendanceSelectionWorkspace .member-status-action:active,#attendanceSelectionWorkspace .member-status-action.selected{transform:none!important;transition:background-color .12s linear,border-color .12s linear,color .12s linear!important;-webkit-tap-highlight-color:transparent!important;touch-action:manipulation!important}#ipadAttendanceActionDock,#ipadAttendanceActionDock>#saveButton,#ipadAttendanceActionDock>#step3ActionArea,#ipadAttendanceActionDock .step-3-action-button{transform:none!important;transition:none!important;animation:none!important}html.ipad-attendance-dock-active #ipadAttendanceActionDock>#saveButton,html.ipad-attendance-dock-active #ipadAttendanceActionDock>#step3ActionArea{position:static!important;inset:auto!important;width:100%!important}}
 
-/* Prominent, touch-friendly choice for staffing the station. */
+/* Same image container and grid column as the vehicle cards. */
 .operation-station-only {
-  width: 100%; min-height: 58px; margin: 16px 0;
-  padding: 16px 22px; font-size: 1.15rem; font-weight: 800;
-  border: 2px solid var(--primary, #b32125); border-radius: 14px;
-  color: var(--primary, #b32125); background: #fff;
+  display: block; width: 100%; margin: 0; padding: 0; border: 0;
+  border-radius: 0; background: #fff; color: #25333b; text-align: left;
+  cursor: pointer; font: inherit;
 }
-.operation-station-only[aria-pressed="true"] { background: #b32125; color: #fff; }
-.operation-station-only span { margin-right: 8px; font-size: 1.4em; }
+.operation-station-only:focus-visible { outline: 3px solid #b32125; outline-offset: -3px; }
+.operation-station-only[aria-pressed="true"] header { background: #e9f5ec; }
+.operation-station-board .operation-vehicle-image img { object-fit: cover; }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Feuerwehrgerätehaus">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#bacad1"/><stop offset="1" stop-color="#e5eceb"/></linearGradient><linearGradient id="wall" x2="0" y2="1"><stop stop-color="#f7f2e8"/><stop offset="1" stop-color="#c8c5bc"/></linearGradient></defs>
+<path fill="url(#sky)" d="M0 0h960v540H0z"/><path fill="#48565c" d="M0 430h960v110H0z"/><path fill="#637075" d="M0 440h960v30H0z"/>
+<ellipse cx="480" cy="448" rx="395" ry="32" fill="#27343a" opacity=".35"/>
+<path fill="url(#wall)" stroke="#657277" stroke-width="5" d="M126 202h708v238H126z"/><path fill="#852b30" d="m94 206 87-66h602l83 66z"/><path fill="#b2383b" d="m94 206 87-66h602l-38 43H122z"/>
+<path fill="#ac202b" d="M126 213h708v51H126z"/><text x="480" y="249" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700" font-size="32" letter-spacing="6">FEUERWEHR</text>
+<g fill="#a82430" stroke="#6c1720" stroke-width="5"><path d="M159 288h187v151H159zM373 288h187v151H373z"/></g>
+<g stroke="#d77679" stroke-width="3"><path d="M163 319h179m-179 29h179m-179 29h179m-179 29h179M377 319h179m-179 29h179m-179 29h179m-179 29h179"/></g>
+<g fill="#7b9da7" stroke="#dfe7e7" stroke-width="5"><path d="M174 300h61v31h-61zM265 300h61v31h-61zM388 300h61v31h-61zM479 300h61v31h-61z"/></g>
+<path fill="#334950" stroke="#1c2e35" stroke-width="5" d="M641 293h95v147h-95z"/><path fill="#8daeb5" d="M652 304h73v70h-73z"/><path stroke="#e4ecec" stroke-width="5" d="M714 388v20"/>
+<path fill="#829fa7" stroke="#f0f1eb" stroke-width="6" d="M763 292h45v70h-45z"/>
+<path stroke="#798b90" stroke-width="7" d="M95 155V442"/><path fill="#bf2833" d="M98 160h67v49H98z"/>
+<path stroke="#c4cbd0" stroke-width="3" d="M120 488h720M251 477l-19 53M706 477l19 53"/>
+</svg>

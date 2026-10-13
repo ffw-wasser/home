@@ -1,6 +1,17 @@
 (function(root){
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
-const reserveTimeText=(d,name)=>{const raw=d.reserveTimes?.[name]||{};let endDate=d.date;const start=d.times?.alarm,end=d.times?.ended;if(d.date&&start&&end&&end<start){const next=new Date(d.date+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+1);endDate=next.toISOString().slice(0,10);}const v={from:raw.from||(d.date&&start?d.date+'T'+start:''),to:raw.to||(endDate&&end?endDate+'T'+end:'')};if(!v?.from||!v?.to)return '';const minutes=Math.round((Date.parse(v.to)-Date.parse(v.from))/60000);if(!Number.isFinite(minutes)||minutes<=0)return '';const date=value=>{const [day,time]=value.split('T');return deDate(day)+' '+time;};return ' · '+date(v.from)+' bis '+date(v.to)+' ('+Math.floor(minutes/60)+' Std. '+minutes%60+' Min.)';};
+function effectiveReserveTime(d,name){
+  const value=d.reserveTimes?.[name]||{},date=String(d.date||''),stamps={};
+  let offset=0,previous=null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(date))for(const key of ['alarm','departed','arrived','ended']){
+    const time=d.times?.[key]||'';if(!/^\d{2}:\d{2}$/.test(time))continue;
+    if(previous!==null&&time<previous)offset++;
+    const day=new Date(date+'T00:00:00Z');day.setUTCDate(day.getUTCDate()+offset);
+    stamps[key]=day.toISOString().slice(0,10)+'T'+time;previous=time;
+  }
+  return {from:value.from||stamps.arrived||'',to:value.to||stamps.ended||''};
+}
+const reserveTimeText=(d,name)=>{const v=effectiveReserveTime(d,name);if(!v.from||!v.to)return '';const minutes=Math.round((Date.parse(v.to)-Date.parse(v.from))/60000);if(!Number.isFinite(minutes)||minutes<=0)return '';const date=value=>{const [day,time]=value.split('T');return deDate(day)+' '+time;};return ' · '+date(v.from)+' bis '+date(v.to)+' ('+Math.floor(minutes/60)+' Std. '+minutes%60+' Min.)';};
 const deDate=v=>{const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}.${m[2]}.${m[1]}`:String(v||'')};
 const has=(a,s)=>{const needle=String(s??'').trim().toLowerCase();return(a||[]).some(v=>String(v??'').trim().toLowerCase().includes(needle));};
 async function create(d){let source;if(typeof root.OPERATION_DOCX_TEMPLATE_BASE64==='string'&&root.OPERATION_DOCX_TEMPLATE_BASE64.length>1000){const raw=atob(root.OPERATION_DOCX_TEMPLATE_BASE64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);source=bytes;}else{try{const r=await fetch('assets/templates/Einsatzbericht-Wordvorlage-Kreuze-FINAL.docx?v=20261001-001');if(!r.ok)throw new Error('Wordvorlage fehlt');source=await r.arrayBuffer();}catch(error){throw new Error('Die lokale Wordvorlage konnte nicht geladen werden.');}}const zip=await JSZip.loadAsync(source),f=zip.file('word/document.xml');let x=await f.async('string');
