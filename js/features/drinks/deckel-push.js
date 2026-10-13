@@ -1,28 +1,24 @@
-'use strict';
+/* Compatibility for old installed Deckel links; reminder activation is removed. */
 (function(){
- const by=id=>document.getElementById(id);let busy=false;
- const validOrigin=value=>{try{const u=new URL(value);return u.protocol==='https:'&&/^[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(u.hostname)&&!u.port&&!u.username&&!u.password&&u.pathname==='/'&&!u.search&&!u.hash;}catch{return false;}};
- function access(){const p=new URLSearchParams(location.hash.slice(1));const origin=p.get('p'),capability=p.get('c'),alias=p.get('a');if(!validOrigin(origin)||!/^[A-Za-z0-9_-]{43}$/.test(capability||'')||!/^[a-f0-9]{32}$/.test(alias||''))return null;return {origin,capability,alias};}
- async function api(c,path,data){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);try{const res=await fetch(c.origin+path,{method:'POST',headers:{Authorization:'Bearer '+c.capability,'Content-Type':'application/json'},body:JSON.stringify(data),cache:'no-store',redirect:'error',signal:controller.signal});const value=await res.json();if(!res.ok)throw new Error(value.error||'Erinnerungen konnten nicht eingerichtet werden.');return value;}finally{clearTimeout(timer);}}
- async function registration(){const r=await navigator.serviceWorker.register('service-worker.js');await navigator.serviceWorker.ready;return r;}
- function controls(){by('pushEnable').disabled=busy;by('pushDisable').disabled=busy;}
- async function refresh(){const c=access();by('pushSection').hidden=false;by('pushEnable').hidden=!c;by('pushEnable').textContent='Erinnerungen erlauben';by('pushDisable').hidden=true;if(!c){by('pushStatus').textContent='Für Benachrichtigungen am Gerätehaus-iPad „Erinnerungen hinzufügen“ wählen und den ergänzten QR-Code scannen. Deinen Kontostand kannst du bereits ansehen.';return;}const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;if(ios&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches){by('pushEnable').disabled=true;by('pushStatus').textContent='Auf dem iPhone: Teilen → Zum Home-Bildschirm. Den Deckel danach über das neue Symbol öffnen und Erinnerungen erlauben.';return;}if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){by('pushEnable').disabled=true;by('pushStatus').textContent='Dieser Browser unterstützt keine Handy-Erinnerungen.';return;}by('pushEnable').disabled=false;try{const saved=await DeckelDevice.read();if(saved){by('pushDisable').hidden=false;by('pushEnable').hidden=Boolean(saved.registered&&saved.capability===c.capability&&Notification.permission==='granted');by('pushStatus').textContent=Notification.permission==='granted'?(saved.registered?'Erinnerungen auf diesem Handy gespeichert. Die Verwaltung versendet sie manuell.':'Einrichtung noch nicht bestätigt. Bitte Erinnerungen erneut erlauben.'):'Benachrichtigungen sind noch nicht erlaubt. Bitte freigeben oder in den Handy-Einstellungen prüfen.';}else by('pushStatus').textContent='Freiwillig aktivieren. Dein persönlicher Zugang wird dafür auf diesem Handy gespeichert. Technische Geräte-Adressen werden bei Cloudflare hinterlegt.';}catch{by('pushStatus').textContent='Erinnerungen benötigen freigegebenen Gerätespeicher.';}}
- async function enable(){if(busy)return;const c=access();if(!c)return;busy=true;controls();by('pushStatus').textContent='Erinnerungen werden eingerichtet …';try{
-  // Request permission directly in the member's click, before network waits.
-  const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('Benachrichtigungen nicht erlaubt. Du kannst sie in den Handy-Einstellungen freigeben.');
-  const res=await fetch(c.origin+'/health',{cache:'no-store',credentials:'omit',redirect:'error'});if(!res.ok)throw new Error('Erinnerungsdienst derzeit nicht erreichbar.');const info=await res.json();if(!/^[A-Za-z0-9_-]{87}$/.test(info.publicKey||''))throw new Error('Push-Schlüssel ungültig.');
-  const reg=await registration(),old=await DeckelDevice.read();if(old&&old.alias!==c.alias)throw new Error('Dieses Handy ist bereits mit einem anderen Deckel verknüpft. Bitte dort zuerst Erinnerungen deaktivieren.');
-  const key=Uint8Array.from(atob(info.publicKey.replace(/-/g,'+').replace(/_/g,'/')),x=>x.charCodeAt(0));const subscription=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
-  // Persist the click target before registering it remotely. No personal URL crosses the network.
-  await DeckelDevice.write({url:location.href,alias:c.alias,origin:c.origin,capability:c.capability,endpoint:subscription.endpoint,registered:false});
-  await api(c,'/subscribe',{alias:c.alias,endpoint:subscription.endpoint});await DeckelDevice.write({url:location.href,alias:c.alias,origin:c.origin,capability:c.capability,endpoint:subscription.endpoint,registered:true});by('pushStatus').textContent='Erinnerungen aktiviert. Du erhältst sie, wenn die Verwaltung eine Erinnerung sendet.';by('pushDisable').hidden=false;by('pushEnable').hidden=true;
- }catch(error){by('pushStatus').textContent=error.message||'Einrichtung fehlgeschlagen. Bitte erneut versuchen.';}finally{busy=false;controls();}}
- async function disable(){if(busy)return;busy=true;controls();try{const saved=await DeckelDevice.read();if(saved){await DeckelDevice.saveLink(saved.url);try{await api(saved,'/unsubscribe',{alias:saved.alias,endpoint:saved.endpoint});}catch{/* Unsubscribing locally revokes the push endpoint even if the server is offline. */}}const reg=await navigator.serviceWorker.getRegistration();const sub=await reg?.pushManager.getSubscription();if(sub&&!await sub.unsubscribe())throw new Error('Abmeldung nicht bestätigt. Bitte erneut versuchen.');await DeckelDevice.clear();await markRead();by('pushDisable').hidden=true;by('pushEnable').hidden=false;by('pushStatus').textContent='Erinnerungen deaktiviert. Dein Deckel-Zugang bleibt auf diesem Handy gespeichert.';}catch(error){by('pushStatus').textContent=error.message;}finally{busy=false;controls();}}
- async function restore(){if(location.hash)return;try{const saved=await DeckelDevice.read();const url=saved?.url||await DeckelDevice.readLink?.();if(url)history.replaceState(null,'',url);}catch{}}
+ 'use strict';let cleanup=null;
  async function markRead(){
   if(document.hidden)return;
-  try{if(typeof navigator.clearAppBadge==='function')await navigator.clearAppBadge();}catch{}
-  try{const reg=await navigator.serviceWorker?.getRegistration();const notifications=await reg?.getNotifications({tag:'deckel-reminder'});for(const notification of notifications||[])notification.close();}catch{}
+  try{await navigator.clearAppBadge?.();}catch{}
+  try{const reg=await navigator.serviceWorker?.getRegistration();const notifications=await reg?.getNotifications?.({tag:'deckel-reminder'});for(const notification of notifications||[])notification.close();}catch{}
  }
- by('pushEnable').onclick=enable;by('pushDisable').onclick=disable;window.DeckelPush={restore,refresh,markRead};addEventListener('hashchange',refresh);restore().then(refresh);
+ async function removeOldReminders(){
+  if(cleanup)return cleanup;
+  cleanup=(async()=>{const saved=await DeckelDevice.read();
+   // Keep the personal link before clearing the obsolete notification record.
+   if(saved?.url)await DeckelDevice.saveLink(saved.url);
+   const reg=await navigator.serviceWorker?.getRegistration(),sub=await reg?.pushManager?.getSubscription();
+   if(sub&&!await sub.unsubscribe())throw Error('Alte Benachrichtigung konnte noch nicht entfernt werden.');
+   if(saved?.endpoint&&/^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(saved.origin||'')&&/^[A-Za-z0-9_-]{43}$/.test(saved.capability||'')){
+    try{await fetch(saved.origin+'/unsubscribe',{method:'POST',headers:{Authorization:'Bearer '+saved.capability,'Content-Type':'application/json'},body:JSON.stringify({alias:saved.alias,endpoint:saved.endpoint}),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(10000)});}catch{}
+   }
+   if(saved)await DeckelDevice.clear();await markRead();
+  })().catch(()=>{cleanup=null;});return cleanup;
+ }
+ async function restore(){if(!location.hash)try{const saved=await DeckelDevice.read(),url=saved?.url||await DeckelDevice.readLink?.();if(url)history.replaceState(null,'',url);}catch{}await removeOldReminders();}
+ window.DeckelPush={restore,markRead};restore();
 })();

@@ -44,22 +44,22 @@ test('Höchstens fünf Geräte je Deckel; ein Handy wird nicht unbemerkt einem a
  assert.equal((await call('/subscribe',{alias,endpoint:'https://fcm.googleapis.com/fixture-6'},cap)).status,409);
  const other='2'.repeat(32),othercap=(await call('/admin/account',{alias:other,revision})).data.capability;assert.equal((await call('/subscribe',{alias:other,endpoint:'https://fcm.googleapis.com/fixture-1'},othercap)).status,409);f.db.close();
 });
-test('iPad: Admin-Zugang bleibt in OneDrive; bezahlter Deckel, fehlende Einrichtung und gesperrte Verwaltung senden nicht',async()=>{
+test('iPad: Kontodienst bleibt in OneDrive verbunden, Erinnerungsversand ist entfernt',async()=>{
  const files=new Map(),calls=[];let balance=300;
  const ctx=vm.createContext({URL,crypto:webcrypto,AbortController,setTimeout,clearTimeout,adminUnlocked:true,document:{readyState:'loading',addEventListener(){}},
   DrinksStore:{readMobileFile:async f=>files.get(f)||null,writeMobileFile:async(f,data)=>files.set(f,{data}),mobileFileName:async()=> 'handy-fixture.json',read:async()=>({balance})},DrinksModel:{totals:a=>a},DrinksMobile:{publish:async()=>true},fetch:async(url,o)=>{calls.push({url,options:o});return {ok:true,json:async()=>({publicKey:'B'.repeat(87),accepted:1,status:'accepted'})};}});
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/drinks-push.js'),'utf8'),ctx);const P=ctx.DrinksPush;
- await assert.rejects(P.send('member-name','request-001'),/verbinden/);await assert.rejects(P.connect('https://evil.invalid','a'.repeat(64)),/ungültig/);
+ await assert.rejects(P.send('member-name','request-001'),/entfernt/);await assert.rejects(P.connect('https://evil.invalid','a'.repeat(64)),/ungültig/);
  await P.connect('https://test.account.workers.dev','a'.repeat(64));assert.equal(files.get('push-verbindung.json').data.token,'a'.repeat(64));files.set('handy-fixture.json',{data:{alias:'1'.repeat(32),revision:'revision-0001',key:'c'.repeat(64)}});
- balance=0;await assert.rejects(P.send('member-name','request-001'),/bezahlt/);balance=300;await P.send('member-name','request-001');
- const send=calls.find(c=>c.url.endsWith('/admin/send'));assert.deepEqual(JSON.parse(send.options.body),{alias:'1'.repeat(32),requestId:'request-001'});assert.ok(!send.options.body.includes('member-name'));assert.ok(!send.options.body.includes('c'.repeat(64)));ctx.adminUnlocked=false;await assert.rejects(P.send('member-name','request-002'),/Administration/);
+ balance=0;await assert.rejects(P.send('member-name','request-001'),/entfernt/);balance=300;await assert.rejects(P.send('member-name','request-001'),/entfernt/);
+ assert.equal(calls.some(c=>c.url.endsWith('/admin/send')),false);ctx.adminUnlocked=false;await assert.rejects(P.send('member-name','request-002'),/entfernt/);
 });
-test('Service Worker zeigt einen neutralen Hinweis und holt den persönlichen Link ausschließlich aus lokalem Gerätespeicher',async()=>{
+test('Service Worker zeigt keine neuen Erinnerungen; alte Nachrichten öffnen weiterhin den lokal gespeicherten Link',async()=>{
  const events={},shown=[],opened=[];const url='https://ffw-wasser.github.io/home/deckel.html#a='+ '1'.repeat(32)+'&k='+ 'a'.repeat(64);
  const ctx=vm.createContext({URL,Promise,importScripts:()=>{},DeckelDevice:{read:async()=>({url})},
   self:{registration:{scope:'https://ffw-wasser.github.io/home/',showNotification:async(title,options)=>shown.push({title,options})},clients:{matchAll:async()=>[],openWindow:async u=>opened.push(u)},addEventListener:(name,fn)=>events[name]=fn}});
  vm.runInContext(fs.readFileSync(require.resolve('../service-worker.js'),'utf8'),ctx);let promise;
- events.push({waitUntil:p=>promise=p});await promise;assert.match(shown[0].options.body,/Dein Deckel/);assert.ok(!JSON.stringify(shown).includes('a'.repeat(64)));assert.equal(shown[0].options.data,undefined);
+ events.push({waitUntil:p=>promise=p});await promise;assert.equal(shown.length,0);
  events.notificationclick({notification:{close(){}},waitUntil:p=>promise=p});await promise;assert.deepEqual(opened,[url]);
 });
 

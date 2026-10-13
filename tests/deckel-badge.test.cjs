@@ -9,16 +9,16 @@ function worker(navigator={}){
  async function dispatch(name,extra={}){let pending;events[name]({...extra,waitUntil:value=>pending=value});await pending;}
  return {dispatch,shown,opened};
 }
-test('Neue Erinnerung zeigt 1; Tippen auf die Nachricht entfernt die Zahl und öffnet den Deckel',async()=>{
+test('Alte Push-Ereignisse zeigen keine Erinnerung und entfernen die Badge',async()=>{
  const counts=[];let clears=0,closed=0;const f=worker({setAppBadge:async count=>counts.push(count),clearAppBadge:async()=>clears++});
- await f.dispatch('push');await f.dispatch('push');assert.deepEqual(counts,[1,1]);assert.equal(f.shown.length,2);
- assert.equal(f.shown[0].options.tag,'deckel-reminder');assert.ok(!JSON.stringify(f.shown).includes('balance'));
+ await f.dispatch('push');await f.dispatch('push');assert.deepEqual(counts,[]);assert.equal(f.shown.length,0);
+
  await f.dispatch('notificationclick',{notification:{close:()=>closed++}});
- assert.equal(clears,1);assert.equal(closed,1);assert.deepEqual(f.opened,['https://ffw-wasser.github.io/home/deckel.html']);
+ assert.equal(clears,3);assert.equal(closed,1);assert.deepEqual(f.opened,['https://ffw-wasser.github.io/home/deckel.html']);
 });
-test('Fehlende oder abgelehnte Badge-API verhindert weder Nachricht noch Öffnen',async()=>{
+test('Fehlende Badge-API erzeugt keine Nachricht; alte Nachricht öffnet weiter den Deckel',async()=>{
  for(const navigator of [{},{setAppBadge:async()=>{throw Error('blocked');},clearAppBadge:async()=>{throw Error('blocked');}}]){
-  const f=worker(navigator);await f.dispatch('push');assert.equal(f.shown.length,1);
+  const f=worker(navigator);await f.dispatch('push');assert.equal(f.shown.length,0);
   await f.dispatch('notificationclick',{notification:{close(){}}});assert.equal(f.opened.length,1);
  }
 });
@@ -35,15 +35,15 @@ function page({badgeFails=false,failedLoad=false,hidden=false}={}){
  return {ctx,nodes,closed,calls,get clears(){return clears;}};
 }
 test('Öffnen über das App-Symbol quittiert nur die Deckel-Erinnerung; verborgenes Fenster quittiert nichts',async()=>{
- const f=page();await f.ctx.DeckelPush.markRead();assert.equal(f.clears,1);assert.deepEqual(f.calls,['deckel-reminder']);assert.equal(f.closed.length,1);
- f.ctx.document.hidden=true;await f.ctx.DeckelPush.markRead();assert.equal(f.clears,1);assert.equal(f.closed.length,1);
- const blocked=page({badgeFails:true});await blocked.ctx.DeckelPush.markRead();assert.equal(blocked.closed.length,1);
+ const f=page();await f.ctx.DeckelPush.restore();const before=f.clears;await f.ctx.DeckelPush.markRead();assert.equal(f.clears,before+1);assert.ok(f.calls.every(tag=>tag==='deckel-reminder'));assert.equal(f.closed.length,before+1);
+ f.ctx.document.hidden=true;await f.ctx.DeckelPush.markRead();assert.equal(f.clears,before+1);assert.equal(f.closed.length,before+1);
+ const blocked=page({badgeFails:true});await blocked.ctx.DeckelPush.restore();const old=blocked.closed.length;await blocked.ctx.DeckelPush.markRead();assert.equal(blocked.closed.length,old+1);
 });
-test('Badge wird erst nach erfolgreichem Laden eines sichtbaren Deckels entfernt',async()=>{
+test('Alte Badge wird auch bei fehlgeschlagenem Laden entfernt',async()=>{
  for(const options of [{},{failedLoad:true},{hidden:true}]){
   const f=page(options);vm.runInContext(read('js/features/drinks/deckel-view.js'),f.ctx);
   for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(f.clears,options.failedLoad||options.hidden?0:1);
-  assert.equal(f.closed.length,options.failedLoad||options.hidden?0:1);
+  assert.equal(f.clears,options.hidden?0:options.failedLoad?1:2);
+  assert.equal(f.closed.length,options.hidden?0:options.failedLoad?1:2);
  }
 });

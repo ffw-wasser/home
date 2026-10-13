@@ -14,7 +14,7 @@
  async function marker(source,state){const old=await S.readMobileFile('konten-zentrale.json');await S.writeMobileFile('konten-zentrale.json',{version:1,source,state},old?.item?.eTag);cached=null;}
  const filename=kind=>'sicherung-'+kind+'-'+crypto.randomUUID()+'.json';
  async function migrate(progress=()=>{}){
-  admin();const c0=await g.DrinksPush.config();if(!c0)throw Error('Bitte zuerst den vorhandenen Cloudflare-Dienst unter Handy-Erinnerungen verbinden.');const c={...c0,source:S.sourceKey()};
+  admin();const c0=await g.DrinksPush.config();if(!c0)throw Error('Bitte zuerst den vorhandenen Cloudflare-Dienst unter Kontodienst verbinden.');const c={...c0,source:S.sourceKey()};
   const status=await call(c,'status');if(status.source&&status.source!==c.source)throw Error('Der Dienst ist mit einem anderen OneDrive-Ordner verbunden.');if(status.state==='active'){await marker(c.source,'active');return 'Die zentralen Konten sind bereits aktiv.';}
   progress('Konten und Handyzugänge werden geprüft …');const members=(await g.oneDriveReadState()).members.map(p=>String(p.id)),records=await accessRecords(),snapshot=await S.localMigrationSnapshot([...members,...records.map(r=>r.memberId)]),accounts=snapshot.entries.filter(x=>x.name!=='bonus-einstellungen.json').map(x=>x.account);
   if(new Set(accounts.map(a=>a.memberId)).size!==accounts.length)throw Error('Ein Konto ist mehrfach vorhanden.');

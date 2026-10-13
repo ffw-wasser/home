@@ -11,8 +11,8 @@
   const show=personal()&&!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
   by('installButton').hidden=ios;by('installButton').disabled=busy;
   by('installButton').textContent=pending?'Deckel installieren':'Deckel auf dem Handy speichern';
-  steps(ios?['Auf „Teilen“ tippen.','„Zum Home-Bildschirm“ auswählen und „Hinzufügen“ bestätigen.','Den Bierdeckel auf dem Home-Bildschirm öffnen. Dort kannst du Erinnerungen erlauben.']:
-   ['Auf die Schaltfläche unten tippen.','Die Installation bestätigen. Falls kein Dialog erscheint: Im Browser-Menü „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen.','Den Bierdeckel auf dem Home-Bildschirm öffnen und bei Bedarf Erinnerungen erlauben.']);
+  steps(ios?['Auf „Teilen“ tippen.','„Zum Home-Bildschirm“ auswählen und „Hinzufügen“ bestätigen.','Den Bierdeckel auf dem Home-Bildschirm öffnen. Dort kannst du deinen Kontostand ansehen und Getränke eintragen.']:
+   ['Auf die Schaltfläche unten tippen.','Die Installation bestätigen. Falls kein Dialog erscheint: Im Browser-Menü „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen.','Den Bierdeckel auf dem Home-Bildschirm öffnen und deinen Kontostand ansehen.']);
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
  }
  async function install(){

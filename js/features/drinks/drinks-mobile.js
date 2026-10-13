@@ -38,7 +38,7 @@
   }
   function queue(id){pending.add(String(id));setStatus(String(id),'Handyansicht wird aktualisiert …');flush();}
   async function flush(){if(working)return;working=true;try{while(pending.size){const id=pending.values().next().value;pending.delete(id);try{if(!await publish(id))setStatus(id,'Noch kein Handyzugang eingerichtet.');}catch{setStatus(id,'Buchungen gespeichert. Die Handyansicht ist noch nicht aktualisiert. Bitte erneut aktualisieren.');}}}finally{working=false;}}
-  async function link(id,signature,rotate=false,includeReminders=false){
+  async function link(id,signature,rotate=false){
     const [connection,account,filename]=await Promise.all([config(),S.read(id),S.mobileFileName(id)]);
     if(!connection)throw new Error('Die Handyansicht muss zuerst unter Einstellungen → Getränkeverwaltung → Handy-Deckel eingerichtet werden.');
     if(!signature||JSON.stringify(account.pin)!==signature)throw Object.assign(new Error('PIN-Status geändert. Bitte dein Getränkekonto erneut öffnen.'),{code:'pinChanged'});
@@ -46,12 +46,11 @@
     const created=!record||rotate;
     if(created){record={...C.create(),memberId:id,revision:crypto.randomUUID()};if(old)record.alias=C.access(old.data).alias;await S.writeMobileFile(filename,record,old?.item?.eTag);linkCache.delete(String(id));}
     C.access(record);if(record.memberId!==id)throw new Error('Handyzugang gehört zu einem anderen Konto.');
-    const known=linkCache.get(String(id));let push,url;
-    if(!created&&known?.revision===record.revision&&known.key===record.key&&known.sourceKey===sourceKey&&known.until>Date.now()&&(!includeReminders||new URL(known.url).hash.includes('p=')))url=new URL(known.url);
+    const known=linkCache.get(String(id));let url;
+    if(!created&&known?.revision===record.revision&&known.key===record.key&&known.sourceKey===sourceKey&&known.until>Date.now())url=new URL(known.url);
     else{
       if(created&&!await publish(id,{connection,filename,record}))throw new Error('Die Handyansicht konnte nicht veröffentlicht werden.');
-      if(includeReminders){push=await global.DrinksPush?.prepare(record);if(!push)throw new Error('Handy-Erinnerungen sind noch nicht eingerichtet. Dein Kontozugang funktioniert bereits.');}
-      url=new URL('deckel.html',location.href);url.search='';url.hash=new URLSearchParams({r:connection.repo,a:record.alias,k:record.key,...(push?{p:push.origin,c:push.capability}:{})}).toString();
+      url=new URL('deckel.html',location.href);url.search='';url.hash=new URLSearchParams({r:connection.repo,a:record.alias,k:record.key}).toString();
     }
     // Fresh authority and key checks also apply when the QR URL is reused from RAM.
     const [current,check]=await Promise.all([S.readMobileFile(filename),S.read(id)]);

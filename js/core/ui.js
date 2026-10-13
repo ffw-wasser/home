@@ -26,7 +26,7 @@ function lockAdministration(){
   if(byId('pushAdminToken'))byId('pushAdminToken').value='';
   if(byId('deckel-token'))byId('deckel-token').value='';
   window.DrinksAdminBookings?.lock();
-  window.DrinksQuizQuestions?.lock();
+  window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
   for(const id of ['settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id;showView('adminLoginView');break;}
@@ -38,6 +38,7 @@ function showView(viewId) {
   if(["settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView"].includes(viewId)&&!requireAdmin(viewId))return false;
   if(window.DrinksQuizQuestions?.beforeView(viewId)===false)return false;
   if(window.DrinksAdminBookings?.beforeView(viewId)===false)return false;
+  if(window.DrinksChallengeSettings?.beforeView(viewId)===false)return false;
   if(window.DrinksRewards?.beforeView(viewId)===false)return false;
   if(window.Usability?.beforeLeave(viewId)===false)return false;
   if(window.Drinks?.beforeView(viewId)===false)return false;

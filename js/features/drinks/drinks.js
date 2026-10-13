@@ -216,7 +216,7 @@
   function render(){
     const totals=account?M.totals(account):{balance:0,count:0};global.DrinksRewards?.render(account,0,0);root.querySelectorAll('[data-dr-person]').forEach(e=>e.textContent=name(memberId));renderRecent();
     el('account-mobile-status').textContent=global.DrinksMobile?.status(memberId)||'';
-    for(const id of ['mobile-open','mobile-back','mobile-refresh','mobile-rotate','mobile-reminders'])if(el(id))el(id).disabled=busy||Boolean(pending);
+    for(const id of ['mobile-open','mobile-back','mobile-refresh','mobile-rotate'])if(el(id))el(id).disabled=busy||Boolean(pending);
     if(el('mobile-retry')){el('mobile-retry').hidden=!global.DrinksMobile?.status(memberId).includes('noch nicht aktualisiert');el('mobile-retry').disabled=busy||Boolean(pending);}
     el('balance').textContent=euro(totals.balance);el('count').textContent=totals.balance===0?'Alles bezahlt.':totals.count+' gespeicherte Getränke seit Kontostart';el('cancel').disabled=busy||Boolean(pending);
     root.querySelectorAll('[data-dr-pay]').forEach(b=>b.disabled=busy||Boolean(pending)||totals.balance<=0);
@@ -381,13 +381,12 @@
     el('paid-next').addEventListener('click',finishSession);el('paid-account').addEventListener('click',()=>screen('account'));
     const showMobile=rotate=>run(async()=>{
       if(!signature)throw new Error('Bitte erneut mit deiner PIN anmelden.');
-      clearMobileQr();screen('mobile');el('mobile-status').textContent='Dein QR-Code wird vorbereitet …';el('mobile-reminders').disabled=true;const url=await global.DrinksMobile.link(memberId,signature,rotate);el('mobile-reminders').disabled=false;
+      clearMobileQr();screen('mobile');el('mobile-status').textContent='Dein QR-Code wird vorbereitet …';const url=await global.DrinksMobile.link(memberId,signature,rotate);
       const qr=qrcode(0,'M');qr.addData(url);qr.make();const canvas=el('mobile-qr'),count=qr.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;
       const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.fillStyle='#111';
       for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c))context.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);
-      screen('mobile');el('mobile-status').textContent='QR-Code bereit. Mit der Handykamera scannen. Für Benachrichtigungen bei Bedarf „Erinnerungen hinzufügen“ wählen.';
+      screen('mobile');el('mobile-status').textContent='QR-Code bereit. Mit der Handykamera scannen und den persönlichen Deckel öffnen.';
     });
-    el('mobile-reminders').addEventListener('click',()=>{if(busy||pending)return;run(async()=>{el('mobile-status').textContent='Erinnerungszugang wird ergänzt …';const url=await global.DrinksMobile.link(memberId,signature,false,true);const qr=qrcode(0,'M');qr.addData(url);qr.make();const canvas=el('mobile-qr'),count=qr.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.fillStyle='#111';for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c))context.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);el('mobile-status').textContent='QR-Code mit Erinnerungszugang bereit. Erneut scannen und auf dem Handy Erinnerungen erlauben.';});});
     el('mobile-open').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
     el('mobile-back').addEventListener('click',()=>{if(busy)return;clearMobileQr();screen('account');});
     el('mobile-refresh').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
