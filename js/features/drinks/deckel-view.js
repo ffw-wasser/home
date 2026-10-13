@@ -6,12 +6,12 @@ const thanked=new Set();
 function hideThanks(){clearTimeout(thanksTimer);$('thanks').hidden=true;}
 function showThanks(paid,alias){hideThanks();if(!paid){thanked.delete(alias);return;}if(thanked.has(alias))return;thanked.add(alias);$('thanks').hidden=false;thanksTimer=setTimeout(hideThanks,3000);}
 function enableNudge(enabled){$('coaster').setAttribute?.('aria-disabled',String(!enabled));$('coaster').tabIndex=enabled?0:-1;}
-function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;if(hasData)$('deckel-mood').textContent=mood;}
+function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;$('coaster').classList.toggle('is-telling',false);$('deckel-quote').hidden=true;$('deckel-quote').textContent='';for(const id of ['balance','balanceLabel','updated'])$(id).hidden=false;$('coaster').setAttribute?.('aria-labelledby','balanceLabel balance');$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint');if(hasData)$('deckel-mood').textContent=mood;}
 function nudgeDeckel(){
  if(!hasData||$('refresh').disabled||document.hidden)return;
  const sayings=[
  'Ich bin ein Bierdeckel. Kein Untersetzer für Ausreden.',
- 'Ganz ruhig – ich wackle nur. Dein Betrag bleibt stehen.',
+ 'Ganz ruhig – ich wackle nur. Dein Kontostand bleibt gleich.',
  'Ich zähle mit. Fingerabdrücke kosten heute nichts.',
  'Ein kleiner Stups für dich. Eine große Runde für den Deckel.',
  'Bitte nicht knicken. Ich habe schon genug auf dem Deckel.',
@@ -41,7 +41,7 @@ function nudgeDeckel(){
  'Ich kann nichts dafür. Ich wurde so rund geboren.',
  'Feierabend für den Durst. Bereitschaft für den Deckel.'
  ];
- resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('deckel-mood').textContent='😂 '+sayings[quoteIndex++%sayings.length];funTimer=setTimeout(resetNudge,4000);
+ resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('coaster').classList.toggle('is-telling',true);for(const id of ['balance','balanceLabel','updated'])$(id).hidden=true;$('deckel-quote').hidden=false;$('deckel-quote').textContent=sayings[quoteIndex++%sayings.length];$('coaster').setAttribute?.('aria-labelledby','deckel-quote');$('coaster').setAttribute?.('aria-describedby','deckel-tap-hint');funTimer=setTimeout(resetNudge,4000);
 }
 function credentials(){const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
 function clear(){globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();mood='';$('deckel-mood').textContent='';enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
