@@ -30,9 +30,9 @@ test('Aktualisieren hält den geprüften Kontostand sichtbar; Netzfehler zeigen 
 });
 
 test('Deckel anstupsen zeigt nur einen Spruch, verändert keinen Geldbetrag und endet nach vier Sekunden',async()=>{
- const f=await fixture();f.data.balance=750;await f.reload();const amount=f.nodes.get('balance').textContent,normal=f.nodes.get('deckel-mood').textContent;let requests=0;f.ctx.fetch=async()=>{requests++;throw Error('Keine Anfrage durch einen Deckelspruch erlaubt');};
- f.nodes.get('coaster').onclick();assert.equal(f.nodes.get('deckel-laugh').hidden,false);assert.ok(f.nodes.get('deckel-quote').textContent);assert.equal(f.nodes.get('balance').hidden,true);assert.equal(f.nodes.get('deckel-quote').hidden,false);assert.equal(f.nodes.get('balance').textContent,amount);assert.equal(requests,0);f.advance(4000);assert.equal(f.nodes.get('deckel-laugh').hidden,true);assert.equal(f.nodes.get('deckel-quote').hidden,true);assert.equal(f.nodes.get('balance').hidden,false);assert.equal(f.nodes.get('balanceLabel').hidden,false);assert.equal(f.nodes.get('updated').hidden,false);assert.equal(f.nodes.get('deckel-mood').textContent,normal);assert.equal(f.nodes.get('balance').textContent,amount);
- f.nodes.get('coaster').onclick();f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('deckel-mood').textContent,'');assert.equal(f.nodes.get('coaster').tabIndex,-1);f.advance(4000);assert.equal(f.nodes.get('deckel-mood').textContent,'');
+ const f=await fixture();f.data.balance=750;await f.reload();const amount=f.nodes.get('balance').textContent;let requests=0;f.ctx.fetch=async()=>{requests++;throw Error('Keine Anfrage durch einen Deckelspruch erlaubt');};
+ f.nodes.get('coaster').onclick();assert.equal(f.nodes.get('deckel-laugh').hidden,false);assert.ok(f.nodes.get('deckel-quote').textContent);assert.equal(f.nodes.get('balance').hidden,true);assert.equal(f.nodes.get('deckel-quote').hidden,false);assert.equal(f.nodes.get('balance').textContent,amount);assert.equal(requests,0);f.advance(4000);assert.equal(f.nodes.get('deckel-laugh').hidden,true);assert.equal(f.nodes.get('deckel-quote').hidden,true);assert.equal(f.nodes.get('balance').hidden,false);assert.equal(f.nodes.get('balanceLabel').hidden,false);assert.equal(f.nodes.get('updated').hidden,false);assert.equal(f.nodes.get('balance').textContent,amount);
+ f.nodes.get('coaster').onclick();f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('deckel-quote').textContent,'');assert.equal(f.nodes.get('coaster').tabIndex,-1);f.advance(4000);assert.equal(f.nodes.get('deckel-quote').textContent,'');
 });
 
 test('Deckel selbst reagiert auf Enter und Leertaste, mit vielen unterschiedlichen Sprüchen',async()=>{
@@ -40,7 +40,7 @@ test('Deckel selbst reagiert auf Enter und Leertaste, mit vielen unterschiedlich
  for(let i=0;i<30;i++){f.nodes.get('coaster').onkeydown({key:i%2?' ':'Enter',repeat:false,preventDefault(){prevented++;}});quotes.add(f.nodes.get('deckel-quote').textContent);}
  assert.equal(prevented,30);assert.equal(quotes.size,30);assert.equal(f.nodes.get('balance').textContent,amount);
  const quote=f.nodes.get('deckel-quote').textContent;f.nodes.get('coaster').onkeydown({key:'Enter',repeat:true,preventDefault(){}});assert.equal(f.nodes.get('deckel-quote').textContent,quote);
- f.ctx.document.hidden=true;f.events.visibilitychange();f.nodes.get('coaster').onclick();assert.equal(f.nodes.get('deckel-mood').textContent,'');
+ f.ctx.document.hidden=true;f.events.visibilitychange();f.nodes.get('coaster').onclick();assert.equal(f.nodes.get('deckel-quote').textContent,'');
 });
 
 test('Erneutes Antippen verlängert die Spruchanzeige; Aktualisieren stellt den aktuellen Betrag wieder her',async()=>{

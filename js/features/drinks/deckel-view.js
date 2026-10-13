@@ -1,12 +1,12 @@
 'use strict';
 const $=id=>document.getElementById(id),euro=c=>(c/100).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
 const pointText=u=>(u/150).toLocaleString('de-DE',{maximumFractionDigits:4});
-let generation=0,lastUpdated='',hasData=false,currentAccess='',thanksTimer,currentRequest=null,funTimer,mood='',quoteIndex=0;
+let generation=0,lastUpdated='',hasData=false,currentAccess='',thanksTimer,currentRequest=null,funTimer,quoteIndex=0;
 const thanked=new Set();
 function hideThanks(){clearTimeout(thanksTimer);$('thanks').hidden=true;}
 function showThanks(paid,alias){hideThanks();if(!paid){thanked.delete(alias);return;}if(thanked.has(alias))return;thanked.add(alias);$('thanks').hidden=false;thanksTimer=setTimeout(hideThanks,3000);}
 function enableNudge(enabled){$('coaster').setAttribute?.('aria-disabled',String(!enabled));$('coaster').tabIndex=enabled?0:-1;}
-function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;$('coaster').classList.toggle('is-telling',false);$('deckel-quote').hidden=true;$('deckel-quote').textContent='';for(const id of ['balance','balanceLabel','updated'])$(id).hidden=false;$('coaster').setAttribute?.('aria-labelledby','balanceLabel balance');$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint');if(hasData)$('deckel-mood').textContent=mood;}
+function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;$('coaster').classList.toggle('is-telling',false);$('deckel-quote').hidden=true;$('deckel-quote').textContent='';for(const id of ['balance','balanceLabel','updated'])$(id).hidden=false;$('coaster').setAttribute?.('aria-labelledby','balanceLabel balance');$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint');}
 function nudgeDeckel(){
  if(!hasData||$('refresh').disabled||document.hidden)return;
  const sayings=[
@@ -44,9 +44,10 @@ function nudgeDeckel(){
  resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('coaster').classList.toggle('is-telling',true);for(const id of ['balance','balanceLabel','updated'])$(id).hidden=true;$('deckel-quote').hidden=false;$('deckel-quote').textContent=sayings[quoteIndex++%sayings.length];$('coaster').setAttribute?.('aria-labelledby','deckel-quote');$('coaster').setAttribute?.('aria-describedby','deckel-tap-hint');funTimer=setTimeout(resetNudge,4000);
 }
 function credentials(){const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
-function clear(){globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();mood='';$('deckel-mood').textContent='';enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
+function clear(){globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
 async function load(){
+ globalThis.DeckelUpdate?.check();
  const number=++generation;currentRequest?.abort();resetNudge();$('refresh').disabled=true;$('refresh').setAttribute?.('aria-busy','true');$('status').setAttribute?.('data-state','loading');enableNudge(false);hideThanks();$('status').textContent=hasData?'Deckel wird abgestaubt · Kontostand wird geprüft …':'Dein Deckel rollt an · Kontostand wird geladen …';
  try{
   await globalThis.DeckelPush?.restore();globalThis.DeckelInstall?.refresh();const {repo,record}=credentials(),access=repo+':'+record.alias+':'+record.key;
@@ -56,7 +57,6 @@ async function load(){
   if(!response.ok)throw new Error('Dein Deckel ist noch nicht verfügbar. Bitte am Gerätehaus-iPad aktualisieren.');
   if(text.length>8000)throw new Error('Die Deckel-Datei konnte nicht geprüft werden. Bitte erneut aktualisieren.');const data=await DeckelCrypto.open(JSON.parse(text),record);if(number!==generation||document.hidden)return;
   const layers=data.balance?Math.min(5,Math.ceil(data.balance/1000)):0;$('deckel-stack').parentElement.style.setProperty('--stack-count',layers);$('deckel-stack').replaceChildren();for(let i=layers-1;i>=0;i--){const layer=document.createElement('span');layer.className='deckel-layer';layer.style.setProperty('--layer',i);$('deckel-stack').append(layer);}$('stack-note').textContent=layers?'Je höher der offene Betrag, desto höher der Stapel. Die Schichten sind symbolisch.':'';
-  mood=data.balance===0?'😎 Alles bezahlt. Dein Deckel macht jetzt Feierabend.':data.balance<1000?'🍺 Kleiner Deckel, große Pläne. Ich zähle mit.':data.balance<3000?'🧱 Dein Deckel übt Hochstapeln. Bezahlen hält ihn bodenständig.':'🏗️ Dein Deckelturm braucht bald einen Kran. Zeit zum Bezahlen!';$('deckel-mood').textContent=mood;
   $('coaster').classList.toggle('is-paid',data.balance===0);$('balance').textContent=euro(data.balance);$('balanceLabel').textContent=data.balance===0?'Alles bezahlt':'Offener Betrag';showThanks(data.balance===0,record.alias);
   $('credit').hidden=data.pointUnits===undefined||data.credit===0;$('credit').textContent='Dein Guthaben: '+euro(data.credit)+' · Für die nächsten Getränke.';
   const units=data.pointUnits??0,award=data.awardUnits??data.bonusCents;$('points').textContent=data.pointUnits===undefined?'–':pointText(units);$('bonus').textContent=data.needed?'Noch '+euro(data.needed)+' einzahlen bis zu '+pointText(award)+' neuen Treuepunkten.':'Ziel erreicht. Die nächste bestätigte Einzahlung vergibt neue Treuepunkte.';

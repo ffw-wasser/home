@@ -7,6 +7,7 @@ for(const name of ['index.html','deckel.html','service-worker.js']){
  const file=path.join(root,name);
  let source=fs.readFileSync(file,'utf8').replace(/\?v=[A-Za-z0-9._-]+/g,'?v='+release.build);
  if(name==='service-worker.js')source=source.replace(/const CACHE_NAME="[^"]+";/,'const CACHE_NAME="ffw-wasser-'+release.build+'";');
+ if(name==='deckel.html'){source=source.replace(/<meta name="deckel-build" content="[^"]+">/,'<meta name="deckel-build" content="'+release.build+'">').replace(/(<p class="version-note" id="deckel-version">)Version [^<]+/,'$1Version '+release.version);}
  if(name==='index.html'){
   source=source.replace(/<meta name="app-version" content="[^"]+">/,'<meta name="app-version" content="'+release.version+'">');
   source=source.replace(/<meta name="ffw-build" content="[^"]+"\/?\s*>/,'<meta name="ffw-build" content="'+release.build+'"/>');
