@@ -627,7 +627,7 @@ function ensureStagedHomeFlow(){
   }
   if(!byId("homeFlowProgress")){
     const progress=document.createElement("nav");progress.id="homeFlowProgress";progress.className="home-flow-progress";progress.setAttribute("aria-label","Terminablauf");sessionPanel.parentElement.insertBefore(progress,sessionPanel);
-    progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){setHomeFlowStage(1);requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3&&sessionType==="Einsatz"){ensureOperationForm?.().setAttribute("hidden","");showOperationForm?.();syncHomeFlowProgress(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;openOperationReportForm?.();syncHomeFlowProgress(4);}});
+    progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){setHomeFlowStage(1);requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3&&sessionType==="Einsatz"){setHomeFlowStage(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;setHomeFlowStage(3);openOperationReportForm?.();syncHomeFlowProgress(4);}});
   }
   syncHomeFlowProgress(homeFlowStage);
 
@@ -737,3 +737,4 @@ function applyRfidCsvImport(){
 }
 
 if(!window.__memberLastNameResizeBound){window.__memberLastNameResizeBound=true;window.addEventListener("resize",()=>requestAnimationFrame(fitMemberLastNames),{passive:true});}
+
