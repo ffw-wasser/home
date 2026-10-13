@@ -69,3 +69,21 @@ test('Mannschaft erhält eigene Tabellenzeilen; nur individuelle Zeitangaben ers
  assert.equal((table.match(/<w:tr>/g)||[]).length,4);assert.equal((table.match(/Individuell:/g)||[]).length,1);assert.ok(table.includes('08.10.2026 11:00 bis 08.10.2026 12:00 (1 Std. 0 Min.)'));
  assert.ok(table.includes('<w:cantSplit/>'));assert.ok(table.includes('<w:tblHeader/>'));assert.ok(!table.includes('Annemarie Beispiel-Langname, Bernd'));
 });
+
+test('Alarmierungswege aus den Schnellwahlen und Freitext werden vollständig ausgegeben',async()=>{
+ const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
+ for(const [methods,marks] of [[['Digitalmelder','Sirene','Telefon'],2],[['Melder','Funk','mündlich','selbst'],4],[['Sirene','Leitstelle & Rückruf'],0],[[],0]]){
+  const blob=await c.OperationDocx.create({...sample,alarmMethods:methods});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');const table=xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g).find(t=>t.replace(/<[^>]+>/g,'').includes('Alarmierung:'));assert.ok(table);
+  for(const method of methods)assert.ok(table.includes(method.replaceAll('&','&amp;')));
+  assert.equal((table.match(/<w:t>X<\/w:t>/g)||[]).length,marks);
+  assert.equal(table.includes('Alarmierungswege:'),methods.length>0);assert.ok(!xml.includes('{{'));assert.ok(table.includes('12:00'));
+ }
+});
+
+test('Freitext aus Einsatzmitteln und Atemschutzüberwachung geht im Bericht nicht verloren',async()=>{
+ const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
+ const data={...sample,pipes:{description:'8 B, 6 C'},waterSources:['Hydrant beim Gerätehaus','kein offenes Gewässer'],oil:{description:'2 Sack Ölbindemittel'},atueUsed:true,atuePerson:'Test Person'};
+ const blob=await c.OperationDocx.create(data);const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');
+ for(const value of ['8 B, 6 C','Hydrant beim Gerätehaus, kein offenes Gewässer','2 Sack Ölbindemittel','Atemschutzüberwachung: durch Test Person'])assert.ok(xml.includes(value));
+ const department=await c.OperationDocx.create({...data,atueDepartment:true});const z=await JSZip.loadAsync(new Uint8Array(await department.arrayBuffer()));const x=await z.file('word/document.xml').async('string');assert.ok(x.includes('Atemschutzüberwachung: durch Abteilung Emmendingen'));assert.ok(!x.includes('Atemschutzüberwachung: durch Test Person'));
+});
