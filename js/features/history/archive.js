@@ -194,6 +194,11 @@ function ensureArchiveCorrectionDialog(){
   byId("correctionPerson").addEventListener("change",loadSelectedCorrectionRow);
   byId("correctionStatus").addEventListener("change",updateCorrectionRoleVisibility);
   if(!byId("correctionDate")){const person=byId("correctionPerson");const label=document.createElement("label");label.htmlFor="correctionDate";label.textContent="Termindatum";const input=document.createElement("input");input.id="correctionDate";input.type="date";input.className="text-input";const personLabel=person.parentElement.querySelector('label[for="correctionPerson"]');person.parentElement.insertBefore(label,personLabel);label.insertAdjacentElement("afterend",input);const hint=document.createElement("p");hint.className="help-text";hint.textContent="Ein geändertes Termindatum gilt für den gesamten Bericht.";input.insertAdjacentElement("afterend",hint);}
+  if(!byId("correctionName")){
+    const label=document.createElement("label");label.htmlFor="correctionName";label.textContent="Name im Bericht";
+    const input=document.createElement("input");input.id="correctionName";input.type="text";input.className="text-input";input.maxLength=150;
+    byId("correctionPerson").insertAdjacentElement("afterend",label);label.insertAdjacentElement("afterend",input);
+  }
   byId("saveCorrectionButton").addEventListener("click",saveArchiveCorrection);
 }
 function updateCorrectionRoleVisibility(){
@@ -216,6 +221,7 @@ function correctionRolesForRow(row){
 function loadSelectedCorrectionRow(){
   if(!archiveCorrectionState)return;
   const row=archiveCorrectionState.rows[Number(byId("correctionPerson").value)];if(!row)return;
+  byId("correctionName").value=row.name||"";
   const roleSelect=byId("correctionRole");
   const isGeneral=(archiveCorrectionState.item.sessionType||archiveCorrectionState.rows[0]?.sessionType)==="Allgemeine Probe";
   const allowedRoles=isGeneral?correctionRolesForRow(row):[row.role||""];
@@ -238,17 +244,21 @@ function pairedArchiveFileNames(item){
 }
 async function saveArchiveCorrection(){ if(!requireAdmin("settingsHistoryView"))return;
   if(!archiveCorrectionState)return;
-  const {item,rows}=archiveCorrectionState,index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
+  const item=structuredClone(archiveCorrectionState.item),rows=structuredClone(archiveCorrectionState.rows),index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
   const status=byId("correctionStatus").value,role=status==="Anwesend"?byId("correctionRole").value.trim():"";
+  const correctedName=byId("correctionName").value.trim();
+  if(!correctedName)return showToast("Bitte einen Namen eintragen.","error");
   const correctedDate=byId("correctionDate")?.value||row.date;
   if(!correctedDate)return showToast("Bitte einen gültigen Probetermin auswählen.","error");
   const isGeneral=(item.sessionType||rows[0]?.sessionType)==="Allgemeine Probe";
-  if(status==="Anwesend"&&isGeneral&&!role){
+  if(status==="Anwesend"&&isGeneral&&!role&&correctionRolesForRow(row).length){
     showToast("Bitte eine für diese Person freigegebene Funktion auswählen.","error");
     return;
   }
-  const original={status:row.status,role:row.role,date:row.date};rows.forEach(item=>item.date=correctedDate);row.status=status;row.role=role;
-  item.revisions=[...(item.revisions||[]),{changedAt:new Date().toISOString(),name:row.name,original,updated:{status,role}}];
+  const button=byId("saveCorrectionButton");if(button.disabled)return;button.disabled=true;
+  try{
+  const original={name:row.name,status:row.status,role:row.role,date:row.date};rows.forEach(item=>item.date=correctedDate);row.status=status;row.role=role;row.name=correctedName;
+  item.revisions=[...(item.revisions||[]),{changedAt:new Date().toISOString(),name:row.name,original,updated:{name:correctedName,status,role,date:correctedDate}}];
   item.topic=item.topic||rows[0]?.topic||"";
   item.content=archiveCsvFromRows(rows,item.topic);
   item.correctedAt=new Date().toISOString();
@@ -259,8 +269,8 @@ async function saveArchiveCorrection(){ if(!requireAdmin("settingsHistoryView"))
   item.baseFileName=`${names.base}.csv`;
   item.fileName=names.csv;
   item.pdfFileName=names.pdf;
-  item.hasImportedPdf=false;
-  await deleteImportedReportPdf?.(item.id);
+  item.originalReportDate=correctedDate;
+  item.updatedAt=item.correctedAt;
 
   const counts={
     present:rows.filter(x=>x.status==="Anwesend").length,
@@ -276,6 +286,18 @@ async function saveArchiveCorrection(){ if(!requireAdmin("settingsHistoryView"))
     row.date || rows[0]?.date || historyDateFromItem(item)
   );
 
+  Object.assign(item,{presentCount:counts.present,excusedCount:counts.excused,missingCount:counts.missing,notApplicableCount:counts.notApplicable});
+  if(item.oneDriveLive){
+    await window.saveOneDriveHistoryCorrection(item,correctedPdf);
+    await window.loadOneDriveHistory();
+    byId("archiveCorrectionDialog").close();
+    archiveCorrectionState=null;
+    showToast("Korrektur im OneDrive-Terminpaket gespeichert.");
+    return;
+  }
+  await saveImportedReportPdf(item.id,new File([correctedPdf],names.pdf,{type:"application/pdf"}));
+  item.hasImportedPdf=true;
+  csvArchive=csvArchive.map(entry=>entry.id===item.id?item:entry);
   let csvOverwritten=false,pdfOverwritten=false;
   try{csvOverwritten=await writeCsvToSelectedFolder(names.csv,item.content);}catch(error){csvOverwritten=false;}
   try{pdfOverwritten=await savePdfToSelectedFolder(names.pdf,correctedPdf);}catch(error){pdfOverwritten=false;}
@@ -292,6 +314,8 @@ async function saveArchiveCorrection(){ if(!requireAdmin("settingsHistoryView"))
   else if(pdfOverwritten)showToast("Korrektur gespeichert. Das zugehörige PDF wurde überschrieben; CSV wurde ausgegeben.");
   else if(csvOverwritten)showToast("Korrektur gespeichert. Die CSV wurde überschrieben; PDF wurde neu ausgegeben.");
   else showToast("Korrektur gespeichert. CSV und PDF wurden neu ausgegeben.");
+  }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast(`Korrektur nicht bestätigt: ${error.message||"Bitte erneut versuchen."}`,"error");}
+  finally{button.disabled=false;}
 }
 function historyNormalizeDate(value){
   const raw=String(value||"").trim();
@@ -452,3 +476,4 @@ async function openHistoryPdf(id){
   const fileName=item.fileName.replace(/\.csv$/i,".pdf");
   showHistoryPdfPreview(blob,fileName);
 }
+

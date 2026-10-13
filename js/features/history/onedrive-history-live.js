@@ -198,6 +198,42 @@
     }
   }
 
+  window.saveOneDriveHistoryCorrection = async (item, pdf) => {
+    // Vorhandene Datei anhand ihrer ID ersetzen, auch bei geändertem Termindatum.
+    if(pendingLoad)await pendingLoad;
+    const fileId=String(item.id||"").replace(/^onedrive-zip:/,"");
+    if(!item.oneDriveLive||!fileId)throw new Error("Das OneDrive-Terminpaket fehlt.");
+    const root=await oneDriveResolveSharedRoot();
+    const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
+    const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
+    const zip=await JSZip.loadAsync(await (await odFetch(url+"/content")).blob());
+    const infoEntry=zip.file("paket-info.json");
+    const info=infoEntry?JSON.parse(await infoEntry.async("string")):{};
+    const oldCsv=info.csvName||Object.values(zip.files).find(entry=>!entry.dir&&/\.csv$/i.test(entry.name))?.name;
+    const oldPdf=info.pdfName||Object.values(zip.files).find(entry=>!entry.dir&&/\.pdf$/i.test(entry.name))?.name;
+    if(!oldCsv)throw new Error("Das Paket enthält keinen CSV-Bericht.");
+    // Zusatzseiten des ursprünglichen Berichts nach dem neu erzeugten Hauptbericht erhalten.
+    if(oldPdf&&zip.file(oldPdf)&&globalThis.PDFLib?.PDFDocument){
+      const rows=CsvEngine.parse(await zip.file(oldCsv).async("string"));
+      const c=counts(rows);
+      const oldMain=probePdfBlob(rows.map(row=>({time:row.time,name:row.name,status:row.status,role:row.role})),rows[0]?.sessionType||item.sessionType,{present:c.presentCount,excused:c.excusedCount,missing:c.missingCount,notApplicable:rows.filter(row=>row.status==="Betrifft nicht").length},rows[0]?.topic||"",rows[0]?.date||"");
+      const mainDocument=await PDFLib.PDFDocument.load(await oldMain.arrayBuffer());
+      const previous=await PDFLib.PDFDocument.load(await zip.file(oldPdf).async("uint8array"));
+      if(previous.getPageCount()>mainDocument.getPageCount()){
+        const corrected=await PDFLib.PDFDocument.load(await pdf.arrayBuffer());
+        const pages=previous.getPageIndices().slice(mainDocument.getPageCount());
+        for(const page of await corrected.copyPages(previous,pages))corrected.addPage(page);
+        pdf=new Blob([await corrected.save()],{type:"application/pdf"});
+      }
+    }
+    zip.remove(oldCsv);if(oldPdf)zip.remove(oldPdf);
+    zip.file(item.fileName,item.content);zip.file(item.pdfFileName,pdf);
+    zip.file("paket-info.json",JSON.stringify({...info,csvName:item.fileName,pdfName:item.pdfFileName,correctedAt:item.correctedAt,revisions:item.revisions,files:Object.keys(zip.files)},null,2));
+    const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
+    await odFetch(url+"/content",{method:"PUT",headers:{"Content-Type":"application/zip",...(metadata.eTag?{"If-Match":metadata.eTag}:{})},body:blob});
+    reportCache.delete(fileId);
+  };
   window.loadOneDriveHistory = loadOneDriveHistory;
   window.loadOneDriveHistoryPdf = async item => pdfByReportId.get(item?.id) || null;
 })();
+
