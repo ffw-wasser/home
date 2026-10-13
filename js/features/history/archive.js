@@ -15,7 +15,25 @@ function renderArchive() {
   renderHistory?.();
 }
 async function exportArchiveItem(id) { const item=csvArchive.find(x=>x.id===id); if(!item)return; const result=await exportCsvFile(item.fileName,item.content,true); showToast(result==="failed"?"CSV konnte nicht ausgegeben werden.":result==="cancelled"?"Ausgabe wurde abgebrochen.":"CSV wurde erneut ausgegeben.",result==="failed"||result==="cancelled"?"error":"success"); }
-async function deleteArchiveItem(id) { if(!requireAdmin("settingsHistoryView"))return; const item=csvArchive.find(x=>x.id===id); if(!item||!confirm(`Archivdatei „${item.fileName}“ löschen?`))return; csvArchive=csvArchive.filter(x=>x.id!==id); await deleteImportedReportPdf?.(id); await deleteDocumentReportsForArchive?.(id); saveArchive(); renderArchive(); showToast("Archivdatei gelöscht."); }
+const deletingArchiveIds=new Set();
+async function deleteArchiveItem(id){
+  if(!requireAdmin("settingsHistoryView")||deletingArchiveIds.has(id))return;
+  const item=csvArchive.find(entry=>entry.id===id);if(!item)return;
+  const name=item.packageFileName||item.fileName;
+  const message=item.oneDriveLive?`Terminpaket „${name}“ in OneDrive löschen? Der Bericht einschließlich CSV, PDF und Zusatzdokumenten wird entfernt.`:`Archivdatei „${name}“ löschen?`;
+  if(!confirm(message))return;
+  deletingArchiveIds.add(id);
+  try{
+    if(item.oneDriveLive)await window.deleteOneDriveHistoryItem(item);
+    csvArchive=csvArchive.filter(entry=>entry.id!==id);
+    try{await deleteImportedReportPdf?.(id);await deleteDocumentReportsForArchive?.(id);}catch(error){console.warn("Lokale Berichtskopien konnten nicht vollständig entfernt werden",error);}
+    saveArchive();renderArchive();renderHistory();renderStatistics();
+    showToast(item.oneDriveLive?"Terminpaket in OneDrive gelöscht.":"Archivdatei gelöscht.");
+    if(item.oneDriveLive)await window.loadOneDriveHistory();
+  }catch(error){console.error("Bericht konnte nicht gelöscht werden",error);showToast(`Löschen in OneDrive nicht bestätigt. ${error.message||"Bitte erneut versuchen."}`,"error");}
+  finally{deletingArchiveIds.delete(id);}
+}
+
 async function exportArchiveBackup() {
   const name = `FFW-Wasser_Archiv-Backup_${today()}.json`;
   await shareOrDownloadJson(name, { version:"1.0", createdAt:new Date().toISOString(), items:csvArchive }, "Archiv-Backup wurde ausgegeben.");
@@ -476,4 +494,5 @@ async function openHistoryPdf(id){
   const fileName=item.fileName.replace(/\.csv$/i,".pdf");
   showHistoryPdfPreview(blob,fileName);
 }
+
 

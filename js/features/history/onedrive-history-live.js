@@ -200,6 +200,22 @@
     }
   }
 
+  window.deleteOneDriveHistoryItem = async item => {
+    if(pendingLoad)await pendingLoad;
+    if(!item?.oneDriveLive||!String(item.id||"").startsWith("onedrive-zip:"))throw new Error("Das Original-Terminpaket fehlt.");
+    const fileId=item.id.slice("onedrive-zip:".length);
+    if(!fileId)throw new Error("Die OneDrive-Dateikennung fehlt.");
+    const root=await oneDriveResolveSharedRoot();
+    const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
+    try{
+      const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
+      await odFetch(url,{method:"DELETE",headers:metadata.eTag?{"If-Match":metadata.eTag}:{}});
+    }catch(error){if(error.status!==404)throw error;}
+    // Ein gleichzeitig gestarteter Abruf darf den gelöschten Bericht nicht wieder einsetzen.
+    loadEpoch++;
+    reportCache.delete(fileId);pdfByReportId.delete(item.id);
+    if(pendingLoad)await pendingLoad;
+  };
   window.saveOneDriveHistoryCorrection = async (item, pdf, {preserveAttachments=true}={}) => {
     // Vorhandene Datei anhand ihrer ID ersetzen, auch bei geändertem Termindatum.
     if(pendingLoad)await pendingLoad;
@@ -238,5 +254,6 @@
   window.loadOneDriveHistory = loadOneDriveHistory;
   window.loadOneDriveHistoryPdf = async item => pdfByReportId.get(item?.id) || null;
 })();
+
 
 
