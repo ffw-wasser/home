@@ -15,7 +15,7 @@ function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   if(!allowDisconnected&&(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady())){
     showToast("Bitte OneDrive verbinden und erfolgreich synchronisieren, bevor du diesen Verwaltungsbereich öffnest.","error");window.WorkflowUX?.connectionNotice();return false;
   }
-  if(adminUnlocked){resetAdminTimeout();return true;}
+  if(adminUnlocked&&checkAdminSession()){resetAdminTimeout();return true;}
   pendingSettingsTarget=target;
   byId("cloudSyncDialog")?.close();
   showView("adminLoginView");
@@ -110,3 +110,4 @@ function chooseSessionType(type) {
   const summary=byId("headerProbeSummary");if(summary){summary.hidden=false;summary.classList.add("is-active","is-preview");}
   const stage2Type=byId("stage2Heading")?.querySelector("small");if(stage2Type)stage2Type.textContent=type;
 }
+

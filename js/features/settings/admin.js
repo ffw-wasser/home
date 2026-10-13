@@ -9,6 +9,22 @@ function resetAdminTimeout() {
   adminUnlockUntil = Date.now() + ADMIN_TIMEOUT_MS;
   adminTimeoutId = setTimeout(() => logoutAdmin(true), ADMIN_TIMEOUT_MS);
 }
+function checkAdminSession(){
+  if(!adminUnlocked)return false;
+  if(!adminUnlockUntil||Date.now()>=adminUnlockUntil){logoutAdmin(true);return false;}
+  return true;
+}
+function recordAdminActivity(event){
+  if(document.hidden||event?.isTrusted===false||!checkAdminSession())return;
+  resetAdminTimeout();
+}
+// Die Frist misst Inaktivität, nicht die Dauer einer laufenden Korrektur.
+for(const type of ["pointerdown","keydown","input"]){
+  document.addEventListener(type,recordAdminActivity,{capture:true,passive:true});
+}
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden)checkAdminSession();
+});
 async function requestCloseProbe() {
   if (!todayEntries().length) return showToast("Es muss mindestens eine Teilnahme erfasst sein.", "error");
 
@@ -206,3 +222,4 @@ function changePin() {
   byId("repeatPin").value = "";
   showToast("Admin-Passwort wurde geändert.");
 }
+

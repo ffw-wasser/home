@@ -122,9 +122,10 @@
     const backup=document.createElement('section');backup.className='ux-backup-scope';backup.innerHTML='<details><summary>Was enthält die Sicherung?</summary><p>Mitglieder, Ziele, laufende Tagesdaten, Historie und gespeicherte Dokumente. Das Admin-Passwort und Getränkekonten sind nicht enthalten.</p><p>Getränkekonten sicherst du unter Getränkeverwaltung → Sichern &amp; Zurücksetzen.</p></details>';byId('exportCompleteBackupButton').closest('article')?.prepend(backup);
     byId('exportCompleteBackupButton').textContent='App-Daten sichern';byId('importCompleteBackupButton').textContent='App-Datensicherung wiederherstellen';
     renderMemberList();statistics();historyStatus();
-    document.addEventListener('visibilitychange',()=>{if(document.hidden&&adminUnlocked)lockAdministration();});
+
     window.addEventListener('beforeunload',event=>{if(dirtyRows().length||pendingMemberStatuses.size){event.preventDefault();event.returnValue='';}});
   }
   window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>dirtyRows().length>0,attendanceState,editEntry:entryEditor,members:renderMemberList,statistics,historyStatus};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();
+
