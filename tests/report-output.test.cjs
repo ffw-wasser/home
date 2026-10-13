@@ -54,3 +54,8 @@ test('Gerätehausbesetzung steht im Wordbericht ohne Fahrzeugkreuze',async()=>{
  const blob=await c.OperationDocx.create({...sample,stationOnly:true,reportVehicles:[],assignments:{'Person, Test':'Reserve Gerätehaus'},assignmentRoles:{'Person, Test':'Gerätehausbesetzung'}});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');
  assert.ok(xml.includes('Gerätehausbesetzung'));const vehicles=xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g).find(t=>t.includes('Eingesetzte Fahrzeuge'));assert.equal((vehicles.match(/<w:t>X<\/w:t>/g)||[]).length,0);
 });
+
+test('Wordprotokoll übernimmt Einsatzzeit bei leeren Personzeiten und die Stromausfall-Option',async()=>{
+ const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
+ const blob=await c.OperationDocx.create({...sample,stationOnly:true,powerOutage:true,type:'Gerätehausbesetzung',times:{alarm:'23:00',ended:'01:30'},assignments:{'Person, Test':'Reserve Gerätehaus'},reserveTimes:{}});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');assert.ok(xml.includes('Gerätehausbesetzung · Stromausfall'));assert.ok(xml.includes('08.10.2026 23:00 bis 09.10.2026 01:30 (2 Std. 30 Min.)'));
+});
