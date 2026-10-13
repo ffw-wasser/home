@@ -126,15 +126,19 @@
   }
   function consumption(accounts,year){
     if(!/^\d{4}$/.test(String(year)))throw new Error('Bitte ein gültiges Kalenderjahr wählen.');
-    const months=Array.from({length:12},(_,month)=>({month:month+1,beer:0,wine:0,total:0,beerCents:0,wineCents:0,totalCents:0,openCents:0})),years=new Set(),seen=new Set();let outstandingCents=0,prepaidCents=0;
+    const months=Array.from({length:12},(_,month)=>({month:month+1,beer:0,wine:0,total:0,beerCents:0,wineCents:0,totalCents:0,openCents:0,paymentPointUnits:0,challengePointUnits:0,earnedPointUnits:0,redeemedPointUnits:0})),years=new Set(),seen=new Set();let outstandingCents=0,prepaidCents=0,currentPointUnits=0;
     for(const account of accounts){validate(account,account.memberId);if(seen.has(account.memberId))throw new Error('Ein Getränkekonto wurde doppelt geladen.');seen.add(account.memberId);
-      const state=ledger(account);outstandingCents+=state.balance;prepaidCents+=state.credit-state.rewardCredit;
+      const state=ledger(account);outstandingCents+=state.balance;prepaidCents+=state.credit-state.rewardCredit;currentPointUnits+=state.points+state.rewardCredit;
+      const addPoints=(createdAt,key,units)=>{const date=day(createdAt);years.add(date.slice(0,4));if(date.startsWith(String(year))){const month=months[Number(date.slice(5,7))-1];month[key]+=units;if(key!=='redeemedPointUnits')month.earnedPointUnits+=units;}};
+      for(const [id,bonus] of state.bonuses)if(!state.reversedPayments.has(id))addPoints(bonus.createdAt,'paymentPointUnits',bonus.cents);
+      for(const booking of account.bookings)if(booking.type==='challenge-reward')addPoints(booking.createdAt,'challengePointUnits',booking.cents);
       for(const entry of state.drinks.values()){
+        addPoints(entry.booking.createdAt,'redeemedPointUnits',entry.redeemed+entry.rewardUsed);
         const date=day(entry.booking.createdAt);years.add(date.slice(0,4));if(!entry.count||!date.startsWith(String(year)))continue;
         const month=months[Number(date.slice(5,7))-1];month[entry.booking.drink==='wine'?'wine':'beer']+=entry.count;month.total+=entry.count;month[entry.booking.drink==='wine'?'wineCents':'beerCents']+=entry.count*unitPrice(entry.booking);month.totalCents+=entry.count*unitPrice(entry.booking);month.openCents+=entry.unpaid;
       }
     }
-    return {year:String(year),beer:months.reduce((n,m)=>n+m.beer,0),wine:months.reduce((n,m)=>n+m.wine,0),total:months.reduce((n,m)=>n+m.total,0),beerCents:months.reduce((n,m)=>n+m.beerCents,0),wineCents:months.reduce((n,m)=>n+m.wineCents,0),totalCents:months.reduce((n,m)=>n+m.totalCents,0),openCents:months.reduce((n,m)=>n+m.openCents,0),outstandingCents,prepaidCents,months,years:[...years].sort().reverse()};
+    return {year:String(year),beer:months.reduce((n,m)=>n+m.beer,0),wine:months.reduce((n,m)=>n+m.wine,0),total:months.reduce((n,m)=>n+m.total,0),beerCents:months.reduce((n,m)=>n+m.beerCents,0),wineCents:months.reduce((n,m)=>n+m.wineCents,0),totalCents:months.reduce((n,m)=>n+m.totalCents,0),openCents:months.reduce((n,m)=>n+m.openCents,0),outstandingCents,prepaidCents,currentPointUnits,paymentPointUnits:months.reduce((n,m)=>n+m.paymentPointUnits,0),challengePointUnits:months.reduce((n,m)=>n+m.challengePointUnits,0),earnedPointUnits:months.reduce((n,m)=>n+m.earnedPointUnits,0),redeemedPointUnits:months.reduce((n,m)=>n+m.redeemedPointUnits,0),months,years:[...years].sort().reverse()};
   }
   function validateRewardSettings(p){
     const common=p&&[1,2].includes(p.schemaVersion)&&typeof p.id==='string'&&/^[-a-zA-Z0-9]{8,100}$/.test(p.id)&&typeof p.revision==='string'&&/^[-a-zA-Z0-9]{8,100}$/.test(p.revision)&&Number.isFinite(Date.parse(p.startedAt));

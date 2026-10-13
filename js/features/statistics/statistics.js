@@ -380,12 +380,12 @@ async function exportStatisticsPdf() {
   await globalThis.DrinksConsumption?.load(year);
   if(year!==selectedStatisticsYear){showToast("Kalenderjahr geändert. Bitte die PDF erneut öffnen.","error");return;}
   const originalTitle = document.title;
-  const consumptionDetails=document.querySelector(".dr-consumption-months"),consumptionWasOpen=consumptionDetails?.open;if(consumptionDetails)consumptionDetails.open=true;
+  const consumptionDetails=Array.from(document.querySelectorAll(".dr-consumption-months"),element=>({element,wasOpen:element.open}));for(const {element} of consumptionDetails)element.open=true;
   document.title = `Feuerwehr-Wasser_Statistik_${year}`;
   document.body.classList.add("printing-statistics");
   const cleanup = () => {
     document.body.classList.remove("printing-statistics");
-    if(consumptionDetails)consumptionDetails.open=consumptionWasOpen;
+    for(const {element,wasOpen} of consumptionDetails)element.open=wasOpen;
     document.title = originalTitle;
     window.removeEventListener("afterprint", cleanup);
   };
