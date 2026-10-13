@@ -55,7 +55,17 @@ test('Gerätehausbesetzung steht im Wordbericht ohne Fahrzeugkreuze',async()=>{
  assert.ok(xml.includes('Gerätehausbesetzung'));const vehicles=xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g).find(t=>t.includes('Eingesetzte Fahrzeuge'));assert.equal((vehicles.match(/<w:t>X<\/w:t>/g)||[]).length,0);
 });
 
-test('Wordprotokoll übernimmt Einsatzzeit bei leeren Personzeiten und die Stromausfall-Option',async()=>{
+test('Wordprotokoll zeigt bei leeren Personzeiten keine Mannschaftszeiten, Stromausfall bleibt enthalten',async()=>{
  const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
- const blob=await c.OperationDocx.create({...sample,stationOnly:true,powerOutage:true,type:'Gerätehausbesetzung',times:{alarm:'22:00',arrived:'23:00',ended:'01:30'},assignments:{'Person, Test':'Reserve Gerätehaus'},reserveTimes:{}});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');assert.ok(xml.includes('Gerätehausbesetzung · Stromausfall'));assert.ok(xml.includes('08.10.2026 23:00 bis 09.10.2026 01:30 (2 Std. 30 Min.)'));
+ const blob=await c.OperationDocx.create({...sample,stationOnly:true,powerOutage:true,type:'Gerätehausbesetzung',times:{alarm:'22:00',arrived:'23:00',ended:'01:30'},assignments:{'Person, Test':'Reserve Gerätehaus'},reserveTimes:{}});const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');assert.ok(xml.includes('Gerätehausbesetzung · Stromausfall'));assert.ok(!xml.includes('08.10.2026 23:00 bis'));assert.ok(!xml.includes('Individuell:'));
+});
+
+test('Mannschaft erhält eigene Tabellenzeilen; nur individuelle Zeitangaben erscheinen bei der Person',async()=>{
+ const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
+ const people=['Beispiel-Langname, Annemarie','Muster, Bernd','Beispiel, Carla'];
+ const blob=await c.OperationDocx.create({...sample,stationOnly:true,members:people,times:{alarm:'09:00',arrived:'10:00',ended:'12:00'},assignments:Object.fromEntries(people.map(n=>[n,'Reserve Gerätehaus'])),assignmentRoles:{},reserveTimes:{[people[1]]:{from:'2026-10-08T11:00',to:''}}});
+ const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');
+ const table=xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g).find(t=>t.includes('Gerätehausbesetzung'));
+ assert.equal((table.match(/<w:tr>/g)||[]).length,4);assert.equal((table.match(/Individuell:/g)||[]).length,1);assert.ok(table.includes('08.10.2026 11:00 bis 08.10.2026 12:00 (1 Std. 0 Min.)'));
+ assert.ok(table.includes('<w:cantSplit/>'));assert.ok(table.includes('<w:tblHeader/>'));assert.ok(!table.includes('Annemarie Beispiel-Langname, Bernd'));
 });
