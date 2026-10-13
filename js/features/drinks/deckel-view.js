@@ -5,17 +5,49 @@ let generation=0,lastUpdated='',hasData=false,currentAccess='',thanksTimer,curre
 const thanked=new Set();
 function hideThanks(){clearTimeout(thanksTimer);$('thanks').hidden=true;}
 function showThanks(paid,alias){hideThanks();if(!paid){thanked.delete(alias);return;}if(thanked.has(alias))return;thanked.add(alias);$('thanks').hidden=false;thanksTimer=setTimeout(hideThanks,3000);}
-function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);if(hasData)$('deckel-mood').textContent=mood;}
+function enableNudge(enabled){$('coaster').setAttribute?.('aria-disabled',String(!enabled));$('coaster').tabIndex=enabled?0:-1;}
+function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;if(hasData)$('deckel-mood').textContent=mood;}
 function nudgeDeckel(){
  if(!hasData||$('refresh').disabled||document.hidden)return;
- const sayings=['Ich bin ein Bierdeckel. Kein Untersetzer für Ausreden.','Ganz ruhig – ich wackle nur. Dein Betrag bleibt stehen.','Ich zähle mit. Fingerabdrücke kosten heute nichts.','Ein kleiner Stups für dich. Eine große Runde für den Deckel.','Bitte nicht knicken. Ich habe schon genug auf dem Deckel.'];
- resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('deckel-mood').textContent=sayings[quoteIndex++%sayings.length];funTimer=setTimeout(resetNudge,4000);
+ const sayings=[
+ 'Ich bin ein Bierdeckel. Kein Untersetzer für Ausreden.',
+ 'Ganz ruhig – ich wackle nur. Dein Betrag bleibt stehen.',
+ 'Ich zähle mit. Fingerabdrücke kosten heute nichts.',
+ 'Ein kleiner Stups für dich. Eine große Runde für den Deckel.',
+ 'Bitte nicht knicken. Ich habe schon genug auf dem Deckel.',
+ 'Ich halte die Stellung. Auch ohne Fahrzeugbesetzung.',
+ 'Alarmstufe gemütlich: Der Deckel ist im Dienst.',
+ 'Ich bin rund. Deine Buchhaltung bleibt trotzdem gerade.',
+ 'Hier wird nichts gelöscht. Höchstens der Durst – nach Dienstschluss.',
+ 'Mein Löschmittel heute: ein freundlicher Blick.',
+ 'Anstupsen ist kostenlos. Das steht sogar auf meinem Deckel.',
+ 'Kein Funkloch hier. Ich habe deinen Finger empfangen.',
+ 'Lage stabil. Deckel kurz ins Wackeln geraten.',
+ 'Ich bin der einzige Stapel im Gerätehaus, der Sprüche klopft.',
+ 'Ich trage Verantwortung. Und gelegentlich ein Glas.',
+ 'Für einen Bierdeckel habe ich erstaunlich viel auf dem Schirm.',
+ 'Ich brauche keine Leiter. Ich liege schon richtig.',
+ 'Ein Deckel für alle Fälle. Außer für Marmeladengläser.',
+ 'Ich nehme alles auf meine Kappe. Die ist nur ziemlich flach.',
+ 'Wasser marsch? Für mich reicht ein trockener Tisch.',
+ 'Meine Lieblingsübung: ruhig liegen und mitdenken.',
+ 'Bitte Abstand halten. Ich bin gleich wieder rund.',
+ 'Ob Bier oder Wein: Ich verliere keinen Strich aus den Augen.',
+ 'Treue zahlt sich aus. Ich sammle lieber Punkte als Staub.',
+ 'Ich bin kein Orakel. Ich kenne nur deinen Deckel.',
+ 'Die Runde ist gesellig. Die Abrechnung bleibt sachlich.',
+ 'Mein Einsatzbericht: einmal angestupst, alles unverändert.',
+ 'So viel Aufmerksamkeit! Gleich werde ich eckig.',
+ 'Ich kann nichts dafür. Ich wurde so rund geboren.',
+ 'Feierabend für den Durst. Bereitschaft für den Deckel.'
+ ];
+ resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('deckel-mood').textContent='😂 '+sayings[quoteIndex++%sayings.length];funTimer=setTimeout(resetNudge,4000);
 }
 function credentials(){const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
-function clear(){globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();mood='';$('deckel-mood').textContent='';$('deckel-nudge').disabled=true;hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
+function clear(){globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();mood='';$('deckel-mood').textContent='';enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
 async function load(){
- const number=++generation;currentRequest?.abort();resetNudge();$('refresh').disabled=true;$('refresh').setAttribute?.('aria-busy','true');$('status').setAttribute?.('data-state','loading');$('deckel-nudge').disabled=true;hideThanks();$('status').textContent=hasData?'Deckel wird abgestaubt · Kontostand wird geprüft …':'Dein Deckel rollt an · Kontostand wird geladen …';
+ const number=++generation;currentRequest?.abort();resetNudge();$('refresh').disabled=true;$('refresh').setAttribute?.('aria-busy','true');$('status').setAttribute?.('data-state','loading');enableNudge(false);hideThanks();$('status').textContent=hasData?'Deckel wird abgestaubt · Kontostand wird geprüft …':'Dein Deckel rollt an · Kontostand wird geladen …';
  try{
   await globalThis.DeckelPush?.restore();globalThis.DeckelInstall?.refresh();const {repo,record}=credentials(),access=repo+':'+record.alias+':'+record.key;
   if(access!==currentAccess){clear();lastUpdated='';currentAccess=access;}
@@ -34,9 +66,9 @@ async function load(){
   $('bookings').replaceChildren();for(const b of data.bookings){const li=document.createElement('li'),drink=b.count+(b.drink==='wine'?(b.count===1?' Glas Wein':' Gläser Wein'):' Bier');li.textContent=(b.type==='drinks'?drink:b.type==='correction'?'Rücknahme: '+drink:b.type==='payment-reversal'?'Admin: Zahlung gelöscht':b.type==='challenge'?'Challenge '+b.code+' · '+(b.direction==='out'?'Schulden −':'Schulden +'):b.type==='challenge-reward'?'Monats-Challenge '+b.month:b.type==='bonus'?'Treuepunkte':b.method==='cash'?'Barzahlung bestätigt':'PayPal verbucht')+(b.pointUnits?' · '+pointText(b.pointUnits)+' Treuepunkte':['bonus','challenge-reward'].includes(b.type)?' · +'+pointText(b.cents)+' Punkte':b.type==='challenge'?euro(b.cents):' · '+euro(b.cents))+(b.cancelled?' · gelöscht':'');const date=document.createElement('small');date.textContent=new Date(b.createdAt).toLocaleString('de-DE');li.append(date);$('bookings').append(li);}if(!data.bookings.length){const li=document.createElement('li');li.textContent='Noch keine Buchungen.';$('bookings').append(li);}
   $('updated').textContent=(data.actions?.central?'Aktueller Kontostand: ':'Übertragen vom Gerätehaus: ')+new Date(data.updatedAt).toLocaleString('de-DE');$('account').hidden=false;hasData=true;globalThis.DeckelMobile?.show(true);$('status').setAttribute?.('data-state','success');globalThis.DeckelActions?.render(data).catch(()=>{});globalThis.DeckelChallenge?.render(data).catch(()=>{});$('status').textContent=lastUpdated===data.updatedAt?(data.actions?.central?'Dein Kontostand ist aktuell.':'Du siehst den zuletzt übertragenen Stand.'):lastUpdated?'Deckel abgestaubt. Dein Kontostand wurde aktualisiert.':'';lastUpdated=data.updatedAt;globalThis.DeckelPush?.markRead();
  }catch(error){if(number!==generation||document.hidden)return;if(!hasData)clear();$('status').setAttribute?.('data-state','error');$('status').textContent=loadError(error)+(hasData?' Angezeigt bleibt der Stand vom '+new Date(lastUpdated).toLocaleString('de-DE')+'.':'');}
- finally{if(number===generation){$('refresh').disabled=false;$('refresh').setAttribute?.('aria-busy','false');$('deckel-nudge').disabled=!hasData||document.hidden;}}
+ finally{if(number===generation){$('refresh').disabled=false;$('refresh').setAttribute?.('aria-busy','false');enableNudge(hasData&&!document.hidden);}}
 }
-$('deckel-nudge').onclick=nudgeDeckel;globalThis.DeckelReload=load;$('refresh').onclick=load;
+$('coaster').onclick=nudgeDeckel;$('coaster').onkeydown=event=>{if((event.key==='Enter'||event.key===' ')&&!event.repeat){event.preventDefault();nudgeDeckel();}};globalThis.DeckelReload=load;$('refresh').onclick=load;
 globalThis.addEventListener('hashchange',()=>{generation++;currentRequest?.abort();currentAccess='';lastUpdated='';clear();load();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;currentRequest?.abort();clear();$('refresh').disabled=false;}else load();});
 globalThis.addEventListener('pageshow',event=>{if(event.persisted)load();});load();
