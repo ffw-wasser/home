@@ -19,3 +19,5 @@
 .deckel-challenge [hidden]{display:none!important}
 @media(max-width:380px){.deckel-challenge{padding:14px}.deckel-challenge>summary{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.deckel-challenge *{scroll-behavior:auto}}
+
+.deckel-challenge>summary .challenge-summary-note{display:block;margin:5px 0 0;font-size:13px;font-weight:500;line-height:1.5;color:#765849}

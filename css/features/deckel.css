@@ -27,3 +27,5 @@
 .deckel-card .deckel-quote{max-width:200px;font-size:16px;font-weight:750;line-height:1.45;margin:12px 0;color:#684429}.deckel-card.is-telling #thanks{display:none}
 
 .deckel-update-banner{padding:14px;margin:14px 0;background:#fff5df;border:1px solid #dccfae;border-radius:14px}.deckel-update-banner p{font-size:14px;margin:0 0 10px}.deckel-update-banner button{font-size:14px}.version-note{font-size:11px;color:var(--muted)}#deckel-update-reload{font-size:13px;margin:0 0 14px}
+
+.loyalty-card .challenge-points-note{font-size:13px;line-height:1.5;color:#705b33;margin:10px 0 0;padding-top:10px;border-top:1px solid #e4d6b5}
