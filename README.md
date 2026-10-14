@@ -116,6 +116,24 @@ werden weiterhin frisch geprüft. Kontodaten bleiben dabei im Arbeitsspeicher.
 QR-Bibliothek: qrcode-generator 2.0.4 von Kazuhiko Arase (MIT), lokal unter
 `js/vendor/qrcode.js`; Lizenz unter `js/vendor/qrcode-LICENSE.txt`.
 
+## Einsatzprotokoll
+
+Der vorhandene Mannschaftsbereich verwendet zwei oder drei Personenspalten.
+Bei einer sehr großen Mannschaft kann die PDF-Seitenprüfung einmal eine
+kompaktere Variante mit vier Spalten erzeugen. Fahrzeuggruppen, Reserve an der
+Einsatzstelle und Reserve im Gerätehaus bleiben getrennt; jede Überschrift
+nennt ihre Anzahl. Die Gesamtstärke steht direkt bei der Mannschaftsüberschrift.
+Abweichende persönliche Zeiten erscheinen klein unter dem Namen. Haben alle
+Personen einer Gruppe dieselben abweichenden Zeiten, werden diese einmal für
+die Gruppe angezeigt. Tages- und Jahreswechsel bleiben eindeutig.
+
+Die restlichen Berichtsteile behalten ihre Gestaltung, die Textabschnitte
+beginnen weiterhin auf Seite zwei. Vor der Vorschau wird die tatsächlich von
+Microsoft erzeugte PDF geprüft. Mehr als zwei Hauptprotokollseiten werden
+nicht ausgegeben; bei weiterem Überlauf bleibt der Entwurf erhalten und die
+App bittet um eine kürzere Darstellung. Angaben werden nicht abgeschnitten.
+Optionale angehängte Zusatzdokumente zählen separat.
+
 ## Bedienung und Verwaltung
 
 **Termin** öffnet den laufenden Termin und erhält Anmeldungen. Unter **Weitere

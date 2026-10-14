@@ -233,14 +233,20 @@ function showOperationAttendance(){
 }
 function showOperationForm(){const f=byId("operationReportForm");if(f&&!f.hidden){try{persistOperationDraft(collectOperationData());}catch(error){console.warn("Einsatzbericht konnte beim Zurückgehen nicht zwischengespeichert werden",error);}f.hidden=true;f.style.display="none";f.setAttribute("aria-hidden","true");}const s=ensureOperationAssignmentStep();s.hidden=false;s.style.display="block";s.removeAttribute("aria-hidden");renderOperationAssignmentStep();syncHomeFlowProgress?.(3);window.SmartWorkflow?.operationForm?.();requestAnimationFrame(()=>requestAnimationFrame(()=>s.scrollIntoView({behavior:"smooth",block:"start"})))}
 function operationPdfEscape(v){return pdfEscape(pdfLatin1(String(v||"")))}function opPdfBytes(v){const t=String(v??""),b=new Uint8Array(t.length);for(let i=0;i<t.length;i++)b[i]=t.charCodeAt(i)&255;return b}function opConcatBytes(p){const l=p.reduce((s,x)=>s+x.length,0),r=new Uint8Array(l);let o=0;for(const x of p){r.set(x,o);o+=x.length}return r}
-async function operationDocxBlob(d){d=d||collectOperationData();if(!window.OperationDocx)throw new Error("Word-Modul ist nicht geladen");return window.OperationDocx.create(d);}
+async function operationDocxBlob(d,options){d=d||collectOperationData();if(!window.OperationDocx)throw new Error("Word-Modul ist nicht geladen");return window.OperationDocx.create(d,options);}
 async function operationPdfBlob(d){
   d=d||collectOperationData();
-  const docx=await operationDocxBlob(d);
   const safeTime=String(d.times?.alarm||"Einsatz").replace(":","-");
   const name=`FFW-Wasser_${d.date||today()}_${safeTime}.docx`;
   if(typeof oneDriveConvertDocxToPdf!=="function")throw new Error("Die PDF-Erstellung über die Word-Vorlage ist nicht verfügbar.");
-  return await oneDriveConvertDocxToPdf(docx,name);
+  if(!globalThis.PDFLib?.PDFDocument)throw new Error("Die Seitenprüfung des Einsatzprotokolls ist nicht verfügbar.");
+  for(const compactCrew of [false,true]){
+    const docx=await operationDocxBlob(d,{compactCrew});
+    const blob=await oneDriveConvertDocxToPdf(docx,name);
+    const pdf=await PDFLib.PDFDocument.load(await blob.arrayBuffer());
+    if(pdf.getPageCount()<=2)return blob;
+    if(compactCrew)throw new Error(`Das Einsatzprotokoll würde ${pdf.getPageCount()} Seiten umfassen. Erlaubt sind maximal zwei Seiten. Bitte sehr lange Berichtstexte kürzen. Bei außergewöhnlich großer Mannschaft bitte die Verwaltung informieren. Es wurden keine Angaben abgeschnitten.`);
+  }
 }
 
 async function showOperationPdfPreview(blob,fileName,onConfirm){
@@ -267,4 +273,5 @@ chosenMemberIds.clear();pendingMemberStatuses.clear();chosenMemberId="";chosenRo
 showView("attendanceView");showOperationAttendance();showToast("Einsatz zur Korrektur geladen. Personen in Schritt 2 bearbeiten, anschließend Zuordnung und Bericht prüfen.");}
 
 let operationDraftSaveTimer=0;function scheduleOperationDraftSave(){clearTimeout(operationDraftSaveTimer);operationDraftSaveTimer=setTimeout(()=>{const form=byId("operationReportForm");if(!form||form.hidden)return;try{persistOperationDraft(collectOperationData());}catch(error){console.warn("Automatische Sicherung des Einsatzberichts fehlgeschlagen",error);}},120);}document.addEventListener("input",event=>{if(event.target?.closest?.("#operationReportForm"))scheduleOperationDraftSave();});document.addEventListener("change",event=>{if(event.target?.closest?.("#operationReportForm"))scheduleOperationDraftSave();});
+
 
