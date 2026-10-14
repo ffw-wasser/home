@@ -123,3 +123,10 @@ Bier, Wein, Punkteeinlösung, Bar-Einzahlung und Rücknahme werden mit dem pers�
 Das iPad gleicht bei geöffnetem, sichtbarem Fenster etwa jede Minute ab. Es muss online und bei OneDrive angemeldet sein. Kontostand und Treuepunkte werden dort erneut geprüft und mit der normalen Versionskontrolle geschrieben. Erst nach erfolgreicher Kontoveröffentlichung erhält das Handy die Bestätigung. Bei fehlgeschlagener Veröffentlichung wird derselbe Vorgang wiederholt, ohne doppelte Buchung. Eine Browser-App kann bei gesperrtem iPad keine dauerhafte Hintergrundverarbeitung garantieren.
 
 Die Handyansicht zeigt bis dahin ausdrücklich „Wartet auf Synchronisierung“. Bereits übertragene Vorgänge nicht nochmals am iPad manuell buchen. Nach Ersetzen eines Links kann eine alte Vormerkung auf dem Handy erst nach ausdrücklicher Kontrolle am iPad entfernt werden. PayPal bleibt eine externe Zahlung, deren Eingang die Verwaltung bestätigt.
+
+
+## Update: Monats-Challenge nach Kontorücksetzung (2026.10.14.23)
+
+Die Rücksetzung von Zahlungen und Treuepunkten gibt nun auch einen neuen Challenge-Versuch im selben Monat frei. Bereits zurückgesetzte Konten werden anhand ihrer Rücksetzungskennung erkannt; ein nochmaliges Zurücksetzen ist nicht nötig. Bestehende Monatsrunden seit der letzten Rücksetzung bleiben erhalten. Alte Antworten können keine Punkte nachbuchen.
+
+Den bestehenden Worker mit der aktuellen **worker.bundle.js** aktualisieren und **Deploy** wählen. Es ist kein SQL-Update erforderlich. Anschließend den persönlichen Handy-Deckel aktualisieren und unter der Monats-Challenge **Stand aktualisieren** wählen.
