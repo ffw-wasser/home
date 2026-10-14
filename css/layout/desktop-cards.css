@@ -40,7 +40,6 @@
   }
 }
 
-
 /* Version 2.0.6: direkte Orgasfarbe auf markierten Personenkarten */
 #members .choice-button.organization-selected,
 #members .choice-button.selected.organization-selected,
@@ -57,7 +56,6 @@
   color:#ffffff!important;
 }
 
-
 /* Version 2.0.8: Auswahl übernehmen bleibt immer grün */
 #attendanceSelectionWorkspace #saveButton.primary-button:not(:disabled),
 #attendanceSelectionWorkspace.status-organization #saveButton.primary-button:not(:disabled){
@@ -71,3 +69,4 @@
   background:#12612d!important;
   border-color:#0f5226!important;
 }
+

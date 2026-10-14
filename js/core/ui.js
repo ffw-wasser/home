@@ -65,7 +65,7 @@ function renderSessionType() {
     button.classList.toggle("selected", selected);
     button.setAttribute("aria-pressed", String(selected));
   });
-  const rolesPanel=byId("rolesPanel");if(rolesPanel)rolesPanel.hidden=false;
+  const rolesPanel=byId("rolesPanel");if(rolesPanel)rolesPanel.hidden=true;
   const headerSessionType=byId("headerSessionType");if(headerSessionType)headerSessionType.textContent=sessionType;
 
   const sessionHint=byId("sessionHint");
@@ -110,4 +110,5 @@ function chooseSessionType(type) {
   const summary=byId("headerProbeSummary");if(summary){summary.hidden=false;summary.classList.add("is-active","is-preview");}
   const stage2Type=byId("stage2Heading")?.querySelector("small");if(stage2Type)stage2Type.textContent=type;
 }
+
 

@@ -22,6 +22,7 @@ async function deleteArchiveItem(id){
   const name=item.packageFileName||item.fileName;
   const message=item.oneDriveLive?`Terminpaket „${name}“ in OneDrive löschen? Der Bericht einschließlich CSV, PDF und Zusatzdokumenten wird entfernt.`:`Archivdatei „${name}“ löschen?`;
   if(!confirm(message))return;
+  if(typeof captureQualitySnapshot==="function")captureQualitySnapshot("Vor Löschen eines Archiveintrags");
   deletingArchiveIds.add(id);
   try{
     if(item.oneDriveLive)await window.deleteOneDriveHistoryItem(item);
@@ -171,6 +172,7 @@ async function importCompleteBackup(file) { if(!requireAdmin("settingsFilesView"
     const backup=await parseCompleteBackupFile(file);
     const normalized=normalizeCompleteBackupData(backup.data);
     if(!confirm(`Backup geprüft: ${normalized.members.length} Mitglieder und ${normalized.csvArchive.length} Historieneinträge gefunden. Jetzt wiederherstellen?`))return;
+    if(typeof captureQualitySnapshot==="function")captureQualitySnapshot("Vor Wiederherstellung eines Komplett-Backups");
     saveCompleteBackupData(normalized);
     csvArchive=normalized.csvArchive;
     const restoredPdfs=await restoreImportedReportPdfs(backup.data.importedPdfs);
@@ -494,5 +496,6 @@ async function openHistoryPdf(id){
   const fileName=item.fileName.replace(/\.csv$/i,".pdf");
   showHistoryPdfPreview(blob,fileName);
 }
+
 
 

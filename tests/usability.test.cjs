@@ -25,7 +25,7 @@ test('Fehlende Besetzung und ein fehlendes Einsatzdatum bleiben echte Abschlussb
 });
 test('Historienänderung, Sicherungspunkt und Passwortänderung benötigen den Verwaltungsmodus',async()=>{
   const messages=[],data=new Map(),c=vm.createContext({requireAdmin:()=>false,byId:()=>null,
-    safeStorage:{setItem:(k,v)=>data.set(k,v),getItem:()=>null},window:{addEventListener(){}},document:{},
+    safeStorage:{setItem:(k,v)=>data.set(k,v),getItem:()=>null},window:{addEventListener(){}},document:{addEventListener(){}},
     csvArchive:[{id:'a'}],members:[],showToast:m=>messages.push(m),console});
   vm.runInContext(read('js/features/history/archive.js'),c);
   vm.runInContext(read('js/features/quality/quality-engine.js'),c);
@@ -33,3 +33,4 @@ test('Historienänderung, Sicherungspunkt und Passwortänderung benötigen den V
   await c.deleteArchiveItem('a');c.correctArchiveItem('a');c.restoreLatestSafetySnapshot();c.changePin();
   assert.equal(c.csvArchive.length,1);assert.equal(data.size,0);
 });
+

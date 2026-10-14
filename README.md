@@ -2,6 +2,35 @@
 
 Statische Web-App für Anwesenheit, Taktik, Einsatzberichte und Jahresstatistik.
 
+## Konsolidierte Ausgangsversion
+
+Version **2026.10.14.21** ist die Ausgangsversion für weitere Änderungen.
+Die bisherigen Korrekturen für Statistik, Paketnamen und Gerätebedienung
+sind in die zuständigen Module übernommen; zusätzliche Patch-Dateien und
+nachträgliche Funktionsersetzungen dafür wurden entfernt.
+
+| Bereich | Zuständiger Ort |
+| --- | --- |
+| Anwesenheitsablauf | `js/features/attendance/attendance-controller.js` |
+| Aktionsbuttons auf iPhone und iPad | `js/features/attendance/action-dock.js` |
+| Eingaben und Bildschirmtastatur | `js/core/keyboard.js` |
+| ZIP, CSV, PDF und Paketnamen | `js/features/reports/zip-terminpakete.js` |
+| Abschluss- und Verwaltungsprüfungen | `js/features/quality/quality-engine.js` und die jeweilige Aktion |
+| Datenqualität der Statistik | `js/features/quality/smart-workflow.js` |
+| Zusammenhängende Basisgestaltung | `css/core/application.css` |
+| Darstellung auf Mobilgeräten | `css/layout/mobile.css` |
+
+Die vier früheren `css/maintenance`-Teile waren teilweise mitten in einem
+CSS-Block getrennt. Sie bilden jetzt ein gültiges, zusammenhängendes
+Stylesheet. Identische Regeln und Deklarationen sowie nachweislich ungenutzte
+Bedienelemente wurden entfernt. Die verbleibende Reihenfolge der wirksamen
+Regeln bleibt erhalten. Unterschiedliche Regeln und Browser-Fallbacks
+werden nicht pauschal zusammengelegt.
+
+Historische Datenschemata bleiben unterstützt. Die Konsolidierung ändert
+keine OneDrive-Dateien, Kontostände oder PINs. Weitere Projektregeln stehen
+in [AGENTS.md](AGENTS.md).
+
 ## Getränke
 
 Im Menü **Getränke** stehen große Namenskarten. Ein Klick auf den Namen
@@ -151,8 +180,7 @@ node --test tests/*.test.cjs
 
 Die aktuelle Getränke-Umsetzung und Prüfung stehen in `GETRAENKE-PRUEFUNG.md`;
 weitere Bedienverbesserungen in `UX-VERBESSERUNGEN.md`.
-`PRUEFBERICHT-FINAL.txt` dokumentiert einen früheren Projektstand. Die umfangreichen aktiven
-CSS-Schichten bleiben wegen ihrer Reihenfolge und dynamischen UI-Nutzung erhalten.
+`PRUEFBERICHT-FINAL.txt` dokumentiert einen früheren Projektstand. Die konsolidierten CSS-Module behalten ihre definierte Reihenfolge und unterstützen die dynamischen Ansichten.
 Die im Bericht beschriebenen offenen Punkte sind keine Freigabe aller Praxisabläufe.
 
 ## Schnelle Bedienung
@@ -188,3 +216,4 @@ stehen lassen würden, werden vor dem Speichern mit einer Erklärung abgewiesen.
 Eine gemeinsame Bereinigung ist möglich, sofern auch die beteiligten späteren
 Zahlungen tatsächlich fehlerhaft sind. Vorhandene Kontohistorien werden nicht
 automatisch umgerechnet.
+

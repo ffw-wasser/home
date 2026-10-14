@@ -128,9 +128,9 @@
 .top-nav #safetyInfoButton b{right:-5px!important;top:-6px!important}
 @media(max-width:760px){
   .top-nav #cloudSyncButton.cloud-sync-button{
-    grid-template-columns:26px auto!important;height:38px!important;min-height:38px!important;padding:4px 7px 4px 5px!important;gap:5px!important;border-radius:9px!important;
+    grid-template-columns:26px auto!important;padding:4px 7px 4px 5px!important;gap:5px!important;
   }
-  .top-nav #cloudSyncButton .cloud-sync-icon{width:26px!important;height:26px!important;font-size:17px!important;border-radius:7px!important}
+  .top-nav #cloudSyncButton .cloud-sync-icon{width:26px!important;height:26px!important;font-size:17px!important}
   .top-nav #cloudSyncButton .cloud-sync-copy b{font-size:11px!important}
   .top-nav #cloudSyncButton .cloud-sync-copy small{font-size:9px!important;max-width:44px!important;overflow:hidden!important;text-overflow:ellipsis!important}
   .top-nav #safetyInfoButton.safety-info-button{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;border-radius:9px!important}
@@ -232,3 +232,4 @@
 }
 .top-nav #safetyInfoButton.safety-info-button.has-critical>#safetyInfoCount{background:#a60000!important}
 .top-nav #safetyInfoButton.safety-info-button[hidden]>#safetyInfoCount{display:none!important}
+

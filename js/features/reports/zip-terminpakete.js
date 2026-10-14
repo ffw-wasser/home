@@ -124,6 +124,7 @@ window.finishOperationZip=async function(){
   const button=byId("operationFinish"),validationBox=byId("operationValidation");
   const defaultButtonText="Einsatz abschließen · Terminpaket";
   if(!button)throw new Error("Der Abschlussbutton wurde nicht gefunden");
+  if(typeof captureQualitySnapshot==="function")captureQualitySnapshot("Vor Einsatzabschluss");
   button.textContent="Einsatz wird vorbereitet …";
   button.setAttribute("aria-busy","true");
   button.disabled=true;
@@ -147,8 +148,7 @@ window.finishOperationZip=async function(){
 
     const previous=editingOperationArchiveId?csvArchive.find(entry=>entry.id===editingOperationArchiveId):null;
     if(editingOperationArchiveId&&!previous)throw new Error("Der Originalbericht ist nicht mehr geladen. Bitte die Historie aktualisieren und die Korrektur erneut öffnen.");
-    const stamp=(d.times.alarm||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})).replace(":","-");
-    const generatedBase=`FFW-Wasser_${d.date}_${stamp}_Einsatz`;
+    const generatedBase=`FFW-Wasser_${d.date}_Einsatz`;
     const previousBase=String(previous?.packageFileName||previous?.fileName||"").replace(/\.(zip|csv|pdf)$/i,"");
     const base=previousBase||generatedBase,zipName=`${base}.zip`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,csv=operationCsv(d);
     if(validationBox)validationBox.innerHTML='<p class="warning">PDF-Vorschau wird lokal erstellt. Bitte kurz warten ...</p>';
@@ -255,4 +255,5 @@ const previousMoveReportImportToSettings=moveReportImportToSettings;
 moveReportImportToSettings=function(){previousMoveReportImportToSettings();setTimeout(reorganizeStorageAndBackups,0);};
 document.addEventListener("DOMContentLoaded",()=>setTimeout(reorganizeStorageAndBackups,50));
 if(document.readyState!=="loading")setTimeout(reorganizeStorageAndBackups,50);
+
 

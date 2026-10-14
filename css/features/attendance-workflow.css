@@ -6,21 +6,13 @@
 
 /* FFW Bedienkorrekturen */
 #attendanceSelectionWorkspace .sheet-status-tabs{min-height:72px!important;height:72px!important;align-items:flex-end!important;gap:10px!important}
-#attendanceSelectionWorkspace .status-tab-rail{min-height:74px!important;height:74px!important}
 #attendanceSelectionWorkspace .sheet-status-tab{min-height:54px!important;height:54px!important;padding:12px 20px!important;border-width:2px!important;font-size:.9rem!important;box-shadow:0 -3px 9px rgba(0,0,0,.13)!important}
 #attendanceSelectionWorkspace .sheet-status-tab.selected{min-height:70px!important;height:70px!important;transform:translateY(1px)!important;box-shadow:0 -6px 14px rgba(0,0,0,.2)!important}
 #attendanceSelectionWorkspace .batch-selection-controls{position:relative!important;padding-bottom:8px!important}
-#attendanceSelectionWorkspace .batch-selection-controls #saveButton{position:static!important;bottom:auto!important;z-index:auto!important;width:100%!important;min-height:54px!important;margin-top:12px!important;box-shadow:none!important}
+#attendanceSelectionWorkspace .batch-selection-controls #saveButton{bottom:auto!important;z-index:auto!important;min-height:54px!important;margin-top:12px!important}
 @media(max-width:700px){#attendanceSelectionWorkspace .sheet-status-tab{min-width:118px!important;padding:11px 12px!important}}
 
-
 /* FFW 2.7.2: Statusreiter noch markanter */
-#attendanceSelectionWorkspace #attendanceStatusToolbar{
-  scroll-margin-top:118px!important;
-  padding:0 12px!important;
-  border-bottom:4px solid #263238!important;
-  filter:drop-shadow(0 5px 7px rgba(0,0,0,.18))!important;
-}
 #attendanceSelectionWorkspace .sheet-status-tab{
   min-height:60px!important;
   height:60px!important;
@@ -51,7 +43,6 @@
   #attendanceSelectionWorkspace .sheet-status-tab.selected{transform:translateY(2px)!important}
 }
 
-
 /* FFW 2.7.3: Auswahlbutton wie Abschlussbutton fest im Seitenfluss */
 #attendanceSelectionWorkspace .batch-selection-controls #saveButton{
   position:static!important;
@@ -72,7 +63,6 @@
   left:50%!important;
   right:auto!important;
   bottom:max(12px, env(safe-area-inset-bottom))!important;
-  z-index:900!important;
   width:min(720px, calc(100vw - 28px))!important;
   min-height:56px!important;
   margin:0!important;
@@ -181,7 +171,6 @@
   body.printing-individual-statistics #settingsStatisticsView .individual-statistics-panel{display:block!important}
 }
 
-
 /* FFW 2.8.9: Jahresübersicht der Probenthemen */
 #settingsStatisticsView .statistics-topics-panel{grid-column:1/-1!important}
 #settingsStatisticsView #probeTopics{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
@@ -189,7 +178,6 @@
 #settingsStatisticsView .individual-statistics-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 @media(max-width:800px){#settingsStatisticsView #probeTopics,#settingsStatisticsView .individual-statistics-grid{grid-template-columns:1fr!important}}
 @media print{body.printing-statistics #settingsStatisticsView .statistics-topics-panel{display:block!important;break-inside:auto!important}body.printing-statistics #settingsStatisticsView #probeTopics{grid-template-columns:repeat(2,1fr)!important}}
-
 
 /* FFW 2.8.10: Letzte Teilnahmen nur personenbezogen */
 #settingsStatisticsView .individual-statistics-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -199,7 +187,6 @@
 #settingsStatisticsView .individual-recent-row small{overflow-wrap:anywhere!important}
 @media(max-width:800px){#settingsStatisticsView .individual-statistics-grid,#settingsStatisticsView .individual-recent-list{grid-template-columns:1fr!important}#settingsStatisticsView .individual-recent-row{grid-template-columns:1fr!important;gap:3px!important}}
 @media print{body.printing-individual-statistics #settingsStatisticsView .individual-recent-section{display:block!important;grid-column:1/-1!important}body.printing-individual-statistics #settingsStatisticsView .individual-recent-list{grid-template-columns:1fr!important}}
-
 
 /* FFW 2.8.11: Altersmannschaft direkt unter der Personenkarte */
 #settingsStatisticsView .individual-statistics-panel{order:20!important}
@@ -247,22 +234,18 @@
 .history-audit-result ul{margin:8px 0 0;padding-left:20px}.history-audit-result li{margin:4px 0}
 @media print{body.printing-statistics .statistics-year-control{display:none!important}}
 
-
 /* FFW 2.9.2: additiver Import und expliziter Archivabgleich */
 #settingsHistoryView .history-import-actions{flex-wrap:wrap!important}
 #settingsHistoryView .history-import-actions button{min-height:46px!important}
 @media(max-width:700px){#settingsHistoryView .history-import-actions button{width:100%!important;min-width:0!important}}
 
-
 /* FFW 2.9.4: Archivprüfung mit positiver Vollständigkeitsanzeige */
 .history-audit-result .audit-ok{margin:10px 0;padding:9px 11px;border-left:5px solid #2f7d32;background:#edf7ed;color:#245d27;font-weight:800}
 .history-audit-result .audit-warning{margin:10px 0;padding:9px 11px;border-left:5px solid #b26a00;background:#fff5df;color:#754700;font-weight:800}
 
-
 /* FFW 2.9.5: Schritt 2 im Ablauf direkt anklickbar */
 #homeFlowProgress[data-current-stage="3"] [data-flow-indicator="2"]{cursor:pointer!important;pointer-events:auto!important}
 #homeFlowProgress[data-current-stage="3"] [data-flow-indicator="2"]:hover{transform:translateY(-1px);filter:brightness(.97)}
-
 
 /* FFW 2.9.6: Orga bei weiteren Anwesenden und flexible Schritt-3-Kennzeichnungen */
 #tacticsView .tactics-organizer-entry{border-color:#c9a852!important;background:#fff8dc!important;color:#59450e!important;font-weight:850!important;cursor:default!important}
@@ -271,7 +254,6 @@
 #tacticsView .panel-heading{min-width:0!important;flex-wrap:wrap!important}
 #tacticsView .panel-heading>div,#tacticsView .panel-heading>h3{min-width:0!important}
 @media(max-width:620px){#tacticsView .panel-heading>.step.yellow,#tacticsView .panel-heading .step.yellow{min-width:38px!important;padding:5px 8px!important;font-size:.65rem!important}}
-
 
 /* FFW 2.9.7: auffällige Abschlussaktion in Schritt 2 */
 #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area{
@@ -292,8 +274,6 @@
 #step3ActionArea .step3-action-copy span{color:#176b36!important;font-size:1rem!important;font-weight:900!important}
 #step3ActionArea .step3-action-copy small{color:#695a1c!important;font-size:.84rem!important;line-height:1.4!important}
 #step3ActionArea #exportResetButton.step-3-action-button{
-  width:100%!important;
-  min-width:0!important;
   min-height:64px!important;
   padding:14px 18px!important;
   border:2px solid #fff!important;
@@ -307,17 +287,15 @@
 #step3ActionArea #exportResetButton.step-3-action-button:hover{background:#0e4f27!important;transform:translateY(-1px)!important}
 #step3ActionArea #exportResetButton.step-3-action-button:disabled{color:#747d81!important;border-color:#e4e7e8!important;background:#d9dfe2!important;box-shadow:none!important;transform:none!important}
 @media(max-width:760px){
-  #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area{grid-template-columns:1fr!important;padding:16px!important}
+  #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area{padding:16px!important}
   #step3ActionArea #exportResetButton.step-3-action-button{margin-top:5px!important;min-height:60px!important}
 }
-
 
 /* FFW 2.9.8: schwebende Schritt-2-Aktionen, iPhone-feste Beschriftung */
 #attendanceSelectionWorkspace{padding-bottom:300px!important}
 #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area{
   position:fixed!important;
   left:50%!important;
-  right:auto!important;
   bottom:max(8px,env(safe-area-inset-bottom))!important;
   z-index:890!important;
   width:min(760px,calc(100vw - 28px))!important;
@@ -374,7 +352,6 @@
   #attendanceSelectionWorkspace .batch-selection-controls #saveButton{width:calc(100vw - 12px)!important}
 }
 
-
 /* FFW 2.9.9: mobile Schwebekarten einklappbar, Reset bleibt erreichbar */
 @media(max-width:760px){
   #attendanceSelectionWorkspace{padding-bottom:175px!important}
@@ -384,16 +361,13 @@
     right:auto!important;
     bottom:max(8px,env(safe-area-inset-bottom))!important;
     transform:none!important;
-    width:100%!important;
     margin:14px 0 10px!important;
     z-index:40!important;
   }
   #attendanceSelectionWorkspace .batch-selection-controls #saveButton{
-    position:sticky!important;
     left:auto!important;
     right:auto!important;
     bottom:calc(max(8px,env(safe-area-inset-bottom)) + 118px)!important;
-    width:100%!important;
     z-index:45!important;
   }
   #attendanceSelectionWorkspace .flow-stage-2-support{
@@ -409,7 +383,6 @@
   #attendanceSelectionWorkspace #step3ActionArea.step-3-action-area,
   #attendanceSelectionWorkspace .batch-selection-controls #saveButton{width:100%!important}
 }
-
 
 /* FFW 2.10.0: Anmeldung und Abschluss sicher trennen */
 #attendanceSelectionWorkspace{padding-bottom:120px!important}
@@ -453,7 +426,6 @@
   .step3-confirm-actions button{width:100%;min-height:52px}
 }
 
-
 /* FFW 2.10.1: Auswahl übernehmen unter Heutige Anmeldungen */
 .desktop-save-button-dock{display:none}
 @media(min-width:900px) and (min-height:650px){
@@ -487,10 +459,8 @@
   }
 }
 @media(max-width:899px), (max-height:649px){
-  #attendanceView .desktop-save-button-dock{display:contents!important}
   #attendanceView .desktop-save-button-dock .batch-selection-controls{display:grid!important}
 }
-
 
 /* FFW 2.10.2: iPhone-Auswahlbutton wieder schwebend und exakt zentriert */
 @media(max-width:899px), (max-height:649px){
@@ -531,56 +501,10 @@
   }
 }
 
-
 /* FFW 2.10.3: Statusreiter optisch mit Personen-markieren-Karte verbinden */
 #attendanceSelectionWorkspace{
   gap:0!important;
   overflow:visible!important;
-}
-#attendanceSelectionWorkspace #rolesPanel.status-tab-rail{
-  position:relative!important;
-  z-index:3!important;
-  margin:0 14px -1px!important;
-  padding:0!important;
-  border:0!important;
-  border-radius:14px 14px 0 0!important;
-  background:transparent!important;
-  box-shadow:none!important;
-  overflow:visible!important;
-}
-#attendanceSelectionWorkspace #attendanceStatusToolbar{
-  display:flex!important;
-  align-items:flex-end!important;
-  gap:5px!important;
-  margin:0!important;
-  padding:0 8px!important;
-  border-bottom:1px solid #c9d2d7!important;
-  background:transparent!important;
-  overflow-x:auto!important;
-  scrollbar-width:none!important;
-}
-#attendanceSelectionWorkspace #attendanceStatusToolbar::-webkit-scrollbar{display:none!important}
-#attendanceSelectionWorkspace #attendanceStatusToolbar [data-role]{
-  margin:0 0 -1px!important;
-  min-height:44px!important;
-  padding:9px 15px!important;
-  border:1px solid #c9d2d7!important;
-  border-bottom-color:#c9d2d7!important;
-  border-radius:11px 11px 0 0!important;
-  background:#e9eef1!important;
-  color:#44535b!important;
-  box-shadow:none!important;
-  white-space:nowrap!important;
-}
-#attendanceSelectionWorkspace #attendanceStatusToolbar [data-role].selected,
-#attendanceSelectionWorkspace #attendanceStatusToolbar [data-role][aria-pressed="true"]{
-  position:relative!important;
-  z-index:4!important;
-  border-color:#b7c4ca!important;
-  border-bottom-color:#fff!important;
-  background:#fff!important;
-  color:#176b36!important;
-  box-shadow:0 -4px 10px rgba(28,52,62,.07)!important;
 }
 #attendanceSelectionWorkspace .members-panel.orga-sheet{
   position:relative!important;
@@ -592,12 +516,8 @@
   box-shadow:0 7px 20px rgba(26,47,57,.09)!important;
 }
 @media(max-width:620px){
-  #attendanceSelectionWorkspace #rolesPanel.status-tab-rail{margin-left:5px!important;margin-right:5px!important}
-  #attendanceSelectionWorkspace #attendanceStatusToolbar{gap:3px!important;padding-left:4px!important;padding-right:4px!important}
-  #attendanceSelectionWorkspace #attendanceStatusToolbar [data-role]{min-height:42px!important;padding:8px 10px!important;font-size:.75rem!important}
   #attendanceSelectionWorkspace .members-panel.orga-sheet{border-radius:12px!important}
 }
-
 
 /* FFW 2.10.4: iPadOS-18-Tastatur und einzelne Teilnehmer wieder löschbar */
 .probe-topic-dialog{max-height:calc(100dvh - 24px)!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important}
@@ -643,7 +563,6 @@
   .participant-entries-panel table{min-width:620px!important}
 }
 
-
 /* FFW 2.11.0: Probetermin, Ausschuss und freie manuelle Taktik */
 .home-session-type-panel .session-type-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 .probe-date-control{display:grid;grid-template-columns:auto minmax(150px,190px);align-items:center;gap:9px;margin-left:auto!important;font-size:.78rem;font-weight:850;color:#52636e}
@@ -653,7 +572,6 @@
 .committee-member-toggle span{display:grid;gap:2px}.committee-member-toggle small{color:#6a5a2d;font-size:.75rem}
 @media(max-width:760px){.home-session-type-panel .session-type-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.probe-date-control{grid-template-columns:1fr;width:100%;margin:8px 0 0!important}.probe-date-control input{width:100%}.home-flow-stage-2>.flow-stage-heading{flex-wrap:wrap!important}}
 @media(max-width:430px){.home-session-type-panel .session-type-grid{grid-template-columns:1fr!important}}
-
 
 /* FFW 2.11.1: PIN-Eingabe für iOS/iPadOS 18 */
 #pageAccessGate,#pageAccessForm,#pageAccessPin{pointer-events:auto!important;touch-action:manipulation!important}
@@ -676,14 +594,12 @@
 }
 #pageAccessPin:focus{border-color:#19783a!important;outline:4px solid rgba(25,120,58,.2)!important;outline-offset:2px!important}
 @supports(-webkit-touch-callout:none){
-  .page-access-gate-critical{height:100dvh!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important}
   .page-access-card-critical{margin:auto!important}
 }
 
 /* FFW 2.12.0: ATÜ und Atemschutzfreigaben */
-.member-safety-settings{display:grid;grid-template-columns:1fr 1fr minmax(180px,.7fr);gap:10px;margin:4px 15px 12px}.atue-member-toggle,.breathing-clearance-toggle,.breathing-clearance-date{display:flex;align-items:center;gap:10px;padding:11px 12px;border:2px solid #8aa4b2;border-radius:9px;background:#eef5f8}.atue-member-toggle input,.breathing-clearance-toggle input{width:22px;height:22px;appearance:auto;-webkit-appearance:checkbox;accent-color:#176b36}.breathing-clearance-date{display:grid;gap:5px}.breathing-clearance-date span{font-weight:850}.tactics-atue{margin-top:14px;border-top-color:#2477bd!important}.breathing-plan-toggle{display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:12px;border:2px solid #d2a223;border-radius:10px;background:#fff8dc}.breathing-plan-toggle input{width:24px;height:24px;appearance:auto;-webkit-appearance:checkbox}.breathing-plan-toggle span{display:grid}.atue-slot{max-width:520px}.breathing-clearance-kpis{grid-template-columns:repeat(4,1fr)!important}.breathing-clearance-kpis>div{padding:12px;border:1px solid #ccd4d8;border-radius:9px;background:#f8fafb}.metric-red{border-left-color:#b32121!important;background:#fff0f0!important}
+.member-safety-settings{display:grid;grid-template-columns:1fr 1fr minmax(180px,.7fr);gap:10px;margin:4px 15px 12px}.atue-member-toggle,.breathing-clearance-toggle,.breathing-clearance-date{display:flex;align-items:center;gap:10px;padding:11px 12px;border:2px solid #8aa4b2;border-radius:9px;background:#eef5f8}.atue-member-toggle input,.breathing-clearance-toggle input{width:22px;height:22px;appearance:auto;-webkit-appearance:checkbox;accent-color:#176b36}.breathing-clearance-date{display:grid;gap:5px}.breathing-clearance-date span{font-weight:850}.tactics-atue{margin-top:14px;border-top-color:#2477bd!important}.breathing-plan-toggle{display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:12px;border:2px solid #d2a223;border-radius:10px;background:#fff8dc}.breathing-plan-toggle input{width:24px;height:24px;appearance:auto;-webkit-appearance:checkbox}.breathing-plan-toggle span{display:grid}.atue-slot{max-width:520px}.breathing-clearance-kpis{grid-template-columns:repeat(4,1fr)!important}.breathing-clearance-kpis>div{padding:12px;border:1px solid #ccd4d8;border-radius:9px;background:#f8fafb}
 @media(max-width:760px){.member-safety-settings{grid-template-columns:1fr;margin-left:10px;margin-right:10px}.breathing-clearance-kpis{grid-template-columns:repeat(2,1fr)!important}}
-
 
 /* FFW 2.12.4: ruhigere und klar gegliederte Mitgliederkarten */
 .member-card{overflow:hidden!important;border-radius:15px!important;box-shadow:0 8px 22px rgba(34,52,62,.10)!important}
@@ -708,7 +624,6 @@
 @media(max-width:900px){.member-safety-settings{grid-template-columns:1fr 1fr!important}.breathing-clearance-date{grid-column:1/-1!important}.member-card .role-groups{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:620px){.member-name-fields{grid-template-columns:1fr!important;padding-left:12px!important;padding-right:12px!important}.age-department-toggle,.committee-member-toggle{margin-left:12px!important;margin-right:12px!important}.member-safety-settings{grid-template-columns:1fr!important;margin-left:12px!important;margin-right:12px!important}.breathing-clearance-date{grid-column:auto!important}.member-card .role-groups{grid-template-columns:1fr!important;padding-left:12px!important;padding-right:12px!important}.member-card .vehicle-permission-group{margin-left:12px!important;margin-right:12px!important}}
 
-
 /* FFW 2.12.5: vollständige Qualifikations- und Atemschutzstatistik */
 .breathing-statistics-panel{grid-column:1/-1!important}
 .breathing-statistics-columns{display:grid!important;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)!important;gap:18px!important;margin-top:16px!important}
@@ -721,7 +636,6 @@
 .metric-green{border-left-color:#238247!important;background:#eef9f1!important}.metric-gold{border-left-color:#c69212!important;background:#fff8df!important}.metric-red{border-left-color:#b32121!important;background:#fff0f0!important}.metric-gray{border-left-color:#87949b!important;background:#f1f3f4!important}
 @media(max-width:820px){.breathing-statistics-columns{grid-template-columns:1fr!important}.breathing-statistics-panel .metric-row{display:grid!important}.breathing-statistics-panel .metric-row strong{max-width:none;text-align:left}}
 @media(max-width:480px){.qualification-statistics-grid{grid-template-columns:1fr!important}}
-
 
 /* FFW 2.12.6: Statistiklisten ohne Überlagerungen */
 .breathing-statistics-panel .metric-list{display:grid!important;gap:8px!important}
@@ -817,7 +731,7 @@
 }
 
 /* FFW 2.14.7: PDF-Vorschau */
-.operation-pdf-preview-dialog{width:min(1000px,calc(100vw - 24px));height:min(92vh,950px);padding:0;border:0;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.42)}.operation-pdf-preview-dialog::backdrop{background:rgba(0,0,0,.58)}.operation-preview-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;background:#edf0f2}.operation-preview-head div{display:grid;gap:3px}.operation-preview-head small{color:#5e6970}.operation-pdf-preview-dialog iframe{display:block;width:100%;height:calc(100% - 128px);border:0;background:#777}.operation-preview-actions{padding:10px 16px;background:#fff}.operation-preview-actions .primary-button{width:100%}@media(max-width:620px){.operation-preview-head{align-items:stretch;flex-direction:column}.operation-pdf-preview-dialog iframe{height:calc(100% - 178px)}}
+.operation-pdf-preview-dialog{width:min(1000px,calc(100vw - 24px));height:min(92vh,950px);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.42)}.operation-pdf-preview-dialog::backdrop{background:rgba(0,0,0,.58)}.operation-preview-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;background:#edf0f2}.operation-preview-head div{display:grid;gap:3px}.operation-preview-head small{color:#5e6970}.operation-pdf-preview-dialog iframe{display:block;width:100%;height:calc(100% - 128px);border:0;background:#777}.operation-preview-actions{padding:10px 16px;background:#fff}.operation-preview-actions .primary-button{width:100%}@media(max-width:620px){.operation-preview-head{align-items:stretch;flex-direction:column}.operation-pdf-preview-dialog iframe{height:calc(100% - 178px)}}
 /* safety: responsive PDF preview */
 @media(max-width:480px){.operation-pdf-preview-dialog{width:calc(100vw - 10px);height:96vh}}
 
@@ -892,9 +806,9 @@
 .breathing-clearance-card>p{margin:0 0 12px;color:#5f6467;font-size:.84rem}
 .breathing-clearance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
 .breathing-clearance-grid label{display:grid;gap:5px;font-weight:850}
-.breathing-clearance-result{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 12px;border-radius:9px}
+.breathing-clearance-result{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
 .breathing-clearance-result span{display:grid;gap:2px}.breathing-clearance-result small{font-size:.77rem}
-.breathing-clearance-result.is-valid{color:#0d5a2b;background:#e4f4e9;border:1px solid #78b68b}
+.breathing-clearance-result.is-valid{border:1px solid #78b68b}
 .breathing-clearance-result.is-blocked{color:#842020;background:#fff0f0;border:1px solid #d89898}
 @media(max-width:800px){.breathing-clearance-grid{grid-template-columns:1fr}.breathing-clearance-result{align-items:flex-start;flex-direction:column}}
 
@@ -955,27 +869,17 @@
 }
 .document-editor-force-landscape .ipad-editor-shell{
   grid-template-columns:minmax(0,1fr) 270px!important;
-  grid-template-rows:auto auto auto minmax(0,1fr) auto!important;
-  grid-template-areas:"header header" "stage help" "stage status" "stage tools" "stage footer"!important;
 }
 .document-editor-force-landscape .ipad-editor-stage{min-height:calc(100vw - 58px)!important}
-.document-editor-force-landscape .ipad-editor-tools{grid-template-columns:1fr!important;overflow-y:auto!important;padding:6px 8px!important}
+.document-editor-force-landscape .ipad-editor-tools{padding:6px 8px!important}
 .document-editor-force-landscape .ipad-editor-tools button{min-height:40px!important;font-size:.74rem!important}
-.document-editor-force-landscape .ipad-editor-shell footer{display:grid!important;grid-template-columns:1fr!important;padding:7px 8px!important}
+.document-editor-force-landscape .ipad-editor-shell footer{padding:7px 8px!important}
 .document-editor-force-landscape .ipad-editor-help{font-size:.74rem!important;padding:8px!important}
 
 .document-report-sticky-actions{grid-template-columns:minmax(150px,.42fr) minmax(190px,.55fr) minmax(240px,1fr)!important}
 @media(max-width:760px){.document-report-sticky-actions{grid-template-columns:1fr!important}}
 
 /* 2.27: Statuswahl gehört in den Anwesenheitsbereich, nicht in den Seitenkopf. */
-#floatingAttendanceStatusToolbar{display:none!important}
-#attendanceSelectionWorkspace #attendanceStatusToolbar{
-  position:static!important;
-  inset:auto!important;
-  width:100%!important;
-  margin:0 0 10px!important;
-  z-index:auto!important;
-}
 
 /* 2.28: zuverlässige Querformat-Bildbearbeitung auf iPhone. */
 .document-editor-force-landscape .ipad-document-editor{overflow:hidden!important}
@@ -991,7 +895,6 @@
 .document-editor-force-landscape .ipad-editor-help,.document-editor-force-landscape .ipad-editor-status{display:flex!important;visibility:visible!important}
 
 /* 2.29: Direkter Status je Person, ohne globales Umschalten. */
-#attendanceStatusToolbar,#floatingAttendanceStatusToolbar,#rolesPanel.status-tab-rail{display:none!important;position:static!important}
 .member-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important;gap:10px!important}
 .member-direct-card{display:grid;gap:10px;padding:13px;border:1px solid #ccd5da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(26,47,57,.07)}
 .member-direct-card>strong{font-size:1.02rem;color:#26343b}
@@ -1004,7 +907,6 @@
 .member-direct-card.recorded{display:none!important}
 @media(max-width:620px){.member-grid{grid-template-columns:1fr!important}.member-direct-actions{grid-template-columns:1fr 1fr}.member-status-action{font-size:.82rem;padding:8px 5px}}
 
-
 /* 2.30: kompakte, überlappungsfreie Direktstatus-Karten. */
 #attendanceSelectionWorkspace .member-grid{
   display:grid!important;
@@ -1014,15 +916,10 @@
 }
 #attendanceSelectionWorkspace .member-direct-card{
   min-width:0!important;
-  display:grid!important;
   grid-template-columns:minmax(125px,1fr) minmax(250px,1.65fr)!important;
-  align-items:center!important;
-  gap:12px!important;
   padding:11px 12px!important;
   border:1px solid #cbd6dc!important;
   border-left:5px solid #98a8b0!important;
-  border-radius:12px!important;
-  background:#fff!important;
   box-shadow:0 3px 10px rgba(31,54,64,.07)!important;
   overflow:hidden!important;
 }
@@ -1036,37 +933,20 @@
 }
 #attendanceSelectionWorkspace .member-direct-actions{
   min-width:0!important;
-  display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  gap:6px!important;
 }
 #attendanceSelectionWorkspace .member-status-action{
-  min-width:0!important;
-  min-height:44px!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
   gap:5px!important;
   padding:7px 6px!important;
   border-width:1px!important;
-  border-radius:9px!important;
   font-size:.77rem!important;
-  line-height:1!important;
   white-space:nowrap!important;
   overflow:hidden!important;
   text-overflow:ellipsis!important;
   box-shadow:none!important;
 }
 #attendanceSelectionWorkspace .member-status-action .status-icon{
-  flex:0 0 22px!important;
-  width:22px!important;
-  height:22px!important;
-  display:grid!important;
-  place-items:center!important;
-  border-radius:50%!important;
-  background:rgba(255,255,255,.72)!important;
   font-size:.8rem!important;
-  font-weight:950!important;
 }
 #attendanceSelectionWorkspace .member-status-action.status-present{background:#e8f6ec!important;border-color:#8ac59a!important;color:#146d34!important}
 #attendanceSelectionWorkspace .member-status-action.status-excused{background:#fff6e3!important;border-color:#ddb96f!important;color:#805500!important}
@@ -1098,10 +978,8 @@ html body .status-tab-rail{display:none!important;position:static!important;visi
 /* 2.35 final: ausschließlich Direktauswahl anzeigen. */
 html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAttendanceStatusToolbar,html body .attendance-status-toolbar,html body .status-tab-rail{display:none!important;visibility:hidden!important;position:absolute!important;inline-size:0!important;block-size:0!important;overflow:hidden!important;pointer-events:none!important}
 .direct-status-mode-label{display:inline-flex;margin-left:8px;padding:3px 8px;border-radius:999px;background:#176b36;color:#fff;font-size:.68rem;vertical-align:middle}
-#attendanceSelectionWorkspace .member-status-action{cursor:pointer!important;pointer-events:auto!important}
 #attendanceSelectionWorkspace .member-status-action.selected,#attendanceSelectionWorkspace .member-status-action[aria-pressed="true"]{outline:3px solid currentColor!important;outline-offset:2px!important;filter:saturate(1.15)!important}
 #attendanceSelectionWorkspace .member-direct-card{pointer-events:auto!important}
-
 
 /* 4.2 Verbindliche PDF-Vorschau vor dem Einsatzabschluss */
 .operation-pdf-preview-dialog{width:min(1180px,96vw);height:min(920px,96vh);max-width:none;max-height:none;padding:0;border:0;border-radius:18px;background:#f5f7f8;box-shadow:0 28px 90px rgba(0,0,0,.38);overflow:hidden}
@@ -1131,15 +1009,12 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 #attendanceView #step3ActionArea .step-3-action-button{width:100%!important;min-height:56px!important;margin:0!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
 }
 
-
 /* FFW 5.6: iPad-Aktionsleiste wirklich viewportfest, auch auf grossen iPads */
 @supports (-webkit-touch-callout:none){
 @media (min-width:700px) and (max-width:1400px){
 #attendanceSelectionWorkspace{padding-bottom:124px!important}
-#attendanceSelectionWorkspace #saveButton:not([hidden]){position:fixed!important;left:14px!important;right:auto!important;bottom:max(12px,env(safe-area-inset-bottom))!important;z-index:1201!important;width:calc(50vw - 21px)!important;min-height:58px!important;margin:0!important;transform:none!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
-#attendanceView #step3ActionArea:not([hidden]){position:fixed!important;left:auto!important;right:14px!important;bottom:max(12px,env(safe-area-inset-bottom))!important;z-index:1201!important;width:calc(50vw - 21px)!important;min-height:58px!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;transform:none!important}
-#attendanceView #step3ActionArea .step3-action-copy{display:none!important}
-#attendanceView #step3ActionArea .step-3-action-button{width:100%!important;min-height:58px!important;margin:0!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(0,0,0,.38)!important}
+#attendanceSelectionWorkspace #saveButton:not([hidden]){left:14px!important;width:calc(50vw - 21px)!important}
+#attendanceView #step3ActionArea:not([hidden]){right:14px!important;width:calc(50vw - 21px)!important}
 }
 }
 
@@ -1271,7 +1146,6 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
   }
 }
 
-
 /* FFW 7.2: harte Sichtbarkeitssperre ausserhalb Schritt 2. */
 @media (min-width:700px) and (max-width:1400px) and (pointer:coarse){
   html:not(.ipad-attendance-dock-active) #ipadAttendanceActionDock,
@@ -1295,3 +1169,4 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 .operation-station-only:focus-visible { outline: 3px solid #b32125; outline-offset: -3px; }
 .operation-station-only[aria-pressed="true"] header { background: #e9f5ec; }
 .operation-station-board .operation-vehicle-image img { object-fit: cover; }
+

@@ -17,7 +17,7 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
   const state = {signedIn, fail: false, empty: false, stateError: false, waitForList: null, version: '2026-10-08T18:00:00Z', size: 100, corrupt: false, downloadError: null};
   const context = vm.createContext({
     window: {}, CsvEngine, JSZip, URL, URLSearchParams, Blob, setTimeout, clearTimeout,
-    navigator: {onLine: online}, csvArchive: [],
+    navigator: {onLine: online}, location: {search:""}, csvArchive: [],
     localStorage: {getItem: key => store.get(key) || null, setItem: (key, value) => store.set(key, value)},
     console: {error() {}},
     document: {hidden: false, getElementById: id => id === 'statisticsHistoryStatus' ? status : null,
@@ -30,6 +30,7 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
   Object.assign(context, {
     byId: () => null, ensureOneDriveUi() {}, renderOneDriveDialog() {}, oneDriveStatus() {},
     oneDriveSignedIn: () => state.signedIn,
+    oneDriveAccessToken: async () => "TEST-TOKEN",
     oneDriveHandleCallback: async () => {calls.callback++;},
     oneDriveReadState: async () => {calls.read++; if (state.stateError) throw new Error('State unavailable'); return {updatedAt: remoteNewer ? '2099-01-01' : ''};},
     oneDriveWriteState: async () => {calls.write++;},
@@ -193,3 +194,4 @@ test('Gelöschte ZIP entfernt den Sitzungszwischenspeicher; erneut angelegte ZIP
   state.empty=true;await context.window.loadOneDriveHistory();assert.equal(context.csvArchive.length,0);
   state.empty=false;await context.window.loadOneDriveHistory();assert.equal(calls.download,2);
 });
+

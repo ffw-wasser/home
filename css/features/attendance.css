@@ -2,13 +2,13 @@
 .input-column, .action-column { display: grid; gap: 18px; }
 .action-column { position: sticky; top: 86px; }
 .panel { padding: 18px; border: 1px solid #d3d3d3; border-top: 5px solid var(--red); border-radius: 13px; background: var(--white); box-shadow: 0 3px 10px rgba(0,0,0,.07); }
-.panel-heading { margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.panel-heading { margin-bottom: 14px; align-items: center; gap: 10px; }
 .panel-heading h3 { flex: 1; margin: 0; font-size: 1.12rem; }
 .step { width: 33px; height: 33px; flex: 0 0 33px; display: grid; place-items: center; border-radius: 7px; color: #fff; background: var(--red); font-size: .8rem; font-weight: 900; }
 .step.yellow { color: #111; background: var(--yellow); }
 .badge { padding: 5px 9px; border-radius: 999px; color: #4f5860; background: #e5e8ea; font-size: .8rem; font-weight: 800; }
 .member-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-.role-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
+.role-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
 .choice-button { min-height: 58px; padding: 8px 7px; border: 2px solid var(--line); border-left: 6px solid transparent; border-radius: 9px; color: var(--black); background: #fff; font-size: .88rem; font-weight: 750; line-height: 1.15; cursor: pointer; }
 .choice-button:hover { border-color: #abb2b8; background: #f8f8f8; }
 .choice-button.selected { color: #fff; border-color: var(--green); border-left-color: var(--yellow); background: var(--green); }
@@ -34,4 +34,5 @@ th { position: sticky; top: 0; color: #fff; background: var(--red); }
 th, td { padding: 9px 7px; border: 1px solid #d7d7d7; text-align: left; }
 tbody tr:nth-child(even) { background: #f3f3f3; }
 .delete-entry { min-height: 32px; padding: 5px 8px; border: 0; border-radius: 6px; color: #8e0000; background: #ffe2e2; cursor: pointer; }
-.empty-state { margin: 12px 0 0; padding: 12px; color: var(--muted); background: #f2f2f2; text-align: center; }
+.empty-state { margin: 12px 0 0; padding: 12px; color: var(--muted); background: #f2f2f2; }
+

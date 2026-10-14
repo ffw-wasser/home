@@ -327,57 +327,8 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initCloudSync,{once:true});else initCloudSync();
 
 
-function enforceDirectStatusOnly(){
-  for(const id of ["rolesPanel","attendanceStatusToolbar","floatingAttendanceStatusToolbar"]){
-    const el=document.getElementById(id);
-    if(el && id!=="rolesPanel") el.remove();
-    else if(el){el.hidden=true;el.style.setProperty("display","none","important");el.setAttribute("aria-hidden","true");}
-  }
-}
-requestAnimationFrame(enforceDirectStatusOnly);
-new MutationObserver(enforceDirectStatusOnly).observe(document.documentElement,{childList:true,subtree:true});
-
-
-
-/* Kleine Abschlussanimation nach erfolgreich beendetem Termin. */
-function showTerminabschlussAnimation(){
-  let overlay=document.getElementById("terminabschlussAnimation");
-  if(!overlay){
-    overlay=document.createElement("div");
-    overlay.id="terminabschlussAnimation";
-    overlay.className="terminabschluss-animation terminabschluss-wappen";
-    overlay.hidden=true;
-    overlay.innerHTML='<div class="terminabschluss-wappen-card" role="status" aria-live="polite"><button type="button" class="terminabschluss-animation-close" aria-label="Animation schliessen">×</button><div class="terminabschluss-wappen-rings" aria-hidden="true"></div><img src="icon-512.png" alt="Wappen"><strong>Termin erfolgreich abgeschlossen</strong><small>Vielen Dank für den Einsatz.</small></div>';
-    document.body.appendChild(overlay);
-    const close=()=>{overlay.classList.remove("is-visible");setTimeout(()=>overlay.hidden=true,320);};
-    overlay.querySelector("button").addEventListener("click",close);
-    overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
-    overlay._closeAnimation=close;
-  }
-  clearTimeout(overlay._hideTimer);
-  overlay.hidden=false;
-  void overlay.offsetWidth;
-  requestAnimationFrame(()=>overlay.classList.add("is-visible"));
-  overlay._hideTimer=setTimeout(()=>overlay._closeAnimation(),3600);
-}
-(function bindSuccessfulTerminabschlussAnimation(){
-  const wrap=name=>{
-    const original=window[name];if(typeof original!=="function"||original.__abschlussAnimationWrapped)return;
-    const wrapped=async function(...args){const result=await original.apply(this,args);if(result===true)showTerminabschlussAnimation();return result;};
-    wrapped.__abschlussAnimationWrapped=true;window[name]=wrapped;
-  };
-  wrap("closeDay");wrap("finishOperationZip");
-})();
-
-
-/* 4.5 DarkMode vollstaendig entfernt, auch bei zwischengespeicherten Altstaenden. */
-function removeLegacyDarkModeControls(){
-  document.documentElement.classList.remove("dark","dark-mode");document.body?.classList.remove("dark","dark-mode");
-  try{localStorage.removeItem("darkMode");localStorage.removeItem("theme");localStorage.removeItem("fw_dark_mode");}catch(error){}
-  document.querySelectorAll("#darkModeToggle,#darkModeButton,#themeToggle,.dark-mode-toggle,.darkmode-toggle,[data-action='dark-mode'],[data-theme-toggle]").forEach(node=>node.remove());
-  document.querySelectorAll("button,a").forEach(node=>{if(/^dark\s*mode$/i.test(String(node.textContent||"").trim()))node.remove();});
-}
-removeLegacyDarkModeControls();document.addEventListener("DOMContentLoaded",removeLegacyDarkModeControls);window.addEventListener("load",removeLegacyDarkModeControls,{once:true});
+// Einmalige Bereinigung alter Darstellungspräferenzen.
+for(const key of ["darkMode","theme","fw_dark_mode"]){try{localStorage.removeItem(key);}catch{}}
 
 /* Den Offline-Cache auch auf erstmals verwendeten Geräten aktivieren. */
 function registerAppServiceWorker(){
@@ -386,3 +337,4 @@ function registerAppServiceWorker(){
 }
 if(document.readyState==="complete")registerAppServiceWorker();
 else window.addEventListener("load",registerAppServiceWorker,{once:true});
+

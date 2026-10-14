@@ -27,26 +27,16 @@
 
 .entry-actions.single-action { grid-template-columns: 1fr; }
 .export-reset-button { min-height: 56px; font-size: .98rem; }
-
-.role-grid .choice-button[data-role="Entschuldigt"] { border-color: #d39d00; background: #fff8d5; }
 .role-grid .choice-button[data-role="Entschuldigt"].selected { color: #fff; border-color: var(--green); border-left-color: var(--yellow); background: var(--green); }
 
 .session-panel { margin-bottom: 18px; border-top-color: var(--yellow); }
 .session-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.session-type-button { min-height: 58px; padding: 10px 16px; border: 2px solid #b9bec3; border-radius: 9px; background: #fff; font-weight: 850; cursor: pointer; }
+.session-type-button { min-height: 58px; padding: 10px 16px; border: 2px solid #b9bec3; border-radius: 9px; background: #fff; font-weight: 850; }
 .session-type-button.selected { color: #fff; border-color: var(--green); background: var(--green); }
 .session-hint { margin: 10px 0 0; color: var(--muted); }
-.roles-panel[hidden] { display: none !important; }
 @media (max-width: 520px) { .session-type-grid { grid-template-columns: 1fr; } }
 
 /* V10: elf Funktionen auf einen Blick */
-@media (min-width: 1201px) {
-  .role-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-}
-@media (min-width: 761px) and (max-width: 1200px) {
-  .role-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
 
 /* V12: Farbliche Gruppierung der Funktionen */
 .role-grid .choice-button[data-role="ATF"],
@@ -93,7 +83,6 @@
   background: var(--green);
 }
 
-
 /* V13: logisch gruppierte Funktionsauswahl */
 .role-grid {
   display: grid;
@@ -131,17 +120,9 @@
 .group-training { border-top: 5px solid #13899a; background: #eefbfc; }
 .group-absence { border-top: 5px solid #d39d00; background: #fffbed; }
 .group-leadership, .group-machinist, .group-messenger { border-top: 5px solid #68737d; }
-
-@media (max-width: 1200px) {
-  .role-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 @media (max-width: 900px) {
   .role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 520px) {
-  .role-grid { grid-template-columns: 1fr; }
-}
-
 
 /* V14: optimierte Funktionsanordnung */
 .role-grid {
@@ -227,7 +208,6 @@
   }
 }
 
-
 /* V16: Sonderprobenstatus Betrifft nicht */
 .group-not-applicable {
   grid-column: 1 / -1;
@@ -304,11 +284,9 @@
   }
 }
 
-
 /* V18: Mehrfachauswahl bei Sonderprobe */
 .group-not-applicable .special-role-hint { max-width: 720px; }
 .members-panel .choice-button.selected { box-shadow: 0 0 0 3px rgba(25, 120, 58, .18); }
-
 
 /* V20: Mehrfachauswahl fuer Anwesend und Betrifft nicht */
 .group-special-status {
@@ -330,8 +308,6 @@
 @media (max-width: 520px) {
   .special-status-buttons { grid-template-columns: 1fr; }
 }
-
-
 
 /* V23: Safari/iPad und Chromium gemeinsam */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -371,7 +347,6 @@ button { -webkit-user-select: none; user-select: none; }
   .member-admin-panel { grid-row: auto; }
 }
 
-
 /* V28 Optimierungen */
 .live-stats{display:grid;grid-template-columns:repeat(3,minmax(105px,1fr));gap:8px}.stat-card{padding:9px 12px;border-radius:9px;color:#fff;text-align:center}.stat-card span{display:block;font-size:.72rem;font-weight:800;text-transform:uppercase}.stat-card strong{display:block;margin-top:3px;font-size:1.35rem}.stat-present{background:var(--green)}.stat-excused{background:#b07b00}.stat-missing{background:#626b73}
 .member-grid .choice-button{min-height:72px}.role-group .choice-button,.session-type-button{min-height:68px}.choice-button.recorded{color:#5a6268;border-color:#b8bec3;border-left-color:#7d878f;background:#e2e5e7;cursor:not-allowed;opacity:.82}.choice-button.recorded::before{content:"✓ ";font-weight:900}.choice-button:disabled{pointer-events:none}
@@ -390,5 +365,5 @@ body{padding-left:var(--safe-left);padding-right:var(--safe-right);padding-botto
 .app-shell{-webkit-overflow-scrolling:touch;padding-bottom:calc(60px + var(--safe-bottom))}
 input,select,textarea,button{font-size:max(16px,1em)}
 dialog{max-width:calc(100vw - var(--safe-left) - var(--safe-right) - 24px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)}
-[hidden]{display:none!important}
 @supports not (height:100dvh){html,body{min-height:100vh}}
+

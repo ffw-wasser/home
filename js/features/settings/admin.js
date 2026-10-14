@@ -26,6 +26,7 @@ document.addEventListener("visibilitychange",()=>{
   if(!document.hidden)checkAdminSession();
 });
 async function requestCloseProbe() {
+  if(typeof guardProbeCompletion==="function"&&!guardProbeCompletion())return;
   if (!todayEntries().length) return showToast("Es muss mindestens eine Teilnahme erfasst sein.", "error");
 
   // Ohne generische Zwischenkarte direkt in den terminartspezifischen Schritt 3.
@@ -222,4 +223,5 @@ function changePin() {
   byId("repeatPin").value = "";
   showToast("Admin-Passwort wurde geändert.");
 }
+
 

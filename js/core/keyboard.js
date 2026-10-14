@@ -45,3 +45,4 @@
   viewport?.addEventListener("resize",update,{passive:true});viewport?.addEventListener("scroll",update,{passive:true});
   addEventListener("orientationchange",()=>setTimeout(update,180),{passive:true});
 })();
+

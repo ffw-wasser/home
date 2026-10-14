@@ -26,24 +26,22 @@ function migrateArchiveSchema(){
 function updateQualityStatusCard(){
   const card=byId("qualityStatusCard"),button=byId("restoreSafetySnapshotMenuButton");
   if(button&&!button.dataset.bound){button.dataset.bound="1";button.addEventListener("click",restoreLatestSafetySnapshot);}
-  if(card){const count=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]").length;card.querySelector("p").textContent=count?`Plausibilitätsprüfung aktiv · ${count} Sicherungspunkt${count===1?"":"e"} vorhanden.`:"Plausibilitätsprüfung aktiv · Noch kein Sicherungspunkt vorhanden.";}
+  if(card){let count=0;try{const snapshots=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]");if(Array.isArray(snapshots))count=snapshots.length;}catch{}card.querySelector("p").textContent=count?`Plausibilitätsprüfung aktiv · ${count} Sicherungspunkt${count===1?"":"e"} vorhanden.`:"Plausibilitätsprüfung aktiv · Noch kein Sicherungspunkt vorhanden.";}
 }
-function installDirectQualityGuards(){
-  document.addEventListener("click",event=>{
-    const probeButton=event.target.closest?.("#homeStageFinishButton");
-    if(probeButton){const result=validateProbeBeforeFinish();if(!confirmQualityResult(result,"Plausibilitätsprüfung Probe")){event.preventDefault();event.stopImmediatePropagation();return;}createSafetySnapshot("Vor Probenabschluss");updateQualityStatusCard();}
-    const operationButton=event.target.closest?.("#operationFinish");
-    if(operationButton){createSafetySnapshot("Vor Einsatzabschluss");updateQualityStatusCard();}
-  },true);
+function guardProbeCompletion(){
+  const result=validateProbeBeforeFinish();
+  if(!confirmQualityResult(result,"Plausibilitätsprüfung Probe"))return false;
+  captureQualitySnapshot("Vor Probenabschluss");
+  return true;
+}
+function captureQualitySnapshot(reason){
+  createSafetySnapshot(reason);updateQualityStatusCard();
 }
 
-function installQualityHooks(){
+function initializeQualityControls(){
   migrateArchiveSchema();
-  installDirectQualityGuards();
   updateQualityStatusCard();
-  if(typeof requestCloseProbe==="function"){const original=requestCloseProbe;requestCloseProbe=function(){const result=validateProbeBeforeFinish();if(!confirmQualityResult(result,"Plausibilitätsprüfung Probe"))return;createSafetySnapshot("Vor Probenabschluss");return original.apply(this,arguments);};}
-  if(typeof deleteArchiveItem==="function"){const original=deleteArchiveItem;deleteArchiveItem=async function(){if(!requireAdmin("settingsHistoryView"))return;createSafetySnapshot("Vor Löschen eines Archiveintrags");return original.apply(this,arguments);};}
-  if(typeof importCompleteBackup==="function"){const original=importCompleteBackup;importCompleteBackup=async function(){if(!requireAdmin("settingsFilesView"))return;createSafetySnapshot("Vor Wiederherstellung eines Komplett-Backups");return original.apply(this,arguments);};}
   const dataPanel=byId("backupLocationPanel")?.parentElement||byId("settingsFilesView")?.querySelector(".panel");if(dataPanel&&!byId("restoreSafetySnapshotButton")){const button=document.createElement("button");button.id="restoreSafetySnapshotButton";button.type="button";button.className="outline-button";button.textContent="Letzten automatischen Sicherungspunkt wiederherstellen";button.addEventListener("click",restoreLatestSafetySnapshot);dataPanel.appendChild(button);}
 }
-window.addEventListener("DOMContentLoaded",()=>setTimeout(installQualityHooks,0));
+window.addEventListener("DOMContentLoaded",()=>setTimeout(initializeQualityControls,0));
+
