@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const read=p=>fs.readFileSync(require.resolve('../'+p),'utf8');
 function storage(values={}){const m=new Map(Object.entries(values));return {get length(){return m.size},key:i=>[...m.keys()][i],getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)};}
 test('Auch entsperrte Verwaltung benötigt bestätigtes OneDrive; Einrichtung bleibt erreichbar',()=>{
- const c=vm.createContext({adminUnlocked:true,oneDriveAdministrationReady:()=>false,resetAdminTimeout(){},window:{}});vm.runInContext(read('js/core/ui.js'),c);c.showToast=()=>{};
+ const c=vm.createContext({adminUnlocked:true,checkAdminSession:()=>true,oneDriveAdministrationReady:()=>false,resetAdminTimeout(){},window:{}});vm.runInContext(read('js/core/ui.js'),c);c.showToast=()=>{};
  assert.equal(c.requireAdmin('settingsMembersView'),false);assert.equal(c.requireAdmin('settingsView',{allowDisconnected:true}),true);
  c.oneDriveAdministrationReady=()=>true;assert.equal(c.requireAdmin('settingsMembersView'),true);
 });
@@ -25,3 +25,4 @@ test('Abmelden entfernt personenbezogenen Speicher und Berichte, erhält Einrich
  assert.equal(f.c.members.length,0);assert.equal(f.c.entries.length,0);assert.equal(f.c.adminUnlocked,false);assert.equal(f.deleted.length,4);assert.equal(f.ended,1);assert.equal(f.reloaded,1);assert.equal(f.main.hidden,true);
 });
 test('Abbrechen bewahrt ungespeicherte Daten und Anmeldung',async()=>{const f=privacy(false);assert.equal(await f.c.window.AppPrivacy.logout(),false);assert.equal(f.c.members.length,1);assert.equal(f.ended,0);assert.equal(f.deleted.length,0);});
+
