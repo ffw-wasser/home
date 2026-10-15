@@ -146,3 +146,36 @@ Test-Rückmeldung am iPad prüfen. Node-/Chromium-Prüfungen ersetzen keine echt
 Apple-/Google-Push- oder Microsoft-Sitzungen. Kostenloskontingente und das
 10-ms-CPU-Limit müssen mit eurem echten Kalender kontrolliert werden; kein
 kostenpflichtiges Upgrade automatisch aktivieren.
+
+## Kalenderverwaltung und Bereinigung (Stand 16. Oktober 2026)
+
+Die bebilderte Benutzerhilfe steht direkt in **Hilfe** der Haupt-App und unter
+**Hilfe zum H₂O Portal** auf dem Handy. Sie verwendet die Originalgrafiken aus
+`assets/drinks/` und die Fahrzeugbilder des Repositorys.
+
+Bei jedem Probetermin **Terminart für die iPad-Erfassung** wählen: Allgemeine
+Probe, Sonderprobe, Unterricht, Ausschusssitzung oder Einsatz. Diese Zuordnung
+ist von der Portal-Einordnung Probe/Sonderprobe getrennt. Die iPad-Auswahl
+übernimmt sie, solange noch keine laufende Erfassung geschützt werden muss.
+
+Für Sonderproben entweder **Alle Mitglieder** oder ausgewählte Mitglieder
+freigeben. Eine leere Auswahl ist nicht zulässig. Einzeln speichern und danach
+die angezeigte Empfängerzahl kontrollieren. Die Sammelaktion **Automatische
+Erkennung übernehmen** verarbeitet die erkannten Einträge des aktuellen Filters
+und gibt Proben dabei frei; individuelle Empfänger vorher einzeln festlegen.
+
+Abgelaufene Termine verschwinden beim Aktualisieren aus der aktiven Verwaltung
+und dem Handy-Portal. Ohne laufende Erfassung wählt das iPad den nächsten Termin;
+eine ausdrückliche spontane Auswahl wird beibehalten. Eine laufende Erfassung
+wird nicht automatisch abgeschlossen.
+
+Der aktuelle Worker bereinigt alte Terminfreigaben und zugehörige Rückmeldungen
+frühestens sechs Stunden nach Ende, sofern der Kalender erfolgreich geprüft wurde.
+Geburtstagsserien und Jahresnachweise bleiben erhalten. Google-Quellkalender und
+separat gespeicherte Anwesenheits-/Terminprotokolle werden nicht gelöscht.
+Die 400-Tage-Frist ist nur ein zusätzlicher Rückfall für verbliebene Rückmeldungen,
+keine Aufbewahrungszusage für jeden abgelaufenen Termin.
+
+Der bestehende Worker muss dafür mit dem aktuellen vollständigen Bundle manuell
+veröffentlicht werden. Vorher D1 sichern, vorhandene Bindungen und Secrets
+beibehalten. Keine neue Datenbank und keine Umstellung produktiver Konten nötig.

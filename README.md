@@ -47,6 +47,13 @@ werden:** [Einrichtung und Datenumfang](cloudflare/push/PORTAL.md).
 
 # Feuerwehr Wasser
 
+Aktuelle bebilderte Hilfe: direkt in der App unter **Hilfe**, auf dem Handy unter
+**Hilfe zum H₂O Portal** sowie [Handy-Anleitung](README-HANDY-DECKEL.md) und
+[Kalenderverwaltung](cloudflare/push/PORTAL.md). Im zentralen Cloudflare-Betrieb
+werden Kontobuchungen direkt im Kontodienst gespeichert; die nachfolgenden
+OneDrive-Beschreibungen zur Kontospeicherung gelten für den älteren Betriebsmodus.
+OneDrive bleibt für Mitglieder, Verwaltung und private Verbindungseinrichtung nötig.
+
 Statische Web-App für Anwesenheit, Taktik, Einsatzberichte und Jahresstatistik.
 
 ## Konsolidierte Ausgangsversion
