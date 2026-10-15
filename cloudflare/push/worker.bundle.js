@@ -695,7 +695,7 @@
   }
   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
   if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,...(data.kind==='probe'?{sessionType:targetType,...(targetType==='Sonderprobe'&&Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
-  const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) VALUES(1,?)').bind(payload).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1};
+  const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) VALUES(1,?)').bind(payload).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:1,recipientIds:targetType==='Sonderprobe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
  }
  async function birthdayPolicy(env){const row=await env.DB.prepare('SELECT * FROM portal_bonus_policy WHERE id=1').first();return {row,value:await open(env,row,'portal-birthday-policy')||{revision:'birthday-default-v1',awardUnits:150}};}
  async function saveBirthdayPolicy(env,data){
@@ -776,12 +776,12 @@
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId));
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
-  const cal=await decorate(env,await (path==='/portal/list'?cachedCalendar(env):calendar(env)));
+  const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/admin/portal/classify'].includes(path)?cachedCalendar(env,path==='/portal/list'?15*60*1000:24*60*60*1000):calendar(env)));
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
    const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
   }
-  if(path==='/admin/portal/list')return cal;
+  if(path==='/admin/portal/list')return {...cal,recipientFeatureVersion:1};
   const event=cal.events.find(e=>e.id===data.eventId&&(e.approved&&e.kind==='probe')&&(admin||isRecipient(e,record.memberId)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
   if(path==='/portal/overview'){
    if(!roster?.members.some(m=>m.id===record.memberId&&m.leader))fail('Diese Übersicht ist nur für hinterlegte Gruppenführer freigegeben.',403);
@@ -809,13 +809,13 @@
  // User-facing calendar reads only the last synchronized D1 snapshot. The Cron
  // job remains responsible for refreshing Google iCal. This avoids long fetches
  // and browser timeouts when members open the portal.
- async function cachedCalendar(env){
+ async function cachedCalendar(env,maxAgeMs=15*60*1000){
   const c=await config(env);
   if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
   const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();
   if(!row)return calendar(env); // Only for uninitialized/legacy installations.
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
-   stale:!row.fetched_at||row.fetched_at<Date.now()-15*60*1000};
+   stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
  async function publicCalendar(env){
   await ready(env);
