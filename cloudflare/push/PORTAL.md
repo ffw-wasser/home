@@ -19,7 +19,9 @@ Die öffentliche Adresse bleibt in diesem Browser gespeichert. Sobald das iPad
 mit OneDrive verbunden ist und der Kontodienst zur Verfügung steht, wird die
 Adresse auch aus der vorhandenen Verbindung übernommen.
 
-Nur die Leseansicht funktioniert ohne OneDrive. Persönliche Rückmeldungen,
+Nur die Leseansicht allgemein freigegebener Termine funktioniert ohne OneDrive.
+Sonderproben mit ausgewählten Empfängern erscheinen aus Datenschutzgründen
+nicht in dieser öffentlichen Ansicht. Persönliche Rückmeldungen,
 Geburtstagszuordnungen, Freigaben, QR-Verwaltung und Push-Versand bleiben
 durch die bisherigen Zugangskontrollen geschützt. Die Kalenderverwaltung
 im H₂O Portal benötigt weiterhin eine bestätigte OneDrive-Anmeldung.
@@ -127,7 +129,8 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
   bestätigt. Der persönliche Link ist eine Zugangsberechtigung und muss privat
   bleiben; er ist kein zusätzliches Passwort.
 - Versandnachweise werden nach 30 Tagen, Rückmeldungen nach 400 Tagen bereinigt.
-  Kalendercache und Freigaben bleiben bis zur administrativen Bereinigung.
+  Abgelaufene Terminfreigaben und zugehörige Rückmeldungen werden nach der
+  unten beschriebenen Sechs-Stunden-Regel bereinigt.
   Geburtstags-Jahresnachweise bleiben zur Verhinderung doppelter Boni erhalten.
   Die bisherige Getränke-OneDrive-Sicherung umfasst nicht die neuen
   Portal-Tabellen; für deren Wiederherstellung die vollständige D1-Datenbank

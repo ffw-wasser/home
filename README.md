@@ -289,3 +289,5 @@ Eine gemeinsame Bereinigung ist möglich, sofern auch die beteiligten späteren
 Zahlungen tatsächlich fehlerhaft sind. Vorhandene Kontohistorien werden nicht
 automatisch umgerechnet.
 
+
+Prüfung und Änderungen vom 16. Oktober 2026: [Prüfbericht 2026.10.16.1](PRUEFBERICHT-2026-10-16.md), einschließlich Menüprüfung, Tests und noch nötiger Cloudflare-Veröffentlichung.
