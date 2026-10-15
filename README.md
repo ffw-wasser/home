@@ -1,3 +1,10 @@
+## Handyansichten ab 2026.10.15.2
+
+Das H₂O Portal öffnet mit Proben & Terminen. Die untere Navigation wechselt
+zwischen getrennten Ansichten für Termine, Deckel, Getränke, Punkte mit
+Monats-Challenge und Mehr (Buchungen, Erinnerungen und Einstellungen).
+Vorgemerkte Getränke bleiben beim Seitenwechsel erhalten.
+
 ## H₂O Portal
 
 Seit 2026.10.15.1: persönlicher Probenkalender mit administrativer Freigabe,

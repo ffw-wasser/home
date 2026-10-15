@@ -1,12 +1,20 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="deckel-build" content="20261015.1"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://raw.githubusercontent.com https://*.workers.dev; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"><meta name="apple-mobile-web-app-capable" content="yes"><link id="deckelManifest" rel="manifest" href="deckel.webmanifest"><link rel="apple-touch-icon" sizes="180x180" href="assets/drinks/h2o-portal.png"><meta name="theme-color" content="#9c2835"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="H₂O Portal"><title>H₂O Portal · Feuerwehr Wasser</title><link rel="stylesheet" href="css/features/deckel.css?v=20261015.1"><script src="js/features/drinks/deckel-crypto.js?v=20261015.1" defer></script><script src="js/features/drinks/push-device.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-install.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-push.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-commands.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-actions.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-live.js?v=20261015.1" defer></script><link rel="stylesheet" href="css/features/deckel-challenge.css?v=20261015.1"><script src="js/features/drinks/deckel-challenge.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-mobile.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-update.js?v=20261015.1" defer></script><script src="js/features/drinks/deckel-view.js?v=20261015.1" defer></script><link rel="stylesheet" href="css/features/portal.css?v=20261015.1"><script src="js/features/portal/portal-member.js?v=20261015.1" defer></script></head><body>
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="deckel-build" content="20261015.2"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://raw.githubusercontent.com https://*.workers.dev; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"><meta name="apple-mobile-web-app-capable" content="yes"><link id="deckelManifest" rel="manifest" href="deckel.webmanifest"><link rel="apple-touch-icon" sizes="180x180" href="assets/drinks/h2o-portal.png"><meta name="theme-color" content="#9c2835"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="H₂O Portal"><title>H₂O Portal · Feuerwehr Wasser</title><link rel="stylesheet" href="css/features/deckel.css?v=20261015.2"><script src="js/features/drinks/deckel-crypto.js?v=20261015.2" defer></script><script src="js/features/drinks/push-device.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-install.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-push.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-commands.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-actions.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-live.js?v=20261015.2" defer></script><link rel="stylesheet" href="css/features/deckel-challenge.css?v=20261015.2"><script src="js/features/drinks/deckel-challenge.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-mobile.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-update.js?v=20261015.2" defer></script><script src="js/features/drinks/deckel-view.js?v=20261015.2" defer></script><link rel="stylesheet" href="css/features/portal.css?v=20261015.2"><script src="js/features/portal/portal-member.js?v=20261015.2" defer></script></head><body>
 <main>
   <header class="deckel-header">
     <div class="deckel-title"><img src="assets/drinks/h2o-portal.png" alt="" width="44" height="44"><div><p>Feuerwehr Wasser</p><h1>H₂O Portal</h1></div></div>
-    <button id="refresh" type="button" aria-label="Kontostand aktualisieren"><span aria-hidden="true">↻</span><span>Aktualisieren</span></button>
+    <button id="refresh" type="button" aria-label="Portal aktualisieren"><span aria-hidden="true">↻</span><span>Aktualisieren</span></button>
   </header>
   <section id="deckel-update-banner" class="deckel-update-banner" role="status" hidden><p id="deckel-update-message"></p><button id="deckel-update-now" type="button">Neue Ansicht laden</button></section>
   <p id="status" role="status" aria-live="polite"></p>
-  <section id="account" hidden tabindex="-1" aria-label="Dein Getränkekonto">
+
+
+<div id="portal-page-terms" class="portal-page" tabindex="-1" hidden><section id="portal-section" class="portal-section" hidden tabindex="-1" aria-labelledby="portal-heading">
+    <p class="eyebrow">Feuerwehr Abteilung Wasser</p><h2 id="portal-heading">Proben &amp; Termine</h2><p>Deine Rückmeldung kannst du bis zum Beginn ändern.</p>
+    <button id="portal-refresh" type="button" class="secondary">Kalender aktualisieren</button><p id="portal-status" role="status" aria-live="polite"></p><button id="portal-retry" type="button" hidden>Speicherung erneut prüfen</button><p id="portal-birthday" class="portal-birthday" role="status" hidden></p><div id="portal-events"></div>
+
+  </section></div>
+<div id="portal-page-deckel" class="portal-page" tabindex="-1" hidden><section id="account" hidden tabindex="-1" aria-label="Dein Getränkekonto">
+    <h2 class="portal-page-heading">Mein Deckel</h2>
     <div class="coaster-wrap">
       <div id="deckel-stack" class="deckel-stack" aria-hidden="true"></div>
       <article id="coaster" class="deckel-card" role="button" tabindex="-1" aria-disabled="true" aria-labelledby="balanceLabel balance" aria-describedby="updated deckel-tap-hint">
@@ -21,7 +29,11 @@
       <a id="paypal" class="button paypal-button" target="_blank" rel="noopener noreferrer" hidden>Mit PayPal bezahlen <span aria-hidden="true">↗</span></a>
       <details id="payment-help" hidden><summary>Wann wird die Zahlung gutgeschrieben?</summary><p id="payment-note" hidden>Gib bei PayPal bitte deinen Namen an. Die Verwaltung prüft die Zahlung und trägt sie ein. Erst danach sinkt dein offener Betrag.</p></details>
     </div>
-    <section id="phone-menu" class="phone-menu" hidden tabindex="-1" aria-labelledby="phone-heading">
+
+
+
+  </section></div>
+<div id="portal-page-drinks" class="portal-page" tabindex="-1" hidden><section id="phone-menu" class="phone-menu" hidden tabindex="-1" aria-labelledby="phone-heading">
       <div class="section-heading"><div><p class="eyebrow">Deine nächste Runde</p><h2 id="phone-heading">Getränke eintragen</h2></div><img class="section-symbol" src="assets/drinks/bierglas.svg" alt="" width="32" height="32"></div>
       <p id="phone-setup" class="note">Handyeingaben sind noch nicht freigeschaltet. Du kannst deinen Kontostand ansehen und mit PayPal bezahlen.</p>
       <p class="phone-hint">Antippen, prüfen, gemeinsam speichern.</p>
@@ -44,31 +56,26 @@
         <form id="phone-cash-form"><label for="phone-amount">Betrag in Euro</label><input id="phone-amount" type="text" inputmode="decimal" autocomplete="off" aria-describedby="phone-cash-error" required placeholder="z. B. 10,00"><p id="phone-cash-error" class="cash-error" role="alert" hidden></p><label class="cash-confirm"><input id="phone-cash-confirm" type="checkbox" required><span>Ich habe das Geld tatsächlich in die Getränkekasse gelegt.</span></label><button id="phone-cash-submit" type="submit">Einzahlung speichern</button></form>
       </details>
       <details class="phone-sync-info"><summary>Wann ist meine Buchung gespeichert?</summary><p id="phone-storage-note" class="note">Nach Bestätigung wird dein Konto aktualisiert.</p></details>
-    </section>
-    <section class="loyalty-card" aria-labelledby="loyalty-heading">
+    </section></div>
+<div id="portal-page-points" class="portal-page" tabindex="-1" hidden><section id="portal-points" tabindex="-1" aria-labelledby="portal-points-heading"><h2 id="portal-points-heading" class="portal-page-heading">Treuepunkte &amp; Challenge</h2><section class="loyalty-card" aria-labelledby="loyalty-heading">
       <div class="loyalty-heading"><div><p id="loyalty-heading" class="loyalty-label">Deine Treuepunkte</p><p class="loyalty-slogan">Hier wird Treue flüssig.</p></div><strong id="points">0</strong></div>
       <progress id="loyalty-progress" aria-label="Geldbetrag bis zu den nächsten Treuepunkten" max="1" value="0"></progress><p id="bonus"></p><p id="deckel-challenge-points-note" class="challenge-points-note" hidden>Auch mit der Monats-Challenge kannst du zusätzliche Treuepunkte sammeln.</p>
       <details><summary>So kannst du Punkte einlösen</summary><p id="points-use" class="note"></p></details>
-    </section>
-    <details id="deckel-more" class="deckel-more" tabindex="-1"><summary>Buchungen &amp; Einstellungen</summary>
+    </section></section></div>
+<div id="portal-page-more" class="portal-page" tabindex="-1" hidden><details id="deckel-more" class="deckel-more" tabindex="-1"><summary>Buchungen &amp; Einstellungen</summary>    <details class="portal-notifications"><summary>Erinnerungen auf diesem Handy</summary><p id="portal-push-note"></p><button id="portal-push-enable" type="button">Erinnerungen erlauben</button><button id="portal-push-disable" type="button" class="secondary">Erinnerungen deaktivieren</button><p id="portal-push-status" role="status" aria-live="polite"></p></details>
       <details class="booking-history"><summary>Letzte Buchungen</summary><ol id="bookings"></ol></details>
       <p id="stack-note" class="note deckel-stack-note"></p>
-      <p class="version-note" id="deckel-version">Version 2026.10.15.1</p><button id="deckel-update-reload" class="secondary" type="button">Neueste Ansicht laden</button>
+      <p class="version-note" id="deckel-version">Version 2026.10.15.2</p><button id="deckel-update-reload" class="secondary" type="button">Neueste Ansicht laden</button>
       <p id="deckel-storage-note" class="note"></p>
-    </details>
-  </section>
-  <section id="portal-section" class="portal-section" hidden tabindex="-1" aria-labelledby="portal-heading">
-    <p class="eyebrow">Feuerwehr Abteilung Wasser</p><h2 id="portal-heading">Proben &amp; Termine</h2><p>Deine Rückmeldung kannst du bis zum Beginn ändern.</p>
-    <button id="portal-refresh" type="button" class="secondary">Kalender aktualisieren</button><p id="portal-status" role="status" aria-live="polite"></p><button id="portal-retry" type="button" hidden>Speicherung erneut prüfen</button><p id="portal-birthday" class="portal-birthday" role="status" hidden></p><div id="portal-events"></div>
-    <details class="portal-notifications"><summary>Erinnerungen auf diesem Handy</summary><p id="portal-push-note"></p><button id="portal-push-enable" type="button">Erinnerungen erlauben</button><button id="portal-push-disable" type="button" class="secondary">Erinnerungen deaktivieren</button><p id="portal-push-status" role="status" aria-live="polite"></p></details>
-  </section>
+    </details></div>
   <details id="installSection" class="install-card" aria-labelledby="installHeading" hidden><summary id="installHeading">Auf dem Home-Bildschirm speichern</summary><p>Mit dem H₂O-Symbol hast du Termine und deinen Deckel immer griffbereit.</p><ol id="installSteps"></ol><button id="installButton" type="button">H₂O Portal auf dem Handy speichern</button><p id="installStatus" role="status" aria-live="polite"></p></details>
   <p class="privacy-note">Dein persönlicher Link ist dein Zugang. Bitte für dich behalten.</p>
 </main>
 <nav id="deckel-nav" class="deckel-nav" aria-label="Portal-Navigation" hidden>
-  <button type="button" data-deckel-target="account" aria-current="page"><span aria-hidden="true">◉</span>Mein Deckel</button>
-  <button type="button" data-deckel-target="portal-section"><span aria-hidden="true">▦</span>Termine</button>
+  <button type="button" data-deckel-target="portal-section" aria-current="page"><span aria-hidden="true">▦</span>Termine</button>
+  <button type="button" data-deckel-target="account"><span aria-hidden="true">◉</span>Mein Deckel</button>
   <button type="button" data-deckel-target="phone-menu"><span aria-hidden="true">+</span>Getränke</button>
+  <button type="button" data-deckel-target="portal-points"><span aria-hidden="true">★</span>Punkte</button>
   <button type="button" data-deckel-target="deckel-more"><span aria-hidden="true">☷</span>Mehr</button>
 </nav>
 </body></html>
