@@ -73,8 +73,10 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
 
 ## Verhalten
 
-- Der Google-Kalender wird spätestens bei einem erfolgreichen Dienstabruf nach
-  fünf Minuten neu geladen; offene Portale laden jede Minute nach. Google kann
+- Der Cron-Dienst prüft den Google-Kalender mit einem Cache von fünf Minuten.
+  Listenabrufe lesen den gespeicherten D1-Stand; offene Portale laden diesen etwa
+  jede Minute nach. Nach 15 Minuten ohne neuen Stand wird er als veraltet
+  angezeigt. Schreibaktionen prüfen den Kalender gesondert. Google kann
   seine iCal-Ausgabe zusätzlich verzögern. Der angezeigte Abrufzeitpunkt ist
   daher keine Zusage einer sofortigen Google-Synchronisierung.
 - Vorschau: ungefähr ein Jahr. UID und ursprüngliche Serieninstanz bestimmen
