@@ -9,7 +9,7 @@
   "theme_color": "#061b48",
   "icons": [
     {
-      "src": "assets/drinks/h2o-portal.png",
+      "src": "assets/drinks/h2o-portal-white.png",
       "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"
