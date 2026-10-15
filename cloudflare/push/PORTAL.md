@@ -4,6 +4,31 @@ Release 2026.10.15.1 erweitert die bestehenden persönlichen Handy-Zugänge.
 Die öffentlichen GitHub-Dateien enthalten nur Programmcode und Grafiken. Den
 produktiven Kalender-Link ausschließlich in der geschützten Anwendung eingeben.
 
+## Kalender ohne OneDrive-Anmeldung am Gerätehaus-iPad (2026.10.15.10)
+
+Nach Aktualisierung und Veröffentlichung des vorhandenen `worker.bundle.js` liefert
+`GET /calendar/public` ausschließlich **ausdrücklich freigegebene** Probe-
+und Sonderprobetermine. Titel werden aus Datenschutzgründen auf „Probe“ oder
+„Sonderprobe“ reduziert. Geburtstage, Kalender-Originaladresse, Personendaten,
+Rückmeldungen, Admin-Token und Verwaltungsfunktionen werden nicht ausgegeben.
+
+Im Gerätehaus-iPad unter **Termin aus dem Probenkalender → Kalenderverbindung
+(einmalig)** die öffentliche Adresse des bestehenden Cloudflare-Workers
+(`https://…workers.dev`) eintragen und speichern. **Kein Token eingeben.**
+Die öffentliche Adresse bleibt in diesem Browser gespeichert. Sobald das iPad
+mit OneDrive verbunden ist und der Kontodienst zur Verfügung steht, wird die
+Adresse auch aus der vorhandenen Verbindung übernommen.
+
+Nur die Leseansicht funktioniert ohne OneDrive. Persönliche Rückmeldungen,
+Geburtstagszuordnungen, Freigaben, QR-Verwaltung und Push-Versand bleiben
+durch die bisherigen Zugangskontrollen geschützt. Die Kalenderverwaltung
+im H₂O Portal benötigt weiterhin eine bestätigte OneDrive-Anmeldung.
+
+Die GitHub-Veröffentlichung aktualisiert den produktiven Cloudflare-Worker
+**nicht automatisch**. Dessen vollständigen aktualisierten Bundle-Code
+unverändert im bestehenden Worker bereitstellen. Wenn der neue Endpunkt
+noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
+
 ## Bestehenden Dienst aktualisieren
 
 1. Den **bestehenden** Worker `feuerwehr-wasser-deckel-push` mit dem vollständigen
