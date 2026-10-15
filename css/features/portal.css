@@ -12,3 +12,10 @@
 /* Sanfte Terminkartenfarben nur im persönlichen H₂O-Portal */
 #portal-events .portal-event[data-status="yes"]{background:#eaf7ee;border-color:#90caa0}
 #portal-events .portal-event[data-status="excused"]{background:#fff1e3;border-color:#e2b77d}
+
+/* Empfängerauswahl nur für Sonderproben im geschützten H₂O-Portal */
+#portal-admin-review-events .portal-recipient-choices{padding:10px 12px;border:1px solid #d7dfe8;border-radius:12px;margin:8px 0 14px}
+#portal-admin-review-events .portal-recipient-choices label{display:flex;align-items:center;gap:8px;margin:6px 0;min-height:34px}
+#portal-admin-review-events .portal-recipient-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:2px 12px;max-height:230px;overflow:auto;padding:8px 0}
+#portal-admin-review-events .portal-recipient-list[hidden]{display:none}
+#portal-admin-review-events .portal-recipient-choices input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:#176b36}
