@@ -1,6 +1,6 @@
 /* iPad administration and attendance projection. RSVP never creates attendance records. */
 (function(g){
- 'use strict';const VIEW='settingsPortalView',$=id=>document.getElementById('portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,replyData=null,lastLoad=0,loading=false,manual=null,rosterKey=null,rosterBusy=false,calendarGeneration=0,reviewSnapshot=null,reviewShowSaved=true,reviewEdited=new Set(),reviewFilter='all';
+ 'use strict';const VIEW='settingsPortalView',$=id=>document.getElementById('portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,manual=null,rosterKey=null,rosterBusy=false,calendarGeneration=0,reviewSnapshot=null,reviewShowSaved=true,reviewEdited=new Set(),reviewFilter='all';
  const date=e=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',...(e.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(e.start));
  function admin(){if(!requireAdmin(VIEW))throw Error('Bitte die Administration entsperren.');}
  const PUBLIC_ORIGIN_KEY='h2o_calendar_public_origin';
@@ -98,21 +98,31 @@
    if(typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady()){
     try{await syncRoster();cal=await request('list');privateAccess=true;}catch(e){cal=await publicList();}
    }else cal=await publicList();
-   lastLoad=Date.now();list=cal.events.filter(e=>e.approved&&e.kind==='probe');
+   lastLoad=Date.now();
+   const now=Date.now(),running=Boolean(currentSessionId||currentOperationId),current=chosen();
+   // The active attendance session stays linked to its event even after that
+   // event ends. Otherwise only future or currently ongoing events appear.
+   list=cal.events.filter(e=>e.approved&&e.kind==='probe'&&(e.end>now||(running&&e.id===current))).sort((a,b)=>a.start-b.start);
    const picker=document.getElementById('portal-calendar-pick');if(!picker)return;
-   const current=chosen();picker.replaceChildren();const none=node('option','Ohne Kalendertermin / spontan');none.value='';picker.append(none);
+   const stillAvailable=list.some(e=>e.id===current);
+   const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list[0]?.id||''));
+   picker.replaceChildren();const none=node('option','Ohne Kalendertermin / spontan');none.value='';picker.append(none);
    for(const e of list){const option=node('option',date(e)+' · '+e.title+' · '+(e.sessionType||'Probe'));option.value=e.id;picker.append(option);}
-   picker.value=list.some(e=>e.id===current)?current:'';
+   picker.value=nextId||'';
+   // Automatically pick the next event only while no attendance session runs.
+   // Applying the selection also sets its date and the centrally configured
+   // session type. Never overwrite an explicit "spontan" choice.
+   if(!running&&nextId!==current)select(true);
    document.getElementById('portal-calendar-status').textContent=cal.configured?(cal.stale?'Kalender zuletzt nicht aktualisiert.':'Kalenderstand: '+new Date(cal.fetchedAt).toLocaleString('de-DE')):'Kalender unter Einstellungen → H₂O Portal verbinden.';
    if(privateAccess)await replies();else{replyData=null;paintReplies();}
   }catch(e){const status=document.getElementById('portal-calendar-status');if(status)status.textContent=e.message;}
   finally{loading=false;}
  }
- function select(){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if(currentSessionId&&(todayEntries().length||pendingMemberStatuses.size)&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Der laufende Termin enthält bereits Anwesenheiten. Bitte diesen Termin zuerst abschließen.','error');}selected=id||null;replyData=null;if(e){if(!currentSessionId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(sessionType))document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
-  if(currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));if(typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady())replies().catch(e=>{document.getElementById('portal-calendar-status').textContent=e.message;});}
+ function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if(currentSessionId&&(todayEntries().length||pendingMemberStatuses.size)&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Der laufende Termin enthält bereits Anwesenheiten. Bitte diesen Termin zuerst abschließen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){if(!currentSessionId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(sessionType))document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
+  if(currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));if(!automatic&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady())replies().catch(e=>{document.getElementById('portal-calendar-status').textContent=e.message;});}
  function selectedDate(){const e=list.find(e=>e.id===chosen());return e?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start)):null;}
  function sessionStarted(){const date=selectedDate();if(date)currentProbeDate=date;if(selected&&currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));paintReplies();}
- function discard(keepCalendar=false){if(!keepCalendar){selected=null;replyData=null;}safeStorage.removeItem('h2o_calendar_session');const picker=document.getElementById('portal-calendar-pick');if(picker)picker.value=selected||'';paintReplies();}
+ function discard(keepCalendar=false){if(!keepCalendar){selected=null;replyData=null;manualNoCalendar=false;}safeStorage.removeItem('h2o_calendar_session');const picker=document.getElementById('portal-calendar-pick');if(picker)picker.value=selected||'';paintReplies();}
  function init(){
   $('open').onclick=()=>{if(showView(VIEW)!==false)load();};$('back').onclick=()=>{lock();showView('settingsView');};$('member').onchange=()=>{generation++;clearQR();$('status').textContent='';};$('show-qr').onclick=qr;$('review-load').onclick=reviewCalendar;$('review-auto').onclick=acceptAutomatic;$('review-toggle').onclick=()=>{reviewShowSaved=!reviewShowSaved;reviewControls();};$('review-filter').onchange=()=>{reviewFilter=$('review-filter').value;reviewControls();};$('form').onsubmit=event=>{event.preventDefault();return run(async()=>{const version=generation,form=$('form'),submit=form.querySelector('button[type=submit]'),label=submit.textContent;form.setAttribute('aria-busy','true');submit.textContent='Kalender wird geprüft …';$('calendar-status').textContent='Google-Kalender wird abgerufen und geprüft. Das kann einige Sekunden dauern …';try{const result=await request('configure',{calendarUrl:$('calendar').value.trim(),reminders:$('automatic').checked,leadHours:Number($('hours').value)});if(version!==generation)return;admin();$('calendar-status').textContent=result.count+' Kalendereinträge verbunden. Erinnerungseinstellungen gespeichert.';$('status').textContent='';lastLoad=0;try{await syncRoster(true);}catch(e){$('calendar-status').textContent+=' Mitgliederabgleich noch nicht bestätigt: '+e.message;}await reviewCalendar();}catch(e){if(version===generation)$('calendar-status').textContent=e.message;throw e;}finally{form.removeAttribute('aria-busy');submit.textContent=label;}});};
   new MutationObserver(()=>{if(document.getElementById(VIEW).hidden)lock();}).observe(document.getElementById(VIEW),{attributes:true,attributeFilter:['hidden']});
