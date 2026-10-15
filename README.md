@@ -1,3 +1,9 @@
+## Gemeinsame Deckelansicht ab 2026.10.15.9
+
+„Mein Deckel“ enthält den Kontostand, PayPal, Getränke und Bareinzahlungen.
+Die Handy-Navigation umfasst Termine, Mein Deckel, Punkte und Mehr.
+Bestehende Getränke-Vormerkungen bleiben beim Seitenwechsel erhalten.
+
 ## Kalender-Sammelübernahme ab 2026.10.15.7
 
 Unter H₂O Portal übernimmt ein Button die automatische Erkennung gesammelt.
