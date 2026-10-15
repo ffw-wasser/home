@@ -770,7 +770,7 @@
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe');
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?event:null};
   }
-  const cal=await decorate(env,await calendar(env));
+  const cal=await decorate(env,await (path==='/portal/list'?cachedCalendar(env):calendar(env)));
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
    const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe').map(e=>({...e,...(map.get(e.id)||{status:'open',version:0})}))};
@@ -800,9 +800,20 @@
   }
   fail('Nicht gefunden.',404);
  }
+ // User-facing calendar reads only the last synchronized D1 snapshot. The Cron
+ // job remains responsible for refreshing Google iCal. This avoids long fetches
+ // and browser timeouts when members open the portal.
+ async function cachedCalendar(env){
+  const c=await config(env);
+  if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
+  const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();
+  if(!row)return calendar(env); // Only for uninitialized/legacy installations.
+  return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
+   stale:!row.fetched_at||row.fetched_at<Date.now()-15*60*1000};
+ }
  async function publicCalendar(env){
   await ready(env);
-  const cal=await decorate(env,await calendar(env));
+  const cal=await decorate(env,await cachedCalendar(env));
   // Only explicitly approved probe dates. Never expose member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
    events:cal.events.filter(e=>e.approved===true&&e.kind==='probe').map(e=>({
