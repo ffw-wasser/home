@@ -1,3 +1,14 @@
+## Kalender-Sammelübernahme ab 2026.10.15.7
+
+Unter H₂O Portal übernimmt ein Button die automatische Erkennung gesammelt.
+Erkannte Probe-/Sonderprobetermine werden dabei freigegeben, eindeutig
+zugeordnete Geburtstage als Serie gespeichert. Ungeklärte Geburtstage und
+bestehende Einordnungen werden nicht überschrieben. Grün kennzeichnet
+gespeicherte Karten, Gelb ungeklärte oder ungespeicherte Änderungen.
+Standardmäßig werden offene Einträge angezeigt; gespeicherte können für
+Korrekturen eingeblendet werden. Verwendet die vorhandene Worker-Schnittstelle;
+kein erneutes Worker-Update gegenüber 2026.10.15.6 erforderlich.
+
 ## Automatische Kalendereinordnung ab 2026.10.15.6
 
 Eindeutige vollständige Geburtstagsnamen werden den Mitgliedern zugeordnet.
