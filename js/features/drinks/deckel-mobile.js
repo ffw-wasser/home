@@ -8,7 +8,7 @@
   document.addEventListener('focusin',e=>{if(e.target.matches?.('input,select,textarea'))document.body.classList.add('keyboard-open');});
   document.addEventListener('focusout',()=>{if(!document.activeElement?.matches?.('input,select,textarea'))document.body.classList.remove('keyboard-open');});
   let fullHeight=g.visualViewport?.height||g.innerHeight;g.visualViewport?.addEventListener('resize',()=>{const focused=document.activeElement?.matches?.('input,select,textarea');if(focused)document.body.classList.toggle('keyboard-open',g.visualViewport.height<fullHeight-100);else fullHeight=g.visualViewport.height;});
-  let frame=0;g.addEventListener('scroll',()=>{if(frame||!visible)return;frame=requestAnimationFrame(()=>{frame=0;let current='account';for(const id of ['phone-menu','deckel-more']){const target=$(id);if(target&&!target.hidden&&target.getBoundingClientRect().top<innerHeight*.4)current=id;}paint(current);});},{passive:true});
+  let frame=0;g.addEventListener('scroll',()=>{if(frame||!visible)return;frame=requestAnimationFrame(()=>{frame=0;let current='account';for(const id of ['phone-menu','deckel-more','portal-section']){const target=$(id);if(target&&!target.hidden&&target.getBoundingClientRect().top<innerHeight*.4)current=id;}paint(current);});},{passive:true});
  }
  g.DeckelMobile={show,jump};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

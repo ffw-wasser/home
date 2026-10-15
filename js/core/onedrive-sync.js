@@ -11,7 +11,7 @@ function odLoginHint(token){try{const part=token?.id_token?.split('.')[1];if(!pa
 function oneDriveCancelAdminReturn(){oneDriveAdminReturn=null;sessionStorage.removeItem(OD_ADMIN_RETURN_KEY);}
 window.oneDriveCancelAdminReturn=oneDriveCancelAdminReturn;
 async function odAccountKey(token){try{const encoded=token?.id_token?.split('.')[1];if(!encoded)return '';const data=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(encoded.length/4)*4,'=')));if(typeof data.iss!=='string'||typeof data.sub!=='string')return '';return odChallenge(odConfig().clientId+'|'+data.iss+'|'+data.sub);}catch{return '';}}
-const odReturnViews=new Set(['adminView','archiveView','settingsView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView']);
+const odReturnViews=new Set(['adminView','archiveView','settingsView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView']);
 async function odAdminReturnPlan(state){
  if(typeof adminUnlocked==='undefined'||!adminUnlocked||typeof adminUnlockUntil==='undefined'||adminUnlockUntil<=Date.now())return null;
  const identity=await odAccountKey(oneDriveTokens());if(!identity||!adminUnlocked||adminUnlockUntil<=Date.now())return null;const config=odConfig(),share=localStorage.getItem(OD_SHARE_KEY)||'',view=document.querySelector('.view:not([hidden])')?.id;let root=oneDriveSharedRoot;
@@ -35,7 +35,7 @@ function getAppStorageState(){
   const detail=!navigator.onLine?"offline":!oneDriveSignedIn()?"OneDrive nicht verbunden":oneDriveBusy?"OneDrive synchronisiert …":"OneDrive noch nicht bestätigt";
   return {kind:"local",text:local+" · "+detail};
 }
-function notifyAppStorageState(){window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();}
+function notifyAppStorageState(){window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();if(oneDriveStateConfirmed)window.PortalAdmin?.syncRoster().catch(()=>{});}
 const odRedirect=()=>"https://ffw-wasser.github.io/home/";
 const odConfig=()=>({clientId:localStorage.getItem(OD_CLIENT_KEY)||"",authority:"https://login.microsoftonline.com/consumers/oauth2/v2.0",scope:"openid profile offline_access Files.ReadWrite"});
 const odB64Url=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");

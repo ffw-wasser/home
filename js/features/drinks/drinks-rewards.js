@@ -7,7 +7,7 @@
   function beforeView(id){if(id==='settingsRewardsView'||byId('settingsRewardsView')?.hidden!==false||!dirty)return true;if(busy){showToast('Bitte die Speicherung der Treuepunkte-Einstellungen abwarten.','error');return false;}if(!confirm('Ungespeicherte Treuepunkte-Einstellungen verwerfen?'))return false;dirty=false;return true;}
   const description=p=>`${euro(M.threshold(p))} Einzahlung → ${points(M.award(p))}. Bier: ${M.pointText(M.pointCost(p,'beer'))} Punkte · Wein: ${M.pointText(M.pointCost(p,'wine'))} Punkte.`;
   async function load(force=false){
-    globalThis.DrinksChallengeSettings?.load(force);
+    globalThis.DrinksChallengeSettings?.load(force);globalThis.DrinksBirthdaySettings?.load(force);
     if(!requireAdmin('settingsRewardsView')||busy||(!force&&dirty))return;if(force&&dirty&&!confirm('Eingaben verwerfen und neu aus OneDrive laden?'))return;
     const status=byId('bonusSettingsStatus');busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden geladen …';
     try{const next=await DrinksStore.rewards();if(!adminUnlocked)return;policy=M.rewardPolicy(next);dirty=false;byId('bonusCount').value=(policy.thresholdCents/100).toFixed(2).replace('.',',');byId('bonusEuro').value=policy.awardUnits/M.POINT_UNIT;byId('bonusBeer').value=policy.beerUnits/M.POINT_UNIT;byId('bonusWine').value=policy.wineUnits/M.POINT_UNIT;status.textContent='In OneDrive gespeichert: '+description(policy);}

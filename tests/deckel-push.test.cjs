@@ -54,12 +54,12 @@ test('iPad: Kontodienst bleibt in OneDrive verbunden, Erinnerungsversand ist ent
  balance=0;await assert.rejects(P.send('member-name','request-001'),/entfernt/);balance=300;await assert.rejects(P.send('member-name','request-001'),/entfernt/);
  assert.equal(calls.some(c=>c.url.endsWith('/admin/send')),false);ctx.adminUnlocked=false;await assert.rejects(P.send('member-name','request-002'),/entfernt/);
 });
-test('Service Worker zeigt keine neuen Erinnerungen; alte Nachrichten öffnen weiterhin den lokal gespeicherten Link',async()=>{
+test('Service Worker zeigt Portal-Erinnerung und öffnet den lokal gespeicherten Link',async()=>{
  const events={},shown=[],opened=[];const url='https://ffw-wasser.github.io/home/deckel.html#a='+ '1'.repeat(32)+'&k='+ 'a'.repeat(64);
  const ctx=vm.createContext({URL,Promise,importScripts:()=>{},DeckelDevice:{read:async()=>({url})},
   self:{registration:{scope:'https://ffw-wasser.github.io/home/',showNotification:async(title,options)=>shown.push({title,options})},clients:{matchAll:async()=>[],openWindow:async u=>opened.push(u)},addEventListener:(name,fn)=>events[name]=fn}});
  vm.runInContext(fs.readFileSync(require.resolve('../service-worker.js'),'utf8'),ctx);let promise;
- events.push({waitUntil:p=>promise=p});await promise;assert.equal(shown.length,0);
+ events.push({waitUntil:p=>promise=p});await promise;assert.equal(shown.length,1);assert.match(shown[0].title,/H₂O Portal/);
  events.notificationclick({notification:{close(){}},waitUntil:p=>promise=p});await promise;assert.deepEqual(opened,[url]);
 });
 

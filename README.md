@@ -1,3 +1,12 @@
+## H₂O Portal
+
+Seit 2026.10.15.1: persönlicher Probenkalender mit administrativer Freigabe,
+Rückmeldungen, GF-Übersicht, freiwilligen Push-Erinnerungen und getrenntem
+Geburtstagsbonus. QR-Zugänge stehen direkt in der Administration.
+Die Punktzahlen stehen gemeinsam unter Treuepunkte.
+**Der bestehende Cloudflare-Worker und sein Cron-Trigger müssen aktualisiert
+werden:** [Einrichtung und Datenumfang](cloudflare/push/PORTAL.md).
+
 # Feuerwehr Wasser
 
 Statische Web-App für Anwesenheit, Taktik, Einsatzberichte und Jahresstatistik.

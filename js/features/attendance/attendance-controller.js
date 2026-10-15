@@ -385,6 +385,7 @@ function clearToday() {
   if (!todayEntries().length) return showToast("Für diesen Termin sind keine Anmeldungen vorhanden.", "error");
   if (!confirm("Alle Anmeldungen dieses Termins zurücksetzen? Mitglieder, Einstellungen und Archiv bleiben erhalten.")) return;
   const ids=new Set(todayEntries().map(entry=>entry.id));
+  window.PortalAdmin?.discard(keepCalendar);
   entries=entries.filter(entry=>!ids.has(entry.id));
   pendingMemberStatuses.clear();
   chosenMemberId = "";
@@ -462,10 +463,11 @@ if(!window.__floatingAttendanceStatusBound){
 }
 
 function requestReturnToHomeStage(){ setHomeFlowStage(1); return true; }
-function discardCurrentAttendanceSession(){
+function discardCurrentAttendanceSession(keepCalendar=false){
   if(!currentSessionId&&!currentOperationId)return false;
   if(!confirm("Termin wirklich abbrechen? Alle Anmeldungen, die Fahrzeugbesetzung und ungespeicherte Berichtsangaben dieses Termins werden verworfen. Abgeschlossene Berichte bleiben erhalten."))return false;
   const ids=new Set(todayEntries().map(entry=>entry.id));
+  window.PortalAdmin?.discard(keepCalendar);
   entries=entries.filter(entry=>!ids.has(entry.id));
   pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";chosenRole="";
   currentSessionId="";safeStorage.removeItem("fw_v1_current_session_id");
@@ -522,7 +524,7 @@ function setHomeFlowStage(stage){
   else syncDocumentReportVisibility?.(stage);
 
   if(stage===1){
-    if(!todayEntries().length)currentProbeDate=systemToday();
+    if(!todayEntries().length)currentProbeDate=window.PortalAdmin?.selectedDate()||systemToday();
     pendingSessionType="";
     if(byId("sessionTypes"))delete byId("sessionTypes").dataset.selectedSessionType;
     byId("sessionTypes")?.querySelectorAll("[data-session-type]").forEach(button=>{
@@ -557,12 +559,12 @@ function continueToAttendance(){
   const type=pendingSessionType||byId("sessionTypes")?.dataset.selectedSessionType||selectedButton?.dataset.sessionType||"";
   if(!type)return showToast("Bitte zuerst eine Terminart auswählen.","error");
   const running=Boolean(currentSessionId||currentOperationId);
-  if(running&&type===sessionType){setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();return;}
-  if(running&&type!==sessionType&&!discardCurrentAttendanceSession())return;
+  if(running&&type===sessionType){window.PortalAdmin?.sessionStarted();setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();return;}
+  if(running&&type!==sessionType&&!discardCurrentAttendanceSession(true))return;
   window.__sessionTypeTransitionRunning=true;
   sessionType=type;
   // Jeder Termin erhält eine eigene ID. Andere Termine desselben Tages bleiben erhalten.
-  if(sessionType!=="Einsatz")startAttendanceSession();
+  if(sessionType!=="Einsatz"){startAttendanceSession();window.PortalAdmin?.sessionStarted();}
   resetDocumentReportState?.();
   currentClosingTopic="";
   if(sessionType==="Einsatz")startOperationSession();
@@ -643,7 +645,7 @@ function ensureStagedHomeFlow(){
   workspace.classList.add("home-flow-card","home-flow-stage-2");
   if(!byId("stage2Heading")){const h=document.createElement("div");h.id="stage2Heading";h.className="flow-stage-heading";workspace.prepend(h);}
   const stage2Heading=byId("stage2Heading");if(stage2Heading)stage2Heading.innerHTML=`<span>2</span><div><strong>Anwesenheit erfassen</strong><small>${escapeHtml(sessionType)}</small></div>`;
-  if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Termindatum</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{currentProbeDate=event.target.value||systemToday();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
+  if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Termindatum</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{const linkedDate=window.PortalAdmin?.selectedDate();if(linkedDate&&event.target.value!==linkedDate){event.target.value=linkedDate;showToast("Das Datum kommt aus dem verknüpften Kalendertermin.","error");return;}currentProbeDate=event.target.value||systemToday();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
 
   const step3ActionButton=byId("exportResetButton");
   if(step3ActionButton){

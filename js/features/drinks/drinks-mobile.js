@@ -16,7 +16,7 @@
   async function config(){const value=await S.readMobileFile('handy-verbindung.json');return value?.data||null;}
   function snapshot(account,policy){
     const totals=M.totals(account),reward=M.rewardState(account,policy),state=M.ledger(account);
-    return {version:1,balance:totals.balance,credit:reward.prepaid,pointUnits:reward.pointUnits,thresholdCents:reward.threshold,progressCents:reward.progress,awardUnits:M.award(policy),beerUnits:M.pointCost(policy,'beer'),wineUnits:M.pointCost(policy,'wine'),needed:reward.needed,bonusCents:M.award(policy),updatedAt:new Date().toISOString(),bookings:account.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...(b.type==='challenge'?{direction:b.direction,code:b.code}:{}),...(b.type==='challenge-reward'?{month:b.month,score:b.score}:{}),...((b.type==='payment'&&state.reversedPayments.has(b.id)||b.type==='bonus'&&state.reversedPayments.has(b.paymentId)||b.type==='drinks'&&state.drinks.get(b.id)?.count===0)?{cancelled:true}:{}),...(['drinks','correction'].includes(b.type)?{count:b.count,...(b.pointUnits?{pointUnits:b.pointUnits}:{}),...((b.drink==='wine'||b.type==='correction'&&account.bookings.find(t=>t.id===b.targetId)?.drink==='wine')?{drink:'wine'}:{})}:b.type==='payment'?{method:b.method}:{})}))};
+    return {version:1,balance:totals.balance,credit:reward.prepaid,pointUnits:reward.pointUnits,thresholdCents:reward.threshold,progressCents:reward.progress,awardUnits:M.award(policy),beerUnits:M.pointCost(policy,'beer'),wineUnits:M.pointCost(policy,'wine'),needed:reward.needed,bonusCents:M.award(policy),updatedAt:new Date().toISOString(),bookings:account.bookings.slice(-5).reverse().map(b=>({type:b.type,cents:b.cents,createdAt:b.createdAt,...(b.type==='challenge'?{direction:b.direction,code:b.code}:{}),...(b.type==='challenge-reward'?{month:b.month,score:b.score}:{}),...(b.type==='birthday-reward'?{year:b.year}:{}),...((b.type==='payment'&&state.reversedPayments.has(b.id)||b.type==='bonus'&&state.reversedPayments.has(b.paymentId)||b.type==='drinks'&&state.drinks.get(b.id)?.count===0)?{cancelled:true}:{}),...(['drinks','correction'].includes(b.type)?{count:b.count,...(b.pointUnits?{pointUnits:b.pointUnits}:{}),...((b.drink==='wine'||b.type==='correction'&&account.bookings.find(t=>t.id===b.targetId)?.drink==='wine')?{drink:'wine'}:{})}:b.type==='payment'?{method:b.method}:{})}))};
   }
   async function publish(id,prepared=null){
     const central=await global.DrinksCentral?.connection();if(central){const saved=await S.readMobileFile(await S.mobileFileName(id));if(!saved)return false;const record=C.access(saved.data);if(record.memberId!==String(id))throw Error('Handyzugang gehört zu einem anderen Konto.');await global.DrinksCentral.register(central,record);setStatus(id,'Handyansicht ist direkt mit dem Getränkekonto verbunden.');return true;}
@@ -59,6 +59,11 @@
     linkCache.set(String(id),{revision:record.revision,key:record.key,sourceKey,url:url.href,until:Date.now()+300000});
     if(!created)queue(id);return url.href;
   }
+  async function adminLink(id){
+    if(!requireAdmin('settingsPortalView'))throw Error('Bitte die Administration entsperren.');
+    const account=await S.read(String(id));if(!adminUnlocked)throw Error('Administration wurde gesperrt.');
+    const url=await link(String(id),JSON.stringify(account.pin));if(!adminUnlocked)throw Error('Administration wurde gesperrt.');return url;
+  }
   async function connect(repo,token){
     if(!adminUnlocked)throw new Error('Bitte zuerst die Administration entsperren.');
     const connection={version:1,repo:repo.trim(),token:token.trim()},info=await gh(connection,'');
@@ -80,6 +85,6 @@
     byId('deckel-connect').onsubmit=async event=>{event.preventDefault();if(!adminUnlocked)return;const button=event.submitter||byId('deckel-connect').querySelector('button'),token=byId('deckel-token').value;byId('deckel-token').value='';button.disabled=true;byId('deckel-setup-status').textContent='Verbindung wird geprüft …';try{const repo=await connect(byId('deckel-repo').value,token);byId('deckel-setup-status').textContent='Verbunden: '+repo+'. Mitglieder können jetzt ihren QR-Code öffnen.';}catch(e){byId('deckel-setup-status').textContent=e.message;}finally{button.disabled=false;}};
     byId('deckel-sync-all').onclick=async()=>{if(!adminUnlocked)return;try{const count=await refreshAll();byId('deckel-setup-status').textContent=count+' Handyansichten zur Veröffentlichung vorgemerkt.';}catch{byId('deckel-setup-status').textContent='OneDrive-Verbindung prüfen und erneut versuchen.';}};
   }
-  global.DrinksMobile={link,queue,refreshAll,publish,connect,status:id=>lastStatus.get(id)||'',snapshot};
+  global.DrinksMobile={link,adminLink,queue,refreshAll,publish,connect,status:id=>lastStatus.get(id)||'',snapshot};
   if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 })(typeof window==='undefined'?globalThis:window);

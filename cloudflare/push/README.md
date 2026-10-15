@@ -1,3 +1,7 @@
+> **H₂O Portal ab 2026.10.15.1:** aktuelle Einrichtung, Kalenderfreigaben,
+> Geburtstagspunkte und Termin-Erinnerungen siehe [PORTAL.md](PORTAL.md).
+> Die nachfolgende Anleitung beschreibt die frühere Deckel-Erinnerung.
+
 # Manuelle Handy-Erinnerungen – kostenlose Einrichtung
 
 **Zentrale Kontenführung:** Für direkte Handy-Buchungen und Zurücksetzen siehe [CENTRAL.md](CENTRAL.md). Dafür zusätzlich `central.sql` ausführen und die mit `build.cjs` erzeugte `worker.bundle.js` veröffentlichen. Die folgende ursprüngliche Anleitung beschreibt nur den Erinnerungsdienst.

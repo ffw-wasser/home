@@ -1,30 +1,18 @@
 {
-  "name": "Mein Deckel · Feuerwehr Wasser",
-  "short_name": "Mein Deckel",
-  "description": "Persönlicher Getränkedeckel und freiwillige Handy-Erinnerungen",
+  "name": "H₂O Portal · Feuerwehr Abteilung Wasser",
+  "short_name": "H₂O Portal",
+  "description": "Mitgliederportal mit Probenkalender, Rückmeldungen, Erinnerungen und persönlichem Deckel",
   "lang": "de-DE",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fff8ed",
-  "theme_color": "#981e2c",
+  "theme_color": "#061b48",
   "icons": [
     {
-      "src": "assets/drinks/deckel-home-v2-192.png",
-      "sizes": "192x192",
+      "src": "assets/drinks/h2o-portal.png",
+      "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "assets/drinks/deckel-home-v2-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "assets/drinks/deckel-home-v2-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ],
   "id": "./deckel.html",

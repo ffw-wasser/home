@@ -56,7 +56,7 @@
       if(b.direction==='in'){s.balance+=b.cents;s.challengeDebt+=b.cents;}
       else{if(b.cents>s.balance)throw Error('Challenge-Gewinn übersteigt die Schulden.');s.balance-=b.cents;const used=Math.min(s.challengeDebt,b.cents);s.challengeDebt-=used;reduceUnpaid(s,b.cents-used,null,true,true);}
     }
-    else if(b.type==='challenge-reward')s.points+=b.cents;
+    else if(['challenge-reward','birthday-reward'].includes(b.type))s.points+=b.cents;
     else if(b.type==='bonus'){if(b.policy.schemaVersion===2)s.points+=b.cents;else{s.credit+=b.cents;s.rewardCredit+=b.cents;s.legacyLots.set(b.paymentId,{remaining:b.cents,spent:0,redeemed:0});}s.bonuses.set(b.paymentId,b);}
     else if(b.type==='payment-reversal')reversePayment(s,b);
     else if(b.type==='correction'){
@@ -78,10 +78,10 @@
   }
   function state(){return {balance:0,count:0,credit:0,rewardCredit:0,points:0,challengeDebt:0,legacyLots:new Map(),drinks:new Map(),usages:new Map(),payments:new Map(),bonuses:new Map(),reversedPayments:new Set()};}
   function validate(account,memberId){
-    if(!account||![1,2,3,4,5,6,7,8,9].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die aktuelle App-Version verwenden und den Speicher prüfen.');
+    if(!account||![1,2,3,4,5,6,7,8,9,10].includes(account.schemaVersion)||account.memberId!==String(memberId)||!Array.isArray(account.bookings))throw new Error('Das Getränkekonto ist nicht lesbar. Bitte die aktuelle App-Version verwenden und den Speicher prüfen.');
     if((account.schemaVersion===7||account.resetEpoch!==undefined||account.resetAt!==undefined)&&(!/^[-a-zA-Z0-9]{8,80}$/.test(account.resetEpoch||'')||!Number.isFinite(Date.parse(account.resetAt))))throw new Error('Der Kontoneustart ist ungültig.');
     if(account.pin!==null&&(!account.pin||account.pin.algorithm!=='PBKDF2-SHA256'||account.pin.iterations!==ITERATIONS||!/^[a-f0-9]{32}$/.test(account.pin.salt)||!/^[a-f0-9]{64}$/.test(account.pin.hash)))throw new Error('Die Getränke-PIN ist nicht lesbar.');
-    const ids=new Set(),rewards=new Map(),rewardedPayments=new Set(),challengeMonths=new Set(),s=state();
+    const ids=new Set(),rewards=new Map(),rewardedPayments=new Set(),challengeMonths=new Set(),birthdayYears=new Set(),s=state();
     for(const b of account.bookings){
       if(account.resetAt&&Date.parse(b.createdAt)<=Date.parse(account.resetAt))throw Object.assign(new Error('Das Konto wurde zurückgesetzt. Bitte neu laden und die Eingabe erneut vornehmen.'),{code:'accessChanged'});
       if(!b||typeof b.id!=='string'||!/^[-a-zA-Z0-9]{8,150}$/.test(b.id)||ids.has(b.id)||!Number.isSafeInteger(b.cents)||b.cents<=0||!Number.isFinite(Date.parse(b.createdAt)))throw new Error('Eine Getränkebuchung ist ungültig.');
@@ -94,6 +94,7 @@
       else if(b.type==='correction'&&account.schemaVersion>=3){}
       else if(b.type==='challenge'&&account.schemaVersion>=8&&b.confirmation==='challenge'&&['in','out'].includes(b.direction)&&/^[a-f0-9-]{36}$/.test(b.gameId||'')&&b.id==='challenge-'+b.gameId&&/^[A-F0-9]{8}$/.test(b.code||'')&&Number.isSafeInteger(b.score)&&b.score>=0&&b.score<=7){}
       else if(b.type==='challenge-reward'&&account.schemaVersion>=9&&b.confirmation==='challenge'&&/^[a-f0-9-]{36}$/.test(b.gameId||'')&&b.id==='challenge-reward-'+b.gameId&&/^\d{4}-(0[1-9]|1[0-2])$/.test(b.month||'')&&Number.isSafeInteger(b.score)&&b.score>=5&&b.score<=7&&b.cents<=15000&&b.cents%POINT_UNIT===0&&!challengeMonths.has(b.month)){challengeMonths.add(b.month);}
+      else if(b.type==='birthday-reward'&&account.schemaVersion>=10&&b.confirmation==='birthday'&&Number.isInteger(b.year)&&b.year>=2026&&b.year<=9999&&b.id==='birthday-'+b.year&&b.cents<=15000&&b.cents%POINT_UNIT===0&&!birthdayYears.has(b.year)&&day(b.createdAt).startsWith(String(b.year))){birthdayYears.add(b.year);}
       else if(b.type==='payment-reversal'&&account.schemaVersion>=5){const bonus=s.bonuses.get(b.targetId);if(bonus)rewards.set(bonus.policy.id,(rewards.get(bonus.policy.id)||0)-bonus.qualifyingCents);}
       else if(b.type==='bonus'&&account.schemaVersion>=2){
         const payment=account.bookings.find(p=>p.id===b.paymentId);
@@ -126,19 +127,20 @@
   }
   function consumption(accounts,year){
     if(!/^\d{4}$/.test(String(year)))throw new Error('Bitte ein gültiges Kalenderjahr wählen.');
-    const months=Array.from({length:12},(_,month)=>({month:month+1,beer:0,wine:0,total:0,beerCents:0,wineCents:0,totalCents:0,openCents:0,paymentPointUnits:0,challengePointUnits:0,earnedPointUnits:0,redeemedPointUnits:0})),years=new Set(),seen=new Set();let outstandingCents=0,prepaidCents=0,currentPointUnits=0;
+    const months=Array.from({length:12},(_,month)=>({month:month+1,beer:0,wine:0,total:0,beerCents:0,wineCents:0,totalCents:0,openCents:0,paymentPointUnits:0,challengePointUnits:0,birthdayPointUnits:0,earnedPointUnits:0,redeemedPointUnits:0})),years=new Set(),seen=new Set();let outstandingCents=0,prepaidCents=0,currentPointUnits=0;
     for(const account of accounts){validate(account,account.memberId);if(seen.has(account.memberId))throw new Error('Ein Getränkekonto wurde doppelt geladen.');seen.add(account.memberId);
       const state=ledger(account);outstandingCents+=state.balance;prepaidCents+=state.credit-state.rewardCredit;currentPointUnits+=state.points+state.rewardCredit;
       const addPoints=(createdAt,key,units)=>{const date=day(createdAt);years.add(date.slice(0,4));if(date.startsWith(String(year))){const month=months[Number(date.slice(5,7))-1];month[key]+=units;if(key!=='redeemedPointUnits')month.earnedPointUnits+=units;}};
       for(const [id,bonus] of state.bonuses)if(!state.reversedPayments.has(id))addPoints(bonus.createdAt,'paymentPointUnits',bonus.cents);
       for(const booking of account.bookings)if(booking.type==='challenge-reward')addPoints(booking.createdAt,'challengePointUnits',booking.cents);
+      for(const booking of account.bookings)if(booking.type==='birthday-reward')addPoints(booking.createdAt,'birthdayPointUnits',booking.cents);
       for(const entry of state.drinks.values()){
         addPoints(entry.booking.createdAt,'redeemedPointUnits',entry.redeemed+entry.rewardUsed);
         const date=day(entry.booking.createdAt);years.add(date.slice(0,4));if(!entry.count||!date.startsWith(String(year)))continue;
         const month=months[Number(date.slice(5,7))-1];month[entry.booking.drink==='wine'?'wine':'beer']+=entry.count;month.total+=entry.count;month[entry.booking.drink==='wine'?'wineCents':'beerCents']+=entry.count*unitPrice(entry.booking);month.totalCents+=entry.count*unitPrice(entry.booking);month.openCents+=entry.unpaid;
       }
     }
-    return {year:String(year),beer:months.reduce((n,m)=>n+m.beer,0),wine:months.reduce((n,m)=>n+m.wine,0),total:months.reduce((n,m)=>n+m.total,0),beerCents:months.reduce((n,m)=>n+m.beerCents,0),wineCents:months.reduce((n,m)=>n+m.wineCents,0),totalCents:months.reduce((n,m)=>n+m.totalCents,0),openCents:months.reduce((n,m)=>n+m.openCents,0),outstandingCents,prepaidCents,currentPointUnits,paymentPointUnits:months.reduce((n,m)=>n+m.paymentPointUnits,0),challengePointUnits:months.reduce((n,m)=>n+m.challengePointUnits,0),earnedPointUnits:months.reduce((n,m)=>n+m.earnedPointUnits,0),redeemedPointUnits:months.reduce((n,m)=>n+m.redeemedPointUnits,0),months,years:[...years].sort().reverse()};
+    return {year:String(year),beer:months.reduce((n,m)=>n+m.beer,0),wine:months.reduce((n,m)=>n+m.wine,0),total:months.reduce((n,m)=>n+m.total,0),beerCents:months.reduce((n,m)=>n+m.beerCents,0),wineCents:months.reduce((n,m)=>n+m.wineCents,0),totalCents:months.reduce((n,m)=>n+m.totalCents,0),openCents:months.reduce((n,m)=>n+m.openCents,0),outstandingCents,prepaidCents,currentPointUnits,paymentPointUnits:months.reduce((n,m)=>n+m.paymentPointUnits,0),challengePointUnits:months.reduce((n,m)=>n+m.challengePointUnits,0),birthdayPointUnits:months.reduce((n,m)=>n+m.birthdayPointUnits,0),earnedPointUnits:months.reduce((n,m)=>n+m.earnedPointUnits,0),redeemedPointUnits:months.reduce((n,m)=>n+m.redeemedPointUnits,0),months,years:[...years].sort().reverse()};
   }
   function validateRewardSettings(p){
     const common=p&&[1,2].includes(p.schemaVersion)&&typeof p.id==='string'&&/^[-a-zA-Z0-9]{8,100}$/.test(p.id)&&typeof p.revision==='string'&&/^[-a-zA-Z0-9]{8,100}$/.test(p.revision)&&Number.isFinite(Date.parse(p.startedAt));
@@ -157,7 +159,7 @@
     validate(account,account.memberId);
     const found=account.bookings.find(b=>b.id===booking.id);
     if(found){if(JSON.stringify(found)!==JSON.stringify(booking))throw new Error('Buchungsnummer bereits anders verwendet.');return account;}
-    if(['challenge','challenge-reward'].includes(booking.type))throw Error('Challenge-Buchungen entstehen ausschließlich im Spieldienst.');
+    if(['challenge','challenge-reward','birthday-reward'].includes(booking.type))throw Error('Challenge-Buchungen entstehen ausschließlich im Spieldienst.');
     if(booking.type==='correction'&&booking.confirmation!=='admin')assertCorrectable(ledger(account),booking);
     if(booking.type==='payment'&&!booking.prepay&&booking.cents>totals(account).balance)throw Object.assign(new Error('Der offene Betrag wurde inzwischen geändert. Bitte den Zahlungsbetrag neu wählen.'),{code:'balanceChanged'});
     return validate({...account,schemaVersion:Math.max(account.schemaVersion,booking.loyaltyVersion===2||booking.prepay?6:booking.type==='payment-reversal'||booking.type==='correction'&&booking.confirmation==='admin'?5:booking.drink?4:booking.type==='correction'?3:1),bookings:[...account.bookings,{...booking}]},account.memberId);
@@ -188,7 +190,12 @@
   function appendChallengeReward(account,booking){
     validate(account,account.memberId);if(booking.type!=='challenge-reward')throw Error('Ungültiger Monatsbonus.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Monatsbonus bereits anders gebucht.');return account;}
-    return validate({...account,schemaVersion:9,bookings:[...account.bookings,{...booking}]},account.memberId);
+    return validate({...account,schemaVersion:Math.max(9,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
+  }
+  function appendBirthdayReward(account,booking){
+    validate(account,account.memberId);if(booking.type!=='birthday-reward')throw Error('Ungültiger Geburtstagsbonus.');const old=account.bookings.find(b=>b.id===booking.id);
+    if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Geburtstagsbonus bereits anders gebucht.');return account;}
+    return validate({...account,schemaVersion:Math.max(10,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendWithReward(account,booking,policy){
     validateRewardSettings(policy);
@@ -218,5 +225,5 @@
   }
   function parseEuro(raw){const text=String(raw||'').trim().replace(',','.');if(!/^\d+(\.\d{1,2})?$/.test(text))return null;const cents=Math.round(Number(text)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;}
   function paypalUrl(cents){if(!Number.isSafeInteger(cents)||cents<=0)throw new Error('Ungültiger Zahlungsbetrag.');return 'https://paypal.me/FeuerwehrWasser/'+(cents/100).toFixed(2)+'EUR';}
-  global.DrinksModel={PRICE,WINE_PRICE,POINT_UNIT,pointCost,pointText,rewardPolicy,threshold,award,unitPrice,empty,validate,totals,today,correctable,consumption,day,ledger,append,appendMany,appendAdminMany,appendChallenge,appendChallengeReward,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
+  global.DrinksModel={PRICE,WINE_PRICE,POINT_UNIT,pointCost,pointText,rewardPolicy,threshold,award,unitPrice,empty,validate,totals,today,correctable,consumption,day,ledger,append,appendMany,appendAdminMany,appendChallenge,appendChallengeReward,appendBirthdayReward,appendWithReward,rewardState,validateRewardSettings,createPin,verifyPin,parseEuro,paypalUrl};
 })(typeof window==='undefined'?globalThis:window);
