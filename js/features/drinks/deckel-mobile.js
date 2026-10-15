@@ -8,7 +8,7 @@
   const wrapper=$('portal-page-'+pages[id]);if(wrapper){g.scrollTo?.({top:0,left:0,behavior:'instant'});wrapper.focus?.({preventScroll:true});}else if(!target.hidden){target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});target.focus?.({preventScroll:true});}
   if(typeof g.CustomEvent==='function')g.dispatchEvent(new CustomEvent('portal-pagechange',{detail:{page:id}}));
  }
- function show(value){visible=Boolean(value);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
+ function show(value){if(value&&g.history?.replaceState&&!pages[g.history.state?.portalPage])g.history.replaceState({...g.history.state,portalPage:current},'');visible=Boolean(value);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
  function init(){const nav=$('deckel-nav');if(!nav)return;nav.querySelectorAll('[data-deckel-target]').forEach(button=>button.addEventListener('click',()=>jump(button.dataset.deckelTarget)));
   if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');
   g.addEventListener('popstate',event=>{if(pages[event.state?.portalPage])jump(event.state.portalPage,false);});
