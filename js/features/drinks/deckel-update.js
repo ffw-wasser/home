@@ -23,9 +23,9 @@
   }catch{/* A failed update check never blocks the account. */}finally{busy=false;}
  }
  function reload(){
-  if(g.DeckelActions?.hasUnsaved?.()){
+  if(g.DeckelActions?.hasUnsaved?.()||g.H2OPortal?.hasUnsaved?.()){
    $('deckel-update-banner').hidden=false;
-   $('deckel-update-message').textContent='Bitte vorgemerkte Getränke zuerst speichern oder verwerfen. Bei einem versendeten Vorgang zunächst die Bestätigung abwarten.';
+   $('deckel-update-message').textContent='Bitte vorgemerkte Getränke zuerst speichern oder verwerfen. Bei versendeten Buchungen oder Termin-Rückmeldungen zunächst die Bestätigung abwarten bzw. die Speicherung erneut prüfen.';
    return;
   }
   // Reload the public HTML past stale browser caches, while preserving the

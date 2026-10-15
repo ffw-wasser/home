@@ -748,7 +748,7 @@
  // for six hours after the end so an ongoing iPad attendance session can
  // finish. Never remove recurring birthday assignments or the Google source.
  async function pruneFinishedEvents(env,cal,now=Date.now()){
-  const cutoff=now-6*3600000;
+  const cutoff=now-6*3600000,currentEvents=new Map(cal.events.map(e=>[e.id,e]));
   const expired=cal.events.filter(e=>e.kind!=='birthday'&&Number.isFinite(e.end)&&e.end<=cutoff).slice(0,100);
   const obsoleteIds=new Set(expired.map(e=>e.id));
   const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();
@@ -757,7 +757,9 @@
    let changed=false;
    for(const [id,rule] of Object.entries(rules)){
     if(!rule||rule.kind==='birthday')continue; // Series-wide birthdays remain valid for coming years.
-    if(obsoleteIds.has(id)||(Number.isFinite(rule.expiresAt)&&rule.expiresAt<=cutoff)){
+    // A moved event keeps its identity; its current end supersedes the saved expiry.
+    const expiresAt=currentEvents.has(id)?currentEvents.get(id).end:rule.expiresAt;
+    if(obsoleteIds.has(id)||(Number.isFinite(expiresAt)&&expiresAt<=cutoff)){
      obsoleteIds.add(id);delete rules[id];changed=true;
     }
    }
@@ -807,7 +809,7 @@
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId));
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
-  const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/admin/portal/classify'].includes(path)?cachedCalendar(env,path==='/portal/list'?15*60*1000:24*60*60*1000):calendar(env)));
+  const cal=await decorate(env,await (['/portal/list','/admin/portal/list'].includes(path)?cachedCalendar(env):calendar(env)));
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
    const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
