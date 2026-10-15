@@ -19,3 +19,9 @@
 #portal-admin-review-events .portal-recipient-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:2px 12px;max-height:230px;overflow:auto;padding:8px 0}
 #portal-admin-review-events .portal-recipient-list[hidden]{display:none}
 #portal-admin-review-events .portal-recipient-choices input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:#176b36}
+
+/* Kalenderverwaltung: kompakter Terminart-Filter */
+#settingsPortalView .portal-review-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:14px 0 10px}
+#settingsPortalView .portal-review-filter label{margin:0;font-weight:700}
+#settingsPortalView .portal-review-filter select{width:min(100%,260px);min-width:190px}
+#settingsPortalView .portal-review-filter p{margin:0;color:#46607e;font-size:13px}
