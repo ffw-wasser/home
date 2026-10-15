@@ -1,3 +1,9 @@
+## H₂O-Farbgebung ab 2026.10.15.3
+
+Die Handyansichten verwenden Dunkelblau und Wasserblau mit hellen Karten und
+orangefarbenem Navigationsakzent passend zum H₂O-Icon. Die Farben für Erfolg
+und Fehler bleiben unterscheidbar.
+
 ## Handyansichten ab 2026.10.15.2
 
 Das H₂O Portal öffnet mit Proben & Terminen. Die untere Navigation wechselt
