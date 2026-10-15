@@ -19,7 +19,7 @@
   function add(uid,event,original,start,end,recurring){
    if(event.component.getFirstPropertyValue('status')==='CANCELLED')return;
    const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if(ms<from||ms>to)return;
-   events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
+   events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
   }
   for(const [uid,items] of groups){
    const main=items.find(c=>!c.hasProperty('recurrence-id'));

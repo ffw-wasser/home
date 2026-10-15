@@ -20,12 +20,16 @@ produktiven Kalender-Link ausschließlich in der geschützten Anwendung eingeben
    **Einstellungen → H₂O Portal** den öffentlichen Google-iCal-Link eintragen,
    Erinnerungszeit auswählen und speichern. Vorgabe: 24 Stunden; automatischen
    Versand ausdrücklich über den Schalter einschalten.
-5. **Kalendereinträge laden:** relevante Einträge als Probetermin einordnen und
-   für Anmeldung/Erinnerung freigeben. Ohne Freigabe erscheint kein Anmeldeknopf.
-   Geburtstage separat als Geburtstag einordnen und dem richtigen Mitglied
-   zuordnen. Diese Zuordnung gilt für die Geburtstagsserie; gleiche Namen
-   werden niemals automatisch zugeordnet. Nur das zugeordnete Mitglied bekommt
-   den Bonus. Ein unzugeordneter Geburtstag vergibt keine Punkte.
+5. **Kalendereinträge laden:** Geburtstage (Geburtstag, Birthday, Geb. oder 🎂)
+   werden bei eindeutig passendem vollständigem Mitgliedernamen automatisch
+   zugeordnet. Reihenfolge, Groß-/Kleinschreibung und übliche Umlautschreibweisen
+   dürfen abweichen. Teilnamen und doppelte Namen bleiben zur manuellen Prüfung
+   offen. Ohne Zuordnung kein Bonus. Manuelle Zuordnungen haben Vorrang und
+   gelten für die Geburtstagsserie. Sonstige Einträge werden als Probe erkannt,
+   wenn der Titel Probe, Gesamtprobe, Hauptprobe oder Übungsprobe enthält;
+   übrige Einträge als Sonderprobe. Die Freigabe für Anmeldung und Erinnerung
+   bleibt ausdrücklich manuell. Einträge können auch von der Teilnahmefunktion
+   ausgenommen werden. Bestehende manuelle Einordnungen bleiben erhalten.
 6. Unter **Einstellungen → Getränkeverwaltung → Treuepunkte** stehen
    Einzahlungsbonus, Monats-Challenge und Geburtstagspunkte gemeinsam.
    Geburtstag: standardmäßig 1, einstellbar von 1 bis 100 ganzen Punkten.

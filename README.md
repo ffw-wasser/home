@@ -1,3 +1,11 @@
+## Automatische Kalendereinordnung ab 2026.10.15.6
+
+Eindeutige vollständige Geburtstagsnamen werden den Mitgliedern zugeordnet.
+Probe wird als Probe erkannt, übrige Termine als Sonderprobe. Manuelle
+Einordnungen bleiben erhalten; die Freigabe für Anmeldungen bleibt manuell.
+Den bestehenden Cloudflare-Worker mit `cloudflare/push/worker.bundle.js`
+aktualisieren. Keine neuen Secrets oder SQL-Anweisungen nötig.
+
 ## H₂O-Farbgebung ab 2026.10.15.3
 
 Die Handyansichten verwenden Dunkelblau und Wasserblau mit hellen Karten und
