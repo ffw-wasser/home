@@ -41,10 +41,18 @@
      const recognition=node('p',e.automatic?(e.kind==='birthday'?(e.memberId?'Automatisch zugeordnet.':'Geburtstag erkannt. Keine eindeutige Namenszuordnung – bitte Mitglied auswählen.'):'Automatisch erkannt: '+e.sessionType+'. Zur Anmeldung bitte freigeben.'):'Manuell festgelegte Einordnung.');const note=node('p'),save=node('button','Einordnung speichern');save.type='button';save.className='outline-button';const update=()=>{approvalLabel.hidden=!['probe','special'].includes(kind.value);personLabel.hidden=kind.value!=='birthday';recipientsLabel.hidden=recipients.hidden=kind.value!=='special';note.textContent=kind.value==='birthday'?'Keine Anmeldung und keine Probe-Erinnerung. Am Geburtstag wird dem zugeordneten Mitglied einmal jährlich der eingestellte Geburtstagsbonus gutgeschrieben. Die Punktzahl steht unter Treuepunkte.':kind.value==='special'?'Nur freigegebene Empfänger sehen diese Sonderprobe und können sich anmelden. Bei „Alle Mitglieder“ erhalten alle den Termin.':kind.value==='probe'?'Erst nach Freigabe im Portal sichtbar. Normale Proben gelten für alle Mitglieder.':'Keine Anmeldung und keine Termin-Erinnerung.';};const changed=()=>{reviewEdited.add(e.id);card.dataset.saved='false';card.dataset.state='edited';badge.textContent='Geändert · noch nicht gespeichert';update();reviewControls();};kind.onchange=changed;approval.onchange=changed;person.onchange=changed;all.onchange=()=>{updateRecipients();changed();};for(const check of people)check.onchange=changed;update();save.disabled=cal.stale;
     save.onclick=()=>run(async()=>{
       const restricted=kind.value==='special'&&!all.checked;
-      if(restricted&&cal.recipientFeatureVersion!==1)throw Error('Der Cloudflare-Worker unterstützt die Empfängerauswahl noch nicht. Bitte worker.bundle.js im bestehenden Cloudflare-Worker aktualisieren und veröffentlichen. Es wurde nichts gespeichert.');
+      // This card may have been opened before the Worker was deployed.
+      // Always check the ACTIVE service again, instead of trusting the older
+      // list response captured when the card was rendered.
+      const latest=restricted?await request('list'):null;
+      if(restricted&&latest?.recipientFeatureVersion!==1){
+       const active=(await connection()).origin;
+       throw Error('Die aktuell verbundene Cloudflare-Adresse ('+active+') meldet noch keine Empfängerauswahl. Bitte prüfen, ob genau dieser Worker in Cloudflare unter Produktion veröffentlicht wurde. Danach „Kalendereinträge laden“ drücken. Es wurde nichts gespeichert.');
+      }
+      if(restricted&&!latest.events.some(item=>item.id===e.id))throw Error('Die Sonderprobe wurde inzwischen geändert. Bitte Kalendereinträge neu laden.');
       const ids=restricted?people.filter(c=>c.checked).map(c=>c.value):null;
       if(restricted&&!ids.length)throw Error('Bitte mindestens ein Mitglied für die Sonderprobe auswählen.');
-      const data={eventId:e.id,kind:kind.value==='special'?'probe':kind.value,...(['probe','special'].includes(kind.value)?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:['probe','special'].includes(kind.value)&&approval.checked,memberId:kind.value==='birthday'?person.value:null,expectedVersion:cal.rulesVersion,...(kind.value==='special'?{recipientIds:ids}:{})};
+      const data={eventId:e.id,kind:kind.value==='special'?'probe':kind.value,...(['probe','special'].includes(kind.value)?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:['probe','special'].includes(kind.value)&&approval.checked,memberId:kind.value==='birthday'?person.value:null,expectedVersion:restricted?latest.rulesVersion:cal.rulesVersion,...(kind.value==='special'?{recipientIds:ids}:{})};
       const matches=entry=>Array.isArray(entry?.recipientIds)&&entry.recipientIds.length===ids.length&&ids.every(id=>entry.recipientIds.includes(id));
       // Current Workers validate recipients and approval together, in one D1
       // rules update. Never temporarily turn off approval: a timeout between
