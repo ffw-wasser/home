@@ -5979,10 +5979,11 @@ header #exportResetButton {
   z-index: 1!important;
 }
 
+/* Die Anwesenheits-Kopfzeile muss beim Scrollen unter der Hauptnavigation liegen. */
 html body .participant-command-header {
   position: sticky!important;
   top: 0!important;
-  z-index: 2147483000!important;
+  z-index: 30!important;
   isolation: isolate!important;
   transform: translateZ(0);
   overflow: visible!important;
