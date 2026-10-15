@@ -46,22 +46,16 @@
       if(restricted&&!ids.length)throw Error('Bitte mindestens ein Mitglied für die Sonderprobe auswählen.');
       const data={eventId:e.id,kind:kind.value==='special'?'probe':kind.value,...(['probe','special'].includes(kind.value)?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:['probe','special'].includes(kind.value)&&approval.checked,memberId:kind.value==='birthday'?person.value:null,expectedVersion:cal.rulesVersion,...(kind.value==='special'?{recipientIds:ids}:{})};
       const matches=entry=>Array.isArray(entry?.recipientIds)&&entry.recipientIds.length===ids.length&&ids.every(id=>entry.recipientIds.includes(id));
-      // First store a restricted Sonderprobe without releasing it. Older Workers
-      // ignore recipientIds: verify the round-trip BEFORE enabling invitations.
-      const first=await request('classify',restricted?{...data,approved:false}:data);
-      if(restricted){
-       if(first.recipientFeatureVersion!==1||!Array.isArray(first.recipientIds)||first.recipientIds.length!==ids.length||!ids.every(id=>first.recipientIds.includes(id)))throw Error('Der Cloudflare-Worker hat die Empfängerliste nicht bestätigt. Sonderprobe bleibt gesperrt. Bitte Worker aktualisieren und erneut versuchen.');
-       const checked=await request('list'),stored=checked.events.find(item=>item.id===e.id);
-       if(!matches(stored)){
-        reviewShowSaved=true;lastLoad=0;await reviewCalendar();
-        throw Error('Die Mitgliederauswahl wurde nicht gespeichert. Die Sonderprobe bleibt gesperrt. Bitte den aktuellen Cloudflare-Worker veröffentlichen und erneut speichern.');
-       }
-       if(data.approved)await request('classify',{...data,expectedVersion:first.version});
-      }
+      // Current Workers validate recipients and approval together, in one D1
+      // rules update. Never temporarily turn off approval: a timeout between
+      // two requests otherwise leaves already approved events disabled.
+      const saved=await request('classify',data);
+      if(restricted&&(saved.recipientFeatureVersion!==1||!Array.isArray(saved.recipientIds)||saved.recipientIds.length!==ids.length||!ids.every(id=>saved.recipientIds.includes(id))))throw Error('Der Cloudflare-Worker hat die Empfängerliste nicht bestätigt. Bitte Worker aktualisieren und Einordnung prüfen.');
       admin();reviewShowSaved=true;lastLoad=0;await reviewCalendar();
       const stored=reviewSnapshot?.events.find(item=>item.id===e.id);
-      if(restricted&&!matches(stored))throw Error('Empfängerauswahl konnte nicht bestätigt werden. Bitte den Kalender erneut prüfen.');
-      $('status').textContent='✓ Einordnung und Empfängerauswahl gespeichert.';
+      if(restricted&&!matches(stored))throw Error('Die Empfängerauswahl konnte nach dem Speichern nicht bestätigt werden. Bitte Kalender neu laden und Empfänger prüfen.');
+      if(stored?.approved!==data.approved)throw Error('Die Freigabe für Anmeldung und Erinnerungen wurde nicht wie gewünscht übernommen. Bitte den Termin prüfen.');
+      $('status').textContent='✓ Einordnung, Empfänger und Freigabe gespeichert.';
      });card.append(badge,h,recognition,kind,approvalLabel,personLabel,recipientsLabel,recipients,note,save);$('review-events').append(card);
    }reviewControls();$('review-status').textContent=(cal.recipientFeatureVersion===1?'':'⚠ Der Cloudflare-Worker ist für die Empfängerauswahl nicht aktuell. Bitte das neue worker.bundle.js in Cloudflare veröffentlichen. Eine Auswahl einzelner Mitglieder ist bis dahin nicht möglich. ')+cal.events.filter(e=>e.automatic!==false||e.kind==='birthday'&&!e.memberId).length+' offene Einträge · '+cal.events.filter(e=>e.automatic===false&&!(e.kind==='birthday'&&!e.memberId)).length+' gespeichert · '+cal.events.length+' Kalendereinträge · '+cal.events.filter(e=>e.approved&&e.kind==='probe').length+' Probetermine freigegeben.'+(cal.stale?' Kalender derzeit nicht aktuell bestätigt.':'');
   }catch(e){if(version===calendarGeneration){$('review-status').textContent=e.message;$('review-auto').disabled=true;}}
