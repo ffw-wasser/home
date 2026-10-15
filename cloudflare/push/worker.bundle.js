@@ -683,12 +683,18 @@
   if(e.birthdayHint){const title=e.title.replace(/geburtstag|birthday|geb\.|🎂/gi,' ').replace(/\b(?:von|happy)\b/gi,' '),key=nameKey(title),matches=(roster?.members||[]).filter(m=>nameKey(m.name)===key);return {kind:'birthday',sessionType:null,memberId:matches.length===1?matches[0].id:null};}
   return {kind:'probe',sessionType:!/sonderprobe/i.test(e.title)&&/(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title)?'Probe':'Sonderprobe',memberId:null};
  }
- async function decorate(env,cal){const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');return {...cal,rulesVersion:row?.version||0,events:cal.events.map(e=>{const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind;return {...e,kind,sessionType:kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null,automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null};})};}
+ async function decorate(env,cal){const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');return {...cal,rulesVersion:row?.version||0,events:cal.events.map(e=>{const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null;return {...e,kind,sessionType,automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds:sessionType==='Sonderprobe'&&Array.isArray(rule?.recipientIds)?rule.recipientIds:null};})};}
+ function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
+ function memberEvent(event){const {recipientIds,...visible}=event;return visible;}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
   if(data.kind==='birthday'&&data.memberId&&!roster?.members.some(m=>m.id===data.memberId))fail('Bitte den Geburtstag einem aktuellen Mitglied zuordnen.',400);
+  const targetType=data.kind==='probe'?(data.sessionType||event.sessionType||'Sonderprobe'):null;
+  if(data.recipientIds!==undefined&&data.recipientIds!==null){
+   if(targetType!=='Sonderprobe'||!Array.isArray(data.recipientIds)||!data.recipientIds.length||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||!roster?.members||data.recipientIds.some(id=>typeof id!=='string'||!roster.members.some(m=>m.id===id)))fail('Bitte gültige Empfänger für die Sonderprobe auswählen.',400);
+  }
   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
-  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,...(data.kind==='probe'?{sessionType:data.sessionType||event.sessionType||'Sonderprobe'}:{})};
+  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,...(data.kind==='probe'?{sessionType:targetType,...(targetType==='Sonderprobe'&&Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
   const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) VALUES(1,?)').bind(payload).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1};
  }
  async function birthdayPolicy(env){const row=await env.DB.prepare('SELECT * FROM portal_bonus_policy WHERE id=1').first();return {row,value:await open(env,row,'portal-birthday-policy')||{revision:'birthday-default-v1',awardUnits:150}};}
@@ -719,9 +725,9 @@
  async function send(env,event,mode,requestId){
   let accepted=0,failed=0,excused=0,duplicate=0,processed=0;const people=await recipients(env),campaign=mode==='auto'?String(event.start):requestId,already=new Set((await env.DB.prepare('SELECT member FROM portal_sends WHERE event=? AND campaign=?').bind(event.id,campaign).all()).results.map(r=>r.member)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');let remaining=0;const replyRows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of replyRows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
   for(const [member,records] of people){
-   if(roster&&!roster.members.some(m=>m.id===member))continue;if(already.has(member)){duplicate++;continue;}
+   if(roster&&!roster.members.some(m=>m.id===member))continue;if(!isRecipient(event,member))continue;if(already.has(member)){duplicate++;continue;}
    if(statuses.get(member)==='excused'){excused++;continue;}if(processed>=2){remaining++;continue;}processed++;
-   const id=await hash('portal-send:'+event.id+':'+member+':'+(mode==='auto'?event.start:requestId)),now=Date.now(),payload=await L.seal(env,{event,status:'reminder'},'portal-send:'+id);
+   const id=await hash('portal-send:'+event.id+':'+member+':'+(mode==='auto'?event.start:requestId)),now=Date.now(),payload=await L.seal(env,{event:memberEvent(event),status:'reminder'},'portal-send:'+id);
    // Claim before delivery: ambiguous network responses are never sent a second time.
    const claim=await env.DB.prepare("INSERT OR IGNORE INTO portal_sends(id,event,member,payload,status,campaign,created_at) SELECT ?,?,?,?,'pending',?,? WHERE NOT EXISTS(SELECT 1 FROM portal_sends WHERE member=? AND created_at>?)").bind(id,event.id,member,payload,campaign,now,member,now-60000).run();if(!claim.meta.changes){duplicate++;continue;}
    let a=0,f=0;
@@ -767,23 +773,23 @@
    const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM devices WHERE alias=?)<5 ON CONFLICT(id) DO UPDATE SET revision=excluded.revision').bind(id,data.alias,data.revision,url,data.alias).run();if(!saved.meta.changes&&!old)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();return {ok:true};
   }
   if(path==='/portal/notification'){
-   const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe');
-   return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?event:null};
+   const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId));
+   return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
   const cal=await decorate(env,await (path==='/portal/list'?cachedCalendar(env):calendar(env)));
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
-   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe').map(e=>({...e,...(map.get(e.id)||{status:'open',version:0})}))};
+   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
   }
   if(path==='/admin/portal/list')return cal;
-  const event=cal.events.find(e=>e.id===data.eventId&&(e.approved&&e.kind==='probe'));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
+  const event=cal.events.find(e=>e.id===data.eventId&&(e.approved&&e.kind==='probe')&&(admin||isRecipient(e,record.memberId)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
   if(path==='/portal/overview'){
    if(!roster?.members.some(m=>m.id===record.memberId&&m.leader))fail('Diese Übersicht ist nur für hinterlegte Gruppenführer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   return {event,stale:cal.stale,members:roster.members.map(m=>({name:m.name,status:statuses.get(m.id)||'open'}))};
+   return {event:memberEvent(event),stale:cal.stale,members:roster.members.filter(m=>isRecipient(event,m.id)).map(m=>({name:m.name,status:statuses.get(m.id)||'open'}))};
   }
   if(path==='/admin/portal/replies'){
-   const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,stale:cal.stale,fetchedAt:cal.fetchedAt};
+   const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,stale:cal.stale,fetchedAt:cal.fetchedAt};
   }
   if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden. Bitte später erneut versuchen.',503);
   if(event.start<=Date.now())fail('Der Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad erfassen.');
@@ -816,7 +822,7 @@
   const cal=await decorate(env,await cachedCalendar(env));
   // Only explicitly approved probe dates. Never expose member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
-   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe').map(e=>({
+   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&!Array.isArray(e.recipientIds)).map(e=>({
     id:e.id,title:e.sessionType==='Probe'?'Probe':'Sonderprobe',start:e.start,end:e.end,
     allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',kind:'probe',approved:true
    }))};
