@@ -697,7 +697,7 @@
    if(targetType!=='Sonderprobe'||!Array.isArray(data.recipientIds)||!data.recipientIds.length||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||!roster?.members||data.recipientIds.some(id=>typeof id!=='string'||!roster.members.some(m=>m.id===id)))fail('Bitte gültige Empfänger für die Sonderprobe auswählen.',400);
   }
   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
-  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,...(data.kind==='probe'?{sessionType:targetType,attendanceType,...(targetType==='Sonderprobe'&&Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
+  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,...(data.kind==='probe'?{sessionType:targetType,attendanceType,...(targetType==='Sonderprobe'&&Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
   const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) VALUES(1,?)').bind(payload).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:1,attendanceTypeVersion:1,attendanceType,recipientIds:targetType==='Sonderprobe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
  }
  async function birthdayPolicy(env){const row=await env.DB.prepare('SELECT * FROM portal_bonus_policy WHERE id=1').first();return {row,value:await open(env,row,'portal-birthday-policy')||{revision:'birthday-default-v1',awardUnits:150}};}
@@ -744,8 +744,36 @@
   }
   return {accepted,failed,excused,duplicate,remaining};
  }
+ // Completed calendar events are no longer managed in H₂O. Keep their replies
+ // for six hours after the end so an ongoing iPad attendance session can
+ // finish. Never remove recurring birthday assignments or the Google source.
+ async function pruneFinishedEvents(env,cal,now=Date.now()){
+  const cutoff=now-6*3600000;
+  const expired=cal.events.filter(e=>e.kind!=='birthday'&&Number.isFinite(e.end)&&e.end<=cutoff).slice(0,100);
+  const obsoleteIds=new Set(expired.map(e=>e.id));
+  const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();
+  if(row){
+   const rules=await open(env,row,'portal-rules')||{};
+   let changed=false;
+   for(const [id,rule] of Object.entries(rules)){
+    if(!rule||rule.kind==='birthday')continue; // Series-wide birthdays remain valid for coming years.
+    if(obsoleteIds.has(id)||(Number.isFinite(rule.expiresAt)&&rule.expiresAt<=cutoff)){
+     obsoleteIds.add(id);delete rules[id];changed=true;
+    }
+   }
+   if(changed){
+    const payload=await L.seal(env,rules,'portal-rules');
+    // If another administrator saved rules concurrently, preserve their edits.
+    // The next Cron pass will retry cleanup using the newest version.
+    const result=await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,row.version).run();
+    if(!result.meta.changes)return;
+   }
+  }
+  for(const id of obsoleteIds)await env.DB.prepare('DELETE FROM portal_replies WHERE event=?').bind(id).run();
+ }
  async function scheduled(env){
   await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env));if(cal.stale)return;
+  await pruneFinishedEvents(env,cal);
   await env.DB.prepare('DELETE FROM portal_sends WHERE created_at<?').bind(Date.now()-30*DAY).run();
   await env.DB.prepare('DELETE FROM portal_replies WHERE updated_at<?').bind(Date.now()-400*DAY).run();
   if(await awardBirthdays(env,cal))return;
