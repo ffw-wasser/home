@@ -59,3 +59,11 @@ test('Theater-Zurücksetzen schützt vor Fehlbedienung, bewahrt Preisliste und v
  assert.equal((await f.call('theater/reset',reset,null,true)).status,409);
  assert.equal((await list(f)).value.orders.length,1,'Veralteter Reset darf spätere Bestellungen nicht löschen');
 });
+
+test('Rubrikfarben werden validiert, am Handy ausgeliefert und beim Zurücksetzen erhalten',async()=>{
+ const f=await setup();const colored={...catalog,items:catalog.items.map(p=>({...p,categoryColor:'#006c70'}))};
+ const saved=await f.call('theater/save',{eventId:eid,expectedVersion:1,catalog:colored},null,true);assert.equal(saved.status,200);assert.equal(saved.value.event.items[0].categoryColor,'#006c70');
+ const phone=await f.call('theater/events');assert.equal(phone.value.events[0].items[1].categoryColor,'#006c70');
+ const invalid={...colored,items:colored.items.map(p=>({...p,categoryColor:'url(unsafe)'}))};assert.equal((await f.call('theater/save',{eventId:eid,expectedVersion:2,catalog:invalid},null,true)).status,400);
+ const reset=await f.call('theater/reset',{eventId:eid,expectedVersion:2,confirmation:'ZURÜCKSETZEN'},null,true);assert.equal(reset.status,200);assert.equal(reset.value.event.items[0].categoryColor,'#006c70');
+});
