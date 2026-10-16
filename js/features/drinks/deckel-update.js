@@ -1,6 +1,8 @@
 /* UI updates are separate from account refreshes; private fragments stay local. */
 (function(g){
  'use strict';const $=id=>document.getElementById(id);let busy=false;
+ const updateMessage='Eine neue Ansicht ist verfügbar. Bitte die Ansicht neu laden.';
+ function resume(){if(document.hidden)return;$('deckel-update-message').textContent=updateMessage;check();}
  // Only an actually newer release should display the banner. A previous
  // release.json was older than deckel.html, causing an endless update loop.
  function newer(remote,local){
@@ -19,13 +21,17 @@
    const value=await response.json(),banner=$('deckel-update-banner');
    if(!newer(value.build,build)){banner.hidden=true;return;}
    banner.hidden=false;
-   $('deckel-update-message').textContent='Eine neue Deckel-Ansicht ist verfügbar. Bitte die Ansicht neu laden.';
+   $('deckel-update-message').textContent=updateMessage;
   }catch{/* A failed update check never blocks the account. */}finally{busy=false;}
  }
  function reload(){
-  if(g.DeckelActions?.hasUnsaved?.()||g.H2OPortal?.hasUnsaved?.()){
+  const messages=[];
+  if(g.DeckelActions?.hasUnsaved?.())messages.push('Mein Deckel: Vorgemerkte Getränke zuerst speichern oder verwerfen. Bei einer gesendeten Buchung die Speicherung erneut prüfen.');
+  if(g.TheaterPhone?.hasUnsaved?.())messages.push('Theater: Die vorgemerkte Bestellung zuerst senden oder die Mengen mit Minus auf null setzen. Bei unbestätigter Übertragung „Übertragung erneut prüfen“ wählen.');
+  else if(g.H2OPortal?.hasUnsaved?.())messages.push('Termine: Bei unbestätigten Termin-Rückmeldungen die Bestätigung abwarten oder „Speicherung erneut prüfen“ wählen.');
+  if(messages.length){
    $('deckel-update-banner').hidden=false;
-   $('deckel-update-message').textContent='Bitte vorgemerkte Getränke zuerst speichern oder verwerfen. Bei versendeten Buchungen oder Termin-Rückmeldungen zunächst die Bestätigung abwarten bzw. die Speicherung erneut prüfen.';
+   $('deckel-update-message').textContent=messages.join(' ');
    return;
   }
   // Reload the public HTML past stale browser caches, while preserving the
@@ -38,7 +44,8 @@
   for(const id of ['deckel-update-now','deckel-update-reload'])$(id).onclick=reload;
   check();
   g.setInterval(()=>{if(!document.hidden)check();},60000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)check();});
+  document.addEventListener('visibilitychange',resume);
+  g.addEventListener?.('pageshow',resume);
  }
  g.DeckelUpdate={check,reload};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
