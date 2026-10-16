@@ -3,10 +3,12 @@ const read=relative=>fs.readFileSync(path.join(__dirname,'..',relative),'utf8');
 const html=read('deckel.html'),css=read('css/features/deckel.css'),portalCss=read('css/features/portal.css'),view=read('js/features/drinks/deckel-view.js');
 const start=html.indexOf('<article id="coaster"'),end=html.indexOf('</article>',start);
 const face=html.slice(start,end);
-test('Bierdeckel zeigt nur Status und Geldbetrag; Hilfetexte stehen außerhalb',()=>{
+test('Flacher Bierdeckel und Betrag stehen getrennt; Hilfetexte bleiben außerhalb',()=>{
  assert.ok(start>=0&&end>start,'Bierdeckel gefunden');
- assert.match(face,/<p id="balanceLabel">Offen<\/p>/);
- assert.match(face,/<strong id="balance"><\/strong>/);
+ assert.doesNotMatch(face,/id="(?:balance|balanceLabel)"/);
+ assert.match(html.slice(end),/<div class="deckel-balance-info"><p id="balanceLabel">Offen<\/p><strong id="balance"><\/strong>/);
+ assert.match(css,/aspect-ratio:2\.6;min-height:0/);
+ assert.doesNotMatch(css,/min-height:(?:230|205)px/);
  for(const id of ['updated','thanks','deckel-quote'])assert.doesNotMatch(face,new RegExp('id="'+id+'"'),'kein '+id+' auf dem Deckel');
  assert.doesNotMatch(face,/deckel-brand|Feuerwehr Wasser/);
  for(const id of ['updated','thanks','deckel-quote','deckel-tap-hint'])assert.match(html.slice(end),new RegExp('id="'+id+'"'));
