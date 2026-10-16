@@ -31,3 +31,13 @@
 
 /* Own evidence: text and status colors remain readable on narrow phones. */
 .portal-evidence{padding:18px;background:#fff;border:1px solid #c4d0df;border-radius:18px;margin:0 0 26px}.portal-evidence h2{margin-top:0}.portal-evidence>p{font-size:13px;color:#385270;line-height:1.6}.portal-evidence-group{margin:12px 0;border:1px solid #c4d0df;border-left:5px solid #748297;border-radius:12px;padding:12px;background:#f4f6f9}.portal-evidence-group[data-state=valid]{border-left-color:#26724a;background:#eef7f1}.portal-evidence-group[data-state=soon]{border-left-color:#a67316;background:#fff7e5}.portal-evidence-group[data-state=expired]{border-left-color:#ad3543;background:#fff0f1}.portal-evidence-group summary{cursor:pointer;min-height:48px;line-height:1.5}.portal-evidence-group summary span{display:block;font-size:13px}.portal-evidence-group p,.portal-evidence-group dd{font-size:14px;line-height:1.6;overflow-wrap:anywhere}.portal-evidence-group dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px;border-top:1px solid #c4d0df;padding-top:12px}.portal-evidence-group dt{font-size:13px;font-weight:700;overflow-wrap:anywhere}.portal-evidence-group dd{margin:0}@media(max-width:380px){.portal-evidence-group dl{grid-template-columns:minmax(0,1fr)}.portal-evidence-group dd{margin-bottom:8px}}
+
+/* On phones, actionable evidence stays short; full records follow the calendar. */
+.portal-priority{margin:18px 0;padding:16px;border:1px solid #d8b975;border-left:5px solid #a67316;border-radius:14px;background:#fff7e5}
+.portal-priority[data-state=expired]{background:#fff0f1;border-color:#ad3543}
+.portal-priority h3{font-size:18px;margin:0 0 10px}.portal-priority p{font-size:14px;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}.portal-priority button{min-height:48px;margin-top:8px}
+.portal-later-events{border:1px solid #c4d0df;border-radius:16px;padding:0 14px;margin:20px 0}
+.portal-later-events>summary,.portal-evidence>summary{cursor:pointer;min-height:52px;padding:14px 0;font-size:18px;font-weight:750;line-height:1.4}
+#portal-events>h3{font-size:18px;margin:22px 0 10px}#portal-events>h3+.portal-event{margin-top:8px}
+#portal-evidence{margin:24px 0 0;padding:0 16px}#portal-evidence[open]{padding-bottom:16px}
+#portal-priority[hidden],#portal-evidence[hidden]{display:none!important}
