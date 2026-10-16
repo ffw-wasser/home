@@ -1,6 +1,6 @@
 /* Separate portal screens. Personal credentials remain in the URL fragment. */
 (function(g){
- 'use strict';const $=id=>document.getElementById(id),pages={'portal-section':'terms',account:'deckel','portal-points':'points','deckel-more':'more'};let visible=false,current='portal-section';
+ 'use strict';const $=id=>document.getElementById(id),pages={'portal-section':'terms','portal-evidence':'evidence',account:'deckel','portal-points':'points','deckel-more':'more'};let visible=false,current='portal-section';
  function paint(){ $('deckel-nav')?.querySelectorAll('[data-deckel-target]').forEach(button=>{if(button.dataset.deckelTarget===current)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});}
  function sync(){for(const [id,page] of Object.entries(pages)){const wrapper=$('portal-page-'+page);if(wrapper)wrapper.hidden=!visible||id!==current;}paint();}
  function jump(id,remember=true){if(id==='phone-menu')id='account';if(!visible||!pages[id])return;const target=$(id);if(!target)return;const changed=id!==current;current=id;

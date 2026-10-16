@@ -24,3 +24,9 @@ test('Bildschirmtastatur verkleinert den Inhaltsbereich; nach Schließen kehrt d
  focused=true;events.focusin();viewport.height=420;events['viewport:resize']();assert.equal(classes.has('keyboard-open'),true);assert.equal(properties.get('--portal-viewport-height'),'420px');
  focused=false;viewport.height=844;events['viewport:resize']();assert.equal(classes.has('keyboard-open'),false);assert.equal(properties.has('--portal-viewport-height'),false);
 });
+
+test('Meine Nachweise öffnet eine eigene Seite und erhält den privaten Zugang beim Wechsel zum Deckel',()=>{
+ const dom=nodes(),buttons=['portal-section','portal-evidence','account','portal-points','deckel-more'].map(id=>{const n=new Node('button');n.dataset.deckelTarget=id;return n;});dom['deckel-nav'].querySelectorAll=()=>buttons;
+ const hash='#test-private-access',ctx=vm.createContext({location:{hash},innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);ctx.DeckelMobile.jump('portal-evidence');assert.equal(dom['portal-page-evidence'].hidden,false);assert.equal(dom['portal-page-terms'].hidden,true);assert.equal(dom['portal-page-deckel'].hidden,true);assert.equal(buttons[1].attributes['aria-current'],'page');assert.equal(dom['portal-page-evidence'].focused,true);
+ ctx.DeckelMobile.jump('account');assert.equal(dom['portal-page-evidence'].hidden,true);assert.equal(dom['portal-page-deckel'].hidden,false);assert.equal(ctx.location.hash,hash);
+});

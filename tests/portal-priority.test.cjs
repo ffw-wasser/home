@@ -56,7 +56,13 @@ test('Fällige Nachweise erhalten eine sichtbare Anzahl im Menü und einen verst
  f.c.evidencePriority([],'Stand unbekannt');assert.equal(badge.textContent,'!');assert.match(heading.textContent,/nicht aktuell geprüft/);
  f.c.evidencePriority([]);assert.equal(badge.hidden,true);assert.equal(tab.attributes['aria-label'],undefined);
 });
-test('Nachweishinweis öffnet aus anderen Seiten die Terminseite und die betroffenen Details',()=>{
+test('Nachweishinweis öffnet aus anderen Seiten die Nachweisseite und die betroffenen Details',()=>{
  const f=fixture(),calls=[],evidence=new Node('details'),details=new Node(),heading=new Node('summary'),urgent=new Node('details'),valid=new Node('details');urgent.dataset.state='missing';valid.dataset.state='valid';details.append(urgent,valid);
- f.nodes.set('portal-evidence',evidence);f.nodes.set('portal-evidence-details',details);f.nodes.set('portal-evidence-heading',heading);f.c.g={DeckelMobile:{jump:id=>calls.push(id)}};f.c.matchMedia=()=>({matches:true});f.c.openEvidence();assert.deepEqual(calls,['portal-section']);assert.equal(evidence.open,true);assert.equal(urgent.open,true);assert.equal(valid.open,false);assert.equal(evidence.scrolled,true);assert.equal(heading.focused,true);
+ f.nodes.set('portal-evidence',evidence);f.nodes.set('portal-evidence-details',details);f.nodes.set('portal-evidence-heading',heading);f.c.g={DeckelMobile:{jump:id=>calls.push(id)}};f.c.matchMedia=()=>({matches:true});f.c.openEvidence();assert.deepEqual(calls,['portal-evidence']);assert.equal(urgent.open,true);assert.equal(valid.open,false);assert.equal(evidence.scrolled,true);assert.equal(heading.focused,true);
+});
+
+test('Automatische Aktualisierung läuft auch auf der eigenen Nachweisseite und pausiert auf dem Deckel',()=>{
+ const views=new Map([['portal-page-terms',{hidden:true}],['portal-page-evidence',{hidden:false}]]);let scheduled=0;
+ const c=vm.createContext({timer:null,visible:true,document:{hidden:false,getElementById:id=>views.get(id)},clearTimeout(){},refresh(){},setTimeout:(_,delay)=>{assert.equal(delay,60000);scheduled++;return scheduled;}});
+ vm.runInContext(source.slice(source.indexOf(' function schedule()'),source.indexOf(' const evidenceDate')),c);c.schedule();assert.equal(scheduled,1);views.get('portal-page-evidence').hidden=true;c.schedule();assert.equal(scheduled,1);
 });
