@@ -93,3 +93,8 @@ Erscheint trotz einer solchen Dateiänderung kein Build, in Cloudflare den
 verbundenen Repository-Namen, den Produktionsbranch `main`, die aktivierten
 Produktionsbuilds und die Watch paths prüfen. Die GitHub-Freigabe für
 `ffw-wasser/home` muss für die Cloudflare-Git-Integration erteilt sein.
+
+Wichtig bei der Repository-Auswahl: `ffw-wasser/deckel-daten` enthält nicht den
+Worker-Quellcode dieser Anwendung. Für Builds muss ausdrücklich
+`ffw-wasser/home` verbunden sein. Die GitHub-Anmeldung allein stellt diese
+Repository-Verbindung noch nicht her.
