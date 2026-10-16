@@ -2,7 +2,9 @@ const test=require('node:test'),assert=require('node:assert/strict'),E=require('
 const now=Date.parse('2026-10-16T06:00:00Z');
 test('Nur relevante persönliche Nachweise; bestehende Atemschutzdaten bleiben erkannt',()=>{
  assert.deepEqual(E.project({}),{version:1,medical:{g262:'',g263:''},breathing:null,driver:null});
- assert.ok(E.project({g263ValidUntil:'2027-01-01'}).breathing);
+ assert.equal(E.project({g263ValidUntil:'2027-01-01'}).breathing,null);
+ assert.equal(E.project({breathingClearanceUntil:'2027-01-01'}).breathing,null);
+ assert.ok(E.project({breathingClearance:true,agtInstructionValidUntil:'2027-01-01'}).breathing);
  assert.equal(E.project({breathingQualified:false,g263ValidUntil:'2027-01-01'}).breathing,null);
  assert.ok(E.project({breathingQualified:true}).breathing);
  assert.equal(E.project({ageDepartment:true,breathingQualified:true,machinistVehicles:['LF']}).driver,null);
@@ -36,4 +38,21 @@ test('G26.2 ist der Mindestnachweis aller anderen; gültige G26.3 ersetzt sie, u
  const lower=check({g262ValidUntil:'2028-01-01',g263ValidUntil:'2020-01-01'});assert.equal(lower.status,'valid');assert.equal(lower.items[0].substitution,undefined);
  assert.equal(check({g263ValidUntil:'2020-01-01'}).status,'expired');
  const agt=E.assess(E.project({breathingQualified:true,g262ValidUntil:'2028-01-01',agtInstructionValidUntil:'2028-01-01',ffiValidUntil:'2028-01-01'}),now)[0];assert.equal(agt.status,'missing');assert.equal(agt.items[0].label,'G26.3');
+});
+
+test('Ehemalige AGT behalten G26.3 als Mindestnachweis, ohne AGT-Pflichten oder Freigabe',()=>{
+ const fs=require('node:fs'),vm=require('node:vm');
+ const m={breathingQualified:false,roles:['ATM','ATG'],breathingClearance:true,g263ValidUntil:'2028-01-01',agtInstructionValidUntil:'2020-01-01',ffiValidUntil:''};
+ const before=JSON.stringify(m),groups=E.assess(E.project(m),now);
+ assert.equal(groups.length,1);assert.equal(groups[0].title,'Arbeitsmedizinische Eignung');assert.equal(groups[0].status,'valid');
+ assert.match(groups[0].items[0].label,/G26.3.*ersetzt G26.2/);
+ const c=vm.createContext({MemberEvidence:E,document:{getElementById(){}},window:{},console});
+ vm.runInContext(fs.readFileSync('js/core/config.js','utf8'),c);
+ const app=fs.readFileSync('js/app/app.js','utf8');
+ vm.runInContext(app.match(/function isAtmOrAtgQualified\(member\)\{[^\n]+/)[0],c);
+ assert.equal(c.isAtmOrAtgQualified(m),false);
+ assert.equal(c.hasValidBreathingClearance(m,'2026-10-16'),false);
+ assert.equal(c.breathingClearanceState(m,'2026-10-16'),'none');
+ assert.equal(E.assess(E.project({...m,breathingQualified:true}),now)[0].status,'expired');
+ assert.equal(JSON.stringify(m),before);
 });

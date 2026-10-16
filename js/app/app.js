@@ -310,7 +310,7 @@ function ensureSafetyInfoHub(){
  if(!dialog){dialog=document.createElement("dialog");dialog.id="safetyInfoDialog";dialog.className="safety-info-dialog";dialog.innerHTML='<form method="dialog"><header><div><small>Sicherheitsinformationen</small><h2>Offene Hinweise</h2></div><button value="cancel" aria-label="Hinweise schließen">×</button></header><div id="safetyInfoContent"></div><footer><button value="cancel" class="primary-button">Schließen</button></footer></form>';document.body.appendChild(dialog);button.onclick=()=>dialog.showModal?.();}
  return {button,dialog};
 }
-function isAtmOrAtgQualified(member){const roles=Array.isArray(member?.roles)?member.roles:[];return roles.includes("ATM")||roles.includes("ATG")||member?.breathingQualified===true;}
+function isAtmOrAtgQualified(member){if(member?.breathingQualified===false)return false;const roles=Array.isArray(member?.roles)?member.roles:[];return roles.includes("ATM")||roles.includes("ATG")||member?.breathingQualified===true;}
 function renderSafetyInfoHub(){
  const breathing=members.filter(member=>!member.ageDepartment&&isAtmOrAtgQualified(member)&&["expired","soon"].includes(breathingClearanceState(member,systemToday()))),drivers=members.filter(member=>["missing","overdue","soon"].includes(driverLicenseControlDue(member,systemToday()))),hub=ensureSafetyInfoHub(),count=breathing.length+drivers.length;
  hub.button.hidden=count===0;byId("safetyInfoCount").textContent=String(count);hub.button.classList.toggle("has-critical",breathing.some(m=>breathingClearanceState(m,systemToday())==="expired")||drivers.some(m=>["missing","overdue"].includes(driverLicenseControlDue(m,systemToday()))));
