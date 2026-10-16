@@ -20,10 +20,10 @@ test('FFW und H2O haben unterschiedliche schwarze Startbildschirm-Icons',()=>{
 test('iOS Homebildschirm-Icons sind getrennt; innerhalb der Apps stimmen die Logos',()=>{
  assert.match(main,/rel="apple-touch-icon"/);
  assert.match(main,/assets\/branding\/ffw-home-180\.png\?v=/);
- assert.match(main,/class="top-brand"><img[^>]+src="assets\/branding\/ffw-home-192\.png"/);
+ assert.match(main,/class="top-brand"><img[^>]+src="assets\/branding\/ffw-home-192\.png\?v=[^"]+"/);
  assert.match(portal,/rel="apple-touch-icon"[^>]+h2o-symbol-black-180\.png/);
- assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-black-96\.png"/);
- assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-black-192\.png'/);
+ assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-black-96\.png\?v=[^"]+"/);
+ assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-black-192\.png\?v=[^']+'/);
 });
 test('Alle generierten Icons haben die deklarierten Abmessungen',()=>{
  const png=(filename,size)=>{
@@ -36,7 +36,7 @@ test('Alle generierten Icons haben die deklarierten Abmessungen',()=>{
  for(const size of [96,180,192,512])png('assets/drinks/h2o-symbol-black-'+size+'.png',size);
 });
 test('Cache- und HTML-Build stimmen überein, Schutzdaten unverändert',()=>{
- assert.equal(release.build,'20261016.42');
+ for(const manifest of [ffw,h2o,android])for(const icon of manifest.icons)assert.ok(icon.src.endsWith('?v='+release.build));
  assert.ok(main.includes('ffw-build" content="'+release.build+'"'));
  assert.ok(portal.includes('deckel-build" content="'+release.build+'"'));
  assert.ok(service.includes('ffw-wasser-'+release.build+'"'));

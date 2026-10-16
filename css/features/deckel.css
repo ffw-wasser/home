@@ -12,7 +12,7 @@
 /* Bottom navigation uses buttons: a personal access hash must never be replaced. */
 .deckel-nav{position:relative;z-index:20;margin:0 auto;width:min(560px,100%);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:8px 4px calc(8px + env(safe-area-inset-bottom));border:1px solid #c5d9eb;border-bottom:0;border-radius:0;background:#ffffff;box-shadow:0 -6px 24px #061b4814}.deckel-nav button{min-width:0;overflow-wrap:anywhere;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;min-height:64px;border-radius:12px;background:transparent;color:#4e6983;font-size: .875rem}.deckel-nav button>span{font-size:1.375rem;line-height:1.1}.deckel-nav button[aria-current=page]{background:#061b48;color:#fff;box-shadow:inset 0 -3px #ed812e}.keyboard-open .deckel-nav{display:none}
 .deckel-card.is-nudged{animation:deckel-wiggle .6s ease-in-out}@keyframes deckel-wiggle{0%,100%{transform:none}20%{transform:translateY(-5px) rotate(-3deg)}45%{transform:translateY(-3px) rotate(3deg)}70%{transform:rotate(-1deg)}}
-@media(max-width:360px){main{padding-left:12px;padding-right:12px}.deckel-title h1{font-size:1.3125rem}.deckel-title img{width:38px;height:38px}.deckel-title p{font-size: .875rem}#refresh{padding:8px;font-size: .875rem}.phone-menu{padding:16px}.deckel-card{min-height:205px;padding:26px 24px}.deckel-nav{padding-left:2px;padding-right:2px}.phone-menu h2{font-size:1.25rem}}
+@media(max-width:360px){main{padding-left:12px;padding-right:12px}.deckel-title h1{font-size:1.3125rem}.deckel-title img{width:40px;height:40px}.deckel-title p{font-size: .875rem}#refresh{padding:8px;font-size: .875rem}.phone-menu{padding:16px}.deckel-card{min-height:205px;padding:26px 24px}.deckel-nav{padding-left:2px;padding-right:2px}.phone-menu h2{font-size:1.25rem}}
 @media(prefers-reduced-motion:reduce){html,main{scroll-behavior:auto}.deckel-card.is-nudged,#refresh[aria-busy=true]>span:first-child{animation:none}button:not(:disabled):active,.button:active{transform:none}}
 
 @media(max-width:400px){#refresh>span:last-child{display:none}#refresh{width:48px}.deckel-title h1{white-space:normal}}
@@ -35,4 +35,4 @@
 .phone-edit button,.phone-rewards button,#phone-undo,.notification-settings button,.install-card button,.payment-area summary,.phone-sync-info summary,.loyalty-card summary{font-size:1rem}
 .deckel-title p{letter-spacing:.02em}
 
-@media(max-width:360px){.deckel-header{gap:8px;padding:12px 10px}.deckel-title{gap:8px}.deckel-title h1{font-size:1.25rem}.deckel-title p{font-size:.875rem}.deckel-title img{width:32px;height:32px}}
+@media(max-width:360px){.deckel-header{gap:8px;padding:12px 10px}.deckel-title{gap:8px}.deckel-title h1{font-size:1.25rem}.deckel-title p{font-size:.875rem}.deckel-title img{width:40px;height:40px}}

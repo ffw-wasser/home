@@ -1159,7 +1159,7 @@ body:not(.x) .roles-panel .group-special-status {
   height: 38px;
   flex: 0 0 38px;
   border-radius: 7px;
-  background: #fff;
+  background: #000;
   object-fit: contain;
   box-shadow: 0 1px 4px rgba(0,0,0,.25)}
 
@@ -4488,6 +4488,8 @@ body {
   gap: 0 14px!important;
   width: min(1500px,100%)!important;
   min-height: 62px;
+  overflow: visible!important;
+  margin-bottom: 20px!important;
   padding: 9px clamp(12px,2vw,24px)!important}
 
 .top-brand {
@@ -4499,10 +4501,16 @@ body {
   max-width: none!important}
 
 .top-brand img {
-  width: 40px!important;
-  height: 40px!important;
-  flex: 0 0 40px!important;
-  border-radius: 9px!important}
+  width: 88px!important;
+  height: 88px!important;
+  flex: 0 0 88px!important;
+  margin: -8px -8px -32px!important;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border-radius: 0!important;
+  /* The original crest remains intact; clip only the outer black icon canvas. */
+  clip-path: polygon(16.4% 10.7%,83.7% 10.7%,83.7% 56%,82.4% 64%,79% 71.5%,74% 78%,67% 83.5%,59% 87.5%,50% 89.3%,41% 87.5%,33% 83.5%,26% 78%,21% 71.5%,17.6% 64%,16.4% 56%)}
 
 .top-brand span {
   overflow: hidden!important;
@@ -4589,9 +4597,9 @@ body {
   padding: 8px 10px!important}
 
 .top-brand img {
-  width: 36px!important;
-  height: 36px!important;
-  flex-basis: 36px!important}
+  width: 76px!important;
+  height: 76px!important;
+  flex-basis: 76px!important}
 
 .top-brand span {
   font-size: .875rem!important}

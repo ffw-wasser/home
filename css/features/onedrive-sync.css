@@ -151,7 +151,7 @@
   }
   .top-nav .top-brand{flex:0 0 auto!important;min-width:0!important}
   .top-nav .top-brand span{display:none!important}
-  .top-nav .top-brand img{width:34px!important;height:34px!important}
+  .top-nav .top-brand img{width:76px!important;height:76px!important;flex:0 0 76px!important}
   .top-nav .top-nav-actions{
     display:flex!important;
     align-items:center!important;
