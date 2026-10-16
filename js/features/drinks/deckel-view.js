@@ -6,7 +6,7 @@ const thanked=new Set();
 function hideThanks(){clearTimeout(thanksTimer);$('thanks').hidden=true;}
 function showThanks(paid,alias){hideThanks();if(!paid){thanked.delete(alias);return;}if(thanked.has(alias))return;thanked.add(alias);$('thanks').hidden=false;thanksTimer=setTimeout(hideThanks,3000);}
 function enableNudge(enabled){$('coaster').setAttribute?.('aria-disabled',String(!enabled));$('coaster').tabIndex=enabled?0:-1;}
-function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;$('coaster').classList.toggle('is-telling',false);$('deckel-quote').hidden=true;$('deckel-quote').textContent='';for(const id of ['balance','balanceLabel','updated'])$(id).hidden=false;$('coaster').setAttribute?.('aria-labelledby','balanceLabel balance');$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint');}
+function resetNudge(){clearTimeout(funTimer);$('coaster').classList.toggle('is-nudged',false);$('coaster').classList.toggle('is-laughing',false);$('deckel-laugh').hidden=true;$('deckel-quote').hidden=true;$('deckel-quote').textContent='';$('coaster').setAttribute?.('aria-labelledby','balanceLabel balance');$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint');}
 function nudgeDeckel(){
  if(!hasData||$('refresh').disabled||document.hidden)return;
  const sayings=[
@@ -41,7 +41,7 @@ function nudgeDeckel(){
  'Ich kann nichts dafür. Ich wurde so rund geboren.',
  'Feierabend für den Durst. Bereitschaft für den Deckel.'
  ];
- resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('coaster').classList.toggle('is-telling',true);for(const id of ['balance','balanceLabel','updated'])$(id).hidden=true;$('deckel-quote').hidden=false;$('deckel-quote').textContent=sayings[quoteIndex++%sayings.length];$('coaster').setAttribute?.('aria-labelledby','deckel-quote');$('coaster').setAttribute?.('aria-describedby','deckel-tap-hint');funTimer=setTimeout(resetNudge,4000);
+ resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('deckel-quote').hidden=false;$('deckel-quote').textContent=sayings[quoteIndex++%sayings.length];$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint deckel-quote');funTimer=setTimeout(resetNudge,4000);
 }
 function credentials(){const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
 function clear(){globalThis.H2OPortal?.clear();globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
@@ -57,7 +57,7 @@ async function load(){
   if(!response.ok)throw new Error('Dein Deckel ist noch nicht verfügbar. Bitte am Gerätehaus-iPad aktualisieren.');
   if(text.length>8000)throw new Error('Die Deckel-Datei konnte nicht geprüft werden. Bitte erneut aktualisieren.');const data=await DeckelCrypto.open(JSON.parse(text),record);if(number!==generation||document.hidden)return;
   const layers=data.balance?Math.min(5,Math.ceil(data.balance/1000)):0;$('deckel-stack').parentElement.style.setProperty('--stack-count',layers);$('deckel-stack').replaceChildren();for(let i=layers-1;i>=0;i--){const layer=document.createElement('span');layer.className='deckel-layer';layer.style.setProperty('--layer',i);$('deckel-stack').append(layer);}$('stack-note').textContent=layers?'Je höher der offene Betrag, desto höher der Stapel. Die Schichten sind symbolisch.':'';
-  $('coaster').classList.toggle('is-paid',data.balance===0);$('balance').textContent=euro(data.balance);$('balanceLabel').textContent=data.balance===0?'Alles bezahlt':'Offener Betrag';showThanks(data.balance===0,record.alias);
+  $('coaster').classList.toggle('is-paid',data.balance===0);$('balance').textContent=euro(data.balance);$('balanceLabel').textContent=data.balance===0?'Bezahlt':'Offen';showThanks(data.balance===0,record.alias);
   $('credit').hidden=data.pointUnits===undefined||data.credit===0;$('credit').textContent='Dein Guthaben: '+euro(data.credit)+' · Für die nächsten Getränke.';
   const units=data.pointUnits??0,award=data.awardUnits??data.bonusCents;$('points').textContent=data.pointUnits===undefined?'–':pointText(units);$('bonus').textContent=data.needed?'Noch '+euro(data.needed)+' einzahlen bis zu '+pointText(award)+' neuen Treuepunkten.':'Ziel erreicht. Die nächste bestätigte Einzahlung vergibt neue Treuepunkte.';
   $('loyalty-progress').hidden=!data.thresholdCents;$('loyalty-progress').max=data.thresholdCents||1;$('loyalty-progress').value=Math.min(data.progressCents||0,data.thresholdCents||1);
