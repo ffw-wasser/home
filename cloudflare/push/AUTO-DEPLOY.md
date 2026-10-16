@@ -103,3 +103,11 @@ Beim Kopieren des Build-Befehls muss der Dateipfad zusammenhängend bleiben:
 `node ../../scripts/prepare-worker.cjs`. Nur nach `node` steht ein Leerzeichen;
 zusätzliche Leerzeichen zwischen `../`, `scripts/` und dem Dateinamen verhindern
 das Starten der Prüfung.
+
+## Erster Build nach dem Verbinden
+
+Wenn bislang nur „Manuell bereitgestellt“ angezeigt wird und noch kein Build
+zum Wiederholen vorhanden ist, löst eine neue Änderung auf `main` den ersten
+Build aus. Anschließend in Cloudflare die Build-Historie öffnen und den Commit
+mit der GitHub-Commitkennung vergleichen. Die Repository-Verbindung allein
+bestätigt noch keine erfolgreiche Bereitstellung.
