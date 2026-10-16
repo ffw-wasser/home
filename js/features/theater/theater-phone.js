@@ -50,9 +50,10 @@
    tab.type='button';tab.style.setProperty('--category-color',color);tab.setAttribute('aria-controls',section.id);tab.onclick=()=>section.scrollIntoView({block:'start',behavior:'auto'});nav.append(tab);section.append(heading,grid);
    for(const p of items){
     const card=node('div'),add=node('button'),minus=node('button','−'),quantity=node('span'),price=node('span',M.money(p.cents)),name=node('strong');
-    for(const word of p.name.trim().split(/\s+/)){const part=node('span',word);part.className='theater-product-word';name.append(part);}
+    const presentation=M.itemPresentation(p);
+    for(const word of presentation.article.trim().split(/\s+/)){const part=node('span',word);part.className='theater-product-word';name.append(part);}
     card.className='theater-product';card.dataset.item=p.id;add.type=minus.type='button';add.className='theater-product-add';minus.className='theater-product-minus';price.className='theater-product-price';quantity.className='theater-product-quantity';quantity.setAttribute('aria-live','polite');
-    add.append(name,price,quantity);card.append(add,minus);grid.append(card);
+    add.append(name,price,quantity);if(!presentation.food){const details=node('span',[presentation.container||'Gefäß offen',presentation.size||'Größe offen'].join(' · '));details.className='theater-product-serving';add.insertBefore(details,price);}card.append(add,minus);grid.append(card);
     const update=()=>{const q=counts[p.id]||0;card.dataset.state=q<0?'cancellation':q>0?'selected':'empty';quantity.textContent=q<0?'Storno: '+Math.abs(q):q+' ×';quantity.hidden=q===0;minus.hidden=q===0;minus.disabled=busy||!!pending||q===0;add.disabled=busy||!!pending||Math.abs(q)>=99;add.setAttribute('aria-label',p.name+', '+M.money(p.cents)+(cancellation?', ein Stück stornieren':', ein Stück hinzufügen'));minus.setAttribute('aria-label',p.name+': ein vorgemerktes Stück zurücknehmen');};
     const change=remove=>{if(busy||pending)return;const q=counts[p.id]||0,direction=q?Math.sign(q):(cancellation?-1:1);counts[p.id]=remove?q-Math.sign(q):Math.max(-99,Math.min(99,q+direction));if(!counts[p.id])delete counts[p.id];update();summary();tapFeedback(card);try{remember();}catch(e){status(e.message);}};
     add.onclick=()=>change(false);minus.onclick=()=>change(true);update();
