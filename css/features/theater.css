@@ -55,3 +55,15 @@
 #theaterView #theater-sound:focus-visible{outline:3px solid #075baf;outline-offset:3px}
 #theater-sound-status{flex:1 1 240px;font-size:.95rem;font-weight:700;color:#254564;line-height:1.35}
 @media(max-width:560px){.theater-alert-toolbar{padding:10px}.theater-alert-toolbar #theater-sound{width:100%}}
+
+/* Kasseneingabe als vollflächige, eigenständige iPad-Arbeitsfläche. */
+#theaterView.theater-cash-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;margin:0!important;padding:0!important;overflow:auto!important;z-index:10000!important;background:#f7fafc!important;box-sizing:border-box!important;display:block!important}
+#theaterView.theater-cash-fullscreen>header,#theaterView.theater-cash-fullscreen>#theater-stats,#theaterView.theater-cash-fullscreen>#theater-manage{display:none!important}
+#theaterView.theater-cash-fullscreen #theater-cash{min-height:100dvh!important;margin:0!important;border:0!important;border-radius:0!important;padding:clamp(12px,2vw,32px)!important;box-sizing:border-box!important}
+.theater-cash-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:0 0 18px;margin-bottom:18px;border-bottom:2px solid #c7d4e0}
+.theater-cash-top strong{font-size:clamp(1.25rem,2.3vw,2rem)}
+.theater-cash-top span{color:#4c6176;font-weight:700}
+#theater-cash-close{background:#173e67;color:white;border-color:#173e67;min-height:54px}
+#theaterView.theater-cash-fullscreen .theater-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,205px),1fr));gap:clamp(14px,2vw,26px)}
+#theaterView.theater-cash-fullscreen .theater-board-card{min-height:205px}
+@media(max-width:600px){#theaterView.theater-cash-fullscreen .theater-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#theaterView.theater-cash-fullscreen .theater-board-card{min-height:165px}}
