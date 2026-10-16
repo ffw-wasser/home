@@ -44,9 +44,12 @@
 .portal-priority{margin:18px 0;padding:16px;border:1px solid #d8b975;border-left:5px solid #a67316;border-radius:14px;background:#fff7e5}
 .portal-priority[data-state=expired]{background:#fff0f1;border-color:#ad3543}
 .portal-priority h3{font-size:1.125rem;margin:0 0 10px}.portal-priority p{font-size:0.875rem;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}.portal-priority button{min-height:48px;margin-top:8px}
-.portal-later-events{border:1px solid #c4d0df;border-radius:16px;padding:0 14px;margin:20px 0}
-.portal-later-events>summary{cursor:pointer;min-height:52px;padding:14px 0;font-size:1.125rem;font-weight:750;line-height:1.4}
-#portal-events>.portal-event:first-child{margin-top:0}
+/* First appointment has its own reading area; subsequent cards follow by scrolling. */
+#portal-events .portal-first-event{min-height:calc(100vh - 10rem);min-height:calc(100svh - 10rem);padding-bottom:28px}
+#portal-events .portal-event{border:2px solid #8299af;box-shadow:0 5px 16px #10284312;margin:0 0 28px;padding:20px}
+#portal-events .portal-first-event>.portal-event{margin:0}
+#portal-events .portal-event[data-status="yes"]{border-color:#518462}
+#portal-events .portal-event[data-status="excused"]{border-color:#a7793f}
 .portal-page>#portal-evidence{margin:0;padding:0;border:0;border-radius:0;background:transparent}
 #portal-priority[hidden],#portal-evidence[hidden]{display:none!important}
 
