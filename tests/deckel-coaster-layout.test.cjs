@@ -7,10 +7,11 @@ test('Flacher Bierdeckel und Betrag stehen getrennt; Hilfetexte bleiben außerha
  assert.ok(start>=0&&end>start,'Bierdeckel gefunden');
  assert.doesNotMatch(face,/id="(?:balance|balanceLabel)"/);
  assert.match(html.slice(end),/<div class="deckel-balance-info"><p id="balanceLabel">Offen<\/p><strong id="balance"><\/strong>/);
- assert.match(css,/aspect-ratio:2\.6;min-height:0/);
+ assert.match(css,/aspect-ratio:1\.85;min-height:0/);
  assert.doesNotMatch(css,/min-height:(?:230|205)px/);
  for(const id of ['updated','thanks','deckel-quote'])assert.doesNotMatch(face,new RegExp('id="'+id+'"'),'kein '+id+' auf dem Deckel');
- assert.doesNotMatch(face,/deckel-brand|Feuerwehr Wasser/);
+ assert.match(face,/FEUERWEHR WASSER/);
+ assert.match(face,/preserveAspectRatio="none"/);
  for(const id of ['updated','thanks','deckel-quote','deckel-tap-hint'])assert.match(html.slice(end),new RegExp('id="'+id+'"'));
  assert.match(view,/data\.balance===0\?'Bezahlt':'Offen'/);
 });
