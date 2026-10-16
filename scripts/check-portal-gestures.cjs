@@ -22,5 +22,9 @@ const root=path.resolve(__dirname,'..');
  async function swipe(x1,y1,x2,y2){await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x1,y:y1}]});for(let i=1;i<=5;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x1+(x2-x1)*i/5,y:y1+(y2-y1)*i/5}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
  await swipe(300,210,100,210);assert.equal(await page.locator('#portal-page-evidence').isVisible(),true);await ready();await swipe(100,210,300,210);assert.equal(await page.locator('#portal-page-terms').isVisible(),true);await ready();
  await swipe(200,450,205,250);assert.equal(await page.locator('#portal-page-terms').isVisible(),true);
+ await page.evaluate(()=>document.getElementById('deckel-main').scrollTo({top:0,behavior:'instant'}));
+ const dateBox=await page.locator('.portal-event-date').boundingBox(),touch={x:dateBox.x+dateBox.width*.7,y:dateBox.y+dateBox.height/2};
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touch.x-52,y:touch.y+10}]});assert.equal(await page.locator('#portal-page-evidence').isVisible(),true,'kurzer Wisch über Datum reagiert vor Loslassen');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touch.x+60,y:touch.y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});assert.equal(await page.locator('#portal-page-evidence').isVisible(),true,'keine Umkehr oder zweiter Wechsel');assert.equal(await calendar.isVisible(),false,'Wischen öffnet keinen Kalender');assert.equal(replies,2);
  assert.deepEqual(errors,[]);console.log('Portal: ? speichern/zurücknehmen, violette Karte, alter Worker und echte Touch-Wischgesten geprüft.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

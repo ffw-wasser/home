@@ -10,22 +10,30 @@
  }
  function show(value){if(value&&g.history?.replaceState&&!pages[g.history.state?.portalPage])g.history.replaceState({...g.history.state,portalPage:current},'');visible=Boolean(value);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
  function init(){const nav=$('deckel-nav');if(!nav)return;nav.querySelectorAll('[data-deckel-target]').forEach(button=>button.addEventListener('click',()=>jump(button.dataset.deckelTarget)));
-  const main=$('deckel-main');
+  const main=$('deckel-main');let suppressClickUntil=0;
   main?.addEventListener('pointerdown',event=>{
-   gesture=null;
-   if(!visible||event.pointerType!=='touch'||!event.isPrimary||event.clientX<24||event.clientX>g.innerWidth-24)return;
-   if(event.target?.closest?.('button,a,input,select,textarea,summary,[role="button"],[role="slider"],[contenteditable]:not([contenteditable="false"]),[data-no-swipe]')||document.activeElement?.matches?.('input,select,textarea')||g.getSelection?.()?.isCollapsed===false)return;
+   gesture=null;suppressClickUntil=0;
+   if(!visible||event.pointerType!=='touch'||!event.isPrimary||event.clientX<32||event.clientX>g.innerWidth-32)return;
+   if(event.target?.closest?.('input,select,textarea,[role="slider"],[contenteditable]:not([contenteditable="false"]),[data-no-swipe]')||document.activeElement?.matches?.('input,select,textarea')||g.getSelection?.()?.isCollapsed===false)return;
    for(let el=event.target;el&&el!==main;el=el.parentElement)if(el.scrollWidth>el.clientWidth+2&&/auto|scroll/.test(g.getComputedStyle?.(el).overflowX||''))return;
-   gesture={id:event.pointerId,x:event.clientX,y:event.clientY,time:event.timeStamp,page:current};
+   gesture={id:event.pointerId,x:event.clientX,y:event.clientY,time:event.timeStamp,page:current,direction:0};
   });
-  main?.addEventListener('pointermove',event=>{if(gesture&&event.pointerId===gesture.id&&Math.abs(event.clientY-gesture.y)>35)gesture=null;});
+  function move(event){
+   const start=gesture;if(!start||event.pointerId!==start.id||!visible||start.page!==current)return;
+   const dx=event.clientX-start.x,dy=event.clientY-start.y,x=Math.abs(dx),y=Math.abs(dy),elapsed=event.timeStamp-start.time;
+   if(elapsed<0||elapsed>1200){gesture=null;return;}
+   if(!start.direction){if(Math.max(x,y)<12)return;if(y>x*1.25){gesture=null;return;}if(x<y*1.25)return;start.direction=Math.sign(dx);}
+   // Lock the initial direction. Reversing a gesture must never change the page backwards.
+   if(dx*start.direction<0){gesture=null;return;}
+   if(x<48||x<y*1.25)return;
+   gesture=null;suppressClickUntil=Date.now()+1500;
+   const order=Object.keys(pages),next=order[order.indexOf(start.page)+(start.direction<0?1:-1)];if(next)jump(next);
+  }
+  main?.addEventListener('pointermove',move);
   main?.addEventListener('pointercancel',()=>{gesture=null;});
-  main?.addEventListener('pointerup',event=>{
-   const start=gesture;gesture=null;if(!start||event.pointerId!==start.id||!visible||start.page!==current)return;
-   const dx=event.clientX-start.x,dy=event.clientY-start.y,elapsed=event.timeStamp-start.time;
-   if(Math.abs(dx)<70||Math.abs(dy)>35||Math.abs(dx)<Math.abs(dy)*2||elapsed<0||elapsed>800)return;
-   const order=Object.keys(pages),next=order[order.indexOf(current)+(dx<0?1:-1)];if(next)jump(next);
-  });
+  main?.addEventListener('pointerup',event=>{move(event);gesture=null;});
+  // A swipe starting on a reply/date button must not activate that button on release.
+  main?.addEventListener('click',event=>{if(Date.now()<suppressClickUntil){suppressClickUntil=0;event.preventDefault();event.stopImmediatePropagation();}},true);
   if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');
   g.addEventListener('popstate',event=>{if(pages[event.state?.portalPage]||event.state?.portalPage==='phone-menu')jump(event.state.portalPage,false);});
   g.addEventListener('hashchange',()=>{current='portal-section';sync();});
