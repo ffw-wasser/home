@@ -23,10 +23,15 @@ test('Alle Termine bleiben unabhängig von der Antwort chronologisch; abgelaufen
 });
 test('Zusage, Entschuldigung und Zurücknehmen verschieben oder verstecken keine Karte',()=>{
  const f=fixture(),now=Date.now(),result={events:[event('next',now+10000),event('reply',now+20000),event('later',now+30000)]};
- for(const answer of ['open','yes','excused','open']){result.events[1].status=answer;f.c.paint(result);const cards=f.events.querySelectorAll('article');assert.deepEqual(cards.map(c=>c.id),['portal-event-next','portal-event-reply','portal-event-later']);assert.equal(cards[1].dataset.status,answer);assert.equal(f.events.querySelectorAll('details').length,0);assert.equal(f.events.children[0].className,'portal-first-event');assert.equal(cards[1].querySelectorAll('button').length,answer==='open'?2:3);}
+ for(const answer of ['open','yes','excused','maybe','open']){result.events[1].status=answer;f.c.paint(result);const cards=f.events.querySelectorAll('article');assert.deepEqual(cards.map(c=>c.id),['portal-event-next','portal-event-reply','portal-event-later']);assert.equal(cards[1].dataset.status,answer);assert.equal(f.events.querySelectorAll('details').length,0);assert.equal(f.events.children[0].className,'portal-first-event');assert.equal(cards[1].querySelectorAll('button').length,answer==='open'?3:4);}
 });
 test('Benachrichtigungslink scrollt weiterhin direkt zum beantworteten Termin',()=>{
  const id='x'.repeat(43),f=fixture('?event='+id),now=Date.now();f.c.paint({events:[event('next',now+10000),event(id,now+20000,'yes')]});assert.equal(f.events.querySelectorAll('details').length,0);assert.equal(f.events.querySelectorAll('article')[1].scrolled,true);
+});
+test('Nur der erste Termin erhält eine Überschrift, unsichere Antwort bleibt als eigene Karte sichtbar',()=>{
+ const f=fixture(),now=Date.now();f.c.paint({uncertainReplies:true,events:[event('next',now+10000,'maybe'),event('later',now+20000)]});
+ assert.equal(f.events.querySelectorAll('h2').length,1);assert.equal(f.events.children[0].children[0].textContent,'Nächster Termin');
+ const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelector('strong').textContent,'Gesehen · noch unsicher');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'?');
 });
 test('Kurze Beschriftung der Rückmeldeübersicht behält die Gruppenführer-Berechtigung',()=>{
  const f=fixture(),events=[event('next',Date.now()+10000)];f.c.paint({events,leader:false});assert.equal(f.events.querySelectorAll('details').length,0);
