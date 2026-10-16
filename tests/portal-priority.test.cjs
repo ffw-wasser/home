@@ -23,7 +23,7 @@ test('Alle Termine bleiben unabhängig von der Antwort chronologisch; abgelaufen
 });
 test('Zusage, Entschuldigung und Zurücknehmen verschieben oder verstecken keine Karte',()=>{
  const f=fixture(),now=Date.now(),result={events:[event('next',now+10000),event('reply',now+20000),event('later',now+30000)]};
- for(const answer of ['open','yes','excused','maybe','open']){result.events[1].status=answer;f.c.paint(result);const cards=f.events.querySelectorAll('article');assert.deepEqual(cards.map(c=>c.id),['portal-event-next','portal-event-reply','portal-event-later']);assert.equal(cards[1].dataset.status,answer);assert.equal(f.events.querySelectorAll('details').length,0);assert.equal(f.events.children[0].className,'portal-first-event');assert.equal(cards[1].querySelectorAll('button').length,answer==='open'?3:4);}
+ for(const answer of ['open','yes','excused','maybe','open']){result.events[1].status=answer;f.c.paint(result);const cards=f.events.querySelectorAll('article');assert.deepEqual(cards.map(c=>c.id),['portal-event-next','portal-event-reply','portal-event-later']);assert.equal(cards[1].dataset.status,answer);assert.equal(f.events.querySelectorAll('details').length,0);assert.equal(f.events.children[0].className,'portal-first-event');assert.equal(cards[1].querySelectorAll('button').filter(b=>b.dataset.reply).length,answer==='open'?3:4);}
 });
 test('Benachrichtigungslink scrollt weiterhin direkt zum beantworteten Termin',()=>{
  const id='x'.repeat(43),f=fixture('?event='+id),now=Date.now();f.c.paint({events:[event('next',now+10000),event(id,now+20000,'yes')]});assert.equal(f.events.querySelectorAll('details').length,0);assert.equal(f.events.querySelectorAll('article')[1].scrolled,true);
@@ -43,7 +43,7 @@ test('Nachweishinweis zeigt nur Handlungsbedarf und kennzeichnet einen nicht bes
  f.c.evidencePriority([{items:[{label:'G26.3',status:'expired',until:'2020-01-01'},{label:'FFI',status:'missing'},{label:'Unterweisung AGT',status:'soon',until:'2026-11-01'}]}]);assert.equal(box.hidden,false);assert.equal(box.dataset.state,'expired');assert.equal(content.children.length,3);assert.match(content.children[0].textContent,/Abgelaufen/);assert.match(content.children[1].textContent,/fehlt/);assert.match(content.children[2].textContent,/Bald fällig/);
  f.c.evidencePriority([],'Stand nicht bestätigt');assert.equal(box.dataset.state,'unknown');assert.equal(content.children.length,1);assert.equal(content.children[0].textContent,'Stand nicht bestätigt');f.c.evidencePriority([]);assert.equal(box.hidden,true);assert.equal(content.children.length,0);
 });
-test('Laufende Termine zeigen keine wirkungslosen Rückmeldeaktionen mehr',()=>{const f=fixture(),now=Date.now();f.c.paint({events:[event('running',now-1000)]});assert.equal(f.events.querySelector('article').querySelectorAll('button').length,0);assert.match(f.events.querySelector('strong').textContent,/geschlossen/);});
+test('Laufende Termine zeigen keine wirkungslosen Rückmeldeaktionen mehr',()=>{const f=fixture(),now=Date.now();f.c.paint({events:[event('running',now-1000)]});assert.equal(f.events.querySelector('article').querySelectorAll('button').filter(b=>b.dataset.reply).length,0);assert.match(f.events.querySelector('strong').textContent,/geschlossen/);});
 
 test('Fehlender Abgleich und Abruffehler werden im Überblick sichtbar, alte Nachweise bleiben beim Fehler erhalten',async()=>{
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());

@@ -96,3 +96,13 @@
 .portal-choices button[data-reply="open"]{grid-column:1/-1}
 .portal-next-heading{text-align:center;color:#172d4d;font-size:1.125rem;margin:0 0 12px}
 #deckel-main{touch-action:pan-y pinch-zoom}
+
+.portal-event>button.portal-event-date{text-align:left;width:100%;cursor:pointer;min-height:48px}
+.portal-event>button.portal-event-date::after{content:' ›';white-space:nowrap}
+.portal-event>button.portal-event-date:focus-visible{outline:3px solid #075baf;outline-offset:3px}
+.portal-calendar-dialog{box-sizing:border-box;width:min(92vw,460px);max-height:85dvh;overflow:auto;border:2px solid #8196af;border-radius:18px;padding:22px;background:#fff;color:#172d4d;font-size:1rem;line-height:1.5}
+.portal-calendar-dialog::backdrop{background:#0b1b37a6}
+.portal-calendar-dialog h2{font-size:1.5rem;margin:0 0 12px}
+.portal-calendar-dialog a{display:block;padding:14px 12px;margin:12px 0;border-radius:12px;background:#e7f0fa;color:#102f56;font-weight:750;text-decoration:underline;overflow-wrap:anywhere}
+.portal-calendar-dialog button{font-size:1rem;min-height:48px}
+.portal-calendar-note{font-size:1rem;color:#385270}
