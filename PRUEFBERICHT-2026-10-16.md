@@ -205,3 +205,32 @@ produktive Cloudflare-Konfiguration oder echte Mitgliederkonten.
 - 410 automatisierte Tests erfolgreich; Syntaxprüfungen der geänderten Skripte
   erfolgreich. Browserprüfung bestätigt Speicherung in den Einstellungen ohne
   OneDrive, Layout und unveränderte Kalenderauswahl.
+
+## Nachtrag: Version 2026.10.16.23 – persönlicher Portal-Code
+
+- Sofortige Ladeanzeige mit Spinner, Text und zugänglichem Status bereits vor
+  dem Mitgliederabgleich. Die Schaltfläche verhindert doppelte Anfragen;
+  Fehler bieten einen erneuten Versuch. Veraltete Antworten nach Mitgliederwechsel
+  oder Verlassen der Verwaltung zeigen weder Code noch Fehlermeldung an.
+- Unter dem erfolgreichen Code erscheinen aufklappbare Anleitungen für Safari
+  auf dem iPhone und Chrome auf Android. Zwei mit Imagegen erzeugte, originalnahe
+  Beispielbilder verwenden das vorhandene Portal-Logo. Die Hinweise sind außerdem
+  vollständig als lesbarer HTML-Text vorhanden; Bilder lassen sich vergrößern.
+- Android-Anleitung berücksichtigt das lokale Speichern des persönlichen
+  Zugangs vor manueller Installation. Die Illustrationen enthalten keine
+  persönlichen Zugangsdaten. Quellen und finale Bildprompts stehen in
+  `assets/help/portal-install-images.md`.
+- Neue Bilder im Service-Worker-Cache, Release und Cache-Version gemeinsam
+  aktualisiert. Keine Cloudflare-Änderung und kein Worker-Deployment hierfür nötig.
+- 475 vorhandene Tests erfolgreich. Die zusätzliche lokale Browserprüfung
+  `scripts/check-portal-qr.cjs` bestätigt langsamen Mitgliederabgleich und Linkabruf,
+  Doppelklickschutz, Erfolg, Fehler, Wiederholung, Mitgliederwechsel, Verlassen,
+  alle neuen Bildressourcen und Layouts von 320 bis 1280 Pixeln. Syntaxprüfung
+  der geänderten Skripte erfolgreich.
+- Bestehende Browserprüfung ebenfalls erfolgreich: Hilfe, Einstellungen,
+  Kalenderauswahl, Sonderproben und Handy-Navigation ohne Laufzeitfehler oder
+  fehlende lokale Assets. Die Prüfung öffnet jetzt zunächst das bereits vorhandene
+  Menü „Anderen Termin wählen“, bevor sie dessen Auswahl bedient.
+- Die tatsächliche Installation auf physischen iPhones und Android-Geräten
+  wurde nicht durchgeführt. Die Browser-Menüs können je nach Version abweichen;
+  die Anleitung weist darauf hin und verlinkt Apple- und Google-Hilfe.

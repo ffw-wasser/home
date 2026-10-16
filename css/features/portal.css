@@ -56,3 +56,24 @@
 .deckel-nav button>.portal-evidence-count{position:absolute;top:3px;right:8px;display:grid;place-items:center;min-width:21px;height:21px;padding:0 5px;border-radius:12px;background:#986100;color:#fff;font-size:12px;line-height:1;font-weight:850;border:2px solid #fff}
 .deckel-nav button>.portal-evidence-count[data-state=expired],.deckel-nav button>.portal-evidence-count[data-state=missing]{background:#a62c3c}
 .deckel-nav button>.portal-evidence-count[hidden]{display:none!important}
+
+/* Personal QR preparation and installation help. */
+.portal-qr-status{line-height:1.5;overflow-wrap:anywhere;margin:12px 0}
+.portal-qr-status:empty{display:none}
+#portal-admin-show-qr.is-loading{opacity:1;cursor:wait}
+#portal-admin-show-qr.is-loading::before{content:"";display:inline-block;width:1em;height:1em;margin-right:10px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-.15em;animation:portal-qr-spin .8s linear infinite}
+@keyframes portal-qr-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#portal-admin-show-qr.is-loading::before{animation:none}}
+.portal-install-guide{margin-top:24px;border-top:1px solid #c4d0df;padding-top:16px;line-height:1.6}
+.portal-install-guide[hidden]{display:none}
+.portal-install-guide h4{font-size:20px;margin:0 0 12px}
+.portal-install-platform{margin:16px 0;padding:12px;border:1px solid #c4d0df;border-radius:14px;background:#f7faff;min-width:0}
+.portal-install-platform summary{font-size:18px;font-weight:750;cursor:pointer;padding:8px 0;min-height:44px;box-sizing:border-box}
+.portal-install-image{display:block;margin:12px auto;max-width:900px}
+.portal-install-image img{display:block;width:100%;height:auto;border-radius:10px}
+.portal-install-platform ol{padding-left:24px;margin:16px 0}
+.portal-install-platform li{margin:10px 0}
+.portal-install-platform a{overflow-wrap:anywhere}
+.portal-install-done{display:flex;gap:12px;align-items:center}
+.portal-install-done img{flex:none;border-radius:10px}
+.portal-install-note{font-size:14px;color:#385270}

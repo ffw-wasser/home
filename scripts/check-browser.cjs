@@ -22,6 +22,7 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
   members=[{id:'qa-1',firstName:'Anna',lastName:'Test'},{id:'qa-2',firstName:'Bert',lastName:'Fiktiv'}];currentSessionId='';currentOperationId='';pendingMemberStatuses.clear();showView('attendanceView');PortalAdmin.discard();await PortalAdmin.refreshAttendance(true);
  });
  assert.equal(await page.locator('#portal-calendar-pick').inputValue(),'event-first');assert.equal(await page.locator('#sessionTypes').getAttribute('data-selected-session-type'),'Unterricht');
+ await page.locator('#attendanceAlternatives > summary').click();
  await page.locator('#portal-calendar-pick').selectOption('');await page.evaluate(()=>PortalAdmin.refreshAttendance(true));assert.equal(await page.locator('#portal-calendar-pick').inputValue(),'','explicit spontaneous selection must survive refresh');
  await page.evaluate(async()=>{PortalAdmin.discard();qaCal.events[0].end=Date.now()-1;await PortalAdmin.refreshAttendance(true);});assert.equal(await page.locator('#portal-calendar-pick').inputValue(),'event-next');
  const names=await page.locator('#portal-attendance-replies').textContent();assert.ok(names.includes('Anna'));assert.ok(!names.includes('Bert'));assert.ok(names.includes('Ohne Rückmeldung (1)'));
