@@ -5,3 +5,17 @@ test('Einrichtung verschwindet erst nach bestätigtem Ordner, eigenem Passwort u
 test('Abgeschlossene Einrichtung bleibt nach Neustart oder Abmeldung gespeichert; neuer Ordner wird neu geprüft',()=>{const a=app();a.c.connected=true;a.c.secure=true;a.c.members=[{}];a.state();a.c.connected=false;a.c.members=[];assert.equal(a.state().complete,true);a.data.set('fw_onedrive_shared_folder_url','folder-b');assert.equal(a.state().complete,false);});
 test('Zurückgesetztes Passwort oder bestätigter leerer Datenbestand erfordern erneute Einrichtung',()=>{for(const reason of ['password','members']){const a=app();a.c.connected=true;a.c.secure=true;a.c.members=[{}];a.state();if(reason==='password')a.c.secure=false;else a.c.members=[];assert.equal(a.state().complete,false);assert.equal(a.data.has('fw_setup_completed_v1'),false);}});
 test('Gesperrter Browserspeicher verhindert weder Erkennung noch Einrichtung',()=>{const a=app();a.c.localStorage={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')},removeItem(){throw Error('blocked')}};a.c.connected=true;a.c.secure=true;a.c.members=[{}];assert.equal(a.state().complete,true);});
+test('Gespeichertes Passwort aktualisiert den Einrichtungshinweis sofort; ungültige Eingabe nicht',()=>{
+ const source=fs.readFileSync('js/features/settings/admin.js','utf8');
+ for(const [first,repeat,updates] of [['test-only-password','test-only-password',1],['short','short',0],['test-only-password','different-value',0]]){
+  const fields={newPin:{value:first},repeatPin:{value:repeat}},stored=new Map();let calls=0;
+  const c=vm.createContext({requireAdmin:()=>true,byId:id=>fields[id],KEYS:{password:'test-key'},safeStorage:{setItem:(k,v)=>stored.set(k,v)},showToast(){},window:{SmartWorkflow:{settings(){assert.equal(stored.get('test-key'),first);calls++;}}}});
+  vm.runInContext(source.slice(source.indexOf('function changePin()')),c);c.changePin();assert.equal(calls,updates);
+ }
+});
+test('Öffnen der Einstellungen prüft auch ein bereits eingerichtetes Passwort erneut',()=>{
+ const source=fs.readFileSync('js/core/ui.js','utf8');let updates=0;
+ const c=vm.createContext({window:{scrollTo(){},SmartWorkflow:{settings(){updates++;}}},byId:()=>({classList:{remove(){},toggle(){}}}),document:{querySelectorAll:()=>[]},clearTimeout(){},toastTimer:0,closeCompactMenu(){},hideDocumentReportUi(){}});
+ vm.runInContext(source.slice(source.indexOf('function showView('),source.indexOf('function renderSessionType(')),c);
+ c.showView('settingsView');assert.equal(updates,1);c.showView('attendanceView');assert.equal(updates,1);
+});

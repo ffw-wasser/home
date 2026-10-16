@@ -228,6 +228,7 @@ function changePin() {
   safeStorage.setItem(KEYS.password, first);
   byId("newPin").value = "";
   byId("repeatPin").value = "";
+  window.SmartWorkflow?.settings();
   showToast("Admin-Passwort wurde geändert.");
 }
 
