@@ -217,6 +217,7 @@
     const totals=account?M.totals(account):{balance:0,count:0};global.DrinksRewards?.render(account,0,0);root.querySelectorAll('[data-dr-person]').forEach(e=>e.textContent=name(memberId));renderRecent();
     el('account-mobile-status').textContent=global.DrinksMobile?.status(memberId)||'';
     for(const id of ['mobile-open','mobile-back','mobile-refresh','mobile-rotate'])if(el(id))el(id).disabled=busy||Boolean(pending);
+    if(el('mobile-refresh'))el('mobile-refresh').hidden=busy||currentScreen!=='mobile'||el('mobile-qr').width>1;
     if(el('mobile-retry')){el('mobile-retry').hidden=!global.DrinksMobile?.status(memberId).includes('noch nicht aktualisiert');el('mobile-retry').disabled=busy||Boolean(pending);}
     el('balance').textContent=euro(totals.balance);el('count').textContent=totals.balance===0?'Alles bezahlt.':totals.count+' gespeicherte Getränke seit Kontostart';el('cancel').disabled=busy||Boolean(pending);
     root.querySelectorAll('[data-dr-pay]').forEach(b=>b.disabled=busy||Boolean(pending)||totals.balance<=0);
@@ -348,7 +349,6 @@
     byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
     el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
     el('confirm')?.addEventListener('click',()=>confirmCards());
-    el('ranking-refresh')?.addEventListener('click',loadRanking);
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});
     el('discard-all').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;if(confirm('Alle vorgemerkten Änderungen verwerfen? Gespeicherte Buchungen bleiben erhalten.')){cardDrafts.clear();stagedOnly=false;renderPeople();render();}});
     el('cash-all').addEventListener('click',()=>run(async()=>{method='cash';await confirmPayment();}));
