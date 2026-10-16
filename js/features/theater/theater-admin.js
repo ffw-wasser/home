@@ -1,6 +1,47 @@
 (function(g){
  'use strict';const M=g.TheaterModel,$=id=>document.getElementById('theater-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let events=[],current=null,orders=[],busy=false,loading=false,timer=null,epoch=0,mode='cash',draft=null,dirty=false,connection=null,selectedMember=null;
  const stateName={open:'Noch offen',reserved:'In Kasseneingabe',done:'In Kasse erfasst'};
+ let soundContext=null,soundEnabled=false,observedEventId=null,knownOrderIds=null;
+ function soundControls(note=''){
+  const toggle=$('sound'),status=$('sound-status');if(!toggle||!status)return;
+  toggle.setAttribute('aria-pressed',String(soundEnabled));
+  toggle.textContent=soundEnabled?'🔔 Ton ausschalten':'🔔 Ton einschalten';
+  status.textContent=note||(soundEnabled?'Ton aktiv · Neue Bestellungen werden mit einem Signal gemeldet.':'Ton aus · Zum Einschalten einmal antippen.');
+ }
+ function playNewOrderTone(preview=false){
+  if(!soundEnabled||document.hidden||document.getElementById('theaterView').hidden)return;
+  if(!soundContext||soundContext.state!=='running'){soundEnabled=false;soundControls('Ton pausiert · Bitte erneut auf „Ton einschalten“ tippen.');return;}
+  try{
+   const start=soundContext.currentTime+0.02;
+   for(const [index,frequency] of [880,1175,1480,880,1175,1480].entries()){
+    const at=start+index*0.18,osc=soundContext.createOscillator(),volume=soundContext.createGain();
+    osc.type='square';osc.frequency.setValueAtTime(frequency,at);
+    volume.gain.setValueAtTime(0,at);
+    volume.gain.linearRampToValueAtTime(0.27,at+0.012);
+    volume.gain.setValueAtTime(0.27,at+0.115);
+    volume.gain.linearRampToValueAtTime(0,at+0.155);
+    osc.connect(volume);volume.connect(soundContext.destination);osc.start(at);osc.stop(at+0.165);
+   }
+   soundControls(preview?'✓ Testton abgespielt · Alarm ist aktiv.':'🔔 Neue Bestellung eingegangen!');
+  }catch(e){soundEnabled=false;soundControls('Ton konnte nicht abgespielt werden. Bitte erneut einschalten.');}
+ }
+ function noticeIncomingOrders(eventId,next){
+  const incoming=observedEventId===eventId&&knownOrderIds&&next.some(o=>!knownOrderIds.has(o.id)&&o.state==='open'&&!o.cancels&&o.lines?.some(line=>line.quantity>0));
+  observedEventId=eventId;knownOrderIds=new Set(next.map(o=>o.id));
+  if(incoming)playNewOrderTone();
+ }
+ async function toggleSound(){
+  if(soundEnabled){soundEnabled=false;soundControls();return;}
+  const Ctor=g.AudioContext||g.webkitAudioContext;
+  if(!Ctor){soundControls('Dieses Gerät unterstützt keine Browser-Töne.');return;}
+  try{
+   if(!soundContext)soundContext=new Ctor();
+   if(soundContext.state!=='running')await soundContext.resume();
+   if(soundContext.state!=='running')throw Error('Audiowiedergabe nicht freigegeben.');
+   soundEnabled=true;soundControls();playNewOrderTone(true);
+  }catch(e){soundEnabled=false;soundControls('Ton blockiert · Bitte iPad-Lautstärke prüfen und erneut tippen.');}
+ }
+
  function message(text){$('status').textContent=text;if($('manage-status'))$('manage-status').textContent=text;}
  function guard(){if(!g.requireAdmin('theaterView'))throw Error('Bitte Verwaltung entsperren.');}
  async function api(action,data={}){guard();const c=connection||await g.DrinksCentral.connection();if(!c)throw Error('Bitte zuerst den Kontodienst unter Getränkeverwaltung verbinden.');guard();connection=c;return g.DrinksPush.request(c,'/admin/portal/theater/'+action,{source:c.source,...data});}
@@ -12,7 +53,7 @@
  // Reads never lock navigation or editing. A write invalidates older read responses.
  async function run(fn,{read=false}={}){if(busy||read&&loading)return;if(read)loading=true;else{epoch++;loading=false;busy=true;}const generation=epoch;controls();try{await fn(generation);}catch(e){if(generation===epoch)message(e.message);}finally{if(generation===epoch){if(read)loading=false;else busy=false;controls();schedule();}}}
  async function load(first=true){if(document.getElementById('theaterView').hidden||document.hidden)return;return run(async generation=>{if(first){connection=null;const r=await api('events');if(generation!==epoch)return;events=r.events;const selected=$('event').value||current?.id;const next=events.find(e=>e.id===selected)||events.find(e=>e.open)||events[0]||null;if(next?.id!==current?.id)selectedMember=null;current=next;paintSelect();}
-  if(current){const r=await api('list',{eventId:current.id});if(generation!==epoch)return;current=r.event;orders=r.orders;paintCash();paintStats();message((current.open?'Geöffnet':'Geschlossen')+' · Stand '+new Date(r.servedAt).toLocaleTimeString('de-DE')+(mode==='manage'?'':' · Aktualisierung alle 5 Sekunden'));}else{orders=[];paintCash();paintStats();message('Noch keine Veranstaltung angelegt. Unter Verwaltung starten.');}if(mode==='manage'&&!dirty)edit();},{read:true});}
+  if(current){const r=await api('list',{eventId:current.id});if(generation!==epoch)return;current=r.event;orders=r.orders;noticeIncomingOrders(current.id,orders);paintCash();paintStats();message((current.open?'Geöffnet':'Geschlossen')+' · Stand '+new Date(r.servedAt).toLocaleTimeString('de-DE')+(mode==='manage'?'':' · Aktualisierung alle 5 Sekunden'));}else{orders=[];paintCash();paintStats();message('Noch keine Veranstaltung angelegt. Unter Verwaltung starten.');}if(mode==='manage'&&!dirty)edit();},{read:true});}
  function paintSelect(){const select=$('event');select.replaceChildren();for(const event of events){const opt=node('option',event.title+(event.open?' · geöffnet':''));opt.value=event.id;select.append(opt);}select.value=current?.id||'';}
  function lines(root,items){const list=node('ul');list.className='theater-lines';for(const p of items){const li=node('li');li.append(node('strong',p.quantity+' × '+p.name),node('span',M.money(p.quantity*p.cents)));list.append(li);}root.append(list,node('p','Summe: '+M.money(M.total(items))));}
  function selectCash(member){if(busy||loading)return;selectedMember=member;paintCash();$('cash-back')?.focus({preventScroll:true});}
@@ -53,7 +94,7 @@
   }
   controls();
  }
- async function mutate(action,data){await run(async generation=>{await api(action,{eventId:current.id,...data});if(generation!==epoch)return;const r=await api('list',{eventId:current.id});if(generation!==epoch)return;orders=r.orders;if(action==='complete'||action==='release')selectedMember=null;paintCash();paintStats();message('✓ '+({reserve:'Bestellpaket reserviert. Neue Bestellungen laufen separat weiter.',complete:'Paket als in Kasse erfasst markiert.',release:'Reservierung freigegeben.'})[action]);});}
+ async function mutate(action,data){await run(async generation=>{await api(action,{eventId:current.id,...data});if(generation!==epoch)return;const r=await api('list',{eventId:current.id});if(generation!==epoch)return;orders=r.orders;noticeIncomingOrders(current.id,orders);if(action==='complete'||action==='release')selectedMember=null;paintCash();paintStats();message('✓ '+({reserve:'Bestellpaket reserviert. Neue Bestellungen laufen separat weiter.',complete:'Paket als in Kasse erfasst markiert.',release:'Reservierung freigegeben.'})[action]);});}
  function table(root,title,headers,rows){root.append(node('h3',title));const wrapper=node('div');wrapper.className='theater-table-scroll';const t=node('table'),head=node('thead'),tr=node('tr');for(const h of headers)tr.append(node('th',h));head.append(tr);t.append(head);const body=node('tbody');for(const row of rows){const r=node('tr');for(const value of row)r.append(node('td',value));body.append(r);}t.append(body);wrapper.append(t);root.append(wrapper);}
  function paintStats(){const root=$('stats-content');root.replaceChildren();const s=M.statistics(orders);root.append(node('h3',M.money(s.cents)+' Bestellwert'),node('p',s.count+' Buchungen, davon '+orders.filter(o=>o.lines.some(p=>p.quantity<0)).length+' Storno-/Korrekturbuchungen'));table(root,'Kassenstand',['Status','Bestellungen','Betrag'],['open','reserved','done'].map(state=>{const r=s.states.find(r=>r.name===state);return [stateName[state],r?.orders||0,M.money(r?.cents||0)];}));table(root,'Artikel',['Artikel','Rubrik','Menge','Betrag'],s.items.map(p=>[p.name,p.category,p.quantity,M.money(p.cents*p.quantity)]));const cats=new Map();for(const p of s.items){const r=cats.get(p.category)||{q:0,c:0};r.q+=p.quantity;r.c+=p.quantity*p.cents;cats.set(p.category,r);}table(root,'Rubriken',['Rubrik','Menge','Betrag'],[...cats].map(([k,v])=>[k,v.q,M.money(v.c)]));table(root,'Personen',['Name','Bestellungen','Betrag'],s.people.map(r=>[r.name,r.orders,M.money(r.cents)]));table(root,'Zeitverlauf (Europe/Berlin)',['Stunde','Bestellungen','Betrag'],s.hours.map(r=>[r.name,r.orders,M.money(r.cents)]));}
  function exportCSV(){const rows=[['Veranstaltung','Bestellkennung','Zeit','Person','Status','Artikel','Rubrik','Menge','Einzelpreis EUR','Betrag EUR','Buchungsart','Storno zu Bestellung']];for(const o of orders)for(const p of o.lines)rows.push([current.title,o.id,new Date(o.createdAt).toLocaleString('de-DE',{timeZone:'Europe/Berlin'}),o.name,stateName[o.state],p.name,p.category,p.quantity,(p.cents/100).toFixed(2).replace('.',','),(p.cents*p.quantity/100).toFixed(2).replace('.',','),o.cancels?'Storno Kasseneingabe':o.lines.some(p=>p.quantity<0)?'Korrektur Handy':'Bestellung',o.cancels||'']);const cell=v=>'"'+String(v).replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';const blob=new Blob(['\uFEFF'+rows.map(r=>r.map(cell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=node('a');a.href=url;a.download='Theater-Auswertung.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -68,12 +109,12 @@
   await run(async generation=>{
    const result=await api('reset',{eventId:current.id,expectedVersion:current.version,confirmation:'ZURÜCKSETZEN'});
    if(generation!==epoch)return;
-   current=result.event;events=events.map(e=>e.id===current.id?current:e);orders=[];selectedMember=null;paintSelect();paintCash();paintStats();dirty=false;edit();
+   current=result.event;events=events.map(e=>e.id===current.id?current:e);orders=[];observedEventId=current.id;knownOrderIds=new Set();selectedMember=null;paintSelect();paintCash();paintStats();dirty=false;edit();
    message('✓ Theater-Bestellungen zurückgesetzt. Veranstaltung geschlossen; Preisliste erhalten.');
   });
  }
  function setMode(next){if(next!=='cash')selectedMember=null;if(mode==='manage'&&dirty&&next!=='manage'&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;mode=next;for(const name of ['cash','stats','manage']){$(name).hidden=name!==mode;document.querySelector('[data-theater-tab="'+name+'"]').setAttribute('aria-pressed',String(name===mode));}if(mode==='manage'){clearTimeout(timer);if(!dirty)edit();}else{dirty=false;load(false);}}
- function lock(){epoch++;clearTimeout(timer);connection=null;events=[];current=null;orders=[];draft=null;dirty=false;busy=false;loading=false;selectedMember=null;$('cards')?.replaceChildren();$('editor')?.replaceChildren();$('stats-content')?.replaceChildren();if($('title'))$('title').value='';$('event')?.replaceChildren();controls();}
- function init(){$('refresh').onclick=()=>load(true);$('event').onchange=()=>{if(dirty&&!confirm('Ungespeicherte Änderungen verwerfen?')){$('event').value=current.id;return;}dirty=false;selectedMember=null;current=events.find(e=>e.id===$('event').value);load(false);};document.querySelectorAll('[data-theater-tab]').forEach(b=>b.onclick=()=>setMode(b.dataset.theaterTab));$('save').onclick=save;$('reset').onclick=resetEvent;$('cash-back').onclick=()=>{selectedMember=null;paintCash();};$('new').onclick=()=>{if(dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;edit(true);};$('add').onclick=()=>{draft.items.push({id:crypto.randomUUID(),name:'Neuer Artikel',category:'Getränke',cents:0,active:true});dirty=true;paintEditor();};$('title').oninput=$('open').onchange=()=>{dirty=true;};$('import').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{dirty=true;const items=await g.TheaterImport.read(file);if(draft.items.length&&!confirm('Die aktuelle Artikelliste in der Vorschau ersetzen?'))return;draft.items=items;dirty=true;paintEditor();message(items.length+' Artikel eingelesen. Rubriken zuordnen, Preise prüfen und speichern.');}catch(e){message(e.message);}finally{$('import').value='';}};$('export').onclick=exportCSV;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else if(!document.getElementById('theaterView').hidden)load(false);});new MutationObserver(()=>{if(document.getElementById('theaterView').hidden)clearTimeout(timer);}).observe(document.getElementById('theaterView'),{attributes:true,attributeFilter:['hidden']});}
+ function lock(){epoch++;clearTimeout(timer);connection=null;events=[];current=null;orders=[];draft=null;dirty=false;busy=false;loading=false;selectedMember=null;observedEventId=null;knownOrderIds=null;soundEnabled=false;soundContext?.suspend?.().catch(()=>{});soundControls();$('cards')?.replaceChildren();$('editor')?.replaceChildren();$('stats-content')?.replaceChildren();if($('title'))$('title').value='';$('event')?.replaceChildren();controls();}
+ function init(){$('sound').onclick=toggleSound;soundControls();$('refresh').onclick=()=>load(true);$('event').onchange=()=>{if(dirty&&!confirm('Ungespeicherte Änderungen verwerfen?')){$('event').value=current.id;return;}dirty=false;selectedMember=null;current=events.find(e=>e.id===$('event').value);load(false);};document.querySelectorAll('[data-theater-tab]').forEach(b=>b.onclick=()=>setMode(b.dataset.theaterTab));$('save').onclick=save;$('reset').onclick=resetEvent;$('cash-back').onclick=()=>{selectedMember=null;paintCash();};$('new').onclick=()=>{if(dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;edit(true);};$('add').onclick=()=>{draft.items.push({id:crypto.randomUUID(),name:'Neuer Artikel',category:'Getränke',cents:0,active:true});dirty=true;paintEditor();};$('title').oninput=$('open').onchange=()=>{dirty=true;};$('import').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{dirty=true;const items=await g.TheaterImport.read(file);if(draft.items.length&&!confirm('Die aktuelle Artikelliste in der Vorschau ersetzen?'))return;draft.items=items;dirty=true;paintEditor();message(items.length+' Artikel eingelesen. Rubriken zuordnen, Preise prüfen und speichern.');}catch(e){message(e.message);}finally{$('import').value='';}};$('export').onclick=exportCSV;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else if(!document.getElementById('theaterView').hidden)load(false);});new MutationObserver(()=>{if(document.getElementById('theaterView').hidden)clearTimeout(timer);}).observe(document.getElementById('theaterView'),{attributes:true,attributeFilter:['hidden']});}
  g.TheaterAdmin={load,lock,beforeView:id=>id==='theaterView'||!dirty||confirm('Ungespeicherte Theater-Änderungen verwerfen?')&&(dirty=false,true)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

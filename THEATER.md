@@ -63,3 +63,24 @@ Eingabe `ZURÜCKSETZEN`. Die Worker-Operation erfordert Admin-Zugriff, die aktue
 Veranstaltungsversion und eine atomare Datenbanktransaktion. Parallel laufende
 oder veraltete Anfragen dürfen nach einem Reset keine alten Bestellungen wieder aufnehmen.
 Die Internetverbindung ist für die Kassenübertragung und das Zurücksetzen erforderlich.
+
+## Signalton bei neuen Bestellungen (2026.10.16.36)
+
+In der iPad-Ansicht **Veranstaltung → Theater → Kasseneingabe** befindet sich
+die Schaltfläche **„🔔 Ton einschalten“**. Beim Antippen wird ein sechsfacher,
+gut hörbarer Testsignalton über die iPad-Lautsprecher erzeugt. Danach
+spielt die Anwendung die Melodie erneut, wenn beim automatischen
+Fünf-Sekunden-Abgleich eine tatsächlich neue positive Bestellung eingeht.
+Vorher bereits vorhandene Bestellungen, reine Korrekturen und wiederholte
+Abfragen derselben Bestellung lösen keinen weiteren Ton aus.
+
+Die Aktivierung gilt nur für die geöffnete Sitzung und lässt sich mit
+**„Ton ausschalten“** zurücknehmen. Browser, insbesondere iPadOS/Safari,
+erfordern eine Nutzerinteraktion, bevor Ton abgespielt werden darf.
+Die Anwendung kann die physische Geräte-Lautstärke, Stummschaltung und
+Audioausgabe nicht übersteuern. Das iPad muss deshalb laut gestellt sein,
+und die App für diese Prüfung im Vordergrund bleiben. Bei gesperrtem
+Bildschirm oder vollständig im Hintergrund gibt es keine zuverlässige
+Browser-Signalton-Garantie. Die Funktion verwendet den vorhandenen
+Browser-Audiogenerator: keine Sounddatei, keine zusätzlichen Dienste,
+keine Kosten und keine Änderung der Handy-Bestell- oder Cloudflare-API.
