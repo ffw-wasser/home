@@ -7,7 +7,7 @@ function equal(a,b){if(typeof a!=='string'||typeof b!=='string')return false;con
 function endpoint(value){let u;try{u=new URL(value);}catch{throw new Error('Ungültige Geräte-Adresse.');}const h=u.hostname;const allowed=h==='fcm.googleapis.com'||h==='updates.push.services.mozilla.com'||h==='push.services.mozilla.com'||/^[a-z0-9-]+\.push\.apple\.com$/.test(h)||h==='web.push.apple.com';if(u.protocol!=='https:'||!allowed||u.port||u.username||u.password||u.hash||value.length>2048)throw new Error('Geräte-Adresse wird nicht unterstützt.');return u.href;}
 async function capability(env,alias,revision,purpose='push'){const key=await crypto.subtle.importKey('raw',enc.encode(env.INVITE_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(await crypto.subtle.sign('HMAC',key,enc.encode('deckel-'+purpose+'-v1:'+alias+':'+revision)));}
 async function vapid(env,url){const jwk=JSON.parse(env.VAPID_PRIVATE_JWK);const key=await crypto.subtle.importKey('jwk',jwk,{name:'ECDSA',namedCurve:'P-256'},false,['sign']);const token=b64(enc.encode(JSON.stringify({typ:'JWT',alg:'ES256'})))+'.'+b64(enc.encode(JSON.stringify({aud:new URL(url).origin,exp:Math.floor(Date.now()/1000)+3600,sub:'https://ffw-wasser.github.io/home/'})));const signature=b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,enc.encode(token)));return 'vapid t='+token+'.'+signature+', k='+env.VAPID_PUBLIC_KEY;}
-async function body(request){const raw=await request.text();if(raw.length>6000)throw new Error('Anfrage zu groß.');const data=JSON.parse(raw);if(!data||Array.isArray(data)||typeof data!=='object')throw new Error('Ungültige Anfrage.');return data;}
+async function body(request,maxLength=6000){const raw=await request.text();if(raw.length>maxLength)throw Object.assign(new Error('Die Anfrage überschreitet die zulässige Größe.'),{status:413});const data=JSON.parse(raw);if(!data||Array.isArray(data)||typeof data!=='object')throw new Error('Ungültige Anfrage.');return data;}
 async function account(env,alias){return env.DB.prepare('SELECT alias, revision, last_sent FROM accounts WHERE alias=?').bind(alias).first();}
 export default {
  async fetch(request,env){
@@ -30,7 +30,7 @@ export default {
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
-    const value=await body(request);
+    const value=await body(request,path==='/admin/portal/roster'?512000:6000);
     try{return reply(await globalThis.PortalService.route(path,value,env,auth));}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
    }
@@ -129,7 +129,7 @@ export default {
     return reply({status,accepted,failed});
    }
    return reply({error:'Nicht gefunden.'},404);
-  }catch(error){return reply({error:error.message?.startsWith('Ungültig')||error.message==='Geräte-Adresse wird nicht unterstützt.'?error.message:'Dienst derzeit nicht erreichbar. Bitte später erneut prüfen.'},400);}
+  }catch(error){if(error.status===413)return reply({error:error.message},413);return reply({error:error.message?.startsWith('Ungültig')||error.message==='Geräte-Adresse wird nicht unterstützt.'?error.message:'Dienst derzeit nicht erreichbar. Bitte später erneut prüfen.'},400);}
  },
  async scheduled(controller,env,ctx){ctx.waitUntil(globalThis.PortalService?.scheduled(env));}
 };

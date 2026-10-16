@@ -133,3 +133,15 @@ test('Ältere Mitgliederabgleiche bewahren Nachweise und deren ursprünglichen D
  assert.equal((await f.call('roster',{members:[{...m,evidence:invalid}]},null,true)).status,400);
  assert.deepEqual((await f.call('evidence')).value.evidence,original.evidence);
 });
+
+test('Mitgliederabgleich mit Nachweisen unterstützt realistische Listen über 6000 Zeichen',async()=>{
+ const f=await fixture(),members=Array.from({length:40},(_,i)=>({id:i<5?f.people[i].memberId:'test-member-'+i,name:'Künstliche Testperson '+i,leader:i===0,evidence:f.c.MemberEvidence.project({breathingQualified:i%2===0,g262ValidUntil:'2028-01-01',g263ValidUntil:'2028-02-01',agtInstructionValidUntil:'2028-03-01',ffiValidUntil:'2028-04-01',machinistVehicles:['LF','TSF'],driverLicenseCheckedOn:'2026-01-17'})}));
+ assert.ok(JSON.stringify({source:'test-source',members}).length>6000);
+ const result=await f.call('roster',{members},null,true);assert.equal(result.status,200,JSON.stringify(result.value));assert.equal(result.value.evidenceVersion,1);assert.equal((await f.call('evidence')).value.evidence.medical.g262,'2028-01-01');
+});
+
+test('Größere Portal-Anfragen bleiben begrenzt; private Aufrufe behalten die kleine Grenze',async()=>{
+ const f=await fixture();
+ const memberCall=await f.call('evidence',{padding:'x'.repeat(6100)});assert.equal(memberCall.status,413);assert.match(memberCall.value.error,/zulässige Größe/);
+ const oversized=await f.call('roster',{padding:'x'.repeat(512001),members:[]},null,true);assert.equal(oversized.status,413);assert.equal((await f.call('list',{},null,true)).value.events.length,1);
+});
