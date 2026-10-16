@@ -1,15 +1,15 @@
 .deckel-challenge{margin-top:20px;padding:18px;border:2px solid #075baf;border-radius:18px;background:#ffffff;text-align:left;overflow-wrap:anywhere}
-.deckel-challenge>summary{cursor:pointer;font-weight:800;font-size:20px;min-height:44px;display:list-item;line-height:1.4}
+.deckel-challenge>summary{cursor:pointer;font-weight:800;font-size:1.25rem;min-height:44px;display:list-item;line-height:1.4}
 .deckel-challenge p{line-height:1.5}
-.deckel-challenge select{width:100%;box-sizing:border-box;min-width:0;min-height:48px;font-size:16px;padding:12px;border:1px solid #b6cbdf;border-radius:10px;background:#fff;color:#102843;margin:6px 0 12px}
+.deckel-challenge select{width:100%;box-sizing:border-box;min-width:0;min-height:48px;font-size:1rem;padding:12px;border:1px solid #b6cbdf;border-radius:10px;background:#fff;color:#102843;margin:6px 0 12px}
 .deckel-challenge label{display:block;font-weight:700;margin-top:12px}
-.deckel-challenge button{width:100%;max-width:100%;box-sizing:border-box;white-space:normal;min-height:48px;padding:14px;margin:6px 0;font-size:16px;line-height:1.4}
+.deckel-challenge button{width:100%;max-width:100%;box-sizing:border-box;white-space:normal;min-height:48px;padding:14px;margin:6px 0;font-size:1rem;line-height:1.4}
 .deckel-challenge .challenge-answer{text-align:left;border:2px solid #075baf;background:#fff;color:#123b65;border-radius:12px;font-weight:700;margin:5px 0;min-height:56px}
 .deckel-challenge button:disabled{opacity:.55}
 .deckel-challenge button:focus-visible,.deckel-challenge select:focus-visible{outline:3px solid #245d9f;outline-offset:3px}
 #challenge-bonus{padding:12px;background:#e9f6fc;border-radius:12px;font-weight:700;color:#244d72}
 #challenge-question{margin:18px 0;scroll-margin-top:16px}
-#challenge-question h3{font-size:20px;line-height:1.45;margin:12px 0 16px}
+#challenge-question h3{font-size:1.25rem;line-height:1.45;margin:12px 0 16px}
 #challenge-progress{display:block;width:100%;height:10px;accent-color:#075baf;margin-top:8px}
 #challenge-review details{padding:12px 0;border-top:1px solid #bfdceb}
 #challenge-review summary{min-height:44px;cursor:pointer;font-weight:700}
@@ -17,7 +17,7 @@
 #challenge-review small{display:block;overflow-wrap:anywhere}
 #challenge-status{font-weight:700}
 .deckel-challenge [hidden]{display:none!important}
-@media(max-width:380px){.deckel-challenge{padding:14px}.deckel-challenge>summary{font-size:18px}}
+@media(max-width:380px){.deckel-challenge{padding:14px}.deckel-challenge>summary{font-size:1.125rem}}
 @media(prefers-reduced-motion:reduce){.deckel-challenge *{scroll-behavior:auto}}
 
-.deckel-challenge>summary .challenge-summary-note{display:block;margin:5px 0 0;font-size:13px;font-weight:500;line-height:1.5;color:#526c87}
+.deckel-challenge>summary .challenge-summary-note{display:block;margin:5px 0 0;font-size: .875rem;font-weight:500;line-height:1.5;color:#526c87}

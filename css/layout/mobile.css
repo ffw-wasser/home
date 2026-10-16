@@ -16,7 +16,7 @@
   #attendanceSelectionWorkspace .probe-date-control{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;width:100%!important}
   #attendanceSelectionWorkspace .sheet-status-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;height:auto!important;min-height:0!important;gap:8px!important;padding:8px!important}
   #attendanceSelectionWorkspace .sheet-status-tab,#attendanceSelectionWorkspace .sheet-status-tab.selected{width:100%!important;min-width:0!important;min-height:62px!important;height:auto!important;padding:10px 8px!important;border-radius:11px!important;font-size:.98rem!important;line-height:1.15!important;white-space:normal!important;transform:none!important}
-}body.ios-password-keyboard-open .ios-keyboard-host{max-height:calc(var(--ios-visual-height,100dvh) - 24px)!important;overflow:auto!important}#pageAccessPin,#adminPin,#archivePin{scroll-margin:18px 0 28px;font-size:16px}
+}body.ios-password-keyboard-open .ios-keyboard-host{max-height:calc(var(--ios-visual-height,100dvh) - 24px)!important;overflow:auto!important}#pageAccessPin,#adminPin,#archivePin{scroll-margin:18px 0 28px;font-size:1rem}
 
 /* BUTTONS-HOTFIX-20261007 */
 @media (max-width:760px){
@@ -86,7 +86,7 @@
     min-width: 0 !important;
     padding: 6px 8px !important;
     white-space: normal !important;
-    font-size: .82rem !important;
+    font-size: .875rem !important;
     line-height: 1.1 !important;
   }
   #attendanceView.workflow-stage-2 #step3ActionArea {
@@ -113,7 +113,7 @@
     margin: 0 !important;
     padding: 6px 8px !important;
     white-space: normal !important;
-    font-size: .82rem !important;
+    font-size: .875rem !important;
     line-height: 1.1 !important;
     box-sizing: border-box !important;
   }
@@ -202,7 +202,7 @@ body.ios-input-keyboard-open.ios-keyboard-visible main.app-shell{padding-bottom:
     padding:6px 7px!important;
     white-space:normal!important;
     overflow-wrap:anywhere!important;
-    font-size:.78rem!important;
+    font-size: .875rem!important;
     line-height:1.08!important;
   }
   #iphoneAttendanceActionDock #step3ActionArea {
