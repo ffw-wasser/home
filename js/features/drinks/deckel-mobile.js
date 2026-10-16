@@ -8,7 +8,7 @@
   const wrapper=$('portal-page-'+pages[id]);if(wrapper){const scroller=$('deckel-main');if(scroller?.scrollTo)scroller.scrollTo({top:0,left:0,behavior:'instant'});else g.scrollTo?.({top:0,left:0,behavior:'instant'});wrapper.focus?.({preventScroll:true});}else if(!target.hidden){target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});target.focus?.({preventScroll:true});}
   if(typeof g.CustomEvent==='function')g.dispatchEvent(new CustomEvent('portal-pagechange',{detail:{page:id}}));
  }
- function show(value){if(value&&g.history?.replaceState&&!pages[g.history.state?.portalPage])g.history.replaceState({...g.history.state,portalPage:current},'');visible=Boolean(value);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
+ function show(value){if(value&&!visible){current='portal-section';if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');}visible=Boolean(value);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
  function init(){const nav=$('deckel-nav');if(!nav)return;nav.querySelectorAll('[data-deckel-target]').forEach(button=>button.addEventListener('click',()=>jump(button.dataset.deckelTarget)));
   const main=$('deckel-main');let suppressClickUntil=0;
   main?.addEventListener('pointerdown',event=>{
