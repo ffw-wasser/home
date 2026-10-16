@@ -31,3 +31,31 @@ test('Import erkennt versetzte Artikel-/Preis-Spalten und Dezimalkomma',()=>{con
 
 test('Minusartikel bleiben neben Reservierung offen und werden in Statistik verrechnet',async()=>{const f=await setup(),a=(await order(f)).value.id;await f.call('theater/reserve',{eventId:eid,batchId:'signed-batch',memberId:f.people[0].memberId,orderIds:[a]},null,true);const requestId=webcrypto.randomUUID(),lines=[{id:'beer',quantity:-1}];assert.equal((await order(f,undefined,{requestId,lines})).status,200);assert.equal((await order(f,undefined,{requestId,lines})).status,200);const rows=(await list(f)).value.orders;assert.equal(rows.length,2);assert.equal(rows.find(o=>o.id===a).lines[0].quantity,2);assert.equal(rows.find(o=>o.id===requestId).state,'open');assert.equal(f.c.TheaterModel.statistics(rows).cents,300);assert.equal((await order(f,undefined,{requestId:'cancel_reserved'})).status,400);});
 test('Kassenstorno einmalig trotz paralleler iPads, mit Originalpreis und nach Abschluss',async()=>{const f=await setup(),a=(await order(f)).value.id;await f.call('theater/reserve',{eventId:eid,batchId:'cancel-batch',memberId:f.people[0].memberId,orderIds:[a]},null,true);await f.call('theater/complete',{eventId:eid,batchId:'cancel-batch'},null,true);await f.call('theater/save',{eventId:eid,expectedVersion:1,catalog:{...catalog,open:false,items:[{...catalog.items[0],cents:500}]}},null,true);const data={eventId:eid,orderId:a};assert.equal((await f.call('theater/cancel',data)).status,403);assert.equal((await f.call('theater/cancel',{...data,eventId:'other'},null,true)).status,404);const results=await Promise.all([f.call('theater/cancel',data,null,true),f.call('theater/cancel',data,null,true)]);assert.ok(results.every(r=>r.status===200));assert.equal(results[0].value.id,results[1].value.id);const rows=(await list(f)).value.orders,c=rows.find(o=>o.cancels===a);assert.equal(rows.length,2);assert.equal(c.lines[0].quantity,-2);assert.equal(c.lines[0].cents,300);assert.equal(c.state,'open');assert.equal(rows.find(o=>o.id===a).state,'done');assert.equal(f.c.TheaterModel.statistics(rows).cents,0);assert.equal((await f.call('theater/cancel',{eventId:eid,orderId:c.id},null,true)).status,409);});
+
+test('Theater-Zurücksetzen schützt vor Fehlbedienung, bewahrt Preisliste und verhindert alte Bestellungen',async()=>{
+ const f=await setup(),first=(await order(f)).value.id;
+ await order(f,f.people[1]);
+ await f.call('theater/reserve',{eventId:eid,batchId:'reset-batch',memberId:f.people[0].memberId,orderIds:[first]},null,true);
+ await f.call('theater/complete',{eventId:eid,batchId:'reset-batch'},null,true);
+ const reset={eventId:eid,expectedVersion:1,confirmation:'ZURÜCKSETZEN'};
+ assert.equal((await f.call('theater/reset',reset)).status,403);
+ assert.equal((await f.call('theater/reset',{...reset,confirmation:'nein'},null,true)).status,400);
+ assert.equal((await f.call('theater/reset',{...reset,expectedVersion:0},null,true)).status,400);
+ f.failBatch();
+ assert.equal((await f.call('theater/reset',reset,null,true)).status,503);
+ assert.equal((await list(f)).value.orders.length,2,'Fehlgeschlagene Transaktion darf nichts löschen');
+ assert.equal((await list(f)).value.event.version,1);
+ const result=await f.call('theater/reset',reset,null,true);
+ assert.equal(result.status,200);assert.equal(result.value.deleted,2);
+ assert.equal(result.value.event.open,false);assert.equal(result.value.event.version,2);
+ assert.equal(result.value.event.items.length,2,'Preisliste bleibt bestehen');
+ assert.equal((await list(f)).value.orders.length,0);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM theater_batches WHERE event=?').get(eid).n,0);
+ assert.equal((await order(f)).status,409,'Handys mit alter Version dürfen nicht weiter bestellen');
+ assert.equal((await f.call('theater/reset',reset,null,true)).status,409);
+ const reopened=await f.call('theater/save',{eventId:eid,expectedVersion:2,catalog},null,true);
+ assert.equal(reopened.status,200);
+ assert.equal((await order(f,f.people[0],{version:3})).status,200);
+ assert.equal((await f.call('theater/reset',reset,null,true)).status,409);
+ assert.equal((await list(f)).value.orders.length,1,'Veralteter Reset darf spätere Bestellungen nicht löschen');
+});

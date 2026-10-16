@@ -722,6 +722,22 @@
   }
   if(!admin)fail('Nur die Kassenverwaltung darf diese Ansicht öffnen.',403);
   if(action==='list'){const current=await event(env,data.eventId);if(!current)fail('Veranstaltung nicht gefunden.',404);return {event:current,orders:await orders(env,data.eventId),servedAt:Date.now()};}
+  if(action==='reset'){
+   if(data.confirmation!=='ZURÜCKSETZEN'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<1)fail('Zurücksetzen benötigt eine bestätigte aktuelle Veranstaltung.',400);
+   const current=await event(env,data.eventId);if(!current)fail('Veranstaltung nicht gefunden.',404);
+   if(current.version!==data.expectedVersion)fail('Die Veranstaltung wurde inzwischen geändert. Bitte neu laden.');
+   // A unique encrypted reset marker gates all deletions within the same D1 transaction.
+   // A concurrent reset or save cannot remove bookings without the successful versioned update.
+   const payload=await L.seal(env,{title:current.title,open:false,items:current.items,resetNonce:crypto.randomUUID()},'theater-event:'+data.eventId);
+   const guard='EXISTS(SELECT 1 FROM theater_events WHERE id=? AND version=? AND payload=? AND open=0)';
+   const results=await env.DB.batch([
+    env.DB.prepare('UPDATE theater_events SET payload=?,version=version+1,open=0 WHERE id=? AND version=?').bind(payload,data.eventId,data.expectedVersion),
+    env.DB.prepare('DELETE FROM theater_orders WHERE event=? AND '+guard).bind(data.eventId,data.eventId,data.expectedVersion+1,payload),
+    env.DB.prepare('DELETE FROM theater_batches WHERE event=? AND '+guard).bind(data.eventId,data.eventId,data.expectedVersion+1,payload)
+   ]);
+   if(!results[0].meta.changes)fail('Die Veranstaltung wurde zwischenzeitlich verändert. Bitte neu laden.');
+   return {ok:true,event:await event(env,data.eventId),deleted:results[1].meta.changes};
+  }
   if(action==='cancel'){
    if(!M.id(data.orderId))fail('Bestellkennung fehlt.',400);
    const original=await env.DB.prepare('SELECT * FROM theater_orders WHERE id=? AND event=?').bind(data.orderId,data.eventId).first();if(!original)fail('Bestellung nicht gefunden.',404);

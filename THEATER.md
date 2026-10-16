@@ -41,3 +41,25 @@ Zusätzlich stehen im Handyportal die Hinweise „Zuletzt aktualisiert“, „Da
 - Browserprüfung: `node scripts/check-theater.cjs` mit Playwright und Microsoft Edge. Optional `THEATER_XLSX` auf eine lokale Preisliste setzen. Alle Netzaufrufe werden durch lokale Testdaten ersetzt.
 - Die genannte Kassenbestellung.xlsx wurde im Browser geprüft: 37 Artikel einschließlich Größen und Preisen erkannt; Rubrikzuordnung vor dem Speichern verlangt.
 - Browseransichten bei 320/390 Pixeln sowie 768/1024 Pixeln geprüft. Separate Handyseite ohne Portalnavigation, X mit Abbrechen/Bestätigen sowie Auswahl nach Rückkehr erfolgreich geprüft. Ein Test mit 20 echten Geräten im Veranstaltungs-WLAN und ein echtes iOS-/iPadOS-Gerät sind noch ausstehend.
+
+## iPad-Kassenübersicht und sicheres Zurücksetzen (2026.10.16.35)
+
+Unter **Veranstaltung → Theater → Kasseneingabe** wird eine aufgeräumte Kassenfläche angezeigt.
+Jede Person mit offenen oder reservierten Bestellungen erhält eine eigene Karte im responsiven Raster.
+Grüne Karten enthalten noch nicht übernommene Bestellungen; blaue Karten enthalten ein reserviertes Kassenpaket.
+Ein Tipp auf die Karte öffnet eine eigene Detailansicht mit Artikeln, Summen und dem vorhandenen Ablauf:
+**Für Kasse reservieren → In Kasse erfasst**. Neue Bestellungen während der Reservierung
+erscheinen separat und können erst nach Abschluss oder Freigabe übernommen werden.
+Die Personenkarte verschwindet aus der Übersicht, sobald alle ihre Bestellungen abgeschlossen sind.
+Die iPad-Ansicht bietet keine Bestellungsstornierung mehr. Bestehende Storno-/Korrekturbuchungen
+bleiben in den Auswertungen erhalten; die Handyfunktion für negative Mengen wird nicht verändert.
+
+In **Verwaltung** kann die ausgewählte Theater-Veranstaltung zurückgesetzt werden.
+Dies entfernt dauerhaft deren sämtliche Bestellungen einschließlich abgeschlossener und reservierter
+Kassenpakete, schließt den Verkauf und erhöht die Versionsnummer. Veranstaltungsname und Preisliste
+bleiben zur erneuten Verwendung erhalten. Vorher bei Bedarf eine CSV-Auswertung exportieren.
+Die Verwaltung bestätigt die Löschung zuerst über einen Warndialog und dann durch die
+Eingabe `ZURÜCKSETZEN`. Die Worker-Operation erfordert Admin-Zugriff, die aktuelle
+Veranstaltungsversion und eine atomare Datenbanktransaktion. Parallel laufende
+oder veraltete Anfragen dürfen nach einem Reset keine alten Bestellungen wieder aufnehmen.
+Die Internetverbindung ist für die Kassenübertragung und das Zurücksetzen erforderlich.

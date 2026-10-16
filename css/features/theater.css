@@ -11,3 +11,39 @@
 .theater-mode #deckel-main{padding:env(safe-area-inset-top) 12px 180px;scroll-behavior:auto}
 #portal-page-theater{padding-top:10px}.theater-phone-header{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #d2dbe4;padding-bottom:10px}.theater-phone-header span{font-weight:700;color:#6b2630}.theater .theater-phone-header button{width:48px;min-width:48px;font-size:32px;padding:0;line-height:1}
 .theater-mode .theater-phone{margin:0;padding:12px}.theater-mode .theater-phone-footer{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100%);padding:12px 20px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px #17233215;z-index:30}.theater-mode #theater-phone-title{font-size:24px;margin:18px 0 12px}
+
+
+/* iPad-Kasse: offene Personenkarten statt Stornolisten oder überfüllter Formulare. */
+#theater-cash{min-height:clamp(440px,68svh,1000px);background:#f8fafc;border:1px solid #ccd5df;border-radius:20px;padding:clamp(12px,2.4vw,26px);margin-top:16px}
+.theater-cash-board>.theater-board-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.theater-board-heading h3{font-size:1.4rem;margin:0}
+.theater-board-heading span{color:#3c526b;font-size:.95rem;font-weight:700}
+.theater-cash-board>p{margin:8px 0 22px;color:#3a536b;font-size:.95rem}
+#theater-cash .theater-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,188px),1fr));gap:clamp(12px,2vw,22px);align-content:start;min-height:320px}
+#theater-cash .theater-board-card{width:100%;min-height:180px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:8px;border:3px solid #a7bcd1;border-radius:20px;background:#edf4fa;color:#173650;padding:17px;box-shadow:0 8px 22px #122a4120;overflow-wrap:anywhere;white-space:normal}
+#theater-cash .theater-board-card[data-state=new]{background:#def8e7;border-color:#2f985d;box-shadow:0 0 0 3px #32a66720,0 8px 25px #29764e33}
+#theater-cash .theater-board-card[data-state=reserved]{background:#e5efff;border-color:#507eb4}
+.theater-board-flag{display:block;font-size:.8rem;font-weight:850;letter-spacing:.02em;color:#195c37}
+[data-state=reserved] .theater-board-flag{color:#285486}
+.theater-board-name{display:block;font-size:clamp(1.25rem,1.8vw,1.65rem);font-weight:850;line-height:1.2}
+.theater-board-value{display:block;font-size:1.4rem;font-weight:800;font-variant-numeric:tabular-nums}
+#theater-cash .theater-board-card>span:last-child{margin-top:auto;text-align:right;font-size:.9rem;font-weight:800}
+#theater-cash .theater-board-card:focus-visible{outline:4px solid #075baf;outline-offset:3px}
+#theater-cash .theater-board-card:not(:disabled):active{transform:scale(.985)}
+#theater-cash .theater-cash-detail{max-width:820px;margin:0 auto}
+#theater-cash .theater-secondary{background:#e5eef8;color:#143e64;border:2px solid #9eb8d4;margin-bottom:16px}
+#theater-cash .theater-card-detail{border:1px solid #b5c8da;border-radius:18px;background:white;padding:clamp(16px,3vw,30px);box-shadow:0 8px 24px #0e2e4b12}
+.theater-card-detail h3{font-size:clamp(1.5rem,2.5vw,2rem);margin:0 0 18px}
+.theater-card-detail h4{margin:0 0 10px}
+.theater-card-detail section{margin:16px 0;padding:16px;border-radius:14px}
+.theater-card-detail .theater-reserved{background:#edf5ff;border:2px solid #6a95c5}
+.theater-card-detail .theater-new-order{background:#eaf9f0;border:2px solid #6eb78c}
+.theater-card-detail section button{display:block;width:100%;margin-top:14px;min-height:58px}
+.theater-card-detail button:first-of-type{background:#176c43;color:white;border:2px solid #176c43}
+.theater-card-detail .theater-reserved button+button{background:#e5eef7;color:#204e78;border:2px solid #a9bfd7}
+.theater-reset-area{margin-top:32px;padding:18px;border-top:2px solid #d5bdba;background:#fff7f5;border-radius:12px}
+.theater-reset-area h4{margin:0 0 8px;font-size:1.2rem}
+.theater-reset-area p{max-width:780px}
+#theaterView .theater-danger{background:#8a1720;color:#fff;border-color:#8a1720;font-weight:800}
+@media(max-width:580px){#theater-cash .theater-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#theater-cash .theater-board-card{padding:12px;min-height:162px}.theater-board-name{font-size:1.12rem}.theater-board-value{font-size:1.22rem}.theater-board-flag{font-size:.73rem}}
+@media(max-width:360px){#theater-cash .theater-cards{grid-template-columns:1fr}}
