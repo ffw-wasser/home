@@ -7,10 +7,10 @@
  function itemPresentation(item){
   const food=/\b(essen|speisen|speise|gerichte|snacks|kuchen|desserts|gebäck)\b/i.test(categoryName(item.category));
   const full=String(item.name||'');if(food)return {article:full,container:'',size:'',food:true};
-  const vessel=full.match(/\b(glas|flasche)\b/i),volume=full.match(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|liter|l)\b/i);
-  const container=vessel?vessel[0].toLowerCase()==='glas'?'Glas':'Flasche':'';
+  const vessel=full.match(/\b(glas|flasche|tasse)\b/i),volume=full.match(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|liter|l)\b/i);
+  const container=vessel?({glas:'Glas',flasche:'Flasche',tasse:'Tasse'})[vessel[0].toLowerCase()]:'';
   const size=volume?volume[0].replace(/\s*(ml|cl|liter|l)$/i,(_,unit)=>' '+unit.toLowerCase()).replace('.',','):'';
-  const article=full.replace(/\b(glas|flasche)\b/ig,'').replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|liter|l)\b/ig,'').replace(/\s*·\s*/g,' ').replace(/\(\s*\)/g,'').replace(/\s+/g,' ').trim();
+  const article=full.replace(/\b(glas|flasche|tasse)\b/ig,'').replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|liter|l)\b/ig,'').replace(/\s*·\s*/g,' ').replace(/\(\s*\)/g,'').replace(/\s+/g,' ').trim();
   return {article:article||full,container,size,food:false};
  }
  function itemName(article,container,size){return [String(article).trim(),[container,String(size||'').trim()].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');}
