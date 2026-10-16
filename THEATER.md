@@ -12,7 +12,7 @@ Am Handy: **Mehr → Theater · Bestellung aufnehmen** öffnet eine eigene Beste
 
 Am iPad erscheint je aufnehmender Person eine Karte mit summierten Artikeln. „Für Kasse reservieren“ friert genau die angezeigten Bestellungen ein. Neu bestätigte Bestellungen erscheinen getrennt. Nach dem Abtippen „In Kasse erfasst“ wählen oder die Reservierung freigeben. Ein Paket umfasst höchstens 60 einzelne Bestellungen; bei mehr offenen Bestellungen weist die Karte auf die Aufteilung hin. Mengen pro Artikel werden weiterhin summiert. Die Übersicht aktualisiert sich im sichtbaren Fenster alle fünf Sekunden.
 
-Auswertung: Bestellwert, Bestellungen, Kassenstand, Artikel, Rubriken, Personen und Stundenverlauf in Europe/Berlin. Excel-kompatibler CSV-Export enthält die einzelnen Positionen und ihren Status. „In Kasse erfasst“ ist eine manuelle Bestätigung, kein automatisch geprüfter Zahlungseingang. Bestätigte Bestellungen sind in dieser ersten Version unveränderlich; nachträgliche Stornos sind noch keine Bedienfunktion.
+Auswertung: Bestellwert, Bestellungen, Kassenstand, Artikel, Rubriken, Personen und Stundenverlauf in Europe/Berlin. Excel-kompatibler CSV-Export enthält die einzelnen Positionen und ihren Status. „In Kasse erfasst“ ist eine manuelle Bestätigung, kein automatisch geprüfter Zahlungseingang. Bestätigte Bestellungen bleiben unverändert. Stornos werden als separate negative Gegenbuchungen erfasst und im Bestellwert verrechnet. Unter „Bestellungen / Storno“ lassen sich ganze positive Bestellungen einmalig stornieren, auch nach der Kassenerfassung. Bereits reservierte Pakete bleiben unverändert; die Gegenbuchung muss separat in die Kasse übernommen werden. Am Handy sind Mengen von −99 bis 99 möglich (0 wird nicht gesendet). Negative Mengen werden vor dem Senden bestätigt und verwenden den aktuell geladenen Preis. Der CSV-Export enthält Buchungsart und bei iPad-Stornos die ursprüngliche Bestellkennung.
 
 ## Veröffentlichung
 
@@ -21,6 +21,12 @@ Website und bestehender Cloudflare-Worker müssen gemeinsam aktualisiert werden.
 Die lokale Implementierung allein schaltet das Modul noch nicht auf bereits installierten Geräten frei. Anschließend eine Veranstaltung einrichten und mit zwei echten Geräten eine vollständige Testbestellung einschließlich Reservierung und Abschluss prüfen.
 
 ## Prüfung
+
+### Artikelsortierung 2026.10.16.33
+
+In der Verwaltung verschieben „Nach oben“ und „Nach unten“ einen Artikel innerhalb seiner Rubrik. Andere Rubriken behalten ihre Reihenfolge. Die neue Reihenfolge wird mit „Veranstaltung & Preisliste speichern“ übernommen und nach dem Laden der aktuellen Preisliste am Handy angezeigt. Erste und letzte Positionen sperren die jeweils nicht mögliche Richtung. Auch noch ungespeicherte Preisänderungen bleiben beim Verschieben erhalten.
+
+Browserprüfung: zwei Getränke mit dazwischenliegendem Essen sortiert, Rubrikgrenzen und gesperrte Pfeile geprüft, gespeichert und anschließend die Reihenfolge in der Handyoberfläche geprüft. Bestehende Tests der Verwaltung bei verzögerten Antworten weiterhin erfolgreich.
 
 ### Bedienkorrektur 2026.10.16.32
 

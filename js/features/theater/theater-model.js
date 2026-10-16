@@ -9,7 +9,7 @@
   });if(value.open&&!items.some(p=>p.active))throw Error('Zum Öffnen mindestens einen Artikel aktivieren.');return {title:value.title.trim(),open:value.open,items};
  }
  function lines(items,entries){
-  if(!Array.isArray(entries)||!entries.length||entries.length>60)throw Error('Bitte 1 bis 60 verschiedene Artikel auswählen.');const seen=new Set();return entries.map(e=>{const p=items.find(p=>p.id===e.id&&p.active);if(!p||seen.has(e.id)||!Number.isSafeInteger(e.quantity)||e.quantity<1||e.quantity>99)throw Error('Artikelauswahl oder Menge ungültig.');seen.add(e.id);return {...p,quantity:e.quantity};});
+  if(!Array.isArray(entries)||!entries.length||entries.length>60)throw Error('Bitte 1 bis 60 verschiedene Artikel auswählen.');const seen=new Set();return entries.map(e=>{const p=items.find(p=>p.id===e.id&&p.active);if(!p||seen.has(e.id)||!Number.isSafeInteger(e.quantity)||e.quantity===0||e.quantity< -99||e.quantity>99)throw Error('Artikelauswahl oder Menge ungültig.');seen.add(e.id);return {...p,quantity:e.quantity};});
  }
  const total=lines=>lines.reduce((n,p)=>n+p.cents*p.quantity,0);
  function summarize(orders){const result=new Map();for(const o of orders)for(const p of o.lines){const key=JSON.stringify([p.id,p.name,p.category,p.cents]);const row=result.get(key)||{...p,quantity:0};row.quantity+=p.quantity;result.set(key,row);}return [...result.values()];}

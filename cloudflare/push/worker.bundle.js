@@ -679,7 +679,7 @@
   });if(value.open&&!items.some(p=>p.active))throw Error('Zum Öffnen mindestens einen Artikel aktivieren.');return {title:value.title.trim(),open:value.open,items};
  }
  function lines(items,entries){
-  if(!Array.isArray(entries)||!entries.length||entries.length>60)throw Error('Bitte 1 bis 60 verschiedene Artikel auswählen.');const seen=new Set();return entries.map(e=>{const p=items.find(p=>p.id===e.id&&p.active);if(!p||seen.has(e.id)||!Number.isSafeInteger(e.quantity)||e.quantity<1||e.quantity>99)throw Error('Artikelauswahl oder Menge ungültig.');seen.add(e.id);return {...p,quantity:e.quantity};});
+  if(!Array.isArray(entries)||!entries.length||entries.length>60)throw Error('Bitte 1 bis 60 verschiedene Artikel auswählen.');const seen=new Set();return entries.map(e=>{const p=items.find(p=>p.id===e.id&&p.active);if(!p||seen.has(e.id)||!Number.isSafeInteger(e.quantity)||e.quantity===0||e.quantity< -99||e.quantity>99)throw Error('Artikelauswahl oder Menge ungültig.');seen.add(e.id);return {...p,quantity:e.quantity};});
  }
  const total=lines=>lines.reduce((n,p)=>n+p.cents*p.quantity,0);
  function summarize(orders){const result=new Map();for(const o of orders)for(const p of o.lines){const key=JSON.stringify([p.id,p.name,p.category,p.cents]);const row=result.get(key)||{...p,quantity:0};row.quantity+=p.quantity;result.set(key,row);}return [...result.values()];}
@@ -711,7 +711,7 @@
    if(!r.meta.changes)fail('Die Veranstaltung wurde inzwischen geändert oder eine andere Veranstaltung ist noch geöffnet. Bitte neu laden.');return {event:await event(env,data.eventId)};
   }
   if(action==='order'){
-   if(admin)fail('Bestellungen bitte mit dem persönlichen Handyportal aufnehmen.',403);if(!M.id(data.requestId))fail('Bestellkennung fehlt.',400);
+   if(admin)fail('Bestellungen bitte mit dem persönlichen Handyportal aufnehmen.',403);if(!M.id(data.requestId)||data.requestId.startsWith('cancel_'))fail('Bestellkennung fehlt.',400);
    const fingerprint=JSON.stringify({eventId:data.eventId,version:data.version,lines:data.lines}),old=await env.DB.prepare('SELECT * FROM theater_orders WHERE id=?').bind(data.requestId).first();
    if(old){const saved=await L.open(env,old.payload,'theater-order:'+old.id);if(old.member!==record.memberId||saved.fingerprint!==fingerprint)fail('Bestellkennung wurde bereits anders verwendet.');return {ok:true,id:old.id};}
    const current=await event(env,data.eventId);if(!current||!current.open)fail('Die Veranstaltung ist geschlossen.');if(current.version!==data.version)fail('Die Preisliste wurde geändert. Bitte neu laden und Bestellung prüfen.');
@@ -722,6 +722,16 @@
   }
   if(!admin)fail('Nur die Kassenverwaltung darf diese Ansicht öffnen.',403);
   if(action==='list'){const current=await event(env,data.eventId);if(!current)fail('Veranstaltung nicht gefunden.',404);return {event:current,orders:await orders(env,data.eventId),servedAt:Date.now()};}
+  if(action==='cancel'){
+   if(!M.id(data.orderId))fail('Bestellkennung fehlt.',400);
+   const original=await env.DB.prepare('SELECT * FROM theater_orders WHERE id=? AND event=?').bind(data.orderId,data.eventId).first();if(!original)fail('Bestellung nicht gefunden.',404);
+   const saved=await L.open(env,original.payload,'theater-order:'+original.id);if(saved.cancels||saved.lines.some(p=>p.quantity<0))fail('Eine Korrekturbuchung kann nicht nochmals storniert werden.');
+   // A deterministic primary key makes concurrent and retried cancellations idempotent.
+   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(original.id)),cancelId='cancel_'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+   const payload=await L.seal(env,{name:saved.name,lines:saved.lines.map(p=>({...p,quantity:-p.quantity})),cancels:original.id,source:'cash'},'theater-order:'+cancelId);
+   await env.DB.prepare('INSERT OR IGNORE INTO theater_orders(id,event,member,payload,created_at) VALUES(?,?,?,?,?)').bind(cancelId,data.eventId,original.member,payload,Date.now()).run();
+   const stored=await env.DB.prepare('SELECT payload FROM theater_orders WHERE id=?').bind(cancelId).first();if((await L.open(env,stored.payload,'theater-order:'+cancelId)).cancels!==original.id)fail('Stornokennung bereits verwendet.');return {ok:true,id:cancelId};
+  }
   if(!M.id(data.batchId))fail('Reservierungskennung fehlt.',400);
   if(action==='reserve'){
    const ids=data.orderIds;if(typeof data.memberId!=='string'||!Array.isArray(ids)||!ids.length||ids.length>60||new Set(ids).size!==ids.length||ids.some(v=>!M.id(v)))fail('Bitte 1 bis 60 offene Bestellungen auswählen.',400);
