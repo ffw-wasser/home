@@ -57,12 +57,22 @@ test('Fällige Nachweise erhalten eine sichtbare Anzahl im Menü und einen verst
  f.c.evidencePriority([]);assert.equal(badge.hidden,true);assert.equal(tab.attributes['aria-label'],undefined);
 });
 test('Nachweishinweis öffnet aus anderen Seiten die Nachweisseite und die betroffenen Details',()=>{
- const f=fixture(),calls=[],evidence=new Node('details'),details=new Node(),heading=new Node('summary'),urgent=new Node('details'),valid=new Node('details');urgent.dataset.state='missing';valid.dataset.state='valid';details.append(urgent,valid);
- f.nodes.set('portal-evidence',evidence);f.nodes.set('portal-evidence-details',details);f.nodes.set('portal-evidence-heading',heading);f.c.g={DeckelMobile:{jump:id=>calls.push(id)}};f.c.matchMedia=()=>({matches:true});f.c.openEvidence();assert.deepEqual(calls,['portal-evidence']);assert.equal(urgent.open,true);assert.equal(valid.open,false);assert.equal(evidence.scrolled,true);assert.equal(heading.focused,true);
+ const f=fixture(),calls=[],evidence=new Node('section'),details=new Node(),heading=new Node('h2'),urgent=new Node('section'),valid=new Node('section');urgent.dataset.state='missing';valid.dataset.state='valid';details.append(urgent,valid);details.querySelector=()=>urgent;
+ f.nodes.set('portal-evidence',evidence);f.nodes.set('portal-evidence-details',details);f.nodes.set('portal-evidence-heading',heading);f.c.g={DeckelMobile:{jump:id=>calls.push(id)}};f.c.matchMedia=()=>({matches:true});f.c.openEvidence();assert.deepEqual(calls,['portal-evidence']);assert.equal(urgent.scrolled,true);assert.equal(heading.focused,true);
 });
 
 test('Automatische Aktualisierung läuft auch auf der eigenen Nachweisseite und pausiert auf dem Deckel',()=>{
  const views=new Map([['portal-page-terms',{hidden:true}],['portal-page-evidence',{hidden:false}]]);let scheduled=0;
  const c=vm.createContext({timer:null,visible:true,document:{hidden:false,getElementById:id=>views.get(id)},clearTimeout(){},refresh(){},setTimeout:(_,delay)=>{assert.equal(delay,60000);scheduled++;return scheduled;}});
  vm.runInContext(source.slice(source.indexOf(' function schedule()'),source.indexOf(' const evidenceDate')),c);c.schedule();assert.equal(scheduled,1);views.get('portal-page-evidence').hidden=true;c.schedule();assert.equal(scheduled,1);
+});
+
+test('Nachweise erscheinen vollständig als sichtbare Karten; fällige Gruppen stehen zuerst und Kontrollangaben bleiben erhalten',async()=>{
+ const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());
+ const groups=[{title:'Arbeitsmedizinische Eignung',status:'valid',items:[{label:'G26.3 (ersetzt G26.2)',status:'valid',until:'2027-12-31',substitution:'Keine zusätzliche G26.2 erforderlich.'}]},{title:'Führerscheinkontrolle',status:'expired',vehicles:['LF','TSF'],items:[{label:'Führerscheinkontrolle',status:'expired',until:'2020-01-01',checkedOn:'2019-01-01',intervalMonths:12}]}];
+ f.c.generation=1;f.c.g={MemberEvidence:{assess:()=>groups}};f.c.api=async()=>({evidence:{},syncedAt:1792148400000});f.c.navigator={onLine:true};
+ vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);await f.c.refreshEvidence(1);
+ const area=f.nodes.get('portal-evidence-details'),sections=area.children.filter(n=>n.tagName==='section');assert.equal(sections.length,2);assert.equal(sections[0].dataset.group,'Führerscheinkontrolle');assert.equal(area.querySelectorAll('details').length,0);assert.equal(area.querySelectorAll('article').length,2);
+ const paragraphs=area.querySelectorAll('p').map(n=>n.textContent);assert.ok(paragraphs.some(t=>/Abgelaufen am 01.01.2020/.test(t)));assert.ok(paragraphs.some(t=>/Letzte Kontrolle: 01.01.2019/.test(t)));assert.ok(paragraphs.some(t=>/Kontrollintervall: 12 Monate/.test(t)));assert.ok(paragraphs.some(t=>/LF · TSF/.test(t)));assert.ok(paragraphs.includes('Keine zusätzliche G26.2 erforderlich.'));
+ assert.ok(area.querySelectorAll('span').some(n=>n.textContent==='× Abgelaufen'));assert.ok(area.querySelectorAll('span').some(n=>n.textContent==='✓ Gültig'));assert.equal(sections[0].querySelectorAll('h4').length,0);assert.equal(f.nodes.get('portal-priority').dataset.state,'expired');
 });
