@@ -5,7 +5,7 @@
  function categoryColor(name,items=[]){const saved=items.find(p=>categoryName(p.category)===categoryName(name)&&palette.some(([,color])=>color===p.categoryColor));if(saved)return saved.categoryColor;let hash=0;for(const c of categoryName(name))hash=(hash+c.charCodeAt(0))%palette.length;return palette[hash][1];}
  // Preserve the existing catalogue schema: serving details remain in the full name.
  function itemPresentation(item){
-  const food=/\b(essen|speisen|speise|gerichte|snacks|kuchen|desserts|gebäck)\b/i.test(categoryName(item.category));
+  const food=/\b(essen|speisen|speise|gerichte|snacks|kuchen|desserts|gebäck|eintritt)\b/i.test(categoryName(item.category));
   const full=String(item.name||'');if(food)return {article:full,container:'',size:'',food:true};
   const vessel=full.match(/\b(glas|flasche|tasse)\b/i),volume=full.match(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|liter|l)\b/i);
   const container=vessel?({glas:'Glas',flasche:'Flasche',tasse:'Tasse'})[vessel[0].toLowerCase()]:'';
