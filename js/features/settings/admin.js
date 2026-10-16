@@ -160,13 +160,13 @@ function addMember() {
   if (!lastName || !firstName) return showToast("Bitte Nachname und Vorname eingeben.", "error");
   const duplicate = members.some(member => member.lastName.toLocaleLowerCase("de") === lastName.toLocaleLowerCase("de") && member.firstName.toLocaleLowerCase("de") === firstName.toLocaleLowerCase("de"));
   if (duplicate) return showToast("Dieses Mitglied ist bereits vorhanden.", "error");
-  members = sortMembers([...members, { id: makeId(), lastName, firstName, roles: [...AVAILABLE_ROLES], ageDepartment: false, machinistVehicles: [] }]);
+  members = sortMembers([...members, { id: makeId(), lastName, firstName, roles: [], breathingQualified: false, ageDepartment: false, machinistVehicles: [] }]);
   saveMembers();
   byId("newLastName").value = "";
   byId("newFirstName").value = "";
   renderMembers();
   renderAdmin();
-  showToast("Mitglied wurde hinzugefügt.");
+  showToast("Mitglied angelegt. Bitte Funktionen und Berechtigungen gezielt auswählen.");
 }
 function updateMember(id, row) {
   if(!requireAdmin("settingsMembersView"))return;
@@ -180,6 +180,7 @@ function updateMember(id, row) {
   const interval=Number(row.querySelector("[data-driver-license-interval]")?.value||12);
   if(!Number.isInteger(interval)||interval<1||interval>36)return showToast("Bitte ein Kontrollintervall von 1 bis 36 Monaten eingeben.","error");
   if(driverDate&&(!MemberEvidence.date(driverDate)||driverDate>systemToday()))return showToast("Bitte ein gültiges Datum der letzten Führerscheinkontrolle bis heute eingeben.","error");
+  for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.date(value))return showToast("Bitte ein gültiges Nachweisdatum eingeben.","error");}
   window.Usability?.savedMember(row);
   member.lastName = lastName;
   member.firstName = firstName;
@@ -194,8 +195,8 @@ function updateMember(id, row) {
   member.agtInstructionValidUntil = row.querySelector("[data-agt-instruction-valid-until]")?.value || "";
   member.ffiValidUntil = row.querySelector("[data-ffi-valid-until]")?.value || "";
   const breathingDates=[member.g263ValidUntil,member.agtInstructionValidUntil,member.ffiValidUntil];
-  member.breathingClearance = breathingDates.every(Boolean);
-  member.breathingClearanceUntil = breathingDates.filter(Boolean).sort()[0] || "";
+  member.breathingClearance = hasValidBreathingClearance(member,systemToday());
+  member.breathingClearanceUntil = breathingDates.every(Boolean)?breathingDates.slice().sort()[0]:"";
   member.machinistVehicles = [...row.querySelectorAll("[data-machinist-vehicle]:checked")].map(input => input.dataset.machinistVehicle);
   member.driverLicenseCheckedOn = row.querySelector("[data-driver-license-checked]")?.value || "";
   if(member.machinistVehicles.length&&!member.driverLicenseCheckedOn)return showToast("Bitte das Datum der letzten Führerscheinkontrolle eintragen.","error");

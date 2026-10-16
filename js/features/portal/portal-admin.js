@@ -1,6 +1,6 @@
 /* iPad administration and attendance projection. RSVP never creates attendance records. */
 (function(g){
- 'use strict';const VIEW='settingsPortalView',CALENDAR='settingsCalendarView',$=id=>document.getElementById(id==='status'&&!document.getElementById(CALENDAR).hidden?'portal-calendar-admin-status':'portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,manual=null,rosterKey=null,rosterBusy=false,calendarGeneration=0,reviewSnapshot=null,reviewShowSaved=true,reviewEdited=new Set(),reviewFilter='all';
+ 'use strict';const VIEW='settingsPortalView',CALENDAR='settingsCalendarView',$=id=>document.getElementById(id==='status'&&!document.getElementById(CALENDAR).hidden?'portal-calendar-admin-status':'portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,manual=null,rosterKey=null,rosterBusy=false,rosterStatus={kind:"pending",text:"Mitglieder noch nicht mit dem Handyportal abgeglichen."},rosterSyncedAt=null,rosterResyncRequested=false,calendarGeneration=0,reviewSnapshot=null,reviewShowSaved=true,reviewEdited=new Set(),reviewFilter='all';
  const date=e=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',...(e.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(e.start));
  function admin(){if(!requireAdmin(!document.getElementById(CALENDAR).hidden?CALENDAR:VIEW))throw Error('Bitte die Administration entsperren.');}
  const PUBLIC_ORIGIN_KEY='h2o_calendar_public_origin';
@@ -8,11 +8,33 @@
  function rememberOrigin(origin){if(g.DrinksPush.validOrigin(origin))localStorage.setItem(PUBLIC_ORIGIN_KEY,origin);}
  async function publicList(){const origin=publicOrigin();if(!origin)throw Error('Bitte unter Einstellungen → Kalender einmalig die öffentliche Cloudflare-Dienstadresse eintragen.');const response=await fetch(origin.replace(/\/$/,'')+'/calendar/public',{method:'GET',cache:'no-store',redirect:'error'});const data=await response.json();if(!response.ok)throw Error(data.error||'Kalender momentan nicht erreichbar.');if(!Array.isArray(data.events))throw Error('Ungültige Kalenderantwort.');return data;}
  async function connection(){const c=await g.DrinksCentral.connection();if(!c)throw Error('Bitte zuerst den bestehenden Kontodienst verbinden.');rememberOrigin(c.origin);return c;}
- async function request(path,data={}){const c=await connection();try{return await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});}catch(e){if(e.status===404&&e.message==='Nicht gefunden.')throw Error('Bitte zuerst den bestehenden Cloudflare-Worker für das H₂O Portal aktualisieren.');if(e.name==='AbortError'||e.name==='TimeoutError')throw Error('Die Kalenderprüfung hat zu lange gedauert. Bitte die Verbindung prüfen und erneut versuchen.');if(e instanceof TypeError)throw Error('Der Kontodienst ist nicht erreichbar. Bitte die Internetverbindung prüfen und erneut versuchen.');throw e;}}
+ async function request(path,data={}){const c=await connection();try{return await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});}catch(e){if(e.status===404&&e.message==='Nicht gefunden.')throw Error('Bitte zuerst den bestehenden Cloudflare-Worker für das H₂O Portal aktualisieren.');throw Object.assign(Error(g.ConnectionStatus?.message(e)||e.message),{status:e.status});}}
+
+ function renderSyncStatus(){const status=document.getElementById('memberEvidenceSyncStatus');if(status){status.textContent=rosterStatus.text;status.dataset.state=rosterStatus.kind;}}
+ function syncStatus(kind,text){rosterStatus={kind,text};renderSyncStatus();}
+ function storageChanged(){
+  if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Auf diesem Gerät gespeichert · OneDrive-Speicherung noch nicht bestätigt. Handyportal noch nicht aktualisiert.');return;}
+  if(!oneDriveAdministrationReady()){syncStatus('pending','Für den Handyabgleich bitte OneDrive verbinden.');return;}
+  if(rosterBusy){rosterResyncRequested=true;return;}
+  return syncRoster().catch(()=>{}); // syncRoster exposes every failure in the status card.
+ }
  async function syncRoster(force=false){
-  if(rosterBusy||!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed)return false;rosterBusy=true;
-  try{const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),leader:Array.isArray(m.roles)&&m.roles.includes('GF'),evidence:g.MemberEvidence.project(m)})),key=c.source+':'+JSON.stringify(people);if(key===rosterKey&&!force)return;if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert.');const saved=await g.DrinksPush.request(c,'/admin/portal/roster',{source:c.source,members:people});if(saved.evidenceVersion!==1)throw Error('Für persönliche Nachweise bitte den aktuellen Cloudflare-Worker veröffentlichen.');rosterKey=key;return true;
-  }finally{rosterBusy=false;}
+  if(rosterBusy){rosterResyncRequested=true;return false;}
+  if(!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){storageChanged();return false;}
+  rosterBusy=true;syncStatus('syncing','In OneDrive gespeichert · Handyportal wird abgeglichen …');
+  try{
+   const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),leader:Array.isArray(m.roles)&&m.roles.includes('GF'),evidence:g.MemberEvidence.project(m)})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
+   if(key!==rosterKey||force){
+    if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert.');
+    const saved=await g.DrinksPush.request(c,'/admin/portal/roster',{source:c.source,members:people});
+    if(saved.evidenceVersion!==1)throw Error('Für persönliche Nachweise bitte den aktuellen Cloudflare-Worker veröffentlichen.');
+    if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert. Bitte erneut abgleichen.');
+    rosterKey=key;rosterSyncedAt=Date.now();
+   }
+   if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Weitere Änderungen warten auf OneDrive und Handyabgleich.');return false;}
+   syncStatus('success','In OneDrive gespeichert · Handyportal abgeglichen am '+new Date(rosterSyncedAt).toLocaleString('de-DE')+'. Auf dem Handy „Aktualisieren“ wählen.');return true;
+  }catch(e){syncStatus('error','Handyportal noch nicht aktualisiert. '+(g.ConnectionStatus?.message(e)||e.message)+' Mit „Nachweise fürs Handy aktualisieren“ erneut versuchen.');throw e;
+  }finally{rosterBusy=false;const again=rosterResyncRequested;rosterResyncRequested=false;if(again)storageChanged();}
  }
  async function run(fn){if(busy)return;busy=true;const submit=$('form').querySelector('button[type=submit]'),buttons=[...document.querySelectorAll('#portal-admin-review-events button,#portal-admin-review-events select,#portal-admin-review-events input,#portal-admin-review-auto,#portal-admin-review-load,#portal-admin-review-toggle,#portal-admin-review-filter')].map(button=>[button,button.disabled]);submit.disabled=true;for(const [button] of buttons)button.disabled=true;try{admin();await fn();}catch(e){$('status').textContent=e.message;const review=$('review-status');if(review&&!document.getElementById(CALENDAR).hidden)review.textContent='⚠ '+e.message;}finally{busy=false;submit.disabled=false;for(const [button,disabled] of buttons)if(button.isConnected)button.disabled=disabled;if(reviewSnapshot)reviewControls();}}
  function calendarCategory(e){return e.kind==='probe'?(e.sessionType==='Probe'?'probe':'special'):e.kind==='birthday'?'birthday':'other';}
@@ -137,5 +159,5 @@
   queueMicrotask(()=>refreshAttendance(true));
   setInterval(()=>{if(!document.hidden&&!byId('attendanceView').hidden)refreshAttendance();},60000);
  }
- g.PortalAdmin={load,loadCalendar,lock,refreshAttendance,sessionStarted,discard,syncRoster,selectedDate};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={load,loadCalendar,lock,refreshAttendance,sessionStarted,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

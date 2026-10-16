@@ -15,3 +15,5 @@
 .toast.visible { opacity: 1; transform: none; }
 .toast.success { background: var(--green); }
 .toast.error { background: #8e0000; }
+
+#memberEvidenceSyncStatus{padding:12px;border-left:4px solid #718296;background:#f2f5f8;line-height:1.5;overflow-wrap:anywhere}#memberEvidenceSyncStatus[data-state=success]{border-color:#26724a;background:#eef7f1}#memberEvidenceSyncStatus[data-state=error]{border-color:#ad3543;background:#fff0f1}#memberEvidenceSyncStatus[data-state=pending],#memberEvidenceSyncStatus[data-state=syncing]{border-color:#a67316;background:#fff7e5}

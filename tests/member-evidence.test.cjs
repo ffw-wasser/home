@@ -56,3 +56,29 @@ test('Ehemalige AGT behalten G26.3 als Mindestnachweis, ohne AGT-Pflichten oder 
  assert.equal(E.assess(E.project({...m,breathingQualified:true}),now)[0].status,'expired');
  assert.equal(JSON.stringify(m),before);
 });
+
+test('Ein leeres oder ungültiges G26.3-Datum wird nie aus dem Sammeldatum ergänzt',()=>{
+ for(const value of ['',null,'2026-02-30']){
+  const m={breathingQualified:true,g263ValidUntil:value,breathingClearanceUntil:'2028-01-01',agtInstructionValidUntil:'2028-02-01',ffiValidUntil:'2028-03-01'};
+  assert.equal(E.project(m).medical.g263,'');assert.equal(E.project(m).breathing.g263,'');assert.equal(E.breathingAssessment(m,'2026-10-16').status,'missing');
+ }
+ assert.equal(E.g263Date({breathingClearanceUntil:'2028-01-01'}),'2028-01-01','Ein altes Einzelfeld bleibt lesbar');
+ assert.equal(E.g263Date({breathingClearanceUntil:'2028-01-01',agtInstructionValidUntil:'2028-02-01'}),'','Ein Sammeldatum neben Einzelterminen ist kein Untersuchungsnachweis');
+});
+test('Portal und Gerätehaus berechnen identische Atemschutz-Zustände, auch bei fehlenden Daten',()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),c=vm.createContext({MemberEvidence:E,document:{getElementById(){}},window:{},console});vm.runInContext(fs.readFileSync('js/core/config.js','utf8'),c);
+ for(const m of [{breathingQualified:true},{breathingQualified:true,g263ValidUntil:'2028-01-01',agtInstructionValidUntil:'',ffiValidUntil:'2028-01-01'},{breathingQualified:true,g263ValidUntil:'2020-01-01',agtInstructionValidUntil:'',ffiValidUntil:''},{breathingQualified:true,g263ValidUntil:'2028-01-01',agtInstructionValidUntil:'2028-01-01',ffiValidUntil:'2028-01-01'},{breathingQualified:false,g263ValidUntil:'2028-01-01'}]){
+  const group=E.breathingAssessment(m,'2026-10-16');assert.equal(c.hasValidBreathingClearance(m,'2026-10-16'),['valid','soon'].includes(group?.status));assert.equal(c.breathingClearanceState(m,'2026-10-16'),!group||group.status==='missing'?'none':group.status);
+ }
+ assert.deepEqual([...c.getMemberRoles({})],[]);
+});
+test('Vollständig fehlende Atemschutznachweise erscheinen als kritischer Hinweis',()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),nodes=new Map(),critical=[];
+ const byId=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',innerHTML:'',querySelector:()=>({})});return nodes.get(id);};
+ const c=vm.createContext({MemberEvidence:E,members:[{breathingQualified:true,lastName:'Fiktiv',firstName:'Test'}],systemToday:()=> '2026-10-16',byId,ensureSafetyInfoHub:()=>({button:{classList:{toggle:(...args)=>critical.push(args)}},dialog:{}}),escapeHtml:String,nameForTile:m=>m.lastName,window:{},document:{getElementById:byId},console});
+ vm.runInContext(fs.readFileSync('js/core/config.js','utf8'),c);
+ // config has its own members binding; use the same synthetic roster there.
+ vm.runInContext('members=[{breathingQualified:true,lastName:"Fiktiv",firstName:"Test"}];',c);
+ const app=fs.readFileSync('js/app/app.js','utf8');vm.runInContext(app.slice(app.indexOf('function isAtmOrAtgQualified('),app.indexOf('function showBreathingClearanceWarnings(')),c);c.renderSafetyInfoHub();
+ assert.equal(byId('safetyInfoCount').textContent,'1');assert.match(byId('safetyInfoContent').innerHTML,/fehlt: G26.3, Unterweisung AGT, FFI/);assert.ok(critical.some(([key,on])=>key==='has-critical'&&on));
+});

@@ -18,20 +18,9 @@ let currentProbeDate = systemToday();
 let currentSessionId = "";
 let breathingProtectionPlanned = false;
 const BREATHING_ROLES = new Set(["ATF","ATM","WTF","WTM"]);
-function breathingClearanceDates(member){return [
-  String(member?.g263ValidUntil||member?.breathingClearanceUntil||""),
-  String(member?.agtInstructionValidUntil||""),
-  String(member?.ffiValidUntil||"")
-];}
-function hasValidBreathingClearance(member,date=today()){if(member?.breathingQualified===false)return false;const dates=breathingClearanceDates(member);return dates.every(value=>value&&value>=date);}
-function breathingClearanceState(member,date=systemToday()){
-  if(member?.breathingQualified===false)return "none";
-  const dates=breathingClearanceDates(member);
-  if(dates.every(value=>!value))return "none";
-  if(dates.some(value=>!value||value<date))return "expired";
-  const soon=new Date(date+"T12:00:00");soon.setDate(soon.getDate()+60);const soonDate=soon.toLocaleDateString("sv-SE");
-  return dates.some(value=>value<=soonDate)?"soon":"valid";
-}
+function breathingClearanceDates(member){return [MemberEvidence.g263Date(member),MemberEvidence.date(member?.agtInstructionValidUntil),MemberEvidence.date(member?.ffiValidUntil)];}
+function hasValidBreathingClearance(member,date=today()){return ["valid","soon"].includes(MemberEvidence.breathingAssessment(member,date)?.status);}
+function breathingClearanceState(member,date=systemToday()){const state=MemberEvidence.breathingAssessment(member,date)?.status;return !state||state==="missing"?"none":state;}
 function breathingClearanceSummary(member){
   const labels=[["G26.3",breathingClearanceDates(member)[0]],["Unterweisung AGT",breathingClearanceDates(member)[1]],["FFI",breathingClearanceDates(member)[2]]];
   const missing=labels.filter(([,value])=>!value).map(([label])=>label);
@@ -39,7 +28,8 @@ function breathingClearanceSummary(member){
   const earliest=labels.reduce((lowest,current)=>!lowest||current[1]<lowest[1]?current:lowest,null);
   return `früheste Gültigkeit: ${earliest[0]} bis ${earliest[1]}`;
 }
-function driverLicenseControlDue(member,date=systemToday()){if(!Array.isArray(member?.machinistVehicles)||!member.machinistVehicles.length)return "not-machinist";if(!member.driverLicenseCheckedOn||member.driverLicenseCheckedOn>date)return "missing";const dueDate=driverLicenseDueDate(member);if(!dueDate)return "missing";if(dueDate<date)return "overdue";const soon=new Date(date+"T12:00:00Z");soon.setUTCDate(soon.getUTCDate()+60);return dueDate<=soon.toISOString().slice(0,10)?"soon":"valid";}
+function driverLicenseControlDue(member,date=systemToday()){const group=MemberEvidence.assess(MemberEvidence.project(member),Date.parse(date+"T12:00:00Z")).find(group=>group.title==="Führerscheinkontrolle");return !group?"not-machinist":group.status==="expired"?"overdue":group.status;}
+
 function driverLicenseDueDate(member){return MemberEvidence.due(member?.driverLicenseCheckedOn,member?.driverLicenseIntervalMonths);}
 const today = () => currentProbeDate || systemToday();
 const makeId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -51,7 +41,7 @@ const sortMembers = list => [...list].sort((a, b) =>
 );
 function getMemberRoles(member) {
   if (!member) return [];
-  const stored = Array.isArray(member.roles) ? member.roles.filter(role => AVAILABLE_ROLES.includes(role) && role !== "Maschinist") : AVAILABLE_ROLES.filter(role => role !== "Maschinist");
+  const stored = Array.isArray(member.roles) ? member.roles.filter(role => AVAILABLE_ROLES.includes(role) && role !== "Maschinist") : [];
   const vehicles = Array.isArray(member.machinistVehicles) ? member.machinistVehicles.filter(value => value === "LF" || value === "TSF") : [];
   return vehicles.length ? [...new Set([...stored, "Maschinist"])] : stored;
 }

@@ -35,7 +35,7 @@ function getAppStorageState(){
   const detail=!navigator.onLine?"offline":!oneDriveSignedIn()?"OneDrive nicht verbunden":oneDriveBusy?"OneDrive synchronisiert …":"OneDrive noch nicht bestätigt";
   return {kind:"local",text:local+" · "+detail};
 }
-function notifyAppStorageState(){window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();if(oneDriveStateConfirmed)window.PortalAdmin?.syncRoster().catch(()=>{});}
+function notifyAppStorageState(){window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();window.PortalAdmin?.storageChanged?.();}
 const odRedirect=()=>"https://ffw-wasser.github.io/home/";
 const odConfig=()=>({clientId:localStorage.getItem(OD_CLIENT_KEY)||"",authority:"https://login.microsoftonline.com/consumers/oauth2/v2.0",scope:"openid profile offline_access Files.ReadWrite"});
 const odB64Url=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");

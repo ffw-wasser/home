@@ -249,7 +249,7 @@ function renderStatistics() {
   byId("breathingValidCount").textContent=bcCounts.valid;byId("breathingSoonCount").textContent=bcCounts.soon;byId("breathingExpiredCount").textContent=bcCounts.expired;byId("breathingNoneCount").textContent=bcCounts.none;
   const clearanceLabel={valid:"Gültig bis",soon:"Fällig bis",expired:"Überfällig seit",none:"Nicht dokumentiert"};
   const clearanceTone={valid:"green",soon:"gold",expired:"red",none:"gray"},clearanceOrder={expired:0,none:1,soon:2,valid:3};
-  byId("breathingClearanceList").innerHTML=breathingStates.sort((a,b)=>clearanceOrder[a.state]-clearanceOrder[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>renderMetric("",nameForTile(item.member),item.state==="none"?clearanceLabel[item.state]:`${clearanceLabel[item.state]} ${item.member.breathingClearanceUntil}`,clearanceTone[item.state])).join("");
+  byId("breathingClearanceList").innerHTML=breathingStates.sort((a,b)=>clearanceOrder[a.state]-clearanceOrder[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>renderMetric("",nameForTile(item.member),item.state==="none"?clearanceLabel[item.state]:`${clearanceLabel[item.state]} ${breathingClearanceDates(item.member).filter(Boolean).sort()[0]||""}`,clearanceTone[item.state])).join("");
   const rows = probeYearData.flatMap(data => data.rows);
   const eligibleRows = rows.filter(row => row.status !== "Betrifft nicht" && activeMembers.some(member => nameForStorage(member) === row.name || nameForTile(member) === row.name));
   const presentRows = eligibleRows.filter(row => row.status === "Anwesend");
@@ -423,17 +423,13 @@ function renderIndividualBreathingClearance(member){
   const panel=ensureIndividualBreathingClearancePanel();if(!panel)return;
   panel.hidden=member.ageDepartment||!isAtmOrAtgQualified(member);if(panel.hidden)return;
   const today=systemToday(),state=breathingClearanceState(member,today),valid=hasValidBreathingClearance(member,today);
-  const items=[
-    ["G26.3",member.g263ValidUntil||member.breathingClearanceUntil||""],
-    ["Unterweisung AGT",member.agtInstructionValidUntil||""],
-    ["FFI",member.ffiValidUntil||""]
-  ];
+  const items=MemberEvidence.breathingAssessment(member,today).items;
   const status=panel.querySelector("[data-individual-clearance-status]");
   status.textContent=valid?"Freigabe erteilt":"Freigabe nicht erteilt";
   status.className=valid?"is-valid":"is-blocked";
   panel.dataset.state=state;
-  panel.querySelector("[data-individual-clearance-items]").innerHTML=items.map(([label,date])=>{
-    const itemState=!date?"missing":date<today?"expired":date<=new Date(new Date(today+"T12:00:00").setDate(new Date(today+"T12:00:00").getDate()+60)).toLocaleDateString("sv-SE")?"soon":"valid";
+  panel.querySelector("[data-individual-clearance-items]").innerHTML=items.map(item=>{
+    const label=item.label,date=item.until,itemState=item.status;
     const text=!date?"Nicht hinterlegt":`${itemState==="expired"?"Abgelaufen":"Gültig bis"} ${formatDisplayDate(date)}`;
     return `<div class="individual-clearance-item ${itemState}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(text)}</strong></div>`;
   }).join("");
