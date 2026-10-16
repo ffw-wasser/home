@@ -90,3 +90,23 @@ test('Kalenderausfall verhindert Bereinigung und neue Freigaben; Admin-Snapshot 
 test('Gleichzeitige Regeländerung verhindert verlustreiche Bereinigung',async()=>{
  const f=await fixture(),e=(await f.call('list')).value.events[0];await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()});const prepare=f.DB.prepare;f.DB.prepare=query=>{const statement=prepare(query);if(query.startsWith('UPDATE portal_rules SET payload=?'))statement.run=async()=>({meta:{changes:0}});return statement;};f.clock.now=e.end+7*3600000;await f.c.PortalService.scheduled(f.env);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,1);
 });
+
+test('Automatische Erinnerungen gelten auch bei alter deaktivierter Einstellung und beachten Empfänger sowie Entschuldigungen',async()=>{
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
+ const cfg=(await f.call('config',{},null,true)).value.config;
+ await f.DB.prepare('UPDATE portal_config SET payload=? WHERE id=1').bind(await f.L.seal(f.env,{...cfg,reminders:false},'portal-config')).run();
+ assert.equal((await f.call('config',{},null,true)).value.config.reminders,true);
+ const ids=f.people.slice(0,3).map(p=>p.memberId);
+ assert.equal((await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Sonderprobe',recipientIds:ids,approved:true,expectedVersion:cal.rulesVersion},null,true)).status,200);
+ for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
+ for(const [i,status] of [[0,'yes'],[1,'excused']])assert.equal((await f.call('reply',{eventId:e.id,status,expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[i])).status,200);
+ for(let i=0;i<4;i++)await f.c.PortalService.scheduled(f.env);
+ assert.deepEqual(f.sends.map(s=>s.url).sort(),['https://fcm.googleapis.com/member-1','https://fcm.googleapis.com/member-3']);
+});
+test('Kalender kann mit Vorlauf gespeichert werden; alte Clients können Erinnerungen nicht deaktivieren',async()=>{
+ const f=await fixture(),config=(await f.call('config',{},null,true)).value.config;
+ for(const patch of [{reminders:false},{}]){
+  assert.equal((await f.call('configure',{calendarUrl:config.calendarUrl,leadHours:12,...patch},null,true)).status,200);
+  const saved=(await f.call('config',{},null,true)).value.config;assert.equal(saved.reminders,true);assert.equal(saved.leadHours,12);
+ }
+});

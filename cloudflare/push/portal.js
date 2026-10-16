@@ -15,7 +15,7 @@
  ];
  async function ready(env){if(checks.has(env.DB))return;await env.DB.batch(ddl.map(sql=>env.DB.prepare(sql)));checks.add(env.DB);}
  const open=(env,row,purpose)=>row?L.open(env,row.payload,purpose):null;
- async function config(env){return open(env,await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),'portal-config');}
+ async function config(env){const c=await open(env,await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),'portal-config');return c?{...c,reminders:true}:null;}
  function calendarURL(value){let u;try{u=new URL(value);}catch{fail('Bitte den öffentlichen Google-iCal-Link eingeben.',400);}if(u.origin!=='https://calendar.google.com'||!/^\/calendar\/ical\/[^/]+\/public\/basic\.ics$/.test(u.pathname)||u.search||u.hash||u.username||u.password)fail('Bitte die öffentliche iCal-Adresse aus Google Kalender verwenden.',400);return u.href;}
  async function download(url){
   const response=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(20000),headers:{Accept:'text/calendar'}});if(!response.ok)fail('Google-Kalender derzeit nicht erreichbar. Bitte später erneut prüfen.',503);
@@ -135,7 +135,6 @@
   await env.DB.prepare('DELETE FROM portal_sends WHERE created_at<?').bind(Date.now()-30*DAY).run();
   await env.DB.prepare('DELETE FROM portal_replies WHERE updated_at<?').bind(Date.now()-400*DAY).run();
   if(await awardBirthdays(env,cal))return;
-  if(!c.reminders)return;
   const now=Date.now(),due=cal.events.filter(event=>{const at=event.start-c.leadHours*3600000;return event.approved&&event.kind==='probe'&&!event.allDay&&event.start>now&&at<=now&&at>now-3600000;});if(due.length)await send(env,due[Math.floor(now/60000)%due.length],'auto');
  }
  async function route(path,data,env,auth){
@@ -151,9 +150,9 @@
    const c=await config(env);return {configured:!!c,config:c||null};
   }
   if(path==='/admin/portal/configure'){
-   const url=calendarURL(data.calendarUrl);if(typeof data.reminders!=='boolean'||![1,2,6,12,24,48].includes(data.leadHours))fail('Ungültige Erinnerungseinstellungen.',400);
+   const url=calendarURL(data.calendarUrl);if(![1,2,6,12,24,48].includes(data.leadHours))fail('Ungültige Erinnerungseinstellungen.',400);
    const old=await config(env);if(old&&old.calendarUrl!==url)fail('Ein Kalenderwechsel würde die Terminzuordnung ändern. Bitte den vorhandenen Kalender weiterverwenden.');
-   const events=await projection(url),c={calendarUrl:url,reminders:data.reminders,leadHours:data.leadHours},payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events},'portal-calendar');
+   const events=await projection(url),c={calendarUrl:url,reminders:true,leadHours:data.leadHours},payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events},'portal-calendar');
    await env.DB.batch([env.DB.prepare('INSERT INTO portal_config(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=version+1').bind(payload),env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(cal,Date.now())]);return {ok:true,count:events.length};
   }
   if(path==='/portal/subscribe'||path==='/portal/unsubscribe'){

@@ -98,7 +98,7 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
   nicht aus einer selbst gewählten Ausbildungsstufe. Nach erfolgreichem
   OneDrive-Abgleich werden Namen und Rollen im Dienst aktualisiert. Änderungen
   können bis zum nächsten erfolgreichen Abgleich verzögert sein.
-- Erinnerungen gehen an aktivierte Geräte für Zusagen und offene Antworten.
+- Automatische Terminerinnerungen sind dauerhaft aktiv, auch bei einer zuvor deaktivierten Einstellung. Der Vorlauf bleibt einstellbar. Erinnerungen gehen nur an aktivierte Geräte der für den Termin freigegebenen Personen mit Zusagen oder offenen Antworten.
   Entschuldigte werden vor Versand nochmals geprüft. Ganztägige Einträge
   erhalten keine automatische Probe-Erinnerung. Der Cron versendet kleine
   Gruppen, üblicherweise innerhalb einiger Minuten um die eingestellte Zeit;
