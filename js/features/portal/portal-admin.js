@@ -1,6 +1,6 @@
 /* iPad administration and attendance projection. RSVP never creates attendance records. */
 (function(g){
- 'use strict';const VIEW='settingsPortalView',CALENDAR='settingsCalendarView',$=id=>document.getElementById(id==='status'&&!document.getElementById(CALENDAR).hidden?'portal-calendar-admin-status':'portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,manual=null,rosterKey=null,rosterBusy=false,rosterStatus={kind:"pending",text:"Mitglieder noch nicht mit dem Handyportal abgeglichen."},rosterSyncedAt=null,rosterResyncRequested=false,calendarGeneration=0,reviewSnapshot=null,reviewShowSaved=true,reviewEdited=new Set(),reviewFilter='all';
+ 'use strict';const VIEW='settingsPortalView',CALENDAR='settingsCalendarView',$=id=>document.getElementById(id==='status'&&!document.getElementById(CALENDAR).hidden?'portal-calendar-admin-status':'portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,attendanceRefreshPending=false,attendanceAccess=null,attendanceEpoch=0,manual=null,rosterKey=null,rosterBusy=false,rosterStatus={kind:"pending",text:"Mitglieder noch nicht mit dem Handyportal abgeglichen."},rosterSyncedAt=null,rosterResyncRequested=false,calendarGeneration=0,reviewSnapshot=null,reviewShowSaved=true,reviewEdited=new Set(),reviewFilter='all';
  const date=e=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',...(e.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(e.start));
  function admin(){if(!requireAdmin(!document.getElementById(CALENDAR).hidden?CALENDAR:VIEW))throw Error('Bitte die Administration entsperren.');}
  const PUBLIC_ORIGIN_KEY='h2o_calendar_public_origin';
@@ -13,10 +13,13 @@
  function renderSyncStatus(){const status=document.getElementById('memberEvidenceSyncStatus');if(status){status.textContent=rosterStatus.text;status.dataset.state=rosterStatus.kind;}}
  function syncStatus(kind,text){rosterStatus={kind,text};renderSyncStatus();}
  function storageChanged(){
-  if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Auf diesem Gerät gespeichert · OneDrive-Speicherung noch nicht bestätigt. Handyportal noch nicht aktualisiert.');return;}
-  if(!oneDriveAdministrationReady()){syncStatus('pending','Für den Handyabgleich bitte OneDrive verbinden.');return;}
-  if(rosterBusy){rosterResyncRequested=true;return;}
-  return syncRoster().catch(()=>{}); // syncRoster exposes every failure in the status card.
+  const access=oneDriveAdministrationReady(),changed=access!==attendanceAccess;
+  if(changed){attendanceAccess=access;attendanceEpoch++;}
+  const refresh=changed?refreshAttendance(true):Promise.resolve();
+  if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Auf diesem Gerät gespeichert · OneDrive-Speicherung noch nicht bestätigt. Handyportal noch nicht aktualisiert.');return refresh;}
+  if(!access){syncStatus('pending','Für den Handyabgleich bitte OneDrive verbinden.');return refresh;}
+  if(rosterBusy){rosterResyncRequested=true;return refresh;}
+  return Promise.all([refresh,syncRoster().catch(()=>{})]); // Both operations expose failures in their status cards.
  }
  async function syncRoster(force=false){
   if(rosterBusy){rosterResyncRequested=true;return false;}
@@ -118,33 +121,39 @@
   const reminder=node('button',manual?'Versand fortsetzen / erneut prüfen':'Alle außer Entschuldigten erinnern');reminder.type='button';reminder.className='outline-button';reminder.disabled=replyData.stale||replyData.event.start<=Date.now();reminder.onclick=async()=>{if(!requireAdmin(!document.getElementById(CALENDAR).hidden?CALENDAR:VIEW))return;if(!manual&&!confirm('Alle für diesen Termin freigegebenen Mitglieder mit aktivierten Handy-Mitteilungen erinnern? Entschuldigte erhalten keine Nachricht.'))return;manual=manual||{eventId:replyData.event.id,requestId:crypto.randomUUID()};reminder.disabled=true;try{const result=await request('remind',manual);if(!result.remaining)manual=null;showToast(result.accepted+' Handy-Mitteilungen angenommen · '+result.failed+' fehlgeschlagen'+(result.remaining?' · Versand bitte fortsetzen.':'.'));paintReplies();}catch(e){showToast(e.message+' Denselben Versand erneut prüfen.','error');reminder.disabled=false;reminder.textContent='Versand erneut prüfen';}};area.append(reminder);
  }
  async function refreshAttendance(force=false){
-  if(loading||document.hidden||!force&&Date.now()-lastLoad<60000)return;loading=true;
+  if(document.hidden||!document.getElementById('portal-calendar-pick'))return;
+  if(loading){if(force)attendanceRefreshPending=true;return;}
+  if(!force&&Date.now()-lastLoad<60000)return;
+  loading=true;const epoch=attendanceEpoch;
   try{
    // An approved calendar is safe to read without Microsoft credentials.
    // Private attendance replies are never included in the anonymous response.
    let cal,privateAccess=false;
    if(typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady()){
-    try{await syncRoster();cal=await request('list');privateAccess=true;}catch(e){cal=await publicList();}
+    try{cal=await request('list');privateAccess=true;}catch(e){cal=await publicList();}
    }else cal=await publicList();
+   if(epoch!==attendanceEpoch)return;
    lastLoad=Date.now();
    const now=Date.now(),running=Boolean(currentSessionId||currentOperationId),current=chosen();
    // The active attendance session stays linked to its event even after that
    // event ends. Otherwise only future or currently ongoing events appear.
+   const previous=list.find(e=>e.id===current);
    list=cal.events.filter(e=>e.approved&&e.kind==='probe'&&(e.end>now||(running&&e.id===current))).sort((a,b)=>a.start-b.start);
    const picker=document.getElementById('portal-calendar-pick');if(!picker)return;
    const stillAvailable=list.some(e=>e.id===current);
    const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list[0]?.id||''));
    picker.replaceChildren();const none=node('option','Ohne Kalendertermin / spontan');none.value='';picker.append(none);
-   for(const e of list){const option=node('option',date(e)+' · '+e.title+' · '+(e.sessionType||'Probe'));option.value=e.id;picker.append(option);}
+   for(const e of list){const kind=e.sessionType||'Probe',title=e.title||kind,label=title.trim().toLocaleLowerCase('de')===kind.toLocaleLowerCase('de')?title:title+' · '+kind;const option=node('option',date(e)+' · '+label);option.value=e.id;picker.append(option);}
    picker.value=nextId||'';
    // Automatically pick the next event only while no attendance session runs.
    // Applying the selection also sets its date and the centrally configured
    // session type. Never overwrite an explicit "spontan" choice.
-   if(!running&&nextId!==current)select(true);
+   const next=list.find(e=>e.id===nextId),changed=next&&(previous?.start!==next.start||previous?.sessionType!==next.sessionType||previous?.attendanceType!==next.attendanceType);
+   if(!running&&(nextId!==current||changed))select(true);
    document.getElementById('portal-calendar-status').textContent=cal.configured?(cal.stale?'Kalender zuletzt nicht aktualisiert.':'Kalenderstand: '+new Date(cal.fetchedAt).toLocaleString('de-DE')):'Kalender unter Einstellungen → Kalender verbinden.';
    if(privateAccess)await replies();else{replyData=null;paintReplies();}
-  }catch(e){const status=document.getElementById('portal-calendar-status');if(status)status.textContent=e.message;}
-  finally{loading=false;}
+  }catch(e){const status=document.getElementById('portal-calendar-status');if(epoch===attendanceEpoch&&status)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
+  finally{loading=false;const again=attendanceRefreshPending;attendanceRefreshPending=false;if(again)await refreshAttendance(true);}
  }
  function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if((currentOperationId||currentSessionId&&(todayEntries().length||pendingMemberStatuses.size))&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Der laufende Termin enthält bereits Anwesenheiten. Bitte diesen Termin zuerst abschließen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){if(!currentSessionId&&!currentOperationId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(sessionType))document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
   if(currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));if(!automatic&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady())replies().catch(e=>{document.getElementById('portal-calendar-status').textContent=e.message;});}
@@ -154,8 +163,11 @@
  function init(){
   $('open').onclick=()=>showView(VIEW);document.getElementById('portal-calendar-back').onclick=()=>{lock();showView('settingsView');};document.getElementById('portal-calendar-admin-open').onclick=()=>{if(requireAdmin(CALENDAR))loadCalendar();};$('back').onclick=()=>{lock();showView('settingsView');};$('member').onchange=()=>{generation++;clearQR();$('status').textContent='';};$('show-qr').onclick=qr;$('review-load').onclick=reviewCalendar;$('review-auto').onclick=acceptAutomatic;$('review-toggle').onclick=()=>{reviewShowSaved=!reviewShowSaved;reviewControls();};$('review-filter').onchange=()=>{reviewFilter=$('review-filter').value;reviewControls();};$('form').onsubmit=event=>{event.preventDefault();return run(async()=>{const version=generation,form=$('form'),submit=form.querySelector('button[type=submit]'),label=submit.textContent;form.setAttribute('aria-busy','true');submit.textContent='Kalender wird geprüft …';$('calendar-status').textContent='Google-Kalender wird abgerufen und geprüft. Das kann einige Sekunden dauern …';try{const result=await request('configure',{calendarUrl:$('calendar').value.trim(),reminders:true,leadHours:Number($('hours').value)});if(version!==generation)return;admin();$('calendar-status').textContent=result.count+' Kalendereinträge verbunden. Erinnerungseinstellungen gespeichert.';$('status').textContent='';lastLoad=0;try{await syncRoster(true);}catch(e){$('calendar-status').textContent+=' Mitgliederabgleich noch nicht bestätigt: '+e.message;}await reviewCalendar();}catch(e){if(version===generation)$('calendar-status').textContent=e.message;throw e;}finally{form.removeAttribute('aria-busy');submit.textContent=label;}});};
   const observer=new MutationObserver(()=>{if(document.getElementById(VIEW).hidden&&document.getElementById(CALENDAR).hidden)lock();});for(const id of [VIEW,CALENDAR])observer.observe(document.getElementById(id),{attributes:true,attributeFilter:['hidden']});
-  const panel=document.querySelector('#attendanceView .home-session-type-panel'),section=node('section');section.className='portal-calendar-picker';section.innerHTML='<h3>Termin aus dem Probenkalender</h3><label for="portal-calendar-pick">Kalendertermin</label><select id="portal-calendar-pick" class="text-input"><option value="">Ohne Kalendertermin / spontan</option></select><button id="portal-calendar-refresh" type="button" class="outline-button">Kalender & Rückmeldungen aktualisieren</button><p id="portal-calendar-status" role="status"></p>';panel.prepend(section);document.getElementById('portal-public-origin').value=publicOrigin();document.getElementById('portal-public-save').onclick=()=>{const origin=document.getElementById('portal-public-origin').value.trim().replace(/\/$/,'')+'/';if(!g.DrinksPush.validOrigin(origin))return showToast('Bitte eine gültige Cloudflare-Worker-Adresse eingeben.','error');rememberOrigin(origin);lastLoad=0;showToast('Kalenderadresse auf diesem Gerät gespeichert.');refreshAttendance(true);};document.getElementById('portal-calendar-refresh').onclick=()=>refreshAttendance(true);document.getElementById('portal-calendar-pick').onchange=()=>select();
+  const panel=document.querySelector('#attendanceView .home-session-type-panel'),section=node('section');section.className='portal-calendar-picker';section.innerHTML='<h3>Termin aus dem Probenkalender</h3><label for="portal-calendar-pick">Kalendertermin</label><select id="portal-calendar-pick" class="text-input"><option value="">Ohne Kalendertermin / spontan</option></select><p id="portal-calendar-status" role="status"></p>';panel.prepend(section);document.getElementById('portal-public-origin').value=publicOrigin();document.getElementById('portal-public-save').onclick=()=>{const origin=document.getElementById('portal-public-origin').value.trim().replace(/\/$/,'')+'/';if(!g.DrinksPush.validOrigin(origin))return showToast('Bitte eine gültige Cloudflare-Worker-Adresse eingeben.','error');rememberOrigin(origin);lastLoad=0;showToast('Kalenderadresse auf diesem Gerät gespeichert.');refreshAttendance(true);};document.getElementById('portal-calendar-pick').onchange=()=>select();
   const replyArea=node('section');replyArea.id='portal-attendance-replies';replyArea.className='panel portal-attendance-replies';document.querySelector('#attendanceView .attendance-layout').prepend(replyArea);paintReplies();
+  const attendanceView=document.getElementById('attendanceView'),attendanceObserver=new MutationObserver(()=>{if(!attendanceView.hidden)refreshAttendance(true);});attendanceObserver.observe(attendanceView,{attributes:true,attributeFilter:['hidden']});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!attendanceView.hidden)refreshAttendance(true);});
+  g.addEventListener('online',()=>refreshAttendance(true));
   queueMicrotask(()=>refreshAttendance(true));
   setInterval(()=>{if(!document.hidden&&!byId('attendanceView').hidden)refreshAttendance();},60000);
  }
