@@ -64,7 +64,7 @@
   const root=$('cards'),detail=$('cash-detail-content'),screen=$('cash-detail'),board=$('cash-board');
   root.replaceChildren();detail.replaceChildren();
   const members=boardMembers(orders);
-  const eventName=$('cash-event-name');if(eventName)eventName.textContent=current?.title||'';const count=$('cash-count');if(count)count.textContent=members.length+' Karte'+(members.length===1?'':'n')+' mit offenen Vorgängen';
+  const eventName=$('cash-event-name');if(eventName)eventName.textContent=current?.title||'';const count=$('cash-count');if(count)count.textContent=members.length===0?'Keine offenen Karten':members.length+' offene Karte'+(members.length===1?'':'n');
   for(const member of members){
    const own=orders.filter(o=>o.member===member),open=own.filter(o=>o.state==='open'),reserved=own.filter(o=>o.state==='reserved');
    const name=own.at(-1).name,card=button(name,()=>selectCash(member));
