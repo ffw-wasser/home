@@ -98,3 +98,8 @@ Wichtig bei der Repository-Auswahl: `ffw-wasser/deckel-daten` enthält nicht den
 Worker-Quellcode dieser Anwendung. Für Builds muss ausdrücklich
 `ffw-wasser/home` verbunden sein. Die GitHub-Anmeldung allein stellt diese
 Repository-Verbindung noch nicht her.
+
+Beim Kopieren des Build-Befehls muss der Dateipfad zusammenhängend bleiben:
+`node ../../scripts/prepare-worker.cjs`. Nur nach `node` steht ein Leerzeichen;
+zusätzliche Leerzeichen zwischen `../`, `scripts/` und dem Dateinamen verhindern
+das Starten der Prüfung.
