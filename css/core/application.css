@@ -4509,8 +4509,8 @@ body {
   z-index: 1;
   background: transparent;
   border-radius: 0!important;
-  /* The original crest remains intact; clip only the outer black icon canvas. */
-  clip-path: polygon(16.4% 10.7%,83.7% 10.7%,83.7% 56%,82.4% 64%,79% 71.5%,74% 78%,67% 83.5%,59% 87.5%,50% 89.3%,41% 87.5%,33% 83.5%,26% 78%,21% 71.5%,17.6% 64%,16.4% 56%)}
+  /* Transparent header artwork includes a black contour around the crest. */
+  clip-path: none}
 
 .top-brand span {
   overflow: hidden!important;
