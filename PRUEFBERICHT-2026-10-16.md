@@ -189,3 +189,19 @@ muss jedoch weiterhin mit dem aktuellen `cloudflare/push/worker.bundle.js`
 ausgerollt und mit aktiver Cron-Ausführung geprüft werden, sofern dies noch
 nicht geschehen ist. Bei der Nachprüfung gab es keinen Zugriff auf die
 produktive Cloudflare-Konfiguration oder echte Mitgliederkonten.
+
+## Nachtrag: Version 2026.10.16.3
+
+- Öffentliche Kalenderadresse von der Hauptseite nach **Einstellungen →
+  Kalenderverbindung → Kalenderadresse einrichten** verschoben. Die vorhandene
+  Geräteadresse bleibt erhalten; die Einrichtung funktioniert weiterhin ohne
+  OneDrive-Anmeldung. Terminauswahl und Aktualisierung bleiben auf der Hauptseite.
+- Hilfe und Einrichtungsanleitung an den neuen Menüpfad angepasst.
+- Beim Aktualisieren des Handy-Portals wird nach Erfolg kein dauerhafter Hinweis
+  „Deckel abgestaubt“ mehr angezeigt. Während des Ladens erscheint ein sachlicher
+  Ladehinweis; Fehler und der Zeitstempel des Kontostands bleiben erhalten.
+- Release- und Service-Worker-Version gemeinsam aktualisiert. Kein neues
+  Cloudflare-Worker-Deployment für diese beiden Oberflächenänderungen erforderlich.
+- 410 automatisierte Tests erfolgreich; Syntaxprüfungen der geänderten Skripte
+  erfolgreich. Browserprüfung bestätigt Speicherung in den Einstellungen ohne
+  OneDrive, Layout und unveränderte Kalenderauswahl.

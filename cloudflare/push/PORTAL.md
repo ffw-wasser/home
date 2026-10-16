@@ -12,8 +12,7 @@ und Sonderprobetermine. Titel werden aus Datenschutzgründen auf „Probe“ ode
 „Sonderprobe“ reduziert. Geburtstage, Kalender-Originaladresse, Personendaten,
 Rückmeldungen, Admin-Token und Verwaltungsfunktionen werden nicht ausgegeben.
 
-Im Gerätehaus-iPad unter **Termin aus dem Probenkalender → Kalenderverbindung
-(einmalig)** die öffentliche Adresse des bestehenden Cloudflare-Workers
+Im Gerätehaus-iPad unter **Einstellungen → Kalenderverbindung → Kalenderadresse einrichten** die öffentliche Adresse des bestehenden Cloudflare-Workers
 (`https://…workers.dev`) eintragen und speichern. **Kein Token eingeben.**
 Die öffentliche Adresse bleibt in diesem Browser gespeichert. Sobald das iPad
 mit OneDrive verbunden ist und der Kontodienst zur Verfügung steht, wird die
