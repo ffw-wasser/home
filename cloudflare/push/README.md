@@ -1,3 +1,6 @@
+> **Automatische Veröffentlichung:** Einmalig den bestehenden Worker mit GitHub verbinden.
+> Die genauen Einstellungen stehen in [AUTO-DEPLOY.md](AUTO-DEPLOY.md).
+
 > **H₂O Portal ab 2026.10.15.1:** aktuelle Einrichtung, Kalenderfreigaben,
 > Geburtstagspunkte und Termin-Erinnerungen siehe [PORTAL.md](PORTAL.md).
 > Die nachfolgende Anleitung beschreibt die frühere Deckel-Erinnerung.
@@ -14,7 +17,7 @@ Keine eigenen Domains, Cron-Jobs, Queues, kostenpflichtigen Add-ons oder Render-
 
 1. Kostenloses Cloudflare-Konto erstellen/anmelden: https://dash.cloudflare.com/
 2. Unter **Workers & Pages** einen Worker namens `feuerwehr-wasser-deckel-push` erstellen.
-   Den vollständigen Inhalt von `worker.js` im Code-Editor übernehmen. Noch nicht mit realen Mitgliedern verwenden.
+   Den vollständigen Inhalt von `worker.bundle.js` im Code-Editor übernehmen. Noch nicht mit realen Mitgliedern verwenden.
 3. Unter **Storage & Databases → D1** eine Datenbank `deckel-push` erstellen.
    In deren SQL-Konsole den Inhalt von `schema.sql` ausführen.
 4. Im Worker unter **Bindings** eine D1-Bindung namens **DB** auf diese Datenbank setzen.
