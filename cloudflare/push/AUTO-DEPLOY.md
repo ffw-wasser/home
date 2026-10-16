@@ -16,11 +16,13 @@ Die einmalige GitHub-Verbindung muss im Cloudflare-Konto bestätigt werden.
 |---|---|
 | Repository | `ffw-wasser/home` |
 | Produktionsbranch | `main` |
+| Automatische Produktionsbuilds | Aktiviert |
 | Root directory / Stammverzeichnis | `cloudflare/push` |
 | Build command | `node ../../scripts/prepare-worker.cjs` |
 | Deploy command | `npx --yes wrangler@4.151.0 deploy --keep-vars` |
 | Builds für andere Branches / Preview Builds | Aus |
 | Node.js | `24` (durch die Versionsdatei im Stammverzeichnis vorgegeben) |
+| Optionale Build-Variable | `NODE_VERSION` = `24` |
 
 5. Unter Watch paths die Voreinstellung beibehalten: Include paths `*`,
    Exclude paths leer. So lösen auch Änderungen unter `js/`, `tests/` und
