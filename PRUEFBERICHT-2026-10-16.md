@@ -150,3 +150,42 @@ Produktionsstand nicht behauptet oder verifiziert.
 - Gebühren-/Kontingentfragen, extern erreichbare Links und Wiederherstellung aus
   echten Backups wurden nicht live geprüft. Ein OneDrive-Backup allein sichert im
   zentralen Betrieb nicht alle aktuellen D1-Daten.
+
+## Nachprüfung und redaktionelle Korrekturen – Version 2026.10.16.2
+
+Nach der ursprünglichen Prüfung wurden die GitHub-Dateien **erneut unabhängig
+ausgelesen**. Die eingebauten Hilfen sind auf den 16.10.2026 datiert; die
+Portal-Dokumentation beschreibt die Auswahl der iPad-Terminart jetzt korrekt
+unter **Einstellungen → H₂O Portal → Kalendereinträge**. Beide App-Versionen
+und der Service-Worker-Cache wurden gemeinsam auf `2026.10.16.2` angehoben.
+
+Zusätzliche Kontrollen direkt gegen den GitHub-Stand:
+
+- **131 lokale Referenzen** in Haupt-/Handy-HTML, Manifesten und sechs Markdown-
+  Dateien mit dem GitHub-Dateibaum verglichen: **keine fehlenden Ziele**.
+  Einschließlich der Originalgrafiken unter `assets/drinks/` und
+  `taktik-lf10.webp`.
+- **Neun besonders relevante JavaScript-Dateien** (Portal, Worker-Quellen und
+  Bundle, Update- und Erfassungscode) im V8-Parser geprüft: **keine Syntaxfehler**.
+  Die Quellmodule `portal.js`, `central.js`, `challenge.js` und
+  `worker.js` sind im Bundle inhaltlich unverändert enthalten.
+- Mit künstlichen Daten die **Bereinigung abgeschlossener Termine**, den
+  Schutz einer **verschobenen Termin-ID** sowie das Erhalten von
+  **Geburtstagszuordnungen und zukünftigen Terminen** nochmals geprüft.
+  Zusätzlich geprüft, dass die öffentliche Kalenderantwort keine echten
+  Originaltitel, Geburtstage oder Empfängerlisten ausgibt.
+- Release-Daten, iPad-Version, Handy-Version, Worker-Cache und
+  `worker.bundle.js` stimmen überein.
+
+Die oben dokumentierten **410 Tests** stammen aus dem bereits ausgeführten
+ursprünglichen Prüflauf. Sie wurden bei dieser Nachprüfung **nicht erneut als
+vollständiger Node-Testlauf** ausgeführt, da hier kein lokal ausgechecktes
+Repository zur Verfügung stand. Die zusätzlichen gezielten V8-Prüfungen und
+Referenzkontrollen ersetzen keine Browser-, OneDrive- oder iPad-Praxisprüfung.
+
+**Produktionsabhängigkeit:** Der neue GitHub-Stand `2026.10.16.2` enthält
+keine weitere Worker-Funktionsänderung gegenüber `2026.10.16.1`. Der Worker
+muss jedoch weiterhin mit dem aktuellen `cloudflare/push/worker.bundle.js`
+ausgerollt und mit aktiver Cron-Ausführung geprüft werden, sofern dies noch
+nicht geschehen ist. Bei der Nachprüfung gab es keinen Zugriff auf die
+produktive Cloudflare-Konfiguration oder echte Mitgliederkonten.
