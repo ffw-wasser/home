@@ -66,13 +66,13 @@ def build_h2o_icon(image, size):
 
 def main():
     crest = unframe_crest()
-    source = Image.open(BRANDING / "h2o-symbol-source.webp").convert("RGB")
-    if source.size != (192, 192):
+    source = Image.open(BRANDING / "h2o-symbol-white-source.webp").convert("RGB")
+    if source.size != (512, 512):
         raise RuntimeError("Unexpected H2O source dimensions.")
     for size in (180, 192, 512):
         build_ffw_icon(crest, size).save(BRANDING / f"ffw-home-{size}.png", optimize=True)
     for size in (96, 180, 192, 512):
-        build_h2o_icon(source, size).save(DRINKS / f"h2o-symbol-black-{size}.png", optimize=True)
+        build_h2o_icon(source, size).save(DRINKS / f"h2o-symbol-white-{size}.png", optimize=True)
     print("Created three FFW and four H2O home/portal PNG icons.")
 
 if __name__ == "__main__":
