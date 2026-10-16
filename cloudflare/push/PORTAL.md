@@ -91,7 +91,7 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
   Jahresnachweis aber nicht auf. Ausgefallene Geburtstage werden nicht an einem
   späteren Tag nachgebucht. Ein aktueller Kalender und korrekte Zuordnung sind
   nötig; Termine am 29. Februar folgen dem tatsächlich gelieferten Kalender.
-- Die Terminart wird am iPad festgelegt. Zusagen sind keine Anwesenheiten.
+- Unter **Einstellungen → H₂O Portal → Kalendereinträge** wird pro freigegebenem Termin die **Terminart für die iPad-Erfassung** gewählt. Am iPad wird sie bei der Terminauswahl vorausgewählt; vor Beginn kann die Auswahl manuell angepasst werden. Zusagen sind keine Anwesenheiten.
   Entschuldigungen können ausdrücklich in der Personenliste vorgemerkt werden;
   bestehende Anwesenheiten/Markierungen werden nicht überschrieben.
 - Gruppenführer sehen Zusagen, Entschuldigungen und offene Rückmeldungen mit
