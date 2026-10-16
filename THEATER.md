@@ -22,6 +22,12 @@ Die lokale Implementierung allein schaltet das Modul noch nicht auf bereits inst
 
 ## Prüfung
 
+### Bedienkorrektur 2026.10.16.32
+
+Nachladen sperrt die Verwaltungsbuttons, die Eingabefelder und den Rückweg nicht mehr. Schreibvorgänge verhindern weiterhin doppelte Bestätigungen und verwerfen verspätete Antworten älterer Lesevorgänge. Änderungen im Editor bleiben beim Nachladen erhalten. Die Veranstaltungsauswahl wartet auf den laufenden Ladevorgang, damit keine falsche Veranstaltung geladen wird. Die Häkchen für Artikelaktivierung und Bestellfreigabe sind wieder sichtbar. Rückmeldungen stehen zusätzlich direkt vor den unteren Verwaltungsbuttons.
+
+Regression mit künstlich verzögerter Serverantwort: Verwaltung öffnen, Artikel und Preis bearbeiten, Bestellfreigabe aktivieren, währenddessen Leseantwort empfangen, speichern und während eines weiteren Ladevorgangs zurückgehen. Native Checkboxdarstellung, Schutz vor doppeltem Speichern und Bestätigung unten geprüft. `node scripts/check-theater-controls.cjs` und der vollständige Theater-Browserablauf erfolgreich; weiterhin 499 automatisierte Tests erfolgreich.
+
 Zusätzlich stehen im Handyportal die Hinweise „Zuletzt aktualisiert“, „Datenstand“ und der allgemeine Verbindungsstatus unter den Inhalten. Die Browserprüfung kontrolliert bei 320, 390 und 768 Pixeln, dass unterschiedlich lange Statusmeldungen die Position der Karten beim Menüwechsel nicht verschieben.
 
 - Gesamte Testsuite: `node --test tests/*.test.cjs` aus dem App-Verzeichnis: 499 Tests erfolgreich. Syntaxprüfungen aller geänderten JavaScript-Module erfolgreich.
