@@ -1,0 +1,47 @@
+name: Generate black-background app icons
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build-home-icons.py"
+      - "assets/branding/h2o-symbol-source.webp"
+      - ".github/workflows/generate-home-icons.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Generate assets
+        run: python scripts/build-home-icons.py
+      - name: Validate dimensions and alpha
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          for kind, sizes, folder in (
+              ("ffw-home", (180,192,512), "assets/branding"),
+              ("h2o-symbol-black", (96,180,192,512), "assets/drinks"),
+          ):
+              for size in sizes:
+                  im=Image.open(f"{folder}/{kind}-{size}.png")
+                  assert im.size==(size,size) and im.mode=="RGB", (kind,size,im.size,im.mode)
+                  assert im.getpixel((0,0))==(0,0,0), f"{kind}-{size} background"
+          PY
+      - name: Commit generated image assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/branding/ffw-home-*.png assets/drinks/h2o-symbol-black-*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Build black-background FFW and H2O app icons"
+            git push
+          fi
