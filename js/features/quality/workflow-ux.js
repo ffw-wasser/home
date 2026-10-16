@@ -27,7 +27,9 @@
   const running=Boolean(currentSessionId||currentOperationId);
   const recorded=todayEntries().length;
   const hasProgress=recorded>0||count>0||Boolean(currentClosingTopic)||Boolean(typeof currentOperationDraft!=='undefined'&&currentOperationDraft)||Boolean(typeof pendingDocumentReport!=='undefined'&&pendingDocumentReport?.pageCount);
-  if(summary){summary.hidden=!running;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
+  const hero=byId('attendanceStartCard'),cancel=byId('cancelCurrentTermButton');
+  if(hero&&cancel){const host=homeFlowStage===1?byId('attendanceStartSecondary'):summary?.querySelector('.workflow-actions');if(host&&cancel.parentElement!==host)host.appendChild(cancel);cancel.hidden=!running;}
+  if(summary){summary.hidden=!running||Boolean(hero)&&homeFlowStage===1;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
  }
  function beforeSelection(){selectionKey=(currentSessionId||currentOperationId||'')+'|'+sessionType;selectionUndo=new Map(pendingMemberStatuses);}
  function clearSelectionUndo(){selectionUndo=null;}

@@ -73,14 +73,37 @@ function renderMembers() {
   requestAnimationFrame(fitMemberLastNames);
   byId("memberCount").textContent = multiMode ? `${chosenMemberIds.size} ausgewählt · ${availableMembers.length} offen` : `${availableMembers.length} offen`;
 }
+function attendanceStartState(){
+  const running=Boolean(currentSessionId||currentOperationId),event=window.PortalAdmin?.selectedEvent?.(),type=running?sessionType:pendingSessionType||event?.attendanceType||(event?.sessionType==="Probe"?"Allgemeine Probe":event?.sessionType)||"";
+  const rows=todayEntries(),pending=pendingMemberStatuses.size;
+  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Dein nächster Termin"),date:event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Spontanen Termin starten",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?"Terminart und Datum sind aus dem Kalender übernommen.":type?"Bereit für die Personenerfassung.":"Kalendertermin wählen oder eine spontane Erfassung beginnen."};
+}
+function syncAttendanceStart(){
+  const card=byId('attendanceStartCard');if(!card)return;
+  const state=attendanceStartState();
+  byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartSummary').textContent=state.summary;
+  byId('attendanceStartEyebrow').textContent=state.running?'Laufender Termin':state.event?'Aus deinem Kalender':'Termin beginnen';
+  const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
+  const choices=byId('attendanceAlternatives');if(choices)choices.hidden=state.running;
+}
+function beginAttendanceFromContext(){
+  if(currentSessionId||currentOperationId){setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();return;}
+  const event=window.PortalAdmin?.selectedEvent?.();
+  if(event){const type=event.attendanceType||(event.sessionType==='Probe'?'Allgemeine Probe':event.sessionType);chooseSessionType(type,{calendar:true});}
+  if(pendingSessionType)return continueToAttendance();
+  byId('attendanceAlternatives').open=true;byId('attendanceSpontaneous').open=true;
+  byId('sessionTypes')?.querySelector('button')?.focus();
+}
 function updatePrimaryAction() {
-  const button=byId("exportResetButton"),count=todayEntries().length,hasEntries=count>0;
+  const button=byId("exportResetButton"),rows=todayEntries(),count=rows.length,hasEntries=count>0,pending=pendingMemberStatuses.size;
   if(!button)return;
-  button.textContent="Weiter zu Schritt 3";
-  button.disabled=!hasEntries;
-  button.title=hasEntries?(sessionType==="Allgemeine Probe"?"Taktik öffnen und Probe abschließen":"Probe abschließen"):"Mindestens eine Teilnahme erfassen";
+  button.textContent=sessionType==="Allgemeine Probe"?"Mannschaft einteilen":sessionType==="Einsatz"?"Fahrzeuge zuordnen":"Termin prüfen und abschließen";
+  button.disabled=Boolean(pending)||!hasEntries;button.hidden=pending>0;
+  button.title=pending?"Bitte zuerst die Markierungen übernehmen.":hasEntries?"Nächsten Schritt öffnen":"Mindestens eine Teilnahme erfassen";
+  const save=byId('saveButton');if(save)save.hidden=pending===0;
   const summary=byId("step3ActionSummary");
-  if(summary)summary.textContent=hasEntries?`${count} ${count===1?"Teilnahme":"Teilnahmen"} gespeichert.`:"Noch keine Teilnahme gespeichert.";
+  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":"Markiere die Personen direkt auf ihren Karten.";
+  syncAttendanceStart();
 }
 function backToMembers() {
   chosenMemberId = "";
@@ -607,7 +630,7 @@ function continueToAttendance(){
 function syncHomeFlowProgress(stage=homeFlowStage){
  const progress=byId("homeFlowProgress");if(!progress)return;
  const operation=sessionType==="Einsatz",current=operation&&byId("operationReportForm")&&!byId("operationReportForm").hidden?4:stage;
- const steps=operation?[[1,"Terminart"],[2,"Anwesenheit"],[3,"Zuordnung"],[4,"Einsatzbericht"]]:[[1,"Terminart"],[2,"Anwesenheit"],[3,"Abschluss"]];
+ const steps=operation?[[1,"Termin"],[2,"Personen"],[3,"Fahrzeuge"],[4,"Einsatzbericht"]]:[[1,"Termin"],[2,"Personen"],[3,sessionType==="Allgemeine Probe"?"Mannschaft & Abschluss":"Abschluss"]];
  progress.innerHTML=steps.map(([number,label],index)=>`${index?"<i></i>":""}<button type="button" data-flow-indicator="${number}"><b>${number}</b><span>${label}</span></button>`).join("");
  progress.dataset.currentStage=String(current);
  progress.querySelectorAll("[data-flow-indicator]").forEach(item=>{const number=Number(item.dataset.flowIndicator),isCurrent=number===current,canReturnToReport=operation&&number===4&&Boolean(byId("operationReportForm"))&&Boolean(operationNames?.().length);item.classList.toggle("current",isCurrent);item.classList.toggle("completed",number<current);item.classList.toggle("upcoming",number>current);if(isCurrent)item.setAttribute("aria-current","step");else item.removeAttribute("aria-current");item.disabled=number>current&&!canReturnToReport;});
@@ -634,13 +657,21 @@ function ensureStagedHomeFlow(){
   }
   syncHomeFlowProgress(homeFlowStage);
 
-  const title=sessionPanel.querySelector("h2,h3");if(title)title.textContent="Terminart auswählen";
-  const hint=byId("sessionHint");if(hint)hint.textContent="Terminart auswählen und anschließend zu Schritt 2 wechseln.";
+  const title=sessionPanel.querySelector("h2,h3");if(title)title.textContent="Dein Termin";
+  if(!byId('attendanceStartCard')){
+    const card=document.createElement('section');card.id='attendanceStartCard';card.className='attendance-start-card';card.innerHTML='<p id="attendanceStartEyebrow" class="eyebrow"></p><h2 id="attendanceStartTitle"></h2><p id="attendanceStartMeta"></p><p id="attendanceStartSummary" role="status"></p><div id="attendanceStartActions" class="attendance-start-actions"></div><div id="attendanceStartSecondary"></div>';
+    const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen Termin wählen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontanen Termin starten</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
+    sessionPanel.append(card,choices);
+    const manual=byId('attendanceSpontaneous');manual.append(byId('sessionTypes'),byId('sessionHint'));
+    const picker=sessionPanel.querySelector('.portal-calendar-picker');if(picker)byId('attendanceCalendarChoice').append(picker);
+    manual.ontoggle=()=>{if(manual.open&&!currentSessionId&&!currentOperationId){window.PortalAdmin?.useSpontaneous?.();pendingSessionType='';delete byId('sessionTypes').dataset.selectedSessionType;byId('sessionTypes').querySelectorAll('[data-session-type]').forEach(button=>{button.classList.remove('selected');button.setAttribute('aria-pressed','false');});syncAttendanceStart();}};
+  }
+  const hint=byId("sessionHint");if(hint)hint.textContent="Terminart wählen und die Erfassung starten.";
   if(!byId("continueToAttendanceButton")){
     const actions=document.createElement("div");actions.className="session-continue-actions";
     actions.innerHTML=`<button id="continueToAttendanceButton" class="primary-button" type="button" disabled>Weiter zu Schritt 2</button>`;
-    sessionPanel.appendChild(actions);
-    byId("continueToAttendanceButton").addEventListener("click",continueToAttendance);
+    byId("attendanceStartActions").appendChild(actions);
+    byId("continueToAttendanceButton").addEventListener("click",beginAttendanceFromContext);
   }
   const step=sessionPanel.querySelector(".step");if(step)step.textContent="1";
   workspace.classList.add("home-flow-card","home-flow-stage-2");
@@ -655,7 +686,7 @@ function ensureStagedHomeFlow(){
       step3Action=document.createElement("section");
       step3Action.id="step3ActionArea";
       step3Action.className="step-3-action-area";
-      step3Action.innerHTML=`<div class="step3-action-copy"><strong>Anwesenheit vollständig?</strong><span id="step3ActionSummary">Noch keine Teilnahme gespeichert.</span><small>Die Einträge können über Schritt 2 später erneut bearbeitet werden.</small></div>`;
+      step3Action.innerHTML=`<div class="step3-action-copy"><strong>Nächster Schritt</strong><span id="step3ActionSummary">Noch keine Teilnahme gespeichert.</span><small>Die Einträge können über Schritt 2 später erneut bearbeitet werden.</small></div>`;
     }
     step3ActionButton.textContent="Weiter zu Schritt 3";
     step3ActionButton.classList.add("step-3-action-button");

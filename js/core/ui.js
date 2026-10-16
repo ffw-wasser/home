@@ -83,9 +83,10 @@ function renderSessionType() {
           ? "Bei Einsätzen werden ausschließlich anwesende Einsatzkräfte erfasst. Mehrere Einsätze am selben Tag bleiben getrennt."
         : "Status bei den Personen markieren und anschließend Auswahl übernehmen. Funktionen werden beim Start der Taktik berechnet.";
 }
-function chooseSessionType(type) {
+function chooseSessionType(type,{calendar=false}={}) {
   const validTypes=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Einsatz"];
   if(!validTypes.includes(type))return showToast("Unbekannte Terminart.","error");
+  if(!calendar&&!currentSessionId&&!currentOperationId)window.PortalAdmin?.useSpontaneous?.();
   pendingSessionType=type;
   const sessionTypes=byId("sessionTypes");
   if(sessionTypes)sessionTypes.dataset.selectedSessionType=type;
@@ -113,6 +114,7 @@ function chooseSessionType(type) {
   const headerType=byId("headerProbeType");if(headerType)headerType.textContent=type;
   const summary=byId("headerProbeSummary");if(summary){summary.hidden=false;summary.classList.add("is-active","is-preview");}
   const stage2Type=byId("stage2Heading")?.querySelector("small");if(stage2Type)stage2Type.textContent=type;
+  if(typeof syncAttendanceStart==="function")syncAttendanceStart();
 }
 
 

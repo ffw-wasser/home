@@ -221,3 +221,8 @@ body.ios-input-keyboard-open.ios-keyboard-visible main.app-shell{padding-bottom:
   }
 }
 
+
+@media(max-width:600px){
+ #iphoneAttendanceActionDock #saveButton[hidden],#iphoneAttendanceActionDock #exportResetButton[hidden],#iphoneAttendanceActionDock:has(#exportResetButton[hidden]) #step3ActionArea{display:none!important}
+ #iphoneAttendanceActionDock.iphone-attendance-action-dock:has(#saveButton[hidden]),#iphoneAttendanceActionDock.iphone-attendance-action-dock:has(#exportResetButton[hidden]){grid-template-columns:minmax(0,1fr)!important}
+}
