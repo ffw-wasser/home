@@ -82,7 +82,8 @@
 .portal-install-note{font-size:0.875rem;color:#385270}
 
 #portal-page-terms{padding-top:16px}
-#portal-page-terms #portal-status{margin:0 0 12px}
+.portal-data-status{margin-top:20px;border-top:1px solid #c4d0df;padding-top:12px;color:#385270;font-size:.875rem;line-height:1.6;overflow-wrap:anywhere}
+.portal-data-status p{margin:0 0 12px}
 #portal-page-terms #portal-status:empty{display:none}
 .portal-event p{font-size:1rem;line-height:1.55}
 .portal-event summary{font-size:1rem;line-height:1.5}

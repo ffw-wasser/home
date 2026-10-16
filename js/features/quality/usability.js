@@ -108,7 +108,7 @@
       let button=byId(id);if(!button){button=document.createElement('button');button.id=id;button.type='button';button.className='compact-menu-button';byId('settingsTab').before(button);}
       const clean=button.cloneNode(true);button.replaceWith(clean);clean.textContent=text;clean.onclick=fn;
     }
-    for(const id of ['drinksTab','historyTab','statisticsTab','settingsTab','helpTab'])byId('compactMenu').append(byId(id));
+    for(const id of ['drinksTab','eventsTab','historyTab','statisticsTab','settingsTab','helpTab'])byId('compactMenu').append(byId(id));
     const hint=document.createElement('p');hint.id='attendanceDraftStatus';hint.className='ux-save-status';hint.setAttribute('role','status');byId('members')?.before(hint);attendanceState();
     const actions=document.createElement('details');actions.className='ux-other-actions';actions.innerHTML='<summary>Weitere Aktionen</summary><button class="danger-button" type="button" id="discardCurrentSessionButton">Termin verwerfen</button>';
     const reset=byId('resetTodayParticipantsButton');if(reset){reset.before(actions);actions.append(reset);}else byId('attendanceView').append(actions);
