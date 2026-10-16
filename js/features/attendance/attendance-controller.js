@@ -103,7 +103,7 @@ function updatePrimaryAction() {
   const save=byId('saveButton');if(save)save.hidden=pending===0;
   const summary=byId("step3ActionSummary");
   if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":"Markiere die Personen direkt auf ihren Karten.";
-  syncAttendanceStart();
+  syncAttendanceStart();window.PortalAdmin?.attendanceChanged?.();
 }
 function backToMembers() {
   chosenMemberId = "";

@@ -113,12 +113,33 @@
  function lock(){document.getElementById('portal-calendar-administration').hidden=true;document.getElementById('portal-calendar-admin-open').hidden=false;document.getElementById('portal-calendar-admin-status').textContent='';generation++;calendarGeneration++;reviewLoading=false;reviewLastLoad=0;reviewSnapshot=null;$('review-load').hidden=true;reviewEdited.clear();$('review-auto').disabled=true;$('calendar-status').textContent='';$('review-events').replaceChildren();$('review-status').textContent='';clearQR();$('calendar').value='';$('member').replaceChildren();document.getElementById('portal-admin-status').textContent='';}
  function chosen(){const linked=safeStorage.getItem('h2o_calendar_session');if(linked)try{const v=JSON.parse(linked);if(v.session===currentSessionId&&v.session)return v.event;}catch{}return selected;}
  async function replies(){const id=chosen();if(!id){replyData=null;paintReplies();return;}replyData=null;paintReplies();const result=await request('replies',{eventId:id});if(chosen()!==id)return;replyData=result;paintReplies();}
- function paintReplies(){const area=document.getElementById('portal-attendance-replies');if(!area)return;area.replaceChildren();if(!replyData){area.append(node('p','Kalendertermin auswählen, um Zusagen und Entschuldigungen zu sehen.'));return;}
+ function replyCandidates(){
+  if(!replyData||currentOperationId||currentSessionId&&sessionType==='Einsatz')return [];
+  const answers=new Map(replyData.replies.map(r=>[String(r.memberId),r.status]));
+  const known=new Set(todayEntries().flatMap(e=>[e.storedName,e.displayName]).filter(Boolean));
+  const type=currentSessionId?sessionType:replyData.event.attendanceType||replyData.event.sessionType;if(type==='Einsatz')return [];
+  return members.filter(m=>(type!=='Ausschuss Sitzung'||m.committeeMember)&&(!Array.isArray(replyData.event.recipientIds)||replyData.event.recipientIds.includes(String(m.id)))&&['yes','excused'].includes(answers.get(String(m.id)))&&!known.has(nameForStorage(m))&&!known.has(nameForTile(m))&&!pendingMemberStatuses.has(m.id)).map(member=>({member,status:answers.get(String(member.id))==='yes'?'Anwesend':'Entschuldigt'}));
+ }
+ function stageCalendarReplies(){
+  if(!replyData||replyData.stale||chosen()!==replyData.event.id||!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed)return false;
+  if(!replyCandidates().length)return false;
+  const eventId=replyData.event.id;
+  if(!currentSessionId&&!currentOperationId){if(typeof beginAttendanceFromContext!=='function')return false;beginAttendanceFromContext();}
+  if(!currentSessionId||currentOperationId||sessionType==='Einsatz'||chosen()!==eventId)return false;
+  const plan=replyCandidates();if(!plan.length){paintReplies();return false;}
+  g.WorkflowUX?.beforeSelection();
+  for(const {member,status} of plan)pendingMemberStatuses.set(member.id,status);
+  chosenMemberIds=new Set(pendingMemberStatuses.keys());
+  if(typeof setHomeFlowStage==='function')setHomeFlowStage(2);
+  renderMembers();updateSelection();paintReplies();
+  const yes=plan.filter(p=>p.status==='Anwesend').length,excused=plan.length-yes;
+  showToast(yes+' zugesagt · '+excused+' entschuldigt vorgemerkt. Vor Ort prüfen und Markierungen übernehmen.');return true;
+ }
+ function paintReplies(){const area=document.getElementById('portal-attendance-replies');if(!area)return;const expanded=new Map([...area.querySelectorAll('details')].map(d=>[d.dataset.replyStatus,d.open]));area.replaceChildren();if(!replyData){area.append(node('p','Kalendertermin auswählen, um Zusagen und Entschuldigungen zu sehen.'));return;}
   area.append(node('h3',replyData.event.title+' · '+date(replyData.event)));if(replyData.stale)area.append(node('p','Kalender derzeit nicht aktuell bestätigt.'));
-  const answers=new Map(replyData.replies.map(r=>[r.memberId,r.status]));for(const [status,title] of [['yes','Zugesagt'],['excused','Entschuldigt'],['open','Ohne Rückmeldung']]){const people=members.filter(m=>(!Array.isArray(replyData.event.recipientIds)||replyData.event.recipientIds.includes(String(m.id)))&&(answers.get(String(m.id))||'open')===status),details=node('details'),summary=node('summary',title+' ('+people.length+')');details.append(summary);if(status==='excused')details.open=true;const names=node('p',people.map(m=>[m.lastName,m.firstName].filter(Boolean).join(' ')).join(' · ')||'Keine');details.append(names);area.append(details);}
-  area.append(node('p','Zusagen sind noch keine Anwesenheit. Vor Ort prüfen und in der Personenliste markieren.'));
-  const apply=node('button','Entschuldigte in der Personenliste vormerken');apply.type='button';apply.className='outline-button';apply.disabled=!currentSessionId||sessionType==='Einsatz'||replyData.stale;apply.onclick=()=>{
-   if(!replyData||chosen()!==replyData.event.id||!currentSessionId||sessionType==='Einsatz')return;const known=new Set(todayEntries().flatMap(e=>[e.storedName,e.displayName]));let count=0;for(const m of members){if((!Array.isArray(replyData.event.recipientIds)||replyData.event.recipientIds.includes(String(m.id)))&&answers.get(String(m.id))==='excused'&&!known.has(nameForStorage(m))&&!known.has(nameForTile(m))&&!pendingMemberStatuses.has(m.id)){pendingMemberStatuses.set(m.id,'Entschuldigt');count++;}}renderMembers();updateSelection();showToast(count+' Entschuldigungen vorgemerkt. Bitte prüfen und Auswahl übernehmen.');};area.append(apply);
+  const plan=replyCandidates(),apply=node('button',plan.length+' Rückmeldung'+(plan.length===1?'':'en')+' vormerken');apply.type='button';apply.className='primary-button';apply.hidden=!plan.length;apply.disabled=replyData.stale||!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed;apply.onclick=stageCalendarReplies;area.append(apply);
+  const answers=new Map(replyData.replies.map(r=>[String(r.memberId),r.status]));for(const [status,title] of [['yes','Zugesagt'],['excused','Entschuldigt'],['open','Ohne Rückmeldung']]){const people=members.filter(m=>(!Array.isArray(replyData.event.recipientIds)||replyData.event.recipientIds.includes(String(m.id)))&&(answers.get(String(m.id))||'open')===status),details=node('details'),summary=node('summary',title+' ('+people.length+')');details.append(summary);details.dataset.replyStatus=status;details.open=expanded.has(status)?expanded.get(status):status==='yes'&&people.length>0;const names=node('p',people.map(m=>[m.lastName,m.firstName].filter(Boolean).join(' ')).join(' · ')||'Keine');if(people.length)details.append(names);area.append(details);}
+  area.append(node('p',plan.length?'Mit einem Tippen Zusagen als „Anwesend“ und Entschuldigungen vormerken. Anschließend vor Ort prüfen und „Markierungen übernehmen“ wählen. Ohne Rückmeldung bleibt offen.':'Neue Rückmeldungen werden hier zur Vormerkung angeboten. Bereits erfasste Personen und eigene Markierungen bleiben erhalten.'));
   const reminder=node('button',manual?'Versand fortsetzen / erneut prüfen':'Alle außer Entschuldigten erinnern');reminder.type='button';reminder.className='outline-button';reminder.disabled=replyData.stale||replyData.event.start<=Date.now();reminder.onclick=async()=>{if(!requireAdmin(!document.getElementById(CALENDAR).hidden?CALENDAR:VIEW))return;if(!manual&&!confirm('Alle für diesen Termin freigegebenen Mitglieder mit aktivierten Handy-Mitteilungen erinnern? Entschuldigte erhalten keine Nachricht.'))return;manual=manual||{eventId:replyData.event.id,requestId:crypto.randomUUID()};reminder.disabled=true;try{const result=await request('remind',manual);if(!result.remaining)manual=null;showToast(result.accepted+' Handy-Mitteilungen angenommen · '+result.failed+' fehlgeschlagen'+(result.remaining?' · Versand bitte fortsetzen.':'.'));paintReplies();}catch(e){showToast(e.message+' Denselben Versand erneut prüfen.','error');reminder.disabled=false;reminder.textContent='Versand erneut prüfen';}};area.append(reminder);
  }
  async function refreshAttendance(force=false){
@@ -174,5 +195,5 @@
   queueMicrotask(()=>refreshAttendance(true));
   setInterval(()=>{if(document.hidden)return;if(!byId('attendanceView').hidden)refreshAttendance();if(!document.getElementById(CALENDAR).hidden&&!document.getElementById('portal-calendar-administration').hidden)reviewCalendar({automatic:true});},60000);
  }
- g.PortalAdmin={load,loadCalendar,lock,refreshAttendance,sessionStarted,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,useSpontaneous};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={load,loadCalendar,lock,refreshAttendance,sessionStarted,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
