@@ -119,3 +119,16 @@
 .theater-category-colors{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.theater-category-colors h4{width:100%;margin:0}.theater-category-colors label{display:grid;gap:6px;flex:1 1 180px;max-width:100%;padding:10px;border:1px solid #c5d2df;border-left:6px solid var(--category-color);border-radius:10px;background:#f7fafc;font-weight:700;overflow-wrap:anywhere}.theater-category-colors select{width:100%;min-width:0}
 @media(min-width:520px){.theater-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .theater-product-quantity{max-width:calc(100% - 64px);line-height:1.15}.theater-product[data-state=cancellation] .theater-product-quantity{font-size:1.05rem}
+
+/* Compact selection summary; only unsent selections can be cleared. */
+.theater-order-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
+.theater-phone-footer .theater-order-summary strong{font-size:1.2rem;line-height:1.3;margin:0}
+.theater .theater-order-summary button{width:auto;min-height:44px;padding:6px 8px;font-size:.8rem;background:transparent;color:#435a70;border:0;text-decoration:underline}
+.theater-product-quantity[hidden],.theater-product-minus[hidden],#theater-phone-discard[hidden]{display:none!important}
+/* Management follows the same category order as the phone catalogue. */
+.theater-editor-group{margin:20px 0;border:1px solid #c5d2df;border-left:6px solid var(--category-color);border-radius:14px;background:#fff;padding:0 14px 10px}
+.theater-editor-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;padding:14px 0;border-bottom:1px solid #d7e1eb}
+.theater-editor-heading h4{margin:0;font-size:1.2rem;color:#10263f}
+.theater .theater-editor-heading button{width:auto;font-size:.9rem;background:#edf3fa;color:#173e67}
+.theater-editor-group .theater-edit-row:last-child{border-bottom:0}
+@media(max-width:700px){.theater-editor-group{padding-inline:10px}.theater-editor-heading{align-items:flex-start}}

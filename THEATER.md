@@ -88,3 +88,9 @@ keine Kosten und keine Änderung der Handy-Bestell- oder Cloudflare-API.
 ## Rubrikfarben
 
 Unter Verwaltung → Preisliste kann für jede Rubrik eine Farbe aus sechs gut lesbaren Farben gewählt werden. „Veranstaltung & Preisliste speichern“ übernimmt die Farben für alle Geräte. Auf dem Handy markieren sie Rubrikschaltflächen, Überschriften und Artikelkacheln; Namen und Mengen bleiben zusätzlich sichtbar. Website und Cloudflare-Worker müssen dafür aktuell sein.
+
+## Schnellaufnahme und Artikelreihenfolge
+
+Leere Artikelkarten zeigen weder eine Nullmenge noch eine Minustaste. Nach dem Antippen erscheinen Menge und Minus; die Karte leuchtet kurz auf (außer bei reduzierter Bewegung). Die Fußzeile zeigt die gesamte Stückzahl und den Betrag. „Auswahl leeren“ verwirft nach Rückfrage ausschließlich noch nicht gesendete Positionen; unbestätigte Übertragungen bleiben gesperrt und erneut prüfbar.
+
+Die Verwaltung zeigt Artikel in Rubrikbereichen. „Artikel hinzufügen“ im jeweiligen Bereich übernimmt dessen Rubrik. „Nach oben“ und „Nach unten“ verändern die Reihenfolge innerhalb der Rubrik; diese Reihenfolge gilt nach „Veranstaltung & Preisliste speichern“ auch für die Handyansicht. Häufige Artikel können so zuerst stehen. Änderungen der Rubrik ordnen den Artikel dem passenden Bereich zu.

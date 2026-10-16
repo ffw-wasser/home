@@ -15,11 +15,11 @@ const card=f=>f.get('theater-phone-items').children[0].children[1].children[0];
 test('Kachel addiert, Minus stoppt bei null, Suche erhält die Menge',async()=>{
  const f=fixture([catalog]);await f.load();let row=card(f);assert.equal(row.children[1].disabled,true);row.children[1].onclick();assert.equal(row.dataset.state,'empty');
  row.children[0].onclick();row.children[0].onclick();assert.equal(row.children[0].children[2].textContent,'2 ×');
- f.get('theater-phone-search').value='essen';f.get('theater-phone-search').oninput();assert.equal(f.get('theater-phone-total').textContent,'Gesamt: 3,00 €');
+ f.get('theater-phone-search').value='essen';f.get('theater-phone-search').oninput();assert.equal(f.get('theater-phone-total').textContent,'2 Artikel · 3,00 €');
  f.get('theater-phone-search').value='';f.get('theater-phone-search').oninput();row=card(f);row.children[1].onclick();row.children[1].onclick();row.children[1].onclick();assert.equal(f.get('theater-phone-total').textContent,'Gesamt: 0,00 €');
 });
 test('Storno erfordert eigenen Modus und lässt sich bis null zurücknehmen',async()=>{
- const f=fixture([catalog]);await f.load();f.get('theater-phone-mode').onclick();let row=card(f);row.children[0].onclick();assert.equal(row.dataset.state,'cancellation');assert.equal(f.get('theater-phone-total').textContent,'Storno gesamt: -1,50 €');
+ const f=fixture([catalog]);await f.load();f.get('theater-phone-mode').onclick();let row=card(f);row.children[0].onclick();assert.equal(row.dataset.state,'cancellation');assert.equal(f.get('theater-phone-total').textContent,'Storno · 1 Artikel · -1,50 €');
  f.get('theater-phone-mode').onclick();assert.equal(f.get('theater-phone-mode').attrs['aria-pressed'],'true');assert.match(f.get('theater-phone-status').textContent,/zuerst die aktuelle Auswahl/);
  row.children[1].onclick();f.get('theater-phone-mode').onclick();assert.equal(f.get('theater-phone-mode').attrs['aria-pressed'],'false');
 });
@@ -32,4 +32,15 @@ test('Kassenmeldungen erreichen auch den Vollbildstatus',()=>{
  const source=fs.readFileSync('js/features/theater/theater-admin.js','utf8'),nodes={status:{},'manage-status':{},'cash-status':{}};
  const message=vm.runInNewContext(source.slice(source.indexOf(' function message('),source.indexOf(' function guard('))+';message',{$:id=>nodes[id]});
  message('Verbindung unterbrochen.');for(const node of Object.values(nodes))assert.equal(node.textContent,'Verbindung unterbrochen.');
+});
+
+test('Leere Karten zeigen weder Menge noch Minus; Leeren entfernt nur die ungesendete Auswahl',async()=>{
+ const f=fixture([catalog]);await f.load();let row=card(f);
+ assert.equal(row.children[1].hidden,true);assert.equal(row.children[0].children[2].hidden,true);assert.equal(f.get('theater-phone-discard').hidden,true);
+ row.children[0].onclick();row.children[0].onclick();assert.equal(row.children[1].hidden,false);assert.equal(row.children[0].children[2].hidden,false);assert.equal(f.get('theater-phone-total').textContent,'2 Artikel · 3,00 €');
+ f.get('theater-phone-discard').onclick();row=card(f);assert.equal(row.dataset.state,'empty');assert.equal(f.get('theater-phone-confirm').disabled,true);assert.equal(f.get('theater-phone-discard').hidden,true);
+});
+test('Unbestätigte Bestellung kann auch durch direkten Aufruf nicht geleert werden',async()=>{
+ const f=fixture([catalog],async(path)=>{if(path==='theater/events')return {events:[catalog]};throw Error('Offline');});await f.load();card(f).children[0].onclick();await f.get('theater-phone-confirm').onclick();
+ assert.equal(f.get('theater-phone-discard').hidden,true);f.get('theater-phone-discard').onclick();assert.equal(f.get('theater-phone-total').textContent,'1 Artikel · 1,50 €');assert.equal(f.get('theater-phone-confirm').textContent,'Übertragung erneut prüfen');
 });
