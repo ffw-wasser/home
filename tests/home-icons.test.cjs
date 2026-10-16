@@ -20,7 +20,7 @@ test('FFW und H2O haben unterschiedliche schwarze Startbildschirm-Icons',()=>{
 test('iOS Homebildschirm-Icons sind getrennt; innerhalb der Apps stimmen die Logos',()=>{
  assert.match(main,/rel="apple-touch-icon"/);
  assert.match(main,/assets\/branding\/ffw-home-180\.png\?v=/);
- assert.match(main,/class="top-brand"><img[^>]+src="assets\/branding\/ffw-header\.svg\?v=[^"]+"/);
+ assert.match(main,/class="top-brand"><img[^>]+src="icon-192\.png\?v=[^"]+"/);
  assert.match(portal,/rel="apple-touch-icon"[^>]+h2o-symbol-black-180\.png/);
  assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-black-96\.png\?v=[^"]+"/);
  assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-black-192\.png\?v=[^']+'/);
