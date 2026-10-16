@@ -79,3 +79,15 @@ verfügbar. Eine vorherige Version lässt sich über Cloudflare Deployments zur�
 - [Build-Einstellungen](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
 - [Watch paths](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/)
 - [Free-Tarif und Build-Limits](https://developers.cloudflare.com/workers/ci-cd/builds/limits-and-pricing/)
+
+## Verbindungstest bei leerer Build-Historie
+
+Für einen Verbindungstest eine tatsächliche Änderung unter `cloudflare/push/`
+auf `main` veröffentlichen und den neuen Commit in Cloudflares Build-Historie
+suchen. Ein erfolgreicher GitHub-Pages-Build bestätigt nur die Website, nicht
+die Veröffentlichung des Cloudflare-Workers.
+
+Erscheint trotz einer solchen Dateiänderung kein Build, in Cloudflare den
+verbundenen Repository-Namen, den Produktionsbranch `main`, die aktivierten
+Produktionsbuilds und die Watch paths prüfen. Die GitHub-Freigabe für
+`ffw-wasser/home` muss für die Cloudflare-Git-Integration erteilt sein.
