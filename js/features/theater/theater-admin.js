@@ -60,7 +60,7 @@
  function paintCash(){
   const root=$('cards'),detail=$('cash-detail-content'),screen=$('cash-detail'),board=$('cash-board');
   root.replaceChildren();detail.replaceChildren();
-  const members=[...new Set(orders.filter(o=>o.state==='open'||o.state==='reserved').map(o=>o.member))].sort((a,b)=>(orders.find(o=>o.member===a)?.name||a).localeCompare(orders.find(o=>o.member===b)?.name||b,'de'));
+  const members=[...new Set(orders.filter(o=>o.state==='open'||o.state==='reserved').map(o=>o.member))].sort((a,b)=>{const first=id=>Math.min(...orders.filter(o=>o.member===id&&o.state==='open').map(o=>Number(o.createdAt)||Infinity));const aa=first(a),bb=first(b);return (Number.isFinite(aa)?0:1)-(Number.isFinite(bb)?0:1)||aa-bb||(orders.find(o=>o.member===a)?.name||a).localeCompare(orders.find(o=>o.member===b)?.name||b,'de');});
   const eventName=$('cash-event-name');if(eventName)eventName.textContent=current?.title||'';const count=$('cash-count');if(count)count.textContent=members.length+' Karte'+(members.length===1?'':'n')+' mit offenen Vorgängen';
   for(const member of members){
    const own=orders.filter(o=>o.member===member),open=own.filter(o=>o.state==='open'),reserved=own.filter(o=>o.state==='reserved');
@@ -70,7 +70,7 @@
    const flag=node('span',open.length?'● Neue Bestellung'+(open.length===1?'':'en'):'● In Kasseneingabe');flag.className='theater-board-flag';
    const label=node('strong',name);label.className='theater-board-name';
    const value=node('span',M.money(own.filter(o=>o.state==='open'||o.state==='reserved').reduce((sum,o)=>sum+M.total(o.lines),0)));value.className='theater-board-value';
-   card.append(flag,label,value,node('span',open.length?(open.length+' offen'+(reserved.length?' · '+reserved.length+' reserviert':'')):(reserved.length+' reserviert')),node('span','Zur Kassenübertragung ›'));
+   const latest=Math.max(...(open.length?open:reserved).map(o=>Number(o.createdAt)||0));const age=node('span');age.className='theater-board-age';age.textContent=latest?'Bestellung vor '+(Math.max(0,Math.floor((Date.now()-latest)/60000))<1?'weniger als 1 Min.':Math.floor((Date.now()-latest)/60000)+' Min.'):'Bestellung eingegangen';card.append(flag,label,value,age,node('span',open.length?(open.length+' offen'+(reserved.length?' · '+reserved.length+' reserviert':'')):(reserved.length+' reserviert')),node('span','Zur Kassenübertragung ›'));
    root.append(card);
   }
   if(!members.length)root.append(node('p',current?.open?'Noch keine offenen Bestellungen. Neue Karten erscheinen automatisch.':'Keine offenen Kassenkarten. Veranstaltung gegebenenfalls unter Verwaltung öffnen.'));
@@ -78,10 +78,10 @@
   board.hidden=!!selectedMember;screen.hidden=!selectedMember;
   if(!selectedMember)return;
   const own=orders.filter(o=>o.member===selectedMember),open=own.filter(o=>o.state==='open'),reserved=own.filter(o=>o.state==='reserved');
-  detail.append(node('h3',own.at(-1).name));
+  detail.append(node('h3',own.at(-1).name));const total=M.money(own.filter(o=>o.state==='open'||o.state==='reserved').reduce((sum,o)=>sum+M.total(o.lines),0));const summary=node('div');summary.className='theater-detail-total';summary.append(node('span','Gesamtbetrag offen / reserviert'),node('strong',total));detail.append(summary);
   if(reserved.length){
    const block=node('section');block.className='theater-reserved';block.append(node('h4','Für die Kasse bereit'));lines(block,M.summarize(reserved));
-   block.append(button('In Kasse erfasst',()=>mutate('complete',{batchId:reserved[0].reservation})),button('Reservierung freigeben',()=>mutate('release',{batchId:reserved[0].reservation})));
+   block.append(button('✓ In Kasse übertragen',()=>mutate('complete',{batchId:reserved[0].reservation})),button('Reservierung freigeben',()=>mutate('release',{batchId:reserved[0].reservation})));
    detail.append(block);
   }
   if(open.length){
