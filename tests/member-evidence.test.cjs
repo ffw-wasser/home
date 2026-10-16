@@ -30,7 +30,7 @@ test('Private Projektion enthält nur freigegebene Felder und lehnt falsche Date
 });
 
 test('G26.2 ist der Mindestnachweis aller anderen; gültige G26.3 ersetzt sie, umgekehrt nicht',()=>{
- const check=m=>E.assess(E.project({breathingQualified:false,...m}),now).find(g=>g.title==='Arbeitsmedizinische Eignung');
+ const check=m=>E.assess(E.project({breathingQualified:false,...m}),now).find(g=>g.title==='Feuerwehrmedizinische Eignung');
  assert.equal(check({}).status,'missing');assert.equal(check({ageDepartment:true}).status,'missing');
  assert.equal(check({g262ValidUntil:'2028-01-01'}).status,'valid');
  const higher=check({g263ValidUntil:'2028-01-01'});assert.equal(higher.status,'valid');assert.match(higher.items[0].label,/ersetzt G26.2/);assert.ok(higher.items[0].substitution);
@@ -44,7 +44,7 @@ test('Ehemalige AGT behalten G26.3 als Mindestnachweis, ohne AGT-Pflichten oder 
  const fs=require('node:fs'),vm=require('node:vm');
  const m={breathingQualified:false,roles:['ATM','ATG'],breathingClearance:true,g263ValidUntil:'2028-01-01',agtInstructionValidUntil:'2020-01-01',ffiValidUntil:''};
  const before=JSON.stringify(m),groups=E.assess(E.project(m),now);
- assert.equal(groups.length,1);assert.equal(groups[0].title,'Arbeitsmedizinische Eignung');assert.equal(groups[0].status,'valid');
+ assert.equal(groups.length,1);assert.equal(groups[0].title,'Feuerwehrmedizinische Eignung');assert.equal(groups[0].status,'valid');
  assert.match(groups[0].items[0].label,/G26.3.*ersetzt G26.2/);
  const c=vm.createContext({MemberEvidence:E,document:{getElementById(){}},window:{},console});
  vm.runInContext(fs.readFileSync('js/core/config.js','utf8'),c);

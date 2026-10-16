@@ -69,7 +69,7 @@ test('Automatische Aktualisierung läuft auch auf der eigenen Nachweisseite und 
 
 test('Nachweise erscheinen vollständig als sichtbare Karten; fällige Gruppen stehen zuerst und Kontrollangaben bleiben erhalten',async()=>{
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());
- const groups=[{title:'Arbeitsmedizinische Eignung',status:'valid',items:[{label:'G26.3 (ersetzt G26.2)',status:'valid',until:'2027-12-31',substitution:'Keine zusätzliche G26.2 erforderlich.'}]},{title:'Führerscheinkontrolle',status:'expired',vehicles:['LF','TSF'],items:[{label:'Führerscheinkontrolle',status:'expired',until:'2020-01-01',checkedOn:'2019-01-01',intervalMonths:12}]}];
+ const groups=[{title:'Feuerwehrmedizinische Eignung',status:'valid',items:[{label:'G26.3 (ersetzt G26.2)',status:'valid',until:'2027-12-31',substitution:'Keine zusätzliche G26.2 erforderlich.'}]},{title:'Führerscheinkontrolle',status:'expired',vehicles:['LF','TSF'],items:[{label:'Führerscheinkontrolle',status:'expired',until:'2020-01-01',checkedOn:'2019-01-01',intervalMonths:12}]}];
  f.c.generation=1;f.c.g={MemberEvidence:{assess:()=>groups}};f.c.api=async()=>({evidence:{},syncedAt:1792148400000});f.c.navigator={onLine:true};
  vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);await f.c.refreshEvidence(1);
  const area=f.nodes.get('portal-evidence-details'),sections=area.children.filter(n=>n.tagName==='section');assert.equal(sections.length,2);assert.equal(sections[0].dataset.group,'Führerscheinkontrolle');assert.equal(area.querySelectorAll('details').length,0);assert.equal(area.querySelectorAll('article').length,2);

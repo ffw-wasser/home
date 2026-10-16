@@ -17,7 +17,7 @@
   const item=(label,until,extra={})=>({label,until,status:!until?'missing':until<today?'expired':until<=threshold?'soon':'valid',...extra});
   const group=(title,items)=>({title,items,status:items.some(i=>i.status==='expired')?'expired':items.some(i=>i.status==='missing')?'missing':items.some(i=>i.status==='soon')?'soon':'valid'}),groups=[];
   if(e.breathing)groups.push(group('Atemschutz',[item('G26.3',e.breathing.g263),item('Unterweisung AGT',e.breathing.instruction),item('FFI',e.breathing.ffi)]));
-  if(!e.breathing){const higher=e.medical.g263&&e.medical.g263>=today,chosen=higher?'g263':e.medical.g262?'g262':'g263',check=item(chosen==='g263'&&e.medical.g263?'G26.3 (ersetzt G26.2)':'G26.2 (Mindestnachweis)',e.medical[chosen]);if(higher)check.substitution='Gültige G26.3 vorhanden – keine zusätzliche G26.2 erforderlich.';groups.push(group('Arbeitsmedizinische Eignung',[check]));}
+  if(!e.breathing){const higher=e.medical.g263&&e.medical.g263>=today,chosen=higher?'g263':e.medical.g262?'g262':'g263',check=item(chosen==='g263'&&e.medical.g263?'G26.3 (ersetzt G26.2)':'G26.2 (Mindestnachweis)',e.medical[chosen]);if(higher)check.substitution='Gültige G26.3 vorhanden – keine zusätzliche G26.2 erforderlich.';groups.push(group('Feuerwehrmedizinische Eignung',[check]));}
   if(e.driver){let until=due(e.driver.checkedOn,e.driver.intervalMonths);const check=item('Führerscheinkontrolle',until,{checkedOn:e.driver.checkedOn,intervalMonths:e.driver.intervalMonths});if(e.driver.checkedOn>today){check.status='missing';check.invalidFuture=true;}groups.push({...group('Führerscheinkontrolle',[check]),vehicles:e.driver.vehicles});}
   return groups;
  }
