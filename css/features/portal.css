@@ -41,3 +41,10 @@
 #portal-events>h3{font-size:18px;margin:22px 0 10px}#portal-events>h3+.portal-event{margin-top:8px}
 #portal-evidence{margin:24px 0 0;padding:0 16px}#portal-evidence[open]{padding-bottom:16px}
 #portal-priority[hidden],#portal-evidence[hidden]{display:none!important}
+
+/* Evidence alerts remain discoverable from every personal screen. */
+#portal-priority{border-width:2px;border-left-width:6px;box-shadow:0 5px 16px #80530a15}
+#portal-priority h3{font-size:20px;line-height:1.3}#portal-priority[data-state=missing]{border-color:#b87d18}
+.deckel-nav button>.portal-evidence-count{position:absolute;top:3px;right:8px;display:grid;place-items:center;min-width:21px;height:21px;padding:0 5px;border-radius:12px;background:#986100;color:#fff;font-size:12px;line-height:1;font-weight:850;border:2px solid #fff}
+.deckel-nav button>.portal-evidence-count[data-state=expired],.deckel-nav button>.portal-evidence-count[data-state=missing]{background:#a62c3c}
+.deckel-nav button>.portal-evidence-count[hidden]{display:none!important}

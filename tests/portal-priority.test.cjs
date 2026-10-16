@@ -48,3 +48,15 @@ test('Verspätete Nachweise eines alten Zugangs erscheinen nicht im neuen Überb
  vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);
  const waiting=f.c.refreshEvidence(1);f.c.generation=2;f.c.evidencePriority([]);release({evidence:null});await waiting;assert.equal(f.nodes.get('portal-priority').hidden,true);assert.equal(f.nodes.get('portal-evidence-details').children.length,0);
 });
+
+test('Fällige Nachweise erhalten eine sichtbare Anzahl im Menü und einen verständlichen zugänglichen Titel',()=>{
+ const f=fixture(),badge=new Node(),heading=new Node(),tab={attributes:{},setAttribute(k,v){this.attributes[k]=v;},removeAttribute(k){delete this.attributes[k];}};
+ f.nodes.set('portal-evidence-count',badge);f.nodes.set('portal-priority-heading',heading);f.c.document.querySelector=()=>tab;
+ f.c.evidencePriority([{items:[{label:'FFI',status:'soon',until:'2026-11-01'},{label:'G26.3',status:'missing'}]}]);assert.equal(badge.hidden,false);assert.equal(badge.textContent,'2');assert.equal(badge.dataset.state,'missing');assert.equal(heading.textContent,'2 Nachweise prüfen');assert.match(tab.attributes['aria-label'],/2 Nachweise/);assert.match(f.nodes.get('portal-priority-text').children[0].textContent,/G26.3/);
+ f.c.evidencePriority([],'Stand unbekannt');assert.equal(badge.textContent,'!');assert.match(heading.textContent,/nicht aktuell geprüft/);
+ f.c.evidencePriority([]);assert.equal(badge.hidden,true);assert.equal(tab.attributes['aria-label'],undefined);
+});
+test('Nachweishinweis öffnet aus anderen Seiten die Terminseite und die betroffenen Details',()=>{
+ const f=fixture(),calls=[],evidence=new Node('details'),details=new Node(),heading=new Node('summary'),urgent=new Node('details'),valid=new Node('details');urgent.dataset.state='missing';valid.dataset.state='valid';details.append(urgent,valid);
+ f.nodes.set('portal-evidence',evidence);f.nodes.set('portal-evidence-details',details);f.nodes.set('portal-evidence-heading',heading);f.c.g={DeckelMobile:{jump:id=>calls.push(id)}};f.c.matchMedia=()=>({matches:true});f.c.openEvidence();assert.deepEqual(calls,['portal-section']);assert.equal(evidence.open,true);assert.equal(urgent.open,true);assert.equal(valid.open,false);assert.equal(evidence.scrolled,true);assert.equal(heading.focused,true);
+});

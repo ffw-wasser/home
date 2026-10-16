@@ -11,12 +11,26 @@
  function evidenceText(item){if(item.invalidFuture)return 'Kontrolldatum liegt in der Zukunft – bitte korrigieren lassen.';if(item.status==='missing')return item.label==='Führerscheinkontrolle'?'Kontrolle nicht hinterlegt':'Nachweis fehlt';return (item.status==='expired'?'Abgelaufen am ':item.label==='Führerscheinkontrolle'?'Nächste Kontrolle bis ':'Gültig bis ')+evidenceDate(item.until);}
  function evidencePriority(groups,message=''){
   const box=$('priority'),content=$('priority-text');if(!box||!content)return;
-  const issues=groups.flatMap(group=>group.items.filter(item=>item.status!=='valid'));
+  const rank={expired:0,missing:1,soon:2};
+  const issues=groups.flatMap(group=>group.items.filter(item=>item.status!=='valid')).sort((a,b)=>(rank[a.status]??3)-(rank[b.status]??3));
   content.replaceChildren();
   for(const item of issues)content.append(node('p',item.label+': '+(item.status==='soon'?'Bald fällig · ':'')+evidenceText(item)));
   if(message)content.append(node('p',message));
   box.hidden=!issues.length&&!message;
-  box.dataset.state=message?'unknown':issues.some(item=>item.status==='expired')?'expired':'soon';
+  box.dataset.state=message?'unknown':issues.some(item=>item.status==='expired')?'expired':issues.some(item=>item.status==='missing')?'missing':'soon';
+  const title=message?'Nachweise nicht aktuell geprüft':issues.length+' Nachweis'+(issues.length===1?'':'e')+' prüfen';
+  if($('priority-heading'))$('priority-heading').textContent=title;
+  const badge=$('evidence-count'),tab=document.querySelector?.('[data-deckel-target="portal-section"]');
+  if(badge){badge.hidden=box.hidden;badge.textContent=message?'!':String(issues.length);badge.dataset.state=box.dataset.state;}
+  if(tab){if(box.hidden)tab.removeAttribute('aria-label');else tab.setAttribute('aria-label','Termine · '+title);}
+ }
+ function openEvidence(){
+  g.DeckelMobile?.jump('portal-section');
+  const evidence=$('evidence');if(!evidence)return;
+  evidence.open=true;
+  for(const group of $('evidence-details').querySelectorAll('details'))if(group.dataset.state!=='valid')group.open=true;
+  evidence.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  $('evidence-heading').focus({preventScroll:true});
  }
  function eventSections(events,now=Date.now()){
   const upcoming=events.filter(e=>Number.isFinite(e.end)&&e.end>now).sort((a,b)=>a.start-b.start);
@@ -50,6 +64,6 @@
  async function retry(){if(!pending||busy)return;const version=generation,job=pending;busy=true;controls();$('status').textContent='Rückmeldung wird gespeichert …';try{await api('reply',job);if(version!==generation)return;pending=null;$('status').textContent='✓ Rückmeldung gespeichert.';loaded=false;}catch(e){if(version===generation){if([400,401,403,404,409].includes(e.status))pending=null;$('status').textContent=(g.ConnectionStatus?.message(e)||e.message)+(pending?' Speicherung noch nicht bestätigt. Bitte erneut prüfen.':' Bitte aktualisieren.');}}finally{if(version===generation){busy=false;controls();if(!pending)refresh();}}}
  function clear(){generation++;evidencePriority([]);if($('evidence'))$('evidence').open=false;if($('evidence'))$('evidence').hidden=true;$('evidence-details')?.replaceChildren();if($('evidence-status'))$('evidence-status').textContent='';access=null;busy=false;pending=null;loaded=false;visible=false;deepLinkDone=false;clearTimeout(timer);if($('section'))$('section').hidden=true;$('events')?.replaceChildren();if($('birthday')){$('birthday').hidden=true;$('birthday').textContent='';}if($('status'))$('status').textContent='';}
  async function render(snapshot){const p=new URLSearchParams(location.hash.slice(1)),next=snapshot.actions?{...snapshot.actions,alias:p.get('a')}:null;if(!next?.central){clear();$('section').hidden=false;visible=true;$('status').textContent='Für Proben und Termine muss die Verwaltung deinen Portalzugang mit dem Kontodienst verbinden.';g.DeckelMobile?.sync();return;}const changed=next.alias!==access?.alias||next.revision!==access?.revision||next.origin!==access?.origin;if(changed)clear();access=next;$('section').hidden=false;visible=true;g.DeckelMobile?.sync();g.DeckelPush?.render(next);await refresh();}
- function init(){if($('priority-open'))$('priority-open').onclick=()=>{const evidence=$('evidence');evidence.open=true;for(const group of $('evidence-details').querySelectorAll('details'))if(group.dataset.state!=='valid')group.open=true;evidence.scrollIntoView({block:'start',behavior:'smooth'});$('evidence-heading').focus({preventScroll:true});};$('refresh').onclick=refresh;g.addEventListener('portal-pagechange',event=>{if(event.detail.page==='portal-section'){refresh();schedule();}else clearTimeout(timer);});$('retry').onclick=retry;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else{refresh();schedule();}});g.addEventListener('hashchange',clear);}
+ function init(){if($('priority-open'))$('priority-open').onclick=openEvidence;$('refresh').onclick=refresh;g.addEventListener('portal-pagechange',event=>{if(event.detail.page==='portal-section'){refresh();schedule();}else clearTimeout(timer);});$('retry').onclick=retry;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else{refresh();schedule();}});g.addEventListener('hashchange',clear);}
  g.H2OPortal={render,clear,api,hasUnsaved:()=>!!pending};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
