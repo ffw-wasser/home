@@ -135,6 +135,10 @@ function buildSettingsSubpages(){
   const members=byId("admin-members"),goals=byId("admin-settings"),pinArticle=byId("changePinButton")?.closest("article");
   if(pinArticle)pinArticle.remove();
   const membersPage=makePage("settingsMembersView","Mitglieder","Mitglieder, Funktionen und Berechtigungen verwalten.",members);
+  if(membersPage&&!byId('memberEvidenceSync')){
+    const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Persönliche Nachweise im H₂O Portal</h3><p>G26.2 beziehungsweise G26.3 hinterlegen, Atemschutzgeräteträger kennzeichnen und die weiteren Nachweise pflegen. Führerscheinkontrollen erscheinen bei Mitgliedern mit Fahrzeugberechtigung. Änderungen werden nach der OneDrive-Speicherung automatisch abgeglichen.</p><button id="memberEvidenceSync" class="outline-button" type="button">Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
+    byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync'),status=byId('memberEvidenceSyncStatus');button.disabled=true;status.textContent='Gespeicherte Mitgliederdaten werden übertragen …';try{const done=await window.PortalAdmin.syncRoster(true);status.textContent=done?'Nachweise übertragen. Auf dem Handy „Termine & Nachweise aktualisieren“ wählen.':'Ein Abgleich läuft bereits oder OneDrive ist noch nicht bestätigt. Bitte erneut versuchen.';}catch(e){status.textContent=e.message;}finally{button.disabled=false;}};
+  }
   const goalsPage=makePage("settingsGoalsView","Funktionsziele","Jährliche Mindestziele getrennt bearbeiten.",goals);
   makePage("settingsSecurityView","Sicherheit","Admin-Passwort für geschützte Bereiche ändern.",pinArticle);
   // Nummern aus der früheren Admin-Sammelansicht haben auf eigenständigen

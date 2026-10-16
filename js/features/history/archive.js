@@ -114,8 +114,10 @@ function normalizeCompleteBackupData(data) {
     rfidId:String(member.rfidId||"").trim(),
     committeeMember:Boolean(member.committeeMember),
     atueQualified:Boolean(member.atueQualified),breathingClearance:Boolean(member.breathingClearance),breathingClearanceUntil:String(member.breathingClearanceUntil||""),
-    g263ValidUntil:String(member.g263ValidUntil||""),agtInstructionValidUntil:String(member.agtInstructionValidUntil||""),ffiValidUntil:String(member.ffiValidUntil||""),
-    driverLicenseCheckedOn:String(member.driverLicenseCheckedOn||"")
+    g262ValidUntil:String(member.g262ValidUntil||""),g263ValidUntil:String(member.g263ValidUntil||""),agtInstructionValidUntil:String(member.agtInstructionValidUntil||""),ffiValidUntil:String(member.ffiValidUntil||""),
+    driverLicenseCheckedOn:String(member.driverLicenseCheckedOn||""),
+    ...(typeof member.breathingQualified==="boolean"?{breathingQualified:member.breathingQualified}:{}),
+    driverLicenseIntervalMonths:Number.isInteger(member.driverLicenseIntervalMonths)&&member.driverLicenseIntervalMonths>=1&&member.driverLicenseIntervalMonths<=36?member.driverLicenseIntervalMonths:12
   })).filter(member=>member.lastName&&member.firstName);
   if(!importedMembers.length)throw new Error("members");
   return {

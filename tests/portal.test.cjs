@@ -110,3 +110,26 @@ test('Kalender kann mit Vorlauf gespeichert werden; alte Clients können Erinner
   const saved=(await f.call('config',{},null,true)).value.config;assert.equal(saved.reminders,true);assert.equal(saved.leadHours,12);
  }
 });
+
+test('Nachweise sind verschlüsselt, kalenderunabhängig und nur für das authentifizierte Mitglied sichtbar',async()=>{
+ const f=await fixture(),E=f.c.MemberEvidence;
+ const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,evidence:E.project(i===0?{breathingQualified:true,g263ValidUntil:'2030-05-12'}:{machinistVehicles:['TSF'],driverLicenseCheckedOn:'2026-01-17'})}));
+ assert.equal((await f.call('roster',{members:people},null,true)).value.evidenceVersion,1);
+ const first=(await f.call('evidence',{memberId:f.people[1].memberId})).value,second=(await f.call('evidence',{},f.people[1])).value;
+ assert.equal(first.evidence.breathing.g263,'2030-05-12');assert.equal(first.evidence.driver,null);assert.equal(second.evidence.breathing,null);assert.equal(second.evidence.driver.checkedOn,'2026-01-17');assert.ok(first.syncedAt);
+ const encrypted=f.sql.prepare('SELECT payload FROM portal_roster').get().payload;assert.ok(!encrypted.includes('2030-05-12'));
+ assert.ok(!(await f.call('overview',{eventId:(await f.call('list')).value.events[0].id})).value.members.some(m=>m.evidence));
+ assert.ok(!JSON.stringify(await f.c.PortalService.publicCalendar(f.env)).includes('2030-05-12'));
+ f.sql.exec('DELETE FROM portal_config; DELETE FROM portal_calendar');f.offline(true);assert.equal((await f.call('evidence')).status,200);
+ const invalid=await f.c.worker.fetch(new Request('https://test.example/portal/evidence',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer invalid','Content-Type':'application/json'},body:JSON.stringify({alias:f.people[0].alias,revision:f.people[0].revision})}),f.env);assert.equal(invalid.status,401);
+ await f.call('roster',{members:[people[1]]},null,true);assert.equal((await f.call('evidence')).status,403);
+});
+test('Ältere Mitgliederabgleiche bewahren Nachweise und deren ursprünglichen Datenstand',async()=>{
+ const f=await fixture(),m={id:f.people[0].memberId,name:'Testperson 1',leader:true,evidence:f.c.MemberEvidence.project({breathingQualified:true})};
+ await f.call('roster',{members:[m]},null,true);const original=(await f.call('evidence')).value;f.clock.now+=10000;
+ const {evidence,...legacy}=m;await f.call('roster',{members:[legacy]},null,true);const retained=(await f.call('evidence')).value;
+ assert.deepEqual(retained.evidence,original.evidence);assert.equal(retained.syncedAt,original.syncedAt);
+ const invalid={...evidence,breathing:{g263:'2026-02-30',instruction:'',ffi:''}};
+ assert.equal((await f.call('roster',{members:[{...m,evidence:invalid}]},null,true)).status,400);
+ assert.deepEqual((await f.call('evidence')).value.evidence,original.evidence);
+});

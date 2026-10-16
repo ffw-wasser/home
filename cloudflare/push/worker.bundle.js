@@ -642,6 +642,28 @@
 })(globalThis);
 
 
+/* Personal evidence projection. No diagnoses, document contents or other members. */
+(function(g){
+ 'use strict';
+ const date=value=>{if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return '';const d=new Date(value+'T12:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?value:'';};
+ const day=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+ const months=value=>Number.isInteger(value)&&value>=1&&value<=36?value:12;
+ function due(checked,interval=12){checked=date(checked);if(!checked)return '';const d=new Date(checked+'T12:00:00Z'),original=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months(interval));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(original,last));return d.toISOString().slice(0,10);}
+ function breathingRelevant(m){return !m?.ageDepartment&&(typeof m?.breathingQualified==='boolean'?m.breathingQualified:Boolean(m?.breathingClearance||m?.g263ValidUntil||m?.breathingClearanceUntil||m?.agtInstructionValidUntil||m?.ffiValidUntil));}
+ function project(m){return {version:1,medical:{g262:date(m?.g262ValidUntil),g263:date(m?.g263ValidUntil||m?.breathingClearanceUntil)},breathing:breathingRelevant(m)?{g263:date(m.g263ValidUntil||m.breathingClearanceUntil),instruction:date(m.agtInstructionValidUntil),ffi:date(m.ffiValidUntil)}:null,driver:!m?.ageDepartment&&Array.isArray(m?.machinistVehicles)&&m.machinistVehicles.some(v=>['LF','TSF'].includes(v))?{checkedOn:date(m.driverLicenseCheckedOn),intervalMonths:months(m.driverLicenseIntervalMonths),vehicles:[...new Set(m.machinistVehicles.filter(v=>['LF','TSF'].includes(v)))]}:null};}
+ function validate(e){if(!e||e.version!==1||!Object.hasOwn(e,'breathing')||!Object.hasOwn(e,'driver'))throw Error('Ungültige Nachweisdaten.');if(!e.medical||['g262','g263'].some(k=>typeof e.medical[k]!=='string'||e.medical[k]!==date(e.medical[k])))throw Error('Ungültige Untersuchungsnachweise.');if(e.breathing!==null&&(!e.breathing||['g263','instruction','ffi'].some(k=>typeof e.breathing[k]!=='string'||e.breathing[k]!==date(e.breathing[k]))))throw Error('Ungültige Atemschutznachweise.');if(e.driver!==null&&(!e.driver||typeof e.driver.checkedOn!=='string'||e.driver.checkedOn!==date(e.driver.checkedOn)||e.driver.intervalMonths!==months(e.driver.intervalMonths)||!Array.isArray(e.driver.vehicles)||!e.driver.vehicles.length||e.driver.vehicles.length>2||e.driver.vehicles.some(v=>!['LF','TSF'].includes(v))||new Set(e.driver.vehicles).size!==e.driver.vehicles.length))throw Error('Ungültige Führerscheinkontrolle.');return {version:1,medical:{g262:e.medical.g262,g263:e.medical.g263},breathing:e.breathing?{g263:e.breathing.g263,instruction:e.breathing.instruction,ffi:e.breathing.ffi}:null,driver:e.driver?{checkedOn:e.driver.checkedOn,intervalMonths:e.driver.intervalMonths,vehicles:[...e.driver.vehicles]}:null};}
+ function assess(e,now=Date.now()){
+  e=validate(e);const today=day(now),soon=new Date(today+'T12:00:00Z');soon.setUTCDate(soon.getUTCDate()+60);const threshold=soon.toISOString().slice(0,10);
+  const item=(label,until,extra={})=>({label,until,status:!until?'missing':until<today?'expired':until<=threshold?'soon':'valid',...extra});
+  const group=(title,items)=>({title,items,status:items.some(i=>i.status==='expired')?'expired':items.some(i=>i.status==='missing')?'missing':items.some(i=>i.status==='soon')?'soon':'valid'}),groups=[];
+  if(e.breathing)groups.push(group('Atemschutz',[item('G26.3',e.breathing.g263),item('Unterweisung AGT',e.breathing.instruction),item('FFI',e.breathing.ffi)]));
+  if(!e.breathing){const higher=e.medical.g263&&e.medical.g263>=today,chosen=higher?'g263':e.medical.g262?'g262':'g263',check=item(chosen==='g263'&&e.medical.g263?'G26.3 (ersetzt G26.2)':'G26.2 (Mindestnachweis)',e.medical[chosen]);if(higher)check.substitution='Gültige G26.3 vorhanden – keine zusätzliche G26.2 erforderlich.';groups.push(group('Arbeitsmedizinische Eignung',[check]));}
+  if(e.driver){let until=due(e.driver.checkedOn,e.driver.intervalMonths);const check=item('Führerscheinkontrolle',until,{checkedOn:e.driver.checkedOn,intervalMonths:e.driver.intervalMonths});if(e.driver.checkedOn>today){check.status='missing';check.invalidFuture=true;}groups.push({...group('Führerscheinkontrolle',[check]),vehicles:e.driver.vehicles});}
+  return groups;
+ }
+ const api={date,day,months,due,breathingRelevant,project,validate,assess};g.MemberEvidence=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
+})(globalThis);
+
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap();
@@ -786,8 +808,9 @@
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   const payload=await L.seal(env,{members:data.members.map(m=>({id:m.id,name:m.name,leader:m.leader}))},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true};
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true,evidenceVersion:1};
   }
+  if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
   if(path==='/admin/portal/config'){

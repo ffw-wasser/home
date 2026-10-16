@@ -183,3 +183,33 @@ keine Aufbewahrungszusage für jeden abgelaufenen Termin.
 Der bestehende Worker muss dafür mit dem aktuellen vollständigen Bundle manuell
 veröffentlicht werden. Vorher D1 sichern, vorhandene Bindungen und Secrets
 beibehalten. Keine neue Datenbank und keine Umstellung produktiver Konten nötig.
+
+## Persönliche Nachweise
+
+Im persönlichen Portal erscheint unter Termine „Meine Nachweise“. Es werden
+ausschließlich die eigenen gespeicherten Fristen und Fahrzeugberechtigungen
+angezeigt. `/portal/evidence` bestimmt die Person aus dem verifizierten Zugang;
+eine mitgesendete Mitgliedskennung kann keine andere Person auswählen.
+Öffentlicher Kalender und Gruppenführerübersicht enthalten keine Nachweise.
+
+Unter Einstellungen → Mitglieder werden Geräteträger ausdrücklich gekennzeichnet.
+Bestehende Atemschutzdaten werden bis zur ersten ausdrücklichen Auswahl weiterhin
+als relevant erkannt. Die drei vorhandenen Atemschutznachweise sind G26.3, Unterweisung AGT
+und FFI. Für alle anderen Mitglieder wird nach der Vorgabe der Verwaltung
+mindestens G26.2 geprüft. Eine gültige G26.3 ersetzt die G26.2; eine G26.2
+ersetzt umgekehrt nicht die G26.3 der Atemschutzgeräteträger. Fahrer werden über ihre LF-/TSF-Berechtigung erkannt. Das Kontrollintervall
+ist pro Person von 1 bis 36 Monaten einstellbar, Standard zwölf Monate. Die
+Vorwarnung beträgt wie bisher 60 Tage. Datumsanzeigen berechnen sich für Europe/Berlin.
+
+Die Daten bleiben in OneDrive die Quelle; beim Mitgliederabgleich wird die auf
+Gültigkeitsdaten und Fahrzeugberechtigungen begrenzte Projektion verschlüsselt
+im vorhandenen Kontodienst gespeichert. Medizinische Befunde, Dokumentinhalte,
+Führerscheinnummern und PINs sind nicht Teil dieser Projektion. Der Datenstand
+wird pro Person bei bestätigter Übertragung gesetzt. Ältere Clients ohne diese
+Felder überschreiben bestehende Nachweise nicht.
+
+Nach Veröffentlichung des aktuellen worker.bundle.js und Neuladen der iPad-App
+unter Einstellungen → Mitglieder „Nachweise fürs Handy aktualisieren“ wählen.
+Das Portal benötigt für die Anzeige keine OneDrive-Anmeldung. Bei einem alten
+Worker oder noch nicht übertragenen Nachweisen erscheint ein entsprechender
+Hinweis. Es werden keine Nachweis-Erinnerungen automatisch verschickt.

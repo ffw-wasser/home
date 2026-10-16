@@ -23,8 +23,9 @@ function breathingClearanceDates(member){return [
   String(member?.agtInstructionValidUntil||""),
   String(member?.ffiValidUntil||"")
 ];}
-function hasValidBreathingClearance(member,date=today()){const dates=breathingClearanceDates(member);return dates.every(value=>value&&value>=date);}
+function hasValidBreathingClearance(member,date=today()){if(member?.breathingQualified===false)return false;const dates=breathingClearanceDates(member);return dates.every(value=>value&&value>=date);}
 function breathingClearanceState(member,date=systemToday()){
+  if(member?.breathingQualified===false)return "none";
   const dates=breathingClearanceDates(member);
   if(dates.every(value=>!value))return "none";
   if(dates.some(value=>!value||value<date))return "expired";
@@ -38,8 +39,8 @@ function breathingClearanceSummary(member){
   const earliest=labels.reduce((lowest,current)=>!lowest||current[1]<lowest[1]?current:lowest,null);
   return `früheste Gültigkeit: ${earliest[0]} bis ${earliest[1]}`;
 }
-function driverLicenseControlDue(member,date=systemToday()){if(!Array.isArray(member?.machinistVehicles)||!member.machinistVehicles.length)return "not-machinist";if(!member.driverLicenseCheckedOn)return "missing";const checked=new Date(`${member.driverLicenseCheckedOn}T12:00:00`);if(Number.isNaN(checked.getTime()))return "missing";const due=new Date(checked);due.setFullYear(due.getFullYear()+1);const dueDate=due.toLocaleDateString("sv-SE");if(dueDate<date)return "overdue";const soon=new Date(`${date}T12:00:00`);soon.setDate(soon.getDate()+60);return dueDate<=soon.toLocaleDateString("sv-SE")?"soon":"valid";}
-function driverLicenseDueDate(member){if(!member?.driverLicenseCheckedOn)return "";const due=new Date(`${member.driverLicenseCheckedOn}T12:00:00`);if(Number.isNaN(due.getTime()))return "";due.setFullYear(due.getFullYear()+1);return due.toLocaleDateString("sv-SE");}
+function driverLicenseControlDue(member,date=systemToday()){if(!Array.isArray(member?.machinistVehicles)||!member.machinistVehicles.length)return "not-machinist";if(!member.driverLicenseCheckedOn||member.driverLicenseCheckedOn>date)return "missing";const dueDate=driverLicenseDueDate(member);if(!dueDate)return "missing";if(dueDate<date)return "overdue";const soon=new Date(date+"T12:00:00Z");soon.setUTCDate(soon.getUTCDate()+60);return dueDate<=soon.toISOString().slice(0,10)?"soon":"valid";}
+function driverLicenseDueDate(member){return MemberEvidence.due(member?.driverLicenseCheckedOn,member?.driverLicenseIntervalMonths);}
 const today = () => currentProbeDate || systemToday();
 const makeId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const nameForStorage = member => `${member.lastName}, ${member.firstName}`;

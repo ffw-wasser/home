@@ -177,6 +177,9 @@ function updateMember(id, row) {
   if (!member) return;
   const driverDate=row.querySelector("[data-driver-license-checked]")?.value||"";
   if(row.querySelectorAll("[data-machinist-vehicle]:checked").length&&!driverDate)return showToast("Bitte das Datum der letzten Führerscheinkontrolle eintragen.","error");
+  const interval=Number(row.querySelector("[data-driver-license-interval]")?.value||12);
+  if(!Number.isInteger(interval)||interval<1||interval>36)return showToast("Bitte ein Kontrollintervall von 1 bis 36 Monaten eingeben.","error");
+  if(driverDate&&(!MemberEvidence.date(driverDate)||driverDate>systemToday()))return showToast("Bitte ein gültiges Datum der letzten Führerscheinkontrolle bis heute eingeben.","error");
   window.Usability?.savedMember(row);
   member.lastName = lastName;
   member.firstName = firstName;
@@ -184,6 +187,9 @@ function updateMember(id, row) {
   member.ageDepartment = Boolean(row.querySelector("[data-age-department]")?.checked);
   member.committeeMember = Boolean(row.querySelector("[data-committee-member]")?.checked);
   member.atueQualified = Boolean(row.querySelector("[data-atue-qualified]")?.checked);
+  member.breathingQualified = Boolean(row.querySelector("[data-breathing-qualified]")?.checked);
+  member.driverLicenseIntervalMonths = interval;
+  member.g262ValidUntil = row.querySelector("[data-g262-valid-until]")?.value || "";
   member.g263ValidUntil = row.querySelector("[data-g263-valid-until]")?.value || "";
   member.agtInstructionValidUntil = row.querySelector("[data-agt-instruction-valid-until]")?.value || "";
   member.ffiValidUntil = row.querySelector("[data-ffi-valid-until]")?.value || "";

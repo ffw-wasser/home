@@ -6,8 +6,8 @@ const path = require('node:path');
 const BackupEngine = require('../js/features/history/backup-engine.js');
 const source = name => fs.readFileSync(path.join(__dirname, '..', name), 'utf8');
 const member = {id:'test',firstName:'Test',lastName:'Person',roles:['ATM'],ageDepartment:false,
-  machinistVehicles:['LF'],g263ValidUntil:'2027-01-02',agtInstructionValidUntil:'2027-03-04',
-  ffiValidUntil:'2027-05-06',breathingClearanceUntil:'2027-01-02',driverLicenseCheckedOn:'2026-01-01'};
+  machinistVehicles:['LF'],g262ValidUntil:'2028-03-04',g263ValidUntil:'2027-01-02',agtInstructionValidUntil:'2027-03-04',
+  ffiValidUntil:'2027-05-06',breathingClearanceUntil:'2027-01-02',driverLicenseCheckedOn:'2026-01-01',breathingQualified:false,driverLicenseIntervalMonths:6};
 
 test('Komplettbackup erhält alle drei Atemschutztermine bis zur tatsächlichen Wiederherstellung', () => {
   const original = JSON.stringify(member);
@@ -16,7 +16,7 @@ test('Komplettbackup erhält alle drei Atemschutztermine bis zur tatsächlichen 
   const context = vm.createContext({window:{},document:{addEventListener(){}},AVAILABLE_ROLES:['ATM'],console});
   vm.runInContext(source('js/features/history/archive.js'), context);
   const restored = context.normalizeCompleteBackupData(read).members[0];
-  for (const key of ['g263ValidUntil','agtInstructionValidUntil','ffiValidUntil','driverLicenseCheckedOn'])
+  for (const key of ['g262ValidUntil','g263ValidUntil','agtInstructionValidUntil','ffiValidUntil','driverLicenseCheckedOn','breathingQualified','driverLicenseIntervalMonths'])
     assert.equal(restored[key],member[key]);
   assert.equal(JSON.stringify(member),original);
 });

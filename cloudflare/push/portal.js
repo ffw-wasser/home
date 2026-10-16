@@ -142,8 +142,9 @@
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   const payload=await L.seal(env,{members:data.members.map(m=>({id:m.id,name:m.name,leader:m.leader}))},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true};
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true,evidenceVersion:1};
   }
+  if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
   if(path==='/admin/portal/config'){
