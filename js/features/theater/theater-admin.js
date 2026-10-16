@@ -105,7 +105,6 @@
   if(!current||dirty||busy||loading){message('Bitte zuerst alle Änderungen speichern und den aktuellen Datenstand laden.');return;}
   const name=current.title,amount=orders.length;
   if(!confirm('Alle '+amount+' Bestellungen und Kassenstände der Veranstaltung „'+name+'“ endgültig löschen? Die Preisliste bleibt erhalten; die Veranstaltung wird geschlossen. Vorher gegebenenfalls CSV exportieren.'))return;
-  if(prompt('Zur Sicherheit ZURÜCKSETZEN eingeben, um die Theater-Bestellungen endgültig zu löschen:')!=='ZURÜCKSETZEN')return;
   await run(async generation=>{
    const result=await api('reset',{eventId:current.id,expectedVersion:current.version,confirmation:'ZURÜCKSETZEN'});
    if(generation!==epoch)return;
