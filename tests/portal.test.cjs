@@ -124,7 +124,15 @@ test('Kalenderausfall verhindert Bereinigung und neue Freigaben; Admin-Snapshot 
 });
 
 test('Gleichzeitige Regeländerung verhindert verlustreiche Bereinigung',async()=>{
- const f=await fixture(),e=(await f.call('list')).value.events[0];await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()});const prepare=f.DB.prepare;f.DB.prepare=query=>{const statement=prepare(query);if(query.startsWith('UPDATE portal_rules SET payload=?'))statement.run=async()=>({meta:{changes:0}});return statement;};f.clock.now=e.end+7*3600000;await f.c.PortalService.scheduled(f.env);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,1);
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
+ assert.equal((await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',approved:true,expectedVersion:cal.rulesVersion},null,true)).status,200);
+ const originalRules=await f.L.open(f.env,f.sql.prepare('SELECT payload FROM portal_rules WHERE id=1').get().payload,'portal-rules');
+ assert.ok(originalRules[e.id]);
+ // The cleanup attempts rule deletion only after its 31-day correction window.
+ const prepare=f.DB.prepare;f.DB.prepare=query=>{const statement=prepare(query);if(query.startsWith('UPDATE portal_rules SET payload=?'))statement.run=async()=>({meta:{changes:0}});return statement;};
+ f.clock.now=e.end+32*86400000;await f.c.PortalService.scheduled(f.env);
+ const kept=await f.L.open(f.env,f.sql.prepare('SELECT payload FROM portal_rules WHERE id=1').get().payload,'portal-rules');
+ assert.ok(kept[e.id],'Optimistic conflict must retain the pre-existing archive classification');
 });
 
 test('Automatische Erinnerungen gelten auch bei alter deaktivierter Einstellung und beachten Empfänger sowie Entschuldigungen',async()=>{
