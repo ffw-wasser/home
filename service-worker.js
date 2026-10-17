@@ -40,6 +40,7 @@ const CORE=[
   "./assets/drinks/deckel-icon-192.png",
   "./assets/drinks/deckel-icon-512.png",
   "./assets/drinks/deckel-icon-maskable-512.png",
+  "./js/features/drinks/deckel-manifest.js?v=20261017.23",
   "./js/features/drinks/deckel-install.js?v=20261017.22",
   "./js/features/quality/workflow-ux.js?v=20261017.22",
   "./js/core/privacy.js?v=20261017.22",
