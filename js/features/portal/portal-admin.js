@@ -80,8 +80,8 @@
   const version=++calendarGeneration;reviewLoading=true;$('review-load').hidden=true;try{admin();if(!automatic)$('review-status').textContent='Kalendereinträge werden geladen …';const cal=await request('list');if(version!==calendarGeneration||automatic&&reviewEdited.size)return;admin();reviewLastLoad=Date.now();$('review-load').hidden=!cal.stale;
    const upcoming=cal.events.filter(e=>Number.isFinite(e.end)&&e.end>Date.now());
    const previous=reviewSnapshot;
-   const pendingFirst=e=>e.kind==='birthday'&&!e.memberId||e.automatic!==false?0:1;
-   upcoming.sort((a,b)=>pendingFirst(a)-pendingFirst(b)||a.start-b.start);
+   // Sort chronologically so a just-saved card does not jump to the bottom.
+   upcoming.sort((a,b)=>a.start-b.start);
    if(automatic&&previous&&previous.rulesVersion===cal.rulesVersion&&previous.stale===cal.stale&&JSON.stringify(previous.events.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic]))===JSON.stringify(upcoming.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic]))){
     reviewSnapshot={...cal,events:previous.events};reviewControls();return;
    }
@@ -142,7 +142,7 @@
       const saved=await request('classify',data);
       if(restricted&&(saved.recipientFeatureVersion!==1||!Array.isArray(saved.recipientIds)||saved.recipientIds.length!==ids.length||!ids.every(id=>saved.recipientIds.includes(id))))throw Error('Der Cloudflare-Worker hat die Empfängerliste nicht bestätigt. Bitte Worker aktualisieren und Einordnung prüfen.');
       if(kind.value!=='birthday'&&saved.clothingVersion!==1)throw Error('Die Kleidung wurde vom Dienst nicht bestätigt. Bitte Kalender neu laden.');
-      admin();reviewPinned.add(e.id);reviewOpen.add(e.id);lastLoad=0;await reviewCalendar();
+      admin();reviewPinned.add(e.id);if(editing)reviewOpen.add(e.id);else reviewOpen.delete(e.id);lastLoad=0;await reviewCalendar();
       const stored=reviewSnapshot?.events.find(item=>item.id===e.id);
       if(restricted&&!matches(stored))throw Error('Die Empfängerauswahl konnte nach dem Speichern nicht bestätigt werden. Bitte Kalender neu laden und Empfänger prüfen.');
       if(stored?.approved!==data.approved)throw Error('Die Freigabe für Anmeldung und Erinnerungen wurde nicht wie gewünscht übernommen. Bitte den Termin prüfen.');
