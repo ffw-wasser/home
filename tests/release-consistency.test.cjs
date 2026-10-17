@@ -16,5 +16,6 @@ test('Release, geladene Dateien und Offline-Cache gehören zum selben Build',()=
    assert.ok(fs.existsSync(path.join(root,match[1].split('?')[0])),match[1]);
   }
  }
+ assert.ok(core.includes('./js/features/drinks/deckel-manifest.js?v='+release.build),'Android-sicherer Manifest-Lader muss im Cache stehen');
  for(const entry of core.filter(x=>x.includes('?v=')))assert.ok(entry.endsWith('?v='+release.build),entry);
 });
