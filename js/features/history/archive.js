@@ -344,14 +344,15 @@ async function saveArchiveCorrectionStep2(){
     if(!original)return showToast("Personenzuordnung ungültig. Bitte Korrektur erneut öffnen.","error");
     const name=card.querySelector('[data-correction-field="name"]').value.trim();
     const status=card.querySelector('[data-correction-field="status"]').value;
-    const role=status==="Anwesend"?card.querySelector('[data-correction-field="role"]').value.trim():"";
+    const fieldRole=card.querySelector('[data-correction-field="role"]').value.trim();
+    const role=status==="Anwesend"?(item.sessionType==="Allgemeine Probe"?fieldRole:(fieldRole||({Sonderprobe:"Anwesend",Unterricht:"Unterricht","Ausschuss Sitzung":"Ausschuss Sitzung"}[item.sessionType]||""))):"";
     if(!name)return showToast("Bitte für alle Personen einen Namen eintragen.","error");
     if(status==="Anwesend"&&item.sessionType==="Allgemeine Probe"&&!role&&correctionRolesForRow({...original,name}).length)return showToast("Bitte die Funktion von "+name+" ergänzen.","error");
     rows.push({...original,name,status,role,date:correctedDate,topic,sessionType:item.sessionType});
   }
   if(!rows.length)return showToast("Der Bericht benötigt mindestens eine Person.","error");
   const names=new Set();for(const row of rows){const normalized=row.name.toLocaleLowerCase("de");if(names.has(normalized))return showToast("Name doppelt im Bericht: "+row.name,"error");names.add(normalized);}
-  const changed=JSON.stringify(rows)!==JSON.stringify(archiveCorrectionState.rows)||topic!==String(item.topic||archiveCorrectionState.rows[0]?.topic||"").trim();
+  const changed=rows.length!==archiveCorrectionState.rows.length||rows.some((row,i)=>["name","status","role","date"].some(key=>String(row[key]||"")!==String(archiveCorrectionState.rows[i]?.[key]||"")))||topic!==String(item.topic||archiveCorrectionState.rows[0]?.topic||"").trim();
   if(!changed)return showToast("Es gibt noch keine Änderungen zum Speichern.");
   if(!confirm("Die bestehende Archivdatei wird mit den korrigierten Angaben überschrieben. Fortfahren?"))return;
   const button=byId("archiveCorrectionSave");if(button.disabled)return;button.disabled=true;
