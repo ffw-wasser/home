@@ -182,9 +182,9 @@ test('Kleidung: Vorgaben, Auswahl und Freitext bleiben im persönlichen Kalender
  let cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
  assert.equal(cal.clothingVersion,1);assert.equal(e.clothing,'Tagesdienst');
  async function save(extra){cal=(await f.call('list',{},null,true)).value;return f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',approved:true,expectedVersion:cal.rulesVersion,...extra},null,true);}
- for(const clothing of ['Einsatz','Tagesdienst','Uniform','T-Shirt/ Fest','Zivil','  Jacke mitbringen  ','']){
+ for(const clothing of ['Einsatzkleidung','Einsatz','Tagesdienst','Uniform','T-Shirt/ Fest','Zivil','  Jacke mitbringen  ','']){
   assert.equal((await save({clothing})).status,200);
-  assert.equal((await f.call('list')).value.events[0].clothing,clothing.trim());
+  assert.equal((await f.call('list')).value.events[0].clothing,clothing==='Einsatz'?'Einsatzkleidung':clothing.trim());
  }
  await save({clothing:'Uniform'});
  await save({attendanceType:'Unterricht'});
@@ -192,7 +192,7 @@ test('Kleidung: Vorgaben, Auswahl und Freitext bleiben im persönlichen Kalender
  for(const clothing of [42,'x'.repeat(121),'Zivil\nUniform'])assert.equal((await save({clothing})).status,400);
  assert.equal((await f.call('list')).value.events[0].clothing,'Uniform');
  f.raw(calendar([event(f.start,'Probe').replace('UID:test-event','UID:new-probe')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
- cal=(await f.call('list',{},null,true)).value;assert.equal(cal.events[0].clothing,'Einsatz');
+ cal=(await f.call('list',{},null,true)).value;assert.equal(cal.events[0].clothing,'Einsatzkleidung');
 });
 
 test('Ort: GH Wasser als Vorgabe, bestehender Kalenderort und individuelle Speicherung',async()=>{
