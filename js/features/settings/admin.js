@@ -73,7 +73,7 @@ function suggestedProbeTopic(){
   const linkedDate=window.PortalAdmin?.selectedDate?.();
   if(linkedDate&&currentProbeDate&&linkedDate!==currentProbeDate)return "";
   const title=String(event.title||"").trim();
-  if(/^(?:allgemeine\\s+probe|probe|sonderprobe|unterricht|ausschuss\\s*sitzung|einsatz)$/i.test(title))return "";
+  if(/^(?:allgemeine\s+probe|probe|sonderprobe|unterricht|ausschuss\s*sitzung|einsatz)$/i.test(title))return "";
   return title.slice(0,300);
 }
 function openProbeTopicDialog() {
