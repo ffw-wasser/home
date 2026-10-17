@@ -9,7 +9,7 @@
  'use strict';
  function parse(raw,now=Date.now()){
   if(typeof raw!=='string'||raw.length>2000000||!raw.trimStart().startsWith('BEGIN:VCALENDAR'))throw Error('Keine gültige iCal-Kalenderdatei.');
-  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=now-86400000,to=now+370*86400000,events=[],groups=new Map();let steps=0;
+  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=now-31*86400000,to=now+370*86400000,events=[],groups=new Map();let steps=0;
   I.TimezoneService.reset();
   for(const c of root.getAllSubcomponents('vtimezone'))I.TimezoneService.register(new I.Timezone(c));
   const components=root.getAllSubcomponents('vevent');if(components.length>10000)throw Error('Der Kalender enthält zu viele Einträge.');
