@@ -18,11 +18,11 @@
   if(button){button.hidden=!uncertain;button.disabled=busy;}
  }
  function schedule(){clearTimeout(timer);if(visible&&!document.hidden&&(!document.getElementById('portal-page-terms')?.hidden||!document.getElementById('portal-page-evidence')?.hidden))timer=setTimeout(refresh,60000);}
- const evidenceDate=value=>value?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(value+'T12:00:00Z')):'';
+ const evidenceDate=(value,medical=false)=>!value?'':medical?g.MemberEvidence.displayMonth(value):new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(value+'T12:00:00Z'));
  const evidenceOrder={expired:0,missing:1,soon:2,valid:3};
  const evidenceItemLabel={valid:'✓ Gültig',soon:'! Bald fällig',expired:'× Abgelaufen',missing:'? Nachweis fehlt'};
  const evidenceLabel={valid:'✓ Alle hinterlegten Nachweise gültig',soon:'Bald fällig',expired:'Nachweis abgelaufen',missing:'Nachweis fehlt / Daten unvollständig'};
- function evidenceText(item){if(item.invalidFuture)return 'Kontrolldatum liegt in der Zukunft – bitte korrigieren lassen.';if(item.status==='missing')return item.label==='Führerscheinkontrolle'?'Kontrolle nicht hinterlegt':'Nachweis fehlt';return (item.status==='expired'?'Abgelaufen am ':item.label==='Führerscheinkontrolle'?'Nächste Kontrolle bis ':'Gültig bis ')+evidenceDate(item.until);}
+ function evidenceText(item){if(item.invalidFuture)return 'Kontrolldatum liegt in der Zukunft – bitte korrigieren lassen.';if(item.status==='missing')return item.label==='Führerscheinkontrolle'?'Kontrolle nicht hinterlegt':'Nachweis fehlt';return (item.status==='expired'?'Abgelaufen am ':item.label==='Führerscheinkontrolle'?'Nächste Kontrolle bis ':'Gültig bis ')+evidenceDate(item.until,item.label!=='Führerscheinkontrolle');}
  function evidencePriority(groups,message=''){
   const box=$('priority'),content=$('priority-text');if(!box||!content)return;
   const issues=groups.flatMap(group=>group.items.filter(item=>item.status!=='valid')).sort((a,b)=>(evidenceOrder[a.status]??3)-(evidenceOrder[b.status]??3));
