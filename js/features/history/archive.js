@@ -252,12 +252,139 @@ function loadSelectedCorrectionRow(){
   roleSelect.value=allowedRoles.includes(row.role)?row.role:"";
   updateCorrectionRoleVisibility();
 }
-function correctArchiveItem(id){ if(!requireAdmin("settingsHistoryView"))return;
-  const item=csvArchive.find(x=>x.id===id);if(!item)return;
-  const rows=archiveRowsFromContent(item.content);if(!rows.length)return showToast("Keine korrigierbaren Einträge.","error");
-  ensureArchiveCorrectionDialog();archiveCorrectionState={item,rows};
-  byId("correctionPerson").innerHTML=rows.map((row,index)=>`<option value="${index}">${escapeHtml(row.name)} · ${escapeHtml(row.status)}${row.role?` · ${escapeHtml(row.role)}`:""}</option>`).join("");
-  loadSelectedCorrectionRow();byId("correctionDate").value=rows[0]?.date||historyDateFromItem(item);byId("archiveCorrectionDialog").showModal();
+function archiveCorrectionWorkspace(){
+  let panel=byId("archiveCorrectionWorkspace");
+  if(panel)return panel;
+  panel=document.createElement("section");
+  panel.id="archiveCorrectionWorkspace";
+  panel.className="panel archive-correction-workspace";
+  panel.setAttribute("aria-labelledby","archiveCorrectionHeading");
+  panel.innerHTML='<div class="archive-correction-heading"><div><p class="eyebrow">Archivkorrektur · Schritt 2</p><h2 id="archiveCorrectionHeading">Termin und Personen korrigieren</h2><p>Den vorhandenen Bericht bearbeiten. Erst mit „Originalbericht speichern“ wird die bestehende Datei überschrieben.</p></div><button type="button" id="archiveCorrectionBack" class="outline-button">Zur Historie</button></div><div class="archive-correction-meta"><label>Termindatum<input id="archiveCorrectionEditDate" type="date" class="text-input"></label><label>Thema<textarea id="archiveCorrectionEditTopic" class="text-input" rows="2" maxlength="300" required></textarea></label></div><div class="archive-correction-toolbar"><label>Person suchen<input type="search" id="archiveCorrectionSearch" class="text-input" placeholder="Name suchen …" autocomplete="off"></label><label>Teilnahme filtern<select id="archiveCorrectionFilter" class="text-input"><option value="">Alle Personen</option><option value="Anwesend">Anwesend</option><option value="Entschuldigt">Entschuldigt</option><option value="Fehlt">Fehlt</option><option value="Betrifft nicht">Betrifft nicht</option></select></label><p id="archiveCorrectionCount" aria-live="polite"></p></div><div id="archiveCorrectionList" class="archive-correction-list"></div><div class="archive-correction-add"><label>Person ergänzen<select id="archiveCorrectionAddPerson" class="text-input"><option value="">Mitglied auswählen</option></select></label><button type="button" class="outline-button" id="archiveCorrectionAdd">Person ergänzen</button></div><div class="archive-correction-actions"><button type="button" class="outline-button" id="archiveCorrectionCancel">Abbrechen</button><button type="button" class="primary-button" id="archiveCorrectionSave">Originalbericht speichern</button></div>';
+  byId("attendanceView").appendChild(panel);
+  byId("archiveCorrectionBack").onclick=cancelArchiveCorrectionStep2;
+  byId("archiveCorrectionCancel").onclick=cancelArchiveCorrectionStep2;
+  byId("archiveCorrectionSave").onclick=saveArchiveCorrectionStep2;
+  byId("archiveCorrectionSearch").oninput=filterArchiveCorrectionRows;
+  byId("archiveCorrectionFilter").onchange=filterArchiveCorrectionRows;
+  byId("archiveCorrectionAdd").onclick=addArchiveCorrectionMember;
+  return panel;
+}
+function filterArchiveCorrectionRows(){
+  const query=String(byId("archiveCorrectionSearch")?.value||"").trim().toLocaleLowerCase("de");
+  const status=byId("archiveCorrectionFilter")?.value||"";
+  let visible=0;
+  for(const card of byId("archiveCorrectionList")?.children||[]){
+    const rowStatus=card.querySelector('[data-correction-field="status"]')?.value||"";
+    const name=card.querySelector('[data-correction-field="name"]')?.value||"";
+    card.hidden=Boolean(query&&!name.toLocaleLowerCase("de").includes(query)||status&&rowStatus!==status);
+    if(!card.hidden)visible++;
+  }
+  const count=byId("archiveCorrectionCount");
+  if(count)count.textContent=visible+" von "+(archiveCorrectionState?.rows.length||0)+" Personen angezeigt";
+}
+function appendArchiveCorrectionPerson(row,index){
+  const container=byId("archiveCorrectionList");
+  const card=document.createElement("article");card.className="archive-correction-person";card.dataset.row=String(index);card.dataset.status=row.status||"Fehlt";
+  const top=document.createElement("div");top.className="archive-correction-person-header";
+  const heading=document.createElement("strong");heading.textContent="Person "+(index+1);
+  const state=document.createElement("span");state.className="archive-correction-person-state";top.append(heading,state);
+  const fields=document.createElement("div");fields.className="archive-correction-person-fields";
+  const nameLabel=document.createElement("label");nameLabel.textContent="Name";const name=document.createElement("input");name.type="text";name.className="text-input";name.maxLength=150;name.required=true;name.value=row.name||"";name.dataset.correctionField="name";nameLabel.append(name);
+  const statusLabel=document.createElement("label");statusLabel.textContent="Teilnahme";const status=document.createElement("select");status.className="text-input";status.dataset.correctionField="status";
+  const types=["Anwesend","Entschuldigt","Fehlt"];
+  if(archiveCorrectionState?.item.sessionType==="Sonderprobe"||row.status==="Betrifft nicht")types.push("Betrifft nicht");
+  for(const value of types){const option=document.createElement("option");option.value=value;option.textContent=value;status.append(option);}
+  status.value=types.includes(row.status)?row.status:"Fehlt";statusLabel.append(status);
+  const roleLabel=document.createElement("label");roleLabel.textContent="Funktion / Status";const role=document.createElement("input");role.type="text";role.className="text-input";role.maxLength=120;role.dataset.correctionField="role";role.value=row.role||"";roleLabel.append(role);
+  const update=()=>{roleLabel.hidden=status.value!=="Anwesend"||archiveCorrectionState?.item.sessionType!=="Allgemeine Probe";card.dataset.status=status.value;state.textContent=status.value;filterArchiveCorrectionRows();};
+  status.onchange=update;name.oninput=filterArchiveCorrectionRows;
+  fields.append(nameLabel,statusLabel,roleLabel);card.append(top,fields);container.append(card);update();
+}
+function refreshArchiveCorrectionMembers(){
+  const select=byId("archiveCorrectionAddPerson");if(!select)return;
+  const listed=new Set((archiveCorrectionState?.rows||[]).map(row=>String(row.name||"").trim().toLocaleLowerCase("de")));
+  select.replaceChildren();
+  const empty=document.createElement("option");empty.value="";empty.textContent="Mitglied auswählen";select.append(empty);
+  for(const member of members||[]){
+    if(archiveCorrectionState?.item.sessionType==="Ausschuss Sitzung"&&!member.committeeMember)continue;
+    const name=nameForStorage(member);if(listed.has(name.toLocaleLowerCase("de")))continue;
+    const option=document.createElement("option");option.value=name;option.textContent=nameForTile(member);select.append(option);
+  }
+}
+function addArchiveCorrectionMember(){
+  if(!archiveCorrectionState)return;
+  const name=byId("archiveCorrectionAddPerson")?.value||"";
+  if(!name)return showToast("Bitte zuerst ein Mitglied auswählen.","error");
+  const exists=[...byId("archiveCorrectionList").children].some(card=>card.querySelector('[data-correction-field="name"]')?.value.trim().toLocaleLowerCase("de")===name.toLocaleLowerCase("de"));
+  if(exists)return showToast("Diese Person steht bereits im Bericht.","error");
+  const row={name,status:"Fehlt",role:"",date:byId("archiveCorrectionEditDate").value,sessionType:archiveCorrectionState.item.sessionType,time:"",topic:byId("archiveCorrectionEditTopic").value};
+  archiveCorrectionState.rows.push(row);
+  appendArchiveCorrectionPerson(row,archiveCorrectionState.rows.length-1);
+  refreshArchiveCorrectionMembers();
+  byId("archiveCorrectionSearch").value="";byId("archiveCorrectionFilter").value="";
+  filterArchiveCorrectionRows();byId("archiveCorrectionList").lastElementChild?.scrollIntoView({block:"nearest"});
+}
+function cancelArchiveCorrectionStep2(){
+  archiveCorrectionState=null;
+  byId("archiveCorrectionWorkspace")?.remove();
+  byId("attendanceView")?.classList.remove("archive-correction-mode");
+  setHomeFlowStage(1);
+  showView("settingsHistoryView");
+}
+async function saveArchiveCorrectionStep2(){
+  if(!requireAdmin("settingsHistoryView")||!archiveCorrectionState)return;
+  const item=structuredClone(archiveCorrectionState.item);
+  const correctedDate=byId("archiveCorrectionEditDate").value;
+  const topic=byId("archiveCorrectionEditTopic").value.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(correctedDate))return showToast("Bitte ein gültiges Termindatum wählen.","error");
+  if(!topic)return showToast("Bitte das Thema des Termins eintragen.","error");
+  const cards=[...byId("archiveCorrectionList").children],rows=[];
+  for(const card of cards){
+    const index=Number(card.dataset.row),original=archiveCorrectionState.rows[index];
+    if(!original)return showToast("Personenzuordnung ungültig. Bitte Korrektur erneut öffnen.","error");
+    const name=card.querySelector('[data-correction-field="name"]').value.trim();
+    const status=card.querySelector('[data-correction-field="status"]').value;
+    const role=status==="Anwesend"?card.querySelector('[data-correction-field="role"]').value.trim():"";
+    if(!name)return showToast("Bitte für alle Personen einen Namen eintragen.","error");
+    if(status==="Anwesend"&&item.sessionType==="Allgemeine Probe"&&!role&&correctionRolesForRow({...original,name}).length)return showToast("Bitte die Funktion von "+name+" ergänzen.","error");
+    rows.push({...original,name,status,role,date:correctedDate,topic,sessionType:item.sessionType});
+  }
+  if(!rows.length)return showToast("Der Bericht benötigt mindestens eine Person.","error");
+  const names=new Set();for(const row of rows){const normalized=row.name.toLocaleLowerCase("de");if(names.has(normalized))return showToast("Name doppelt im Bericht: "+row.name,"error");names.add(normalized);}
+  const changed=JSON.stringify(rows)!==JSON.stringify(archiveCorrectionState.rows)||topic!==String(item.topic||archiveCorrectionState.rows[0]?.topic||"").trim();
+  if(!changed)return showToast("Es gibt noch keine Änderungen zum Speichern.");
+  if(!confirm("Die bestehende Archivdatei wird mit den korrigierten Angaben überschrieben. Fortfahren?"))return;
+  const button=byId("archiveCorrectionSave");if(button.disabled)return;button.disabled=true;
+  try{
+    const timestamp=new Date().toISOString();
+    item.topic=topic;
+    item.revisions=[...(item.revisions||[]),{changedAt:timestamp,reason:"Termin in Schritt 2 korrigiert",changedRows:rows.reduce((n,row,i)=>n+(JSON.stringify(row)===JSON.stringify(archiveCorrectionState.rows[i])?0:1),0)}];
+    await persistArchiveCorrection(item,rows,correctedDate);
+    cancelArchiveCorrectionStep2();
+    showToast("Korrigierter Originalbericht erfolgreich gespeichert.");
+  }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
+  finally{button.disabled=false;}
+}
+function correctArchiveItem(id){
+  if(!requireAdmin("settingsHistoryView"))return;
+  if(currentSessionId||currentOperationId)return showToast("Bitte zuerst die laufende Erfassung abschließen oder abbrechen, bevor ein Archivbericht korrigiert wird.","error");
+  const item=csvArchive.find(entry=>entry.id===id);if(!item)return;
+  const rows=archiveRowsFromContent(item.content);
+  if(!rows.length)return showToast("Keine korrigierbaren Einträge.","error");
+  archiveCorrectionState={item,rows:structuredClone(rows)};
+  if(showView("attendanceView")===false){archiveCorrectionState=null;return;}
+  setHomeFlowStage(2);
+  const panel=archiveCorrectionWorkspace();
+  byId("attendanceView").classList.add("archive-correction-mode");
+  byId("archiveCorrectionHeading").textContent=(item.sessionType||rows[0].sessionType||"Termin")+" korrigieren · Schritt 2";
+  byId("archiveCorrectionEditDate").value=rows[0]?.date||historyDateFromItem(item);
+  byId("archiveCorrectionEditTopic").value=item.topic||rows[0]?.topic||"";
+  byId("archiveCorrectionSearch").value="";byId("archiveCorrectionFilter").value="";
+  byId("archiveCorrectionList").replaceChildren();
+  archiveCorrectionState.rows.forEach(appendArchiveCorrectionPerson);
+  refreshArchiveCorrectionMembers();filterArchiveCorrectionRows();
+  panel.scrollIntoView({block:"start",behavior:"instant"});
+  showToast("Schritt 2: Datum, Thema und Personen korrigieren. Speichern überschreibt den Originalbericht.");
 }
 function pairedArchiveFileNames(item){
   const current=String(item.fileName||"Probe.csv");
