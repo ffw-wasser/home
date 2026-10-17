@@ -53,24 +53,24 @@ test('Kassenkarten behalten bei Live-Aktualisierung dieselben Schaltflächen und
   querySelector(selector){return this.children.find(n=>selector==='.theater-board-card'&&n.className==='theater-board-card')||null;}
  }
  const els=new Map(),get=id=>{if(!els.has(id))els.set(id,new N());return els.get(id);};
- const fake={Date,Math,Number,String,Map,JSON,orders:[
+ const fake=vm.createContext({Date,Math,Number,String,Map,JSON,orders:[
   {member:'a',name:'Person A',state:'open',createdAt:now-100000,lines:[{cents:150,quantity:1}]},
   {member:'b',name:'Person B',state:'open',createdAt:now-200000,lines:[{cents:200,quantity:1}]}
  ],current:{id:'event-1',title:'Theater',open:true},selectedMember:null,cashCards:new Map(),cashOrder:[],cashEventId:null,detailSignature:'',
  $:get,node:(tag,txt)=>new N(tag,txt),button:(txt,fn)=>{const n=new N('button',txt);n.onclick=fn;return n;},
  M:{money:n=>String(n)+' Cent',total:lines=>lines.reduce((total,line)=>total+line.cents*line.quantity,0)},
- controls(){},crypto:{randomUUID:()=> 'id'}};
+ controls(){},crypto:{randomUUID:()=> 'id'}});
  const start=admin.indexOf(' function selectCash('),end=admin.indexOf(' async function mutate(',start);
  assert.ok(start>0&&end>start);
- vm.runInNewContext(admin.slice(start,end)+';paintCash()',fake);
+ vm.runInContext(admin.slice(start,end)+';paintCash()',fake);
  const board=get('cards'),before=board.children.slice(),oldRedraws=board.redraws;
- vm.runInNewContext('paintCash()',fake);
+ vm.runInContext('paintCash()',fake);
  assert.equal(board.children[0],before[0]);assert.equal(board.children[1],before[1]);assert.equal(board.redraws,oldRedraws,'Identische Abfrage darf Karten nicht ersetzen');
  fake.orders.unshift({member:'c',name:'Person C',state:'open',createdAt:now,lines:[{cents:350,quantity:1}]});
- vm.runInNewContext('paintCash()',fake);
+ vm.runInContext('paintCash()',fake);
  assert.equal(board.children[0],before[0]);assert.equal(board.children[1],before[1]);assert.equal(board.children[2].dataset.member,'c');
  fake.orders.unshift({member:'a',name:'Person A',state:'open',createdAt:now+1000,lines:[{cents:150,quantity:1}]});
- vm.runInNewContext('paintCash()',fake);
+ vm.runInContext('paintCash()',fake);
  assert.equal(board.children[0],before[0]);
  assert.equal(board.children[1],before[1]);
  assert.equal(board.children[2].dataset.member,'c');
