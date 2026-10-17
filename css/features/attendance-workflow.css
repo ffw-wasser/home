@@ -1177,3 +1177,51 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 #attendanceSelectionWorkspace #saveButton[hidden],#step3ActionArea #exportResetButton[hidden],#ipadAttendanceActionDock>#saveButton[hidden]{display:none!important}
 #ipadAttendanceActionDock:has(#exportResetButton[hidden])>#step3ActionArea{display:none!important}
 #ipadAttendanceActionDock:has(>#saveButton[hidden]),#ipadAttendanceActionDock:has(#exportResetButton[hidden]){grid-template-columns:minmax(0,1fr)!important}
+
+
+/* Archivkorrektur: Schritt 2 ohne Eingriff in eine laufende Anwesenheitserfassung. */
+#attendanceView.archive-correction-mode > .attendance-layout,
+#attendanceView.archive-correction-mode #attendanceSelectionWorkspace,
+#attendanceView.archive-correction-mode #step3ActionArea,
+#attendanceView.archive-correction-mode #homeFlowProgress,
+#attendanceView.archive-correction-mode #rfidCsvImport,
+#attendanceView.archive-correction-mode .home-session-type-panel,
+#attendanceView.archive-correction-mode .flow-stage-2-support{display:none!important}
+#attendanceView .archive-correction-workspace{width:min(100%,1160px);margin:12px auto 36px;padding:clamp(15px,2vw,27px);background:#fff;border:1px solid #c2d2e1;border-radius:18px}
+.archive-correction-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;border-bottom:1px solid #dae3ed;padding-bottom:16px}
+.archive-correction-heading h2{margin:4px 0 9px;font-size:clamp(1.25rem,3vw,1.8rem);color:#183d60}
+.archive-correction-heading p{max-width:66ch;margin:4px 0;line-height:1.45}
+.archive-correction-heading button{min-height:44px}
+.archive-correction-meta{display:grid;grid-template-columns:minmax(175px,1fr) minmax(280px,2.5fr);gap:14px;margin:18px 0}
+.archive-correction-meta label,.archive-correction-toolbar label,.archive-correction-add label,.archive-correction-person-fields label{display:flex;flex-direction:column;gap:6px;font-size:.92rem;font-weight:740;color:#244768}
+.archive-correction-meta .text-input,.archive-correction-toolbar .text-input,.archive-correction-person-fields .text-input,.archive-correction-add .text-input{width:100%;min-width:0;min-height:44px;margin:0;background:#fff}
+.archive-correction-toolbar{display:flex;align-items:end;flex-wrap:wrap;gap:10px 14px;margin:18px 0 12px}
+.archive-correction-toolbar label{flex:1 1 185px}
+.archive-correction-toolbar #archiveCorrectionCount{margin:0 0 10px;color:#46617a;font-size:.85rem}
+.archive-correction-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.archive-correction-person{border:1px solid #bacbdc;border-radius:13px;padding:12px 14px;background:#f7fafd}
+.archive-correction-person[data-status="Anwesend"]{border-left:5px solid #2b8051;background:#edf8f0}
+.archive-correction-person[data-status="Entschuldigt"]{border-left:5px solid #bd873a;background:#fff7e8}
+.archive-correction-person[data-status="Fehlt"]{border-left:5px solid #ab5360}
+.archive-correction-person[data-status="Betrifft nicht"]{border-left:5px solid #5e7285}
+.archive-correction-person[hidden]{display:none!important}
+.archive-correction-person-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;font-size:.92rem}
+.archive-correction-person-state{font-weight:800;color:#3b5973;font-size:.83rem}
+.archive-correction-person-fields{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:9px}
+.archive-correction-person-fields label:last-child{grid-column:1/-1}
+.archive-correction-person-fields label[hidden]{display:none!important}
+.archive-correction-add{display:flex;align-items:end;flex-wrap:wrap;gap:10px 16px;margin:20px 0;padding:14px;border-radius:12px;background:#f0f5fa}
+.archive-correction-add label{flex:1 1 245px}
+.archive-correction-add button{min-height:44px}
+.archive-correction-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;border-top:1px solid #dae3ed;margin-top:16px;padding-top:18px}
+.archive-correction-actions button{min-height:48px}
+.archive-correction-actions #archiveCorrectionSave{font-weight:820;flex:1 1 240px;max-width:440px}
+@media(max-width:700px){
+ .archive-correction-meta,.archive-correction-list{grid-template-columns:minmax(0,1fr)}
+ .archive-correction-person-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .archive-correction-actions button{flex:1 1 140px}
+}
+@media(max-width:390px){
+ .archive-correction-person-fields{grid-template-columns:minmax(0,1fr)}
+ .archive-correction-person-fields label:last-child{grid-column:auto}
+}
