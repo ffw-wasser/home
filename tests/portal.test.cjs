@@ -176,3 +176,21 @@ test('Antworten warten nicht auf Google; ab fünf Minuten altem Kalender bleibt 
  assert.equal((await f.call('reply',{eventId:e.id,status:'maybe',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,200);
  f.clock.now+=301000;const r=await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:1,requestId:webcrypto.randomUUID()});assert.equal(r.status,503);assert.equal(f.calendarFetches(),before);assert.equal((await f.call('list')).value.events[0].status,'maybe');
 });
+
+test('Kleidung: Vorgaben, Auswahl und Freitext bleiben im persönlichen Kalender gespeichert',async()=>{
+ const f=await fixture();
+ let cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
+ assert.equal(cal.clothingVersion,1);assert.equal(e.clothing,'Tagdienst');
+ async function save(extra){cal=(await f.call('list',{},null,true)).value;return f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',approved:true,expectedVersion:cal.rulesVersion,...extra},null,true);}
+ for(const clothing of ['Einsatz','Tagdienst','Uniform','T-Shirt/ Fest','Zivil','  Jacke mitbringen  ','']){
+  assert.equal((await save({clothing})).status,200);
+  assert.equal((await f.call('list')).value.events[0].clothing,clothing.trim());
+ }
+ await save({clothing:'Uniform'});
+ await save({attendanceType:'Unterricht'});
+ assert.equal((await f.call('list')).value.events[0].clothing,'Uniform');
+ for(const clothing of [42,'x'.repeat(121),'Zivil\nUniform'])assert.equal((await save({clothing})).status,400);
+ assert.equal((await f.call('list')).value.events[0].clothing,'Uniform');
+ f.raw(calendar([event(f.start,'Probe').replace('UID:test-event','UID:new-probe')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
+ cal=(await f.call('list',{},null,true)).value;assert.equal(cal.events[0].clothing,'Einsatz');
+});

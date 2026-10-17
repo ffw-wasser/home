@@ -115,3 +115,5 @@
 .portal-calendar-dialog a{display:block;padding:14px 12px;margin:12px 0;border-radius:12px;background:#e7f0fa;color:#102f56;font-weight:750;text-decoration:underline;overflow-wrap:anywhere}
 .portal-calendar-dialog button{font-size:1rem;min-height:48px}
 .portal-calendar-note{font-size:1rem;color:#385270}
+
+.portal-event .portal-event-clothing{padding:10px 12px;border-radius:10px;background:#e8eef5;color:#15334f;font-weight:750;overflow-wrap:anywhere}
