@@ -98,3 +98,29 @@ Die Verwaltung zeigt Artikel in Rubrikbereichen. „Artikel hinzufügen“ im je
 ## Getränkeangaben auf den Karten
 
 Getränkekarten zeigen den Artikelnamen und darunter Glas/Flasche/Tasse sowie die Gebindegröße. Vorhandene eindeutige Angaben im Namen (z. B. „Wasser · Flasche · 0,5 l“) werden aufgeteilt. Fehlende Angaben erscheinen als „Gefäß offen“ beziehungsweise „Größe offen“ und lassen sich in der Verwaltung je Artikel ergänzen. Bei Rubriken Essen, Speisen, Gerichte, Snacks, Kuchen, Desserts und Gebäck entfällt diese Zusatzzeile. Preise und Mengen bleiben sichtbar. Die Angaben werden kompatibel im vollständigen Artikelnamen gespeichert, sodass sie auch die Kasse erreichen; bestätigte Buchungen bleiben unverändert. Import unterstützt zusätzlich Gefäß/Glas-Flasche und Gebindegröße neben der bisherigen Größe.
+
+## Bedienoberfläche ab Version 2026.10.18.1
+
+Die Veranstaltungsseite öffnet Theater nun direkt über drei große Startkarten:
+**Kasseneingabe**, **Auswertung** und **Verwaltung**. Der geschützte
+Verwaltungszugang bleibt erforderlich. In der iPad-Kasseneingabe befinden sich
+Signalton-Schalter und Tonstatus auch im Live-Kopfbereich; die bisherige
+Tonkonfiguration in der Verwaltung bleibt nutzbar.
+
+Während der automatischen Kassenabfrage bleiben bereits angezeigte Personenkarten
+als DOM-Knoten an derselben Position stehen. Neue Personen erscheinen am Ende
+der laufenden Kartenliste; die erste Darstellung sortiert weiterhin nach offenen
+Bestellungen. Geänderte Daten werden innerhalb der vorhandenen Karte aktualisiert.
+Auch die offene Detailansicht wird bei unveränderten Bestellungen nicht neu aufgebaut.
+Reservierung, Bestätigung und Freigabe verwenden die bisherigen geschützten Aktionen.
+
+Die Handy-Bestellaufnahme erhält im festen Summenbereich eine aufklappbare
+Artikelauswahl. Dort können vorgemerkte Stückzahlen mit Plus und Minus korrigiert
+werden, ohne die Rubrik erneut aufsuchen zu müssen. Während einer unbestätigten
+Übertragung bleiben diese Bedienelemente gesperrt; die gesicherte Wiederholung
+mit derselben Bestellkennung bleibt bestehen.
+
+In der Verwaltung zeigt die bereits angeheftete Speichern-Leiste den Zustand
+ungespeicherter Änderungen. Die Auswertung bietet drei kompakte Kennzahlen
+vor den vorhandenen Tabellen und dem CSV-Export. Serverseitige Buchungsschemata,
+Berechtigungen und produktive Kontodaten wurden nicht verändert.
