@@ -25,3 +25,23 @@ test('Challenge zeigt Laden-Button nur nach Lesefehler; erfolgreiche Wiederholun
  await f.c.DeckelChallenge.render(f.snapshot);assert.equal(f.nodes.get('challenge-refresh').hidden,false);assert.equal(f.nodes.get('challenge-retry').hidden,true);
  f.c.fetch=fetch;await f.nodes.get('challenge-refresh').onclick();assert.equal(f.nodes.get('challenge-refresh').hidden,true);assert.equal(f.requests.length,0);
 });
+
+test('Abschließende Challenge-Auswertung markiert falsche Antworten rot und richtige grün',async()=>{
+ const f=fixture(),originalFetch=f.c.fetch;
+ const review=[
+  {text:'Was wird zuerst geprüft?',answers:['A','B','C'],selected:0,correct:1,explanation:'Antwort B ist korrekt.',source:'Ausbildungsunterlage'},
+  {text:'Was ist richtig?',answers:['Ja','Nein'],selected:0,correct:0,explanation:'Ja ist richtig.',source:'Lehrgang'}
+ ];
+ f.c.fetch=async(url,options)=>url.endsWith('/solo-status')?{ok:true,json:async()=>({version:1,month:'2026-10',awardUnits:300,policyRevision:'revision',game:{gameId:'done-1',month:'2026-10',category:'Technik',level:'TM',status:'done',score:1,earnedUnits:0,review}})}:originalFetch(url,options);
+ await f.c.DeckelChallenge.render(f.snapshot);
+ const details=f.nodes.get('challenge-review').children[0];
+ assert.equal(details.open,true);
+ const cards=details.children.filter(n=>n.tagName==='article');
+ assert.equal(cards.length,2);
+ assert.match(cards[0].className,/is-wrong/);
+ assert.match(cards[0].children[0].textContent,/Falsch beantwortet/);
+ assert.match(cards[0].children[1].textContent,/Deine Antwort: A/);
+ assert.match(cards[0].children[2].textContent,/Richtige Antwort: B/);
+ assert.match(cards[1].className,/is-correct/);
+ assert.match(cards[1].children[0].textContent,/Richtig beantwortet/);
+});
