@@ -34,3 +34,34 @@ test('Nur die manuelle Terminartauswahl ohne laufenden Termin löst die Kalender
   vm.runInContext(ui.slice(start,end),c);c.chooseSessionType('Unterricht',{calendar});assert.equal(detached,expected);assert.equal(c.pendingSessionType,'Unterricht');
  }
 });
+
+test('Probenabschluss übernimmt das Kalender-Thema, ohne das Textfeld zu sperren',()=>{
+ const source=fs.readFileSync('js/features/settings/admin.js','utf8');
+ const start=source.indexOf('function suggestedProbeTopic()');
+ const end=source.indexOf('async function confirmProbeTopic()',start);
+ assert.ok(start>=0&&end>start);
+ let title='Funkübung – Löschangriff',selected=true,date='2026-10-18';
+ const input={value:'',focus(){},setSelectionRange(){},},description={},error={},dialog={showModal(){this.shown=true;}};
+ const fields={probeTopicInput:input,probeTopicDialog:dialog,probeTopicDescription:description,probeTopicError:error};
+ const c=vm.createContext({
+  currentClosingTopic:'',currentProbeDate:'2026-10-18',sessionType:'Allgemeine Probe',
+  window:{PortalAdmin:{selectedEvent:()=>selected?{kind:'probe',title}:null,selectedDate:()=>date}},
+  ensureProbeTopicDialog(){},byId:id=>fields[id]
+ });
+ vm.runInContext(source.slice(start,end),c);
+ c.openProbeTopicDialog();
+ assert.equal(input.value,'Funkübung – Löschangriff');
+ assert.equal(dialog.shown,true);
+ input.value='Abweichende Übung';
+ assert.equal(input.value,'Abweichende Übung','Die Vorschau bleibt frei editierbar');
+ c.currentClosingTopic=input.value;
+ title='Neues Kalenderthema';
+ c.openProbeTopicDialog();
+ assert.equal(input.value,'Abweichende Übung','Ein bestätigtes Thema hat Vorrang vor Kalender-Updates');
+ c.currentClosingTopic='';title='Probe';c.openProbeTopicDialog();
+ assert.equal(input.value,'','Eine bloße Terminart ist kein geeignetes Probenthema');
+ title='Fahrzeugkunde';date='2026-10-19';c.openProbeTopicDialog();
+ assert.equal(input.value,'','Nicht zu diesem Datum gehörende Kalendertermine dürfen nichts vorausfüllen');
+ date='2026-10-18';selected=false;c.openProbeTopicDialog();
+ assert.equal(input.value,'','Spontane Proben bleiben frei beschreibbar');
+});
