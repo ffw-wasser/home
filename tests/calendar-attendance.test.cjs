@@ -61,10 +61,11 @@ test('Kalenderkarten öffnen ihre Bearbeitung erst auf Wunsch; Kleiderwechsel fo
  const clothingLabel=card.children.find(n=>n.tagName==='LABEL'&&n.textContent==='Kleidung');
  assert.ok(clothingLabel);
  const clothing=clothingLabel.children[0];
- clothing.value='Einsatzkleidung';kind.value='special';kind.onchange();
- assert.equal(clothing.value,'Tagesdienst');
+ assert.equal(kind.value,'special');
  kind.value='probe';kind.onchange();
  assert.equal(clothing.value,'Einsatzkleidung');
+ kind.value='special';kind.onchange();
+ assert.equal(clothing.value,'Tagesdienst');
  assert.equal(card.dataset.state,'edited');
  edit.onclick();assert.equal(kind.hidden,true);
  assert.equal(card.dataset.state,'edited','Zusammenklappen verwirft keine Änderungen');
