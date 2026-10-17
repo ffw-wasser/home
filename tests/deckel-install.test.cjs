@@ -10,17 +10,22 @@ function fixture({ios=false,android=false,standalone=false,url=personal,storageF
  vm.runInContext(read('js/features/drinks/deckel-install.js'),ctx);return {ctx,nodes,events,saved,actions};
 }
 test('Erster QR-Aufruf zeigt Installation ohne selbstständig zu installieren, zu speichern oder Push zu erlauben',()=>{
- const f=fixture({android:true});assert.equal(f.nodes.installSection.hidden,false);assert.equal(f.nodes.deckelManifest.href,'deckel-android.webmanifest');assert.equal(f.saved.length,0);
+ const f=fixture({android:true});assert.equal(f.nodes.installSection.hidden,false);assert.equal(f.nodes.deckelManifest,undefined);assert.equal(f.saved.length,0);
  let prompts=0,prevented=0;f.events.beforeinstallprompt({preventDefault:()=>prevented++,prompt:()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});
- assert.equal(prevented,1);assert.equal(prompts,0);assert.equal(f.nodes.installButton.textContent,'H₂O Portal installieren');
+ assert.equal(prevented,1);assert.equal(prompts,0);assert.equal(f.nodes.installButton.textContent,'Startbildschirm-Verknüpfung anlegen');
 });
-test('Android-Klick speichert privaten Zugang lokal vor dem bestätigten Installationsdialog; Abbruch bietet Anleitung',async()=>{
+test('Android speichert den Zugang, startet aber kein möglicherweise veraltetes WebAPK',async()=>{
  for(const outcome of ['accepted','dismissed']){
-  const f=fixture({android:true});f.events.beforeinstallprompt({preventDefault(){},prompt:async()=>f.actions.push(['prompt']),userChoice:Promise.resolve({outcome})});
-  await f.nodes.installButton.onclick();assert.deepEqual(f.saved,[personal]);assert.equal(f.actions[1][0],'save');assert.equal(f.actions[2][0],'prompt');
-  assert.match(f.nodes.installStatus.textContent,outcome==='accepted'?/bestätigt/:/später/);
+  const f=fixture({android:true});let prompts=0;
+  f.events.beforeinstallprompt({preventDefault(){},prompt:async()=>prompts++,userChoice:Promise.resolve({outcome})});
+  await f.nodes.installButton.onclick();
+  assert.deepEqual(f.saved,[personal]);
+  assert.equal(prompts,0);
+  assert.match(f.nodes.installStatus.textContent,/Verknüpfung/);
  }
- const f=fixture({android:true});await f.nodes.installButton.onclick();assert.match(f.nodes.installStatus.textContent,/Browser-Menü/);assert.deepEqual(f.saved,[personal]);
+ const f=fixture({android:true});await f.nodes.installButton.onclick();
+ assert.match(f.nodes.installStatus.textContent,/Chrome/);
+ assert.deepEqual(f.saved,[personal]);
 });
 test('iPhone bekommt Home-Bildschirm-Anleitung; installierte App und ungültiger Link zeigen keine Aufforderung',()=>{
  const f=fixture({ios:true});assert.equal(f.nodes.installButton.hidden,true);assert.match(f.nodes.installSteps.children[1].textContent,/Home-Bildschirm/);assert.equal(f.saved.length,0);
@@ -53,4 +58,14 @@ test('Portalstart verändert vorhandene Push-Anmeldung nicht ohne Benutzeraktion
  const url=personal+'&p=https%3A%2F%2Ftest.account.workers.dev&c='+ 'x'.repeat(43),nodes={},events=[],state={saved:{url,alias:'a'.repeat(32),origin:'https://test.account.workers.dev',capability:'x'.repeat(43),endpoint:'https://push.fixture/device',registered:true},link:null};
  const node=()=>({hidden:false,disabled:false,textContent:''}),c=vm.createContext({URL,URLSearchParams,AbortController,setTimeout,clearTimeout,location:{hash:new URL(url).hash,href:url},document:{hidden:false,getElementById:id=>nodes[id]||(nodes[id]=node())},addEventListener(){},navigator:{userAgent:'Android',platform:'',serviceWorker:{getRegistration:async()=>({pushManager:{getSubscription:async()=>({unsubscribe:async()=>{events.push('unsubscribe');return true;}})}})}},matchMedia:()=>({matches:true}),Notification:{permission:'granted'},PushManager:{},DeckelDevice:{read:async()=>state.saved,saveLink:async value=>{events.push('saveLink');state.link=value;},clear:async()=>{events.push('clear');state.saved=null;}},fetch:async()=>({ok:true,json:async()=>({})})});c.window=c;
  vm.runInContext(read('js/features/drinks/deckel-push.js'),c);await c.DeckelPush.restore();assert.ok(state.saved);assert.equal(state.link,null);assert.deepEqual(events,[]);assert.equal(nodes.pushEnable,undefined);
+});
+
+test('Android lädt kein WebAPK-Manifest; iOS und Desktop behalten es',()=>{
+ const html=read('deckel.html'),script=read('js/features/drinks/deckel-manifest.js');
+ assert.match(html,/src="js\/features\/drinks\/deckel-manifest\.js/);
+ assert.doesNotMatch(html,/<link[^>]+rel="manifest"/);
+ const run=ua=>{const links=[],ctx={navigator:{userAgent:ua},document:{head:{appendChild:link=>links.push(link)},createElement:()=>({})}};vm.runInNewContext(script,ctx);return links;};
+ assert.equal(run('Android Chrome').length,0);
+ assert.equal(run('iPhone Safari')[0].rel,'manifest');
+ assert.match(run('Desktop Chrome')[0].href,/deckel\.webmanifest/);
 });
