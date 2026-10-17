@@ -82,3 +82,14 @@ test('Vollständig fehlende Atemschutznachweise erscheinen als kritischer Hinwei
  const app=fs.readFileSync('js/app/app.js','utf8');vm.runInContext(app.slice(app.indexOf('function isAtmOrAtgQualified('),app.indexOf('function showBreathingClearanceWarnings(')),c);c.renderSafetyInfoHub();
  assert.equal(byId('safetyInfoCount').textContent,'1');assert.match(byId('safetyInfoContent').innerHTML,/fehlt: G26.3, Unterweisung AGT, FFI/);assert.ok(critical.some(([key,on])=>key==='has-critical'&&on));
 });
+
+test('Monat/Jahr für Untersuchungsgültigkeit ohne unbemerkte Verlängerung bestehender Tagesfristen',()=>{
+ assert.equal(E.monthInput('2028-02-17'),'2028-02');
+ assert.equal(E.monthEnd('2028-02'),'2028-02-29');
+ assert.equal(E.monthEnd('2027-02'),'2027-02-28');
+ assert.equal(E.monthEnd('2028-13'),'');
+ assert.equal(E.monthExpiry('2028-02','2028-02-17'),'2028-02-17');
+ assert.equal(E.monthExpiry('2028-03','2028-02-17'),'2028-03-31');
+ assert.equal(E.displayMonth('2028-03-31'),'03/2028');
+ assert.equal(E.displayMonth('2028-03-17'),'17.03.2028');
+});
