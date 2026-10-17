@@ -1,0 +1,32 @@
+name: Check application and evidence changes
+on:
+  push:
+    branches:
+      - main
+      - fix/android-install-month-evidence-20261017
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate JavaScript syntax
+        run: |
+          for file in js/features/portal/member-evidence.js js/features/portal/portal-admin.js js/features/portal/portal-member.js js/features/attendance/attendance-controller.js js/features/settings/admin.js js/features/drinks/deckel-install.js js/features/drinks/deckel-manifest.js js/core/config.js cloudflare/push/portal.js cloudflare/push/worker.bundle.js; do
+            node --check "$file"
+          done
+      - name: Check bundled Cloudflare worker matches sources
+        run: |
+          node cloudflare/push/build.cjs
+          git diff --exit-code -- cloudflare/push/worker.bundle.js
+      - name: Check release and service worker consistency
+        run: |
+          node scripts/update-release.cjs
+          git diff --exit-code -- index.html deckel.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest
+      - name: Run all unit tests
+        run: node --test tests/*.test.cjs
