@@ -106,7 +106,7 @@ test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche ko
  f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;
  await f.c.PortalAdmin.loadCalendar();
  const cards=f.get('portal-admin-review-events').children,card=cards[0];
- assert.equal(card.hidden,false,'Gespeicherte Proben sollen standardmäßig sichtbar sein');
+ assert.ok(!card.hidden,'Gespeicherte Proben sollen standardmäßig sichtbar sein');
  assert.equal(f.get('portal-admin-member').children.length,4,'Kalender lädt die Mitglieder unabhängig vom QR-Menü');
  const shortcut=card.children.find(n=>n.className==='portal-review-audience-action');
  assert.ok(shortcut,'Mitglieder ändern auf der normalen Probe');
