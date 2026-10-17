@@ -391,79 +391,69 @@ function pairedArchiveFileNames(item){
   const base=(item.baseFileName||current).replace(/_korrigiert-v\d+(?=\.csv$)/i,"").replace(/\.csv$/i,"");
   return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
 }
-async function saveArchiveCorrection(){ if(!requireAdmin("settingsHistoryView"))return;
-  if(!archiveCorrectionState)return;
-  const item=structuredClone(archiveCorrectionState.item),rows=structuredClone(archiveCorrectionState.rows),index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
-  const status=byId("correctionStatus").value,role=status==="Anwesend"?byId("correctionRole").value.trim():"";
-  const correctedName=byId("correctionName").value.trim();
-  if(!correctedName)return showToast("Bitte einen Namen eintragen.","error");
-  const correctedDate=byId("correctionDate")?.value||row.date;
-  if(!correctedDate)return showToast("Bitte einen gültigen Probetermin auswählen.","error");
-  const isGeneral=(item.sessionType||rows[0]?.sessionType)==="Allgemeine Probe";
-  if(status==="Anwesend"&&isGeneral&&!role&&correctionRolesForRow(row).length){
-    showToast("Bitte eine für diese Person freigegebene Funktion auswählen.","error");
-    return;
-  }
-  const button=byId("saveCorrectionButton");if(button.disabled)return;button.disabled=true;
-  try{
-  const original={name:row.name,status:row.status,role:row.role,date:row.date};rows.forEach(item=>item.date=correctedDate);row.status=status;row.role=role;row.name=correctedName;
-  item.revisions=[...(item.revisions||[]),{changedAt:new Date().toISOString(),name:row.name,original,updated:{name:correctedName,status,role,date:correctedDate}}];
-  item.topic=item.topic||rows[0]?.topic||"";
+async function persistArchiveCorrection(item,rows,correctedDate){
+  // All correction entry points share exactly the same archive and OneDrive overwrite.
+  // Preserve the original filename and item ID, including when the report date changes.
+  item.topic=String(item.topic||rows[0]?.topic||"").trim();
   item.content=archiveCsvFromRows(rows,item.topic);
   item.correctedAt=new Date().toISOString();
-
-  const oldNames=pairedArchiveFileNames(item);
-  const safeType=String(item.sessionType||rows[0]?.sessionType||"Probe").replace(/ /g,"-");
-  const names={base:`FFW-Wasser_${correctedDate}_${safeType}`,csv:`FFW-Wasser_${correctedDate}_${safeType}.csv`,pdf:`FFW-Wasser_${correctedDate}_${safeType}.pdf`};
-  item.baseFileName=`${names.base}.csv`;
-  item.fileName=names.csv;
-  item.pdfFileName=names.pdf;
-  item.originalReportDate=correctedDate;
   item.updatedAt=item.correctedAt;
-
+  item.originalReportDate=correctedDate;
+  const previousNames=pairedArchiveFileNames(item);
+  const names={csv:item.fileName||previousNames.csv,pdf:item.pdfFileName||previousNames.pdf};
+  item.baseFileName=item.baseFileName||names.csv;
+  item.fileName=names.csv;item.pdfFileName=names.pdf;
   const counts={
-    present:rows.filter(x=>x.status==="Anwesend").length,
-    excused:rows.filter(x=>x.status==="Entschuldigt").length,
-    missing:rows.filter(x=>x.status==="Fehlt").length,
-    notApplicable:rows.filter(x=>x.status==="Betrifft nicht").length
+    present:rows.filter(row=>row.status==="Anwesend").length,
+    excused:rows.filter(row=>row.status==="Entschuldigt").length,
+    missing:rows.filter(row=>row.status==="Fehlt").length,
+    notApplicable:rows.filter(row=>row.status==="Betrifft nicht").length
   };
   const correctedPdf=probePdfBlob(
-    rows.map(x=>({time:x.time,name:x.name,status:x.status,role:x.role})),
+    rows.map(row=>({time:row.time,name:row.name,status:row.status,role:row.role})),
     item.sessionType||rows[0]?.sessionType||"Probe",
-    counts,
-    item.topic||rows[0]?.topic||"",
-    row.date || rows[0]?.date || historyDateFromItem(item)
+    counts,item.topic,correctedDate
   );
-
   Object.assign(item,{presentCount:counts.present,excusedCount:counts.excused,missingCount:counts.missing,notApplicableCount:counts.notApplicable});
   if(item.oneDriveLive){
     await window.saveOneDriveHistoryCorrection(item,correctedPdf);
     await window.loadOneDriveHistory();
-    byId("archiveCorrectionDialog").close();
-    archiveCorrectionState=null;
-    showToast("Korrektur im OneDrive-Terminpaket gespeichert.");
     return;
   }
   await saveImportedReportPdf(item.id,new File([correctedPdf],names.pdf,{type:"application/pdf"}));
   item.hasImportedPdf=true;
   csvArchive=csvArchive.map(entry=>entry.id===item.id?item:entry);
   let csvOverwritten=false,pdfOverwritten=false;
-  try{csvOverwritten=await writeCsvToSelectedFolder(names.csv,item.content);}catch(error){csvOverwritten=false;}
-  try{pdfOverwritten=await savePdfToSelectedFolder(names.pdf,correctedPdf);}catch(error){pdfOverwritten=false;}
-
-  saveArchive();renderArchive();renderStatistics();renderHistory();byId("archiveCorrectionDialog").close();
-
+  try{csvOverwritten=await writeCsvToSelectedFolder(names.csv,item.content);}catch(error){console.warn("CSV konnte nicht direkt überschrieben werden",error);}
+  try{pdfOverwritten=await savePdfToSelectedFolder(names.pdf,correctedPdf);}catch(error){console.warn("PDF konnte nicht direkt überschrieben werden",error);}
+  saveArchive();renderArchive();renderStatistics();renderHistory();
   if(!csvOverwritten){
-    const csvResult=await exportCsvFile(names.csv,item.content,true);
-    if(csvResult==="failed"||csvResult==="cancelled")showToast("Korrektur gespeichert. Die CSV-Ausgabe wurde abgebrochen.","error");
+    const result=await exportCsvFile(names.csv,item.content,true);
+    if(result==="failed"||result==="cancelled")showToast("Korrektur im Archiv gespeichert. CSV-Ausgabe wurde nicht abgeschlossen.","error");
   }
   if(!pdfOverwritten)downloadBlob(names.pdf,correctedPdf);
-
-  if(csvOverwritten&&pdfOverwritten)showToast("Korrektur gespeichert. Zugehörige CSV und PDF wurden überschrieben.");
-  else if(pdfOverwritten)showToast("Korrektur gespeichert. Das zugehörige PDF wurde überschrieben; CSV wurde ausgegeben.");
-  else if(csvOverwritten)showToast("Korrektur gespeichert. Die CSV wurde überschrieben; PDF wurde neu ausgegeben.");
-  else showToast("Korrektur gespeichert. CSV und PDF wurden neu ausgegeben.");
-  }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast(`Korrektur nicht bestätigt: ${error.message||"Bitte erneut versuchen."}`,"error");}
+  if(csvOverwritten&&pdfOverwritten)showToast("Korrektur gespeichert. Original-CSV und Original-PDF überschrieben.");
+  else showToast("Korrektur gespeichert. Bitte die ausgegebenen Originaldateien am Speicherort ersetzen.");
+}
+async function saveArchiveCorrection(){
+  if(!requireAdmin("settingsHistoryView")||!archiveCorrectionState)return;
+  const item=structuredClone(archiveCorrectionState.item),rows=structuredClone(archiveCorrectionState.rows);
+  const index=Number(byId("correctionPerson").value),row=rows[index];if(!row)return;
+  const status=byId("correctionStatus").value,role=status==="Anwesend"?byId("correctionRole").value.trim():"";
+  const correctedName=byId("correctionName").value.trim();
+  if(!correctedName)return showToast("Bitte einen Namen eintragen.","error");
+  const correctedDate=byId("correctionDate")?.value||row.date;
+  if(!correctedDate)return showToast("Bitte ein gültiges Termindatum auswählen.","error");
+  const isGeneral=(item.sessionType||rows[0]?.sessionType)==="Allgemeine Probe";
+  if(status==="Anwesend"&&isGeneral&&!role&&correctionRolesForRow(row).length)return showToast("Bitte eine für diese Person freigegebene Funktion auswählen.","error");
+  const button=byId("saveCorrectionButton");if(button.disabled)return;button.disabled=true;
+  try{
+    const original={name:row.name,status:row.status,role:row.role,date:row.date};
+    rows.forEach(entry=>entry.date=correctedDate);row.status=status;row.role=role;row.name=correctedName;
+    item.revisions=[...(item.revisions||[]),{changedAt:new Date().toISOString(),name:row.name,original,updated:{name:correctedName,status,role,date:correctedDate}}];
+    await persistArchiveCorrection(item,rows,correctedDate);
+    byId("archiveCorrectionDialog").close();archiveCorrectionState=null;
+  }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
   finally{button.disabled=false;}
 }
 function historyNormalizeDate(value){
