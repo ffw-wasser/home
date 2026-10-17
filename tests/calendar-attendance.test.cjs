@@ -111,7 +111,7 @@ test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche ko
  const shortcut=card.children.find(n=>n.className==='portal-review-audience-action');
  assert.ok(shortcut,'Mitglieder ändern auf der normalen Probe');
  const summary=card.children.find(n=>n.className==='portal-review-audience');
- assert.match(summary.textContent,/1 ausgewählte Mitglieder/);
+ assert.match(summary.textContent,/Nur 1 von 3 Mitgliedern/);
  shortcut.onclick();
  const recipients=card.children.find(n=>n.className==='portal-recipient-choices');
  assert.ok(recipients);assert.equal(recipients.hidden,false);
