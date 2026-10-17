@@ -1,8 +1,8 @@
 /* Separate portal screens. Personal credentials remain in the URL fragment. */
 (function(g){
- 'use strict';const $=id=>document.getElementById(id),pages={'portal-section':'terms','portal-evidence':'evidence',account:'deckel','portal-points':'points','deckel-more':'more','theater-phone-section':'theater'};let visible=false,current='portal-section',gesture=null;
+ 'use strict';const $=id=>document.getElementById(id),pages={'portal-section':'terms','portal-evidence':'evidence',account:'deckel','portal-points':'points','portal-challenge':'challenge','deckel-more':'more','theater-phone-section':'theater'};let visible=false,current='portal-section',gesture=null;
  function paint(){ $('deckel-nav')?.querySelectorAll('[data-deckel-target]').forEach(button=>{if(button.dataset.deckelTarget===current)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});}
- function sync(){gesture=null;for(const [id,page] of Object.entries(pages)){const wrapper=$('portal-page-'+page);if(wrapper)wrapper.hidden=!visible||id!==current;}document.body?.classList?.toggle('theater-mode',visible&&current==='theater-phone-section');if($('deckel-nav'))$('deckel-nav').hidden=!visible||current==='theater-phone-section';paint();}
+ function sync(){gesture=null;for(const [id,page] of Object.entries(pages)){const wrapper=$('portal-page-'+page);if(wrapper)wrapper.hidden=!visible||id!==current;}document.body?.classList?.toggle('theater-mode',visible&&current==='theater-phone-section');if($('deckel-nav'))$('deckel-nav').hidden=!visible||current==='theater-phone-section'||current==='portal-challenge';paint();}
  function jump(id,remember=true){if(id==='phone-menu')id='account';if(!visible||!pages[id])return;const target=$(id);if(!target)return;const changed=id!==current;if(changed&&current==='theater-phone-section'&&g.TheaterPhone?.beforeLeave?.()===false)return false;current=id;
   if(changed&&remember&&g.history?.pushState)g.history.pushState({...g.history.state,portalPage:id},'');sync();if(target.tagName==='DETAILS')target.open=true;
   const wrapper=$('portal-page-'+pages[id]);if(wrapper){const scroller=$('deckel-main');if(scroller?.scrollTo)scroller.scrollTo({top:0,left:0,behavior:'instant'});else g.scrollTo?.({top:0,left:0,behavior:'instant'});wrapper.focus?.({preventScroll:true});}else if(!target.hidden){target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});target.focus?.({preventScroll:true});}
@@ -10,10 +10,12 @@
  }
  function show(value){if(value&&!visible){current='portal-section';if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');}visible=Boolean(value);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
  function init(){const nav=$('deckel-nav');if(!nav)return;nav.querySelectorAll('[data-deckel-target]').forEach(button=>button.addEventListener('click',()=>jump(button.dataset.deckelTarget)));
+  $('challenge-open')?.addEventListener('click',()=>jump('portal-challenge'));
+  $('challenge-back')?.addEventListener('click',()=>jump('portal-points'));
   const main=$('deckel-main');let suppressClickUntil=0;
   main?.addEventListener('pointerdown',event=>{
    gesture=null;suppressClickUntil=0;
-   if(!visible||current==='theater-phone-section'||event.pointerType!=='touch'||!event.isPrimary||event.clientX<32||event.clientX>g.innerWidth-32)return;
+   if(!visible||(current==='theater-phone-section'||current==='portal-challenge')||event.pointerType!=='touch'||!event.isPrimary||event.clientX<32||event.clientX>g.innerWidth-32)return;
    if(event.target?.closest?.('input,select,textarea,[role="slider"],[contenteditable]:not([contenteditable="false"]),[data-no-swipe]')||document.activeElement?.matches?.('input,select,textarea')||g.getSelection?.()?.isCollapsed===false)return;
    for(let el=event.target;el&&el!==main;el=el.parentElement)if(el.scrollWidth>el.clientWidth+2&&/auto|scroll/.test(g.getComputedStyle?.(el).overflowX||''))return;
    gesture={id:event.pointerId,x:event.clientX,y:event.clientY,time:event.timeStamp,page:current,direction:0};
@@ -27,7 +29,7 @@
    if(dx*start.direction<0){gesture=null;return;}
    if(x<48||x<y*1.25)return;
    gesture=null;suppressClickUntil=Date.now()+1500;
-   const order=Object.keys(pages).filter(id=>id!=='theater-phone-section'),next=order[order.indexOf(start.page)+(start.direction<0?1:-1)];if(next)jump(next);
+   const order=Object.keys(pages).filter(id=>!['theater-phone-section','portal-challenge'].includes(id)),next=order[order.indexOf(start.page)+(start.direction<0?1:-1)];if(next)jump(next);
   }
   main?.addEventListener('pointermove',move);
   main?.addEventListener('pointercancel',()=>{gesture=null;});
