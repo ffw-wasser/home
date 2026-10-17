@@ -14,7 +14,7 @@ function fixture(type='Sonderprobe'){
   ];
   const item={id:'original-archive-id',fileName:'Originalbericht.csv',pdfFileName:'Originalbericht.pdf',packageFileName:'Originalbericht.zip',sessionType:type,topic:'Funkübung',content:'fake-csv',oneDriveLive:true};
   const nodes=new Map(),calls=[],get=id=>{
-    if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',children:[],disabled:false,replaceChildren(){this.children=[];},scrollIntoView(){},classList:{add(x){calls.push(['add-class',x]);},remove(x){calls.push(['remove-class',x]);}}});
+    if(!nodes.has(id)){const flags=new Set();nodes.set(id,{value:'',textContent:'',children:[],disabled:false,replaceChildren(){this.children=[];},scrollIntoView(){},remove(){},classList:{add(x){flags.add(x);calls.push(['add-class',x]);},remove(x){flags.delete(x);calls.push(['remove-class',x]);},contains(x){return flags.has(x);}}});}
     return nodes.get(id);
   };
   const captured=[];
@@ -111,4 +111,24 @@ test('Gemeinsame Speicherfunktion ersetzt denselben OneDrive-Bericht ohne neue D
   assert.equal(saved.content,'korrigierte-csv');
   assert.equal(saved.presentCount,1);
   assert.ok(writes.some(x=>x[0]==='reload'));
+});
+
+test('Navigation fragt vor dem Verlassen einer ungespeicherten Archivkorrektur',()=>{
+  const f=fixture();f.c.correctArchiveItem('original-archive-id');
+  f.get('archiveCorrectionList').children=[editableCard(0,'Mustermann Erika','Anwesend','Anwesend'),editableCard(1,'Muster Max','Fehlt')];
+  f.get('archiveCorrectionEditTopic').value='Verändertes Probenthema';
+  f.c.confirm=()=>false;
+  assert.equal(f.c.archiveCorrectionBeforeView('settingsHistoryView'),false);
+  assert.ok(f.c.archiveCorrectionState);
+  f.c.confirm=()=>true;
+  assert.equal(f.c.archiveCorrectionBeforeView('settingsHistoryView'),true);
+  assert.equal(f.c.archiveCorrectionState,null);
+  assert.ok(f.calls.some(call=>call[0]==='stage'&&call[1]===1));
+});
+test('Bei unverändertem Bericht ist der Rückweg ohne Warnmeldung möglich',()=>{
+  const f=fixture();f.c.correctArchiveItem('original-archive-id');
+  f.get('archiveCorrectionList').children=[editableCard(0,'Mustermann Erika','Anwesend','Anwesend'),editableCard(1,'Muster Max','Fehlt')];
+  let confirms=0;f.c.confirm=()=>{confirms++;return true;};
+  assert.equal(f.c.archiveCorrectionBeforeView('settingsHistoryView'),true);
+  assert.equal(confirms,0);
 });
