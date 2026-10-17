@@ -136,3 +136,6 @@
  #portal-events .portal-next-heading{font-size:1rem;margin:0 0 8px}
  #portal-page-terms{padding-top:10px}
 }
+
+#portal-events .portal-reply-retry{flex:none;min-height:44px;margin:0 0 8px;background:#075baf;color:#fff}
+#portal-events .portal-event[aria-busy=true] .portal-answer{color:#075baf}
