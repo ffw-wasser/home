@@ -60,7 +60,7 @@
    summary.replaceChildren();
    const all=reviewSnapshot?.events||[];
    for(const [label,count,kind] of [
-     ['Zu prüfen',all.filter(e=>e.automatic!==false||e.kind==='birthday'&&!e.memberId).length,'open'],
+     ['Zu prüfen',all.filter(e=>e.end>Date.now()&&(e.automatic!==false||e.kind==='birthday'&&!e.memberId)).length,'open'],
      ['Freigegeben',all.filter(e=>e.approved&&e.kind==='probe'&&e.automatic===false).length,'approved'],
      ['Geburtstage',all.filter(e=>e.kind==='birthday').length,'birthday']
    ]){
@@ -81,7 +81,7 @@
    const upcoming=cal.events.filter(e=>Number.isFinite(e.end)&&e.end>Date.now()-30*86400000);
    const previous=reviewSnapshot;
    // Sort chronologically so a just-saved card does not jump to the bottom.
-   upcoming.sort((a,b)=>a.start-b.start);
+   upcoming.sort((a,b)=>{const ap=a.end<=Date.now(),bp=b.end<=Date.now();return ap!==bp?(ap?1:-1):ap?b.start-a.start:a.start-b.start;});
    if(automatic&&previous&&previous.rulesVersion===cal.rulesVersion&&previous.stale===cal.stale&&JSON.stringify(previous.events.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic]))===JSON.stringify(upcoming.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic]))){
     reviewSnapshot={...cal,events:previous.events};reviewControls();return;
    }
@@ -186,7 +186,7 @@
       if(kind.value!=='birthday'&&stored?.location!==data.location)throw Error('Der Ort wurde nicht wie gewünscht gespeichert. Bitte Kalender neu laden und prüfen.');
       $('status').textContent='✓ Einordnung, Ort, Kleidung, Empfänger und Freigabe gespeichert.';
      });card.append(badge,h,meta,audienceSummary,recognition,editButton,audienceShortcut,quick,kind,attendanceTypeLabel,locationLabel,clothingLabel,approvalLabel,personLabel,recipientsLabel,recipients,note,save);$('review-events').append(card);
-   }reviewControls();$('review-status').textContent=(cal.recipientFeatureVersion===2?'':'⚠ Der Cloudflare-Worker muss für die neue Mitglieder-Auswahl noch aktualisiert werden. Bitte worker.bundle.js unter Produktion veröffentlichen. ')+reviewSnapshot.events.filter(e=>e.automatic!==false||e.kind==='birthday'&&!e.memberId).length+' offene Einträge · '+reviewSnapshot.events.filter(e=>e.automatic===false&&!(e.kind==='birthday'&&!e.memberId)).length+' gespeichert · '+reviewSnapshot.events.length+' anstehende Kalendereinträge · '+reviewSnapshot.events.filter(e=>e.approved&&e.kind==='probe').length+' Probetermine freigegeben.'+(cal.stale?' Kalender derzeit nicht aktuell bestätigt.':'');
+   }reviewControls();$('review-status').textContent=(cal.recipientFeatureVersion===2?'':'⚠ Der Cloudflare-Worker muss für die neue Mitglieder-Auswahl noch aktualisiert werden. Bitte worker.bundle.js unter Produktion veröffentlichen. ')+reviewSnapshot.events.filter(e=>e.end>Date.now()&&(e.automatic!==false||e.kind==='birthday'&&!e.memberId)).length+' offene Einträge · '+reviewSnapshot.events.filter(e=>e.automatic===false&&!(e.kind==='birthday'&&!e.memberId)).length+' gespeichert · '+reviewSnapshot.events.length+' Kalendereinträge (inkl. letzte 30 Tage) · '+reviewSnapshot.events.filter(e=>e.approved&&e.kind==='probe').length+' Probetermine freigegeben.'+(cal.stale?' Kalender derzeit nicht aktuell bestätigt.':'');
   }catch(e){if(version===calendarGeneration){$('review-status').textContent=e.message;$('review-auto').disabled=true;$('review-load').hidden=false;}}finally{if(version===calendarGeneration)reviewLoading=false;}
  }
  function qrLoading(active){const button=$('show-qr');button.disabled=active||busy;button.classList.toggle('is-loading',active);button.setAttribute('aria-busy',String(active));button.textContent=active?'Portal-Code wird vorbereitet …':'Persönlichen Portal-Code anzeigen';}
