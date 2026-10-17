@@ -109,7 +109,7 @@
  // for six hours after the end so an ongoing iPad attendance session can
  // finish. Never remove recurring birthday assignments or the Google source.
  async function pruneFinishedEvents(env,cal,now=Date.now()){
-  const cutoff=now-6*3600000,currentEvents=new Map(cal.events.map(e=>[e.id,e]));
+  const cutoff=now-6*3600000,ruleCutoff=now-31*DAY,currentEvents=new Map(cal.events.map(e=>[e.id,e]));
   const expired=cal.events.filter(e=>e.kind!=='birthday'&&Number.isFinite(e.end)&&e.end<=cutoff).slice(0,100);
   const obsoleteIds=new Set(expired.map(e=>e.id));
   const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();
@@ -120,8 +120,8 @@
     if(!rule||rule.kind==='birthday')continue; // Series-wide birthdays remain valid for coming years.
     // A moved event keeps its identity; its current end supersedes the saved expiry.
     const expiresAt=currentEvents.has(id)?currentEvents.get(id).end:rule.expiresAt;
-    if(obsoleteIds.has(id)||(Number.isFinite(expiresAt)&&expiresAt<=cutoff)){
-     obsoleteIds.add(id);delete rules[id];changed=true;
+    if(Number.isFinite(expiresAt)&&expiresAt<=ruleCutoff){
+     delete rules[id];changed=true;
     }
    }
    if(changed){
@@ -174,7 +174,7 @@
   const cal=await decorate(env,await (path==='/portal/reply'?cachedCalendar(env,300000):['/portal/list','/admin/portal/list','/portal/overview','/admin/portal/replies'].includes(path)?cachedCalendar(env):calendar(env)));
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
-   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,uncertainReplies:true,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
+   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version});return {...cal,uncertainReplies:true,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&e.end>Date.now()&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
   }
   if(path==='/admin/portal/list')return {...cal,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1};
   const event=cal.events.find(e=>e.id===data.eventId&&(e.approved&&e.kind==='probe')&&(admin||isRecipient(e,record.memberId)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
@@ -217,7 +217,7 @@
   const cal=await decorate(env,await cachedCalendar(env));
   // Only explicitly approved probe dates. Never expose member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
-   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&!Array.isArray(e.recipientIds)).map(e=>({
+   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()&&!Array.isArray(e.recipientIds)).map(e=>({
     id:e.id,title:e.sessionType==='Probe'?'Probe':'Sonderprobe',start:e.start,end:e.end,
     allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true
    }))};
