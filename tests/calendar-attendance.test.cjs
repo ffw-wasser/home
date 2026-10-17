@@ -95,3 +95,65 @@ test('Kalenderverwaltung besitzt Suche, Statusübersicht und faltbare technische
  assert.match(section,/class="portal-calendar-technical"/);
  assert.ok(section.indexOf('portal-calendar-workspace')<section.indexOf('portal-calendar-technical'));
 });
+
+
+test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche korrigieren',async()=>{
+ const f=fixture();
+ const members=[{id:'mitglied-1',lastName:'Muster',firstName:'Anna'},{id:'mitglied-2',lastName:'Beispiel',firstName:'Bernd'},{id:'mitglied-3',lastName:'Müller',firstName:'Clara'}];
+ f.c.oneDriveReadState=async()=>({members});
+ Object.assign(f.privateCal,{recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,rulesVersion:3});
+ Object.assign(f.privateCal.events[0],{automatic:false,kind:'probe',sessionType:'Probe',attendanceType:'Allgemeine Probe',clothing:'Einsatzkleidung',location:'GH Wasser',recipientIds:['mitglied-1'],approved:true});
+ f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;
+ await f.c.PortalAdmin.loadCalendar();
+ const cards=f.get('portal-admin-review-events').children,card=cards[0];
+ assert.equal(card.hidden,false,'Gespeicherte Proben sollen standardmäßig sichtbar sein');
+ assert.equal(f.get('portal-admin-member').children.length,4,'Kalender lädt die Mitglieder unabhängig vom QR-Menü');
+ const shortcut=card.children.find(n=>n.className==='portal-review-audience-action');
+ assert.ok(shortcut,'Mitglieder ändern auf der normalen Probe');
+ const summary=card.children.find(n=>n.className==='portal-review-audience');
+ assert.match(summary.textContent,/1 ausgewählte Mitglieder/);
+ shortcut.onclick();
+ const recipients=card.children.find(n=>n.className==='portal-recipient-choices');
+ assert.ok(recipients);assert.equal(recipients.hidden,false);
+ const mode=recipients.children[0],count=recipients.children[1],search=recipients.children[2],actions=recipients.children[3],list=recipients.children[5];
+ assert.equal(mode.value,'selected');assert.match(count.textContent,/1 von 3/);
+ assert.equal(list.children.length,3);
+ search.value='müller';search.oninput();
+ assert.equal(list.children[0].hidden,true);assert.equal(list.children[1].hidden,true);assert.equal(list.children[2].hidden,false);
+ actions.children[0].onclick();
+ assert.equal(list.children[2].children[0].checked,true);
+ assert.equal(list.children[1].children[0].checked,false);
+ assert.match(count.textContent,/2 von 3/);
+ assert.equal(card.dataset.state,'edited');
+ mode.value='all';mode.onchange();
+ assert.equal(list.hidden,true);assert.match(count.textContent,/Alle Mitglieder/);
+ mode.value='selected';mode.onchange();assert.equal(list.children[2].children[0].checked,true);
+});
+
+test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und bestätigt Antwort',async()=>{
+ const f=fixture(),members=[{id:'one',lastName:'Muster',firstName:'Anna'},{id:'two',lastName:'Beispiel',firstName:'Bernd'}];
+ f.c.oneDriveReadState=async()=>({members});
+ Object.assign(f.privateCal,{recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,rulesVersion:5});
+ Object.assign(f.privateCal.events[0],{automatic:false,kind:'probe',sessionType:'Probe',attendanceType:'Allgemeine Probe',clothing:'Einsatzkleidung',location:'GH Wasser',recipientIds:['one'],approved:true});
+ let payload=null;
+ const original=f.c.DrinksPush.request;
+ f.c.DrinksPush.request=async (connection,path,data)=>{
+  if(!path.endsWith('/classify'))return original(connection,path,data);
+  payload=data;f.privateCal.rulesVersion=6;
+  Object.assign(f.privateCal.events[0],{kind:data.kind,sessionType:data.sessionType,attendanceType:data.attendanceType,location:data.location,clothing:data.clothing,recipientIds:data.recipientIds,approved:data.approved,automatic:false});
+  return {recipientFeatureVersion:2,recipientIds:data.recipientIds,clothingVersion:1,locationVersion:1,attendanceTypeVersion:1};
+ };
+ f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;
+ await f.c.PortalAdmin.loadCalendar();
+ const card=f.get('portal-admin-review-events').children[0],shortcut=card.children.find(n=>n.className==='portal-review-audience-action');
+ shortcut.onclick();
+ const recipients=card.children.find(n=>n.className==='portal-recipient-choices'),list=recipients.children[5];
+ list.children[1].children[0].checked=true;list.children[1].children[0].onchange();
+ const save=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Einordnung speichern');
+ assert.ok(save);
+ await save.onclick();
+ assert.equal(payload.kind,'probe');assert.equal(payload.sessionType,'Probe');assert.equal(payload.attendanceType,'Allgemeine Probe');
+ assert.deepEqual(Array.from(payload.recipientIds),['one','two']);
+ assert.equal(f.privateCal.events[0].approved,true);
+});
+
