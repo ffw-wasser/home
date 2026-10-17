@@ -46,3 +46,23 @@ test('Unbestätigte Bestellung kann auch durch direkten Aufruf nicht geleert wer
 });
 
 test('Getränkekarte trennt Artikel, Gefäß und Größe; Essen hat keine Gebindezeile',async()=>{const f=fixture([{...catalog,items:[{...catalog.items[0],name:'Testwasser · Flasche · 0,5 l'},catalog.items[1]]}]);await f.load();const drink=card(f).children[0];assert.equal(drink.children[0].children[0].textContent,'Testwasser');assert.equal(drink.children[1].textContent,'Flasche · 0,5 l');const food=f.get('theater-phone-items').children[1].children[1].children[0].children[0];assert.equal(food.children.length,3);});
+
+test('Mobile Bestellübersicht korrigiert die Mengen vor dem Absenden',async()=>{
+ const f=fixture([catalog]);await f.load();
+ assert.equal(f.get('theater-phone-selection').hidden,true);
+ card(f).children[0].onclick();card(f).children[0].onclick();
+ assert.equal(f.get('theater-phone-selection').hidden,false);
+ assert.equal(f.get('theater-phone-selection-count').textContent,'2 Artikel');
+ let row=f.get('theater-phone-selection-items').children[0];
+ assert.equal(row.children[1].children[1].textContent,'2 ×');
+ row.children[1].children[0].onclick();
+ assert.equal(f.get('theater-phone-total').textContent,'1 Artikel · 1,50 €');
+ row=f.get('theater-phone-selection-items').children[0];
+ row.children[1].children[2].onclick();
+ assert.equal(f.get('theater-phone-total').textContent,'2 Artikel · 3,00 €');
+ row=f.get('theater-phone-selection-items').children[0];
+ row.children[1].children[0].onclick();
+ f.get('theater-phone-selection-items').children[0].children[1].children[0].onclick();
+ assert.equal(f.get('theater-phone-selection').hidden,true);
+ assert.equal(f.get('theater-phone-confirm').disabled,true);
+});
