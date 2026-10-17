@@ -206,3 +206,70 @@
  #settingsCalendarView #portal-admin-review-search{width:100%;max-width:none;flex-basis:100%}
  #settingsCalendarView .portal-review-filter select{width:100%;max-width:none}
 }
+
+
+/* Audience choice is independent from the type of approved calendar appointment. */
+#settingsCalendarView #portal-admin-review-events .portal-review-audience{
+  display:inline-flex;align-items:center;width:fit-content;max-width:100%;gap:7px;margin:5px 0 8px;
+  padding:7px 12px;background:#e8f1fa;border:1px solid #b8cfe4;border-radius:999px;
+  font-size:.92rem;font-weight:780;color:#174d77;line-height:1.3;overflow-wrap:anywhere
+}
+#settingsCalendarView #portal-admin-review-events .portal-review-audience[hidden],
+#settingsCalendarView #portal-admin-review-events .portal-review-audience-action[hidden]{display:none!important}
+#settingsCalendarView #portal-admin-review-events .portal-review-audience-action{
+  display:inline-flex;justify-content:center;align-items:center;min-height:44px;width:auto;
+  padding:10px 14px;border-radius:11px;border:1px solid #2875b0;background:#e3f3ff;
+  color:#134a79;font-size:.94rem;font-weight:820;white-space:normal;margin:9px 9px 0 0
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-heading{
+  display:flex;flex-direction:column;gap:5px;font-size:1.04rem;color:#19466f;
+  margin:15px 0 8px
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-heading small{
+  font-size:.87rem;font-weight:520;line-height:1.4;color:#45627a
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-choices{
+  display:flex;flex-direction:column;gap:9px;border:1px solid #acc7dd;border-radius:14px;
+  background:#f5f9fd;padding:clamp(11px,2vw,17px);margin:4px 0 17px
+}
+#settingsCalendarView #portal-admin-review-events .portal-audience-mode{
+  min-height:50px;font-weight:780;font-size:1rem;background:#fff
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-count{
+  margin:0!important;font-size:.95rem;font-weight:790;color:#1b547a
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-count[data-empty=true]{
+  color:#995421
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-missing{
+  margin:0;color:#8e4b1d;font-weight:680
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-actions{
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:0
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-actions button{
+  flex:1 1 185px;width:auto;min-height:44px;margin:0;border-radius:10px
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-list{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));
+  max-height:min(38dvh,330px);gap:4px 8px;padding:5px 2px;overflow:auto;
+  overscroll-behavior:contain
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-list label{
+  margin:0;display:flex;align-items:center;gap:10px;min-height:46px;padding:8px 10px;
+  border-radius:9px;border:1px solid #d1dde7;background:#fff;
+  color:#214561;font-weight:620;overflow-wrap:anywhere
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-list label:has(input:checked){
+  border-color:#428c65;background:#e6f6ec
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-list label[hidden]{
+  display:none!important
+}
+#settingsCalendarView #portal-admin-review-events .portal-recipient-list input[type=checkbox]{
+  flex:0 0 23px;width:23px;height:23px;min-height:23px;margin:0;accent-color:#216d47
+}
+@media(max-width:520px){
+ #settingsCalendarView #portal-admin-review-events .portal-recipient-list{grid-template-columns:minmax(0,1fr)}
+ #settingsCalendarView #portal-admin-review-events .portal-review-audience-action{width:100%;margin:7px 0}
+}
