@@ -646,6 +646,11 @@
 (function(g){
  'use strict';
  const date=value=>{if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return '';const d=new Date(value+'T12:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?value:'';};
+ // Edit month/year only; existing exact-day limits stay unchanged on unrelated saves.
+ const monthInput=value=>date(value).slice(0,7);
+ const monthEnd=value=>{if(typeof value!=='string'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(value))return '';const d=new Date(value+'-01T12:00:00Z');if(!Number.isFinite(d.getTime()))return '';d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);return d.toISOString().slice(0,10);};
+ const monthExpiry=(value,previous='')=>{const end=monthEnd(value);return end&&monthInput(previous)===value?date(previous)||end:end;};
+ const displayMonth=value=>{const valid=date(value);if(!valid)return '';return valid===monthEnd(valid.slice(0,7))?valid.slice(5,7)+'/'+valid.slice(0,4):valid.slice(8,10)+'.'+valid.slice(5,7)+'.'+valid.slice(0,4);};
  const day=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
  const months=value=>Number.isInteger(value)&&value>=1&&value<=36?value:12;
  function due(checked,interval=12){checked=date(checked);if(!checked)return '';const d=new Date(checked+'T12:00:00Z'),original=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months(interval));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(original,last));return d.toISOString().slice(0,10);}
@@ -665,7 +670,7 @@
   if(e.driver){let until=due(e.driver.checkedOn,e.driver.intervalMonths);const check=item('Führerscheinkontrolle',until,{checkedOn:e.driver.checkedOn,intervalMonths:e.driver.intervalMonths});if(e.driver.checkedOn>today){check.status='missing';check.invalidFuture=true;}groups.push({...group('Führerscheinkontrolle',[check]),vehicles:e.driver.vehicles});}
   return groups;
  }
- const api={date,day,months,due,breathingRelevant,g263Date,breathingAssessment,project,validate,assess};g.MemberEvidence=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
+ const api={date,day,monthInput,monthEnd,monthExpiry,displayMonth,months,due,breathingRelevant,g263Date,breathingAssessment,project,validate,assess};g.MemberEvidence=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(globalThis);
 
 (function(g){
@@ -824,7 +829,7 @@
   if(e.birthdayHint){const title=e.title.replace(/geburtstag|birthday|geb\.|🎂/gi,' ').replace(/\b(?:von|happy)\b/gi,' '),key=nameKey(title),matches=(roster?.members||[]).filter(m=>nameKey(m.name)===key);return {kind:'birthday',sessionType:null,memberId:matches.length===1?matches[0].id:null};}
   return {kind:'probe',sessionType:!/sonderprobe/i.test(e.title)&&/(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title)?'Probe':'Sonderprobe',memberId:null};
  }
- async function decorate(env,cal){const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');return {...cal,rulesVersion:row?.version||0,events:cal.events.map(e=>{const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null;return {...e,location:rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatz':'Tagdienst'):''),automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds:sessionType==='Sonderprobe'&&Array.isArray(rule?.recipientIds)?rule.recipientIds:null,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};})};}
+ async function decorate(env,cal){const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');return {...cal,rulesVersion:row?.version||0,events:cal.events.map(e=>{const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null;return {...e,location:rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:rule?.clothing==='Tagdienst'?'Tagesdienst':(rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatz':'Tagesdienst'):'')),automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds:sessionType==='Sonderprobe'&&Array.isArray(rule?.recipientIds)?rule.recipientIds:null,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};})};}
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
  function memberEvent(event){const {recipientIds,...visible}=event;return visible;}
  async function classify(env,data,cal,roster){
@@ -834,7 +839,8 @@
   if(data.clothing!==undefined&&(typeof data.clothing!=='string'||data.clothing.trim().length>120||/[\x00-\x1f\x7f]/.test(data.clothing)))fail('Bitte Kleidung als Text mit höchstens 120 Zeichen eingeben.',400);
   if(data.location!==undefined&&(typeof data.location!=='string'||!data.location.trim()||data.location.trim().length>300||/[\x00-\x1f\x7f]/.test(data.location)))fail('Bitte einen Ort mit 1 bis 300 Zeichen eingeben.',400);
   const location=data.location===undefined?(event.location||'GH Wasser'):data.location.trim();
-  const clothing=data.kind==='birthday'?'':data.clothing===undefined?(event.clothing??(targetType==='Probe'?'Einsatz':targetType==='Sonderprobe'?'Tagdienst':'')):data.clothing.trim();
+  const clothingInput=data.kind==='birthday'?'':data.clothing===undefined?(event.clothing??(targetType==='Probe'?'Einsatz':targetType==='Sonderprobe'?'Tagesdienst':'')):data.clothing.trim();
+  const clothing=clothingInput==='Tagdienst'?'Tagesdienst':clothingInput;
   const attendanceType=data.kind==='probe'?(data.attendanceType||event.attendanceType||(targetType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null;
   if(data.attendanceType!==undefined&&data.kind!=='probe')fail('Eine iPad-Terminart kann nur Proben und Sonderproben zugeordnet werden.',400);
   if(data.kind==='probe'&&!['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(attendanceType))fail('Ungültige iPad-Terminart.',400);
