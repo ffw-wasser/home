@@ -324,11 +324,34 @@ function addArchiveCorrectionMember(){
   byId("archiveCorrectionSearch").value="";byId("archiveCorrectionFilter").value="";
   filterArchiveCorrectionRows();byId("archiveCorrectionList").lastElementChild?.scrollIntoView({block:"nearest"});
 }
-function cancelArchiveCorrectionStep2(){
+function archiveCorrectionHasChanges(){
+  if(!archiveCorrectionState)return false;
+  const original=archiveCorrectionState.rows;
+  const date=byId("archiveCorrectionEditDate")?.value||"";
+  const topic=byId("archiveCorrectionEditTopic")?.value.trim()||"";
+  if(date!==(original[0]?.date||"")||topic!==String(archiveCorrectionState.item.topic||original[0]?.topic||"").trim())return true;
+  const cards=[...(byId("archiveCorrectionList")?.children||[])];
+  if(cards.length!==original.length)return true;
+  return cards.some((card,i)=>["name","status","role"].some(field=>{
+    const value=card.querySelector('[data-correction-field="'+field+'"]')?.value.trim()||"";
+    return field==="role"&&card.querySelector('[data-correction-field="status"]')?.value!=="Anwesend"?false:value!==String(original[i]?.[field]||"").trim();
+  }));
+}
+function clearArchiveCorrectionStep2(){
   archiveCorrectionState=null;
   byId("archiveCorrectionWorkspace")?.remove();
   byId("attendanceView")?.classList.remove("archive-correction-mode");
   setHomeFlowStage(1);
+}
+function archiveCorrectionBeforeView(viewId){
+  if(!archiveCorrectionState||!byId("attendanceView")?.classList.contains("archive-correction-mode")||viewId==="attendanceView")return true;
+  if(archiveCorrectionHasChanges()&&!confirm("Ungespeicherte Änderungen an der Archivkorrektur verwerfen?"))return false;
+  clearArchiveCorrectionStep2();
+  return true;
+}
+function cancelArchiveCorrectionStep2({saved=false}={}){
+  if(!saved&&archiveCorrectionHasChanges()&&!confirm("Korrektur ohne Speichern verlassen und Änderungen verwerfen?"))return;
+  clearArchiveCorrectionStep2();
   showView("settingsHistoryView");
 }
 async function saveArchiveCorrectionStep2(){
@@ -361,7 +384,7 @@ async function saveArchiveCorrectionStep2(){
     item.topic=topic;
     item.revisions=[...(item.revisions||[]),{changedAt:timestamp,reason:"Termin in Schritt 2 korrigiert",changedRows:rows.reduce((n,row,i)=>n+(JSON.stringify(row)===JSON.stringify(archiveCorrectionState.rows[i])?0:1),0)}];
     await persistArchiveCorrection(item,rows,correctedDate);
-    cancelArchiveCorrectionStep2();
+    cancelArchiveCorrectionStep2({saved:true});
     showToast("Korrigierter Originalbericht erfolgreich gespeichert.");
   }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
   finally{button.disabled=false;}
@@ -619,3 +642,5 @@ async function openHistoryPdf(id){
 
 
 
+
+window.ArchiveCorrection={beforeView:archiveCorrectionBeforeView};
