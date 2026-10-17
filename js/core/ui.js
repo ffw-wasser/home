@@ -42,6 +42,7 @@ function showView(viewId) {
   if(window.DrinksChallengeSettings?.beforeView(viewId)===false)return false;
   if(window.DrinksBirthdaySettings?.beforeView(viewId)===false)return false;
   if(window.DrinksRewards?.beforeView(viewId)===false)return false;
+  if(window.ArchiveCorrection?.beforeView(viewId)===false)return false;
   if(window.Usability?.beforeLeave(viewId)===false)return false;
   if(window.Drinks?.beforeView(viewId)===false)return false;
   if(viewId==="drinksView")lockAdministration();
