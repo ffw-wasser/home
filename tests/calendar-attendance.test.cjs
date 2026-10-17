@@ -157,3 +157,28 @@ test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und b
  assert.equal(f.privateCal.events[0].approved,true);
 });
 
+
+
+test('Herbstfest Sonderschule vom Vortag bleibt in Kalender-Einstellungen korrigierbar',async()=>{
+ const f=fixture(),now=Date.now();
+ Object.assign(f.privateCal,{recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,rulesVersion:2});
+ Object.assign(f.privateCal.events[0],{
+  id:'herbstfest-17-10-2026',title:'Herbstfest Sonderschule',
+  start:Date.parse('2026-10-17T16:00:00Z'),end:Date.parse('2026-10-17T19:00:00Z'),
+  kind:'probe',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',
+  approved:false,automatic:true,location:'GH Wasser'
+ });
+ f.init();await f.login();
+ f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;
+ await f.c.PortalAdmin.loadCalendar();
+ const card=f.get('portal-admin-review-events').children[0];
+ assert.ok(card,'Der gestrige Termin bleibt in der Verwaltungsliste.');
+ assert.match(card.children.find(n=>n.className==='portal-review-badge').textContent,/Vergangen/);
+ assert.equal(card.dataset.past,'true');
+ const edit=card.children.find(n=>n.className==='portal-review-edit-toggle');
+ assert.ok(edit);edit.onclick();
+ const kind=card.children.find(n=>n.tagName==='SELECT');
+ assert.equal(kind.hidden,false,'Auch ein bereits beendeter Termin kann einzeln korrigiert werden.');
+ assert.equal(f.get('portal-admin-review-auto').disabled,true,'Abgelaufene Termine dürfen keine Sammelfreigabe mehr auslösen.');
+ assert.ok(now>Date.parse('2026-10-17T19:00:00Z'));
+});
