@@ -27,6 +27,34 @@
   const pieces=Object.values(counts).reduce((sum,q)=>sum+Math.abs(q),0);
   $('total').textContent=(pieces?(cancellation?'Storno · ':'')+pieces+' Artikel · ':(cancellation?'Storno gesamt: ':'Gesamt: '))+M.money(event?event.items.reduce((n,p)=>n+p.cents*(counts[p.id]||0),0):0);
   $('discard').hidden=!pieces||!!pending;$('discard').disabled=busy||!!pending;
+  paintSelection(pieces);
+ }
+ function paintSelection(pieces){
+  const details=$('selection'),root=$('selection-items'),count=$('selection-count');
+  if(!details||!root)return;
+  details.hidden=!pieces;
+  if(!pieces){details.open=false;root.replaceChildren();return;}
+  if(count)count.textContent=pieces+' Artikel';
+  const chosen=event?.items.filter(p=>counts[p.id])||[];
+  root.replaceChildren();
+  for(const p of chosen){
+   const q=counts[p.id],row=node('div'),name=node('div'),controls=node('div'),minus=node('button','−'),plus=node('button','+');
+   row.className='theater-selection-row';name.className='theater-selection-name';controls.className='theater-selection-controls';
+   name.append(node('strong',p.name),node('small',M.money(p.cents*Math.abs(q))));
+   minus.type=plus.type='button';minus.className='theater-selection-minus';plus.className='theater-selection-plus';
+   minus.setAttribute('aria-label',p.name+': ein Stück aus der Auswahl entfernen');
+   plus.setAttribute('aria-label',p.name+': ein weiteres Stück vormerken');
+   minus.disabled=busy||!!pending;plus.disabled=busy||!!pending||Math.abs(q)>=99;
+   minus.onclick=()=>adjustSelection(p.id,-1);plus.onclick=()=>adjustSelection(p.id,1);
+   controls.append(minus,node('span',String(Math.abs(q))+' ×'),plus);row.append(name,controls);root.append(row);
+  }
+ }
+ function adjustSelection(id,delta){
+  if(busy||pending)return;const q=counts[id]||0;
+  if(!q||delta>0&&Math.abs(q)>=99)return;
+  const next=q+Math.sign(q)*delta;
+  if(next)counts[id]=next;else delete counts[id];
+  paint();try{remember();}catch(e){status(e.message);}
  }
  function changeMode(){if(busy||pending)return;if(selection()){status('Bitte zuerst die aktuelle Auswahl senden oder mit Minus auf null setzen. Danach kannst du den Modus wechseln.');return;}cancellation=!cancellation;paint();try{remember();}catch(e){status(e.message);}}
  function discard(){
