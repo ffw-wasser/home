@@ -74,6 +74,27 @@ test('Sonderprobe beschränkt Liste, Antworten, GF-Übersicht und Push auf ausge
  assert.equal((await f.c.PortalService.publicCalendar(f.env)).events.length,0);
 });
 
+test('Normale Probe kann nachträglich auf bestimmte Mitglieder begrenzt und erneut für alle freigegeben werden',async()=>{
+ const f=await fixture(),initial=(await f.call('list',{},null,true)).value,e=initial.events[0];
+ const ids=[f.people[0].memberId,f.people[1].memberId];
+ const save=await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',attendanceType:'Allgemeine Probe',approved:true,recipientIds:ids,expectedVersion:initial.rulesVersion},null,true);
+ assert.equal(save.status,200);
+ assert.equal(save.value.recipientFeatureVersion,2);
+ let list=(await f.call('list',{},null,true)).value;
+ assert.equal(list.events[0].sessionType,'Probe');
+ assert.deepEqual(Array.from(list.events[0].recipientIds),ids);
+ assert.equal((await f.call('list',{},f.people[2])).value.events.length,0);
+ assert.equal((await f.call('list',{},f.people[0])).value.events.length,1);
+ assert.equal((await f.c.PortalService.publicCalendar(f.env)).events.length,0);
+ const reopen=await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',attendanceType:'Allgemeine Probe',approved:true,recipientIds:null,expectedVersion:list.rulesVersion},null,true);
+ assert.equal(reopen.status,200);
+ list=(await f.call('list',{},null,true)).value;
+ assert.equal(list.events[0].sessionType,'Probe');
+ assert.equal(list.events[0].recipientIds,null);
+ assert.equal((await f.call('list',{},f.people[2])).value.events.length,1);
+ assert.equal((await f.c.PortalService.publicCalendar(f.env)).events.length,1);
+});
+
 test('Öffentlicher Kalender enthält nur neutrale freigegebene Termine und keine privaten Daten',async()=>{
  const f=await fixture(),r=await f.c.worker.fetch(new Request('https://test.example/calendar/public',{headers:{Origin:'https://ffw-wasser.github.io'}}),f.env);assert.equal(r.status,200);assert.equal(r.headers.get('Cache-Control'),'no-store');const data=await r.json();assert.equal(data.events.length,1);assert.ok(['Probe','Sonderprobe'].includes(data.events[0].title));assert.deepEqual(Object.keys(data.events[0]).sort(),['allDay','approved','attendanceType','end','id','kind','sessionType','start','title']);assert.ok(!JSON.stringify(data).includes('Testperson'));assert.ok(!JSON.stringify(data).includes('calendar.google.com'));assert.equal(data.rulesVersion,undefined);
  const forbidden=await f.c.worker.fetch(new Request('https://test.example/admin/portal/list',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),f.env);assert.equal(forbidden.status,401);
