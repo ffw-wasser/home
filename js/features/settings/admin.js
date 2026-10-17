@@ -65,13 +65,24 @@ function ensureProbeTopicDialog() {
   dialog.addEventListener("click",event=>{if(event.target===input||event.target.closest('label[for="probeTopicInput"]'))focusTopicInput();});
   input?.addEventListener("pointerdown",focusTopicInput,{passive:true});
 }
+function suggestedProbeTopic(){
+  if(sessionType==="Einsatz")return "";
+  const event=window.PortalAdmin?.selectedEvent?.();
+  if(!event||(event.kind&&event.kind!=="probe"))return "";
+  // A linked date must still be the date being closed, otherwise no unrelated topic is inserted.
+  const linkedDate=window.PortalAdmin?.selectedDate?.();
+  if(linkedDate&&currentProbeDate&&linkedDate!==currentProbeDate)return "";
+  const title=String(event.title||"").trim();
+  if(/^(?:allgemeine\\s+probe|probe|sonderprobe|unterricht|ausschuss\\s*sitzung|einsatz)$/i.test(title))return "";
+  return title.slice(0,300);
+}
 function openProbeTopicDialog() {
   ensureProbeTopicDialog();
   const dialog=byId("probeTopicDialog"), input=byId("probeTopicInput");
   byId("probeTopicError").hidden=true;
   const description=byId("probeTopicDescription");
   if(description)description.textContent=`Bitte das Thema der ${sessionType} eintragen. Das Thema erscheint in CSV, PDF und Archiv.`;
-  input.value=currentClosingTopic;
+  input.value=currentClosingTopic||suggestedProbeTopic();
   dialog.showModal();
   // iPadOS/Safari öffnet die Bildschirmtastatur nur zuverlässig, wenn focus()
   // noch innerhalb der auslösenden Benutzeraktion erfolgt.
