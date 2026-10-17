@@ -1,9 +1,9 @@
-name: Check application and evidence changes
+name: Check application changes
 on:
   push:
     branches:
       - main
-      - fix/android-install-month-evidence-20261017
+      - 'feature/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
           node-version: "22"
       - name: Validate JavaScript syntax
         run: |
-          for file in js/features/portal/member-evidence.js js/features/portal/portal-admin.js js/features/portal/portal-member.js js/features/attendance/attendance-controller.js js/features/settings/admin.js js/features/drinks/deckel-install.js js/features/drinks/deckel-manifest.js js/core/config.js cloudflare/push/portal.js cloudflare/push/worker.bundle.js; do
+          for file in js/features/portal/member-evidence.js js/features/portal/portal-admin.js js/features/portal/portal-member.js js/features/attendance/attendance-controller.js js/features/settings/admin.js js/features/drinks/deckel-install.js js/features/drinks/deckel-manifest.js js/features/drinks/deckel-challenge.js js/features/drinks/deckel-mobile.js js/core/config.js cloudflare/push/portal.js cloudflare/push/worker.bundle.js; do
             node --check "$file"
           done
       - name: Check bundled Cloudflare worker matches sources
