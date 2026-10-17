@@ -26,7 +26,7 @@ function breathingClearanceSummary(member){
   const missing=labels.filter(([,value])=>!value).map(([label])=>label);
   if(missing.length)return `fehlt: ${missing.join(", ")}`;
   const earliest=labels.reduce((lowest,current)=>!lowest||current[1]<lowest[1]?current:lowest,null);
-  return `früheste Gültigkeit: ${earliest[0]} bis ${earliest[1]}`;
+  return `früheste Gültigkeit: ${earliest[0]} bis ${MemberEvidence.displayMonth(earliest[1])}`;
 }
 function driverLicenseControlDue(member,date=systemToday()){const group=MemberEvidence.assess(MemberEvidence.project(member),Date.parse(date+"T12:00:00Z")).find(group=>group.title==="Führerscheinkontrolle");return !group?"not-machinist":group.status==="expired"?"overdue":group.status;}
 
