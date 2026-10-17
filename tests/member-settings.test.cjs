@@ -3,4 +3,14 @@ function fixture(){const messages=[],saved=[];const c=vm.createContext({members:
 function row(dates={}){const fields={'data-last-name':{value:'Fiktiv'},'data-first-name':{value:'Test'},'data-breathing-qualified':{checked:true},...Object.fromEntries(Object.entries(dates).map(([key,value])=>[key,{value}]))};return {querySelector:s=>fields[s.slice(1,-1)],querySelectorAll:()=>[]};}
 test('Neue Mitglieder erhalten weder Funktionen noch GF-Portalrechte automatisch',()=>{const f=fixture();f.c.addMember();assert.equal(f.c.members.length,1);assert.deepEqual([...f.c.members[0].roles],[]);assert.equal(f.c.members[0].breathingQualified,false);assert.equal(f.c.members[0].roles.includes('GF'),false);});
 test('G26.3 löschen behält andere Nachweise und erzeugt keinen Ersatz aus dem Sammeldatum',()=>{const f=fixture();f.c.members=[{id:'test-member',firstName:'Test',lastName:'Fiktiv',breathingQualified:true,g263ValidUntil:'2028-01-01',breathingClearanceUntil:'2028-01-01'}];f.c.updateMember('test-member',row({'data-agt-instruction-valid-until':'2028-03-01','data-ffi-valid-until':'2028-04-01'}));const m=f.c.members[0];assert.equal(m.g263ValidUntil,'');assert.equal(m.agtInstructionValidUntil,'2028-03-01');assert.equal(m.breathingClearanceUntil,'');assert.equal(m.breathingClearance,false);assert.equal(E.breathingAssessment(m,'2026-10-16').status,'missing');assert.equal(f.saved.length,1);});
-test('Ungültige Nachweisdaten verändern das Mitglied nicht teilweise',()=>{const f=fixture();f.c.members=[{id:'test-member',lastName:'Alt',firstName:'Test'}];const before=JSON.stringify(f.c.members);f.c.updateMember('test-member',row({'data-g263-valid-until':'2026-02-30'}));assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);assert.match(f.messages[0],/gültiges Nachweisdatum/);});
+test('Ungültige Nachweisdaten verändern das Mitglied nicht teilweise',()=>{const f=fixture();f.c.members=[{id:'test-member',lastName:'Alt',firstName:'Test'}];const before=JSON.stringify(f.c.members);f.c.updateMember('test-member',row({'data-g263-valid-until':'2026-13'}));assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);assert.match(f.messages[0],/gültigen Monat/);});
+
+test('Monatsgenaue Atemschutznachweise enden zum Monatsletzten; alte exakte Daten bleiben bei anderen Änderungen erhalten',()=>{
+ const f=fixture();f.c.members=[{id:'test-member',firstName:'Test',lastName:'Fiktiv',g263ValidUntil:'2028-03-12'}];
+ f.c.updateMember('test-member',row({'data-g263-valid-until':'2028-03','data-agt-instruction-valid-until':'2028-05','data-ffi-valid-until':'2028-02'}));
+ assert.equal(f.c.members[0].g263ValidUntil,'2028-03-12');
+ assert.equal(f.c.members[0].agtInstructionValidUntil,'2028-05-31');
+ assert.equal(f.c.members[0].ffiValidUntil,'2028-02-29');
+ f.c.updateMember('test-member',row({'data-g263-valid-until':'2028-06'}));
+ assert.equal(f.c.members[0].g263ValidUntil,'2028-06-30');
+});
