@@ -180,7 +180,7 @@ function updateMember(id, row) {
   const interval=Number(row.querySelector("[data-driver-license-interval]")?.value||12);
   if(!Number.isInteger(interval)||interval<1||interval>36)return showToast("Bitte ein Kontrollintervall von 1 bis 36 Monaten eingeben.","error");
   if(driverDate&&(!MemberEvidence.date(driverDate)||driverDate>systemToday()))return showToast("Bitte ein gültiges Datum der letzten Führerscheinkontrolle bis heute eingeben.","error");
-  for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.date(value))return showToast("Bitte ein gültiges Nachweisdatum eingeben.","error");}
+  for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.monthEnd(value))return showToast("Bitte einen gültigen Monat und ein Jahr für den Nachweis eingeben.","error");}
   window.Usability?.savedMember(row);
   member.lastName = lastName;
   member.firstName = firstName;
@@ -190,10 +190,10 @@ function updateMember(id, row) {
   member.atueQualified = Boolean(row.querySelector("[data-atue-qualified]")?.checked);
   member.breathingQualified = Boolean(row.querySelector("[data-breathing-qualified]")?.checked);
   member.driverLicenseIntervalMonths = interval;
-  member.g262ValidUntil = row.querySelector("[data-g262-valid-until]")?.value || "";
-  member.g263ValidUntil = row.querySelector("[data-g263-valid-until]")?.value || "";
-  member.agtInstructionValidUntil = row.querySelector("[data-agt-instruction-valid-until]")?.value || "";
-  member.ffiValidUntil = row.querySelector("[data-ffi-valid-until]")?.value || "";
+  member.g262ValidUntil = MemberEvidence.monthExpiry(row.querySelector("[data-g262-valid-until]")?.value || "",member.g262ValidUntil);
+  member.g263ValidUntil = MemberEvidence.monthExpiry(row.querySelector("[data-g263-valid-until]")?.value || "",member.g263ValidUntil);
+  member.agtInstructionValidUntil = MemberEvidence.monthExpiry(row.querySelector("[data-agt-instruction-valid-until]")?.value || "",member.agtInstructionValidUntil);
+  member.ffiValidUntil = MemberEvidence.monthExpiry(row.querySelector("[data-ffi-valid-until]")?.value || "",member.ffiValidUntil);
   const breathingDates=[member.g263ValidUntil,member.agtInstructionValidUntil,member.ffiValidUntil];
   member.breathingClearance = hasValidBreathingClearance(member,systemToday());
   member.breathingClearanceUntil = breathingDates.every(Boolean)?breathingDates.slice().sort()[0]:"";
