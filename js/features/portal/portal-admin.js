@@ -77,9 +77,9 @@
     const initialLocation=e.location||'GH Wasser';locationChoice.value=initialLocation==='GH Wasser'?'GH Wasser':'custom';locationText.value=locationChoice.value==='custom'?initialLocation:'';locationLabel.append(locationChoice,locationText);
     const clothingLabel=node('label','Kleidung'),clothing=node('select'),clothingText=node('input');
     clothing.className=clothingText.className='text-input';clothing.setAttribute('aria-label','Kleidung für diesen Termin');clothingText.setAttribute('aria-label','Kleidung als Freitext');clothingText.maxLength=120;clothingText.placeholder='Eigene Kleidungsangabe';
-    const outfits=['Einsatz','Tagesdienst','Uniform','T-Shirt/ Fest','Zivil'];
+    const outfits=['Einsatzkleidung','Tagesdienst','Uniform','T-Shirt/ Fest','Zivil'];
     for(const [value,label] of [['','Keine Angabe'],...outfits.map(v=>[v,v]),['custom','Freitext']]){const o=node('option',label);o.value=value;clothing.append(o);}
-    const savedClothing=e.clothing??(kind.value==='probe'?'Einsatz':kind.value==='special'?'Tagesdienst':'');const initialClothing=savedClothing==='Tagdienst'?'Tagesdienst':savedClothing;
+    const savedClothing=e.clothing??(kind.value==='probe'?'Einsatzkleidung':kind.value==='special'?'Tagesdienst':'');const initialClothing=savedClothing==='Tagdienst'?'Tagesdienst':savedClothing==='Einsatz'?'Einsatzkleidung':savedClothing;
     clothing.value=outfits.includes(initialClothing)?initialClothing:initialClothing?'custom':'';clothingText.value=clothing.value==='custom'?initialClothing:'';
     let clothingEdited=false;clothingLabel.append(clothing,clothingText);
     const approvalLabel=node('label'),approval=node('input');approval.type='checkbox';approval.checked=e.approved;approvalLabel.append(approval,node('span',' Für Anmeldung und Erinnerungen freigeben'));
