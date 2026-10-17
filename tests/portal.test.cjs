@@ -194,3 +194,16 @@ test('Kleidung: Vorgaben, Auswahl und Freitext bleiben im persönlichen Kalender
  f.raw(calendar([event(f.start,'Probe').replace('UID:test-event','UID:new-probe')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
  cal=(await f.call('list',{},null,true)).value;assert.equal(cal.events[0].clothing,'Einsatz');
 });
+
+test('Ort: GH Wasser als Vorgabe, bestehender Kalenderort und individuelle Speicherung',async()=>{
+ const f=await fixture();let cal=(await f.call('list',{},null,true)).value;const id=cal.events[0].id;
+ assert.equal(cal.locationVersion,1);assert.equal(cal.events[0].location,'GH Wasser');
+ async function save(extra){cal=(await f.call('list',{},null,true)).value;return f.call('classify',{eventId:id,kind:'probe',approved:true,expectedVersion:cal.rulesVersion,...extra},null,true);}
+ assert.equal((await save({location:'  Treffpunkt Testplatz  '})).status,200);
+ assert.equal((await f.call('list')).value.events[0].location,'Treffpunkt Testplatz');
+ await save({clothing:'Uniform'});assert.equal((await f.call('list')).value.events[0].location,'Treffpunkt Testplatz');
+ for(const location of ['',42,'x'.repeat(301),'Ort\nZeile'])assert.equal((await save({location})).status,400);
+ await save({location:'GH Wasser'});assert.equal((await f.call('list')).value.events[0].location,'GH Wasser');
+ f.raw(calendar([event(f.start,'Probe','LOCATION:Anderer Treffpunkt').replace('UID:test-event','UID:location-event')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
+ cal=(await f.call('list',{},null,true)).value;assert.equal(cal.events[0].location,'Anderer Treffpunkt');
+});

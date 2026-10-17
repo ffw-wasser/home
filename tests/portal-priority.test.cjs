@@ -41,12 +41,12 @@ test('Benachrichtigungslink scrollt weiterhin direkt zum beantworteten Termin',(
 });
 test('Nur der erste Termin erhält eine Überschrift, unsichere Antwort bleibt als eigene Karte sichtbar',()=>{
  const f=fixture(),now=Date.now();f.c.paint({uncertainReplies:true,events:[event('next',now+10000,'maybe'),event('later',now+20000)]});
- assert.equal(f.events.querySelectorAll('h2').length,1);assert.equal(f.events.children[0].children[0].textContent,'Nächster Termin');
- const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelector('strong').textContent,'Gesehen · noch unsicher');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'Noch unsicher');
+ assert.equal(f.events.querySelectorAll('span').filter(n=>n.textContent==='Nächster Termin').length,1);
+ const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelectorAll('strong').find(n=>n.className.startsWith('portal-answer')).textContent,'Gesehen · noch unsicher');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'✓ Noch unsicher');
 });
 test('Kurze Beschriftung der Rückmeldeübersicht behält die Gruppenführer-Berechtigung',()=>{
  const f=fixture(),events=[event('next',Date.now()+10000)];f.c.paint({events,leader:false});assert.equal(f.events.querySelectorAll('details').length,0);
- f.c.paint({events,leader:true});assert.equal(f.events.querySelector('summary').textContent,'Rückmeldungen ansehen');
+ f.c.paint({events,leader:true});assert.equal(f.events.querySelectorAll('button').find(n=>n.className==='portal-overview-open').textContent,'Rückmeldungen ansehen');
 });
 
 test('Nachweishinweis zeigt nur Handlungsbedarf und kennzeichnet einen nicht bestätigten Datenstand',()=>{
@@ -54,7 +54,7 @@ test('Nachweishinweis zeigt nur Handlungsbedarf und kennzeichnet einen nicht bes
  f.c.evidencePriority([{items:[{label:'G26.3',status:'expired',until:'2020-01-01'},{label:'FFI',status:'missing'},{label:'Unterweisung AGT',status:'soon',until:'2026-11-01'}]}]);assert.equal(box.hidden,false);assert.equal(box.dataset.state,'expired');assert.equal(content.children.length,3);assert.match(content.children[0].textContent,/Abgelaufen/);assert.match(content.children[1].textContent,/fehlt/);assert.match(content.children[2].textContent,/Bald fällig/);
  f.c.evidencePriority([],'Stand nicht bestätigt');assert.equal(box.dataset.state,'unknown');assert.equal(content.children.length,1);assert.equal(content.children[0].textContent,'Stand nicht bestätigt');f.c.evidencePriority([]);assert.equal(box.hidden,true);assert.equal(content.children.length,0);
 });
-test('Laufende Termine zeigen keine wirkungslosen Rückmeldeaktionen mehr',()=>{const f=fixture(),now=Date.now();f.c.paint({events:[event('running',now-1000)]});assert.equal(f.events.querySelector('article').querySelectorAll('button').filter(b=>b.dataset.reply).length,0);assert.match(f.events.querySelector('strong').textContent,/geschlossen/);});
+test('Laufende Termine zeigen keine wirkungslosen Rückmeldeaktionen mehr',()=>{const f=fixture(),now=Date.now();f.c.paint({events:[event('running',now-1000)]});assert.equal(f.events.querySelector('article').querySelectorAll('button').filter(b=>b.dataset.reply).length,0);assert.match(f.events.querySelectorAll('strong').find(n=>n.className.startsWith('portal-answer')).textContent,/geschlossen/);});
 
 test('Fehlender Abgleich und Abruffehler werden im Überblick sichtbar, alte Nachweise bleiben beim Fehler erhalten',async()=>{
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());
@@ -95,4 +95,19 @@ test('Nachweise erscheinen vollständig als sichtbare Karten; fällige Gruppen s
  const area=f.nodes.get('portal-evidence-details'),sections=area.children.filter(n=>n.tagName==='section');assert.equal(sections.length,2);assert.equal(sections[0].dataset.group,'Führerscheinkontrolle');assert.equal(area.querySelectorAll('details').length,0);assert.equal(area.querySelectorAll('article').length,2);
  const paragraphs=area.querySelectorAll('p').map(n=>n.textContent);assert.ok(paragraphs.some(t=>/Abgelaufen am 01.01.2020/.test(t)));assert.ok(paragraphs.some(t=>/Letzte Kontrolle: 01.01.2019/.test(t)));assert.ok(paragraphs.some(t=>/Kontrollintervall: 12 Monate/.test(t)));assert.ok(paragraphs.some(t=>/LF · TSF/.test(t)));assert.ok(paragraphs.includes('Keine zusätzliche G26.2 erforderlich.'));
  assert.ok(area.querySelectorAll('span').some(n=>n.textContent==='× Abgelaufen'));assert.ok(area.querySelectorAll('span').some(n=>n.textContent==='✓ Gültig'));assert.equal(sections[0].querySelectorAll('h4').length,0);assert.equal(f.nodes.get('portal-priority').dataset.state,'expired');
+});
+
+test('Terminkarte ordnet Thema vor Datum an und zeigt Ort und Kleidung kompakt',()=>{
+ const f=fixture();f.c.paint({events:[{...event('test',Date.now()+60000),title:'Technische Hilfe',location:'GH Wasser',clothing:'Einsatz'}]});
+ const info=f.events.querySelector('article').children[0];
+ assert.equal(info.children[0].className,'portal-event-badges');assert.equal(info.children[1].tagName,'h3');assert.equal(info.children[1].textContent,'Technische Hilfe');assert.equal(info.children[2].className,'portal-event-date');
+ const rows=info.children.filter(n=>n.className==='portal-event-meta');assert.deepEqual(rows.map(n=>n.children[1].textContent),['GH Wasser','Einsatz']);
+});
+test('Rückmeldungsdialog bleibt getrennt und verwirft verspätete Antworten nach Schließen',async()=>{
+ const body=new Node(),make=(tag,text)=>{const n=new Node(tag,text);n.addEventListener=()=>{};n.showModal=()=>{n.open=true;};n.close=()=>{n.open=false;};return n;};
+ let resolve;const c=vm.createContext({node:make,document:{body},generation:1,g:{},api:()=>new Promise(r=>resolve=r)});
+ vm.runInContext(source.slice(source.indexOf(' let overviewDialog='),source.indexOf(' function paint(')),c);
+ const first=c.showOverview({id:'test',title:'Testprobe'}),dialog=body.children[0];assert.equal(dialog.open,true);c.closeOverview();resolve({members:[{status:'yes',name:'Testperson'}]});await first;assert.equal(dialog.open,false);assert.equal(dialog.querySelectorAll('h3').length,0);
+ const second=c.showOverview({id:'test',title:'Testprobe'});resolve({members:[{status:'yes',name:'Testperson'}]});await second;
+ assert.equal(body.children.length,1);assert.equal(dialog.querySelectorAll('h3')[0].textContent,'Zugesagt (1)');assert.ok(dialog.querySelectorAll('p').some(n=>n.textContent==='Testperson'));
 });
