@@ -1,6 +1,6 @@
 /* iPad administration and attendance projection. RSVP never creates attendance records. */
 (function(g){
- 'use strict';const VIEW='settingsPortalView',CALENDAR='settingsCalendarView',$=id=>document.getElementById(id==='status'&&!document.getElementById(CALENDAR).hidden?'portal-calendar-admin-status':'portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,attendanceRefreshPending=false,attendanceAccess=null,attendanceEpoch=0,manual=null,rosterKey=null,rosterBusy=false,rosterStatus={kind:"pending",text:"Mitglieder noch nicht mit dem Handyportal abgeglichen."},rosterSyncedAt=null,rosterResyncRequested=false,calendarGeneration=0,reviewLoading=false,reviewLastLoad=0,reviewSnapshot=null,reviewShowSaved=false,reviewEdited=new Set(),reviewFilter='all',reviewQuery='',reviewOpen=new Set();
+ 'use strict';const VIEW='settingsPortalView',CALENDAR='settingsCalendarView',$=id=>document.getElementById(id==='status'&&!document.getElementById(CALENDAR).hidden?'portal-calendar-admin-status':'portal-admin-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};let generation=0,busy=false,list=[],selected=null,manualNoCalendar=false,replyData=null,lastLoad=0,loading=false,attendanceRefreshPending=false,attendanceAccess=null,attendanceEpoch=0,manual=null,rosterKey=null,rosterBusy=false,rosterStatus={kind:"pending",text:"Mitglieder noch nicht mit dem Handyportal abgeglichen."},rosterSyncedAt=null,rosterResyncRequested=false,calendarGeneration=0,reviewLoading=false,reviewLastLoad=0,reviewSnapshot=null,reviewShowSaved=false,reviewEdited=new Set(),reviewFilter='all',reviewQuery='',reviewOpen=new Set(),reviewPinned=new Set();
  const date=e=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',...(e.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(e.start));
  function admin(){if(!requireAdmin(!document.getElementById(CALENDAR).hidden?CALENDAR:VIEW))throw Error('Bitte die Administration entsperren.');}
  const PUBLIC_ORIGIN_KEY='h2o_calendar_public_origin';
@@ -51,7 +51,7 @@
   $('review-filter').value=reviewFilter;
   let shown=0;
   for(const card of $('review-events').children){
-   card.hidden=(!reviewShowSaved&&card.dataset.saved==='true')||(reviewFilter!=='all'&&card.dataset.category!==reviewFilter)||(reviewQuery&&!String(card.dataset.search||'').includes(reviewQuery));
+   card.hidden=(!reviewShowSaved&&card.dataset.saved==='true'&&!reviewPinned.has(card.dataset.eventId))||(reviewFilter!=='all'&&card.dataset.category!==reviewFilter)||(reviewQuery&&!String(card.dataset.search||'').includes(reviewQuery));
    if(!card.hidden)shown++;
   }
   $('review-filter-count').textContent=shown+' von '+(reviewSnapshot?.events?.length||0)+' Kalendereinträgen angezeigt';
@@ -71,8 +71,8 @@
  async function acceptAutomatic(){
   const candidates=automaticCandidates();
   if(!candidates.length||reviewSnapshot?.stale||reviewEdited.size)return;
-  const probes=candidates.filter(e=>e.kind==='probe'),birthdays=candidates.filter(e=>e.kind==='birthday');
-  const message='Sammelübernahme bestätigen?\\n\\n'+probes.length+' Proben/Sonderproben werden zur Anmeldung und Erinnerung freigegeben.'+(birthdays.length?'\\n'+birthdays.length+' eindeutige Geburtstage werden zugeordnet.':'')+'\\n\\nSonderproben ohne individuelle Empfängerauswahl gelten für alle Mitglieder. Einzelne Termine kannst du zuvor separat bearbeiten.';
+  const probes=candidates.filter(e=>e.kind==='probe'),birthdays=candidates.filter(e=>e.kind==='birthday'),others=candidates.filter(e=>!['probe','birthday'].includes(e.kind));
+  const message='Sammelübernahme bestätigen?\\n\\n'+probes.length+' Proben/Sonderproben werden zur Anmeldung und Erinnerung freigegeben.'+(birthdays.length?'\\n'+birthdays.length+' eindeutige Geburtstage werden zugeordnet.':'')+(others.length?'\\n'+others.length+' sonstige Einträge werden ohne Anmeldung eingeordnet.':'')+'\\n\\nSonderproben ohne individuelle Empfängerauswahl gelten für alle Mitglieder. Einzelne Termine kannst du zuvor separat bearbeiten.';
   if(!confirm(message))return;
   return run(async()=>{const version=calendarGeneration;if(!candidates.length||reviewSnapshot.stale||reviewEdited.size)return;let expectedVersion=reviewSnapshot.rulesVersion,count=0,error='';try{for(const e of candidates){if(version!==calendarGeneration)throw Error('Ansicht wurde geändert. Bitte neu laden.');admin();$('review-status').textContent='Automatische Einordnungen werden gespeichert: '+count+' / '+candidates.length+' …';const result=await request('classify',{eventId:e.id,kind:e.kind,approved:e.kind==='probe',...(e.kind==='probe'?{sessionType:e.sessionType||'Sonderprobe'}:{memberId:e.memberId}),expectedVersion});expectedVersion=result.version;count++;}}catch(e){error=e.message;}lastLoad=0;if(version!==calendarGeneration)return;await reviewCalendar();$('review-status').textContent=count+' Einordnungen übernommen. Die angezeigte Terminart wurde verarbeitet. '+(error?'Weitere Einträge nicht bestätigt: '+error:'Ungeklärte Geburtstage bleiben offen.');});}
  async function reviewCalendar({automatic=false}={}){
@@ -80,15 +80,17 @@
   const version=++calendarGeneration;reviewLoading=true;$('review-load').hidden=true;try{admin();if(!automatic)$('review-status').textContent='Kalendereinträge werden geladen …';const cal=await request('list');if(version!==calendarGeneration||automatic&&reviewEdited.size)return;admin();reviewLastLoad=Date.now();$('review-load').hidden=!cal.stale;
    const upcoming=cal.events.filter(e=>Number.isFinite(e.end)&&e.end>Date.now());
    const previous=reviewSnapshot;
+   const pendingFirst=e=>e.kind==='birthday'&&!e.memberId||e.automatic!==false?0:1;
+   upcoming.sort((a,b)=>pendingFirst(a)-pendingFirst(b)||a.start-b.start);
    if(automatic&&previous&&previous.rulesVersion===cal.rulesVersion&&previous.stale===cal.stale&&JSON.stringify(previous.events.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic]))===JSON.stringify(upcoming.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic]))){
     reviewSnapshot={...cal,events:previous.events};reviewControls();return;
    }
    // Finished events no longer belong to the active H₂O calendar management.
    // The underlying Google calendar and the separately archived attendance
    // protocol are never changed here. Birthday series associations survive.
-   reviewSnapshot={...cal,events:upcoming.sort((a,b)=>{const pending=e=>e.kind==='birthday'&&!e.memberId||e.automatic!==false?0:1;return pending(a)-pending(b)||a.start-b.start;})};
+   reviewSnapshot={...cal,events:upcoming};
    reviewEdited.clear();$('review-events').replaceChildren();
-   for(const e of reviewSnapshot.events){const card=node('article');card.className='portal-event';card.dataset.category=calendarCategory(e);card.dataset.search=[e.title,e.location,date(e),e.sessionType,e.attendanceType,e.clothing].filter(Boolean).join(' ').toLocaleLowerCase('de');const unresolved=e.kind==='birthday'&&!e.memberId,saved=e.automatic===false&&!unresolved;card.dataset.saved=String(saved);card.dataset.state=unresolved?'unresolved':saved?'saved':'detected';const badge=node('p',unresolved?'Zuordnung prüfen':saved?'✓ Gespeichert'+(e.kind==='probe'&&e.sessionType==='Sonderprobe'?(Array.isArray(e.recipientIds)?' · '+e.recipientIds.length+' ausgewählte Mitglieder':' · Alle Mitglieder'):''):'Automatisch erkannt · noch nicht gespeichert');badge.className='portal-review-badge';const h=node('h4',date(e)+' · '+e.title),kind=node('select');
+   for(const e of reviewSnapshot.events){const card=node('article');card.className='portal-event';card.dataset.category=calendarCategory(e);card.dataset.eventId=e.id;card.dataset.search=[e.title,e.location,date(e),e.sessionType,e.attendanceType,e.clothing].filter(Boolean).join(' ').toLocaleLowerCase('de');const unresolved=e.kind==='birthday'&&!e.memberId,saved=e.automatic===false&&!unresolved;card.dataset.saved=String(saved);card.dataset.state=unresolved?'unresolved':saved?'saved':'detected';const badge=node('p',unresolved?'Zuordnung prüfen':saved?'✓ Gespeichert'+(e.kind==='probe'&&e.sessionType==='Sonderprobe'?(Array.isArray(e.recipientIds)?' · '+e.recipientIds.length+' ausgewählte Mitglieder':' · Alle Mitglieder'):''):'Automatisch erkannt · noch nicht gespeichert');badge.className='portal-review-badge';const h=node('h4',date(e)+' · '+e.title),kind=node('select');
     const meta=node('p',[e.sessionType||'Sonstiger Termin',e.location||'GH Wasser',e.clothing==='Einsatz'?'Einsatzkleidung':e.clothing].filter(Boolean).join(' · '));meta.className='portal-review-meta';
     let editing=reviewOpen.has(e.id),editButton=node('button');editButton.type='button';editButton.className='portal-review-edit-toggle';
     const quick=node('button','✓ Probe freigeben');quick.type='button';quick.className='portal-review-quick';
@@ -140,7 +142,7 @@
       const saved=await request('classify',data);
       if(restricted&&(saved.recipientFeatureVersion!==1||!Array.isArray(saved.recipientIds)||saved.recipientIds.length!==ids.length||!ids.every(id=>saved.recipientIds.includes(id))))throw Error('Der Cloudflare-Worker hat die Empfängerliste nicht bestätigt. Bitte Worker aktualisieren und Einordnung prüfen.');
       if(kind.value!=='birthday'&&saved.clothingVersion!==1)throw Error('Die Kleidung wurde vom Dienst nicht bestätigt. Bitte Kalender neu laden.');
-      admin();reviewShowSaved=true;lastLoad=0;await reviewCalendar();
+      admin();reviewPinned.add(e.id);reviewOpen.add(e.id);lastLoad=0;await reviewCalendar();
       const stored=reviewSnapshot?.events.find(item=>item.id===e.id);
       if(restricted&&!matches(stored))throw Error('Die Empfängerauswahl konnte nach dem Speichern nicht bestätigt werden. Bitte Kalender neu laden und Empfänger prüfen.');
       if(stored?.approved!==data.approved)throw Error('Die Freigabe für Anmeldung und Erinnerungen wurde nicht wie gewünscht übernommen. Bitte den Termin prüfen.');
@@ -173,7 +175,7 @@
   }catch(e){if(version===generation){clearQR();$('qr-status').textContent='Portal-Code konnte nicht geladen werden. '+e.message+' Bitte erneut versuchen.';}}
   finally{qrLoading(false);}
  });}
- function lock(){document.getElementById('portal-calendar-administration').hidden=true;document.getElementById('portal-calendar-admin-open').hidden=false;document.getElementById('portal-calendar-admin-status').textContent='';generation++;calendarGeneration++;reviewLoading=false;reviewLastLoad=0;reviewSnapshot=null;$('review-load').hidden=true;reviewEdited.clear();reviewOpen.clear();reviewQuery='';if($('review-search'))$('review-search').value='';$('review-auto').disabled=true;$('calendar-status').textContent='';$('review-events').replaceChildren();$('review-status').textContent='';clearQR();$('calendar').value='';$('member').replaceChildren();document.getElementById('portal-admin-status').textContent='';}
+ function lock(){document.getElementById('portal-calendar-administration').hidden=true;document.getElementById('portal-calendar-admin-open').hidden=false;document.getElementById('portal-calendar-admin-status').textContent='';generation++;calendarGeneration++;reviewLoading=false;reviewLastLoad=0;reviewSnapshot=null;$('review-load').hidden=true;reviewEdited.clear();reviewOpen.clear();reviewPinned.clear();reviewQuery='';if($('review-search'))$('review-search').value='';$('review-auto').disabled=true;$('calendar-status').textContent='';$('review-events').replaceChildren();$('review-status').textContent='';clearQR();$('calendar').value='';$('member').replaceChildren();document.getElementById('portal-admin-status').textContent='';}
  function chosen(){const linked=safeStorage.getItem('h2o_calendar_session');if(linked)try{const v=JSON.parse(linked);if(v.session===currentSessionId&&v.session)return v.event;}catch{}return selected;}
  async function replies(){const id=chosen();if(!id){replyData=null;paintReplies();return;}replyData=null;paintReplies();const result=await request('replies',{eventId:id});if(chosen()!==id)return;replyData=result;paintReplies();}
  function replyCandidates(){
