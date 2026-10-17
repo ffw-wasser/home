@@ -47,3 +47,50 @@ test('Bewusst spontaner Termin bleibt nach automatischem Kalenderabruf ohne Kale
 test('Laufende Erfassung kann durch spontane Auswahl nicht vom Kalender getrennt werden',async()=>{
  const f=fixture();await f.login();f.c.currentSessionId='test-session';f.c.PortalAdmin.sessionStarted();assert.equal(f.c.PortalAdmin.useSpontaneous(),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');
 });
+
+
+test('Kalenderkarten öffnen ihre Bearbeitung erst auf Wunsch; Kleiderwechsel folgt Probe/Sonderprobe',async()=>{
+ const f=fixture();f.init();await f.login();
+ f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ const card=f.get('portal-admin-review-events').children[0];
+ const kind=card.children.find(n=>n.tagName==='SELECT');
+ const edit=card.children.find(n=>n.className==='portal-review-edit-toggle');
+ assert.ok(edit);assert.equal(kind.hidden,true);
+ edit.onclick();assert.equal(kind.hidden,false);
+ assert.equal(edit.attrs?.['aria-expanded']??edit.attributes?.['aria-expanded'],undefined);
+ const clothingLabel=card.children.find(n=>n.tagName==='LABEL'&&n.textContent==='Kleidung');
+ assert.ok(clothingLabel);
+ const clothing=clothingLabel.children[0];
+ clothing.value='Einsatzkleidung';kind.value='special';kind.onchange();
+ assert.equal(clothing.value,'Tagesdienst');
+ kind.value='probe';kind.onchange();
+ assert.equal(clothing.value,'Einsatzkleidung');
+ assert.equal(card.dataset.state,'edited');
+ edit.onclick();assert.equal(kind.hidden,true);
+ assert.equal(card.dataset.state,'edited','Zusammenklappen verwirft keine Änderungen');
+});
+
+test('Identische automatische Kalender-Aktualisierung ersetzt keine angezeigten Karten',async()=>{
+ const f=fixture();f.init();await f.login();
+ f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ const area=f.get('portal-admin-review-events'),card=area.children[0];
+ const Base=Date;f.c.Date=class extends Base{static now(){return Base.now()+90000;}};
+ f.intervals[0]();await new Promise(setImmediate);
+ assert.equal(area.children[0],card,'Keine springenden Eingabefelder bei unverändertem Kalender');
+});
+
+test('Sammelfreigabe darf nach Abbrechen der Vorschau keine Kalenderregeln schreiben',async()=>{
+ const f=fixture();f.privateCal.events[0].automatic=true;f.init();await f.login();
+ f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ let requested=false;f.c.confirm=()=>{requested=true;return false;};
+ const prior=f.requests.length;
+ await f.get('portal-admin-review-auto').onclick();
+ assert.equal(requested,true);assert.equal(f.requests.length,prior);
+});
+
+test('Kalenderverwaltung besitzt Suche, Statusübersicht und faltbare technische Einrichtung',()=>{
+ const html=fs.readFileSync('index.html','utf8'),section=html.slice(html.indexOf('id="settingsCalendarView"'),html.indexOf('id="adminLoginView"'));
+ for(const id of ['portal-admin-review-search','portal-admin-review-summary','portal-admin-review-filter','portal-admin-review-events'])assert.ok(section.includes('id="'+id+'"'),id);
+ assert.match(section,/class="portal-calendar-technical"/);
+ assert.ok(section.indexOf('portal-calendar-workspace')<section.indexOf('portal-calendar-technical'));
+});
