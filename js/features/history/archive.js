@@ -368,7 +368,7 @@ async function saveArchiveCorrectionStep2(){
     const name=card.querySelector('[data-correction-field="name"]').value.trim();
     const status=card.querySelector('[data-correction-field="status"]').value;
     const fieldRole=card.querySelector('[data-correction-field="role"]').value.trim();
-    const role=status==="Anwesend"?(item.sessionType==="Allgemeine Probe"?fieldRole:(fieldRole||({Sonderprobe:"Anwesend",Unterricht:"Unterricht","Ausschuss Sitzung":"Ausschuss Sitzung"}[item.sessionType]||""))):"";
+    const role=status==="Anwesend"?(item.sessionType==="Allgemeine Probe"||original.status==="Anwesend"?fieldRole:(fieldRole||({Sonderprobe:"Anwesend",Unterricht:"Unterricht","Ausschuss Sitzung":"Ausschuss Sitzung"}[item.sessionType]||""))):"";
     if(!name)return showToast("Bitte für alle Personen einen Namen eintragen.","error");
     if(status==="Anwesend"&&item.sessionType==="Allgemeine Probe"&&!role&&correctionRolesForRow({...original,name}).length)return showToast("Bitte die Funktion von "+name+" ergänzen.","error");
     rows.push({...original,name,status,role,date:correctedDate,topic,sessionType:item.sessionType});
