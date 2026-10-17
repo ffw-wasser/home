@@ -107,11 +107,12 @@ test('Terminarten und Empfängerauswahl werden serverseitig validiert',async()=>
  for(const attendanceType of ['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz']){const current=(await f.call('list',{},null,true)).value;assert.equal((await f.call('classify',{...base,attendanceType,expectedVersion:current.rulesVersion},null,true)).status,200);assert.equal((await f.call('list',{},null,true)).value.events[0].attendanceType,attendanceType);}
 });
 
-test('Bereinigung bewahrt Rückmeldungen sechs Stunden und entfernt danach nur abgelaufene Regeln',async()=>{
+test('Bereinigung entfernt Rückmeldungen nach sechs Stunden, erhält Kalender-Korrekturen 31 Tage',async()=>{
  const f=await fixture(),e=(await f.call('list')).value.events[0];await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()});
  const rules=await f.sql.prepare('SELECT * FROM portal_rules WHERE id=1').get(),value=await f.L.open(f.env,rules.payload,'portal-rules');value['birthday-series']={kind:'birthday',memberId:'member-1'};await f.DB.prepare('UPDATE portal_rules SET payload=? WHERE id=1').bind(await f.L.seal(f.env,value,'portal-rules')).run();
  f.clock.now=e.end+6*3600000-1;await f.c.PortalService.scheduled(f.env);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,1);
- f.clock.now=e.end+6*3600000;await f.c.PortalService.scheduled(f.env);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,0);const after=await f.L.open(f.env,f.sql.prepare('SELECT payload FROM portal_rules WHERE id=1').get().payload,'portal-rules');assert.equal(after[e.id],undefined);assert.equal(after['birthday-series'].kind,'birthday');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledgers').get().n,0);
+ f.clock.now=e.end+6*3600000;await f.c.PortalService.scheduled(f.env);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,0);const after=await f.L.open(f.env,f.sql.prepare('SELECT payload FROM portal_rules WHERE id=1').get().payload,'portal-rules');assert.equal(after[e.id]?.kind,'probe','Vergangener Termin bleibt für nachträgliche Korrekturen erhalten');assert.equal(after['birthday-series'].kind,'birthday');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledgers').get().n,0);
+ f.clock.now=e.end+31*86400000;await f.c.PortalService.scheduled(f.env);const past=await f.L.open(f.env,f.sql.prepare('SELECT payload FROM portal_rules WHERE id=1').get().payload,'portal-rules');assert.equal(past[e.id],undefined);assert.equal(past['birthday-series'].kind,'birthday');
 });
 
 test('Verschobener Termin behält Freigabe und Rückmeldungen trotz alter gespeicherter Ablaufzeit',async()=>{
