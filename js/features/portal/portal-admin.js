@@ -160,6 +160,7 @@
       const ids=restricted?people.filter(check=>check.checked).map(check=>check.value):null;
       if(restricted&&!people.length)throw Error('Keine Mitglieder geladen. Bitte OneDrive synchronisieren und die Kalenderverwaltung erneut öffnen.');
       if(restricted&&!ids.length)throw Error('Bitte mindestens ein Mitglied für diesen Termin auswählen.');
+      if(restricted&&Array.isArray(e.recipientIds)&&e.recipientIds.some(id=>!people.some(check=>check.value===id)))throw Error('Bisherige Empfänger sind nicht vollständig in der Mitgliederliste vorhanden. Bitte Mitgliederabgleich prüfen, bevor du die Auswahl änderst.');
       // Read the live rule version before editing any targeted member audience.
       const latest=restricted?await request('list'):null;
       if(restricted&&(latest?.recipientFeatureVersion!==2&&!(kind.value==='special'&&latest?.recipientFeatureVersion===1))){
