@@ -43,7 +43,7 @@
     actions.forEach(remember);
     const mode = layout(), view = document.getElementById("attendanceView"), workspace = document.getElementById("attendanceSelectionWorkspace");
     const visible = view && !view.hidden && getComputedStyle(view).display !== "none";
-    const inStepTwo = visible && (view.classList.contains("workflow-stage-2") || (mode === "iphone" && workspace && !workspace.hidden && getComputedStyle(workspace).display !== "none"));
+    const inStepTwo = visible && !view.classList.contains("archive-correction-mode") && (view.classList.contains("workflow-stage-2") || (mode === "iphone" && workspace && !workspace.hidden && getComputedStyle(workspace).display !== "none"));
     if (mode) {
       const dock = dockFor(mode);
       actions.forEach(node => {if (node.parentNode !== dock) dock.appendChild(node);});
