@@ -180,9 +180,9 @@ test('Antworten warten nicht auf Google; ab fünf Minuten altem Kalender bleibt 
 test('Kleidung: Vorgaben, Auswahl und Freitext bleiben im persönlichen Kalender gespeichert',async()=>{
  const f=await fixture();
  let cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
- assert.equal(cal.clothingVersion,1);assert.equal(e.clothing,'Tagdienst');
+ assert.equal(cal.clothingVersion,1);assert.equal(e.clothing,'Tagesdienst');
  async function save(extra){cal=(await f.call('list',{},null,true)).value;return f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',approved:true,expectedVersion:cal.rulesVersion,...extra},null,true);}
- for(const clothing of ['Einsatz','Tagdienst','Uniform','T-Shirt/ Fest','Zivil','  Jacke mitbringen  ','']){
+ for(const clothing of ['Einsatz','Tagesdienst','Uniform','T-Shirt/ Fest','Zivil','  Jacke mitbringen  ','']){
   assert.equal((await save({clothing})).status,200);
   assert.equal((await f.call('list')).value.events[0].clothing,clothing.trim());
  }
