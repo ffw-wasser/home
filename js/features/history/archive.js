@@ -395,7 +395,9 @@ function archiveCorrectionLiveCaptureWarning(){
   // editing an existing report from the history view.
   const sessionId=String(currentSessionId||"");
   const operationId=String(currentOperationId||"");
-  const recorded=typeof todayEntries==="function"?todayEntries():(Array.isArray(entries)?entries.filter(row=>sessionId&&row.sessionId===sessionId||operationId&&row.operationId===operationId):[]);
+  const currentRows=typeof todayEntries==="function"?todayEntries():[];
+  const explicitRows=Array.isArray(entries)?entries.filter(row=>sessionId&&row.sessionId===sessionId||operationId&&row.operationId===operationId):[];
+  const recorded=currentRows.length?currentRows:explicitRows;
   if(recorded.length)return "Eine laufende Erfassung enthält bereits Anwesenheiten. Bitte diese zuerst abschließen oder bewusst abbrechen, bevor ein Archivbericht korrigiert wird.";
   if(pendingMemberStatuses?.size||chosenMemberIds?.size||chosenMemberId)return "In der laufenden Erfassung sind noch Personen ausgewählt oder Markierungen vorgemerkt. Bitte diese zuerst übernehmen oder die Erfassung abbrechen.";
   if(sessionId&&String(currentClosingTopic||"").trim())return "Für die laufende Erfassung ist bereits ein Thema vorbereitet. Bitte diese Erfassung zuerst abschließen oder abbrechen.";
