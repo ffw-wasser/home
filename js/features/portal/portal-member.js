@@ -18,7 +18,7 @@
   if(button){button.hidden=!uncertain;button.disabled=busy;}
  }
  function schedule(){clearTimeout(timer);if(visible&&!document.hidden&&(!document.getElementById('portal-page-terms')?.hidden||!document.getElementById('portal-page-evidence')?.hidden))timer=setTimeout(refresh,60000);}
- const evidenceDate=(value,medical=false)=>!value?'':medical?g.MemberEvidence.displayMonth(value):new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(value+'T12:00:00Z'));
+ const evidenceDate=(value,medical=false)=>!value?'':medical&&globalThis.MemberEvidence?.displayMonth?globalThis.MemberEvidence.displayMonth(value):new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(value+'T12:00:00Z'));
  const evidenceOrder={expired:0,missing:1,soon:2,valid:3};
  const evidenceItemLabel={valid:'✓ Gültig',soon:'! Bald fällig',expired:'× Abgelaufen',missing:'? Nachweis fehlt'};
  const evidenceLabel={valid:'✓ Alle hinterlegten Nachweise gültig',soon:'Bald fällig',expired:'Nachweis abgelaufen',missing:'Nachweis fehlt / Daten unvollständig'};
