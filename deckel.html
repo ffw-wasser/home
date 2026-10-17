@@ -75,11 +75,23 @@
       </details>
       <details class="phone-sync-info"><summary>Wann ist meine Buchung gespeichert?</summary><p id="phone-storage-note" class="note">Nach Bestätigung wird dein Konto aktualisiert.</p></details>
     </section></div>
-<div id="portal-page-points" class="portal-page" tabindex="-1" hidden><section id="portal-points" tabindex="-1" aria-labelledby="portal-points-heading"><h2 id="portal-points-heading" class="portal-page-heading">Treuepunkte &amp; Challenge</h2><section class="loyalty-card" aria-labelledby="loyalty-heading">
+<div id="portal-page-points" class="portal-page" tabindex="-1" hidden><section id="portal-points" tabindex="-1" aria-labelledby="portal-points-heading"><h2 id="portal-points-heading" class="portal-page-heading">Meine Treuepunkte</h2><section class="loyalty-card" aria-labelledby="loyalty-heading">
       <div class="loyalty-heading"><div><p id="loyalty-heading" class="loyalty-label">Deine Treuepunkte</p><p class="loyalty-slogan">Hier wird Treue flüssig.</p></div><strong id="points">0</strong></div>
       <progress id="loyalty-progress" aria-label="Geldbetrag bis zu den nächsten Treuepunkten" max="1" value="0"></progress><p id="bonus"></p><p id="deckel-challenge-points-note" class="challenge-points-note" hidden>Auch mit der Monats-Challenge kannst du zusätzliche Treuepunkte sammeln.</p>
       <details><summary>So kannst du Punkte einlösen</summary><p id="points-use" class="note"></p></details>
-    </section></section></div>
+    </section>
+    <section class="challenge-entry" aria-labelledby="challenge-entry-title">
+      <div class="challenge-entry-icon" aria-hidden="true">🚒</div>
+      <div class="challenge-entry-copy"><h3 id="challenge-entry-title">Monats-Challenge</h3><p>7 Fragen · 30 Minuten · Treuepunkte gewinnen</p></div>
+      <button id="challenge-open" type="button">Challenge öffnen <span aria-hidden="true">→</span></button>
+    </section>
+  </section></div>
+<div id="portal-page-challenge" class="portal-page" tabindex="-1" hidden>
+  <section id="portal-challenge" aria-labelledby="portal-challenge-heading">
+    <div class="challenge-topbar"><button id="challenge-back" type="button" class="secondary">← Zurück zu Punkten</button></div>
+    <header class="challenge-hero"><p>🚒 Feuerwehr-Wissen</p><h2 id="portal-challenge-heading">Meine Monats-Challenge</h2><p>Dein Wissen, sieben Fragen, ein Monatsbonus.</p></header>
+  </section>
+</div>
 <div id="portal-page-theater" class="portal-page" tabindex="-1" hidden><section id="theater-phone-section" class="theater theater-phone" data-no-swipe><header class="theater-phone-header"><h2 id="theater-phone-title">Theater</h2><button id="theater-phone-mode" type="button" aria-pressed="false">Storno</button><button type="button" id="theater-phone-close" aria-label="Bestellansicht schließen">×</button></header><p id="theater-phone-status" role="status" aria-live="polite"></p><button id="theater-phone-refresh" type="button" hidden>Erneut laden</button><div class="theater-order-tools"><input id="theater-phone-search" type="search" aria-label="Artikel suchen" placeholder="Artikel suchen …" autocomplete="off"></div><p id="theater-phone-mode-note" class="note"></p><nav id="theater-phone-categories" class="theater-category-nav" aria-label="Artikelrubriken"></nav><div id="theater-phone-items"></div><div class="theater-phone-footer"><div class="theater-order-summary"><strong id="theater-phone-total" aria-live="polite">Gesamt: 0,00 €</strong><button id="theater-phone-discard" type="button" hidden>Auswahl leeren</button></div><button id="theater-phone-confirm" class="theater-primary" type="button" disabled>Bestellung bestätigen</button></div></section></div>
 <div id="portal-page-more" class="portal-page" tabindex="-1" hidden><button type="button" id="theater-phone-open" class="theater-entry">Theater · Bestellung aufnehmen</button><details id="deckel-more" class="deckel-more" tabindex="-1"><summary>Buchungen &amp; Einstellungen</summary>    <details class="portal-notifications"><summary>Erinnerungen auf diesem Handy</summary><p id="portal-push-note"></p><button id="portal-push-enable" type="button">Erinnerungen erlauben</button><button id="portal-push-disable" type="button" class="secondary">Erinnerungen deaktivieren</button><p id="portal-push-status" role="status" aria-live="polite"></p></details>
       <details class="booking-history"><summary>Letzte Buchungen</summary><ol id="bookings"></ol></details>
