@@ -389,9 +389,24 @@ async function saveArchiveCorrectionStep2(){
   }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
   finally{button.disabled=false;}
 }
+function archiveCorrectionLiveCaptureWarning(){
+  // Session and operation IDs are allocated already when the selection screen
+  // opens. An unused ID is not a saved attendance record and must not block
+  // editing an existing report from the history view.
+  const sessionId=String(currentSessionId||"");
+  const operationId=String(currentOperationId||"");
+  const recorded=typeof todayEntries==="function"?todayEntries():(Array.isArray(entries)?entries.filter(row=>sessionId&&row.sessionId===sessionId||operationId&&row.operationId===operationId):[]);
+  if(recorded.length)return "Eine laufende Erfassung enthält bereits Anwesenheiten. Bitte diese zuerst abschließen oder bewusst abbrechen, bevor ein Archivbericht korrigiert wird.";
+  if(pendingMemberStatuses?.size||chosenMemberIds?.size||chosenMemberId)return "In der laufenden Erfassung sind noch Personen ausgewählt oder Markierungen vorgemerkt. Bitte diese zuerst übernehmen oder die Erfassung abbrechen.";
+  if(sessionId&&String(currentClosingTopic||"").trim())return "Für die laufende Erfassung ist bereits ein Thema vorbereitet. Bitte diese Erfassung zuerst abschließen oder abbrechen.";
+  // An operational report can contain data even before a person was entered.
+  if(operationId&&(currentOperationDraft||Object.keys(operationAssignments||{}).length||Object.keys(operationAssignmentRoles||{}).length||typeof restoreOperationDraft==="function"&&restoreOperationDraft()))return "Ein Einsatzbericht ist noch in Bearbeitung. Bitte den Entwurf zuerst abschließen oder bewusst abbrechen.";
+  return "";
+}
 function correctArchiveItem(id){
   if(!requireAdmin("settingsHistoryView"))return;
-  if(currentSessionId||currentOperationId)return showToast("Bitte zuerst die laufende Erfassung abschließen oder abbrechen, bevor ein Archivbericht korrigiert wird.","error");
+  const captureWarning=archiveCorrectionLiveCaptureWarning();
+  if(captureWarning)return showToast(captureWarning,"error");
   const item=csvArchive.find(entry=>entry.id===id);if(!item)return;
   const rows=archiveRowsFromContent(item.content);
   if(!rows.length)return showToast("Keine korrigierbaren Einträge.","error");
