@@ -30,7 +30,7 @@ test('Unklare Übertragung sperrt Kacheln und wiederholt dieselbe Bestellkennung
 });
 test('Kassenmeldungen erreichen auch den Vollbildstatus',()=>{
  const source=fs.readFileSync('js/features/theater/theater-admin.js','utf8'),nodes={status:{},'manage-status':{},'cash-status':{}};
- const message=vm.runInNewContext(source.slice(source.indexOf(' function message('),source.indexOf(' function guard('))+';message',{$:id=>nodes[id]});
+ const message=vm.runInNewContext(source.slice(source.indexOf(' function message('),source.indexOf(' function guard('))+';message',{$:id=>nodes[id],updateUnsaved(){}});
  message('Verbindung unterbrochen.');for(const node of Object.values(nodes))assert.equal(node.textContent,'Verbindung unterbrochen.');
 });
 
