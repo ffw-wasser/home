@@ -2,6 +2,11 @@
 (function(g){
  'use strict';
  const date=value=>{if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return '';const d=new Date(value+'T12:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?value:'';};
+ // Edit month/year only; existing exact-day limits stay unchanged on unrelated saves.
+ const monthInput=value=>date(value).slice(0,7);
+ const monthEnd=value=>{if(typeof value!=='string'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(value))return '';const d=new Date(value+'-01T12:00:00Z');if(!Number.isFinite(d.getTime()))return '';d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);return d.toISOString().slice(0,10);};
+ const monthExpiry=(value,previous='')=>{const end=monthEnd(value);return end&&monthInput(previous)===value?date(previous)||end:end;};
+ const displayMonth=value=>{const valid=date(value);if(!valid)return '';return valid===monthEnd(valid.slice(0,7))?valid.slice(5,7)+'/'+valid.slice(0,4):valid.slice(8,10)+'.'+valid.slice(5,7)+'.'+valid.slice(0,4);};
  const day=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
  const months=value=>Number.isInteger(value)&&value>=1&&value<=36?value:12;
  function due(checked,interval=12){checked=date(checked);if(!checked)return '';const d=new Date(checked+'T12:00:00Z'),original=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months(interval));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(original,last));return d.toISOString().slice(0,10);}
@@ -21,5 +26,5 @@
   if(e.driver){let until=due(e.driver.checkedOn,e.driver.intervalMonths);const check=item('Führerscheinkontrolle',until,{checkedOn:e.driver.checkedOn,intervalMonths:e.driver.intervalMonths});if(e.driver.checkedOn>today){check.status='missing';check.invalidFuture=true;}groups.push({...group('Führerscheinkontrolle',[check]),vehicles:e.driver.vehicles});}
   return groups;
  }
- const api={date,day,months,due,breathingRelevant,g263Date,breathingAssessment,project,validate,assess};g.MemberEvidence=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
+ const api={date,day,monthInput,monthEnd,monthExpiry,displayMonth,months,due,breathingRelevant,g263Date,breathingAssessment,project,validate,assess};g.MemberEvidence=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(globalThis);
