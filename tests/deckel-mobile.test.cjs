@@ -62,3 +62,22 @@ test('Meine Nachweise öffnet eine eigene Seite und erhält den privaten Zugang 
  const hash='#test-private-access',ctx=vm.createContext({location:{hash},innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);ctx.DeckelMobile.jump('portal-evidence');assert.equal(dom['portal-page-evidence'].hidden,false);assert.equal(dom['portal-page-terms'].hidden,true);assert.equal(dom['portal-page-deckel'].hidden,true);assert.equal(buttons[1].attributes['aria-current'],'page');assert.equal(dom['portal-page-evidence'].focused,true);
  ctx.DeckelMobile.jump('account');assert.equal(dom['portal-page-evidence'].hidden,true);assert.equal(dom['portal-page-deckel'].hidden,false);assert.equal(ctx.location.hash,hash);
 });
+
+test('Monats-Challenge hat eigene Ansicht mit Zurück-Taste ohne Veränderung des privaten Zugangs',()=>{
+ const dom=nodes(),history={state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}};
+ const hash='#r=ffw-wasser/test&a=private&k=private';
+ const ctx=vm.createContext({location:{hash},history,innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
+ vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);
+ ctx.DeckelMobile.show(true);
+ ctx.DeckelMobile.jump('portal-points');
+ dom['challenge-open'].click();
+ assert.equal(dom['portal-page-challenge'].hidden,false);
+ assert.equal(dom['portal-page-points'].hidden,true);
+ assert.equal(dom['deckel-nav'].hidden,true);
+ assert.equal(history.state.portalPage,'portal-challenge');
+ assert.equal(ctx.location.hash,hash);
+ dom['challenge-back'].click();
+ assert.equal(dom['portal-page-challenge'].hidden,true);
+ assert.equal(dom['portal-page-points'].hidden,false);
+ assert.equal(dom['deckel-nav'].hidden,false);
+});
