@@ -45,3 +45,58 @@ test('Abschließende Challenge-Auswertung markiert falsche Antworten rot und ric
  assert.match(cards[1].className,/is-correct/);
  assert.match(cards[1].children[0].textContent,/Richtig beantwortet/);
 });
+
+test('Antwortauswahl ist unverbindlich, kann korrigiert werden und wird erst nach Bestätigung gesendet',async()=>{
+ const f=fixture(),base=f.c.fetch,game={gameId:'round-1',month:'2026-10',category:'Technik',level:'TM',status:'running',expiresAt:Date.now()+1800000,question:{index:0,text:'Welche Antwort ist richtig?',answers:['Antwort A','Antwort B','Antwort C']}};
+ f.c.fetch=async(url,options)=>url.endsWith('/solo-status')?{ok:true,json:async()=>({version:1,month:'2026-10',awardUnits:300,policyRevision:'r1',game})}:base(url,options);
+ await f.c.DeckelChallenge.render(f.snapshot);
+ const answers=f.nodes.get('challenge-question').children.filter(n=>n.className?.includes('challenge-answer'));
+ const confirm=f.nodes.get('challenge-confirm');
+ assert.equal(answers.length,3);
+ assert.equal(confirm.disabled,true);
+ confirm.onclick();assert.equal(f.requests.length,0);
+ answers[0].onclick();assert.equal(f.requests.length,0);
+ assert.equal(confirm.disabled,false);
+ assert.match(answers[0].className,/is-selected/);
+ answers[2].onclick();
+ assert.equal(f.requests.length,0,'Auswahlwechsel darf keinen Netzwerkaufruf auslösen');
+ assert.doesNotMatch(answers[0].className,/is-selected/);
+ assert.match(answers[2].className,/is-selected/);
+ await confirm.onclick();
+ await until(()=>f.requests.length===1);
+ assert.equal(f.requests[0].body.answer,2);
+ assert.equal(f.requests[0].body.index,0);
+ assert.match(f.requests[0].url,/solo-answer$/);
+});
+
+test('Hintergrund-Aktualisierung behält die Schaltflächen und Antwortauswahl unverändert',async()=>{
+ const f=fixture(),base=f.c.fetch,game={gameId:'round-1',month:'2026-10',category:'Technik',level:'TM',status:'running',expiresAt:Date.now()+1800000,question:{index:0,text:'Welche Antwort ist richtig?',answers:['Antwort A','Antwort B','Antwort C']}};
+ f.c.fetch=async(url,options)=>url.endsWith('/solo-status')?{ok:true,json:async()=>({version:1,month:'2026-10',awardUnits:300,policyRevision:'r1',game:{...game,question:{...game.question,answers:[...game.question.answers]}}})}:base(url,options);
+ await f.c.DeckelChallenge.render(f.snapshot);
+ const originalQuestion=f.nodes.get('challenge-question').children[2];
+ const answer=f.nodes.get('challenge-question').children[3];
+ answer.onclick();
+ const confirm=f.nodes.get('challenge-confirm');
+ await f.c.DeckelChallenge.render(f.snapshot);
+ assert.equal(f.nodes.get('challenge-question').children[2],originalQuestion,'Die Frage darf bei identischem Stand nicht ersetzt werden');
+ assert.equal(f.nodes.get('challenge-question').children[3],answer,'Angetippte Schaltfläche muss stabil bleiben');
+ assert.equal(f.nodes.get('challenge-confirm'),confirm);
+ assert.match(answer.className,/is-selected/);
+ assert.equal(confirm.disabled,false);
+ assert.equal(f.requests.length,0);
+});
+
+test('Neue Frage entfernt die alte Auswahl und sperrt die Bestätigung erneut',async()=>{
+ const f=fixture(),base=f.c.fetch;
+ let index=0;const status=()=>({version:1,month:'2026-10',awardUnits:300,policyRevision:'r1',game:{gameId:'round-1',month:'2026-10',category:'Technik',level:'TM',status:'running',expiresAt:Date.now()+1800000,question:{index,text:'Frage '+(index+1),answers:['A','B']}}});
+ f.c.fetch=async(url,options)=>url.endsWith('/solo-status')?{ok:true,json:async()=>status()}:base(url,options);
+ await f.c.DeckelChallenge.render(f.snapshot);
+ const old=f.nodes.get('challenge-question').children[3];old.onclick();
+ assert.equal(f.nodes.get('challenge-confirm').disabled,false);
+ index=1;await f.c.DeckelChallenge.render(f.snapshot);
+ assert.equal(f.nodes.get('challenge-confirm').disabled,true);
+ assert.equal(f.nodes.get('challenge-question').children[3].className,'challenge-answer');
+ old.onclick();
+ assert.equal(f.nodes.get('challenge-confirm').disabled,true,'Alte Antworten dürfen neue Frage nicht verändern');
+ assert.equal(f.requests.length,0);
+});
