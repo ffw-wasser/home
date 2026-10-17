@@ -213,3 +213,40 @@ unter Einstellungen → Mitglieder „Nachweise fürs Handy aktualisieren“ wä
 Das Portal benötigt für die Anzeige keine OneDrive-Anmeldung. Bei einem alten
 Worker oder noch nicht übertragenen Nachweisen erscheint ein entsprechender
 Hinweis. Es werden keine Nachweis-Erinnerungen automatisch verschickt.
+
+
+## Bestehende Probe und andere Termine gezielt korrigieren (2026.10.18.5)
+
+Unter **Einstellungen → Kalender** werden künftig auch bereits gespeicherte
+Termine angezeigt. In jeder Terminübersicht sieht man direkt, ob **alle Mitglieder**
+oder **nur eine Teilgruppe** betroffen sind. Mit **„Mitglieder ändern“** öffnet
+sich die Bearbeitung des bestehenden Termins ohne Wechsel seiner Terminart.
+
+Unter **„Wer ist betroffen?“** stehen zwei Möglichkeiten:
+**Alle Mitglieder** oder **Nur ausgewählte Mitglieder**. Im zweiten Fall
+können Mitglieder gesucht, einzeln gewählt und alle sichtbaren Ergebnisse
+ausgewählt oder abgewählt werden. Der Zähler zeigt sofort die ausgewählten
+Personen. Eine leere Teilgruppe lässt sich nicht speichern. Bei einer nicht
+vollständigen Mitgliederliste wird verhindert, dass bisherige Empfänger
+ungewollt verschwinden. Nach dem Speichern werden die bestätigten Empfänger
+vom Worker neu gelesen und kontrolliert.
+
+Diese Einschränkung gilt nicht nur für Sonderproben, sondern ebenso für
+gewöhnliche Proben sowie für Termine mit einer anderen iPad-Terminart
+(z. B. Unterricht oder Ausschusssitzung). Die Auswahl ändert **nicht**
+die Terminart. Ausgewählte Mitglieder können sich am persönlichen Handyportal
+anmelden; andere Mitglieder sehen den Termin dort nicht. Eingeschränkte
+Termine fehlen weiterhin absichtlich in der öffentlichen, ohne Login
+verfügbaren Kalenderliste.
+
+Der Cloudflare-Worker meldet die allgemeine Teilnehmerauswahl mit
+`recipientFeatureVersion: 2`. Bereits vorhandene Sonderproben mit
+Empfängerauswahl der alten Version 1 bleiben während der Umstellung
+bearbeitbar. Zum Eingrenzen einer **normalen Probe** ist die Worker-Version 2
+erforderlich. Fehlt sie in der aktiven Cloudflare-Installation, zeigt die
+Verwaltung einen konkreten Hinweis und sendet keine inkompatible
+Änderung. Wird der bestehende Worker über die in `AUTO-DEPLOY.md`
+dokumentierte GitHub-Build-Verbindung automatisch veröffentlicht,
+kommt die Änderung mit einem erfolgreichen Cloudflare-Produktionsbuild
+auf `main`; andernfalls muss `worker.bundle.js` im vorhandenen Worker
+veröffentlicht werden. Es werden **keine** Datenbankmigrationen benötigt.
