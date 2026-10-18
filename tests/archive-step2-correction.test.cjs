@@ -40,62 +40,34 @@ function editableCard(index,name,status,role=''){
   return {dataset:{row:String(index)},querySelector:selector=>values[selector.match(/data-correction-field="([^"]+)"/)?.[1]]||null};
 }
 
-test('Korrigieren öffnet Probe, Sonderprobe, Unterricht und Ausschuss direkt in Schritt 2',()=>{
+test('Archivkorrektur öffnet unabhängig von laufenden Terminen und erhält sämtliche Erfassungsdaten',()=>{
   for(const type of ['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung']){
     const f=fixture(type);
+    f.c.currentSessionId='laufender-termin';
+    f.c.currentOperationId='laufender-einsatz';
+    f.c.entries=[{sessionId:'laufender-termin',status:'Anwesend'}];
+    f.c.pendingMemberStatuses.set('123','Anwesend');
+    f.c.chosenMemberIds.add('123');f.c.chosenMemberId='123';
+    f.c.currentClosingTopic='Vorbereitetes Thema';
+    f.c.currentOperationDraft={situation:'Entwurf'};
+    f.c.operationAssignments={'Muster Erika':'LF 10'};
+    const snapshot=()=>JSON.stringify([f.c.currentSessionId,f.c.currentOperationId,f.c.entries,[...f.c.pendingMemberStatuses],[...f.c.chosenMemberIds],f.c.chosenMemberId,f.c.currentClosingTopic,f.c.currentOperationDraft,f.c.operationAssignments]);
+    const before=snapshot();
     f.c.correctArchiveItem('original-archive-id');
-    assert.ok(f.calls.some(call=>call[0]==='stage'&&call[1]===2),type);
-    assert.ok(f.calls.some(call=>call[0]==='view'&&call[1]==='attendanceView'),type);
-    assert.equal(f.c.archiveCorrectionState.item.id,'original-archive-id');
+    assert.ok(f.c.archiveCorrectionState,type);
+    assert.ok(f.calls.some(call=>call[0]==='view'&&call[1]==='archiveCorrectionView'));
     assert.equal(f.get('archiveCorrectionEditTopic').value,'Funkübung');
-    assert.equal(f.get('archiveCorrectionEditDate').value,'2026-10-15');
-    assert.ok(f.calls.some(call=>call[0]==='add-class'&&call[1]==='archive-correction-mode'));
-  }
-});
-test('Ein vorbereiteter Termin ohne Anwesenheiten darf die Historienkorrektur nicht sperren',()=>{
-  for(const id of ['laufender-termin','session-from-previous-app-open']){
-    const f=fixture();f.c.currentSessionId=id;
-    f.c.correctArchiveItem('original-archive-id');
-    assert.ok(f.c.archiveCorrectionState,'Ein leerer Session-Identifier darf keine Sperre sein');
-    assert.ok(f.calls.some(call=>call[0]==='stage'&&call[1]===2));
-    assert.equal(f.c.currentSessionId,id,'Vorbereitete Erfassung bleibt unverändert erhalten');
-    assert.equal(f.calls.some(call=>call[0]==='toast'&&/Erfassung abschließen/.test(call[1])),false);
-  }
-});
-test('Eine laufende Teilnahmeerfassung mit Anwesenheiten verhindert die Archivkorrektur',()=>{
-  const f=fixture();f.c.currentSessionId='laufender-termin';
-  f.c.entries=[{sessionId:'laufender-termin',status:'Anwesend',storedName:'Muster Erika'}];
-  f.c.correctArchiveItem('original-archive-id');
-  assert.equal(f.c.archiveCorrectionState,null);
-  assert.equal(f.calls.some(call=>call[0]==='stage'),false);
-  assert.ok(f.calls.some(call=>call[0]==='toast'&&/Anwesenheiten/.test(call[1])));
-});
-test('Ungespeicherte Markierungen und Personenauswahl sind vor Archivkorrekturen geschützt',()=>{
-  for(const state of [
-    c=>c.pendingMemberStatuses.set('123','Anwesend'),
-    c=>c.chosenMemberIds.add('123'),
-    c=>{c.chosenMemberId='123';},
-    c=>{c.currentSessionId='session';c.currentClosingTopic='Funkübungsplan';}
-  ]){
-    const f=fixture();f.c.currentSessionId='session';state(f.c);
-    f.c.correctArchiveItem('original-archive-id');
-    assert.equal(f.c.archiveCorrectionState,null);
+    f.c.cancelArchiveCorrectionStep2({saved:true});
+    assert.equal(snapshot(),before,'Laufende Erfassung bleibt beim Öffnen und Schließen unverändert');
     assert.equal(f.calls.some(call=>call[0]==='stage'),false);
   }
 });
-test('Eine vorbereitete Einsatz-ID ist erlaubt, aber tatsächliche Einsatzentwürfe und Zuordnungen nicht',()=>{
-  const empty=fixture();empty.c.currentOperationId='op-empty';
-  empty.c.correctArchiveItem('original-archive-id');
-  assert.ok(empty.c.archiveCorrectionState);
-  for(const modify of [
-    c=>c.entries.push({operationId:'op-with-attendance',status:'Anwesend'}),
-    c=>{c.currentOperationDraft={situation:'Absicherung Baustelle'};},
-    c=>{c.operationAssignments={'Muster Erika':'LF 10'};},
-  ]){
-    const f=fixture();f.c.currentOperationId='op-with-attendance';modify(f.c);
-    f.c.correctArchiveItem('original-archive-id');
-    assert.equal(f.c.archiveCorrectionState,null);
-  }
+test('Während des Speicherns bleibt die Archivkorrektur geöffnet',()=>{
+  const f=fixture();f.c.correctArchiveItem('original-archive-id');
+  f.get('archiveCorrectionSave').disabled=true;
+  assert.equal(f.c.archiveCorrectionBeforeView('attendanceView'),false);
+  f.c.cancelArchiveCorrectionStep2();
+  assert.ok(f.c.archiveCorrectionState);
 });
 test('Schritt 2 speichert mehrere korrigierte Personen samt Thema und Datum unter der Original-ID',async()=>{
   const f=fixture();f.c.correctArchiveItem('original-archive-id');
@@ -162,7 +134,7 @@ test('Navigation fragt vor dem Verlassen einer ungespeicherten Archivkorrektur',
   f.c.confirm=()=>true;
   assert.equal(f.c.archiveCorrectionBeforeView('settingsHistoryView'),true);
   assert.equal(f.c.archiveCorrectionState,null);
-  assert.ok(f.calls.some(call=>call[0]==='stage'&&call[1]===1));
+  assert.equal(f.calls.some(call=>call[0]==='stage'),false);
 });
 test('Bei unverändertem Bericht ist der Rückweg ohne Warnmeldung möglich',()=>{
   const f=fixture();f.c.correctArchiveItem('original-archive-id');

@@ -260,7 +260,12 @@ function archiveCorrectionWorkspace(){
   panel.className="panel archive-correction-workspace";
   panel.setAttribute("aria-labelledby","archiveCorrectionHeading");
   panel.innerHTML='<div class="archive-correction-heading"><div><p class="eyebrow">Archivkorrektur · Schritt 2</p><h2 id="archiveCorrectionHeading">Termin und Personen korrigieren</h2><p>Den vorhandenen Bericht bearbeiten. Erst mit „Originalbericht speichern“ wird die bestehende Datei überschrieben.</p></div><button type="button" id="archiveCorrectionBack" class="outline-button">Zur Historie</button></div><div class="archive-correction-meta"><label>Termindatum<input id="archiveCorrectionEditDate" type="date" class="text-input"></label><label>Thema<textarea id="archiveCorrectionEditTopic" class="text-input" rows="2" maxlength="300" required></textarea></label></div><div class="archive-correction-toolbar"><label>Person suchen<input type="search" id="archiveCorrectionSearch" class="text-input" placeholder="Name suchen …" autocomplete="off"></label><label>Teilnahme filtern<select id="archiveCorrectionFilter" class="text-input"><option value="">Alle Personen</option><option value="Anwesend">Anwesend</option><option value="Entschuldigt">Entschuldigt</option><option value="Fehlt">Fehlt</option><option value="Betrifft nicht">Betrifft nicht</option></select></label><p id="archiveCorrectionCount" aria-live="polite"></p></div><div id="archiveCorrectionList" class="archive-correction-list"></div><div class="archive-correction-add"><label>Person ergänzen<select id="archiveCorrectionAddPerson" class="text-input"><option value="">Mitglied auswählen</option></select></label><button type="button" class="outline-button" id="archiveCorrectionAdd">Person ergänzen</button></div><div class="archive-correction-actions"><button type="button" class="outline-button" id="archiveCorrectionCancel">Abbrechen</button><button type="button" class="primary-button" id="archiveCorrectionSave">Originalbericht speichern</button></div>';
-  byId("attendanceView").appendChild(panel);
+  let view=byId("archiveCorrectionView");
+  if(!view){
+    view=document.createElement("section");view.id="archiveCorrectionView";view.className="view";view.hidden=true;
+    document.querySelector("main.app-shell").appendChild(view);
+  }
+  view.appendChild(panel);
   byId("archiveCorrectionBack").onclick=cancelArchiveCorrectionStep2;
   byId("archiveCorrectionCancel").onclick=cancelArchiveCorrectionStep2;
   byId("archiveCorrectionSave").onclick=saveArchiveCorrectionStep2;
@@ -340,16 +345,17 @@ function archiveCorrectionHasChanges(){
 function clearArchiveCorrectionStep2(){
   archiveCorrectionState=null;
   byId("archiveCorrectionWorkspace")?.remove();
-  byId("attendanceView")?.classList.remove("archive-correction-mode");
-  setHomeFlowStage(1);
+
 }
 function archiveCorrectionBeforeView(viewId){
-  if(!archiveCorrectionState||!byId("attendanceView")?.classList.contains("archive-correction-mode")||viewId==="attendanceView")return true;
+  if(!archiveCorrectionState||viewId==="archiveCorrectionView")return true;
+  if(byId("archiveCorrectionSave")?.disabled){showToast("Korrektur wird gespeichert. Bitte kurz warten.");return false;}
   if(archiveCorrectionHasChanges()&&!confirm("Ungespeicherte Änderungen an der Archivkorrektur verwerfen?"))return false;
   clearArchiveCorrectionStep2();
   return true;
 }
 function cancelArchiveCorrectionStep2({saved=false}={}){
+  if(!saved&&byId("archiveCorrectionSave")?.disabled)return;
   if(!saved&&archiveCorrectionHasChanges()&&!confirm("Korrektur ohne Speichern verlassen und Änderungen verwerfen?"))return;
   clearArchiveCorrectionStep2();
   showView("settingsHistoryView");
@@ -389,34 +395,15 @@ async function saveArchiveCorrectionStep2(){
   }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
   finally{button.disabled=false;}
 }
-function archiveCorrectionLiveCaptureWarning(){
-  // Session and operation IDs are allocated already when the selection screen
-  // opens. An unused ID is not a saved attendance record and must not block
-  // editing an existing report from the history view.
-  const sessionId=String(currentSessionId||"");
-  const operationId=String(currentOperationId||"");
-  const currentRows=typeof todayEntries==="function"?todayEntries():[];
-  const explicitRows=Array.isArray(entries)?entries.filter(row=>sessionId&&row.sessionId===sessionId||operationId&&row.operationId===operationId):[];
-  const recorded=currentRows.length?currentRows:explicitRows;
-  if(recorded.length)return "Eine laufende Erfassung enthält bereits Anwesenheiten. Bitte diese zuerst abschließen oder bewusst abbrechen, bevor ein Archivbericht korrigiert wird.";
-  if(pendingMemberStatuses?.size||chosenMemberIds?.size||chosenMemberId)return "In der laufenden Erfassung sind noch Personen ausgewählt oder Markierungen vorgemerkt. Bitte diese zuerst übernehmen oder die Erfassung abbrechen.";
-  if(sessionId&&String(currentClosingTopic||"").trim())return "Für die laufende Erfassung ist bereits ein Thema vorbereitet. Bitte diese Erfassung zuerst abschließen oder abbrechen.";
-  // An operational report can contain data even before a person was entered.
-  if(operationId&&(currentOperationDraft||Object.keys(operationAssignments||{}).length||Object.keys(operationAssignmentRoles||{}).length||typeof restoreOperationDraft==="function"&&restoreOperationDraft()))return "Ein Einsatzbericht ist noch in Bearbeitung. Bitte den Entwurf zuerst abschließen oder bewusst abbrechen.";
-  return "";
-}
 function correctArchiveItem(id){
   if(!requireAdmin("settingsHistoryView"))return;
-  const captureWarning=archiveCorrectionLiveCaptureWarning();
-  if(captureWarning)return showToast(captureWarning,"error");
+  if(!archiveCorrectionBeforeView("settingsHistoryView"))return;
   const item=csvArchive.find(entry=>entry.id===id);if(!item)return;
   const rows=archiveRowsFromContent(item.content);
   if(!rows.length)return showToast("Keine korrigierbaren Einträge.","error");
   archiveCorrectionState={item,rows:structuredClone(rows)};
-  if(showView("attendanceView")===false){archiveCorrectionState=null;return;}
-  setHomeFlowStage(2);
   const panel=archiveCorrectionWorkspace();
-  byId("attendanceView").classList.add("archive-correction-mode");
+  if(showView("archiveCorrectionView")===false){clearArchiveCorrectionStep2();return;}
   byId("archiveCorrectionHeading").textContent=(item.sessionType||rows[0].sessionType||"Termin")+" korrigieren · Schritt 2";
   byId("archiveCorrectionEditDate").value=rows[0]?.date||historyDateFromItem(item);
   byId("archiveCorrectionEditTopic").value=item.topic||rows[0]?.topic||"";

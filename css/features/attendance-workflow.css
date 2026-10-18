@@ -1180,14 +1180,7 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 
 
 /* Archivkorrektur: Schritt 2 ohne Eingriff in eine laufende Anwesenheitserfassung. */
-#attendanceView.archive-correction-mode > .attendance-layout,
-#attendanceView.archive-correction-mode #attendanceSelectionWorkspace,
-#attendanceView.archive-correction-mode #step3ActionArea,
-#attendanceView.archive-correction-mode #homeFlowProgress,
-#attendanceView.archive-correction-mode #rfidCsvImport,
-#attendanceView.archive-correction-mode .home-session-type-panel,
-#attendanceView.archive-correction-mode .flow-stage-2-support{display:none!important}
-#attendanceView .archive-correction-workspace{width:min(100%,1160px);margin:12px auto 36px;padding:clamp(15px,2vw,27px);background:#fff;border:1px solid #c2d2e1;border-radius:18px}
+#archiveCorrectionView .archive-correction-workspace{width:min(100%,1160px);margin:12px auto 36px;padding:clamp(15px,2vw,27px);background:#fff;border:1px solid #c2d2e1;border-radius:18px}
 .archive-correction-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;border-bottom:1px solid #dae3ed;padding-bottom:16px}
 .archive-correction-heading h2{margin:4px 0 9px;font-size:clamp(1.25rem,3vw,1.8rem);color:#183d60}
 .archive-correction-heading p{max-width:66ch;margin:4px 0;line-height:1.45}
