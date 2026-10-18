@@ -85,3 +85,5 @@
  #portal-page-deckel .phone-order{position:static}
 }
 .keyboard-open main{scroll-padding-block:12px 24px}
+
+.bundesliga-panel table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.875rem;font-variant-numeric:tabular-nums}.bundesliga-panel th,.bundesliga-panel td{padding:10px 3px;border-bottom:1px solid var(--line);text-align:right;overflow-wrap:anywhere}.bundesliga-panel th:nth-child(2){width:48%;text-align:left}.bundesliga-panel th:first-child{width:9%}.bundesliga-panel tbody th{font-weight:600}.bundesliga-panel tbody tr:nth-child(even){background:#eaf2f9}.bundesliga-panel td:last-child{font-weight:850}.bundesliga-caption{text-align:left;font-weight:800;padding:8px 0}.bundesliga-panel abbr{text-decoration:none}#bundesliga-status{font-size:.875rem;color:var(--muted)}
