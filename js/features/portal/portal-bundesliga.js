@@ -24,6 +24,6 @@
   }catch(error){if(loadedSeason!==year){$('table').hidden=true;loaded=0;loadedSeason=null;}$('status').textContent=(loaded?'Letzter Abruf: '+new Date(loaded).toLocaleString('de-DE')+'. Aktualisierung fehlgeschlagen. ':'Tabelle momentan nicht verfügbar. ')+'Bitte erneut laden.';}
   finally{busy=false;$('refresh').disabled=false;$('table').setAttribute('aria-busy','false');}
  }
- function init(){const panel=$('panel');if(!panel)return;panel.addEventListener('toggle',()=>{if(panel.open)load();});$('refresh').onclick=()=>load(true);g.addEventListener('portal-pagechange',event=>{if(event.detail.page==='deckel-more'&&panel.open)load();});}
+ function init(){const panel=$('panel');if(!panel)return;$('refresh').onclick=()=>load(true);g.addEventListener('portal-pagechange',event=>{if(event.detail.page==='more-bundesliga')load();});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

@@ -87,3 +87,14 @@
 .keyboard-open main{scroll-padding-block:12px 24px}
 
 .bundesliga-panel table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.875rem;font-variant-numeric:tabular-nums}.bundesliga-panel th,.bundesliga-panel td{padding:10px 3px;border-bottom:1px solid var(--line);text-align:right;overflow-wrap:anywhere}.bundesliga-panel th:nth-child(2){width:48%;text-align:left}.bundesliga-panel th:first-child{width:9%}.bundesliga-panel tbody th{font-weight:600}.bundesliga-panel tbody tr:nth-child(even){background:#eaf2f9}.bundesliga-panel td:last-child{font-weight:850}.bundesliga-caption{text-align:left;font-weight:800;padding:8px 0}.bundesliga-panel abbr{text-decoration:none}#bundesliga-status{font-size:.875rem;color:var(--muted)}
+
+/* More is a menu of equal-sized destinations, each with an explicit return. */
+.portal-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.portal-more-grid .portal-more-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:6px;min-height:146px;padding:16px;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:0 4px 12px #10284308;margin:0;border-radius:18px}
+.portal-more-tile .portal-more-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#e7f1fa;color:#075baf;font-size:1.5rem}
+.portal-more-tile strong{font-size:1.0625rem;line-height:1.25}
+.portal-more-tile>span:last-child{font-size:.875rem;line-height:1.35;font-weight:500;color:var(--muted)}
+.portal-more-detail .portal-more-back{width:auto;min-height:48px;margin-bottom:18px;padding:10px 16px}
+.portal-more-detail .portal-notifications{margin-top:0;border-top:0}
+@media(max-width:340px){.portal-more-grid{gap:8px}.portal-more-grid .portal-more-tile{padding:12px;min-height:146px}}
+.portal-more-grid #deckel-update-reload{margin:0}

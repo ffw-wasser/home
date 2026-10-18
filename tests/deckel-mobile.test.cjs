@@ -119,3 +119,17 @@ test('Android-Fensterresize hält Eingaben sichtbar und verwechselt Querformat o
  viewport.scale=1;ctx.innerWidth=800;ctx.innerHeight=390;viewport.height=390;events['window:resize']();
  assert.equal(classes.has('keyboard-open'),false);assert.equal(properties.has('--portal-viewport-height'),false);
 });
+
+test('Mehr-Kacheln öffnen eigene Rubriken und Rückkehr hält Mehr im Menü ausgewählt',()=>{
+ const dom=nodes(),events={},history=[],button=new Node('button');button.dataset.deckelTarget='deckel-more';
+ dom['deckel-nav'].querySelectorAll=()=>[button];
+ const ctx=vm.createContext({innerHeight:844,history:{state:{},replaceState(){},pushState:state=>history.push(state.portalPage)},addEventListener:(key,fn)=>events[key]=fn,document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
+ vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
+ for(const target of ['more-bundesliga','more-bookings','more-reminders','more-help']){
+  ctx.DeckelMobile.jump('deckel-more');ctx.DeckelMobile.jump(target);
+  assert.equal(dom['portal-page-'+target].hidden,false);assert.equal(dom['portal-page-more'].hidden,true);
+  assert.equal(button.attributes['aria-current'],'page');assert.equal(history.at(-1),target);
+  events.popstate({state:{portalPage:'deckel-more'}});
+  assert.equal(dom['portal-page-more'].hidden,false);assert.equal(dom['portal-page-'+target].hidden,true);
+ }
+});
