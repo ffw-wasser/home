@@ -60,7 +60,7 @@
   if(current){const r=await api('list',{eventId:current.id});if(generation!==epoch)return;current=r.event;orders=r.orders;noticeIncomingOrders(current.id,orders);paintCash();paintStats();message((current.open?'Geöffnet':'Geschlossen')+' · Stand '+new Date(r.servedAt).toLocaleTimeString('de-DE')+(mode==='manage'?'':' · Aktualisierung alle 5 Sekunden'));}else{orders=[];paintCash();paintStats();message('Noch keine Veranstaltung angelegt. Unter Verwaltung starten.');}if(mode==='manage'&&!dirty)edit();paintLaunch();},{read:true});}
  function paintSelect(){paintLaunch();const select=$('event');select.replaceChildren();for(const event of events){const opt=node('option',event.title+(event.open?' · geöffnet':''));opt.value=event.id;select.append(opt);}select.value=current?.id||'';}
  function lines(root,items){const list=node('ul');list.className='theater-lines';for(const p of items){const li=node('li');li.append(node('strong',p.quantity+' × '+p.name),node('span',M.money(p.quantity*p.cents)));list.append(li);}root.append(list,node('p','Summe: '+M.money(M.total(items))));}
- function selectCash(member){if(busy||loading)return;selectedMember=member;paintCash();$('cash-back')?.focus({preventScroll:true});}
+ function selectCash(member){if(busy)return;selectedMember=member;paintCash();$('cash-back')?.focus({preventScroll:true});}
  function orderTime(order){const raw=order?.createdAt;const time=typeof raw==='number'?raw:/^\d+$/.test(String(raw))?Number(raw):Date.parse(String(raw));return Number.isFinite(time)&&time>0?time:0;}
  function orderAge(time,now=Date.now()){if(!time)return 'Zeit unbekannt';const minutes=Math.max(0,Math.floor((now-time)/60000));if(minutes<1)return 'gerade eben';if(minutes<60)return 'vor '+minutes+' Min.';const hours=Math.floor(minutes/60);return hours<24?'vor '+hours+' Std.':'vor '+Math.floor(hours/24)+' Tagen';}
  function boardMembers(items){const people=new Map();for(const order of items){if(order.state!=='open'&&order.state!=='reserved')continue;const person=people.get(order.member)||{member:order.member,name:order.name||order.member,hasOpen:false,lastOpen:0,lastReserved:0};person.name=order.name||person.name;const time=orderTime(order);if(order.state==='open'){person.hasOpen=true;person.lastOpen=Math.max(person.lastOpen,time);}else person.lastReserved=Math.max(person.lastReserved,time);people.set(order.member,person);}return [...people.values()].sort((a,b)=>Number(b.hasOpen)-Number(a.hasOpen)||(a.hasOpen?b.lastOpen-a.lastOpen:a.lastReserved-b.lastReserved)||a.name.localeCompare(b.name,'de')).map(person=>person.member);}
@@ -91,9 +91,10 @@
     const age=node('span',ageText);age.className='theater-board-age';
     card.replaceChildren(flag,label,value,age,node('span',countText),node('span','Zur Kassenübertragung ›'));
    }
+   const ageLabel=card.querySelector?.('.theater-board-age');if(ageLabel)ageLabel.textContent=ageText;
    cashCards.set(member,card);
   }
-  if(orderChanged||(!members.length&&root.querySelector?.('.theater-board-card'))||(!root.firstChild&&members.length)){
+  if(orderChanged||(!members.length&&root.querySelector?.('.theater-board-card'))||!root.firstChild){
    if(members.length)root.replaceChildren(...members.map(member=>cashCards.get(member)));
    else root.replaceChildren(node('p',current?.open?'Noch keine offenen Bestellungen. Neue Karten erscheinen automatisch.':'Keine offenen Kassenkarten. Veranstaltung gegebenenfalls unter Verwaltung öffnen.'));
   }
@@ -159,10 +160,27 @@
    message('✓ Theater-Bestellungen zurückgesetzt. Veranstaltung geschlossen; Preisliste erhalten.');
   });
  }
- function openTab(next){if(!['cash','stats','manage'].includes(next))return false;if(g.showView?.('theaterView')!==true)return false;setMode(next);return true;}
- function setMode(next){if(next!=='cash')selectedMember=null;if(mode==='manage'&&dirty&&next!=='manage'&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;mode=next;if($('workspace-title'))$('workspace-title').textContent=mode==='manage'?'Verwaltung':mode==='stats'?'Auswertung':'Kasseneingabe';for(const name of ['cash','stats','manage']){$(name).hidden=name!==mode;document.querySelector('[data-theater-tab="'+name+'"]').setAttribute('aria-pressed',String(name===mode));}if(mode==='manage'){clearTimeout(timer);if(!dirty)edit();}else{dirty=false;load(false);}document.getElementById('theaterView').classList.toggle('theater-cash-fullscreen',mode==='cash');if(mode==='cash')window.scrollTo?.(0,0);}
+ async function importCatalog(e){
+  const file=e.target.files[0];if(!file||busy)return;
+  try{await run(async generation=>{
+   const target=draft;
+   const items=await g.TheaterImport.read(file);
+   if(generation!==epoch||draft!==target)return;
+   if(draft.items.length&&!confirm('Die aktuelle Artikelliste in der Vorschau ersetzen?'))return;
+   draft.items=items;dirty=true;paintEditor();
+   message(items.length+' Artikel eingelesen. Rubriken zuordnen, Preise prüfen und speichern.');
+  });}finally{$('import').value='';}
+ }
+ function beforeView(id){
+  if(id==='theaterView')return true;
+  if(busy){message('Vorgang läuft. Bitte kurz warten.');return false;}
+  if(dirty&&!confirm('Ungespeicherte Theater-Änderungen verwerfen?'))return false;
+  dirty=false;return true;
+ }
+ function openTab(next){if(!['cash','stats','manage'].includes(next))return false;if(g.showView?.('theaterView')!==true)return false;return setMode(next)!==false;}
+ function setMode(next){if(busy){message('Vorgang läuft. Bitte kurz warten.');return false;}if(mode==='manage'&&dirty&&next!=='manage'&&!confirm('Ungespeicherte Änderungen verwerfen?'))return false;if(next!=='cash')selectedMember=null;mode=next;if($('workspace-title'))$('workspace-title').textContent=mode==='manage'?'Verwaltung':mode==='stats'?'Auswertung':'Kasseneingabe';for(const name of ['cash','stats','manage']){$(name).hidden=name!==mode;document.querySelector('[data-theater-tab="'+name+'"]').setAttribute('aria-pressed',String(name===mode));}if(mode==='manage'){clearTimeout(timer);if(!dirty)edit();}else{dirty=false;load(false);}document.getElementById('theaterView').classList.toggle('theater-cash-fullscreen',mode==='cash');if(mode==='cash')window.scrollTo?.(0,0);}
  function lock(){cashCards.clear();cashOrder=[];cashEventId=null;detailSignature='';epoch++;clearTimeout(timer);connection=null;events=[];current=null;orders=[];draft=null;dirty=false;busy=false;loading=false;selectedMember=null;observedEventId=null;knownOrderIds=null;soundEnabled=false;mode='manage';for(const name of ['cash','stats','manage']){$(name).hidden=name!=='manage';document.querySelector('[data-theater-tab="'+name+'"]').setAttribute('aria-pressed',String(name==='manage'));}document.getElementById('theaterView').classList.remove('theater-cash-fullscreen');soundContext?.suspend?.().catch(()=>{});soundControls();$('cards')?.replaceChildren();$('editor')?.replaceChildren();$('category-colors')?.replaceChildren();$('stats-content')?.replaceChildren();if($('title'))$('title').value='';$('event')?.replaceChildren();controls();}
  function init(){if($('item-search'))$('item-search').oninput=filterEditor;if($('item-search-clear'))$('item-search-clear').onclick=()=>{$('item-search').value='';filterEditor();$('item-search').focus();};$('sound').onclick=toggleSound;if($('cash-sound'))$('cash-sound').onclick=toggleSound;$('cash-close').onclick=()=>setMode('manage');soundControls();$('refresh').onclick=()=>load(true);$('event').onchange=()=>{if(dirty&&!confirm('Ungespeicherte Änderungen verwerfen?')){$('event').value=current.id;return;}dirty=false;selectedMember=null;current=events.find(e=>e.id===$('event').value);load(false);};document.querySelectorAll('[data-theater-tab]').forEach(b=>b.onclick=()=>setMode(b.dataset.theaterTab));$('save').onclick=save;$('reset').onclick=resetEvent;$('cash-back').onclick=()=>{selectedMember=null;paintCash();};$('new').onclick=()=>{if(dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;edit(true);};$('add').onclick=()=>addItem();$('title').oninput=$('open').onchange=()=>{dirty=true;updateUnsaved();};
-  $('manage')?.addEventListener('input',updateUnsaved);$('manage')?.addEventListener('change',updateUnsaved);$('import').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{dirty=true;const items=await g.TheaterImport.read(file);if(draft.items.length&&!confirm('Die aktuelle Artikelliste in der Vorschau ersetzen?'))return;draft.items=items;dirty=true;paintEditor();message(items.length+' Artikel eingelesen. Rubriken zuordnen, Preise prüfen und speichern.');}catch(e){message(e.message);}finally{$('import').value='';}};$('export').onclick=exportCSV;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else if(!document.getElementById('theaterView').hidden)load(false);});new MutationObserver(()=>{if(document.getElementById('theaterView').hidden){clearTimeout(timer);if(mode==='cash')setMode('manage');}}).observe(document.getElementById('theaterView'),{attributes:true,attributeFilter:['hidden']});}
- g.TheaterAdmin={load,lock,openTab,beforeView:id=>id==='theaterView'||!dirty||confirm('Ungespeicherte Theater-Änderungen verwerfen?')&&(dirty=false,true)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  $('manage')?.addEventListener('input',updateUnsaved);$('manage')?.addEventListener('change',updateUnsaved);$('import').onchange=importCatalog;$('export').onclick=exportCSV;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else if(!document.getElementById('theaterView').hidden)load(false);});new MutationObserver(()=>{if(document.getElementById('theaterView').hidden){clearTimeout(timer);if(mode==='cash')setMode('manage');}}).observe(document.getElementById('theaterView'),{attributes:true,attributeFilter:['hidden']});}
+ g.TheaterAdmin={load,lock,openTab,beforeView};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

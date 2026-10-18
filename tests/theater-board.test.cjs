@@ -50,10 +50,10 @@ test('Kassenkarten behalten bei Live-Aktualisierung dieselben Schaltflächen und
   append(...children){this.children.push(...children);}
   replaceChildren(...children){this.children=children;this.redraws=(this.redraws||0)+1;}
   get firstChild(){return this.children[0];}
-  querySelector(selector){return this.children.find(n=>selector==='.theater-board-card'&&n.className==='theater-board-card')||null;}
+  querySelector(selector){return this.children.find(n=>n.className===selector.slice(1))||null;}
  }
  const els=new Map(),get=id=>{if(!els.has(id))els.set(id,new N());return els.get(id);};
- const fake=vm.createContext({Date,Math,Number,String,Map,JSON,orders:[
+ const fake=vm.createContext({Date:class extends Date{static now(){return now;}},Math,Number,String,Map,JSON,orders:[
   {member:'a',name:'Person A',state:'open',createdAt:now-100000,lines:[{cents:150,quantity:1}]},
   {member:'b',name:'Person B',state:'open',createdAt:now-200000,lines:[{cents:200,quantity:1}]}
  ],current:{id:'event-1',title:'Theater',open:true},selectedMember:null,cashCards:new Map(),cashOrder:[],cashEventId:null,detailSignature:'',
@@ -64,8 +64,11 @@ test('Kassenkarten behalten bei Live-Aktualisierung dieselben Schaltflächen und
  assert.ok(start>0&&end>start);
  vm.runInContext(admin.slice(start,end)+';paintCash()',fake);
  const board=get('cards'),before=board.children.slice(),oldRedraws=board.redraws;
+ assert.equal(before[0].querySelector('.theater-board-age').textContent,'vor 1 Min.');
+ fake.Date=class extends Date{static now(){return now+120000;}};
  vm.runInContext('paintCash()',fake);
  assert.equal(board.children[0],before[0]);assert.equal(board.children[1],before[1]);assert.equal(board.redraws,oldRedraws,'Identische Abfrage darf Karten nicht ersetzen');
+ assert.equal(before[0].querySelector('.theater-board-age').textContent,'vor 3 Min.');
  fake.orders.unshift({member:'c',name:'Person C',state:'open',createdAt:now,lines:[{cents:350,quantity:1}]});
  vm.runInContext('paintCash()',fake);
  assert.equal(board.children[0],before[0]);assert.equal(board.children[1],before[1]);assert.equal(board.children[2].dataset.member,'c');
@@ -74,4 +77,6 @@ test('Kassenkarten behalten bei Live-Aktualisierung dieselben Schaltflächen und
  assert.equal(board.children[0],before[0]);
  assert.equal(board.children[1],before[1]);
  assert.equal(board.children[2].dataset.member,'c');
+ fake.orders=[];fake.cashOrder=[];board.replaceChildren();vm.runInContext('paintCash()',fake);
+ assert.match(board.firstChild.textContent,/Noch keine offenen Bestellungen/);
 });
