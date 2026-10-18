@@ -10,7 +10,7 @@
  function refresh(){
   const show=personal()&&!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
   by('installButton').hidden=ios;by('installButton').disabled=busy;
-  by('installButton').textContent=android?'Startbildschirm-Verknüpfung anlegen':pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
+  by('installButton').textContent=android?'Zugang auf diesem Handy sichern':pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
   steps(ios?['Auf „Teilen“ tippen.','„Zum Home-Bildschirm“ auswählen und „Hinzufügen“ bestätigen.','Das H₂O Portal auf dem Home-Bildschirm öffnen. Dort findest du Termine, Rückmeldungen und deinen Deckel.']:
    ['Auf die Schaltfläche unten tippen, damit der persönliche Zugang auf diesem Handy gesichert wird.','In Chrome das Menü ⋮ öffnen und „Zum Startbildschirm hinzufügen“ wählen. Eine Verknüpfung erstellen, keine APK aus anderen Quellen installieren.','Falls Google Play Protect warnt: Installation abbrechen, Schutz nicht ausschalten und das Portal im Browser nutzen.']);
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}

@@ -12,7 +12,7 @@ function fixture({ios=false,android=false,standalone=false,url=personal,storageF
 test('Erster QR-Aufruf zeigt Installation ohne selbstständig zu installieren, zu speichern oder Push zu erlauben',()=>{
  const f=fixture({android:true});assert.equal(f.nodes.installSection.hidden,false);assert.equal(f.nodes.deckelManifest,undefined);assert.equal(f.saved.length,0);
  let prompts=0,prevented=0;f.events.beforeinstallprompt({preventDefault:()=>prevented++,prompt:()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});
- assert.equal(prevented,1);assert.equal(prompts,0);assert.equal(f.nodes.installButton.textContent,'Startbildschirm-Verknüpfung anlegen');
+ assert.equal(prevented,1);assert.equal(prompts,0);assert.equal(f.nodes.installButton.textContent,'Zugang auf diesem Handy sichern');
 });
 test('Android speichert den Zugang, startet aber kein möglicherweise veraltetes WebAPK',async()=>{
  for(const outcome of ['accepted','dismissed']){

@@ -103,3 +103,19 @@ test('Mengenänderungen bleiben während unbestätigter Übertragung gesperrt',a
  assert.equal(f.dom['phone-beer'].disabled,true);assert.equal(f.dom['phone-retry'].hidden,false);
  assert.equal(f.dom['phone-order'].hidden,false);
 });
+
+test('Android-Fensterresize hält Eingaben sichtbar und verwechselt Querformat oder Zoom nicht mit Tastatur',()=>{
+ const dom=nodes(),events={},classes=new Set(),properties=new Map();let scrolled=0,focused=false;
+ const viewport={height:800,scale:1,offsetTop:0,addEventListener:(key,fn)=>events['viewport:'+key]=fn};
+ const active={matches:()=>focused,getBoundingClientRect:()=>({top:650,bottom:700}),scrollIntoView:()=>scrolled++};
+ dom['deckel-nav'].querySelectorAll=()=>[];
+ const document={readyState:'complete',activeElement:active,body:{classList:{toggle:(key,value)=>value?classes.add(key):classes.delete(key)}},documentElement:{style:{setProperty:(key,value)=>properties.set(key,value),removeProperty:key=>properties.delete(key)}},getElementById:id=>dom[id],addEventListener:(key,fn)=>events[key]=fn};
+ const ctx=vm.createContext({innerWidth:390,innerHeight:800,visualViewport:viewport,addEventListener:(key,fn)=>events['window:'+key]=fn,document});
+ vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);
+ focused=true;viewport.height=400;events['window:resize']();
+ assert.equal(classes.has('keyboard-open'),true);assert.equal(properties.get('--portal-viewport-height'),'400px');assert.equal(scrolled,1);
+ focused=false;viewport.height=800;events.focusout();assert.equal(classes.has('keyboard-open'),false);
+ focused=true;viewport.scale=2;viewport.height=400;events['viewport:resize']();assert.equal(classes.has('keyboard-open'),false);assert.equal(scrolled,1);
+ viewport.scale=1;ctx.innerWidth=800;ctx.innerHeight=390;viewport.height=390;events['window:resize']();
+ assert.equal(classes.has('keyboard-open'),false);assert.equal(properties.has('--portal-viewport-height'),false);
+});

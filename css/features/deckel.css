@@ -71,3 +71,17 @@
 .deckel-title p{letter-spacing:.02em}
 
 @media(max-width:360px){.deckel-header{gap:8px;padding:12px 10px}.deckel-title{gap:8px}.deckel-title h1{font-size:1.25rem}.deckel-title p{font-size:.875rem}.deckel-title img{width:40px;height:40px}}
+
+/* Comfortable targets on touch phones; compact chrome on short landscape screens. */
+@media(pointer:coarse){
+ #portal-page-deckel .drink-quantity button{width:48px;min-height:48px}
+ #portal-page-deckel .phone-edit button,#portal-page-deckel #phone-save{min-height:48px}
+}
+@media(pointer:coarse) and (max-height:500px) and (orientation:landscape){
+ body .deckel-nav button{min-height:48px;flex-direction:row;gap:6px;padding:6px;font-size:.875rem}
+ body .deckel-nav{padding-top:4px;padding-bottom:max(4px,env(safe-area-inset-bottom))}
+ .deckel-header{padding:8px 12px}
+ main{padding-top:max(8px,env(safe-area-inset-top))}
+ #portal-page-deckel .phone-order{position:static}
+}
+.keyboard-open main{scroll-padding-block:12px 24px}

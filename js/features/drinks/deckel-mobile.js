@@ -39,17 +39,29 @@
   if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');
   g.addEventListener('popstate',event=>{if(pages[event.state?.portalPage]||event.state?.portalPage==='phone-menu'){if(jump(event.state.portalPage,false)===false)g.history?.pushState({...g.history.state,portalPage:current},'');}});
   g.addEventListener('hashchange',()=>{current='portal-section';sync();});
-  let fullHeight=g.visualViewport?.height||g.innerHeight;
+  let fullHeight=g.visualViewport?.height||g.innerHeight,fullWidth=g.innerWidth;
   function fitKeyboard(){
-   const focused=document.activeElement?.matches?.('input,select,textarea'),height=g.visualViewport?.height||g.innerHeight;
+   const viewport=g.visualViewport;
+   // Pinch zoom is not a keyboard resize. Keep native magnification available.
+   if(viewport?.scale&&Math.abs(viewport.scale-1)>.05)return;
+   const active=document.activeElement,focused=active?.matches?.('input,select,textarea'),height=viewport?.height||g.innerHeight;
+   if(!Number.isFinite(height)||height<=0)return;
+   if(g.innerWidth!==fullWidth){fullWidth=g.innerWidth;fullHeight=Math.max(height,g.innerHeight||height);}
    const keyboard=Boolean(focused&&height<fullHeight-100);
    document.body.classList.toggle('keyboard-open',keyboard);
-   if(keyboard)document.documentElement?.style.setProperty('--portal-viewport-height',height+'px');
-   else{document.documentElement?.style.removeProperty('--portal-viewport-height');if(!focused)fullHeight=height;}
+   if(keyboard){
+    document.documentElement?.style.setProperty('--portal-viewport-height',height+'px');
+    const bounds=active?.getBoundingClientRect?.(),top=viewport?.offsetTop||0;
+    if(bounds&&(bounds.top<top+12||bounds.bottom>top+height-12))active.scrollIntoView?.({block:'center',inline:'nearest',behavior:'instant'});
+   }else{document.documentElement?.style.removeProperty('--portal-viewport-height');if(!focused)fullHeight=height;}
   }
   document.addEventListener('focusin',fitKeyboard);
-  document.addEventListener('focusout',()=>{if(!document.activeElement?.matches?.('input,select,textarea')){document.body.classList.remove('keyboard-open');document.documentElement?.style.removeProperty('--portal-viewport-height');}});
+  document.addEventListener('focusout',()=>{
+   // Wait until focus has reached the next field before restoring the menu.
+   if(g.requestAnimationFrame)g.requestAnimationFrame(fitKeyboard);else fitKeyboard();
+  });
   g.visualViewport?.addEventListener('resize',fitKeyboard);
+  g.addEventListener('resize',fitKeyboard);
   sync();
  }
  g.DeckelMobile={show,jump,sync};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
