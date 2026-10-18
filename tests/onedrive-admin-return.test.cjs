@@ -13,3 +13,12 @@ test('Abgelaufener Refresh-Zugang kennzeichnet die notwendige Neuanmeldung',asyn
 test('Manipulierte verlängerte Rückkehrfrist und ausdrückliche Verwaltungssperre werden verworfen',async()=>{const f=fixture();await f.start();const plan=JSON.parse(f.session.getItem('fw_onedrive_admin_return'));plan.validUntil=plan.createdAt+10*60000;f.session.setItem('fw_onedrive_admin_return',JSON.stringify(plan));f.c.adminUnlocked=false;await f.c.oneDriveHandleCallback();f.connected();assert.equal(f.c.restoreOneDriveAdminReturn(),false);const locked=fixture();await locked.start();vm.runInContext(read('js/core/ui.js'),locked.c);locked.c.renderOneDriveDialog=()=>{};locked.c.lockAdministration();assert.equal(locked.c.adminUnlocked,false);assert.equal(locked.c.adminUnlockUntil,0);assert.equal(locked.session.getItem('fw_onedrive_admin_return'),null);});
 test('Nach App-Neustart gilt nur der zuvor für dieses Konto und diesen Link geprüfte Ordner',async()=>{for(const same of [true,false]){const f=fixture(),identity=await f.c.odAccountKey(JSON.parse(f.local.getItem('fw_onedrive_tokens'))),shareHash=await f.c.odChallenge(f.local.getItem('fw_onedrive_shared_folder_url'));f.local.setItem('fw_onedrive_verified_root',JSON.stringify({version:1,clientId:'client-test',identity:same?identity:'other',shareHash,driveId:'drive',id:'folder'}));vm.runInContext('oneDriveSharedRoot=null',f.c);await f.start();assert.equal(!!f.session.getItem('fw_onedrive_admin_return'),same);}});
 
+
+test('Microsoft-Neuanmeldung erhält Kasse, Auswertung und Theaterverwaltung als Ziel',async()=>{
+ for(const target of ['theaterCashView','theaterStatsView','theaterManageView']){
+  const f=fixture();f.c.document.querySelector=()=>({id:'theaterView'});f.c.TheaterAdmin={route:()=>target};
+  await f.start();assert.equal(JSON.parse(f.session.getItem('fw_onedrive_admin_return')).view,target);
+  f.c.adminUnlocked=false;await f.c.oneDriveHandleCallback();f.connected();
+  assert.equal(f.c.restoreOneDriveAdminReturn(),true);assert.equal(f.views.at(-1),target);
+ }
+});

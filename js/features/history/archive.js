@@ -345,7 +345,6 @@ function archiveCorrectionHasChanges(){
 function clearArchiveCorrectionStep2(){
   archiveCorrectionState=null;
   byId("archiveCorrectionWorkspace")?.remove();
-
 }
 function archiveCorrectionBeforeView(viewId){
   if(!archiveCorrectionState||viewId==="archiveCorrectionView")return true;

@@ -19,3 +19,11 @@ test('Release, geladene Dateien und Offline-Cache gehören zum selben Build',()=
  assert.ok(core.includes('./js/features/drinks/deckel-manifest.js?v='+release.build),'Android-sicherer Manifest-Lader muss im Cache stehen');
  for(const entry of core.filter(x=>x.includes('?v=')))assert.ok(entry.endsWith('?v='+release.build),entry);
 });
+
+test('Dynamisch geladenes Handy-Manifest verwendet denselben Release wie HTML und Offline-Cache',()=>{
+ const release=JSON.parse(read('app-release.json')),source=read('js/features/drinks/deckel-manifest.js');
+ const links=[];vm.runInNewContext(source,{navigator:{userAgent:'iPhone'},document:{createElement:()=>({}),head:{appendChild:n=>links.push(n)}}});
+ assert.equal(links.length,1);assert.equal(links[0].href,'deckel.webmanifest?v='+release.build);
+ links.length=0;vm.runInNewContext(source,{navigator:{userAgent:'Android'},document:{createElement:()=>({}),head:{appendChild:n=>links.push(n)}}});
+ assert.equal(links.length,0,'Android-Verknüpfung bleibt ohne WebAPK-Manifest');
+});

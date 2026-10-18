@@ -17,10 +17,7 @@ jobs:
         with:
           node-version: "22"
       - name: Validate JavaScript syntax
-        run: |
-          for file in js/features/portal/member-evidence.js js/features/portal/portal-admin.js js/features/portal/portal-member.js js/features/attendance/attendance-controller.js js/features/settings/admin.js js/features/drinks/deckel-install.js js/features/drinks/deckel-manifest.js js/features/drinks/deckel-challenge.js js/features/drinks/deckel-mobile.js js/core/config.js cloudflare/push/portal.js cloudflare/push/worker.bundle.js; do
-            node --check "$file"
-          done
+        run: node scripts/check-syntax.cjs
       - name: Check bundled Cloudflare worker matches sources
         run: |
           node cloudflare/push/build.cjs
@@ -28,6 +25,6 @@ jobs:
       - name: Check release and service worker consistency
         run: |
           node scripts/update-release.cjs
-          git diff --exit-code -- index.html deckel.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest
+          git diff --exit-code -- index.html deckel.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest js/features/drinks/deckel-manifest.js
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
