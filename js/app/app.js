@@ -207,7 +207,7 @@ byId("loginButton").addEventListener("click", login);
 byId("archiveLoginButton").addEventListener("click", loginArchive);
 byId("archivePin").addEventListener("keydown", event => { if (event.key === "Enter") loginArchive(); });
 byId("cancelArchiveLoginButton").addEventListener("click", () => showView("attendanceView"));
-byId("cancelLoginButton").addEventListener("click", () => showView("attendanceView"));
+byId("cancelLoginButton").addEventListener("click", cancelAdminLogin);
 byId("adminPin").addEventListener("keydown", event => { if (event.key === "Enter") login(); });
 byId("saveButton").addEventListener("click", saveAttendance);
 byId("roleSaveButton").addEventListener("click", saveAttendance);

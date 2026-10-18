@@ -23,19 +23,23 @@ function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   return false;
 }
 function lockAdministration(){
+  const theaterReturn=window.TheaterAdmin?.route?.();
   if(byId('pushAdminToken'))byId('pushAdminToken').value='';
   if(byId('deckel-token'))byId('deckel-token').value='';
   window.TheaterAdmin?.lock();window.PortalAdmin?.lock();window.DrinksAdminBookings?.lock();
   window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();window.DrinksBirthdaySettings?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
   for(const id of ['theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView']){
-    if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id;showView('adminLoginView');break;}
+    if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id==='theaterView'?(theaterReturn||'eventsView'):id;showView('adminLoginView');break;}
   }
   for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
   renderOneDriveDialog?.();
 }
 function showView(viewId) {
-  if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView","settingsPortalView"].includes(viewId)&&!requireAdmin(viewId))return false;
+  const requestedView=viewId;
+  const theaterMode=({theaterCashView:"cash",theaterStatsView:"stats",theaterManageView:"manage"})[viewId];
+  if(theaterMode)viewId="theaterView";
+  if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView","settingsPortalView"].includes(viewId)&&!requireAdmin(requestedView))return false;
   if(window.TheaterAdmin?.beforeView(viewId)===false)return false;
   if(window.DrinksQuizQuestions?.beforeView(viewId)===false)return false;
   if(window.DrinksAdminBookings?.beforeView(viewId)===false)return false;
@@ -45,6 +49,7 @@ function showView(viewId) {
   if(window.ArchiveCorrection?.beforeView(viewId)===false)return false;
   if(window.Usability?.beforeLeave(viewId)===false)return false;
   if(window.Drinks?.beforeView(viewId)===false)return false;
+  if(theaterMode&&window.TheaterAdmin?.setMode(theaterMode)===false)return false;
   if(viewId==="drinksView")lockAdministration();
   clearTimeout(toastTimer);byId("toast")?.classList.remove("visible");
   closeCompactMenu();

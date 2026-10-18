@@ -124,6 +124,11 @@ async function confirmProbeTopic() {
     if(confirmButton){confirmButton.disabled=false;confirmButton.textContent="Weiter zum Abschluss";}
   }
 }
+function cancelAdminLogin(){
+  const target=String(pendingSettingsTarget||"").startsWith("theater")?"eventsView":"attendanceView";
+  pendingSettingsTarget="";byId("adminPin").value="";byId("pinError").hidden=true;
+  showView(target);
+}
 function login() {
   if (byId("adminPin").value !== adminPin()) {
     byId("pinError").hidden = false;

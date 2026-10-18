@@ -6,7 +6,7 @@ function fixture(){
  const c=vm.createContext({busy:false,loading:false,epoch:0,mode:'manage',dirty:false,current:null,draft:{items:[{id:'old'}]},selectedMember:'person',timer:null,
   $:get,document:{querySelector:()=>get('nav'),getElementById:get},window:{scrollTo(){}},clearTimeout(){},structuredClone,crypto:require('node:crypto').webcrypto,
   g:{TheaterImport:{read:async()=>[{id:'new'}]}},confirm:()=>true,message:m=>messages.push(m),controls(){},schedule(){},paintEditor(){},updateUnsaved(){},load(){},paintCash(){}});
- vm.runInContext(section(' async function run(',' async function load(')+section(' async function importCatalog(',' function openTab(')+section(' function edit(',' function paintCategoryColors(')+section(' function setMode(',' function lock(')+section(' function selectCash(',' function orderTime('),c);
+ vm.runInContext(section(' async function run(',' async function load(')+section(' async function importCatalog(',' function openTab(')+section(' function edit(',' function paintCategoryColors(')+section(' function route(',' function lock(')+section(' function selectCash(',' function orderTime('),c);
  return {c,get,messages};
 }
 test('Laufende Schreibaktionen verhindern Seitenwechsel und Wechsel der Theateransicht',()=>{

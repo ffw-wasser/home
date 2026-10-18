@@ -29,7 +29,7 @@ test('Zeitwerte als Millisekunden, Zahlentext und ISO werden korrekt erkannt',()
 });
 test('Kassen-Vollbild verdeckt bei ausgeblendeter Theateransicht keine App-Bereiche',()=>{
  assert.match(css,/#theaterView\.theater-cash-fullscreen\[hidden\]\s*\{\s*display:none!important/);
- assert.match(admin,/if\(mode==='cash'\)setMode\('manage'\)/);
+ assert.match(admin,/classList\.remove\('theater-cash-fullscreen'\)/);
 });
 test('Verwaltung enthält eindeutig zugeordnete Bedienfelder und Tonsteuerung',()=>{
  const panel=html.slice(html.indexOf('<article id="theater-manage"'),html.indexOf('</article>',html.indexOf('<article id="theater-manage"'))+10);
@@ -38,7 +38,7 @@ test('Verwaltung enthält eindeutig zugeordnete Bedienfelder und Tonsteuerung',(
   assert.ok(panel.includes('id="'+id+'"'),id+' in Verwaltung');
  }
  assert.equal((panel.match(/class="theater-manage-section"/g)||[]).length,4);
- assert.match(html,/data-theater-tab="manage" aria-pressed="true"/);
+ assert.doesNotMatch(html,/data-theater-tab=/);
 });
 test('Geänderter Theater-JavaScript-Code ist syntaktisch gültig',()=>{
  assert.doesNotThrow(()=>new vm.Script(admin));
