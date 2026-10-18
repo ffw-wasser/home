@@ -143,3 +143,14 @@ test('Bei unverändertem Bericht ist der Rückweg ohne Warnmeldung möglich',()=
   assert.equal(f.c.archiveCorrectionBeforeView('settingsHistoryView'),true);
   assert.equal(confirms,0);
 });
+
+test('Speicherhinweis für noch zu ersetzende Dateien bleibt nach Rückkehr zur Historie sichtbar',async()=>{
+  const f=fixture();f.c.correctArchiveItem('original-archive-id');
+  f.get('archiveCorrectionEditDate').value='2026-10-16';
+  f.get('archiveCorrectionEditTopic').value='Funkübung';
+  f.get('archiveCorrectionList').children=[editableCard(0,'Mustermann Erika','Anwesend','Anwesend'),editableCard(1,'Muster Max','Fehlt')];
+  f.c.persistArchiveCorrection=async()=>({message:'CSV-Ausgabe nicht abgeschlossen',type:'error'});
+  await f.c.saveArchiveCorrectionStep2();
+  assert.deepEqual(f.calls.filter(c=>c[0]==='toast').at(-1),['toast','CSV-Ausgabe nicht abgeschlossen','error']);
+  assert.equal(f.c.archiveCorrectionState,null);
+});

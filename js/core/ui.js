@@ -78,14 +78,14 @@ function renderSessionType() {
 
   const sessionHint=byId("sessionHint");
   if(sessionHint)sessionHint.textContent=isSpecial
-    ? "Status „Anwesend“ oder „Betrifft nicht“ wählen, danach mehrere Mitglieder markieren und gemeinsam speichern."
+    ? "Personen markieren → Auswahl übernehmen."
     : isTraining
-      ? "Status „Anwesend“ wählen, danach mehrere Mitglieder markieren und gemeinsam als Unterrichtsteilnehmer speichern."
+      ? "Personen markieren → Auswahl übernehmen."
       : isCommittee
-        ? "Nur Mitglieder des Ausschusses werden angezeigt. Die Erfassung verhält sich wie beim Unterricht."
+        ? "Nur Ausschussmitglieder."
         : isOperation
-          ? "Bei Einsätzen werden ausschließlich anwesende Einsatzkräfte erfasst. Mehrere Einsätze am selben Tag bleiben getrennt."
-        : "Status bei den Personen markieren und anschließend Auswahl übernehmen. Funktionen werden beim Start der Taktik berechnet.";
+          ? "Nur anwesende Einsatzkräfte erfassen."
+        : "Personen markieren → Auswahl übernehmen.";
 }
 function chooseSessionType(type,{calendar=false}={}) {
   const validTypes=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Einsatz"];
@@ -105,14 +105,14 @@ function chooseSessionType(type,{calendar=false}={}) {
   const previewOperation = type === "Einsatz";
   const sessionHint=byId("sessionHint");
   if(sessionHint)sessionHint.textContent=previewSpecial
-    ? "Status „Anwesend“ oder „Betrifft nicht“ wählen, danach mehrere Mitglieder markieren und gemeinsam speichern."
+    ? "Personen markieren → Auswahl übernehmen."
     : previewTraining
-      ? "Status „Anwesend“ wählen, danach mehrere Mitglieder markieren und gemeinsam als Unterrichtsteilnehmer speichern."
+      ? "Personen markieren → Auswahl übernehmen."
       : previewCommittee
-        ? "Nur Mitglieder des Ausschusses werden angezeigt. Die Erfassung verhält sich wie beim Unterricht."
+        ? "Nur Ausschussmitglieder."
         : previewOperation
-          ? "Nur anwesende Einsatzkräfte markieren. Einsatzdaten werden in Schritt 3 erfasst."
-        : "Status bei den Personen markieren und anschließend Auswahl übernehmen. Funktionen werden beim Start der Taktik berechnet.";
+          ? "Nur anwesende Einsatzkräfte erfassen."
+        : "Personen markieren → Auswahl übernehmen.";
   const next=byId("continueToAttendanceButton");
   if(next){next.disabled=false;next.textContent=`Weiter mit ${type}`;}
   const headerType=byId("headerProbeType");if(headerType)headerType.textContent=type;

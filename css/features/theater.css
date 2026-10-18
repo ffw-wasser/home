@@ -144,9 +144,9 @@
 .theater-launch-heading .eyebrow{margin:0 0 6px;color:#bcdaf5}
 .theater-launch-heading h2{font-size:clamp(1.5rem,3vw,2rem);line-height:1.2;margin:0 0 10px;color:#fff}
 .theater-launch-heading p:last-child{margin:0;color:#dceaf5;font-size:.98rem}
-.theater-launch-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.theater-launch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
 .theater .theater-launch-card{display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;min-height:166px;width:100%;padding:21px;border-radius:18px;border:1px solid #bdccdc;background:#f9fbff;color:#183b59;box-shadow:0 3px 15px #14325112;white-space:normal}
-.theater .theater-launch-main{grid-column:1/-1;min-height:154px;background:#e8f6ed;border:2px solid #8ab9a1}
+.theater .theater-launch-main{min-height:166px;background:#e8f6ed;border:2px solid #8ab9a1}
 .theater-launch-symbol{display:grid;place-items:center;min-width:36px;min-height:34px;border-radius:9px;background:#fff;font-size:1.45rem;color:#143e65}
 .theater-launch-title{font-size:clamp(1.15rem,2.5vw,1.42rem);font-weight:850;line-height:1.2}
 .theater-launch-description{font-size:.94rem;font-weight:500;line-height:1.45}
@@ -196,3 +196,14 @@
 .theater .theater-selection-controls button{display:grid;place-items:center;width:43px;min-height:43px;padding:0;border:1px solid #9cb4cc;background:#edf4fb;color:#143e65;font-size:1.4rem}
 .theater .theater-selection-controls button:disabled{opacity:.4}
 #theater-phone-selection[hidden]{display:none!important}
+
+/* Theater navigation and catalog tools stay separate from the live cash board. */
+.theater-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:6px;background:#e9eff5;border-radius:14px;gap:6px}
+.theater-navigation button{width:100%;white-space:normal;min-width:0}
+.theater-navigation button[aria-pressed=true]{box-shadow:0 2px 6px #12362726}
+.theater-editor-tools{display:flex;align-items:end;flex-wrap:wrap;gap:10px 14px;margin:18px 0;padding:14px;background:#edf3fa;border-radius:12px}
+.theater-editor-tools label{display:flex;flex-direction:column;gap:6px;flex:1 1 230px;font-weight:700;min-width:0}
+.theater-editor-tools input{width:100%;min-width:0;box-sizing:border-box}
+.theater-editor-tools [role=status]{padding:10px 0;font-size:.9rem;color:#385270}
+#theater-editor .theater-edit-row[hidden],#theater-editor .theater-editor-group[hidden],.theater [role=status]:empty{display:none!important}
+@media(max-width:700px){.theater-launch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.theater .theater-launch-main{grid-column:1/-1;min-height:130px}.theater-navigation{grid-template-columns:1fr 1fr}.theater-navigation button:first-child{grid-column:1/-1}.theater-launch-heading{padding:18px}.theater .theater-launch-card{min-height:140px}.theater-editor-tools{padding:10px}}

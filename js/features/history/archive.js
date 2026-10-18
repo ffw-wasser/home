@@ -259,7 +259,7 @@ function archiveCorrectionWorkspace(){
   panel.id="archiveCorrectionWorkspace";
   panel.className="panel archive-correction-workspace";
   panel.setAttribute("aria-labelledby","archiveCorrectionHeading");
-  panel.innerHTML='<div class="archive-correction-heading"><div><p class="eyebrow">Archivkorrektur · Schritt 2</p><h2 id="archiveCorrectionHeading">Termin und Personen korrigieren</h2><p>Den vorhandenen Bericht bearbeiten. Erst mit „Originalbericht speichern“ wird die bestehende Datei überschrieben.</p></div><button type="button" id="archiveCorrectionBack" class="outline-button">Zur Historie</button></div><div class="archive-correction-meta"><label>Termindatum<input id="archiveCorrectionEditDate" type="date" class="text-input"></label><label>Thema<textarea id="archiveCorrectionEditTopic" class="text-input" rows="2" maxlength="300" required></textarea></label></div><div class="archive-correction-toolbar"><label>Person suchen<input type="search" id="archiveCorrectionSearch" class="text-input" placeholder="Name suchen …" autocomplete="off"></label><label>Teilnahme filtern<select id="archiveCorrectionFilter" class="text-input"><option value="">Alle Personen</option><option value="Anwesend">Anwesend</option><option value="Entschuldigt">Entschuldigt</option><option value="Fehlt">Fehlt</option><option value="Betrifft nicht">Betrifft nicht</option></select></label><p id="archiveCorrectionCount" aria-live="polite"></p></div><div id="archiveCorrectionList" class="archive-correction-list"></div><div class="archive-correction-add"><label>Person ergänzen<select id="archiveCorrectionAddPerson" class="text-input"><option value="">Mitglied auswählen</option></select></label><button type="button" class="outline-button" id="archiveCorrectionAdd">Person ergänzen</button></div><div class="archive-correction-actions"><button type="button" class="outline-button" id="archiveCorrectionCancel">Abbrechen</button><button type="button" class="primary-button" id="archiveCorrectionSave">Originalbericht speichern</button></div>';
+  panel.innerHTML='<div class="archive-correction-heading"><div><h2 id="archiveCorrectionHeading">Termin und Personen korrigieren</h2></div><button type="button" id="archiveCorrectionBack" class="outline-button">Zur Historie</button></div><div class="archive-correction-meta"><label>Termindatum<input id="archiveCorrectionEditDate" type="date" class="text-input"></label><label>Thema<textarea id="archiveCorrectionEditTopic" class="text-input" rows="2" maxlength="300" required></textarea></label></div><div class="archive-correction-toolbar"><label>Person suchen<input type="search" id="archiveCorrectionSearch" class="text-input" placeholder="Name suchen …" autocomplete="off"></label><label>Teilnahme filtern<select id="archiveCorrectionFilter" class="text-input"><option value="">Alle Personen</option><option value="Anwesend">Anwesend</option><option value="Entschuldigt">Entschuldigt</option><option value="Fehlt">Fehlt</option><option value="Betrifft nicht">Betrifft nicht</option></select></label><p id="archiveCorrectionCount" aria-live="polite"></p></div><div id="archiveCorrectionList" class="archive-correction-list"></div><div class="archive-correction-add"><label>Person ergänzen<select id="archiveCorrectionAddPerson" class="text-input"><option value="">Mitglied auswählen</option></select></label><button type="button" class="outline-button" id="archiveCorrectionAdd">Person ergänzen</button></div><div class="archive-correction-actions"><button type="button" class="outline-button" id="archiveCorrectionCancel">Abbrechen</button><button type="button" class="primary-button" id="archiveCorrectionSave">Originalbericht speichern</button></div>';
   let view=byId("archiveCorrectionView");
   if(!view){
     view=document.createElement("section");view.id="archiveCorrectionView";view.className="view";view.hidden=true;
@@ -389,9 +389,9 @@ async function saveArchiveCorrectionStep2(){
     const timestamp=new Date().toISOString();
     item.topic=topic;
     item.revisions=[...(item.revisions||[]),{changedAt:timestamp,reason:"Termin in Schritt 2 korrigiert",changedRows:rows.reduce((n,row,i)=>n+(JSON.stringify(row)===JSON.stringify(archiveCorrectionState.rows[i])?0:1),0)}];
-    await persistArchiveCorrection(item,rows,correctedDate);
+    const result=await persistArchiveCorrection(item,rows,correctedDate);
     cancelArchiveCorrectionStep2({saved:true});
-    showToast("Korrigierter Originalbericht erfolgreich gespeichert.");
+    showToast(result?.message||"Korrigierter Originalbericht erfolgreich gespeichert.",result?.type||"success");
   }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
   finally{button.disabled=false;}
 }
@@ -404,7 +404,7 @@ function correctArchiveItem(id){
   archiveCorrectionState={item,rows:structuredClone(rows)};
   const panel=archiveCorrectionWorkspace();
   if(showView("archiveCorrectionView")===false){clearArchiveCorrectionStep2();return;}
-  byId("archiveCorrectionHeading").textContent=(item.sessionType||rows[0].sessionType||"Termin")+" korrigieren · Schritt 2";
+  byId("archiveCorrectionHeading").textContent=(item.sessionType||rows[0].sessionType||"Termin")+" korrigieren";
   byId("archiveCorrectionEditDate").value=rows[0]?.date||historyDateFromItem(item);
   byId("archiveCorrectionEditTopic").value=item.topic||rows[0]?.topic||"";
   byId("archiveCorrectionSearch").value="";byId("archiveCorrectionFilter").value="";
@@ -412,7 +412,6 @@ function correctArchiveItem(id){
   archiveCorrectionState.rows.forEach(appendArchiveCorrectionPerson);
   refreshArchiveCorrectionMembers();filterArchiveCorrectionRows();
   panel.scrollIntoView({block:"start",behavior:"instant"});
-  showToast("Schritt 2: Datum, Thema und Personen korrigieren. Speichern überschreibt den Originalbericht.");
 }
 function pairedArchiveFileNames(item){
   const current=String(item.fileName||"Probe.csv");
@@ -446,22 +445,25 @@ async function persistArchiveCorrection(item,rows,correctedDate){
   if(item.oneDriveLive){
     await window.saveOneDriveHistoryCorrection(item,correctedPdf);
     await window.loadOneDriveHistory();
-    return;
+    return {message:"Korrigierter Originalbericht in OneDrive gespeichert.",type:"success"};
   }
   await saveImportedReportPdf(item.id,new File([correctedPdf],names.pdf,{type:"application/pdf"}));
   item.hasImportedPdf=true;
   csvArchive=csvArchive.map(entry=>entry.id===item.id?item:entry);
-  let csvOverwritten=false,pdfOverwritten=false;
+  let csvOverwritten=false,pdfOverwritten=false,csvOutputIncomplete=false;
   try{csvOverwritten=await writeCsvToSelectedFolder(names.csv,item.content);}catch(error){console.warn("CSV konnte nicht direkt überschrieben werden",error);}
   try{pdfOverwritten=await savePdfToSelectedFolder(names.pdf,correctedPdf);}catch(error){console.warn("PDF konnte nicht direkt überschrieben werden",error);}
   saveArchive();renderArchive();renderStatistics();renderHistory();
   if(!csvOverwritten){
     const result=await exportCsvFile(names.csv,item.content,true);
-    if(result==="failed"||result==="cancelled")showToast("Korrektur im Archiv gespeichert. CSV-Ausgabe wurde nicht abgeschlossen.","error");
+    if(result==="failed"||result==="cancelled")csvOutputIncomplete=true;
   }
   if(!pdfOverwritten)downloadBlob(names.pdf,correctedPdf);
-  if(csvOverwritten&&pdfOverwritten)showToast("Korrektur gespeichert. Original-CSV und Original-PDF überschrieben.");
-  else showToast("Korrektur gespeichert. Bitte die ausgegebenen Originaldateien am Speicherort ersetzen.");
+  const result=csvOutputIncomplete
+    ?{message:"Korrektur lokal gespeichert. CSV-Ausgabe nicht abgeschlossen; Originaldateien am Speicherort noch nicht vollständig ersetzt.",type:"error"}
+    :{message:csvOverwritten&&pdfOverwritten?"Korrektur gespeichert. Original-CSV und Original-PDF überschrieben.":"Korrektur lokal gespeichert. Bitte die ausgegebenen Originaldateien am Speicherort ersetzen.",type:"success"};
+  showToast(result.message,result.type);
+  return result;
 }
 async function saveArchiveCorrection(){
   if(!requireAdmin("settingsHistoryView")||!archiveCorrectionState)return;
