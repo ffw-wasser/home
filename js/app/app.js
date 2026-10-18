@@ -193,8 +193,6 @@ byId("adminTab").addEventListener("click", () => showView(adminUnlocked ? "admin
 byId("archiveTab").addEventListener("click", () => { if (adminUnlocked) { renderArchive(); showView("archiveView"); } else showView("archiveLoginView"); });
 byId("helpTab")?.addEventListener("click", () => showView("helpView"));
 byId("finalizeProbeButton").addEventListener("click", finalizeProbeFromTactics);
-byId("finishAsSpecialButton")?.addEventListener("click",()=>finishTacticsAlternative("Sonderprobe"));
-byId("finishAsTrainingButton")?.addEventListener("click",()=>finishTacticsAlternative("Unterricht"));
 // Der zusätzliche Abbruchknopf ist redundant: Home und „Zurück zu Schritt 1“ übernehmen den Rückweg.
 const cancelTacticsCloseButton=byId("cancelTacticsCloseButton");
 if(cancelTacticsCloseButton)cancelTacticsCloseButton.remove();

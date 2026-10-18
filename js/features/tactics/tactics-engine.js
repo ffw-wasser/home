@@ -19,13 +19,12 @@
     const list=Array.isArray(assignments)?assignments:[];
     return MINIMUM_UNIT_ROLES.every(role=>list.some(item=>item.role===role&&Boolean(item.member)));
   }
-  function shouldShowAlternative(sessionType,slots){return sessionType==="Allgemeine Probe"&&!hasCompleteStaffelOnAnyVehicle(slots);}
   function recommendationText(sessionType,slots){
-    if(shouldShowAlternative(sessionType,slots))return "Auf keinem Fahrzeug kann eine vollständige Staffel 1/5 besetzt werden. Als Alternative stehen Sonderprobe oder Unterricht zur Auswahl.";
+    if(sessionType==="Allgemeine Probe"&&!hasCompleteStaffelOnAnyVehicle(slots))return "Auf keinem Fahrzeug kann eine vollständige Staffel 1/5 besetzt werden. Offene Positionen bleiben unbesetzt.";
     const lf=(Array.isArray(slots)?slots:[]).filter(slot=>slot.vehicle==="LF10"&&slot.member);
-    return vehicleHasMinimumUnit(lf)?"Die aktuelle Fahrzeugbesetzung ist plausibel.":"Auf dem LF10 kann keine einsatzfähige Einheit 1/3 gebildet werden. Unterricht oder angepasste Ausbildung durchführen.";
+    return vehicleHasMinimumUnit(lf)?"Die aktuelle Fahrzeugbesetzung ist plausibel.":"Auf dem LF10 kann keine einsatzfähige Einheit 1/3 gebildet werden. Besetzung und offene Positionen prüfen.";
   }
-  const api=Object.freeze({GROUP_ROLES,STAFF_ROLES,MINIMUM_UNIT_ROLES,canDriveVehicle,vehicleHasRoles,vehicleHasCompleteStaffel,hasCompleteStaffelOnAnyVehicle,vehicleHasMinimumUnit,shouldShowAlternative,recommendationText});
+  const api=Object.freeze({GROUP_ROLES,STAFF_ROLES,MINIMUM_UNIT_ROLES,canDriveVehicle,vehicleHasRoles,vehicleHasCompleteStaffel,hasCompleteStaffelOnAnyVehicle,vehicleHasMinimumUnit,recommendationText});
   global.TacticsEngine=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })(typeof globalThis!=="undefined"?globalThis:this);

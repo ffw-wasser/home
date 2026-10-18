@@ -1,4 +1,5 @@
 const pendingMemberStatuses=new Map();
+let probeCompletionMode="direct";
 function syncStep3ButtonState(){
   const button=byId("exportResetButton");
   if(!button)return;
@@ -97,7 +98,7 @@ function beginAttendanceFromContext(){
 function updatePrimaryAction() {
   const button=byId("exportResetButton"),rows=todayEntries(),count=rows.length,hasEntries=count>0,pending=pendingMemberStatuses.size;
   if(!button)return;
-  button.textContent=sessionType==="Allgemeine Probe"?"Mannschaft einteilen":sessionType==="Einsatz"?"Fahrzeuge zuordnen":"Termin prüfen und abschließen";
+  button.textContent=sessionType==="Allgemeine Probe"?"Weiter zu Schritt 3":sessionType==="Einsatz"?"Fahrzeuge zuordnen":"Termin prüfen und abschließen";
   button.disabled=Boolean(pending)||!hasEntries;button.hidden=pending>0;
   button.title=pending?"Bitte zuerst die Markierungen übernehmen.":hasEntries?"Nächsten Schritt öffnen":"Mindestens eine Teilnahme erfassen";
   const save=byId('saveButton');if(save)save.hidden=pending===0;
@@ -534,12 +535,12 @@ function setHomeFlowStage(stage){
   applyVisibility(workspace,stage===2,"grid");
   applyVisibility(byId("rfidCsvImport"),stage===2,"block");
   applyVisibility(byId("attendanceStatusToolbar"),false,"none");
-  applyVisibility(finish,false,"block");
+  applyVisibility(finish,stage===3&&sessionType==="Allgemeine Probe","block");
   applyVisibility(step3Action,stage===2,"block");
   const operationAssignment=byId("operationAssignmentStep");
   applyVisibility(operationAssignment,stage===3&&sessionType==="Einsatz","block");
   applyVisibility(byId("operationReportForm"),false,"block");
-  applyVisibility(tactics,stage===3&&sessionType==="Allgemeine Probe","block");
+  applyVisibility(tactics,false,"block");
   document.querySelectorAll("#attendanceView .flow-stage-2-support").forEach(element=>applyVisibility(element,stage===2,""));
   // Der Dokumentbereich ist Bestandteil von Schritt 3. Beim Wechsel zu Home,
   // Schritt 1 oder Schritt 2 wird nur die Oberfläche geschlossen; bereits
@@ -562,16 +563,10 @@ function setHomeFlowStage(stage){
 
   if(stage===3&&sessionType==="Einsatz"){showOperationForm();}
   if(stage===3&&sessionType==="Allgemeine Probe"){
-    tacticsClosingPending=true;renderTactics();byId("tacticsCloseActions").hidden=false;
-    requestAnimationFrame(()=>{
-      const target=byId("tacticsView");if(!target)return;
-      const navHeight=document.querySelector(".top-nav")?.getBoundingClientRect().height||0;
-      const progressHeight=byId("homeFlowProgress")?.getBoundingClientRect().height||0;
-      const top=window.scrollY+target.getBoundingClientRect().top-navHeight-progressHeight-12;
-      window.scrollTo({top:Math.max(0,top),left:0,behavior:"smooth"});
-      target.setAttribute("tabindex","-1");target.focus({preventScroll:true});
-    });
+    tacticsClosingPending=false;probeCompletionMode="direct";
+    requestAnimationFrame(()=>{finish?.scrollIntoView({behavior:"smooth",block:"start"});byId("automaticVehicleButton")?.focus({preventScroll:true});});
   }
+  if(stage===2)window.PortalAdmin?.autoStageCalendarReplies?.();
   updatePrimaryAction();
   window.syncHeaderProbeSummary?.();
   syncHomeFlowProgress(stage);window.WorkflowUX?.attendance();
@@ -627,10 +622,21 @@ function continueToAttendance(){
   window.__sessionTypeTransitionRunning=false;
 }
 
+function chooseProbeCompletion(mode){
+  if(typeof guardProbeCompletion==="function"&&!guardProbeCompletion())return;
+  if(!todayEntries().length)return showToast("Es muss mindestens eine Teilnahme erfasst sein.","error");
+  probeCompletionMode=mode;
+  if(mode==="automatic"){
+    if(!todayEntries().some(entry=>entry.status==="Anwesend"))return showToast("Für die Fahrzeugbesetzung muss mindestens eine Person anwesend sein.","error");
+    const finish=byId("homeStageFinish");if(finish){finish.hidden=true;finish.style.display="none";}
+    openTactics(true);
+  }else{tacticsClosingPending=false;openProbeTopicDialog();}
+}
+
 function syncHomeFlowProgress(stage=homeFlowStage){
  const progress=byId("homeFlowProgress");if(!progress)return;
  const operation=sessionType==="Einsatz",current=operation&&byId("operationReportForm")&&!byId("operationReportForm").hidden?4:stage;
- const steps=operation?[[1,"Termin"],[2,"Personen"],[3,"Fahrzeuge"],[4,"Einsatzbericht"]]:[[1,"Termin"],[2,"Personen"],[3,sessionType==="Allgemeine Probe"?"Mannschaft & Abschluss":"Abschluss"]];
+ const steps=operation?[[1,"Termin"],[2,"Personen"],[3,"Fahrzeuge"],[4,"Einsatzbericht"]]:[[1,"Termin"],[2,"Personen"],[3,"Abschluss"]];
  progress.innerHTML=steps.map(([number,label],index)=>`${index?"<i></i>":""}<button type="button" data-flow-indicator="${number}"><b>${number}</b><span>${label}</span></button>`).join("");
  progress.dataset.currentStage=String(current);
  progress.querySelectorAll("[data-flow-indicator]").forEach(item=>{const number=Number(item.dataset.flowIndicator),isCurrent=number===current,canReturnToReport=operation&&number===4&&Boolean(byId("operationReportForm"))&&Boolean(operationNames?.().length);item.classList.toggle("current",isCurrent);item.classList.toggle("completed",number<current);item.classList.toggle("upcoming",number>current);if(isCurrent)item.setAttribute("aria-current","step");else item.removeAttribute("aria-current");item.disabled=number>current&&!canReturnToReport;});
@@ -653,7 +659,7 @@ function ensureStagedHomeFlow(){
   }
   if(!byId("homeFlowProgress")){
     const progress=document.createElement("nav");progress.id="homeFlowProgress";progress.className="home-flow-progress";progress.setAttribute("aria-label","Terminablauf");sessionPanel.parentElement.insertBefore(progress,sessionPanel);
-    progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){setHomeFlowStage(1);requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3&&sessionType==="Einsatz"){setHomeFlowStage(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;setHomeFlowStage(3);openOperationReportForm?.();syncHomeFlowProgress(4);}});
+    progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){setHomeFlowStage(1);requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3){setHomeFlowStage(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;setHomeFlowStage(3);openOperationReportForm?.();syncHomeFlowProgress(4);}});
   }
   syncHomeFlowProgress(homeFlowStage);
 
@@ -711,8 +717,10 @@ function ensureStagedHomeFlow(){
   }
   if(!byId("homeStageFinish")){
     const finish=document.createElement("section");finish.id="homeStageFinish";finish.className="panel home-stage-finish";finish.hidden=true;
-    finish.innerHTML=`<div class="flow-stage-heading"><span>3</span><div><strong>Probe abschließen</strong><small id="homeStageFinishType"></small></div></div><p>Die Anwesenheit ist abgeschlossen. Thema eintragen und Bericht erzeugen.</p><button class="primary-button" id="homeStageFinishButton" type="button">Probe abschließen · CSV + PDF</button>`;
-    attendance.appendChild(finish);byId("homeStageFinishButton").addEventListener("click",requestCloseProbe);
+    finish.innerHTML=`<div class="flow-stage-heading"><span>3</span><div><strong>Probe abschließen</strong></div></div><div class="probe-completion-choices"><button class="outline-button" id="automaticVehicleButton" type="button"><strong>Fahrzeugbesetzung automatisch</strong><span>Besetzung vorschlagen und prüfen</span></button><button class="primary-button" id="homeStageFinishButton" type="button"><strong>Direkt abschließen</strong><span>Thema eintragen und Terminpaket erstellen</span></button></div>`;
+    attendance.appendChild(finish);
+    byId("automaticVehicleButton").addEventListener("click",()=>chooseProbeCompletion("automatic"));
+    byId("homeStageFinishButton").addEventListener("click",()=>chooseProbeCompletion("direct"));
   }
   const step3Button=byId("exportResetButton");
   if(step3Button&&!step3Button.dataset.step3Bound){

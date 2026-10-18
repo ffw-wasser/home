@@ -17,8 +17,8 @@ test('Staffel wird pro Fahrzeug geprüft; verteilte Rollen ergeben keine vollst�
   assert.equal(TacticsEngine.hasCompleteStaffelOnAnyVehicle(slots),true);
   slots[5].vehicle='TSF';
   assert.equal(TacticsEngine.hasCompleteStaffelOnAnyVehicle(slots),false);
-  assert.equal(TacticsEngine.shouldShowAlternative('Allgemeine Probe',slots),true);
-  assert.equal(TacticsEngine.shouldShowAlternative('Unterricht',slots),false);
+  assert.match(TacticsEngine.recommendationText('Allgemeine Probe',slots),/Offene Positionen bleiben unbesetzt/);
+  assert.doesNotMatch(TacticsEngine.recommendationText('Allgemeine Probe',slots),/Sonderprobe|Unterricht/);
 });
 
 test('Einsatzbesetzung meldet Doppelbelegung und Überbelegung',()=>{

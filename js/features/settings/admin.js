@@ -29,11 +29,11 @@ async function requestCloseProbe() {
   if(typeof guardProbeCompletion==="function"&&!guardProbeCompletion())return;
   if (!todayEntries().length) return showToast("Es muss mindestens eine Teilnahme erfasst sein.", "error");
 
-  // Ohne generische Zwischenkarte direkt in den terminartspezifischen Schritt 3.
+  // Den Abschluss passend zur Terminart öffnen.
   setHomeFlowStage(3);
 
   if (sessionType === "Allgemeine Probe") {
-    // Taktik und Besetzung werden durch setHomeFlowStage(3) direkt angezeigt.
+    // Schritt 3 bietet Fahrzeugbesetzung oder direkten Abschluss.
     return;
   }
   if (sessionType === "Einsatz") {
@@ -104,7 +104,7 @@ async function confirmProbeTopic() {
   if(confirmButton)confirmButton.textContent="Abschluss wird erstellt …";
   byId("probeTopicDialog").close();
   try {
-    if (sessionType === "Allgemeine Probe") {
+    if (sessionType === "Allgemeine Probe" && probeCompletionMode === "automatic") {
       if (!todayEntries().some(entry => entry.status === "Anwesend")) {
         showToast("Für die Taktik muss mindestens eine Person anwesend sein.", "error");
         return;
@@ -112,7 +112,7 @@ async function confirmProbeTopic() {
       // Schritt 3 ist bereits die Fahrzeug- und Funktionskontrolle. Nach der
       // Themeneingabe deshalb nicht erneut in Schritt 3 stehen bleiben, sondern
       // die sichtbare Einteilung übernehmen und den Export direkt starten.
-      openTactics(true);
+      tacticsClosingPending=true;
       await finalizeProbeFromTactics();
       return;
     }

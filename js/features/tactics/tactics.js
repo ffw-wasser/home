@@ -110,8 +110,8 @@ function ensureTacticsChangePanel(){
   let panel=byId("tacticsChangePanel");if(panel)return panel;
   panel=document.createElement("article");panel.id="tacticsChangePanel";panel.className="panel tactics-change-panel";panel.hidden=true;
   panel.innerHTML=`<div class="panel-heading"><span class="step yellow">2</span><div><h3>Zweite Fahrzeugbesetzung</h3><small>Kopie der ersten Füllung für einen Funktionswechsel während der Probe</small></div><button type="button" class="outline-button" id="removeTacticsChange">Entfernen</button></div><p class="tactics-change-hint">Bei einer Auswahl wird die gewählte Person mit der bisher hier eingeteilten Person getauscht. Dadurch bleibt jede Person nur einmal eingeteilt.</p><div class="tactics-change-grid" id="tacticsChangeGrid"></div>`;
-  const reserve=byId("reserveCrew")?.closest(".tactics-reserve"),education=byId("tacticsEducation");
-  if(reserve)reserve.insertAdjacentElement("afterend",panel);else if(education)education.insertAdjacentElement("beforebegin",panel);else byId("tacticsView")?.appendChild(panel);
+  const reserve=byId("reserveCrew")?.closest(".tactics-reserve");
+  if(reserve)reserve.insertAdjacentElement("afterend",panel);else byId("tacticsView")?.appendChild(panel);
   panel.querySelector("#removeTacticsChange").onclick=()=>{tacticsChangeSlots=[];panel.hidden=true;rebuildTacticsAssignmentsFromSlots();};
   panel.addEventListener("change",event=>{const select=event.target.closest("[data-change-slot]");if(!select)return;swapTacticsChangeMember(Number(select.dataset.changeSlot),select.value);});
   return panel;
@@ -279,15 +279,6 @@ function vehicleHasCompleteStaffel(vehicle){
 function hasCompleteStaffelOnAnyVehicle(){
   return TacticsEngine.hasCompleteStaffelOnAnyVehicle(currentTacticsSlots);
 }
-function updateTacticsAlternatives(){
-  const education=byId("tacticsEducation");
-  if(!education)return;
-  const show=TacticsEngine.shouldShowAlternative(sessionType,currentTacticsSlots);
-  education.hidden=!show;
-  const text=byId("tacticsAlternativeText");
-  if(text&&show)text.textContent="Auf keinem Fahrzeug kann eine vollständige Staffel 1/5 besetzt werden. Die Probe kann als Sonderprobe oder als Unterricht abgeschlossen werden.";
-}
-
 function tacticsPresentationCard(vehicle,title,roles){
  const slots=currentTacticsSlots.filter(slot=>slot.vehicle===vehicle);
  return `<section class="tactics-presentation-vehicle"><header><span>${escapeHtml(vehicle)}</span><h3>${escapeHtml(title)}</h3></header><div class="tactics-presentation-slots">${roles.map(role=>{const slot=slots.find(item=>item.role===role),name=slot?.member?nameForTile(slot.member):"nicht besetzt";return `<div class="tactics-presentation-slot${slot?.member?" filled":" open"}"><b>${escapeHtml(role)}</b><strong>${escapeHtml(name)}</strong></div>`;}).join("")}</div></section>`;
@@ -314,7 +305,6 @@ function renderTactics() {
     refreshTacticsManualView();
     byId("tacticsSummary").textContent=`${present.length} anwesende Einsatzkräfte · ${sessionType}`;const presentationButton=byId("openTacticsPresentation");if(presentationButton)presentationButton.hidden=sessionType!=="Allgemeine Probe";
     byId("tacticsRecommendation").innerHTML=`<strong>Empfehlung</strong><p>Bestehende Fahrzeugbesetzung beibehalten. Nachzügler werden nur auf noch freie, passende Positionen gesetzt; bereits zugeteilte Personen werden nicht umgesetzt.</p>`;
-    updateTacticsAlternatives();
     return;
   }
   if(present.length>=9) {
@@ -335,43 +325,18 @@ function renderTactics() {
       ? present.length>=6
         ? "Das LF10 wird als Staffel beziehungsweise Teilgruppe besetzt. Das TSF bleibt stehen, bis das LF10 zur Gruppe 1/8 aufgefüllt ist."
         : "Das LF10 wird als kleinste taktische Einheit ab 1/3 besetzt. Das TSF bleibt stehen."
-      : "Auf dem LF10 kann keine einsatzfähige Einheit 1/3 gebildet werden. Unterricht oder angepasste Ausbildung durchführen.";
-  } else recommendation="Keine kleinste Einheit 1/3 möglich. Unterricht oder angepasste Ausbildung durchführen.";
+      : "Auf dem LF10 kann keine einsatzfähige Einheit 1/3 gebildet werden. Besetzung und offene Positionen prüfen.";
+  } else recommendation="Keine kleinste Einheit 1/3 möglich. Besetzung und offene Positionen prüfen.";
   if(!group.length)group=GROUP_ROLES.map(role=>({role,member:null}));
   if(!staff.length)staff=STAFF_ROLES.map(role=>({role,member:null}));
   if(!breathingProtectionPlanned)currentAtueMember=null;
   currentTacticsSlots=protectCriticalVehicleSlots([...group.map(item=>({vehicle:"LF10",role:item.role,member:item.member})),...staff.map(item=>({vehicle:"TSF",role:item.role,member:item.member}))]);
   refreshTacticsManualView();
   byId("tacticsSummary").textContent=`${present.length} anwesende Einsatzkräfte · ${sessionType}`;const presentationButton=byId("openTacticsPresentation");if(presentationButton)presentationButton.hidden=sessionType!=="Allgemeine Probe";
-  if(sessionType==="Allgemeine Probe" && !hasCompleteStaffelOnAnyVehicle()) recommendation="Auf keinem Fahrzeug kann eine vollständige Staffel 1/5 besetzt werden. Als Alternative stehen Sonderprobe oder Unterricht zur Auswahl.";
+  if(sessionType==="Allgemeine Probe" && !hasCompleteStaffelOnAnyVehicle()) recommendation="Auf keinem Fahrzeug kann eine vollständige Staffel 1/5 besetzt werden. Offene Positionen bleiben unbesetzt.";
   byId("tacticsRecommendation").innerHTML=`<strong>Empfehlung</strong><p>${escapeHtml(recommendation)}</p>`;
-  updateTacticsAlternatives();
 }
-function openTactics(forClosing=false){tacticsClosingPending=forClosing;renderTactics();const actions=byId("tacticsCloseActions");actions.hidden=!forClosing;if(forClosing&&!byId("addTacticsChangeButton")){const button=document.createElement("button");button.type="button";button.id="addTacticsChangeButton";button.className="outline-button";button.textContent="Zweite Füllung anlegen";button.onclick=createTacticsChange;actions.prepend(button);}byId("tacticsView").hidden=false;showView("attendanceView");setTimeout(()=>byId("tacticsView")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}
-function lfWaterTeamComplete() {
-  const lf=currentTacticsSlots.filter(slot=>slot.vehicle==="LF10");
-  return Boolean(lf.find(slot=>slot.role==="WTF"&&slot.member) && lf.find(slot=>slot.role==="WTM"&&slot.member));
-}
-function convertCurrentProbeToSpecial() {
-  sessionType="Sonderprobe";
-  entries=entries.map(entry=>entry.sessionId!==ensureCurrentSessionId()?entry:{...entry,sessionType:"Sonderprobe",role:entry.role==="Orga"?"Orga":"",status:entry.status==="Anwesend"?"Anwesend":entry.status});
-  saveEntries(); renderSessionType();
-}
-function convertCurrentProbeToTraining(){
-  sessionType="Unterricht";
-  entries=entries.map(entry=>entry.sessionId!==ensureCurrentSessionId()?entry:{...entry,sessionType:"Unterricht",role:entry.role==="Orga"?"Orga":entry.status==="Anwesend"?"Unterricht":""});
-  saveEntries();renderSessionType();renderEntries();updatePrimaryAction();window.syncHeaderProbeSummary?.();
-}
-async function finishTacticsAlternative(type){
-  if(!tacticsClosingPending)return;
-  if(type==="Unterricht")convertCurrentProbeToTraining();
-  else convertCurrentProbeToSpecial();
-  tacticsClosingPending=false;
-  const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;
-  const view=byId("tacticsView");if(view)view.hidden=true;
-  showView("attendanceView");
-  await closeDay(currentClosingTopic);
-}
+function openTactics(forClosing=false){tacticsClosingPending=forClosing;renderTactics();const actions=byId("tacticsCloseActions");actions.hidden=!forClosing;if(forClosing&&!byId("addTacticsChangeButton")){const button=document.createElement("button");button.type="button";button.id="addTacticsChangeButton";button.className="outline-button";button.textContent="Zweite Füllung anlegen";button.onclick=createTacticsChange;actions.prepend(button);}byId("tacticsView").hidden=false;byId("tacticsView").style.removeProperty("display");byId("tacticsView").removeAttribute("aria-hidden");showView("attendanceView");setTimeout(()=>byId("tacticsView")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}
 function applyCalculatedTacticsFunctions() {
   entries = entries.map(entry => {
     if (entry.sessionId !== ensureCurrentSessionId() || entry.status !== "Anwesend") return entry;
@@ -384,17 +349,10 @@ function applyCalculatedTacticsFunctions() {
 }
 async function finalizeProbeFromTactics(){
   if(!tacticsClosingPending)return;
-  if(sessionType==="Allgemeine Probe" && !hasCompleteStaffelOnAnyVehicle()){
-    updateTacticsAlternatives();
-    showToast("Auf keinem Fahrzeug ist eine vollständige Staffel 1/5 besetzbar. Bitte Sonderprobe oder Unterricht als alternative Durchführung auswählen.","error");
-    byId("tacticsEducation")?.scrollIntoView({behavior:"smooth",block:"center"});
-    return;
-  }
+  if(!String(currentClosingTopic||"").trim()){openProbeTopicDialog();return;}
   applyCalculatedTacticsFunctions();
-  tacticsClosingPending=false;
-  const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;
-  const view=byId("tacticsView");if(view)view.hidden=true;
-  showView("attendanceView");
+  // Bei abgebrochener oder fehlgeschlagener Ablage bleibt die Besetzung bedienbar.
+  // closeDay räumt die Ansicht erst nach erfolgreichem Abschluss auf.
   await closeDay(currentClosingTopic);
 }
 

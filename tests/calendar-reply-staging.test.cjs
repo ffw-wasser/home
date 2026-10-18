@@ -3,7 +3,7 @@ const source=fs.readFileSync('js/features/portal/portal-admin.js','utf8');
 function fixture(options={}){
  const calls=[],people=['yes','excused','open','saved','marked','outside'].map(id=>({id,firstName:'Test',lastName:id}));
  const c=vm.createContext({replyData:{event:{id:'test-event',attendanceType:'Sonderprobe',recipientIds:['yes','excused','open','saved','marked']},replies:['yes','saved','marked','outside'].map(memberId=>({memberId,status:'yes'})).concat({memberId:'excused',status:'excused'}),stale:false},members:people,sessionType:'Sonderprobe',currentSessionId:'test-session',currentOperationId:'',oneDriveStateConfirmed:true,oneDriveAdministrationReady:()=>true,pendingMemberStatuses:new Map([['marked','Entschuldigt']]),chosenMemberIds:new Set(),todayEntries:()=>[{storedName:'saved'}],nameForStorage:m=>m.id,nameForTile:m=>m.lastName,chosen:()=> 'test-event',paintReplies:()=>calls.push('paint'),renderMembers:()=>calls.push('render'),updateSelection:()=>calls.push('selection'),setHomeFlowStage:n=>calls.push(n),showToast:s=>calls.push(s),WorkflowUX:{beforeSelection:()=>calls.push('undo')},...options});c.g=c;
- vm.runInContext(source.slice(source.indexOf(' function replyCandidates'),source.indexOf(' function paintReplies')),c);return {c,calls};
+ vm.runInContext(source.slice(source.indexOf(' let autoStagedSession'),source.indexOf(' function paintReplies')),c);return {c,calls};
 }
 test('Nur Zusagen und Entschuldigungen berechtigter, noch nicht markierter oder erfasster Personen werden vorgemerkt',()=>{
  const f=fixture();assert.deepEqual(Array.from(f.c.replyCandidates(),p=>[p.member.id,p.status]),[['yes','Anwesend'],['excused','Entschuldigt']]);assert.equal(f.c.stageCalendarReplies(),true);assert.equal(f.c.pendingMemberStatuses.get('yes'),'Anwesend');assert.equal(f.c.pendingMemberStatuses.get('excused'),'Entschuldigt');assert.equal(f.c.pendingMemberStatuses.get('marked'),'Entschuldigt');assert.equal(f.c.pendingMemberStatuses.has('open'),false);assert.equal(f.c.pendingMemberStatuses.has('saved'),false);assert.equal(f.c.pendingMemberStatuses.has('outside'),false);assert.equal(f.c.chosenMemberIds.size,3);assert.ok(f.calls.includes('undo'));assert.ok(f.calls.includes(2));
@@ -26,4 +26,17 @@ test('Die Übersicht bietet die passende Anzahl direkt an und blendet den Button
  f.c.document={getElementById:()=>area};f.c.node=(tag,text)=>({tagName:tag,textContent:text,dataset:{},children:[],append(...nodes){this.children.push(...nodes);}});f.c.date=()=> 'Testdatum';f.c.manual=null;
  vm.runInContext(source.slice(source.indexOf(' function paintReplies'),source.indexOf(' async function refreshAttendance')),f.c);f.c.paintReplies();
  const apply=area.children.find(n=>n.tagName==='button');assert.equal(apply.textContent,'2 Rückmeldungen vormerken');assert.equal(apply.hidden,false);assert.equal(apply.disabled,false);apply.onclick();assert.equal(area.children.find(n=>n.tagName==='button').hidden,true);assert.equal(f.c.pendingMemberStatuses.size,3);
+});
+
+test('Schritt 2 merkt Zusagen automatisch vor, ohne spätere Abwahl oder Änderungen zurückzusetzen',()=>{
+ const f=fixture({homeFlowStage:2});assert.equal(f.c.autoStageCalendarReplies(),true);
+ assert.equal(f.c.pendingMemberStatuses.get('yes'),'Anwesend');assert.equal(f.c.pendingMemberStatuses.get('excused'),'Entschuldigt');assert.equal(f.calls.includes(2),false);
+ f.c.pendingMemberStatuses.delete('yes');f.c.pendingMemberStatuses.set('excused','Anwesend');f.calls.length=0;
+ assert.equal(f.c.autoStageCalendarReplies(),false);assert.equal(f.c.pendingMemberStatuses.has('yes'),false);assert.equal(f.c.pendingMemberStatuses.get('excused'),'Anwesend');assert.deepEqual(f.calls,[]);
+ f.c.currentSessionId='next-session';assert.equal(f.c.autoStageCalendarReplies(),true);assert.equal(f.c.pendingMemberStatuses.get('yes'),'Anwesend');
+});
+test('Automatische Vormerkung wartet auf Schritt 2 und bestätigte Rückmeldungen',()=>{
+ const f=fixture({homeFlowStage:1});assert.equal(f.c.autoStageCalendarReplies(),false);
+ f.c.homeFlowStage=2;f.c.replyData.stale=true;assert.equal(f.c.autoStageCalendarReplies(),false);
+ f.c.replyData.stale=false;assert.equal(f.c.autoStageCalendarReplies(),true);
 });

@@ -20,7 +20,7 @@ test('Ohne Kalender und Terminart wird nur die spontane Auswahl geöffnet',()=>{
  const f=fixture();f.c.beginAttendanceFromContext();assert.equal(f.get('attendanceAlternatives').open,true);assert.equal(f.get('attendanceSpontaneous').open,true);assert.deepEqual(f.calls,['focus']);assert.equal(f.c.currentSessionId,'');
 });
 test('Erst Markierungen übernehmen, dann zum passenden Abschluss wechseln',()=>{
- for(const [type,label] of [['Allgemeine Probe','Mannschaft einteilen'],['Einsatz','Fahrzeuge zuordnen'],['Unterricht','Termin prüfen und abschließen']]){
+ for(const [type,label] of [['Allgemeine Probe','Weiter zu Schritt 3'],['Einsatz','Fahrzeuge zuordnen'],['Unterricht','Termin prüfen und abschließen']]){
   const f=fixture({sessionType:type,todayEntries:()=>[{status:'Anwesend'}],pendingMemberStatuses:new Map([['test-member','Anwesend']])});f.c.updatePrimaryAction();
   assert.equal(f.get('exportResetButton').hidden,true);assert.equal(f.get('exportResetButton').disabled,true);assert.equal(f.get('saveButton').hidden,false);
   f.c.pendingMemberStatuses.clear();f.c.updatePrimaryAction();assert.equal(f.get('saveButton').hidden,true);assert.equal(f.get('exportResetButton').hidden,false);assert.equal(f.get('exportResetButton').disabled,false);assert.equal(f.get('exportResetButton').textContent,label);
