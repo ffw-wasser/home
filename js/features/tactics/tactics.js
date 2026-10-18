@@ -3,7 +3,6 @@ let currentTacticsAssignments = new Map();
 let currentTacticsSlots = [];
 let tacticsDragSource = null;
 let currentAtueMember = null;
-let tacticsChangeSlots = [];
 const GROUP_ROLES = TacticsEngine.GROUP_ROLES;
 const STAFF_ROLES = TacticsEngine.STAFF_ROLES;
 function tacticsPresentMembers() {
@@ -106,35 +105,15 @@ function assignmentReason(member, role) {
   return `Ausgleich: Funktion bisher ${progress.actual}-mal übernommen`;
 }
 function crewHtml(crew, vehicle) { return crew.map(item => `<div class="crew-position ${item.member?"crew-filled crew-draggable":"crew-open"}" data-drop-vehicle="${vehicle}" data-drop-role="${item.role}" ${item.member?`draggable="true" data-drag-member="${escapeHtml(item.member.id)}"`:""}><span>${escapeHtml(item.role)}</span><strong>${item.member?escapeHtml(nameForTile(item.member)):"nicht besetzt"}</strong><small>${escapeHtml(assignmentReason(item.member,item.role))}</small></div>`).join(""); }
-function ensureTacticsChangePanel(){
-  let panel=byId("tacticsChangePanel");if(panel)return panel;
-  panel=document.createElement("article");panel.id="tacticsChangePanel";panel.className="panel tactics-change-panel";panel.hidden=true;
-  panel.innerHTML=`<div class="panel-heading"><span class="step yellow">2</span><div><h3>Zweite Fahrzeugbesetzung</h3><small>Kopie der ersten Füllung für einen Funktionswechsel während der Probe</small></div><button type="button" class="outline-button" id="removeTacticsChange">Entfernen</button></div><p class="tactics-change-hint">Bei einer Auswahl wird die gewählte Person mit der bisher hier eingeteilten Person getauscht. Dadurch bleibt jede Person nur einmal eingeteilt.</p><div class="tactics-change-grid" id="tacticsChangeGrid"></div>`;
-  const reserve=byId("reserveCrew")?.closest(".tactics-reserve");
-  if(reserve)reserve.insertAdjacentElement("afterend",panel);else byId("tacticsView")?.appendChild(panel);
-  panel.querySelector("#removeTacticsChange").onclick=()=>{tacticsChangeSlots=[];panel.hidden=true;rebuildTacticsAssignmentsFromSlots();};
-  panel.addEventListener("change",event=>{const select=event.target.closest("[data-change-slot]");if(!select)return;swapTacticsChangeMember(Number(select.dataset.changeSlot),select.value);});
-  return panel;
+function tacticsRolesForMember(member){
+  const slot=currentTacticsSlots.find(slot=>slot.member?.id===member.id);
+  return slot?`${slot.vehicle} ${slot.role}`:"Reserve";
 }
-function createTacticsChange(){
-  if(!currentTacticsSlots.some(slot=>slot.member))return showToast("Bitte zuerst die erste Fahrzeugbesetzung erstellen.","error");
-  tacticsChangeSlots=currentTacticsSlots.map(slot=>({vehicle:slot.vehicle,role:slot.role,member:slot.member||null}));
-  renderTacticsChange();rebuildTacticsAssignmentsFromSlots();setTimeout(()=>byId("tacticsChangePanel")?.scrollIntoView({behavior:"smooth",block:"start"}),0);
-}
-function renderTacticsChange(){
-  const panel=ensureTacticsChangePanel(),grid=byId("tacticsChangeGrid");panel.hidden=!tacticsChangeSlots.length;if(!tacticsChangeSlots.length||!grid)return;
-  const people=tacticsPresentMembers().slice().sort((a,b)=>nameForTile(a).localeCompare(nameForTile(b),"de"));
-  const vehicleHtml=vehicle=>{const slots=tacticsChangeSlots.map((slot,index)=>({...slot,index})).filter(slot=>slot.vehicle===vehicle);if(!slots.length)return"";return `<section class="tactics-change-vehicle"><h4>${escapeHtml(vehicle)}</h4><div class="tactics-change-slots">${slots.map(slot=>`<label class="tactics-change-slot"><span>${escapeHtml(slot.role)}</span><select data-change-slot="${slot.index}"><option value="">nicht besetzt</option>${people.map(person=>`<option value="${escapeHtml(person.id)}" ${slot.member?.id===person.id?"selected":""}>${escapeHtml(nameForTile(person))}</option>`).join("")}</select><small>${slot.member?"Aus erster Füllung übernommen":"Position offen"}</small></label>`).join("")}</div></section>`;};
-  grid.innerHTML=vehicleHtml("LF10")+vehicleHtml("TSF");
-}
-function swapTacticsChangeMember(slotIndex,memberId){
-  const target=tacticsChangeSlots[slotIndex];if(!target)return;const next=memberId?members.find(member=>member.id===memberId):null;
-  if(next&&!memberMayFillSlot(next,target.vehicle,target.role)){renderTacticsChange();return showToast(deniedTacticsSlotMessage(next,target.vehicle,target.role),"error");}
-  const source=next?tacticsChangeSlots.find(slot=>slot.member?.id===next.id):null,previous=target.member;target.member=next||null;if(source&&source!==target)source.member=previous||null;renderTacticsChange();rebuildTacticsAssignmentsFromSlots();
-}
-function tacticsRolesForMember(member){const first=currentTacticsSlots.find(slot=>slot.member?.id===member.id),second=tacticsChangeSlots.find(slot=>slot.member?.id===member.id),label=slot=>slot?`${slot.vehicle} ${slot.role}`:"Reserve";return tacticsChangeSlots.length?`1. Füllung: ${label(first)} | 2. Füllung: ${label(second)}`:label(first);}
 function rebuildTacticsAssignmentsFromSlots() {
-  currentTacticsAssignments = new Map(tacticsPresentMembers().map(member=>{const first=currentTacticsSlots.find(slot=>slot.member?.id===member.id),second=tacticsChangeSlots.find(slot=>slot.member?.id===member.id);return [nameForStorage(member),{vehicle:first?.vehicle||"",role:first?.role||"",roleLabel:tacticsRolesForMember(member),secondVehicle:second?.vehicle||"",secondRole:second?.role||""}];}));
+  currentTacticsAssignments=new Map(tacticsPresentMembers().map(member=>{
+    const slot=currentTacticsSlots.find(slot=>slot.member?.id===member.id);
+    return [nameForStorage(member),{vehicle:slot?.vehicle||"",role:slot?.role||"",roleLabel:tacticsRolesForMember(member)}];
+  }));
 }
 function memberMayFillSlot(member, vehicle, role) {
   if(!member||!vehicle||!role)return false;
@@ -336,14 +315,14 @@ function renderTactics() {
   if(sessionType==="Allgemeine Probe" && !hasCompleteStaffelOnAnyVehicle()) recommendation="Auf keinem Fahrzeug kann eine vollständige Staffel 1/5 besetzt werden. Offene Positionen bleiben unbesetzt.";
   byId("tacticsRecommendation").innerHTML=`<strong>Empfehlung</strong><p>${escapeHtml(recommendation)}</p>`;
 }
-function openTactics(forClosing=false){tacticsClosingPending=forClosing;renderTactics();const actions=byId("tacticsCloseActions");actions.hidden=!forClosing;if(forClosing&&!byId("addTacticsChangeButton")){const button=document.createElement("button");button.type="button";button.id="addTacticsChangeButton";button.className="outline-button";button.textContent="Zweite Füllung anlegen";button.onclick=createTacticsChange;actions.prepend(button);}byId("tacticsView").hidden=false;byId("tacticsView").style.removeProperty("display");byId("tacticsView").removeAttribute("aria-hidden");showView("attendanceView");setTimeout(()=>byId("tacticsView")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}
+function openTactics(forClosing=false){tacticsClosingPending=forClosing;renderTactics();const actions=byId("tacticsCloseActions");actions.hidden=!forClosing;byId("tacticsView").hidden=false;byId("tacticsView").style.removeProperty("display");byId("tacticsView").removeAttribute("aria-hidden");showView("attendanceView");setTimeout(()=>byId("tacticsView")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}
 function applyCalculatedTacticsFunctions() {
   entries = entries.map(entry => {
     if (entry.sessionId !== ensureCurrentSessionId() || entry.status !== "Anwesend") return entry;
     if (entry.role === "Orga") return entry;
     if(breathingProtectionPlanned&&currentAtueMember && (entry.storedName===nameForStorage(currentAtueMember)||entry.displayName===nameForTile(currentAtueMember)))return {...entry,role:"ATÜ"};
     const assignment = currentTacticsAssignments.get(entry.storedName);
-    return assignment ? { ...entry, role:assignment.role||"Reserve", vehicle:assignment.vehicle, tacticsRoleLabel:assignment.roleLabel, secondVehicle:assignment.secondVehicle, secondRole:assignment.secondRole } : { ...entry, role:"Reserve" };
+    return assignment ? { ...entry, role:assignment.role||"Reserve", vehicle:assignment.vehicle, tacticsRoleLabel:assignment.roleLabel } : { ...entry, role:"Reserve" };
   });
   saveEntries();
 }
@@ -356,7 +335,7 @@ async function finalizeProbeFromTactics(){
   await closeDay(currentClosingTopic);
 }
 
-byId("breathingProtectionPlanned")?.addEventListener("change",event=>{breathingProtectionPlanned=event.target.checked;if(!breathingProtectionPlanned)currentAtueMember=null;currentTacticsSlots=[];tacticsChangeSlots=[];currentTacticsAssignments=new Map();renderTactics();});
+byId("breathingProtectionPlanned")?.addEventListener("change",event=>{breathingProtectionPlanned=event.target.checked;if(!breathingProtectionPlanned)currentAtueMember=null;currentTacticsSlots=[];currentTacticsAssignments=new Map();renderTactics();});
 initializeTacticsDragDrop();
 
 byId("openTacticsPresentation")?.addEventListener("click",openTacticsPresentation);

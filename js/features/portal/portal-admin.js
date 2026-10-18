@@ -291,7 +291,22 @@
  function useSpontaneous(){if(currentSessionId||currentOperationId)return false;selected=null;manualNoCalendar=true;replyData=null;const picker=document.getElementById('portal-calendar-pick');if(picker)picker.value='';currentProbeDate=typeof systemToday==='function'?systemToday():new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());const input=byId('probeDateInput');if(input)input.value=currentProbeDate;paintReplies();return true;}
  function selectedDate(){const e=list.find(e=>e.id===chosen());return e?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start)):null;}
  function sessionStarted(){const date=selectedDate();if(date)currentProbeDate=date;if(selected&&currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));paintReplies();}
- function discard(keepCalendar=false){if(!keepCalendar){selected=null;replyData=null;manualNoCalendar=false;}safeStorage.removeItem('h2o_calendar_session');const picker=document.getElementById('portal-calendar-pick');if(picker)picker.value=selected||'';paintReplies();}
+ function discard(keepCalendar=false){
+  safeStorage.removeItem('h2o_calendar_session');
+  if(!keepCalendar){
+   // Bereits geladene Termine sofort zeigen, auch wenn der nächste Abruf langsam ist.
+   selected=list.find(e=>e.approved&&e.kind==='probe'&&e.end>Date.now())?.id||null;
+   replyData=null;manualNoCalendar=false;autoStagedSession="";
+  }
+  const picker=document.getElementById('portal-calendar-pick');if(picker)picker.value=selected||'';
+  paintReplies();
+  if(!keepCalendar){
+   lastLoad=0;
+   // Der Aufrufer räumt zuerst die alte Erfassung auf. Danach ohne Minutensperre laden.
+   queueMicrotask(()=>{g.syncAttendanceStart?.();refreshAttendance(true);});
+  }
+ }
+
  function init(){
   $('open').onclick=()=>showView(VIEW);document.getElementById('portal-calendar-back').onclick=()=>{lock();showView('settingsView');};document.getElementById('portal-calendar-admin-open').onclick=()=>{if(requireAdmin(CALENDAR))loadCalendar();};$('back').onclick=()=>{lock();showView('settingsView');};$('member').onchange=()=>{generation++;clearQR();$('status').textContent='';};$('show-qr').onclick=qr;$('review-load').onclick=()=>{if(reviewEdited.size){$('review-status').textContent='Bitte deine Änderungen zuerst speichern. Sie bleiben hier erhalten.';return;}return reviewCalendar();};$('review-auto').onclick=acceptAutomatic;$('review-toggle').onclick=()=>{reviewShowSaved=!reviewShowSaved;reviewControls();};$('review-filter').onchange=()=>{reviewFilter=$('review-filter').value;reviewControls();};$('review-search').oninput=()=>{reviewQuery=String($('review-search').value||'').trim().toLocaleLowerCase('de');reviewControls();};$('form').onsubmit=event=>{event.preventDefault();return run(async()=>{const version=generation,form=$('form'),submit=form.querySelector('button[type=submit]'),label=submit.textContent;form.setAttribute('aria-busy','true');submit.textContent='Kalender wird geprüft …';$('calendar-status').textContent='Google-Kalender wird abgerufen und geprüft. Das kann einige Sekunden dauern …';try{const result=await request('configure',{calendarUrl:$('calendar').value.trim(),reminders:true,leadHours:Number($('hours').value)});if(version!==generation)return;admin();$('calendar-status').textContent=result.count+' Kalendereinträge verbunden. Erinnerungseinstellungen gespeichert.';$('status').textContent='';lastLoad=0;try{await syncRoster(true);}catch(e){$('calendar-status').textContent+=' Mitgliederabgleich noch nicht bestätigt: '+e.message;}await reviewCalendar();}catch(e){if(version===generation)$('calendar-status').textContent=e.message;throw e;}finally{form.removeAttribute('aria-busy');submit.textContent=label;}});};
   const observer=new MutationObserver(()=>{if(document.getElementById(VIEW).hidden&&document.getElementById(CALENDAR).hidden)lock();});for(const id of [VIEW,CALENDAR])observer.observe(document.getElementById(id),{attributes:true,attributeFilter:['hidden']});

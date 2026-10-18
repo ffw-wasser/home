@@ -1,13 +1,13 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../js/features/portal/member-evidence.js');
 class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.hidden=true;this.dataset={};this.value='';this.textContent='';}append(...nodes){this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}replaceChildren(...nodes){this.children=nodes;this.firstChild=nodes[0];}get options(){return this.children;}setAttribute(){}removeAttribute(){}querySelector(){return new Node();}querySelectorAll(){return [];}}
 function fixture(){
- const nodes=new Map(),events={},intervals=[],observers=[],typeClicks=[],requests=[],storage=new Map();let ready=false,publicGate=null,publicResolve;const publicStarted=new Promise(r=>publicResolve=r);
+ const nodes=new Map(),events={},intervals=[],microtasks=[],observers=[],typeClicks=[],requests=[],storage=new Map();let ready=false,publicGate=null,publicResolve;const publicStarted=new Promise(r=>publicResolve=r);
  const get=id=>{if(!nodes.has(id))nodes.set(id,new Node());return nodes.get(id);};get('attendanceView').hidden=false;
  const start=Date.now()+3600000,privateCal={configured:true,stale:false,fetchedAt:Date.now(),events:[{id:'test-event',title:'Funkübung',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',kind:'probe',approved:true,start,end:start+3600000}]};
  const publicCal=()=>({...privateCal,events:privateCal.events.map(e=>({...e,title:e.sessionType}))}),clone=v=>JSON.parse(JSON.stringify(v));
- const c=vm.createContext({console,Intl,Date,Promise,MemberEvidence:E,oneDriveStateConfirmed:false,oneDriveAdministrationReady:()=>ready,oneDriveReadState:async()=>({members:[]}),sessionType:'Sonderprobe',currentSessionId:'',currentOperationId:'',currentProbeDate:'',pendingMemberStatuses:new Map(),members:[],todayEntries:()=>[],byId:get,showToast(){},showView(){},requireAdmin:()=>true,localStorage:{getItem:k=>k==='h2o_calendar_public_origin'?'https://test.account.workers.dev/':null,setItem(){}},safeStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev/',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(_,path,data)=>{requests.push(path);if(path.endsWith('/list'))return clone(privateCal);if(path.endsWith('/replies'))return {event:clone(privateCal.events.find(e=>e.id===data.eventId)||privateCal.events[0]),replies:[],stale:false};return {evidenceVersion:1};}},document:{hidden:false,readyState:'loading',getElementById:get,createElement:tag=>new Node(tag),querySelector:s=>s.startsWith('#sessionTypes ')?{click:()=>typeClicks.push(s.match(/data-session-type="([^"]+)"/)[1])}:new Node(),querySelectorAll:()=>[],addEventListener:(key,fn)=>events['doc:'+key]=fn},addEventListener:(key,fn)=>events['window:'+key]=fn,MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(node){(this.nodes??=[]).push(node);}},queueMicrotask(){},setInterval:fn=>intervals.push(fn),fetch:async()=>{publicResolve();if(publicGate)await publicGate;return {ok:true,json:async()=>clone(publicCal())};}});
+ const c=vm.createContext({console,Intl,Date,Promise,MemberEvidence:E,oneDriveStateConfirmed:false,oneDriveAdministrationReady:()=>ready,oneDriveReadState:async()=>({members:[]}),sessionType:'Sonderprobe',currentSessionId:'',currentOperationId:'',currentProbeDate:'',pendingMemberStatuses:new Map(),members:[],todayEntries:()=>[],byId:get,showToast(){},showView(){},requireAdmin:()=>true,localStorage:{getItem:k=>k==='h2o_calendar_public_origin'?'https://test.account.workers.dev/':null,setItem(){}},safeStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev/',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(_,path,data)=>{requests.push(path);if(path.endsWith('/list'))return clone(privateCal);if(path.endsWith('/replies'))return {event:clone(privateCal.events.find(e=>e.id===data.eventId)||privateCal.events[0]),replies:[],stale:false};return {evidenceVersion:1};}},document:{hidden:false,readyState:'loading',getElementById:get,createElement:tag=>new Node(tag),querySelector:s=>s.startsWith('#sessionTypes ')?{click:()=>typeClicks.push(s.match(/data-session-type="([^"]+)"/)[1])}:new Node(),querySelectorAll:()=>[],addEventListener:(key,fn)=>events['doc:'+key]=fn},addEventListener:(key,fn)=>events['window:'+key]=fn,MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(node){(this.nodes??=[]).push(node);}},queueMicrotask:fn=>microtasks.push(fn),setInterval:fn=>intervals.push(fn),fetch:async()=>{publicResolve();if(publicGate)await publicGate;return {ok:true,json:async()=>clone(publicCal())};}});
  vm.runInContext(fs.readFileSync('js/features/portal/portal-admin.js','utf8'),c);
- return {c,get,events,intervals,observers,typeClicks,requests,privateCal,publicStarted,gate:p=>publicGate=p,init:()=>events['doc:DOMContentLoaded'](),login:()=>{ready=true;c.oneDriveStateConfirmed=true;return c.PortalAdmin.storageChanged();},label:()=>get('portal-calendar-pick').children[1]?.textContent};
+ return {c,get,events,intervals,microtasks,observers,typeClicks,requests,privateCal,publicStarted,gate:p=>publicGate=p,init:()=>events['doc:DOMContentLoaded'](),login:()=>{ready=true;c.oneDriveStateConfirmed=true;return c.PortalAdmin.storageChanged();},label:()=>get('portal-calendar-pick').children[1]?.textContent};
 }
 test('Hauptansicht ersetzt neutrale Sonderprobe nach OneDrive-Bestätigung automatisch durch den richtigen Namen',async()=>{
  const f=fixture();await f.c.PortalAdmin.refreshAttendance(true);assert.match(f.label(),/Sonderprobe/);assert.ok(!f.label().includes('Sonderprobe · Sonderprobe'));assert.equal(f.requests.length,0);
@@ -181,4 +181,28 @@ test('Herbstfest Sonderschule vom Vortag bleibt in Kalender-Einstellungen korrig
  assert.equal(kind.hidden,false,'Auch ein bereits beendeter Termin kann einzeln korrigiert werden.');
  assert.equal(f.get('portal-admin-review-auto').disabled,true,'Abgelaufene Termine dürfen keine Sammelfreigabe mehr auslösen.');
  assert.ok(now>Date.parse('2026-10-17T19:00:00Z'));
+});
+
+test('Abbrechen zeigt den geladenen Kalendertermin sofort und lädt ohne Minutensperre nach',async()=>{
+ const f=fixture();await f.login();f.c.currentSessionId='test-session';f.c.PortalAdmin.sessionStarted();
+ f.c.PortalAdmin.discard();f.c.currentSessionId='';
+ assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');assert.equal(f.get('portal-calendar-pick').value,'test-event');
+ const count=f.requests.filter(p=>p.endsWith('/list')).length;
+ f.microtasks.pop()();await new Promise(setImmediate);
+ assert.equal(f.requests.filter(p=>p.endsWith('/list')).length,count+1);
+});
+test('Nach Abbruch einer spontanen Erfassung erscheint der aktuelle Kalendertermin sofort wieder',async()=>{
+ const f=fixture();await f.login();f.c.PortalAdmin.useSpontaneous();f.c.currentSessionId='spontan';
+ assert.equal(f.c.PortalAdmin.selectedEvent(),null);f.c.PortalAdmin.discard();f.c.currentSessionId='';
+ assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');assert.equal(f.get('portal-calendar-pick').value,'test-event');
+});
+test('Abgelaufener Kalendertermin wird beim Abbrechen übersprungen',async()=>{
+ const f=fixture();const first=f.privateCal.events[0];f.privateCal.events.push({...first,id:'next-event',start:first.end+10000,end:first.end+7200000});await f.login();
+ const Base=Date;f.c.Date=class extends Base{static now(){return first.end+1000;}};
+ f.c.PortalAdmin.discard();assert.equal(f.c.PortalAdmin.selectedEvent().id,'next-event');assert.equal(f.get('portal-calendar-pick').value,'next-event');
+});
+test('Ohne kommenden Termin bleibt der Kalender leer; Terminartwechsel behält die gewählte Bindung',async()=>{
+ const f=fixture();await f.login();f.c.PortalAdmin.discard(true);assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');assert.equal(f.microtasks.length,0);
+ const Base=Date;f.c.Date=class extends Base{static now(){return f.privateCal.events[0].end+1;}};
+ f.c.PortalAdmin.discard();assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.equal(f.get('portal-calendar-pick').value,'');
 });

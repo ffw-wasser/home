@@ -499,7 +499,7 @@ function discardCurrentAttendanceSession(keepCalendar=false){
   clearTimeout(operationDraftSaveTimer);
   resetDocumentReportState?.();resetOperationState?.();
   operationAssignments={};operationAssignmentRoles={};currentClosingTopic='';currentProbeDate=systemToday();
-  tacticsClosingPending=false;currentTacticsAssignments=new Map();currentTacticsSlots=[];tacticsChangeSlots=[];tacticsDragSource=null;currentAtueMember=null;breathingProtectionPlanned=false;
+  tacticsClosingPending=false;currentTacticsAssignments=new Map();currentTacticsSlots=[];tacticsDragSource=null;currentAtueMember=null;breathingProtectionPlanned=false;
   const breathingInput=byId('breathingProtectionPlanned');if(breathingInput)breathingInput.checked=false;
   window.WorkflowUX?.clearSelectionUndo?.();
   saveEntries();setHomeFlowStage(1);renderEntries();renderMembers();updateSelection();

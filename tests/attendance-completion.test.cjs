@@ -18,3 +18,12 @@ test('Thema wird vor Übernahme der Fahrzeugfunktionen verlangt',async()=>{
  const f=fixture(),tactics=fs.readFileSync('js/features/tactics/tactics.js','utf8');f.c.tacticsClosingPending=true;f.c.applyCalculatedTacticsFunctions=()=>f.calls.push('apply');
  vm.runInContext(tactics.slice(tactics.indexOf('async function finalizeProbeFromTactics'),tactics.indexOf('\nbyId("breathingProtectionPlanned")')),f.c);await f.c.finalizeProbeFromTactics();assert.deepEqual(f.calls,['topic']);
 });
+
+test('Fahrzeugbesetzung erzeugt eine eindeutige Funktion je Person und kennzeichnet Reserve',()=>{
+ const source=fs.readFileSync('js/features/tactics/tactics.js','utf8'),one={id:'one'},two={id:'two'};
+ const c=vm.createContext({currentTacticsSlots:[{vehicle:'LF10',role:'GF',member:one}],currentTacticsAssignments:new Map(),tacticsPresentMembers:()=>[one,two],nameForStorage:m=>m.id});
+ vm.runInContext(source.slice(source.indexOf('function tacticsRolesForMember'),source.indexOf('function memberMayFillSlot')),c);
+ c.rebuildTacticsAssignmentsFromSlots();assert.equal(c.currentTacticsAssignments.size,2);
+ assert.deepEqual(JSON.parse(JSON.stringify(c.currentTacticsAssignments.get('one'))),{vehicle:'LF10',role:'GF',roleLabel:'LF10 GF'});
+ assert.equal(c.currentTacticsAssignments.get('two').roleLabel,'Reserve');
+});
