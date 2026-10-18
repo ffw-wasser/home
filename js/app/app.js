@@ -121,14 +121,14 @@ function restructureMainViews(){
     admin.querySelectorAll(".admin-card-number").forEach(badge=>badge.remove());
   }
   const sub=admin?.querySelector(".screen-heading .eyebrow");if(sub)sub.textContent="Mitglieder, Ziele und Sicherheit";
-  ["adminView","statisticsView","archiveView"].forEach(id=>{const b=byId(id)?.querySelector("[data-home-button]");if(b)b.textContent="Zurück zu Einstellungen";});
+  ["adminView","statisticsView","archiveView"].forEach(id=>{const b=byId(id)?.querySelector("[data-home-button]");if(b)b.textContent="← Zu Einstellungen";});
 }
 
 function buildSettingsSubpages(){
   const main=document.querySelector("main.app-shell"),legacyAdmin=byId("adminView");
   const makePage=(id,title,description,node)=>{
     let page=byId(id);
-    if(!page){page=document.createElement("section");page.id=id;page.className="view settings-subpage";page.hidden=true;page.innerHTML=`<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>${title}</h2><p>${description}</p></div><button class="outline-button view-home-button" data-settings-back type="button">Zurück zu Einstellungen</button></div><div class="settings-subpage-content"></div>`;main.appendChild(page);page.querySelector("[data-settings-back]").addEventListener("click",()=>showView("settingsView"));}
+    if(!page){page=document.createElement("section");page.id=id;page.className="view settings-subpage";page.hidden=true;page.innerHTML=`<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>${title}</h2></div><button class="outline-button view-home-button" data-settings-back type="button">← Zu Einstellungen</button></div><div class="settings-subpage-content"></div>`;main.appendChild(page);page.querySelector("[data-settings-back]").addEventListener("click",()=>showView("settingsView"));}
     if(node)page.querySelector(".settings-subpage-content").appendChild(node);
     return page;
   };
@@ -136,7 +136,7 @@ function buildSettingsSubpages(){
   if(pinArticle)pinArticle.remove();
   const membersPage=makePage("settingsMembersView","Mitglieder","Mitglieder, Funktionen und Berechtigungen verwalten.",members);
   if(membersPage&&!byId('memberEvidenceSync')){
-    const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Persönliche Nachweise im H₂O Portal</h3><p>G26.2 beziehungsweise G26.3 hinterlegen, Atemschutzgeräteträger kennzeichnen und die weiteren Nachweise pflegen. Führerscheinkontrollen erscheinen bei Mitgliedern mit Fahrzeugberechtigung. Änderungen werden nach der OneDrive-Speicherung automatisch abgeglichen.</p><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
+    const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Nachweise · Handy-Abgleich</h3><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
     byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync');button.disabled=true;try{await window.PortalAdmin.syncRoster(true);}catch{/* The status card shows the confirmed sync result. */}finally{window.PortalAdmin.renderSyncStatus();}};
     window.PortalAdmin?.renderSyncStatus?.();
   }
@@ -155,7 +155,7 @@ function buildSettingsSubpages(){
   const statistics=byId("statisticsView");if(statistics){statistics.id="settingsStatisticsView";statistics.classList.add("settings-subpage");}
   const history=byId("settingsHistoryView")||byId("historyView");if(history){history.id="settingsHistoryView";history.classList.add("settings-subpage");}
   const files=byId("settingsFilesView")||byId("archiveView");if(files){files.id="settingsFilesView";files.classList.add("settings-subpage");}
-  [statistics,history,files].forEach(page=>{if(!page)return;const back=page.querySelector(".view-home-button,[data-home-button],[data-history-home]");if(back){back.textContent="Zurück zu Einstellungen";back.onclick=()=>showView("settingsView");}});
+  [statistics,history,files].forEach(page=>{if(!page)return;const back=page.querySelector(".view-home-button,[data-home-button],[data-history-home]");if(back){back.textContent="← Zu Einstellungen";back.onclick=()=>showView("settingsView");}});
   legacyAdmin?.remove();
   document.querySelectorAll(".admin-section-nav,.admin-card-number").forEach(node=>node.remove());
   ensureArchiveStorageCenter();
