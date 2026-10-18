@@ -28,6 +28,17 @@
 #portal-page-deckel .phone-glass-group{gap:3px;min-width:0}
 #portal-page-deckel .phone-glass-group>strong{width:auto;font-size:.8rem;margin-right:4px}
 #portal-page-deckel .phone-glass,#portal-page-deckel .phone-keg{width:18px;height:22px}
+#portal-page-deckel .drink-quantity{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
+#portal-page-deckel .drink-quantity button{width:44px;min-height:44px;padding:6px;font-size:1.25rem}
+#portal-page-deckel .drink-quantity output{flex:1;text-align:center;font-size:1.25rem;font-weight:800;font-variant-numeric:tabular-nums}
+#portal-page-deckel #phone-summary{min-height:2.7em}
+#portal-page-deckel #phone-glasses{min-height:22px}
+#portal-page-deckel #phone-glasses[hidden]{display:flex!important;visibility:hidden}
+#portal-page-deckel #phone-status{display:block;min-height:2.7em;margin:4px 0;padding:0;border:0;background:transparent;font-size:.875rem;line-height:1.35}
+#portal-page-deckel .phone-edit{grid-template-columns:1fr}
+.portal-help>details{border-top:1px solid var(--line)}
+#portal-page-more #deckel-more{padding:0;border:0}
+#portal-page-more #deckel-more>details{margin:0;border-top:1px solid var(--line)}
 #portal-page-deckel .phone-edit{margin-top:6px}
 #portal-page-deckel .phone-edit button{font-size:.875rem;padding:8px 4px}
 #portal-page-deckel #phone-save{padding:10px;min-height:44px}

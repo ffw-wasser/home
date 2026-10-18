@@ -273,3 +273,6 @@
  #settingsCalendarView #portal-admin-review-events .portal-recipient-list{grid-template-columns:minmax(0,1fr)}
  #settingsCalendarView #portal-admin-review-events .portal-review-audience-action{width:100%;margin:7px 0}
 }
+
+/* Reserve the feedback line so a save confirmation does not move answer buttons. */
+#portal-events .portal-answer{min-height:3.4em}

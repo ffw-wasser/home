@@ -14,7 +14,7 @@
   card.setAttribute('aria-busy',String(busy));
   const status=card.querySelector('.portal-answer');if(status){status.textContent=text;status.setAttribute('role','status');status.setAttribute('aria-live','polite');}
   let button=card.querySelector('[data-reply-retry]');
-  if(uncertain&&!button){button=node('button','Speicherung erneut prüfen');button.type='button';button.dataset.replyRetry='true';button.className='portal-reply-retry';button.onclick=retry;card.insertBefore(button,card.querySelector('.portal-choices'));}
+  if(uncertain&&!button){button=node('button','Speicherung erneut prüfen');button.type='button';button.dataset.replyRetry='true';button.className='portal-reply-retry';button.onclick=retry;card.append(button);}
   if(button){button.hidden=!uncertain;button.disabled=busy;}
  }
  function schedule(){clearTimeout(timer);if(visible&&!document.hidden&&(!document.getElementById('portal-page-terms')?.hidden||!document.getElementById('portal-page-evidence')?.hidden))timer=setTimeout(refresh,60000);}
