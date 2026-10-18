@@ -19,13 +19,27 @@
  }
  function schedule(){clearTimeout(timer);if(visible&&!document.hidden&&(!document.getElementById('portal-page-terms')?.hidden||!document.getElementById('portal-page-evidence')?.hidden))timer=setTimeout(refresh,60000);}
  const evidenceDate=(value,medical=false)=>!value?'':medical&&globalThis.MemberEvidence?.displayMonth?globalThis.MemberEvidence.displayMonth(value):new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(value+'T12:00:00Z'));
- const evidenceOrder={expired:0,missing:1,soon:2,valid:3};
- const evidenceItemLabel={valid:'✓ Gültig',soon:'! Bald fällig',expired:'× Abgelaufen',missing:'? Nachweis fehlt'};
+ const evidenceOrder={expired:0,missing:1,soon:2,valid:3,covered:4,optional:5};
+ const evidenceItemLabel={covered:'✓ Durch G26.3 abgedeckt',optional:'Nicht zusätzlich erforderlich',valid:'✓ Gültig',soon:'! Bald fällig',expired:'× Abgelaufen',missing:'? Nachweis fehlt'};
  const evidenceLabel={valid:'✓ Alle hinterlegten Nachweise gültig',soon:'Bald fällig',expired:'Nachweis abgelaufen',missing:'Nachweis fehlt / Daten unvollständig'};
- function evidenceText(item){if(item.invalidFuture)return 'Kontrolldatum liegt in der Zukunft – bitte korrigieren lassen.';if(item.status==='missing')return item.label==='Führerscheinkontrolle'?'Kontrolle nicht hinterlegt':'Nachweis fehlt';return (item.status==='expired'?'Abgelaufen am ':item.label==='Führerscheinkontrolle'?'Nächste Kontrolle bis ':'Gültig bis ')+evidenceDate(item.until,item.label!=='Führerscheinkontrolle');}
+ function evidenceText(item){if(item.status==='covered')return 'Eine gültige G26.3 ersetzt die zusätzliche G26.2.';if(item.status==='optional')return item.until?'Hinterlegte Gültigkeit: '+evidenceDate(item.until,true):'Kein zusätzlicher Nachweis erforderlich.';if(item.invalidFuture)return 'Kontrolldatum liegt in der Zukunft – bitte korrigieren lassen.';if(item.status==='missing')return item.label==='Führerscheinkontrolle'?'Kontrolle nicht hinterlegt':'Nachweis fehlt';return (item.status==='expired'?'Abgelaufen am ':item.label==='Führerscheinkontrolle'?'Nächste Kontrolle bis ':'Gültig bis ')+evidenceDate(item.until,item.label!=='Führerscheinkontrolle');}
+ // Portal grouping only: keep the shared clearance assessment and stored expiry dates intact.
+ function evidenceGroups(e,now=Date.now()){
+  const E=g.MemberEvidence,groups=E.assess(e,now),today=E.day(now),breathing=groups.find(group=>group.title==='Atemschutz'),medical=groups.find(group=>group.title==='Feuerwehrmedizinische Eignung');
+  const g263=e.breathing?e.breathing.g263:e.medical.g263,higher=g263&&g263>=today,required=e.breathing?'g263':higher?'g263':e.medical.g262?'g262':'g263';
+  const original=breathing?breathing.items[0]:medical.items[0],items=['g262','g263'].map(key=>{
+   const isRequired=key===required,covered=key==='g262'&&higher;
+   return {label:key==='g262'?'G26.2 – ohne Belastungstest':'G26.3 – mit Belastungstest',until:key==='g263'?g263:e.medical.g262,status:isRequired?original.status:covered?'covered':'optional',description:key==='g262'&&e.breathing?'Für Atemschutz ist die G26.3 erforderlich.':'',substitution:isRequired?original.substitution:undefined};
+  });
+  // No recorded examination: G26.2 is the minimum for members without breathing duties.
+  if(!e.breathing&&!e.medical.g262&&!e.medical.g263){items[0].status='missing';items[1].status='optional';}
+  const result=[{title:'Ärztliche Untersuchung',items,status:original.status}];
+  if(breathing)result.push({...breathing,items:breathing.items.slice(1).map((item,index)=>({...item,label:index===0?'Unterricht – Sicherheitsunterweisung':'FFI – FitFirefighterIndex',description:index===0?'Sicherheitsunterweisung bei der Feuerwehr Emmendingen · einmal jährlich.':'Atemschutzdurchgang bei der Feuerwehr Emmendingen / Übungsstrecke · einmal jährlich.'})),status:breathing.items.slice(1).some(i=>i.status==='expired')?'expired':breathing.items.slice(1).some(i=>i.status==='missing')?'missing':breathing.items.slice(1).some(i=>i.status==='soon')?'soon':'valid'});
+  return result.concat(groups.filter(group=>group.title==='Führerscheinkontrolle'));
+ }
  function evidencePriority(groups,message=''){
   const box=$('priority'),content=$('priority-text');if(!box||!content)return;
-  const issues=groups.flatMap(group=>group.items.filter(item=>item.status!=='valid')).sort((a,b)=>(evidenceOrder[a.status]??3)-(evidenceOrder[b.status]??3));
+  const issues=groups.flatMap(group=>group.items.filter(item=>['missing','expired','soon'].includes(item.status))).sort((a,b)=>(evidenceOrder[a.status]??3)-(evidenceOrder[b.status]??3));
   content.replaceChildren();
   for(const item of issues)content.append(node('p',item.label+': '+(item.status==='soon'?'Bald fällig · ':'')+evidenceText(item)));
   if(message)content.append(node('p',message));
@@ -53,14 +67,14 @@
   if(!$('evidence'))return;const box=$('evidence'),status=$('evidence-status'),details=$('evidence-details');box.hidden=false;status.textContent='Nachweise werden aktualisiert …';
   try{const result=await api('evidence');if(version!==generation)return;
    if(!result.evidence){details.replaceChildren();evidencePriority([],'Noch keine persönlichen Nachweisdaten übertragen. Bitte die Verwaltung um einen Mitgliederabgleich bitten.');status.textContent='Noch keine persönlichen Nachweisdaten übertragen. Bitte die Verwaltung um einen Mitgliederabgleich bitten.';return;}
-   const groups=g.MemberEvidence.assess(result.evidence).sort((a,b)=>evidenceOrder[a.status]-evidenceOrder[b.status]);evidencePriority(groups);details.replaceChildren();
+   const groups=evidenceGroups(result.evidence).sort((a,b)=>evidenceOrder[a.status]-evidenceOrder[b.status]);evidencePriority(groups);details.replaceChildren();
    for(const group of groups){
     const section=node('section');section.className='portal-evidence-group';section.dataset.group=group.title;section.dataset.state=group.status;
     const heading=node('header'),title=node('h3',group.title),badge=node('p',group.title==='Führerscheinkontrolle'&&group.status==='valid'?'✓ Kontrolle dokumentiert':evidenceLabel[group.status]);badge.className='portal-evidence-group-status';heading.append(title);if(group.items.length>1)heading.append(badge);section.append(heading);
     for(const item of [...group.items].sort((a,b)=>evidenceOrder[a.status]-evidenceOrder[b.status])){
      const card=node('article');card.className='portal-evidence-item';card.dataset.state=item.status;
      const row=node('div');row.className='portal-evidence-item-heading';const state=node('span',evidenceItemLabel[item.status]);state.className='portal-evidence-item-status';if(group.items.length>1||item.label!==group.title)row.append(node('h4',item.label));row.append(state);card.append(row);
-     const until=node('p',evidenceText(item));until.className='portal-evidence-date';card.append(until);
+     if(item.description){const description=node('p',item.description);description.className='portal-evidence-meta';card.append(description);}const until=node('p',evidenceText(item));until.className='portal-evidence-date';card.append(until);
      for(const text of [item.checkedOn?'Letzte Kontrolle: '+evidenceDate(item.checkedOn):'',item.intervalMonths?'Kontrollintervall: '+item.intervalMonths+' Monate':'',item.substitution||''].filter(Boolean)){const meta=node('p',text);meta.className='portal-evidence-meta';card.append(meta);}
      section.append(card);
     }

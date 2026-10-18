@@ -89,11 +89,11 @@ test('Automatische Aktualisierung läuft auch auf der eigenen Nachweisseite und 
 
 test('Nachweise erscheinen vollständig als sichtbare Karten; fällige Gruppen stehen zuerst und Kontrollangaben bleiben erhalten',async()=>{
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());
- const groups=[{title:'Feuerwehrmedizinische Eignung',status:'valid',items:[{label:'G26.3 (ersetzt G26.2)',status:'valid',until:'2027-12-31',substitution:'Keine zusätzliche G26.2 erforderlich.'}]},{title:'Führerscheinkontrolle',status:'expired',vehicles:['LF','TSF'],items:[{label:'Führerscheinkontrolle',status:'expired',until:'2020-01-01',checkedOn:'2019-01-01',intervalMonths:12}]}];
- f.c.generation=1;f.c.g={MemberEvidence:{assess:()=>groups}};f.c.api=async()=>({evidence:{},syncedAt:1792148400000});f.c.navigator={onLine:true};
+
+ const E=require('../js/features/portal/member-evidence.js');f.c.generation=1;f.c.g={MemberEvidence:E};f.c.api=async()=>({evidence:E.project({g263ValidUntil:'2035-12-31',machinistVehicles:['LF','TSF'],driverLicenseCheckedOn:'2019-01-01',driverLicenseIntervalMonths:12}),syncedAt:1792148400000});f.c.navigator={onLine:true};
  vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);await f.c.refreshEvidence(1);
- const area=f.nodes.get('portal-evidence-details'),sections=area.children.filter(n=>n.tagName==='section');assert.equal(sections.length,2);assert.equal(sections[0].dataset.group,'Führerscheinkontrolle');assert.equal(area.querySelectorAll('details').length,0);assert.equal(area.querySelectorAll('article').length,2);
- const paragraphs=area.querySelectorAll('p').map(n=>n.textContent);assert.ok(paragraphs.some(t=>/Abgelaufen am 01.01.2020/.test(t)));assert.ok(paragraphs.some(t=>/Letzte Kontrolle: 01.01.2019/.test(t)));assert.ok(paragraphs.some(t=>/Kontrollintervall: 12 Monate/.test(t)));assert.ok(paragraphs.some(t=>/LF · TSF/.test(t)));assert.ok(paragraphs.includes('Keine zusätzliche G26.2 erforderlich.'));
+ const area=f.nodes.get('portal-evidence-details'),sections=area.children.filter(n=>n.tagName==='section');assert.equal(sections.length,2);assert.equal(sections[0].dataset.group,'Führerscheinkontrolle');assert.equal(area.querySelectorAll('details').length,0);assert.equal(area.querySelectorAll('article').length,3);
+ const paragraphs=area.querySelectorAll('p').map(n=>n.textContent);assert.ok(paragraphs.some(t=>/Abgelaufen am 01.01.2020/.test(t)));assert.ok(paragraphs.some(t=>/Letzte Kontrolle: 01.01.2019/.test(t)));assert.ok(paragraphs.some(t=>/Kontrollintervall: 12 Monate/.test(t)));assert.ok(paragraphs.some(t=>/LF · TSF/.test(t)));assert.ok(paragraphs.some(t=>t.includes('keine zusätzliche G26.2 erforderlich.')));
  assert.ok(area.querySelectorAll('span').some(n=>n.textContent==='× Abgelaufen'));assert.ok(area.querySelectorAll('span').some(n=>n.textContent==='✓ Gültig'));assert.equal(sections[0].querySelectorAll('h4').length,0);assert.equal(f.nodes.get('portal-priority').dataset.state,'expired');
 });
 
@@ -110,4 +110,23 @@ test('Rückmeldungsdialog bleibt getrennt und verwirft verspätete Antworten nac
  const first=c.showOverview({id:'test',title:'Testprobe'}),dialog=body.children[0];assert.equal(dialog.open,true);c.closeOverview();resolve({members:[{status:'yes',name:'Testperson'}]});await first;assert.equal(dialog.open,false);assert.equal(dialog.querySelectorAll('h3').length,0);
  const second=c.showOverview({id:'test',title:'Testprobe'});resolve({members:[{status:'yes',name:'Testperson'}]});await second;
  assert.equal(body.children.length,1);assert.equal(dialog.querySelectorAll('h3')[0].textContent,'Zugesagt (1)');assert.ok(dialog.querySelectorAll('p').some(n=>n.textContent==='Testperson'));
+});
+
+test('Ärztliche Untersuchungen erscheinen getrennt; gültige G26.3 erzeugt keinen zusätzlichen G26.2-Alarm',()=>{
+ const f=fixture(),E=require('../js/features/portal/member-evidence.js'),now=Date.parse('2026-10-18T12:00:00Z');f.c.g={MemberEvidence:E};
+ const e=E.project({breathingQualified:true,g263ValidUntil:'2027-10-31',agtInstructionValidUntil:'2027-01-01',ffiValidUntil:'2027-02-01'}),before=JSON.stringify(e),groups=f.c.evidenceGroups(e,now);
+ assert.equal(groups[0].title,'Ärztliche Untersuchung');assert.equal(groups[0].items.length,2);
+ assert.deepEqual(Array.from(groups[0].items,i=>i.label),['G26.2 – ohne Belastungstest','G26.3 – mit Belastungstest']);
+ assert.equal(groups[0].items[0].status,'covered');assert.equal(groups[0].items[1].status,'valid');
+ assert.match(groups[1].items[0].label,/Sicherheitsunterweisung/);assert.match(groups[1].items[1].label,/FitFirefighterIndex/);
+ for(const item of groups[1].items){assert.match(item.description,/Emmendingen/);assert.match(item.description,/einmal jährlich/);}
+ f.c.evidencePriority(groups);assert.equal(f.nodes.get('portal-priority').hidden,true);assert.equal(JSON.stringify(e),before);
+});
+test('G26.2 reicht weiterhin nicht für Atemschutz; optionale G26.3 erzeugt bei anderen keinen Fehlalarm',()=>{
+ const f=fixture(),E=require('../js/features/portal/member-evidence.js'),now=Date.parse('2026-10-18T12:00:00Z');f.c.g={MemberEvidence:E};
+ let groups=f.c.evidenceGroups(E.project({breathingQualified:true,g262ValidUntil:'2028-01-01'}),now);
+ assert.equal(groups[0].status,'missing');assert.equal(groups[0].items[1].status,'missing');
+ groups=f.c.evidenceGroups(E.project({breathingQualified:false,g262ValidUntil:'2028-01-01'}),now);
+ assert.equal(groups[0].status,'valid');assert.equal(groups[0].items[1].status,'optional');f.c.evidencePriority(groups);assert.equal(f.nodes.get('portal-priority').hidden,true);
+ groups=f.c.evidenceGroups(E.project({}),now);assert.equal(groups[0].items[0].status,'missing');assert.equal(groups[0].items[1].status,'optional');
 });

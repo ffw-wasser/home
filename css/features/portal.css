@@ -276,3 +276,5 @@
 
 /* Reserve the feedback line so a save confirmation does not move answer buttons. */
 #portal-events .portal-answer{min-height:3.4em}
+
+.portal-evidence-item[data-state=covered] .portal-evidence-item-status{background:#e2f3e9;color:#205f3e}.portal-evidence-item[data-state=optional] .portal-evidence-item-status{background:#edf1f5;color:#48576b}
