@@ -12,7 +12,7 @@
 /* Drink controls and summary stay in normal flow without overlapping. */
 #portal-page-deckel{padding-top:12px}
 #portal-page-deckel .portal-page-heading{margin-bottom:8px}
-#portal-page-deckel .deckel-overview{grid-template-columns:minmax(80px,100px) minmax(0,1fr);gap:12px;margin:6px 0}
+#portal-page-deckel .deckel-overview{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin:6px auto;max-width:360px}
 #portal-page-deckel .deckel-updated{margin:4px auto 8px}
 #portal-page-deckel .payment-area{margin-bottom:8px}
 #portal-page-deckel>.phone-menu{margin:10px 0;padding:12px}
@@ -115,14 +115,14 @@
 @media(max-width:350px){#portal-page-deckel .phone-menu>.phone-grid{grid-template-columns:1fr}}
 
 /* Keep primary actions beside the coaster; reserve space only for actual messages. */
-#portal-page-deckel .deckel-balance-info{padding:0}
+#portal-page-deckel .deckel-balance-info{padding:0;text-align:center}
 #portal-page-deckel .deckel-balance-info #balanceLabel{font-size:.875rem;margin:0 0 2px}
 #portal-page-deckel .deckel-balance-info #balance{font-size:clamp(28px,7vw,36px)}
-#portal-page-deckel .deckel-payment-actions{gap:8px;margin:8px 0 0}
+#portal-page-deckel .deckel-payment-actions{grid-template-columns:minmax(0,1fr);gap:6px;margin:8px 0 0}
 #portal-page-deckel .deckel-payment-actions button,#portal-page-deckel .deckel-payment-actions .button{padding:8px 4px;min-height:44px;font-size:.9375rem}
 #portal-page-deckel .coaster-wrap{padding-bottom:calc(var(--stack-count)*9px + 12px)}
 #portal-page-deckel .deckel-tap-hint{position:absolute;top:100%;left:0;right:0;font-size:.6875rem;line-height:1.2;margin:2px 0 0}
-#portal-page-deckel .deckel-overview{padding-bottom:20px}
+#portal-page-deckel .deckel-overview{padding:4px 0 12px;align-items:center}
 #portal-page-deckel .phone-menu h2{font-size:1.125rem}
 #portal-page-deckel .section-symbol{width:24px;height:24px}
 #portal-page-deckel .drink-tile{min-height:44px}
@@ -134,4 +134,4 @@
 #portal-page-deckel .phone-rewards{margin-top:6px}
 #portal-page-deckel .phone-rewards summary,#portal-page-deckel .phone-sync-info summary,#portal-page-deckel .deckel-account-details>summary{padding:8px 0;min-height:44px}
 
-#phone-cash-open{display:flex;align-items:center;justify-content:center;gap:5px}.cash-icon{flex-shrink:0}
+#phone-cash-open{display:flex;align-items:center;justify-content:center;gap:8px}.cash-icon{display:block;width:30px;height:22px;flex-shrink:0}
