@@ -11,7 +11,6 @@
 /* Secondary content is compact and expandable. */
 /* Drink controls and summary stay in normal flow without overlapping. */
 #portal-page-deckel{padding-top:12px}
-#portal-page-deckel .portal-page-heading{margin-bottom:8px}
 #portal-page-deckel .deckel-overview{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin:6px auto;max-width:360px}
 #portal-page-deckel .deckel-updated{margin:4px auto 8px}
 #portal-page-deckel .payment-area{margin-bottom:8px}
@@ -135,3 +134,5 @@
 #portal-page-deckel .phone-rewards summary,#portal-page-deckel .phone-sync-info summary,#portal-page-deckel .deckel-account-details>summary{padding:8px 0;min-height:44px}
 
 #phone-cash-open{display:flex;align-items:center;justify-content:center;gap:8px;background:#20583b;color:#fff}.cash-icon{display:block;width:30px;height:22px;flex-shrink:0}
+
+.deckel-title>div{min-width:0}.deckel-title #portal-menu-title{font-size:clamp(1.125rem,5vw,1.5rem);line-height:1.2;overflow-wrap:normal;hyphens:auto}
