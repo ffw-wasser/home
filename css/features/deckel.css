@@ -12,7 +12,7 @@
 /* Drink controls and summary stay in normal flow without overlapping. */
 #portal-page-deckel{padding-top:12px}
 #portal-page-deckel .portal-page-heading{margin-bottom:8px}
-#portal-page-deckel .deckel-overview{grid-template-columns:minmax(0,140px) minmax(0,1fr);gap:16px;margin:10px 0 6px}
+#portal-page-deckel .deckel-overview{grid-template-columns:minmax(80px,100px) minmax(0,1fr);gap:12px;margin:6px 0}
 #portal-page-deckel .deckel-updated{margin:4px auto 8px}
 #portal-page-deckel .payment-area{margin-bottom:8px}
 #portal-page-deckel>.phone-menu{margin:10px 0;padding:12px}
@@ -23,7 +23,7 @@
 #portal-page-deckel .drink-tile{display:grid;grid-template-columns:32px auto;gap:2px 8px;min-height:56px;padding:0;border:0;background:transparent;border-radius:0}
 #portal-page-deckel .drink-tile .drink-icon{grid-row:span 2;width:32px;height:36px}
 #portal-page-deckel .drink-tile strong{font-size:1rem}
-#portal-page-deckel .phone-order{position:static;margin:12px 0 0;padding:10px;box-shadow:none}
+#portal-page-deckel .phone-order{position:static;margin:8px 0 0;padding:8px;box-shadow:none}
 #portal-page-deckel #phone-summary{margin-bottom:6px;line-height:1.35}
 #portal-page-deckel .phone-glasses{gap:8px;margin:0 0 6px;padding:0;flex-wrap:nowrap}
 #portal-page-deckel .phone-glass-group{gap:3px;min-width:0}
@@ -32,10 +32,10 @@
 #portal-page-deckel .drink-quantity{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:8px}
 #portal-page-deckel .drink-quantity button{width:44px;flex-shrink:0;min-height:44px;padding:6px;font-size:1.25rem}
 #portal-page-deckel .drink-quantity output{flex:1;text-align:center;font-size:1.25rem;font-weight:800;font-variant-numeric:tabular-nums}
-#portal-page-deckel #phone-summary{min-height:2.7em}
+#portal-page-deckel #phone-summary{min-height:1.35em}
 #portal-page-deckel #phone-glasses{min-height:22px}
-#portal-page-deckel #phone-glasses[hidden]{display:flex!important;visibility:hidden}
-#portal-page-deckel #phone-status{display:block;min-height:2.7em;margin:4px 0;padding:0;border:0;background:transparent;font-size:.875rem;line-height:1.35}
+#portal-page-deckel #phone-glasses[hidden]{display:none!important}
+#portal-page-deckel #phone-status{display:block;min-height:0;margin:4px 0;padding:0;border:0;background:transparent;font-size:.875rem;line-height:1.35}
 #portal-page-deckel .phone-edit{grid-template-columns:1fr}
 .portal-help>details{border-top:1px solid var(--line)}
 #portal-page-more #deckel-more{padding:0;border:0}
@@ -113,3 +113,25 @@
 @media(max-width:360px){#portal-page-deckel .drink-choice{padding:8px 4px}#portal-page-deckel .drink-quantity{gap:2px}}
 
 @media(max-width:350px){#portal-page-deckel .phone-menu>.phone-grid{grid-template-columns:1fr}}
+
+/* Keep primary actions beside the coaster; reserve space only for actual messages. */
+#portal-page-deckel .deckel-balance-info{padding:0}
+#portal-page-deckel .deckel-balance-info #balanceLabel{font-size:.875rem;margin:0 0 2px}
+#portal-page-deckel .deckel-balance-info #balance{font-size:clamp(28px,7vw,36px)}
+#portal-page-deckel .deckel-payment-actions{gap:8px;margin:8px 0 0}
+#portal-page-deckel .deckel-payment-actions button,#portal-page-deckel .deckel-payment-actions .button{padding:8px 4px;min-height:44px;font-size:.9375rem}
+#portal-page-deckel .coaster-wrap{padding-bottom:calc(var(--stack-count)*9px + 12px)}
+#portal-page-deckel .deckel-tap-hint{position:absolute;top:100%;left:0;right:0;font-size:.6875rem;line-height:1.2;margin:2px 0 0}
+#portal-page-deckel .deckel-overview{padding-bottom:20px}
+#portal-page-deckel .phone-menu h2{font-size:1.125rem}
+#portal-page-deckel .section-symbol{width:24px;height:24px}
+#portal-page-deckel .drink-tile{min-height:44px}
+#portal-page-deckel .drink-choice{padding-top:6px;padding-bottom:6px}
+#portal-page-deckel #phone-status:empty{display:none}
+#portal-page-deckel .phone-order-actions{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:stretch;gap:8px}
+#portal-page-deckel .phone-order-actions .phone-edit{margin:0;display:block}
+#portal-page-deckel .phone-order-actions button{height:100%;font-size:.875rem}
+#portal-page-deckel .phone-rewards{margin-top:6px}
+#portal-page-deckel .phone-rewards summary,#portal-page-deckel .phone-sync-info summary,#portal-page-deckel .deckel-account-details>summary{padding:8px 0;min-height:44px}
+
+#phone-cash-open{display:flex;align-items:center;justify-content:center;gap:5px}.cash-icon{flex-shrink:0}
