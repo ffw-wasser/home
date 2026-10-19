@@ -130,3 +130,22 @@ test('G26.2 reicht weiterhin nicht für Atemschutz; optionale G26.3 erzeugt bei 
  assert.equal(groups[0].status,'valid');assert.equal(groups[0].items[1].status,'optional');f.c.evidencePriority(groups);assert.equal(f.nodes.get('portal-priority').hidden,true);
  groups=f.c.evidenceGroups(E.project({}),now);assert.equal(groups[0].items[0].status,'missing');assert.equal(groups[0].items[1].status,'optional');
 });
+
+test('Heutige Termine zeigen Heute und behalten Uhrzeit beziehungsweise ganztägig',()=>{
+ const f=fixture(),Base=Date;f.c.Date=class extends Base{static now(){return Base.parse('2026-10-19T08:00:00Z');}};
+ const today={...event('today',Date.parse('2026-10-19T17:00:00Z'))};f.c.paint({events:[today]});
+ const when=f.events.querySelector('article').children[0].children[2];assert.equal(when.children[0].children[0].textContent,'Heute');assert.equal(when.children[0].children[1].textContent,'19:00 Uhr');
+ f.c.testEvent={...today,allDay:true};assert.equal(vm.runInContext('date(testEvent)',f.c),'Heute · ganztägig');
+});
+test('Heute richtet sich nach dem Berliner Kalendertag, auch über die UTC-Tagesgrenze',()=>{
+ const f=fixture(),Base=Date;
+ for(const [now,today,next] of [['2026-10-18T22:30:00Z','2026-10-19T21:30:00Z','2026-10-19T22:00:00Z'],['2026-12-18T23:30:00Z','2026-12-19T22:30:00Z','2026-12-19T23:00:00Z']]){
+  f.c.Date=class extends Base{static now(){return Base.parse(now);}};
+  assert.equal(f.c.eventDayLabel({start:Base.parse(today)}),'Heute');assert.notEqual(f.c.eventDayLabel({start:Base.parse(next)}),'Heute');
+ }
+});
+test('Nach Tageswechsel zeigt derselbe Termin wieder sein Datum',()=>{
+ const f=fixture(),Base=Date,termin={start:Base.parse('2026-10-19T17:00:00Z')};
+ f.c.Date=class extends Base{static now(){return Base.parse('2026-10-19T20:00:00Z');}};assert.equal(f.c.eventDayLabel(termin),'Heute');
+ f.c.Date=class extends Base{static now(){return Base.parse('2026-10-19T22:01:00Z');}};assert.match(f.c.eventDayLabel(termin),/19.10.2026/);
+});
