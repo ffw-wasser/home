@@ -134,4 +134,4 @@
 #portal-page-deckel .phone-rewards{margin-top:6px}
 #portal-page-deckel .phone-rewards summary,#portal-page-deckel .phone-sync-info summary,#portal-page-deckel .deckel-account-details>summary{padding:8px 0;min-height:44px}
 
-#phone-cash-open{display:flex;align-items:center;justify-content:center;gap:8px}.cash-icon{display:block;width:30px;height:22px;flex-shrink:0}
+#phone-cash-open{display:flex;align-items:center;justify-content:center;gap:8px;background:#20583b;color:#fff}.cash-icon{display:block;width:30px;height:22px;flex-shrink:0}
