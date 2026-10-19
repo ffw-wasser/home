@@ -10,6 +10,27 @@
  async function api(action,data={}){if(!ready||!service||!record)throw Error('Die Monats-Challenge benötigt das aktuelle Worker-Update.');const response=await fetch(service.origin+'/challenge/'+action,{method:'POST',headers:{Authorization:'Bearer '+service.capability,'Content-Type':'application/json'},body:JSON.stringify({...data,alias:record.alias,revision:service.revision}),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(20000)}),value=await response.json();if(!response.ok)throw Object.assign(Error(value.error||'Vorgang nicht bestätigt.'),{status:response.status,code:value.code});return value;}
  function controls(){if(!section)return;for(const n of section.querySelectorAll('button,input,select'))n.disabled=busy||!!state.pending||!ready;$('refresh').hidden=!refreshFailed||!!state.pending;$('retry').hidden=!state.pending;$('retry').disabled=busy||!ready;$('level').disabled=$('level').disabled||!!profile();$('create').disabled=$('create').disabled||!!game||!monthly?.awardUnits||!categories?.some(c=>c.name===$('category').value&&(c.counts?.[level()]||0)>=7);const confirm=$('confirm');if(confirm)confirm.disabled=busy||!!state.pending||!ready||selectedAnswer===null;}
  function paintCategories(){const selected=$('category').value;$('category').replaceChildren();const blank=node('option','Kategorie wählen …');blank.value='';$('category').append(blank);for(const c of categories||[]){const count=c.counts?.[level()]||0,option=node('option',c.name+(count<7?' · noch nicht verfügbar':''));option.value=c.name;option.disabled=count<7;$('category').append(option);}$('category').value=categories?.some(c=>c.name===selected&&(c.counts?.[level()]||0)>=7)?selected:'';$('category-note').textContent=!level()?'Bitte zuerst deine Ausbildungsstufe auswählen.':categories?.some(c=>(c.counts?.[level()]||0)>=7)?'Sieben zufällige Fragen für '+names[level()]+'.':'Für '+names[level()]+' fehlen Fragen im Spieldienst. Bitte die Verwaltung bitten, die freigegebenen Fragen zu übertragen.';controls();}
+ function bindStableActivation(button,viewKey,activate){
+  let press=null;
+  button.onpointerdown=event=>{
+   press=null;
+   if(event.isPrimary===false||button.disabled||viewKey!==renderedKey)return;
+   press={key:renderedKey,selection:selectedAnswer,x:event.clientX,y:event.clientY,rect:button.getBoundingClientRect()};
+  };
+  button.onpointermove=event=>{if(press&&(Math.abs(event.clientX-press.x)>12||Math.abs(event.clientY-press.y)>12))press=null;};
+  button.onpointercancel=()=>{press=null;};
+  button.onclick=event=>{
+   const start=press;press=null;
+   if(button.disabled||viewKey!==renderedKey)return;
+   // Tastatur und Bedienungshilfen erzeugen Klicks ohne vorausgehende Berührung.
+   if(event?.detail>0){
+    if(!start||start.key!==renderedKey||start.selection!==selectedAnswer)return;
+    const rect=button.getBoundingClientRect();
+    if(['top','left','width','height'].some(key=>Math.abs(rect[key]-start.rect[key])>2)||Math.abs(event.clientX-start.x)>12||Math.abs(event.clientY-start.y)>12)return;
+   }
+   activate();
+  };
+ }
  function selectAnswer(index){
   if(!ready||busy||state.pending||!game?.question||game.status!=='running')return;
   selectedAnswer=index;
@@ -18,7 +39,7 @@
    button.setAttribute?.('aria-pressed',i===index?'true':'false');
   });
   const hint=$('selection-hint');
-  if(hint)hint.textContent='Antwort '+String.fromCharCode(65+index)+' ausgewählt. Du kannst sie noch ändern.';
+  if(hint)hint.textContent='Ausgewählt: '+game.question.answers[index]+' · Du kannst die Auswahl noch ändern.';
   controls();
  }
  function show(value){
@@ -42,18 +63,18 @@
      const button=node('button',answer);
      button.type='button';button.className='challenge-answer';
      button.setAttribute?.('aria-pressed','false');
-     button.onclick=()=>{if(viewKey===renderedKey)selectAnswer(i);};
+     bindStableActivation(button,viewKey,()=>selectAnswer(i));
      answerButtons.push(button);$('question').append(button);
     });
     const hint=node('p','Wähle eine Antwort. Gespeichert wird erst nach deiner Bestätigung.');
     hint.id='challenge-selection-hint';hint.className='challenge-selection-hint';hint.setAttribute?.('aria-live','polite');
     const confirm=node('button','Ausgewählte Antwort verbindlich abgeben');
     confirm.id='challenge-confirm';confirm.type='button';confirm.className='challenge-confirm';confirm.disabled=true;
-    confirm.onclick=()=>{
+    bindStableActivation(confirm,viewKey,()=>{
      if(viewKey!==renderedKey||selectedAnswer===null||busy||state.pending||!ready)return;
      advanceAfterConfirm=true;
      send('solo-answer',{gameId:value.gameId,index:q.index,answer:selectedAnswer});
-    };
+    });
     $('question').append(hint,confirm);
    }
    if(value.status==='done'){
@@ -86,7 +107,7 @@
    advanceAfterConfirm=false;
    const heading=$('question').querySelector?.('h3');
    if(heading){heading.tabIndex=-1;heading.focus?.({preventScroll:true});}
-   $('question').scrollIntoView?.({block:'start',behavior:'auto'});
+   $('question').scrollIntoView?.({block:'start',behavior:'instant'});
   }
   controls();
  }

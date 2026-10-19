@@ -19,9 +19,9 @@
 .deckel-challenge label{display:block;font-weight:700;margin-top:12px}
 .deckel-challenge button{width:100%;max-width:100%;box-sizing:border-box;white-space:normal;min-height:48px;padding:13px 14px;margin:6px 0;font-size:1rem;line-height:1.4}
 .deckel-challenge .challenge-answer{text-align:left;border:2px solid #075baf;background:#fff;color:#123b65;border-radius:12px;font-weight:700;margin:6px 0;min-height:60px;font-size:1.125rem;line-height:1.5}
-.deckel-challenge .challenge-answer{touch-action:manipulation;transition:background-color .12s ease,border-color .12s ease,box-shadow .12s ease;position:relative}
+.deckel-challenge .challenge-answer{padding-right:48px;touch-action:manipulation;transition:background-color .12s ease,border-color .12s ease,box-shadow .12s ease;position:relative}
 .deckel-challenge .challenge-answer.is-selected{background:#e6f1ff;border-color:#061b48;color:#061b48;box-shadow:inset 0 0 0 2px #061b48}
-.deckel-challenge .challenge-answer.is-selected::after{content:"✓";float:right;font-weight:850;margin-left:10px}
+.deckel-challenge .challenge-answer.is-selected::after{content:"✓";position:absolute;right:14px;top:50%;transform:translateY(-50%);font-weight:850;line-height:1;pointer-events:none}
 #challenge-selection-hint{min-height:3.2em;margin:14px 0 5px;color:#385a75;font-size:1rem;line-height:1.5}
 .deckel-challenge .challenge-confirm{margin:6px 0 18px;background:#061b48;color:#fff;border-radius:12px;font-weight:800}
 .deckel-challenge .challenge-confirm:disabled{background:#e8eff5;color:#60748a;border:1px solid #b9cbdc;opacity:1}

@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=fs.readFileSync(__dirname+'/../js/features/drinks/deckel-challenge.js','utf8');
 function fixture(categoryValues=[{name:'Technik',count:15,available:true,counts:{TM:15,TF:15,GF:15}}]){
  const nodes=new Map(),events={},requests=[],saved=new Map(),copied=[];let networkFail=false,storageFail=false,defer=null;
- class Node{constructor(tag='div'){this.tagName=tag;this.children=[];this.value='';this.hidden=false;this.disabled=false;this.open=false;this.textContent='';}set innerHTML(s){for(const m of s.matchAll(/<(\w+)[^>]*id="([^"]+)"[^>]*>/g)){const n=new Node(m[1]);n.id=m[2];const value=/value="([^"]*)"/.exec(m[0]);if(value)n.value=value[1];nodes.set(n.id,n);}}append(...values){for(const n of values){this.children.push(n);if(n.id)nodes.set(n.id,n);}}replaceChildren(){this.children=[];}querySelectorAll(){return [...nodes.values(),...this.children.flatMap(n=>n.children)].filter(n=>['button','input','select'].includes(n.tagName));}}
+ class Node{constructor(tag='div'){this.tagName=tag;this.children=[];this.value='';this.hidden=false;this.disabled=false;this.open=false;this.textContent='';}set innerHTML(s){for(const m of s.matchAll(/<(\w+)[^>]*id="([^"]+)"[^>]*>/g)){const n=new Node(m[1]);n.id=m[2];const value=/value="([^"]*)"/.exec(m[0]);if(value)n.value=value[1];nodes.set(n.id,n);}}append(...values){for(const n of values){this.children.push(n);if(n.id)nodes.set(n.id,n);}}getBoundingClientRect(){return this.rect||{top:100,left:20,width:300,height:60};}replaceChildren(){this.children=[];}querySelectorAll(){return [...nodes.values(),...this.children.flatMap(n=>n.children)].filter(n=>['button','input','select'].includes(n.tagName));}}
  nodes.set('account',new Node());const alias='1'.repeat(32),key='a'.repeat(64),c=vm.createContext({console,Date,TextEncoder,TextDecoder,crypto:webcrypto,Uint8Array,atob,btoa,URLSearchParams,AbortSignal,setTimeout:(fn,ms)=>{const t=setTimeout(fn,ms);t.unref();return t;},clearTimeout,location:{hash:'#a='+alias+'&k='+key},document:{readyState:'complete',hidden:false,getElementById:id=>nodes.get(id),createElement:tag=>new Node(tag),addEventListener:(name,fn)=>events['document:'+name]=fn},navigator:{clipboard:{writeText:async text=>copied.push(text)}},confirm:()=>true,addEventListener:(name,fn)=>events[name]=fn,DeckelReload(){},DeckelDevice:{readChallenge:async a=>saved.get(a)||null,saveChallenge:async(a,value)=>{if(storageFail)throw Error('storage');saved.set(a,value);}}});c.globalThis=c;
  c.fetch=async(url,options)=>{const body=JSON.parse(options.body);if(url.endsWith('/solo-status'))return {ok:true,json:async()=>({version:1,month:'2026-10',awardUnits:300,policyRevision:'policy-revision',game:null})};if(url.endsWith('/categories'))return {ok:true,json:async()=>({version:1,categories:categoryValues})};requests.push({url,body});if(networkFail){networkFail=false;throw new TypeError('network');}if(defer){const fn=defer;defer=null;await fn();}return {ok:true,json:async()=>({version:1,mode:'solo',gameId:body.gameId||body.id,month:'2026-10',category:'Technik',level:'TM',status:'running',awardUnits:300,progress:0,expiresAt:Date.now()+1800000,question:{index:0,category:'Technik',text:'Testfrage?',answers:['A','B','C','D']}})};};
  vm.runInContext(source,c);const snapshot={actions:{central:true,challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeLevel:'TM',challengeSoloVersion:1,origin:'https://example.account.workers.dev',revision:'revision-test',capability:'a'.repeat(43)}};
@@ -99,4 +99,33 @@ test('Neue Frage entfernt die alte Auswahl und sperrt die Bestätigung erneut',a
  old.onclick();
  assert.equal(f.nodes.get('challenge-confirm').disabled,true,'Alte Antworten dürfen neue Frage nicht verändern');
  assert.equal(f.requests.length,0);
+});
+
+async function runningFixture(){
+ const f=fixture(),base=f.c.fetch;let index=0;
+ f.c.fetch=async(url,options)=>url.endsWith('/solo-status')?{ok:true,json:async()=>({version:1,month:'2026-10',awardUnits:300,policyRevision:'r1',game:{gameId:'stable-round',month:'2026-10',category:'Technik',level:'TM',status:'running',expiresAt:Date.now()+1800000,question:{index,text:'Frage '+index,answers:['Lange Antwort zur sicheren Bedienung','Andere Antwort']}}})}:base(url,options);
+ await f.c.DeckelChallenge.render(f.snapshot);return {...f,next:()=>index++};
+}
+const touch={isPrimary:true,clientX:50,clientY:120},tap={detail:1,clientX:50,clientY:120};
+test('Verschobene Antwort während einer Berührung wird nicht ausgewählt',async()=>{
+ const f=await runningFixture(),answer=f.nodes.get('challenge-question').children[3];answer.onpointerdown(touch);answer.rect={top:130,left:20,width:300,height:60};answer.onclick(tap);
+ assert.equal(f.nodes.get('challenge-confirm').disabled,true);assert.equal(f.requests.length,0);
+ answer.onpointerdown(touch);answer.onclick(tap);assert.equal(f.nodes.get('challenge-confirm').disabled,false);
+});
+test('Scrollgeste, abgebrochene Berührung und Klick ohne neuen Berührungsbeginn wählen nichts',async()=>{
+ const f=await runningFixture(),answer=f.nodes.get('challenge-question').children[3];
+ answer.onpointerdown(touch);answer.onpointermove({...touch,clientY:145});answer.onclick(tap);assert.equal(f.nodes.get('challenge-confirm').disabled,true);
+ answer.onpointerdown(touch);answer.onpointercancel();answer.onclick(tap);assert.equal(f.nodes.get('challenge-confirm').disabled,true);
+ answer.onclick(tap);assert.equal(f.nodes.get('challenge-confirm').disabled,true);
+ answer.onclick({detail:0});assert.equal(f.nodes.get('challenge-confirm').disabled,false,'Tastatur und Bedienungshilfen bleiben bedienbar');
+});
+test('Fragewechsel unter dem Finger benötigt eine neue Berührung',async()=>{
+ const f=await runningFixture(),old=f.nodes.get('challenge-question').children[3];old.onpointerdown(touch);f.next();await f.c.DeckelChallenge.render(f.snapshot);
+ old.onclick(tap);const next=f.nodes.get('challenge-question').children[3];next.onclick(tap);assert.equal(f.nodes.get('challenge-confirm').disabled,true);
+ next.onpointerdown(touch);next.onclick(tap);assert.equal(f.nodes.get('challenge-confirm').disabled,false);assert.equal(f.requests.length,0);
+});
+test('Verschobene Bestätigung sendet nichts und unveränderte neue Berührung sendet einmal',async()=>{
+ const f=await runningFixture(),answer=f.nodes.get('challenge-question').children[3];answer.onclick({detail:0});const confirm=f.nodes.get('challenge-confirm');
+ confirm.onpointerdown(touch);confirm.rect={top:104,left:20,width:300,height:60};confirm.onclick(tap);assert.equal(f.requests.length,0);
+ confirm.onpointerdown(touch);confirm.onclick(tap);await until(()=>f.requests.length===1);assert.equal(f.requests[0].body.answer,0);assert.equal(f.requests[0].body.index,0);
 });
