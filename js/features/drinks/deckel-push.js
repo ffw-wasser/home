@@ -1,6 +1,6 @@
 /* Portal notifications: explicit opt-in; personal URL and credentials stay on the phone. */
 (function(g){
- 'use strict';let access=null,busy=false;const $=id=>document.getElementById('portal-push-'+id);const browser=id=>document.getElementById('portal-browser-'+id);
+ 'use strict';let access=null,busy=false,pairingLink='';const $=id=>document.getElementById('portal-push-'+id);const browser=id=>document.getElementById('portal-browser-'+id);
  async function markRead(){if(document.hidden)return;try{await navigator.clearAppBadge?.();}catch{}try{const reg=await navigator.serviceWorker?.getRegistration();for(const tag of ['deckel-reminder','h2o-portal-reminder'])for(const note of await reg?.getNotifications?.({tag})||[])note.close();}catch{}}
  async function restore(){if(!location.hash)try{const saved=await DeckelDevice.read(),url=saved?.url||await DeckelDevice.readLink?.();if(url){const target=new URL(url);target.search=location.search;history.replaceState(null,'',target.href);}}catch{}}
  function buttons(){if(!$('enable'))return;if(browser('start'))browser('start').disabled=busy||!access;if(browser('revoke'))browser('revoke').disabled=busy||!access;const supported='serviceWorker' in navigator&&'PushManager' in g&&'Notification' in g;$('enable').disabled=busy||!access||!supported;$('disable').disabled=busy||!supported;$('note').textContent=supported?'Erinnerungen erscheinen als Handy-Mitteilung. Am iPhone das H₂O Portal zuerst zum Home-Bildschirm hinzufügen. Ton und Anzeige hängen von deinen Handy-Einstellungen ab.':'Dieser Browser unterstützt keine Push-Mitteilungen. Termine bleiben im Portal sichtbar.';}
@@ -18,7 +18,7 @@
  async function disable(){if(busy)return;busy=true;buttons();try{const saved=await DeckelDevice.read();if(saved?.url)await DeckelDevice.saveLink(saved.url);if(saved?.endpoint&&saved.portal){const response=await fetch(saved.origin+'/portal/unsubscribe',{method:'POST',headers:{Authorization:'Bearer '+saved.capability,'Content-Type':'application/json'},body:JSON.stringify({alias:saved.alias,revision:saved.revision,endpoint:saved.endpoint}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Abmeldung beim Dienst noch nicht bestätigt. Bitte erneut versuchen.');}const reg=await navigator.serviceWorker?.getRegistration(),sub=await reg?.pushManager?.getSubscription();if(sub&&!await sub.unsubscribe())throw Error('Gerät konnte noch nicht abgemeldet werden.');await DeckelDevice.clear();await markRead();$('status').textContent='Erinnerungen auf diesem Handy deaktiviert.';}catch(e){$('status').textContent=e.message;}finally{busy=false;buttons();}}
  
  async function startBrowserPair(){
-  if(busy||!access)return;busy=true;buttons();browser('link-box').hidden=true;browser('status').textContent='Sichere Browser-Verbindung wird vorbereitet …';
+  if(busy||!access)return;busy=true;buttons();pairingLink='';browser('link-box').hidden=true;browser('status').textContent='Sichere Browser-Verbindung wird vorbereitet …';
   try{
    const check=await fetch(access.origin+'/health',{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(12000)}),health=await check.json();
    if(!check.ok||health.browserPairVersion!==1)throw Error('Der Cloudflare-Dienst benötigt noch das Update für WhatsApp-Terminlinks.');
@@ -26,20 +26,20 @@
    if(!/^[A-F0-9]{24}$/.test(value.code||''))throw Error('Die Browser-Verbindung wurde nicht bestätigt.');
    const url=new URL('termin.html',location.href);
    url.search='';url.hash='pair='+value.code.toLowerCase();
-   browser('open').href=url.href;
+   pairingLink=url.href;
    browser('link-box').hidden=false;
-   browser('status').textContent='✓ Vorbereitet. Tippe jetzt auf „Im Browser öffnen“. Der persönliche Verbindungslink ist fünf Minuten gültig.';
+   browser('status').textContent='✓ Fertig vorbereitet. Tippe auf „Verbindungslink kopieren“ und füge ihn in Safari (iPhone) oder Chrome (Android) ein. H₂O bleibt geöffnet.';
   }catch(e){
-   browser('link-box').hidden=true;browser('open').removeAttribute('href');
+   pairingLink='';browser('link-box').hidden=true;
    browser('status').textContent=e.message||'Browser-Verbindung derzeit nicht verfügbar.';
   }finally{busy=false;buttons();}
  }
  async function copyBrowserLink(){
-  const link=browser('open').getAttribute('href');
+  const link=pairingLink;
   if(!link||!/^https:\/\/ffw-wasser\.github\.io\/home\/termin\.html#pair=[a-f0-9]{24}$/.test(link))return;
   try{
    await navigator.clipboard.writeText(link);
-   browser('status').textContent='✓ Privater Verbindungslink kopiert. Bitte selbst in Safari (iPhone) oder Chrome (Android) einfügen, NICHT an WhatsApp-Gruppen schicken.';
+   browser('status').textContent='✓ Link kopiert. Öffne jetzt Safari (iPhone) oder Chrome (Android) und füge ihn in die Adressleiste ein. Deine H₂O-App bleibt im Hintergrund geöffnet.';
   }catch{
    browser('status').textContent='Automatisches Kopieren nicht möglich. Tippe auf „Jetzt im Browser öffnen“ oder probiere es später erneut.';
   }
@@ -47,7 +47,7 @@
  async function revokeBrowsers(){
   if(busy||!access||!confirm('Alle für diesen H₂O-Zugang eingerichteten Browser-Verbindungen wirklich sperren?'))return;
   busy=true;buttons();
-  try{await g.H2OPortal.api('browser/revoke');browser('link-box').hidden=true;browser('open').removeAttribute('href');browser('status').textContent='✓ Browserzugänge gesperrt. Bei Bedarf erneut verbinden.';}
+  try{await g.H2OPortal.api('browser/revoke');pairingLink='';browser('link-box').hidden=true;browser('status').textContent='✓ Browserzugänge gesperrt. Bei Bedarf erneut verbinden.';}
   catch(e){browser('status').textContent=e.message||'Zurücksetzen nicht bestätigt.';}
   finally{busy=false;buttons();}
  }

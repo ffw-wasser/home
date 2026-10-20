@@ -8,6 +8,7 @@
 <title>Terminrückmeldung · H₂O Feuerwehr Wasser</title>
 <link rel="icon" type="image/png" href="assets/drinks/h2o-symbol-white-192.png">
 <link rel="stylesheet" href="css/features/portal-whatsapp.css">
+<script src="js/features/drinks/push-device.js" defer></script>
 <script src="js/features/portal/portal-whatsapp.js" defer></script>
 </head>
 <body>
@@ -16,7 +17,7 @@
 <section class="card"><h2 id="heading">Deinen Termin öffnen</h2><p id="status" role="status" aria-live="polite">Verbindung wird geprüft …</p></section>
 <section id="pairing" class="card" hidden>
 <h2>Browser mit H₂O verbinden</h2>
-<p>Öffne deine <strong>bereits angemeldete H₂O-App</strong> auf dem Home-Bildschirm. Unter <strong>Mehr → Erinnerungen</strong> auf <strong>„WhatsApp-Zugang aktivieren“</strong> tippen und danach den vorbereiteten privaten Verbindungslink öffnen.</p>
+<p>Öffne deine <strong>bereits angemeldete H₂O-App</strong> auf dem Home-Bildschirm. Unter <strong>Mehr → Benachrichtigungen &amp; WhatsApp</strong> auf <strong>„WhatsApp-Zugang aktivieren“</strong> tippen und danach den vorbereiteten privaten Verbindungslink öffnen.</p>
 <p>Auf dem iPhone verwende <strong>Safari</strong>, auf Android <strong>Chrome</strong>. Wenn der Link wieder in der H₂O-App oder in WhatsApp selbst öffnet, kopiere den vorbereiteten Link in H₂O und füge ihn direkt in Safari/Chrome ein. <strong>Niemals den privaten Verbindungslink an die WhatsApp-Gruppe senden!</strong></p>
 <p class="small">Einmal verbunden, bleibt dein Browser bei regelmäßiger Nutzung angemeldet. Die Freigabe kann jederzeit in H₂O gesperrt werden.</p>
 </section>
@@ -33,7 +34,8 @@
 <p class="small">Die ausgewählte Antwort erneut antippen, um sie zurückzunehmen.</p>
 </section>
 <section class="card secondary">
-<p>Mit dem H₂O-Symbol auf deinem Home-Bildschirm kannst du jederzeit auch direkt deine Termine öffnen.</p>
+<button type="button" id="back-to-h2o" class="quiet">← Zurück zur H₂O-App</button>
+<p id="back-to-h2o-status" role="status" aria-live="polite" class="small">Deine H₂O-App erreichst du auch über das H₂O-Symbol auf dem Home-Bildschirm.</p>
 <button type="button" id="remove" hidden class="quiet">Browserzugang von diesem Gerät entfernen</button>
 </section>
 <footer>H₂O Portal · Feuerwehr Wasser</footer>

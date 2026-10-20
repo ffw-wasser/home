@@ -122,6 +122,33 @@
    status(note);
   }
  }
+ // Return only to the already authenticated installed PWA, or genuine in-tab history.
+ // Never fall back to a generic deckel.html link: that could restart QR onboarding.
+ el('back-to-h2o').addEventListener('click',async()=>{
+  const feedback=el('back-to-h2o-status');
+  const standalone=Boolean(navigator.standalone||matchMedia('(display-mode: standalone)').matches);
+  if(standalone&&globalThis.DeckelDevice){
+   try{
+    const stored=await DeckelDevice.read();
+    const personal=stored?.url||await DeckelDevice.readLink();
+    if(personal){
+     const url=new URL(personal);
+     if(url.origin===location.origin&&url.pathname===new URL('deckel.html',location.href).pathname&&!url.search){
+      location.assign(url.href);
+      return;
+     }
+    }
+   }catch{/* A private link may not be available in this browser context. */}
+  }
+  try{
+   const previous=new URL(document.referrer);
+   if(previous.origin===location.origin&&previous.pathname===new URL('deckel.html',location.href).pathname&&history.length>1){
+    history.back();
+    return;
+   }
+  }catch{}
+  feedback.textContent='Öffne die H₂O-App über ihr Symbol auf deinem Home-Bildschirm. Wenn du Safari oder Chrome verwendest, wechsle über den App-Umschalter zu H₂O. Deine Anmeldung bleibt erhalten.';
+ });
  el('remove').addEventListener('click',()=>{
   if(!confirm('Browserzugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
   session=null;pending=null;persist(null);showPair('Browserzugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
