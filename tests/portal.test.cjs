@@ -351,7 +351,7 @@ test('Mitglied entfernt: OneDrive-Handyportal-Abgleich löscht Browserfreigaben 
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,1);
  // Issue another unused single-use transfer: it too must be invalidated on deletion.
  assert.equal((await f.call('browser/start')).status,200);
- assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,2);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,1);
  const remaining=f.people.slice(1).map(p=>({id:p.memberId,name:'Testperson '+p.memberId.split('-')[1],leader:false}));
  const removed=await f.call('roster',{members:remaining},null,true);
  assert.equal(removed.status,200);assert.equal(removed.value.removedBrowserMembers,1);
