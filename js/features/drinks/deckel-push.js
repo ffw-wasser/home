@@ -20,6 +20,8 @@
  async function startBrowserPair(){
   if(busy||!access)return;busy=true;buttons();$('browser-status').textContent='Einmalcode wird erstellt …';
   try{
+   const check=await fetch(access.origin+'/health',{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(12000)}),health=await check.json();
+   if(!check.ok||health.browserPairVersion!==1)throw Error('Der Cloudflare-Dienst benötigt noch das Update für WhatsApp-Terminlinks.');
    const value=await g.H2OPortal.api('browser/start');
    if(!/^[A-F0-9]{24}$/.test(value.code||''))throw Error('Verbindungscode wurde nicht bestätigt.');
    $('browser-code').value=value.code;$('browser-code-box').hidden=false;
