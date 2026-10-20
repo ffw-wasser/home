@@ -294,3 +294,42 @@ test('WhatsApp/Safari: Verbindungscode läuft ab, falsche Codes werden verworfen
  assert.equal(await redeem(code.code),401);
  assert.equal(await redeem('garbage'),400);
 });
+
+
+test('WhatsApp Browser: automatische Verlängerung bei Nutzung, keine Verlängerung mit Fremdzugang',async()=>{
+ const f=await fixture();
+ const start=(await f.call('browser/start')).value;
+ async function browser(path,body={},token){
+  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
+   method:'POST',
+   headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+   body:JSON.stringify(body)
+  }),f.env);
+  return {status:response.status,value:await response.json()};
+ }
+ const paired=await browser('browser/redeem',{code:start.code});
+ assert.equal(paired.status,200);
+ assert.equal(paired.value.expiresAt-f.clock.now,90*86400000);
+ const id={alias:paired.value.alias,revision:paired.value.revision},token=paired.value.token;
+ f.clock.now+=89*86400000;
+ const renewed=await browser('browser/renew',id,token);
+ assert.equal(renewed.status,200);
+ assert.equal(renewed.value.expiresAt-f.clock.now,90*86400000);
+ assert.equal((await browser('list',id,token)).status,200);
+ assert.equal((await browser('browser/renew',{...id,alias:f.people[1].alias},token)).status,401);
+ assert.equal((await browser('evidence',id,token)).status,401,'Browser remains read/reply only');
+ await f.call('browser/revoke');
+ assert.equal((await browser('browser/renew',id,token)).status,401,'Revocation immediately terminates auto-renew');
+});
+test('WhatsApp Browser: nach 90 Tagen Inaktivität abgelaufen und nicht verlängerbar',async()=>{
+ const f=await fixture(),start=(await f.call('browser/start')).value;
+ const submit=async(path,data,token)=>{
+  const resp=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data)}),f.env);
+  return {status:resp.status,value:await resp.json()};
+ };
+ const paired=await submit('browser/redeem',{code:start.code});
+ assert.equal(paired.status,200);
+ f.clock.now+=90*86400000+1000;
+ assert.equal((await submit('browser/renew',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
+ assert.equal((await submit('list',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
+});
