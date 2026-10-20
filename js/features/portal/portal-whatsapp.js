@@ -1,0 +1,125 @@
+/* H₂O WhatsApp link: independent Safari credential, calendar-only session.
+ * No personal #r/#a/#k URLs or ledger capabilities are used here. */
+'use strict';
+(() => {
+ const ORIGIN='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev';
+ const STORAGE='h2o-safari-calendar-v1', ID=/^[A-Za-z0-9_-]{43}$/;
+ const el=id=>document.getElementById(id);
+ const wanted=()=>new URLSearchParams(location.search).get('event');
+ let session=null,items=[],stale=false,working=false,pending=null;
+ const status=message=>{el('status').textContent=message;};
+ const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ function restore(){
+  try{
+   const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');
+   if(saved&&/^[a-f0-9]{64}$/.test(saved.token)&&/^[a-f0-9]{32}$/.test(saved.alias)&&typeof saved.revision==='string'&&Number.isSafeInteger(saved.expiresAt)&&saved.expiresAt>Date.now())return saved;
+  }catch{}
+  return null;
+ }
+ function persist(next){try{if(next)localStorage.setItem(STORAGE,JSON.stringify(next));else localStorage.removeItem(STORAGE);}catch{throw Error('Der Browser darf den Zugang nicht speichern. Bitte den privaten Modus ausschalten und erneut versuchen.');}}
+ async function post(path,body,token){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+  try{
+   const response=await fetch(ORIGIN+'/portal/'+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:controller.signal});
+   const data=await response.json();
+   if(!response.ok)throw Object.assign(Error(data.error||'Verbindung nicht möglich.'),{status:response.status});
+   return data;
+  }finally{clearTimeout(timer);}
+ }
+ function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
+ function showPair(message){
+  hide();el('pairing').hidden=false;el('heading').textContent='Safari mit H₂O verbinden';
+  status(message||'Damit du über WhatsApp antworten kannst, verbinde den Browser einmalig mit deinem H₂O-Zugang.');
+ }
+ function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
+ function paintEvents(){
+  const list=el('event-list');list.replaceChildren();
+  for(const event of items){
+   const btn=element('button',event.title+' · '+fmt.format(new Date(event.start))+' Uhr');
+   btn.className='event-option';btn.type='button';btn.onclick=()=>{const u=new URL(location.href);u.searchParams.set('event',event.id);history.replaceState(null,'',u);renderEvent(event);};list.append(btn);
+  }
+  if(!items.length)list.append(element('p','Zurzeit keine freigegebenen Termine vorhanden.'));
+ }
+ function renderEvent(event){
+  hide();el('remove').hidden=false;el('heading').textContent='Deine Terminrückmeldung';
+  if(!event){status('Dieser Termin ist für deinen Zugang nicht freigegeben, wurde abgesagt oder ist bereits beendet.');return;}
+  el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
+  el('event-title').textContent=event.title||'Feuerwehr-Termin';
+  el('event-when').textContent='📅 '+fmt.format(new Date(event.start))+' Uhr';
+  el('event-location').textContent='📍 '+(event.location||'GH Wasser');
+  const state={yes:'✓ Du bist dabei',excused:'Entschuldigt',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
+  const changed=Number.isSafeInteger(event.updatedAt)&&event.updatedAt>0?' · Zuletzt geändert: '+new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.updatedAt))+' Uhr':'';
+  el('event-status').textContent=(state[event.status]||state.open)+changed;
+  const locked=stale||event.start<=Date.now()||working;
+  for(const button of el('chosen').querySelectorAll('[data-reply]')){
+   const chosen=button.dataset.reply===event.status;
+   button.disabled=locked;button.setAttribute('aria-pressed',String(chosen));
+   button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Entschuldigt',maybe:'Noch unsicher'}[button.dataset.reply]);
+  }
+  status(stale?'Kalender ist derzeit nicht bestätigt. Antworten sind vorübergehend gesperrt.':'Du kannst deine Antwort direkt hier speichern.');
+ }
+ async function refresh(){
+  if(!session)return showPair();
+  working=true;hide();status('Deine Termine werden geladen …');
+  try{
+   const result=await post('list',{alias:session.alias,revision:session.revision},session.token);
+   items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
+   stale=result.stale===true;el('remove').hidden=false;el('pairing').hidden=true;
+   working=false;
+   if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
+   if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
+   else{el('heading').textContent='Deine nächsten Termine';el('events').hidden=false;paintEvents();status('Dein Browser ist mit deinem H₂O-Terminzugang verbunden.');}
+  }catch(error){
+   working=false;
+   if(error.status===401||error.status===403){session=null;persist(null);showPair('Der Safari-Zugang ist nicht mehr gültig. Bitte H₂O erneut verbinden.');}
+   else{status(error.message||'Termine konnten nicht geladen werden.');el('pairing').hidden=false;}
+  }
+ }
+ async function connect(){
+  if(working)return;
+  const code=el('pair-code').value.replace(/[\s-]/g,'').toLowerCase();
+  if(!/^[a-f0-9]{24}$/.test(code)){status('Bitte den vollständigen Einmalcode aus deiner H₂O-App einfügen.');return;}
+  working=true;el('pair-submit').disabled=true;status('Einmalcode wird geprüft …');
+  try{
+   const result=await post('browser/redeem',{code});
+   if(!/^[a-f0-9]{64}$/.test(result.token||'')||!/^[a-f0-9]{32}$/.test(result.alias||''))throw Error('Der Safari-Zugang wurde nicht bestätigt.');
+   const next={token:result.token,alias:result.alias,revision:result.revision,expiresAt:result.expiresAt};
+   persist(next);session=next;el('pair-code').value='';
+   working=false;await refresh();
+  }catch(error){status(error.message||'Verbindung fehlgeschlagen.');working=false;}
+  finally{el('pair-submit').disabled=false;}
+ }
+ async function reply(event,choice){
+  if(working||stale||event.start<=Date.now()||!session)return;
+  if(pending&&pending.eventId!==event.id)return;
+  const newStatus=event.status===choice?'open':choice;
+  if(!pending)pending={eventId:event.id,status:newStatus,expectedVersion:event.version,requestId:crypto.randomUUID()};
+  else if(pending.status!==newStatus){status('Bitte zuerst die unbestätigte Speicherung erneut prüfen.');return;}
+  working=true;renderEvent(event);status('Antwort wird sicher gespeichert …');
+  try{
+   const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
+   if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
+   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Rückmeldung gespeichert. Du kannst denselben WhatsApp-Link jederzeit wieder öffnen und bis zum Terminbeginn ändern.');
+  }catch(e){
+   if([400,401,403,404,409].includes(e.status))pending=null;
+   status((e.message||'Speicherung nicht bestätigt.')+(pending?' Bitte dieselbe Antwort erneut antippen.':' Bitte den Termin erneut laden.'));
+  }finally{
+   working=false;
+   const note=el('status').textContent;
+   renderEvent(event);
+   status(note);
+  }
+ }
+ el('pair-submit').addEventListener('click',connect);
+ el('pair-code').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
+ el('remove').addEventListener('click',()=>{
+  if(!confirm('Browserzugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
+  session=null;pending=null;persist(null);showPair('Browserzugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
+ });
+ for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
+  const focus=wanted();
+  const item=items.find(e=>e.id===focus);
+  if(item)void reply(item,button.dataset.reply);
+ });
+ session=restore();if(session)void refresh();else showPair();
+})();

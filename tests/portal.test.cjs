@@ -248,3 +248,49 @@ test('Öffnen aktualisiert einen abgelaufenen Kalender auch ohne Cron und erlaub
  f.raw(calendar([event(f.start,'Testprobe','STATUS:CANCELLED')]));f.clock.now+=901000;
  assert.equal((await f.call('list')).value.events.length,0);assert.equal((await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()})).status,404);
 });
+
+
+test('WhatsApp/Safari: einmalig koppeln, Rückmeldung wiederholt ändern, Zeitpunkt anzeigen und Zugriff eingrenzen',async()=>{
+ const f=await fixture(),event=(await f.call('list')).value.events[0];
+ const code=(await f.call('browser/start')).value;
+ assert.match(code.code,/^[A-F0-9]{24}$/);
+ assert.equal(code.expiresAt-f.clock.now,5*60*1000);
+ async function browser(path,body={},token=''){
+  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
+   method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+   body:JSON.stringify(body)
+  }),f.env);
+  return {status:response.status,value:await response.json()};
+ }
+ const redeemed=await browser('browser/redeem',{code:code.code});
+ assert.equal(redeemed.status,200);assert.match(redeemed.value.token,/^[a-f0-9]{64}$/);
+ assert.equal((await browser('browser/redeem',{code:code.code})).status,401,'Einmalcode ist nur einmal nutzbar');
+ const auth=redeemed.value.token,identity={alias:redeemed.value.alias,revision:redeemed.value.revision};
+ const list=await browser('list',identity,auth);assert.equal(list.status,200);
+ assert.equal(list.value.events[0].id,event.id);
+ assert.equal((await browser('overview',{...identity,eventId:event.id},auth)).status,401,'keine Führungsübersicht');
+ assert.equal((await browser('evidence',identity,auth)).status,401,'keine Nachweise');
+ assert.equal((await browser('browser/start',identity,auth)).status,401,'keine weiteren Codes');
+ const first=await browser('reply',{...identity,eventId:event.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()},auth);
+ assert.equal(first.status,200);assert.equal(first.value.version,1);assert.ok(first.value.updatedAt>0);
+ let current=(await browser('list',identity,auth)).value.events[0];
+ assert.equal(current.status,'yes');assert.equal(current.updatedAt,first.value.updatedAt);
+ const second=await browser('reply',{...identity,eventId:event.id,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()},auth);
+ assert.equal(second.status,200);assert.equal(second.value.version,2);
+ current=(await browser('list',identity,auth)).value.events[0];
+ assert.equal(current.status,'excused');assert.equal(current.version,2);
+ assert.equal((await f.call('overview',{eventId:event.id})).value.members.find(m=>m.name==='Testperson 1').status,'excused');
+ assert.equal((await f.call('browser/revoke')).status,200);
+ assert.equal((await browser('list',identity,auth)).status,401,'Browserzugang nach Sperre ungültig');
+});
+test('WhatsApp/Safari: Verbindungscode läuft ab, falsche Codes werden verworfen',async()=>{
+ const f=await fixture();
+ const code=(await f.call('browser/start')).value;
+ f.clock.now+=5*60*1000+1000;
+ async function redeem(value){
+  const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json'},body:JSON.stringify({code:value})}),f.env);
+  return response.status;
+ }
+ assert.equal(await redeem(code.code),401);
+ assert.equal(await redeem('garbage'),400);
+});
