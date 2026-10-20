@@ -874,7 +874,8 @@
  }
  
   /* A Safari session is intentionally limited to calendar list/reply. It is NEVER a ledger command capability. */
-  const browserPaths=new Set(['/portal/list','/portal/reply']);
+  const browserPaths=new Set(['/portal/list','/portal/reply','/portal/browser/renew']);
+  const browserIdle=90*DAY; // Sliding login. Browser can stay linked while regularly used.
   const hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
   async function browserStart(env,record){
    const now=Date.now(),code=hex(12);
@@ -893,9 +894,19 @@
    await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE expires_at<?').bind(now).run();
    const amount=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=?').bind(row.alias,row.revision).first();
    if(amount.n>=5)fail('Maximal fünf Browserzugänge. Bitte im H2O-Portal die Browserzugänge zurücksetzen.',429);
-   const token=hex(32),expiresAt=now+30*DAY;
+   const token=hex(32),expiresAt=now+browserIdle;
    await env.DB.prepare('INSERT INTO portal_browser_sessions(token_hash,alias,revision,expires_at) VALUES(?,?,?,?)').bind(await hash('h2o-browser-session:'+token),row.alias,row.revision,expiresAt).run();
    return {token,alias:row.alias,revision:row.revision,expiresAt};
+  }
+  async function browserRenew(env,record,auth){
+   // Called only after actor() has verified the same browser-only bearer,
+   // alias/revision, active account and roster membership.
+   if(!/^[a-f0-9]{64}$/.test(auth||''))fail('Browserzugang nicht freigegeben.',401);
+   const now=Date.now(),expiresAt=now+browserIdle;
+   const row=await env.DB.prepare('UPDATE portal_browser_sessions SET expires_at=? WHERE token_hash=? AND alias=? AND revision=? AND expires_at>? RETURNING expires_at')
+    .bind(expiresAt,await hash('h2o-browser-session:'+auth),record.alias,record.revision,now).first();
+   if(!row)fail('Browserzugang abgelaufen oder gesperrt.',401);
+   return {ok:true,expiresAt:row.expires_at};
   }
   async function browserRevoke(env,record){
    await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(record.alias).run();
@@ -981,6 +992,7 @@
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
    let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true,evidenceVersion:1};
   }
+  if(path==='/portal/browser/renew')return browserRenew(env,record,auth);
   if(path==='/portal/browser/start'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browser-Einrichtung nur in der persönlichen H2O-App möglich.',403);return browserStart(env,record);}
    if(path==='/portal/browser/revoke'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browserzugänge können nur in der H2O-App zurückgesetzt werden.',403);return browserRevoke(env,record);}
    if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
