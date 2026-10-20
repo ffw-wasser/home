@@ -597,9 +597,9 @@
   .page-access-card-critical{margin:auto!important}
 }
 
-/* FFW 2.12.0: ATÜ und Atemschutzfreigaben */
-.member-safety-settings{display:grid;grid-template-columns:1fr 1fr minmax(180px,.7fr);gap:10px;margin:4px 15px 12px}.atue-member-toggle,.breathing-clearance-toggle,.breathing-clearance-date{display:flex;align-items:center;gap:10px;padding:11px 12px;border:2px solid #8aa4b2;border-radius:9px;background:#eef5f8}.atue-member-toggle input,.breathing-clearance-toggle input{width:22px;height:22px;appearance:auto;-webkit-appearance:checkbox;accent-color:#176b36}.breathing-clearance-date{display:grid;gap:5px}.breathing-clearance-date span{font-weight:850}.tactics-atue{margin-top:14px;border-top-color:#2477bd!important}.breathing-plan-toggle{display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:12px;border:2px solid #d2a223;border-radius:10px;background:#fff8dc}.breathing-plan-toggle input{width:24px;height:24px;appearance:auto;-webkit-appearance:checkbox}.breathing-plan-toggle span{display:grid}.atue-slot{max-width:520px}.breathing-clearance-kpis{grid-template-columns:repeat(4,1fr)!important}.breathing-clearance-kpis>div{padding:12px;border:1px solid #ccd4d8;border-radius:9px;background:#f8fafb}
-@media(max-width:760px){.member-safety-settings{grid-template-columns:1fr;margin-left:10px;margin-right:10px}.breathing-clearance-kpis{grid-template-columns:repeat(2,1fr)!important}}
+/* FFW 2.12.0: Atemschutzfreigaben */
+.member-safety-settings{display:grid;grid-template-columns:1fr;gap:10px;margin:4px 15px 12px}.breathing-clearance-toggle,.breathing-clearance-date{display:flex;align-items:center;gap:10px;padding:11px 12px;border:2px solid #8aa4b2;border-radius:9px;background:#eef5f8}.breathing-clearance-toggle input{width:22px;height:22px;appearance:auto;-webkit-appearance:checkbox;accent-color:#176b36}.breathing-clearance-date{display:grid;gap:5px}.breathing-clearance-date span{font-weight:850}.breathing-plan-toggle{display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:12px;border:2px solid #d2a223;border-radius:10px;background:#fff8dc}.breathing-plan-toggle input{width:24px;height:24px;appearance:auto;-webkit-appearance:checkbox}.breathing-plan-toggle span{display:grid}.breathing-clearance-kpis{grid-template-columns:repeat(4,1fr)!important}.breathing-clearance-kpis>div{padding:12px;border:1px solid #ccd4d8;border-radius:9px;background:#f8fafb}
+@media(max-width:760px){.member-safety-settings{grid-template-columns:minmax(0,1fr)!important;margin-left:10px;margin-right:10px}.breathing-clearance-kpis{grid-template-columns:repeat(2,1fr)!important}}
 
 /* FFW 2.12.4: ruhigere und klar gegliederte Mitgliederkarten */
 .member-card{overflow:hidden!important;border-radius:15px!important;box-shadow:0 8px 22px rgba(34,52,62,.10)!important}
@@ -608,12 +608,10 @@
 .member-name-fields label{display:grid!important;gap:6px!important}.member-name-fields label>span{font-size: .875rem!important;font-weight:900!important;color:#596973!important}
 .member-name-fields .text-input{min-height:46px!important;padding:10px 12px!important;font-size:1rem!important}
 .age-department-toggle,.committee-member-toggle{margin:0 16px 10px!important;padding:13px 14px!important;min-height:68px!important;align-items:center!important}
-.age-department-toggle span,.committee-member-toggle span,.atue-member-toggle span,.breathing-clearance-toggle span{display:grid!important;gap:3px!important;min-width:0!important}
-.age-department-toggle strong,.committee-member-toggle strong,.atue-member-toggle strong,.breathing-clearance-toggle strong{line-height:1.25!important}
-.age-department-toggle small,.committee-member-toggle small,.atue-member-toggle small,.breathing-clearance-toggle small{display:block!important;line-height:1.35!important;color:#52636e!important}
-.member-safety-settings{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(210px,.75fr)!important;gap:12px!important;margin:2px 16px 18px!important}
-.atue-member-toggle,.breathing-clearance-toggle,.breathing-clearance-date{min-height:102px!important;padding:14px!important;align-items:flex-start!important}
-.atue-member-toggle input,.breathing-clearance-toggle input{margin-top:3px!important;flex:0 0 22px!important}
+.age-department-toggle span,.committee-member-toggle span,.breathing-clearance-toggle span{display:grid!important;gap:3px!important;min-width:0!important}
+.age-department-toggle strong,.committee-member-toggle strong,.breathing-clearance-toggle strong{line-height:1.25!important}
+.age-department-toggle small,.committee-member-toggle small,.breathing-clearance-toggle small{display:block!important;line-height:1.35!important;color:#52636e!important}
+.member-safety-settings{grid-template-columns:minmax(0,1fr)!important;gap:12px!important;margin:2px 16px 18px!important}.breathing-clearance-toggle,.breathing-clearance-date{min-height:102px!important;padding:14px!important;align-items:flex-start!important}.breathing-clearance-toggle input{margin-top:3px!important;flex:0 0 22px!important}
 .breathing-clearance-date{align-content:start!important;min-height:102px!important}.breathing-clearance-date input{min-height:46px!important;font-size:1rem!important}
 .member-card .role-groups{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;padding:0 16px 16px!important}
 .member-card fieldset{min-width:0!important;margin:0!important;padding:13px 11px 11px!important;border-radius:10px!important}
@@ -621,8 +619,8 @@
 .member-card fieldset label{min-height:42px!important;padding:8px 10px!important;align-items:center!important}
 .member-card .vehicle-permission-group{margin:0 16px 16px!important;padding:15px!important}
 .member-card .vehicle-permission-group>p{margin:2px 0 12px!important;line-height:1.4!important}
-@media(max-width:900px){.member-safety-settings{grid-template-columns:1fr 1fr!important}.breathing-clearance-date{grid-column:1/-1!important}.member-card .role-groups{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media(max-width:620px){.member-name-fields{grid-template-columns:1fr!important;padding-left:12px!important;padding-right:12px!important}.age-department-toggle,.committee-member-toggle{margin-left:12px!important;margin-right:12px!important}.member-safety-settings{grid-template-columns:1fr!important;margin-left:12px!important;margin-right:12px!important}.breathing-clearance-date{grid-column:auto!important}.member-card .role-groups{grid-template-columns:1fr!important;padding-left:12px!important;padding-right:12px!important}.member-card .vehicle-permission-group{margin-left:12px!important;margin-right:12px!important}}
+@media(max-width:900px){.member-safety-settings{grid-template-columns:minmax(0,1fr)!important}.breathing-clearance-date{grid-column:1/-1!important}.member-card .role-groups{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:620px){.member-name-fields{grid-template-columns:1fr!important;padding-left:12px!important;padding-right:12px!important}.age-department-toggle,.committee-member-toggle{margin-left:12px!important;margin-right:12px!important}.member-safety-settings{grid-template-columns:minmax(0,1fr)!important;margin-left:12px!important;margin-right:12px!important}.breathing-clearance-date{grid-column:auto!important}.member-card .role-groups{grid-template-columns:1fr!important;padding-left:12px!important;padding-right:12px!important}.member-card .vehicle-permission-group{margin-left:12px!important;margin-right:12px!important}}
 
 /* FFW 2.12.5: vollständige Qualifikations- und Atemschutzstatistik */
 .breathing-statistics-panel{grid-column:1/-1!important}

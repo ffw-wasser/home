@@ -53,10 +53,9 @@ function statisticsOperationRows(item){
   const time=String(data.times?.alarm||"");
   const topic=[data.type,data.location].filter(Boolean).join(" · ")||item.topic||"Einsatz";
   const assignments=data.assignments||{},roles=data.assignmentRoles||{};
-  const atueName=String(data.atuePerson||"").trim();
   return members.map(name=>{
     const normalizedName=String(name||"").trim();
-    const role=String(roles[normalizedName]||(atueName&&normalizedName===atueName?"ATÜ":""));
+    const role=String(roles[normalizedName]||"");
     return {date,time,name:normalizedName,sessionType:"Einsatz",status:"Anwesend",role,topic,vehicle:assignments[normalizedName]||"",operationId:data.id||item.id||""};
   }).filter(row=>row.name);
 }
@@ -155,13 +154,13 @@ function ensureOperationStatisticsSections(){
   const grid=view?.querySelector(".statistics-grid");
   if(grid&&!byId("statisticsOperationSummary")){
     const panel=document.createElement("article");panel.id="statisticsOperationSummary";panel.className="panel statistics-panel operation-statistics-summary";
-    panel.innerHTML=`<div class="panel-heading"><span class="step operation-step">E</span><h3>Einsatzstatistik</h3></div><div class="statistics-kpis operation-statistics-kpis"><div><span>Einsätze</span><strong data-operation-count>0</strong></div><div><span>Ø Teilnehmer</span><strong data-operation-participations>0</strong></div><div><span>mit ATÜ</span><strong data-operation-atue>0</strong></div></div><h4>Einsatzarten</h4><div class="metric-list" data-operation-types></div><p class="empty-state" data-operation-empty>Keine Einsätze im gewählten Jahr.</p>`;
+    panel.innerHTML=`<div class="panel-heading"><span class="step operation-step">E</span><h3>Einsatzstatistik</h3></div><div class="statistics-kpis operation-statistics-kpis"><div><span>Einsätze</span><strong data-operation-count>0</strong></div><div><span>Ø Teilnehmer</span><strong data-operation-participations>0</strong></div></div><h4>Einsatzarten</h4><div class="metric-list" data-operation-types></div><p class="empty-state" data-operation-empty>Keine Einsätze im gewählten Jahr.</p>`;
     grid.prepend(panel);
   }
   const individual=byId("individualStatisticsPreview");
   if(individual&&!byId("individualOperationStatistics")){
     const panel=document.createElement("section");panel.id="individualOperationStatistics";panel.className="individual-statistics-section individual-operation-statistics";
-    panel.innerHTML=`<h4>Persönliche Einsatzstatistik</h4><div class="statistics-kpis"><div><span>Einsätze</span><strong data-individual-operation-count>0</strong></div><div><span>Funktionen</span><strong data-individual-operation-roles>0</strong></div><div><span>ATÜ</span><strong data-individual-operation-atue>0</strong></div></div><div class="metric-list" data-individual-operation-functions></div><p class="empty-state" data-individual-operation-empty>Keine Einsatzteilnahme im gewählten Jahr.</p>`;
+    panel.innerHTML=`<h4>Persönliche Einsatzstatistik</h4><div class="statistics-kpis"><div><span>Einsätze</span><strong data-individual-operation-count>0</strong></div><div><span>Funktionen</span><strong data-individual-operation-roles>0</strong></div></div><div class="metric-list" data-individual-operation-functions></div><p class="empty-state" data-individual-operation-empty>Keine Einsatzteilnahme im gewählten Jahr.</p>`;
     const recent=byId("individualRecentVisits")?.closest(".individual-statistics-section,section");
     if(recent)recent.insertAdjacentElement("beforebegin",panel);else individual.appendChild(panel);
   }
@@ -174,7 +173,6 @@ function renderSeparatedOperationStatistics(yearData){
   const panel=byId("statisticsOperationSummary");if(!panel)return;
   panel.querySelector("[data-operation-count]").textContent=operations.length;
   panel.querySelector("[data-operation-participations]").textContent=operations.length?(rows.length/operations.length).toFixed(1).replace(".",","):"–";
-  panel.querySelector("[data-operation-atue]").textContent=operations.filter(data=>data.item.operationData?.atueUsed).length;
   panel.querySelector("[data-operation-types]").innerHTML=[...types.entries()].sort((a,b)=>b[1]-a[1]).map(([name,count])=>renderMetric("",name,count,"red")).join("");
   panel.querySelector("[data-operation-empty]").hidden=operations.length>0;
 }
@@ -186,7 +184,6 @@ function renderIndividualOperationStatistics(rows){
   const panel=byId("individualOperationStatistics");if(!panel)return;
   panel.querySelector("[data-individual-operation-count]").textContent=unique.size;
   panel.querySelector("[data-individual-operation-roles]").textContent=[...roles.values()].reduce((sum,value)=>sum+value,0);
-  panel.querySelector("[data-individual-operation-atue]").textContent=operations.filter(row=>row.role==="ATÜ").length;
   panel.querySelector("[data-individual-operation-functions]").innerHTML=[...roles.entries()].sort((a,b)=>b[1]-a[1]).map(([name,count])=>renderMetric("",name,count,"red")).join("");
   panel.querySelector("[data-individual-operation-empty]").hidden=operations.length>0;
 }

@@ -113,7 +113,7 @@ function normalizeCompleteBackupData(data) {
     machinistVehicles:Array.isArray(member.machinistVehicles)?member.machinistVehicles.filter(value=>value==="LF"||value==="TSF"):[],
     rfidId:String(member.rfidId||"").trim(),
     committeeMember:Boolean(member.committeeMember),
-    atueQualified:Boolean(member.atueQualified),breathingClearance:Boolean(member.breathingClearance),breathingClearanceUntil:String(member.breathingClearanceUntil||""),
+    breathingClearance:Boolean(member.breathingClearance),breathingClearanceUntil:String(member.breathingClearanceUntil||""),
     g262ValidUntil:String(member.g262ValidUntil||""),g263ValidUntil:String(member.g263ValidUntil||""),agtInstructionValidUntil:String(member.agtInstructionValidUntil||""),ffiValidUntil:String(member.ffiValidUntil||""),
     driverLicenseCheckedOn:String(member.driverLicenseCheckedOn||""),
     ...(typeof member.breathingQualified==="boolean"?{breathingQualified:member.breathingQualified}:{}),

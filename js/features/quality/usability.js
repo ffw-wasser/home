@@ -98,7 +98,7 @@
     dialog.querySelector('form').onsubmit=event=>{
       event.preventDefault();const value=byId('entryStatusSelect').value;entry.status=value==='Orga'?'Anwesend':value;
       entry.role=value==='Orga'?'Orga':value!=='Anwesend'?'':sessionType==='Unterricht'?'Unterricht':sessionType==='Ausschuss Sitzung'?'Ausschuss Sitzung':entry.role==='Orga'?'':entry.role;
-      currentTacticsSlots=[];currentAtueMember=null;saveEntries();renderEntries();renderMembers();updateSelection();dialog.close();showToast('Status gespeichert. Die Taktik wird beim nächsten Öffnen neu berechnet.');
+      currentTacticsSlots=[];saveEntries();renderEntries();renderMembers();updateSelection();dialog.close();showToast('Status gespeichert. Die Taktik wird beim nächsten Öffnen neu berechnet.');
     };dialog.showModal();
   }
   function initialize(){

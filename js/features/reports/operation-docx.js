@@ -42,11 +42,8 @@ x=x.replace(/<w:tbl>[\s\S]*?<\/w:tbl>/g,table=>{
   if(table.replace(/<[^>]+>/g,'').includes('bei Öleinsätzen')&&d.oil?.description)rows+=detailRow('Ölbindemittel / Betriebsstoffe',d.oil.description,5);
   return rows?table.replace('</w:tbl>',rows+'</w:tbl>'):table;
 });
-if(d.atueUsed||d.atueDepartment){
-  const atue='Atemschutzüberwachung: '+(d.atueDepartment?'durch Abteilung Emmendingen':d.atuePerson?'durch '+d.atuePerson:'durchgeführt; zuständige Person noch offen');
-  const summary='<w:p><w:pPr><w:keepLines/><w:spacing w:before="80" w:after="80"/></w:pPr><w:r><w:rPr><w:b/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/></w:rPr><w:t>'+esc(atue)+'</w:t></w:r></w:p>';
-  x=x.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g,p=>p.includes('{{SPECIAL}}')?p+summary:p);
-}
+
+x=x.replace(/<w:tbl[ >][\s\S]*?<\/w:tbl>/g,table=>table.includes('Atemschutzüberwachung')?'':table);
 const usedVehicles=d.stationOnly?[]:[...new Set([...(d.reportVehicles||[]),...Object.values(d.assignments||{})])];
 const q=n=>Number(d.deviceAmounts?.[n]||0)||'';
 const vehicleOrder=['EM 5/42 LF10','EM 5/47 TSF'],groups={fahrzeuge:{},einsatzstelle:[],gh:[]};

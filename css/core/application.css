@@ -6522,8 +6522,7 @@ html body .participant-command-header .compact-menu {
 }
 
 .tactics-vehicle .crew-position.drag-over,
-.tactics-reserve-side .reserve-list.drag-over,
-.tactics-atue .atue-slot.drag-over {
+.tactics-reserve-side .reserve-list.drag-over{
   outline: 4px solid #f2c500;
   outline-offset: 2px;
   background: #fff7cc;
@@ -6577,7 +6576,6 @@ html body .participant-command-header .compact-menu {
 }
 
 .crew-position.crew-draggable,
-.atue-slot.crew-draggable,
 .reserve-list [data-drag-member] {
   cursor: grab;
   touch-action: none;
@@ -6587,7 +6585,6 @@ html body .participant-command-header .compact-menu {
 }
 
 .crew-position.crew-draggable:active,
-.atue-slot.crew-draggable:active,
 .reserve-list [data-drag-member]:active {
   cursor: grabbing;}
 
@@ -6598,8 +6595,7 @@ html body .participant-command-header .compact-menu {
 
 .crew-position.crew-draggable strong,
 .crew-position.crew-draggable span,
-.crew-position.crew-draggable small,
-.atue-slot.crew-draggable * {
+.crew-position.crew-draggable small{
   pointer-events: none;}
 
 .reserve-list [data-drag-member] {
@@ -7254,15 +7250,11 @@ html body .participant-command-header .compact-menu {
   .tactics-presentation-slot strong{width:100%!important}
 }
 
-/* Produktiv: Atemschutzkarte und ATÜ auch in der großen Mannschaftsvorschau */
+/* Produktiv: Atemschutzkarte auch in der großen Mannschaftsvorschau */
 .tactics-presentation-breathing{grid-column:1/-1;padding:18px;border:2px solid #b38b12;border-radius:16px;background:#fff8dc}
 .tactics-presentation-breathing>header{display:flex;align-items:center;gap:14px;margin-bottom:14px}.tactics-presentation-breathing>header span{padding:10px 14px;border-radius:10px;color:#171100;background:#f0c43c;font-weight:950}.tactics-presentation-breathing h3{margin:0;font-size:clamp(1.4rem,2.3vw,2.2rem)}
 .tactics-presentation-breathing-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tactics-presentation-breathing-grid>div{display:grid;gap:6px;min-width:0;padding:14px;border:2px solid #d8bf70;border-radius:12px;background:#fff}.tactics-presentation-breathing-grid b{font-size:1rem;color:#675000}.tactics-presentation-breathing-grid strong{font-size:clamp(1.2rem,2vw,1.8rem);overflow-wrap:anywhere}
 @media(max-width:700px){.tactics-presentation-breathing-grid{grid-template-columns:1fr}}
-
-/* Produktiv: Atemschutz und ATUE dauerhaft auf der Taktik-Hauptseite */
-#tacticsView #tacticsAtue{display:block!important;visibility:visible!important;opacity:1!important}
-#tacticsView #tacticsAtue[hidden]{display:block!important}
 
 /* Produktiv: weitere Personen in der Mannschaftsvorschau */
 .tactics-presentation-shell>footer{align-items:flex-start}

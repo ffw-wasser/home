@@ -6,3 +6,14 @@ test('Gerätehausbesetzung lässt sich wieder auf regulären Einsatz umstellen',
 test('Abschluss mit Gerätehauszeiten ist ohne Ausrück- und Einrückzeit gültig, Fahrzeuge werden abgewiesen',()=>{const c=app();c.setOperationStationOnly(true);const d={...c.collectOperationData(),type:'Stromausfall',location:'Gerätehaus',reserveTimes:{'Test, A':{from:'2026-10-13T10:00',to:'2026-10-13T12:00'},'Test, B':{from:'2026-10-13T11:00',to:'2026-10-13T12:00'}}};assert.equal(c.validateOperation(d).errors.length,0);assert.ok(!c.validateOperation(d).warnings.some(v=>v.includes('Einrückzeit')));assert.match(c.operationCsv(d),/Gerätehausbesetzung/);d.reportVehicles=['EM 5/42 LF10'];assert.ok(c.validateOperation(d).errors.some(v=>v.includes('keine Fahrzeuge')));});
 
 test('Alle eingegebenen Einsatzzeiten bleiben auch bei Gerätehausbesetzung erhalten',()=>{const c=app(),fields={opAlarm:'09:00',opDeparted:'09:15',opArrived:'09:30',opEnded:'12:00',opReturned:'12:15'};c.byId=id=>fields[id]?{value:fields[id]}:null;c.persistOperationDraft({times:{alarm:'09:00',departed:'09:15',arrived:'09:30',ended:'12:00',returned:'12:15'}});c.setOperationStationOnly(true);const d=c.collectOperationData();assert.equal(d.times.alarm,'09:00');assert.equal(d.times.departed,'09:15');assert.equal(d.times.arrived,'09:30');assert.equal(d.times.ended,'12:00');assert.equal(d.times.returned,'12:15');assert.equal(c.restoreOperationDraft().times.arrived,'09:30');});
+
+test('Alte ATÜ-Daten erzeugen keine Felder, Abschlusswarnungen oder CSV-Spalten mehr',()=>{
+ const c=app();c.setOperationStationOnly(true);
+ c.persistOperationDraft({...c.collectOperationData(),atueUsed:true,atueDepartment:false,atuePerson:'Alt, Test'});
+ const d=c.collectOperationData();
+ for(const key of ['atueUsed','atueDepartment','atuePerson'])assert.equal(Object.hasOwn(d,key),false);
+ const legacy={...d,atueUsed:true,atueDepartment:false,atuePerson:''};
+ assert.ok(!c.validateOperation(legacy).warnings.some(x=>/ATÜ|Atemschutzüberwachung/i.test(x)));
+ const csv=c.operationCsv({...legacy,atuePerson:'Alt, Test'});
+ assert.ok(!/ATÜ|Atemschutzüberwachung|Alt, Test/.test(csv));
+});

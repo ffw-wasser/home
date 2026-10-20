@@ -80,12 +80,12 @@ test('Alarmierungswege aus den Schnellwahlen und Freitext werden vollständig au
  }
 });
 
-test('Freitext aus Einsatzmitteln und Atemschutzüberwachung geht im Bericht nicht verloren',async()=>{
+test('Einsatzmittel bleiben erhalten; frühere ATÜ-Daten erscheinen nicht mehr im Bericht',async()=>{
  const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);
  const data={...sample,pipes:{description:'8 B, 6 C'},waterSources:['Hydrant beim Gerätehaus','kein offenes Gewässer'],oil:{description:'2 Sack Ölbindemittel'},atueUsed:true,atuePerson:'Test Person'};
  const blob=await c.OperationDocx.create(data);const zip=await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));const xml=await zip.file('word/document.xml').async('string');
- for(const value of ['8 B, 6 C','Hydrant beim Gerätehaus, kein offenes Gewässer','2 Sack Ölbindemittel','Atemschutzüberwachung: durch Test Person'])assert.ok(xml.includes(value));
- const department=await c.OperationDocx.create({...data,atueDepartment:true});const z=await JSZip.loadAsync(new Uint8Array(await department.arrayBuffer()));const x=await z.file('word/document.xml').async('string');assert.ok(x.includes('Atemschutzüberwachung: durch Abteilung Emmendingen'));assert.ok(!x.includes('Atemschutzüberwachung: durch Test Person'));
+ for(const value of ['8 B, 6 C','Hydrant beim Gerätehaus, kein offenes Gewässer','2 Sack Ölbindemittel'])assert.ok(xml.includes(value));
+ const department=await c.OperationDocx.create({...data,atueDepartment:true});const z=await JSZip.loadAsync(new Uint8Array(await department.arrayBuffer()));const x=await z.file('word/document.xml').async('string');assert.ok(!x.includes('Atemschutzüberwachung'));assert.ok(!x.includes('Atemschutzüberwachung: durch Test Person'));
 });
 
 async function reportXml(d){const c=vm.createContext({window:{},JSZip,Blob,Uint8Array,atob,console});vm.runInContext(source('operation-docx-template.js'),c);c.OPERATION_DOCX_TEMPLATE_BASE64=c.window.OPERATION_DOCX_TEMPLATE_BASE64;vm.runInContext(source('operation-docx.js'),c);return (await JSZip.loadAsync(new Uint8Array(await(await c.OperationDocx.create(d)).arrayBuffer()))).file('word/document.xml').async('string');}

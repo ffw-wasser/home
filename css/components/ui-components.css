@@ -20,14 +20,10 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed;opacity:.68}
 .date-clear-button:hover,.date-clear-button:focus-visible{border-color:#2477bd;background:#eef6fb}
 @media(min-width:721px){.date-clear-button{font-size:.88rem}}
 
-/* iPad: Atemschutzueberwachung in Mitgliederkarten innerhalb der Karte halten */
+/* iPad: Nachweise innerhalb der Mitgliederkarte halten */
 .member-card,.member-safety-settings,.member-safety-settings>*{min-width:0;max-width:100%;box-sizing:border-box}
-.atue-member-toggle{min-width:0;max-width:100%;overflow:hidden;align-items:flex-start;white-space:normal}
-.atue-member-toggle span,.atue-member-toggle strong,.atue-member-toggle label{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:1.3}
-.atue-member-toggle input{flex:0 0 auto}
 @media (min-width:621px) and (max-width:1180px){
-  .member-safety-settings{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
-  .atue-member-toggle,.breathing-clearance-toggle{width:100%;min-height:58px}
+  .member-safety-settings{grid-template-columns:minmax(0,1fr)!important}.breathing-clearance-toggle{width:100%;min-height:58px}
 }
 
 /* Atemschutzfreigabe analog zur Infoanzeige farblich kennzeichnen */

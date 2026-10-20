@@ -19,13 +19,13 @@ Die folgenden Änderungen setzen die priorisierte Durchsicht der Anwendung um. D
 | Erinnerungen | Neutrale Vorschau; Geräte- und letzter Versandstatus nach expliziter Prüfung auch in der Mitgliederzeile. Annahme durch Push-Dienst bleibt von Zustellung unterschieden. |
 | Mitglieder | Gemeinsame Speicheraktion mit vorheriger PIN-Validierung und getrennten Ergebnissen; Einzelspeicherung bleibt möglich. |
 | Historie | Terminart und Zeitraum ergänzen Suche; aufgeklappte Gruppen und Rückkehrposition bei Vorschau/Korrektur erhalten. |
-| Taktik | Geeignete Zielplätze einschließlich Gegenprüfung beim Tausch markiert; konkrete Rückmeldung. Abgelehnte ATÜ-Wechsel verändern die bestehende Besetzung nicht. |
+| Taktik | Geeignete Zielplätze einschließlich Gegenprüfung beim Tausch markiert; konkrete Rückmeldung. Abgelehnte Fahrzeugplatz-Wechsel verändern die bestehende Besetzung nicht. |
 | Statistik | Mehrere Detailauswertungen als verständliche Fragen bezeichnet; zentrale Kennzahlen bleiben zuerst sichtbar. |
 | Einstellungen / Backup | Verbindungsstatus aktualisiert; Einrichtungsassistent führt direkt zu den Bereichen, beginnend mit OneDrive. Backup-Bestätigung wird nicht mehr aus einer Synchronisierung abgeleitet. Sicherungsumfang und zusätzliche Getränke-Sicherung bleiben sichtbar. |
 
 ## Prüfung
 
-- 120 automatisierte Tests bestanden, einschließlich zusätzlicher Prüfungen für abgelehnte und zulässige ATÜ-Wechsel.
+- 120 automatisierte Tests bestanden, einschließlich zusätzlicher Prüfungen für abgelehnte und zulässige Fahrzeugplatz-Wechsel.
 - Browserprüfung mit simulierten OneDrive-, GitHub- und Push-Diensten: PIN-Validierung, kombinierte Speicherung samt Teilfehler, Anwesenheitsrücknahme, echte ZIP-Erstellung, Abschlusskorrektur, Filter, Sicherung und Navigation.
 - Bar-/PayPal-Buchungen, Dublettenschutz, Teil- und Vollzahlung, verschlüsselte Handyansicht und QR-Rotation geprüft; ausschließlich Testkonten.
 - Tastatur-Viewport bei unterschiedlichen Höhen und Versätzen geprüft; Verwaltungsansichten auf iPhone-/iPad-Breiten geprüft.
