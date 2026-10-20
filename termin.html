@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://*.workers.dev; base-uri 'none'; form-action 'none'">
+<title>Terminrückmeldung · H₂O Feuerwehr Wasser</title>
+<link rel="icon" type="image/png" href="assets/drinks/h2o-symbol-white-192.png">
+<link rel="stylesheet" href="css/features/portal-whatsapp.css">
+<script src="js/features/portal/portal-whatsapp.js" defer></script>
+</head>
+<body>
+<main>
+<header><img src="assets/drinks/h2o-symbol-white-96.png" alt="" width="56" height="56"><div><p>Feuerwehr Wasser</p><h1>H₂O · Terminrückmeldung</h1></div></header>
+<section class="card"><h2 id="heading">Deinen Termin öffnen</h2><p id="status" role="status" aria-live="polite">Verbindung wird geprüft …</p></section>
+<section id="pairing" class="card" hidden>
+<h2>Einmalig mit Safari verbinden</h2>
+<p>Öffne auf deinem iPhone das H₂O-Symbol auf dem Home-Bildschirm. Dort unter <strong>Mehr → Erinnerungen</strong> auf „Einmalcode für Safari erzeugen“ tippen und den Code kopieren.</p>
+<p>Danach zu dieser Seite <strong>in Safari</strong> zurückkehren. Der Code ist fünf Minuten gültig. Er gehört nicht in die WhatsApp-Gruppe.</p>
+<label for="pair-code">Dein Verbindungscode</label>
+<input id="pair-code" type="text" maxlength="35" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Code aus H₂O einfügen">
+<button type="button" id="pair-submit">Safari verbinden</button>
+<p class="small">Die Verbindung erlaubt nur das Ansehen und Beantworten deiner Termine. Dein Getränke- oder Adminzugang wird nicht übertragen.</p>
+</section>
+<section id="events" class="card" hidden><h2>Deine Termine</h2><div id="event-list"></div></section>
+<section id="chosen" class="card" hidden>
+<p id="session-type" class="eyebrow"></p><h2 id="event-title"></h2>
+<p id="event-when"></p><p id="event-location"></p>
+<p id="event-status" class="answer-status"></p>
+<div class="answers">
+<button type="button" data-reply="yes">Bin dabei</button>
+<button type="button" data-reply="excused">Entschuldigt</button>
+<button type="button" data-reply="maybe">Noch unsicher</button>
+</div>
+<p class="small">Die ausgewählte Antwort erneut antippen, um sie zurückzunehmen.</p>
+</section>
+<section class="card secondary">
+<p>Mit dem H₂O-Symbol auf deinem Home-Bildschirm kannst du jederzeit auch direkt deine Termine öffnen.</p>
+<button type="button" id="remove" hidden class="quiet">Safari-Zugang von diesem Browser entfernen</button>
+</section>
+<footer>H₂O Portal · Feuerwehr Wasser</footer>
+</main>
+</body>
+</html>
