@@ -29,13 +29,13 @@
  }
  async function copyBrowserCode(){
   const value=$('browser-code').value;if(!/^[A-F0-9]{24}$/.test(value))return;
-  try{await navigator.clipboard.writeText(value);$('browser-status').textContent='Code kopiert. Öffne den WhatsApp-Link in Safari und füge ihn dort ein.';}
+  try{await navigator.clipboard.writeText(value);$('browser-status').textContent='Code kopiert. Öffne den WhatsApp-Link in Safari (iPhone) oder Chrome (Android) und füge ihn dort ein.';}
   catch{$('browser-code').focus();$('browser-code').select();$('browser-status').textContent='Bitte den markierten Code kopieren und in Safari einfügen.';}
  }
  async function revokeBrowsers(){
-  if(busy||!access||!confirm('Alle für diesen H₂O-Zugang eingerichteten Safari-Verbindungen wirklich sperren?'))return;
+  if(busy||!access||!confirm('Alle für diesen H₂O-Zugang eingerichteten Browser-Verbindungen wirklich sperren?'))return;
   busy=true;buttons();
-  try{await g.H2OPortal.api('browser/revoke');$('browser-code').value='';$('browser-code-box').hidden=true;$('browser-status').textContent='✓ Safari-Zugänge gesperrt. Bei Bedarf erneut verbinden.';}
+  try{await g.H2OPortal.api('browser/revoke');$('browser-code').value='';$('browser-code-box').hidden=true;$('browser-status').textContent='✓ Browserzugänge gesperrt. Bei Bedarf erneut verbinden.';}
   catch(e){$('browser-status').textContent=e.message||'Zurücksetzen nicht bestätigt.';}
   finally{busy=false;buttons();}
  }
