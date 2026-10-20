@@ -8,6 +8,7 @@
 <title>Terminrückmeldung · H₂O Feuerwehr Wasser</title>
 <link rel="icon" type="image/png" href="assets/drinks/h2o-symbol-white-192.png">
 <link rel="stylesheet" href="css/features/portal-whatsapp.css">
+<script src="js/features/drinks/push-device.js" defer></script>
 <script src="js/features/portal/portal-whatsapp.js" defer></script>
 </head>
 <body>
@@ -33,7 +34,8 @@
 <p class="small">Die ausgewählte Antwort erneut antippen, um sie zurückzunehmen.</p>
 </section>
 <section class="card secondary">
-<p>Mit dem H₂O-Symbol auf deinem Home-Bildschirm kannst du jederzeit auch direkt deine Termine öffnen.</p>
+<button type="button" id="back-to-h2o" class="quiet">← Zurück zur H₂O-App</button>
+<p id="back-to-h2o-status" role="status" aria-live="polite" class="small">Deine H₂O-App erreichst du auch über das H₂O-Symbol auf dem Home-Bildschirm.</p>
 <button type="button" id="remove" hidden class="quiet">Browserzugang von diesem Gerät entfernen</button>
 </section>
 <footer>H₂O Portal · Feuerwehr Wasser</footer>
