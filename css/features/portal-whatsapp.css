@@ -1,0 +1,29 @@
+:root{color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#172338;background:#f3f6fa}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#f3f6fa}
+main{max-width:670px;margin:auto;padding:14px 14px calc(30px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:13px;padding:12px 8px 18px}
+header img{width:56px;height:56px;object-fit:contain;background:#fff;border-radius:15px}
+header p{margin:0 0 4px;font-size:.79rem;font-weight:700;color:#657287}
+header h1{margin:0;font-size:1.2rem;line-height:1.25}
+.card{background:#fff;border:1px solid #e0e7f0;border-radius:20px;padding:19px;margin-bottom:13px;box-shadow:0 4px 18px #17233808}
+.card.secondary{background:transparent;border:0;box-shadow:none;text-align:center}
+h2{font-size:1.16rem;margin:0 0 12px;line-height:1.28}
+p{line-height:1.48;margin:10px 0}
+.small,footer{font-size:.82rem;color:#59677a}
+footer{text-align:center;padding:13px;color:#8b98a8}
+button{display:block;border:0;border-radius:11px;padding:13px 17px;min-height:48px;background:#193f76;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #3c84d7;outline-offset:3px}
+button:disabled{opacity:.5;cursor:not-allowed}
+input{display:block;width:100%;min-height:49px;border:1px solid #a4b2c5;border-radius:12px;padding:12px;font:inherit;margin:7px 0 14px;background:#fff;color:#101c2c}
+label{font-weight:700;font-size:.9rem}
+#pair-submit{width:100%}
+#status{font-size:.93rem;margin-bottom:0}
+.eyebrow{font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:.78rem;color:#346ca8;margin:0 0 8px}
+.answer-status{font-weight:700;margin:17px 0 10px;color:#28436c}
+.answers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.answers button{padding:12px 5px;font-size:.86rem;line-height:1.2}
+.answers button[aria-pressed="true"]{background:#21634a}
+.quiet{margin:auto;background:#fff;color:#274f82;border:1px solid #b4c1d1}
+.event-option{background:#e8eff7;color:#173e73;width:100%;text-align:left;margin:8px 0;font-size:.9rem}
+@media(max-width:370px){.answers{grid-template-columns:1fr}.answers button{min-height:42px}}
