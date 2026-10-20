@@ -96,6 +96,12 @@
  let overviewDialog=null,overviewRequest=0;
  function closeOverview(){overviewRequest++;overviewDialog?.close();}
  async function shareEvent(event,feedback){
+  if(!access?.origin){feedback.textContent='Persönlichen H₂O-Zugang bitte erneut öffnen.';return;}
+  try{
+   const response=await fetch(access.origin+'/health',{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(12000)});
+   const health=await response.json();
+   if(!response.ok||health.browserPairVersion!==1){feedback.textContent='Der Cloudflare-Dienst unterstützt die WhatsApp-Browserlinks noch nicht. Bitte zuerst den Worker aktualisieren.';return;}
+  }catch{feedback.textContent='WhatsApp-Verknüpfung kann derzeit nicht geprüft werden. Bitte später erneut versuchen.';return;}
   if(event.audienceRestricted&&!confirm('Dieser Termin ist nur für ausgewählte Mitglieder freigegeben. In einer WhatsApp-Gruppe können auch andere Personen die Terminangaben lesen. Trotzdem teilen?'))return;
   const url=new URL('termin.html',location.href);url.hash='';url.search='';url.searchParams.set('event',event.id);
   const start=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start));
