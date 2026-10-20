@@ -16,7 +16,7 @@
   }catch{}
   return null;
  }
- function persist(next){try{if(next)localStorage.setItem(STORAGE,JSON.stringify(next));else localStorage.removeItem(STORAGE);}catch{throw Error('Safari darf den Zugang nicht speichern. Bitte privaten Modus ausschalten und erneut versuchen.');}}
+ function persist(next){try{if(next)localStorage.setItem(STORAGE,JSON.stringify(next));else localStorage.removeItem(STORAGE);}catch{throw Error('Der Browser darf den Zugang nicht speichern. Bitte den privaten Modus ausschalten und erneut versuchen.');}}
  async function post(path,body,token){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   try{
@@ -29,7 +29,7 @@
  function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Safari mit H₂O verbinden';
-  status(message||'Damit du über WhatsApp antworten kannst, verbinde Safari einmalig mit deinem H₂O-Zugang.');
+  status(message||'Damit du über WhatsApp antworten kannst, verbinde den Browser einmalig mit deinem H₂O-Zugang.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function paintEvents(){
@@ -68,7 +68,7 @@
    working=false;
    if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
    if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
-   else{el('heading').textContent='Deine nächsten Termine';el('events').hidden=false;paintEvents();status('Safari ist mit deinem H₂O-Terminzugang verbunden.');}
+   else{el('heading').textContent='Deine nächsten Termine';el('events').hidden=false;paintEvents();status('Dein Browser ist mit deinem H₂O-Terminzugang verbunden.');}
   }catch(error){
    working=false;
    if(error.status===401||error.status===403){session=null;persist(null);showPair('Der Safari-Zugang ist nicht mehr gültig. Bitte H₂O erneut verbinden.');}
@@ -113,8 +113,8 @@
  el('pair-submit').addEventListener('click',connect);
  el('pair-code').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
  el('remove').addEventListener('click',()=>{
-  if(!confirm('Safari-Zugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
-  session=null;pending=null;persist(null);showPair('Safari-Zugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
+  if(!confirm('Browserzugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
+  session=null;pending=null;persist(null);showPair('Browserzugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
   const focus=wanted();
