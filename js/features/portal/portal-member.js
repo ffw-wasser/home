@@ -96,12 +96,8 @@
  let overviewDialog=null,overviewRequest=0;
  function closeOverview(){overviewRequest++;overviewDialog?.close();}
  async function shareEvent(event,feedback){
-  if(!access?.origin){feedback.textContent='Persönlichen H₂O-Zugang bitte erneut öffnen.';return;}
-  try{
-   const response=await fetch(access.origin+'/health',{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(12000)});
-   const health=await response.json();
-   if(!response.ok||health.browserPairVersion!==1){feedback.textContent='Der Cloudflare-Dienst unterstützt die WhatsApp-Browserlinks noch nicht. Bitte zuerst den Worker aktualisieren.';return;}
-  }catch{feedback.textContent='WhatsApp-Verknüpfung kann derzeit nicht geprüft werden. Bitte später erneut versuchen.';return;}
+  // Keep navigator.share inside the original user gesture: async health checks above it
+  // can consume transient activation on iOS Safari and prevent the share sheet.
   if(event.audienceRestricted&&!confirm('Dieser Termin ist nur für ausgewählte Mitglieder freigegeben. In einer WhatsApp-Gruppe können auch andere Personen die Terminangaben lesen. Trotzdem teilen?'))return;
   const url=new URL('termin.html',location.href);url.hash='';url.search='';url.searchParams.set('event',event.id);
   const start=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start));
@@ -110,11 +106,27 @@
    if(navigator.share){await navigator.share({title:'Feuerwehr Wasser · '+event.title,text:message,url:url.href});feedback.textContent='Teilen-Menü geöffnet. Der Versand erfolgt erst durch deine Bestätigung.';}
    else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(message+'\n'+url.href);feedback.textContent='Nachricht mit gemeinsamem Terminlink kopiert. In WhatsApp einfügen.';}
    else{prompt('WhatsApp-Nachricht kopieren:',message+'\n'+url.href);feedback.textContent='Nachricht zum Kopieren vorbereitet.';}
-  }catch(e){if(e.name!=='AbortError')feedback.textContent='Teilen fehlgeschlagen: '+(e.message||'Bitte erneut versuchen.');}
+  }catch(e){if(e.name!=='AbortError'){
+    const fallback=message+'\n'+url.href;
+    prompt('WhatsApp-Nachricht kopieren:',fallback);
+    feedback.textContent='Teilen-Menü nicht verfügbar. Nachricht zum Kopieren vorbereitet.';
+  }}
  }
  async function showOverview(event){
   if(!overviewDialog){overviewDialog=node('dialog');overviewDialog.className='portal-calendar-dialog portal-overview-dialog';overviewDialog.setAttribute('aria-labelledby','portal-overview-title');document.body.append(overviewDialog);overviewDialog.addEventListener('close',()=>{overviewRequest++;});}
-  const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.onclick=closeOverview;const share=node('button','Über WhatsApp teilen'),shareStatus=node('p');share.type='button';share.className='portal-overview-open';share.disabled=event.start<=Date.now();share.onclick=()=>shareEvent(event,shareStatus);shareStatus.setAttribute('role','status');overviewDialog.replaceChildren(heading,title,share,shareStatus,close,content);if(!overviewDialog.open)overviewDialog.showModal();
+  const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.onclick=closeOverview;const share=node('button','Über WhatsApp teilen'),shareStatus=node('p');share.type='button';share.className='portal-overview-open';share.disabled=true;share.onclick=()=>shareEvent(event,shareStatus);shareStatus.setAttribute('role','status');overviewDialog.replaceChildren(heading,title,share,shareStatus,close,content);if(!overviewDialog.open)overviewDialog.showModal();
+  if(event.start>Date.now()&&access?.origin){
+   shareStatus.textContent='WhatsApp-Verknüpfung wird geprüft …';
+   void (async()=>{
+    try{
+     const response=await fetch(access.origin+'/health',{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(12000)});
+     const health=await response.json();
+     if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;
+     if(response.ok&&health.browserPairVersion===1){share.disabled=false;shareStatus.textContent='';}
+     else shareStatus.textContent='Der Cloudflare-Dienst unterstützt die WhatsApp-Browserlinks noch nicht.';
+    }catch{if(request===overviewRequest&&overviewDialog.open)shareStatus.textContent='WhatsApp-Verknüpfung derzeit nicht erreichbar. Bitte später erneut versuchen.';}
+   })();
+  }
   try{const result=await api('overview',{eventId:event.id});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;content.replaceChildren();
    if(result.stale)content.append(node('p','Kalender aktuell nicht bestätigt. Rückmeldungen wurden aktuell geladen.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){const people=result.members.filter(m=>m.status===value);content.append(node('h3',label+' ('+people.length+')'),node('p',people.map(m=>m.name).join(' · ')||'Keine'));}
