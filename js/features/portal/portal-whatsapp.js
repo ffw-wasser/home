@@ -5,7 +5,7 @@
  const ORIGIN='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev';
  const STORAGE='h2o-safari-calendar-v1', ID=/^[A-Za-z0-9_-]{43}$/;
  const el=id=>document.getElementById(id);
- const wanted=new URLSearchParams(location.search).get('event');
+ const wanted=()=>new URLSearchParams(location.search).get('event');
  let session=null,items=[],stale=false,working=false,pending=null;
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -41,14 +41,15 @@
   if(!items.length)list.append(element('p','Zurzeit keine freigegebenen Termine vorhanden.'));
  }
  function renderEvent(event){
-  hide();el('heading').textContent='Deine Terminrückmeldung';
+  hide();el('remove').hidden=false;el('heading').textContent='Deine Terminrückmeldung';
   if(!event){status('Dieser Termin ist für deinen Zugang nicht freigegeben, wurde abgesagt oder ist bereits beendet.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
   el('event-when').textContent='📅 '+fmt.format(new Date(event.start))+' Uhr';
   el('event-location').textContent='📍 '+(event.location||'GH Wasser');
   const state={yes:'✓ Du bist dabei',excused:'Entschuldigt',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
-  el('event-status').textContent=state[event.status]||state.open;
+  const changed=Number.isSafeInteger(event.updatedAt)&&event.updatedAt>0?' · Zuletzt geändert: '+new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.updatedAt))+' Uhr':'';
+  el('event-status').textContent=(state[event.status]||state.open)+changed;
   const locked=stale||event.start<=Date.now()||working;
   for(const button of el('chosen').querySelectorAll('[data-reply]')){
    const chosen=button.dataset.reply===event.status;
@@ -65,8 +66,8 @@
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
    stale=result.stale===true;el('remove').hidden=false;el('pairing').hidden=true;
    working=false;
-   if(wanted&&!ID.test(wanted)){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
-   if(wanted){renderEvent(items.find(e=>e.id===wanted));}
+   if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
+   if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
    else{el('heading').textContent='Deine nächsten Termine';el('events').hidden=false;paintEvents();status('Safari ist mit deinem H₂O-Terminzugang verbunden.');}
   }catch(error){
    working=false;
@@ -98,7 +99,7 @@
   try{
    const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
    if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
-   event.status=value.status;event.version=value.version;pending=null;status('✓ Rückmeldung gespeichert.');
+   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Rückmeldung gespeichert. Du kannst denselben WhatsApp-Link jederzeit wieder öffnen und bis zum Terminbeginn ändern.');
   }catch(e){
    if([400,401,403,404,409].includes(e.status))pending=null;
    status((e.message||'Speicherung nicht bestätigt.')+(pending?' Bitte dieselbe Antwort erneut antippen.':' Bitte den Termin erneut laden.'));
@@ -116,7 +117,7 @@
   session=null;pending=null;persist(null);showPair('Safari-Zugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
-  const focus=new URLSearchParams(location.search).get('event');
+  const focus=wanted();
   const item=items.find(e=>e.id===focus);
   if(item)void reply(item,button.dataset.reply);
  });
