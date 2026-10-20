@@ -201,10 +201,13 @@ test('GF-Übersicht liest aktuelle Rückmeldungen ohne Google-Abruf, auch bei al
  assert.equal((await f.call('overview',{eventId:e.id},f.people[1])).status,403);
  assert.equal(f.calendarFetches(),before,'Leseübersichten dürfen nicht auf Google warten');
 });
-test('Antworten warten nicht auf Google; ab fünf Minuten altem Kalender bleibt Schreiben gesperrt',async()=>{
+test('Anzeige und Antworten akzeptieren denselben Kalenderstand für 15 Minuten',async()=>{
  const f=await fixture(),e=(await f.call('list')).value.events[0],before=f.calendarFetches();f.offline(true);
  assert.equal((await f.call('reply',{eventId:e.id,status:'maybe',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,200);
- f.clock.now+=301000;const r=await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:1,requestId:webcrypto.randomUUID()});assert.equal(r.status,503);assert.equal(f.calendarFetches(),before);assert.equal((await f.call('list')).value.events[0].status,'maybe');
+ f.clock.now+=301000;assert.equal((await f.call('list')).value.stale,false);
+ assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:1,requestId:webcrypto.randomUUID()})).status,200);
+ f.clock.now+=600001;const r=await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:2,requestId:webcrypto.randomUUID()});assert.equal(r.status,503);assert.equal(f.calendarFetches(),before);
+ const list=await f.call('list');assert.equal(list.value.stale,true);assert.equal(list.value.events[0].status,'yes');
 });
 
 test('Kleidung: Vorgaben, Auswahl und Freitext bleiben im persönlichen Kalender gespeichert',async()=>{
@@ -236,4 +239,12 @@ test('Ort: GH Wasser als Vorgabe, bestehender Kalenderort und individuelle Speic
  await save({location:'GH Wasser'});assert.equal((await f.call('list')).value.events[0].location,'GH Wasser');
  f.raw(calendar([event(f.start,'Probe','LOCATION:Anderer Treffpunkt').replace('UID:test-event','UID:location-event')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
  cal=(await f.call('list',{},null,true)).value;assert.equal(cal.events[0].location,'Anderer Treffpunkt');
+});
+
+test('Öffnen aktualisiert einen abgelaufenen Kalender auch ohne Cron und erlaubt danach Rückmeldung',async()=>{
+ const f=await fixture(),e=(await f.call('list')).value.events[0],before=f.calendarFetches();f.clock.now+=901000;
+ const list=await f.call('list');assert.equal(list.value.stale,false);assert.equal(f.calendarFetches(),before+1);
+ assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,200);
+ f.raw(calendar([event(f.start,'Testprobe','STATUS:CANCELLED')]));f.clock.now+=901000;
+ assert.equal((await f.call('list')).value.events.length,0);assert.equal((await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()})).status,404);
 });
