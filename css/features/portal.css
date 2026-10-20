@@ -146,9 +146,9 @@
 .portal-event-badges{display:flex;justify-content:center;text-align:center;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .portal-event-badges span{padding:5px 14px;border-radius:20px;background:#e9eef5;color:#36516d;font-size:1.125rem;font-weight:750;line-height:1.3}
 .portal-event-badges span:first-child{background:#dceafa;color:#164778}
-.portal-event-date time{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.portal-event-date time{display:flex;flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 12px}
 .portal-event-day{font-size:clamp(1.375rem,5.5vw,1.5rem);font-weight:850;line-height:1.3}
-.portal-event-clock{font-size:1.375rem;font-weight:800;white-space:nowrap}
+.portal-event-clock{margin-left:auto;font-size:1.375rem;font-weight:800;white-space:nowrap}
 #portal-events .portal-event-meta{display:flex;align-items:flex-start;gap:12px;padding:4px 0;margin:0;font-size:1.125rem;line-height:1.4}
 .portal-event-meta>span:first-child{flex:none;width:26px;text-align:center}.portal-event-meta>span:last-child{min-width:0}
 #portal-events .portal-overview-open{background:transparent;color:#315777;box-shadow:none;text-align:left;padding:8px 0;min-height:44px;font-size:1rem;text-decoration:underline}
