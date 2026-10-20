@@ -801,7 +801,11 @@
   'CREATE TABLE IF NOT EXISTS portal_calendar (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_replies (event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(event,member))',
   "CREATE TABLE IF NOT EXISTS portal_sends (id TEXT PRIMARY KEY,event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',campaign TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL)",
-  'CREATE INDEX IF NOT EXISTS portal_sends_created ON portal_sends(created_at)'
+  'CREATE INDEX IF NOT EXISTS portal_sends_created ON portal_sends(created_at)',
+   'CREATE TABLE IF NOT EXISTS portal_browser_pairs (code_hash TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,expires_at INTEGER NOT NULL,consumed INTEGER NOT NULL DEFAULT 0)',
+   'CREATE INDEX IF NOT EXISTS portal_browser_pairs_alias ON portal_browser_pairs(alias)',
+   'CREATE TABLE IF NOT EXISTS portal_browser_sessions (token_hash TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,expires_at INTEGER NOT NULL)',
+   'CREATE INDEX IF NOT EXISTS portal_browser_sessions_alias ON portal_browser_sessions(alias,revision)'
  ];
  async function ready(env){if(checks.has(env.DB))return;await env.DB.batch(ddl.map(sql=>env.DB.prepare(sql)));checks.add(env.DB);}
  const open=(env,row,purpose)=>row?L.open(env,row.payload,purpose):null;
@@ -868,10 +872,45 @@
    const results=await env.DB.batch([first,write,env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND '+guard).bind(e.memberId,year,marker)]);if(results[0].meta.changes){processed++;awarded.add(e.memberId);}
   }return processed;
  }
- async function actor(env,data,auth){
+ 
+  /* A Safari session is intentionally limited to calendar list/reply. It is NEVER a ledger command capability. */
+  const browserPaths=new Set(['/portal/list','/portal/reply']);
+  const hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
+  async function browserStart(env,record){
+   const now=Date.now(),code=hex(12);
+   await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE expires_at<? OR consumed=1').bind(now).run();
+   await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(record.alias).run();
+   await env.DB.prepare('INSERT INTO portal_browser_pairs(code_hash,alias,revision,expires_at) VALUES(?,?,?,?)').bind(await hash('h2o-browser-pair:'+code),record.alias,record.revision,now+5*60000).run();
+   return {code:code.toUpperCase(),expiresAt:now+5*60000};
+  }
+  async function browserRedeem(env,data){
+   const code=String(data.code||'').replace(/[\s-]/g,'').toLowerCase(),now=Date.now();
+   if(!/^[a-f0-9]{24}$/.test(code))fail('Ungültiger Verbindungscode.',400);
+   const row=await env.DB.prepare('UPDATE portal_browser_pairs SET consumed=1 WHERE code_hash=? AND consumed=0 AND expires_at>? RETURNING alias,revision').bind(await hash('h2o-browser-pair:'+code),now).first();
+   if(!row)fail('Der Code ist ungültig, abgelaufen oder wurde bereits verwendet.',401);
+   const active=await env.DB.prepare('SELECT a.alias FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(row.alias,row.revision).first();
+   if(!active)fail('Der persönliche Zugang wurde inzwischen erneuert.',401);
+   await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE expires_at<?').bind(now).run();
+   const amount=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=?').bind(row.alias,row.revision).first();
+   if(amount.n>=5)fail('Maximal fünf Browserzugänge. Bitte im H2O-Portal die Browserzugänge zurücksetzen.',429);
+   const token=hex(32),expiresAt=now+30*DAY;
+   await env.DB.prepare('INSERT INTO portal_browser_sessions(token_hash,alias,revision,expires_at) VALUES(?,?,?,?)').bind(await hash('h2o-browser-session:'+token),row.alias,row.revision,expiresAt).run();
+   return {token,alias:row.alias,revision:row.revision,expiresAt};
+  }
+  async function browserRevoke(env,record){
+   await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(record.alias).run();
+   await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(record.alias).run();
+   return {ok:true};
+  }
+  async function actor(env,data,auth,path){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Portalzugang.',400);
   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(data.alias,data.revision).first();
-  if(!row||!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Portalzugang wurde geändert. Bitte den persönlichen QR-Code erneut öffnen.',401);
+  if(!row)fail('Portalzugang wurde geändert. Bitte den persönlichen QR-Code erneut öffnen.',401);
+   if(!equal(auth,await capability(env,data.alias,data.revision,'commands'))){
+    if(!browserPaths.has(path)||!/^[a-f0-9]{64}$/.test(auth||''))fail('Browserzugang für diese Funktion nicht freigegeben.',401);
+    const session=await env.DB.prepare('SELECT alias,revision,expires_at FROM portal_browser_sessions WHERE token_hash=?').bind(await hash('h2o-browser-session:'+auth)).first();
+    if(!session||session.alias!==data.alias||session.revision!==data.revision||session.expires_at<=Date.now())fail('Browserzugang abgelaufen. Bitte erneut mit H2O verbinden.',401);
+   }
   const record=await L.open(env,row.payload,'access:'+data.alias),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');if(roster&&!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);return record;
  }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
@@ -933,14 +972,18 @@
   const now=Date.now(),due=cal.events.filter(event=>{const at=event.start-c.leadHours*3600000;return event.approved&&event.kind==='probe'&&!event.allDay&&event.start>now&&at<=now&&at>now-3600000;});if(due.length)await send(env,due[Math.floor(now/60000)%due.length],'auto');
  }
  async function route(path,data,env,auth){
-  await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');let record;if(admin)L.source(m,data);else record=await actor(env,data,auth);
+  await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
+   if(path==='/portal/browser/redeem')return browserRedeem(env,data);
+   let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
    let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true,evidenceVersion:1};
   }
-  if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
+  if(path==='/portal/browser/start'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browser-Einrichtung nur in der persönlichen H2O-App möglich.',403);return browserStart(env,record);}
+   if(path==='/portal/browser/revoke'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browserzugänge können nur in der H2O-App zurückgesetzt werden.',403);return browserRevoke(env,record);}
+   if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
   if(path==='/admin/portal/config'){
