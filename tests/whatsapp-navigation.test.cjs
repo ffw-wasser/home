@@ -10,7 +10,7 @@ class Node {
 const elements=html=>Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(x=>[x[1],new Node()]));
 test('WhatsApp-Verbindung: die H2O-App bleibt offen und kann privaten Link nur kopieren',async()=>{
  const html=read('deckel.html'),dom=elements(html),copied=[];
- assert.match(html,/Benachrichtigungen & WhatsApp/);
+ assert.match(html,/Push & WhatsApp/);
  assert.doesNotMatch(html,/id="portal-browser-open"/,'kein Link, der die installierte App verlässt');
  const link='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/test&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
  const apiCalls=[];
