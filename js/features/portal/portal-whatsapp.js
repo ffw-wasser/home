@@ -6,6 +6,14 @@
  const STORAGE='h2o-safari-calendar-v1', ID=/^[A-Za-z0-9_-]{43}$/;
  const el=id=>document.getElementById(id);
  const wanted=()=>new URLSearchParams(location.search).get('event');
+ // A secret handoff is carried only in the URL fragment, never in a group link,
+ // Referer, server URL or any request. Erase it from browser history immediately.
+ const initialPair=(()=>{
+  const match=/^#pair=([a-f0-9]{24})$/i.exec(location.hash);
+  if(!match)return null;
+  history.replaceState(null,'',location.pathname+location.search);
+  return match[1].toLowerCase();
+ })();
  let session=null,items=[],stale=false,working=false,pending=null;
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -28,7 +36,7 @@
  }
  function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
  function showPair(message){
-  hide();el('pairing').hidden=false;el('heading').textContent='Safari mit H₂O verbinden';
+  hide();el('pairing').hidden=false;el('heading').textContent='Browser mit H₂O verbinden';
   status(message||'Damit du über WhatsApp antworten kannst, verbinde den Browser einmalig mit deinem H₂O-Zugang.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
@@ -62,6 +70,9 @@
   if(!session)return showPair();
   working=true;hide();status('Deine Termine werden geladen …');
   try{
+   const renewal=await post('browser/renew',{alias:session.alias,revision:session.revision},session.token);
+   if(renewal.ok!==true||!Number.isSafeInteger(renewal.expiresAt)||renewal.expiresAt<=Date.now())throw Error('Browser-Verbindung konnte nicht verlängert werden.');
+   session.expiresAt=renewal.expiresAt;persist(session);
    const result=await post('list',{alias:session.alias,revision:session.revision},session.token);
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
    stale=result.stale===true;el('remove').hidden=false;el('pairing').hidden=true;
@@ -71,23 +82,24 @@
    else{el('heading').textContent='Deine nächsten Termine';el('events').hidden=false;paintEvents();status('Dein Browser ist mit deinem H₂O-Terminzugang verbunden.');}
   }catch(error){
    working=false;
-   if(error.status===401||error.status===403){session=null;persist(null);showPair('Der Safari-Zugang ist nicht mehr gültig. Bitte H₂O erneut verbinden.');}
+   if(error.status===401||error.status===403){session=null;persist(null);showPair('Der Browserzugang ist nicht mehr gültig. Bitte H₂O erneut verbinden.');}
    else{status(error.message||'Termine konnten nicht geladen werden.');el('pairing').hidden=false;}
   }
  }
- async function connect(){
+ async function connectWithH2O(code){
   if(working)return;
-  const code=el('pair-code').value.replace(/[\s-]/g,'').toLowerCase();
-  if(!/^[a-f0-9]{24}$/.test(code)){status('Bitte den vollständigen Einmalcode aus deiner H₂O-App einfügen.');return;}
-  working=true;el('pair-submit').disabled=true;status('Einmalcode wird geprüft …');
+  if(!/^[a-f0-9]{24}$/.test(code||'')){showPair('Ungültiger Verbindungslink. Bitte in H₂O einen neuen Zugang vorbereiten.');return;}
+  working=true;status('Dein persönlicher H₂O-Zugang wird sicher verbunden …');
   try{
    const result=await post('browser/redeem',{code});
-   if(!/^[a-f0-9]{64}$/.test(result.token||'')||!/^[a-f0-9]{32}$/.test(result.alias||''))throw Error('Der Safari-Zugang wurde nicht bestätigt.');
+   if(!/^[a-f0-9]{64}$/.test(result.token||'')||!/^[a-f0-9]{32}$/.test(result.alias||'')||!result.revision||!Number.isSafeInteger(result.expiresAt))throw Error('Der Browserzugang wurde nicht bestätigt.');
    const next={token:result.token,alias:result.alias,revision:result.revision,expiresAt:result.expiresAt};
-   persist(next);session=next;el('pair-code').value='';
+   persist(next);session=next;
    working=false;await refresh();
-  }catch(error){status(error.message||'Verbindung fehlgeschlagen.');working=false;}
-  finally{el('pair-submit').disabled=false;}
+  }catch(error){
+   working=false;
+   showPair((error.message||'Verbindung fehlgeschlagen.')+' Bitte in H₂O erneut auf „WhatsApp-Zugang aktivieren“ tippen.');
+  }
  }
  async function reply(event,choice){
   if(working||stale||event.start<=Date.now()||!session)return;
@@ -110,8 +122,6 @@
    status(note);
   }
  }
- el('pair-submit').addEventListener('click',connect);
- el('pair-code').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
  el('remove').addEventListener('click',()=>{
   if(!confirm('Browserzugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
   session=null;pending=null;persist(null);showPair('Browserzugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
@@ -121,5 +131,5 @@
   const item=items.find(e=>e.id===focus);
   if(item)void reply(item,button.dataset.reply);
  });
- session=restore();if(session)void refresh();else showPair();
+ session=restore();if(initialPair)void connectWithH2O(initialPair);else if(session)void refresh();else showPair();
 })();
