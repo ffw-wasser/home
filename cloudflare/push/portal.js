@@ -200,7 +200,23 @@
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');await env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload).run();return {ok:true,evidenceVersion:1};
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');
+   const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload)];
+   // Membership may be removed while a browser session remains active.
+   // Revoke its token and any outstanding pairing link in the SAME D1 batch as the roster update.
+   const activeMembers=new Set(people.map(p=>p.id));
+   const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
+   if(removed.size){
+    const linked=(await env.DB.prepare('SELECT DISTINCT a.alias,a.payload FROM ledger_access a WHERE EXISTS(SELECT 1 FROM portal_browser_sessions s WHERE s.alias=a.alias) OR EXISTS(SELECT 1 FROM portal_browser_pairs p WHERE p.alias=a.alias)').all()).results;
+    for(const row of linked){
+     const owner=await L.open(env,row.payload,'access:'+row.alias);
+     if(!removed.has(owner.memberId))continue;
+     statements.push(env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(row.alias));
+     statements.push(env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(row.alias));
+    }
+   }
+   await env.DB.batch(statements);
+   return {ok:true,evidenceVersion:1,removedBrowserMembers:removed.size};
   }
   if(path==='/portal/browser/renew')return browserRenew(env,record,auth);
   if(path==='/portal/browser/start'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browser-Einrichtung nur in der persönlichen H2O-App möglich.',403);return browserStart(env,record);}
