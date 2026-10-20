@@ -100,10 +100,11 @@
 <p>Verbinde deinen Handy-Browser einmalig mit dem persönlichen H₂O-Zugang. Kein Code, kein QR-Scan und keine erneute Mitgliederanmeldung notwendig.</p>
 <button id="portal-browser-start" type="button">WhatsApp-Zugang aktivieren</button>
 <div id="portal-browser-link-box" hidden>
-<p><strong>Verbindungslink vorbereitet.</strong> Nur für dein eigenes Handy, niemals an die WhatsApp-Gruppe senden.</p>
-<a id="portal-browser-open" class="portal-overview-open" target="_blank" rel="noopener noreferrer" href="termin.html">Jetzt im Browser öffnen ↗</a>
-<button id="portal-browser-copy" type="button" class="secondary">Verbindungslink kopieren</button>
-<p>Auf dem iPhone am besten in <strong>Safari</strong>, auf Android in <strong>Chrome</strong> öffnen. Wenn die H₂O-App oder WhatsApp den Link intern öffnet, den kopierten Link direkt in Safari/Chrome einfügen. Die Freigabe ist nur fünf Minuten gültig.</p>
+<p><strong>Verbindung vorbereitet.</strong> Damit du sicher zu H₂O zurückkommst, bleibt die App geöffnet.</p>
+<button id="portal-browser-copy" type="button">Verbindungslink kopieren</button>
+<p id="portal-browser-return-hint">Öffne danach <strong>Safari</strong> (iPhone) oder <strong>Chrome</strong> (Android), füge den kopierten Link in die Adressleiste ein und bestätige. Anschließend kannst du jederzeit über dein H₂O-Symbol zurück in die App.</p>
+<a id="portal-browser-open" class="portal-overview-open" target="_blank" rel="noopener noreferrer" href="termin.html" hidden>Nur im normalen Browser: in neuem Tab öffnen ↗</a>
+<p class="portal-browser-private-note">Der private Link gilt fünf Minuten. <strong>Nicht an eine WhatsApp-Gruppe weitergeben.</strong></p>
 </div>
 <button id="portal-browser-revoke" type="button" class="secondary">Browserzugänge zurücksetzen</button>
 <p id="portal-browser-status" role="status" aria-live="polite"></p>
