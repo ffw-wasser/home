@@ -294,3 +294,71 @@ test('WhatsApp/Safari: Verbindungscode läuft ab, falsche Codes werden verworfen
  assert.equal(await redeem(code.code),401);
  assert.equal(await redeem('garbage'),400);
 });
+
+
+test('WhatsApp Browser: automatische Verlängerung bei Nutzung, keine Verlängerung mit Fremdzugang',async()=>{
+ const f=await fixture();
+ const start=(await f.call('browser/start')).value;
+ async function browser(path,body={},token){
+  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
+   method:'POST',
+   headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+   body:JSON.stringify(body)
+  }),f.env);
+  return {status:response.status,value:await response.json()};
+ }
+ const paired=await browser('browser/redeem',{code:start.code});
+ assert.equal(paired.status,200);
+ assert.equal(paired.value.expiresAt-f.clock.now,90*86400000);
+ const id={alias:paired.value.alias,revision:paired.value.revision},token=paired.value.token;
+ f.clock.now+=89*86400000;
+ const renewed=await browser('browser/renew',id,token);
+ assert.equal(renewed.status,200);
+ assert.equal(renewed.value.expiresAt-f.clock.now,90*86400000);
+ assert.equal((await browser('list',id,token)).status,200);
+ assert.equal((await browser('browser/renew',{...id,alias:f.people[1].alias},token)).status,401);
+ assert.equal((await browser('evidence',id,token)).status,401,'Browser remains read/reply only');
+ await f.call('browser/revoke');
+ assert.equal((await browser('browser/renew',id,token)).status,401,'Revocation immediately terminates auto-renew');
+});
+test('WhatsApp Browser: nach 90 Tagen Inaktivität abgelaufen und nicht verlängerbar',async()=>{
+ const f=await fixture(),start=(await f.call('browser/start')).value;
+ const submit=async(path,data,token)=>{
+  const resp=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data)}),f.env);
+  return {status:resp.status,value:await resp.json()};
+ };
+ const paired=await submit('browser/redeem',{code:start.code});
+ assert.equal(paired.status,200);
+ f.clock.now+=90*86400000+1000;
+ assert.equal((await submit('browser/renew',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
+ assert.equal((await submit('list',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
+});
+
+
+test('Mitglied entfernt: OneDrive-Handyportal-Abgleich löscht Browserfreigaben und offene Verbindungslinks',async()=>{
+ const f=await fixture();
+ const first=await f.call('browser/start');
+ assert.equal(first.status,200);
+ async function request(path,body={},token=''){
+  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
+   method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+   body:JSON.stringify(body)
+  }),f.env);
+  return {status:response.status,value:await response.json()};
+ }
+ const paired=await request('browser/redeem',{code:first.value.code});
+ assert.equal(paired.status,200);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,1);
+ // Issue another unused single-use transfer: it too must be invalidated on deletion.
+ assert.equal((await f.call('browser/start')).status,200);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,1);
+ const remaining=f.people.slice(1).map(p=>({id:p.memberId,name:'Testperson '+p.memberId.split('-')[1],leader:false}));
+ const removed=await f.call('roster',{members:remaining},null,true);
+ assert.equal(removed.status,200);assert.equal(removed.value.removedBrowserMembers,1);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,0);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,0);
+ assert.equal((await request('list',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
+ assert.equal((await request('browser/renew',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
+ assert.equal((await f.call('browser/start')).status,403,'removed member cannot start new browser session');
+ assert.equal((await f.call('list',{},f.people[1])).status,200,'remaining member still has access');
+});
