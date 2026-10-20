@@ -96,14 +96,14 @@
 <div id="portal-page-more-bookings" class="portal-page portal-more-detail" tabindex="-1" hidden><section id="more-bookings" tabindex="-1"><button type="button" class="secondary portal-more-back" data-more-target="deckel-more">← Zurück zu Mehr</button><h2 class="portal-page-heading">Letzte Buchungen</h2><section class="booking-history"><ol id="bookings"></ol></section></section></div>
 <div id="portal-page-more-reminders" class="portal-page portal-more-detail" tabindex="-1" hidden><section id="more-reminders" tabindex="-1"><button type="button" class="secondary portal-more-back" data-more-target="deckel-more">← Zurück zu Mehr</button><h2 class="portal-page-heading">Erinnerungen</h2><section class="portal-notifications"><p id="portal-push-note"></p><button id="portal-push-enable" type="button">Erinnerungen erlauben</button><button id="portal-push-disable" type="button" class="secondary">Erinnerungen deaktivieren</button><p id="portal-push-status" role="status" aria-live="polite"></p></section>
 <section class="portal-notifications" aria-labelledby="portal-browser-heading">
-<h3 id="portal-browser-heading">WhatsApp-Terminlinks im Browser öffnen</h3>
-<p>Verbinde Safari (iPhone) oder Chrome (Android) einmalig mit deinem persönlichen H₂O-Zugang. Der Einmalcode läuft nach fünf Minuten ab und darf nicht in die WhatsApp-Gruppe geschickt werden.</p>
-<button id="portal-browser-start" type="button">Einmalcode für Browser erzeugen</button>
-<div id="portal-browser-code-box" hidden>
-<label for="portal-browser-code">Dein einmaliger Verbindungscode</label>
-<input id="portal-browser-code" type="text" readonly autocomplete="off" autocapitalize="characters" spellcheck="false">
-<button id="portal-browser-copy" type="button">Code kopieren</button>
-<p>Öffne anschließend den WhatsApp-Terminlink in Safari (iPhone) oder Chrome (Android) und füge den Code dort ein. Falls WhatsApp einen eigenen Browser öffnet, wähle im Menü „Im Browser öffnen“. Dein persönlicher QR-Link wird nicht weitergegeben.</p>
+<h3 id="portal-browser-heading">WhatsApp-Terminzugang</h3>
+<p>Verbinde deinen Handy-Browser einmalig mit dem persönlichen H₂O-Zugang. Kein Code, kein QR-Scan und keine erneute Mitgliederanmeldung notwendig.</p>
+<button id="portal-browser-start" type="button">WhatsApp-Zugang aktivieren</button>
+<div id="portal-browser-link-box" hidden>
+<p><strong>Verbindungslink vorbereitet.</strong> Nur für dein eigenes Handy, niemals an die WhatsApp-Gruppe senden.</p>
+<a id="portal-browser-open" class="portal-overview-open" target="_blank" rel="noopener noreferrer" href="termin.html">Jetzt im Browser öffnen ↗</a>
+<button id="portal-browser-copy" type="button" class="secondary">Verbindungslink kopieren</button>
+<p>Auf dem iPhone am besten in <strong>Safari</strong>, auf Android in <strong>Chrome</strong> öffnen. Wenn die H₂O-App oder WhatsApp den Link intern öffnet, den kopierten Link direkt in Safari/Chrome einfügen. Die Freigabe ist nur fünf Minuten gültig.</p>
 </div>
 <button id="portal-browser-revoke" type="button" class="secondary">Browserzugänge zurücksetzen</button>
 <p id="portal-browser-status" role="status" aria-live="polite"></p>
