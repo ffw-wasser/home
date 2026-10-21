@@ -464,7 +464,7 @@ test('Health liefert den reproduzierbaren Fingerabdruck des Worker-Quellstands',
 test('GF Atemschutz: Status, eindeutige AGT-Zuordnung und Rollenentzug',async()=>{
  const f=await fixture(),E=f.c.MemberEvidence,valid='2099-12-31',expired='2020-01-01';
  const make=(g263,instruction,ffi)=>E.project({breathingQualified:true,g263ValidUntil:g263,agtInstructionValidUntil:instruction,ffiValidUntil:ffi});
- const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===4?null:i<4,
+ const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===4?null:i<3,
   evidence:i===0?make(valid,valid,valid):i===1?make(valid,valid,''):i===2?make(valid,expired,valid):i===3?E.project({breathingQualified:false,g263ValidUntil:valid}):make(valid,valid,valid)}));
  assert.equal((await f.call('roster',{members:people},null,true)).status,200);
  const gf=await f.call('gf-breathing');
