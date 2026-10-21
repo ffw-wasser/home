@@ -32,8 +32,9 @@ function getAppStorageState(){
   const memory=typeof safeStorage!=="undefined"&&safeStorage.persistent===false;
   if(oneDriveStateConfirmed&&oneDriveLocalRevision===oneDriveSyncedRevision)return {kind:"cloud",text:"In OneDrive gespeichert"};
   const local=memory?"Für diese Sitzung gespeichert":"Auf diesem Gerät gespeichert";
-  const detail=!navigator.onLine?"offline":!oneDriveSignedIn()?"OneDrive nicht verbunden":oneDriveBusy?"OneDrive synchronisiert …":"OneDrive noch nicht bestätigt";
-  return {kind:"local",text:local+" · "+detail};
+  const failed=Boolean(oneDriveLastError)&&!oneDriveBusy;
+  const detail=navigator.onLine===false?"offline":!oneDriveSignedIn()?"OneDrive nicht verbunden":oneDriveBusy?"OneDrive synchronisiert …":failed?"OneDrive-Synchronisierung fehlgeschlagen – erneut versuchen":"OneDrive noch nicht bestätigt";
+  return {kind:failed?"error":"local",text:local+" · "+detail};
 }
 function notifyAppStorageState(){window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();window.PortalAdmin?.storageChanged?.();}
 const odRedirect=()=>"https://ffw-wasser.github.io/home/";
