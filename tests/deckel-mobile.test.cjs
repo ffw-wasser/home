@@ -15,6 +15,19 @@ test('Jedes neue Öffnen startet bei Termine, eine laufende Aktualisierung bleib
  assert.equal(dom['portal-page-terms'].hidden,false);assert.equal(dom['portal-page-evidence'].hidden,true);
  assert.equal(history.state.portalPage,'portal-section');
 });
+test('Elz-Infoseite öffnet als Mehr-Unterseite und Browser-Zurück führt zur Kachelübersicht',()=>{
+ const dom=nodes(),events={},history={state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}};
+ const ctx=vm.createContext({history,innerWidth:390,innerHeight:844,addEventListener:(k,f)=>events[k]=f,document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
+ vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
+ ctx.DeckelMobile.jump('deckel-more');ctx.DeckelMobile.jump('more-water');
+ assert.equal(dom['portal-page-more-water'].hidden,false);assert.equal(dom['portal-page-more'].hidden,true);
+ assert.equal(dom['portal-menu-title'].textContent,'Wasserentnahme Elz');assert.equal(history.state.portalPage,'more-water');
+ assert.equal(dom['portal-page-more-water'].focused,true);assert.equal(dom['deckel-nav'].hidden,false);
+ ctx.DeckelMobile.show(true);assert.equal(dom['portal-page-more-water'].hidden,false);
+ events.popstate({state:{portalPage:'deckel-more'}});
+ assert.equal(dom['portal-page-more'].hidden,false);assert.equal(dom['portal-page-more-water'].hidden,true);
+ assert.equal(dom['portal-menu-title'].textContent,'Mehr');
+});
 test('Theater öffnet separat, blendet Portalnavigation aus und schließt erst nach Bestätigung',()=>{const dom=nodes(),history={state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}},events={};let accepted=false,asks=0;const ctx=vm.createContext({history,innerWidth:390,innerHeight:844,TheaterPhone:{beforeLeave:()=>{asks++;return accepted;}},addEventListener:(k,f)=>events[k]=f,document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);ctx.DeckelMobile.jump('deckel-more');ctx.DeckelMobile.jump('theater-phone-section');assert.equal(dom['portal-page-theater'].hidden,false);assert.equal(dom['portal-page-more'].hidden,true);assert.equal(dom['deckel-nav'].hidden,true);assert.equal(ctx.DeckelMobile.jump('deckel-more'),false);assert.equal(dom['portal-page-theater'].hidden,false);accepted=true;ctx.DeckelMobile.jump('deckel-more');assert.equal(asks,2);assert.equal(dom['portal-page-more'].hidden,false);assert.equal(dom['deckel-nav'].hidden,false);});
 test('Wischen wechselt Menüs; Scrollen, Bedienelemente, Randgesten und Mehrfinger bleiben unberührt',()=>{
  const dom=nodes(),history={state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}},ctx=vm.createContext({history,innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});

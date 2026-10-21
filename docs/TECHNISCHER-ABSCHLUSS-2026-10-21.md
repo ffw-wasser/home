@@ -8,7 +8,7 @@ Der Code wurde geprüft und mit synthetischen Daten getestet. Eine uneingeschrä
 
 ## Berücksichtigter Stand
 
-PRs #20–#25 und #29 sind in main integriert. Die Nummern #26–#28 sind offene Issues, keine Pull Requests. Die dort verlangten praktischen Endabnahmen bleiben offen, soweit sie echte Geräte oder Dienste voraussetzen. Der unabhängige Design-PR #30 ist nicht Bestandteil dieser technischen Prüfung.
+PRs #20–#25 und #29 sind in main integriert. Die Nummern #26–#28 sind offene Issues, keine Pull Requests. Die dort verlangten praktischen Endabnahmen bleiben offen, soweit sie echte Geräte oder Dienste voraussetzen. PR #30 mit der Elz-Infoseite und der Kachelanordnung wurde nach dieser technischen Erstprüfung auf den aktuellen Stand übernommen; siehe Nachtrag zu Version 2026.10.21.9.
 
 ## Bestätigte Fehler und Korrekturen
 
@@ -72,3 +72,13 @@ Die erneute Berechtigungsabfrage des App-Ordners, der zentralen Datendatei und d
 Regressionen prüfen Neustart nach Freigabewiderruf, erneute serverseitige Autorisierung, Konto-/Client-/Linkwechsel, fehlerhafte gespeicherte Bezüge, direkte Ordneradressen, 403/404, verwechslungsfreie Ordnerantworten, Abmeldung während des Abrufs, Erhalt der Historie und die Speichermöglichkeit in der Verwaltung. Die tatsächliche iPad-Verbindung nach dem Update muss am Gerät bestätigt werden; die Cloudflare-Abnahme bleibt separat offen.
 
 Validierung dieses Nachtrags: 684 Tests bestanden, 178 JavaScript-Dateien ohne Syntaxfehler; Worker-Bundle unverändert und konsistent. Die Release-/PWA-Prüfungen sind Bestandteil der bestandenen Gesamtsuite.
+
+## Nachtrag: Elz-Wasserinfo und Kachelanordnung (2026.10.21.9)
+
+PR #30 wurde mit den Sicherheits- und OneDrive-Korrekturen aus main zusammengeführt. Releasekonflikte wurden auf Version 2026.10.21.9 aufgelöst. Unter „Mehr“ steht nun die Kachel „Wasserentnahme Elz“ mit Wassertropfen-Symbol. Es folgen Buchungen, Theater, Push & WhatsApp, Bundesliga, Aktualisieren und Hilfe; Hilfe verwendet die volle Rasterbreite.
+
+Die Infoseite nennt den Grenzwert von 1,58 m³/s oder weniger am Pegel Gutach/Elz und verweist für das Abfluss-Tagesmittel des Vortags auf das amtliche NIZ. Sie ordnet die Information dem Gemeingebrauch zu und behauptet keinen automatisch ermittelten Live-Messwert. Die Landkreisveröffentlichungen vom 16.06.2026 und 01.07.2025 wurden erneut geprüft und sind in der Ansicht verlinkt. Die externe NIZ-Seite wurde per HTTP mit Status 200 erreicht. Ihre interaktive Darstellung und tatsächliche Messwerte wurden nicht praktisch abgenommen.
+
+Regressionen prüfen Reihenfolge, Grenzwertdarstellung, Quellen-/NIZ-Links und die Seitennavigation einschließlich Browser-Zurück. Die vorhandenen Sicherheits- und OneDrive-Korrekturen bleiben Teil dieses Stands. Eine echte iOS-/Android-Geräteabnahme wird daraus nicht abgeleitet.
+
+Validierung dieses Nachtrags: 687 automatisierte Tests bestanden und 179 JavaScript-Dateien ohne Syntaxfehler. Die gezielte Prüfung von Elz-Ansicht, Mobilnavigation und WhatsApp-Navigation bestand mit 32 Tests.
