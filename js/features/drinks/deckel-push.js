@@ -8,6 +8,7 @@
  function buttons(){
   if(!$('enable'))return;
   if(pairingLink&&pairingExpires<=Date.now())clearPair();
+  if(document.getElementById('portal-passkey-register'))document.getElementById('portal-passkey-register').disabled=busy||!access;
   browser('start').hidden=Boolean(pairingLink);browser('start').disabled=busy||!access;
   browser('copy').disabled=busy||!pairingLink;browser('revoke').disabled=busy||!access;
   const supported='serviceWorker' in navigator&&'PushManager' in g&&'Notification' in g;
@@ -34,6 +35,7 @@
    const result=await g.H2OPortal.api('browser/status');
    if(version!==generation)return;
    if(!Number.isSafeInteger(result.sessions)||result.sessions<0)throw Error('Invalid browser status');
+   const passkeyStatus=document.getElementById('portal-passkey-status');if(passkeyStatus)passkeyStatus.textContent=result.passkeys>0?'✓ WhatsApp-Passkey eingerichtet':g.H2OPasskeys?.browserSupportsWebAuthn()?'Einmal mit Face ID, Fingerabdruck oder Geräte-PIN bestätigen.':'Passkeys hier nicht verfügbar. Verwende Safari/Chrome oder „Ohne Passkey verbinden“. ';
    state(browser('state'),result.sessions?result.sessions+' Browser verbunden':'Nicht verbunden',result.sessions>0);
   }catch{if(version===generation)state(browser('state'),'Status nicht verfügbar');}
  }
@@ -84,12 +86,26 @@
   }
  }
  async function revokeBrowsers(){
-  if(busy||!access||!confirm('Alle für diesen H₂O-Zugang eingerichteten Browser-Verbindungen wirklich sperren?'))return;
+  if(busy||!access||!confirm('Alle WhatsApp-Passkeys und Browser-Verbindungen für diesen H₂O-Zugang wirklich sperren?'))return;
   busy=true;generation++;buttons();
-  try{await g.H2OPortal.api('browser/revoke');clearPair();state(browser('state'),'Nicht verbunden');browser('status').textContent='Alle Browserverbindungen getrennt.';}
+  try{await g.H2OPortal.api('browser/revoke');clearPair();state(browser('state'),'Nicht verbunden');document.getElementById('portal-passkey-status').textContent='WhatsApp-Zugang zurückgesetzt.';browser('status').textContent='Alle Browserverbindungen getrennt.';}
   catch(e){browser('status').textContent=e.message||'Zurücksetzen nicht bestätigt.';}
   finally{busy=false;buttons();}
  }
- function init(){if($('enable'))$('enable').onclick=enable;if($('disable'))$('disable').onclick=disable;if(browser('start'))browser('start').onclick=startBrowserPair;if(browser('copy'))browser('copy').onclick=copyBrowserLink;if(browser('revoke'))browser('revoke').onclick=revokeBrowsers;document.addEventListener('visibilitychange',()=>{if(!document.hidden&&access&&!busy)void render(access);});buttons();}
+ async function registerPasskey(){
+  if(busy||!access)return;
+  const note=document.getElementById('portal-passkey-status');
+  if(!g.H2OPasskeys?.browserSupportsWebAuthn()){note.textContent='Passkeys hier nicht verfügbar. Bitte Safari/Chrome verwenden oder „Ohne Passkey verbinden“ öffnen.';return;}
+  busy=true;generation++;buttons();note.textContent='WhatsApp-Passkey wird eingerichtet …';
+  try{
+   const request=await g.H2OPortal.api('passkey/register/options');
+   const response=await g.H2OPasskeys.startRegistration({optionsJSON:request.options});
+   const result=await g.H2OPortal.api('passkey/register/verify',{id:request.id,response});
+   if(result.ok!==true)throw Error('Einrichtung nicht bestätigt.');
+   note.textContent='✓ WhatsApp-Zugang eingerichtet. Öffne den Terminlink und wähle „Mit Passkey anmelden“.';
+  }catch(error){note.textContent=error.name==='NotAllowedError'?'Einrichtung abgebrochen. Du kannst es erneut versuchen.':error.message||'Passkey nicht eingerichtet. In Safari/Chrome erneut versuchen.';}
+  finally{busy=false;buttons();}
+ }
+ function init(){const passkey=document.getElementById('portal-passkey-register');if(passkey)passkey.onclick=registerPasskey;if($('enable'))$('enable').onclick=enable;if($('disable'))$('disable').onclick=disable;if(browser('start'))browser('start').onclick=startBrowserPair;if(browser('copy'))browser('copy').onclick=copyBrowserLink;if(browser('revoke'))browser('revoke').onclick=revokeBrowsers;document.addEventListener('visibilitychange',()=>{if(!document.hidden&&access&&!busy)void render(access);});buttons();}
  g.DeckelPush={restore,markRead,render};restore();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

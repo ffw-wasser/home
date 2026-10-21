@@ -1,6 +1,7 @@
 # Umsetzungsplanung: WhatsApp-Passkey und GF-Kachel „Atemschutz“
 
-**Status:** Teilumsetzung auf dem Draft-Branch. Die GF-Ansicht „Atemschutz“ samt Worker-Endpunkt und automatisierten Tests wurde implementiert und auf dem Branch geprüft. **WhatsApp-Passkeys sind noch nicht implementiert**. In `main` und im produktiven Cloudflare-Worker wurde nichts veröffentlicht.  
+**Status 21.10.2026:** Beide Funktionen für Release `2026.10.21.12` implementiert. Die folgende Planung bleibt als fachliche Referenz erhalten. Aktueller Implementierungs- und Prüfstand: `docs/PR36-ABSCHLUSS.md`. Der Nutzer hat Fertigstellung und Veröffentlichung ausdrücklich beauftragt.
+
 **Repository:** `ffw-wasser/home`, Basis `main`, 21.10.2026.  
 **Verbindliche Nutzerentscheidung:** **Passkeys ausschließlich für die WhatsApp-Terminrückmeldung einrichten**, **keine** generelle Face-ID-/Fingerabdruck-Pflicht oder Passkey-Umstellung für das gesamte H₂O-Portal.  
 **Weitere Anforderung:** Unter **Mehr** eine nur für Gruppenführer sichtbare und serverseitig geschützte Kachel mit dem **kurzen Namen „Atemschutz“**.

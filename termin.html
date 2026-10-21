@@ -9,6 +9,7 @@
 <link rel="icon" type="image/png" href="assets/drinks/h2o-symbol-white-192.png">
 <link rel="stylesheet" href="css/features/portal-whatsapp.css">
 <script src="js/features/drinks/push-device.js" defer></script>
+<script src="js/vendor/passkeys-browser.js" defer></script>
 <script src="js/features/portal/portal-whatsapp.js" defer></script>
 </head>
 <body>
@@ -16,10 +17,14 @@
 <header><img src="assets/drinks/h2o-symbol-white-96.png" alt="" width="56" height="56"><div><p>Feuerwehr Wasser</p><h1>H₂O · Terminrückmeldung</h1></div></header>
 <section class="card"><h2 id="heading">Deinen Termin öffnen</h2><p id="status" role="status" aria-live="polite">Verbindung wird geprüft …</p></section>
 <section id="pairing" class="card" hidden>
-<h2>Browser mit H₂O verbinden</h2>
+<h2>Mit WhatsApp-Passkey anmelden</h2>
+<button type="button" id="passkey-login">Mit Passkey anmelden</button>
+<p>Einmalig in deiner angemeldeten H₂O-App unter <strong>Mehr → Push &amp; WhatsApp → WhatsApp-Zugang einrichten</strong> vorbereiten. Danach hier mit Face ID, Fingerabdruck oder Geräte-PIN anmelden.</p>
+<p>Wenn WhatsApp keinen Passkey anbietet: Im WhatsApp-Menü <strong>In Safari öffnen</strong> bzw. <strong>In Chrome öffnen</strong> wählen und dort denselben Terminlink öffnen.</p>
+<details><summary>Alternative ohne Passkey</summary>
 <p>Öffne deine <strong>bereits angemeldete H₂O-App</strong> auf dem Home-Bildschirm. Unter <strong>Mehr → Push &amp; WhatsApp</strong> auf <strong>„Browser verbinden“</strong> tippen und danach den vorbereiteten privaten Verbindungslink öffnen.</p>
 <p>Auf dem iPhone verwende <strong>Safari</strong>, auf Android <strong>Chrome</strong>. Wenn der Link wieder in der H₂O-App oder in WhatsApp selbst öffnet, kopiere den vorbereiteten Link in H₂O und füge ihn direkt in Safari/Chrome ein. <strong>Niemals den privaten Verbindungslink an die WhatsApp-Gruppe senden!</strong></p>
-<p class="small">Einmal verbunden, bleibt dein Browser bei regelmäßiger Nutzung angemeldet. Die Freigabe kann jederzeit in H₂O gesperrt werden.</p>
+<p class="small">Einmal verbunden, bleibt dein Browser bei regelmäßiger Nutzung angemeldet. Die Freigabe kann jederzeit in H₂O gesperrt werden.</p></details>
 </section>
 <section id="events" class="card" hidden><h2>Deine Termine</h2><div id="event-list"></div></section>
 <section id="chosen" class="card" hidden>

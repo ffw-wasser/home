@@ -14,7 +14,7 @@
   history.replaceState(null,'',location.pathname+location.search);
   return match[1].toLowerCase();
  })();
- let session=null,items=[],stale=false,working=false,pending=null;
+ let session=null,items=[],stale=false,working=false,pending=null,memberName='';
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
  function restore(){
@@ -36,8 +36,8 @@
  }
  function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
  function showPair(message){
-  hide();el('pairing').hidden=false;el('heading').textContent='Browser mit H₂O verbinden';
-  status(message||'Damit du über WhatsApp antworten kannst, verbinde den Browser einmalig mit deinem H₂O-Zugang.');
+  hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
+  status(message||'Melde dich mit deinem WhatsApp-Passkey an. Deine H₂O-App bleibt unverändert.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function paintEvents(){
@@ -49,7 +49,7 @@
   if(!items.length)list.append(element('p','Zurzeit keine freigegebenen Termine vorhanden.'));
  }
  function renderEvent(event){
-  hide();el('remove').hidden=false;el('heading').textContent='Deine Terminrückmeldung';
+  hide();el('remove').hidden=false;el('heading').textContent=memberName?'Rückmeldung für '+memberName:'Deine Terminrückmeldung';
   if(!event){status('Dieser Termin ist für deinen Zugang nicht freigegeben, wurde abgesagt oder ist bereits beendet.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
@@ -74,6 +74,7 @@
    if(renewal.ok!==true||!Number.isSafeInteger(renewal.expiresAt)||renewal.expiresAt<=Date.now())throw Error('Browser-Verbindung konnte nicht verlängert werden.');
    session.expiresAt=renewal.expiresAt;persist(session);
    const result=await post('list',{alias:session.alias,revision:session.revision},session.token);
+   memberName=typeof result.memberName==='string'?result.memberName:'';
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
    stale=result.stale===true;el('remove').hidden=false;el('pairing').hidden=true;
    working=false;
@@ -85,6 +86,19 @@
    if(error.status===401||error.status===403){session=null;persist(null);showPair('Der Browserzugang ist nicht mehr gültig. Bitte H₂O erneut verbinden.');}
    else{status(error.message||'Termine konnten nicht geladen werden.');el('pairing').hidden=false;}
   }
+ }
+ async function loginPasskey(){
+  if(working)return;
+  if(!globalThis.H2OPasskeys?.browserSupportsWebAuthn()){showPair('Bitte denselben Terminlink über das WhatsApp-Menü in Safari oder Chrome öffnen.');return;}
+  working=true;el('passkey-login').disabled=true;status('Passkey wird geprüft …');
+  try{
+   const request=await post('passkey/login/options',{});
+   const response=await H2OPasskeys.startAuthentication({optionsJSON:request.options});
+   const result=await post('passkey/login/verify',{id:request.id,response});
+   if(!/^[a-f0-9]{64}$/.test(result.token||'')||!/^[a-f0-9]{32}$/.test(result.alias||'')||!result.revision||!Number.isSafeInteger(result.expiresAt))throw Error('Anmeldung nicht bestätigt.');
+   persist(result);session=result;working=false;await refresh();
+  }catch(error){showPair(error.name==='NotAllowedError'?'Anmeldung abgebrochen oder kein Passkey verfügbar. Richte ihn zuerst in H₂O ein; öffne diesen Link bei Bedarf in Safari/Chrome.':error.message||'Anmeldung fehlgeschlagen.');}
+  finally{working=false;el('passkey-login').disabled=false;}
  }
  async function connectWithH2O(code){
   if(working)return;
@@ -158,5 +172,6 @@
   const item=items.find(e=>e.id===focus);
   if(item)void reply(item,button.dataset.reply);
  });
+ el('passkey-login').addEventListener('click',loginPasskey);
  session=restore();if(initialPair)void connectWithH2O(initialPair);else if(session)void refresh();else showPair();
 })();
