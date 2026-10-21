@@ -32,7 +32,7 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
     oneDriveSignedIn: () => state.signedIn,
     oneDriveAccessToken: async () => "TEST-TOKEN",
     oneDriveHandleCallback: async () => {calls.callback++;},
-    oneDriveReadState: async () => {calls.read++; if (state.stateError) throw new Error('State unavailable'); return {updatedAt: remoteNewer ? '2099-01-01' : ''};},
+    oneDriveReadState: async () => {calls.read++; if (state.stateError) throw new Error('State unavailable'); if(!remoteNewer)throw new Error('itemNotFound');return {data:{updatedAt:'2099-01-01'},eTag:'test-tag',url:'https://graph.microsoft.com/test'};},
     oneDriveWriteState: async () => {calls.write++;},
     applyOneDrivePayload: () => {calls.apply++;},
     oneDriveResolveSharedRoot: async () => ({driveId: 'test-drive', id: 'test-root'}),

@@ -99,8 +99,10 @@
    if(!/^[a-f0-9]{24}$/.test(code))fail('Ungültiger Verbindungscode.',400);
    const row=await env.DB.prepare('UPDATE portal_browser_pairs SET consumed=1 WHERE code_hash=? AND consumed=0 AND expires_at>? RETURNING alias,revision').bind(await hash('h2o-browser-pair:'+code),now).first();
    if(!row)fail('Der Code ist ungültig, abgelaufen oder wurde bereits verwendet.',401);
-   const active=await env.DB.prepare('SELECT a.alias FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(row.alias,row.revision).first();
+   const active=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(row.alias,row.revision).first();
    if(!active)fail('Der persönliche Zugang wurde inzwischen erneuert.',401);
+   const owner=await L.open(env,active.payload,'access:'+row.alias),members=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+   if(!members?.members?.some(m=>m.id===owner.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
    await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE expires_at<?').bind(now).run();
    const amount=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=?').bind(row.alias,row.revision).first();
    if(amount.n>=5)fail('Maximal fünf Browserzugänge. Bitte im H2O-Portal die Browserzugänge zurücksetzen.',429);
@@ -123,6 +125,18 @@
    await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(record.alias).run();
    return {ok:true};
   }
+  async function assertMember(env,record){
+   await ready(env);
+   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+   if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
+   return record;
+  }
+  async function assertAlias(env,alias){
+   if((await L.meta(env))?.state!=='active')return; // Preserve pre-central reminder mode.
+   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=?').bind(alias).first();
+   if(!row)fail('Handyzugang wurde gesperrt oder ersetzt.',401);
+   return assertMember(env,await L.open(env,row.payload,'access:'+alias));
+  }
   async function actor(env,data,auth,path){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Portalzugang.',400);
   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(data.alias,data.revision).first();
@@ -132,7 +146,7 @@
     const session=await env.DB.prepare('SELECT alias,revision,expires_at FROM portal_browser_sessions WHERE token_hash=?').bind(await hash('h2o-browser-session:'+auth)).first();
     if(!session||session.alias!==data.alias||session.revision!==data.revision||session.expires_at<=Date.now())fail('Browserzugang abgelaufen. Bitte erneut mit H2O verbinden.',401);
    }
-  const record=await L.open(env,row.payload,'access:'+data.alias),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);return record;
+  return assertMember(env,await L.open(env,row.payload,'access:'+data.alias));
  }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
  async function recipients(env){const rows=(await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE EXISTS(SELECT 1 FROM devices d JOIN portal_devices p ON p.id=d.id WHERE d.alias=a.alias AND d.revision=a.revision)').all()).results,result=new Map();for(const row of rows){const record=await L.open(env,row.payload,'access:'+row.alias);if(!result.has(record.memberId))result.set(record.memberId,[]);result.get(record.memberId).push(record);}return result;}
@@ -201,21 +215,31 @@
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
    let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');
-   const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload)];
-   // Membership may be removed while a browser session remains active.
-   // Revoke its token and any outstanding pairing link in the SAME D1 batch as the roster update.
+   // A roster change and every credential revocation are one transaction.
+   // The sequence CAS also invalidates ledger/game writes started before removal.
+   const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
+   const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) SELECT 1,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload,m.seq)];
    const activeMembers=new Set(people.map(p=>p.id));
    const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
-   if(removed.size){
-    const linked=(await env.DB.prepare('SELECT DISTINCT a.alias,a.payload FROM ledger_access a WHERE EXISTS(SELECT 1 FROM portal_browser_sessions s WHERE s.alias=a.alias) OR EXISTS(SELECT 1 FROM portal_browser_pairs p WHERE p.alias=a.alias)').all()).results;
-    for(const row of linked){
-     const owner=await L.open(env,row.payload,'access:'+row.alias);
-     if(!removed.has(owner.memberId))continue;
-     statements.push(env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(row.alias));
-     statements.push(env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(row.alias));
-    }
+   const linked=(await env.DB.prepare('SELECT alias,revision,payload FROM ledger_access').all()).results;
+   const revoked=[];
+   for(const row of linked){
+    const owner=await L.open(env,row.payload,'access:'+row.alias);
+    if(activeMembers.has(owner.memberId))continue;
+    // Include orphaned aliases even when an older roster was missing.
+    removed.add(owner.memberId);
+    revoked.push(row.alias);
    }
-   await env.DB.batch(statements);
+   if(revoked.length){
+    // One JSON parameter keeps even bulk removals within D1 bind/query limits.
+    const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
+    for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    for(const table of ['portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    statements.push(env.DB.prepare("UPDATE commands SET status='rejected',result='accessChanged',envelope='' WHERE status='pending' AND "+scope).bind(aliases,payload));
+   }
+   statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));
+   const result=await env.DB.batch(statements);
+   if(!result[0].meta.changes)fail('Mitglieder oder Konten wurden gleichzeitig geändert. Bitte erneut synchronisieren.',409);
    return {ok:true,evidenceVersion:1,removedBrowserMembers:removed.size};
   }
   if(path==='/portal/browser/status'){
@@ -297,5 +321,5 @@
     allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true
    }))};
  }
- g.PortalService={route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
+ g.PortalService={assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
 })(globalThis);

@@ -454,9 +454,10 @@
   let m=await meta(env);
   if(path==='/central/snapshot'){
    if(m?.state!=='active')return {mode:'legacy'};
-   const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=?').bind(data.alias||'').first();if(!row)fail('Handyzugang noch nicht übernommen. Bitte die Verwaltung informieren.',404);
+   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=?').bind(data.alias||'').first();if(!row)fail('Handyzugang noch nicht übernommen. Bitte die Verwaltung informieren.',404);
    const record=await open(env,row.payload,'access:'+data.alias);
    if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
+   await g.PortalService?.assertMember(env,record);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
    snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
@@ -465,6 +466,7 @@
    if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||'')||!/^[a-f0-9-]{36}$/.test(data.id||''))fail('Ungültiger Auftrag.',400);
    const row=await env.DB.prepare('SELECT revision FROM ledger_access WHERE alias=?').bind(data.alias).first();
    if(!row||row.revision!==data.revision||!equal(auth,await capability(env,data.alias,row.revision,'commands')))fail('Buchungszugang ersetzt. Bitte neu laden.',401);
+   await g.PortalService?.assertAlias(env,data.alias);
    if(path==='/commands/status')return process(env,data);
    if(path!=='/commands/submit')fail('Nicht gefunden.',404);
    const envelope=JSON.stringify(data.envelope);if(data.envelope?.version!==1||data.envelope.iv?.length!==16||data.envelope.data?.length!==5484)fail('Ungültige verschlüsselte Buchung.',400);
@@ -549,7 +551,8 @@
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Handyzugang.',400);
   const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(data.alias,data.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(data.alias).first();
   if(!row||current?.revision!==data.revision||!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
-  return L.open(env,row.payload,'access:'+data.alias);
+  const record=await L.open(env,row.payload,'access:'+data.alias);
+  await g.PortalService?.assertMember(env,record);return record;
  }
  async function pool(env){const row=await env.DB.prepare('SELECT * FROM challenge_pool WHERE id=1').first();return row?{value:await L.open(env,row.payload,'challenge-pool'),version:row.version}:null;}
 
@@ -889,8 +892,10 @@
    if(!/^[a-f0-9]{24}$/.test(code))fail('Ungültiger Verbindungscode.',400);
    const row=await env.DB.prepare('UPDATE portal_browser_pairs SET consumed=1 WHERE code_hash=? AND consumed=0 AND expires_at>? RETURNING alias,revision').bind(await hash('h2o-browser-pair:'+code),now).first();
    if(!row)fail('Der Code ist ungültig, abgelaufen oder wurde bereits verwendet.',401);
-   const active=await env.DB.prepare('SELECT a.alias FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(row.alias,row.revision).first();
+   const active=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(row.alias,row.revision).first();
    if(!active)fail('Der persönliche Zugang wurde inzwischen erneuert.',401);
+   const owner=await L.open(env,active.payload,'access:'+row.alias),members=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+   if(!members?.members?.some(m=>m.id===owner.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
    await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE expires_at<?').bind(now).run();
    const amount=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=?').bind(row.alias,row.revision).first();
    if(amount.n>=5)fail('Maximal fünf Browserzugänge. Bitte im H2O-Portal die Browserzugänge zurücksetzen.',429);
@@ -913,6 +918,18 @@
    await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(record.alias).run();
    return {ok:true};
   }
+  async function assertMember(env,record){
+   await ready(env);
+   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+   if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
+   return record;
+  }
+  async function assertAlias(env,alias){
+   if((await L.meta(env))?.state!=='active')return; // Preserve pre-central reminder mode.
+   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=?').bind(alias).first();
+   if(!row)fail('Handyzugang wurde gesperrt oder ersetzt.',401);
+   return assertMember(env,await L.open(env,row.payload,'access:'+alias));
+  }
   async function actor(env,data,auth,path){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Portalzugang.',400);
   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(data.alias,data.revision).first();
@@ -922,7 +939,7 @@
     const session=await env.DB.prepare('SELECT alias,revision,expires_at FROM portal_browser_sessions WHERE token_hash=?').bind(await hash('h2o-browser-session:'+auth)).first();
     if(!session||session.alias!==data.alias||session.revision!==data.revision||session.expires_at<=Date.now())fail('Browserzugang abgelaufen. Bitte erneut mit H2O verbinden.',401);
    }
-  const record=await L.open(env,row.payload,'access:'+data.alias),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);return record;
+  return assertMember(env,await L.open(env,row.payload,'access:'+data.alias));
  }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
  async function recipients(env){const rows=(await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE EXISTS(SELECT 1 FROM devices d JOIN portal_devices p ON p.id=d.id WHERE d.alias=a.alias AND d.revision=a.revision)').all()).results,result=new Map();for(const row of rows){const record=await L.open(env,row.payload,'access:'+row.alias);if(!result.has(record.memberId))result.set(record.memberId,[]);result.get(record.memberId).push(record);}return result;}
@@ -991,21 +1008,31 @@
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
    let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now()},'portal-roster');
-   const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload)];
-   // Membership may be removed while a browser session remains active.
-   // Revoke its token and any outstanding pairing link in the SAME D1 batch as the roster update.
+   // A roster change and every credential revocation are one transaction.
+   // The sequence CAS also invalidates ledger/game writes started before removal.
+   const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
+   const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) SELECT 1,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload,m.seq)];
    const activeMembers=new Set(people.map(p=>p.id));
    const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
-   if(removed.size){
-    const linked=(await env.DB.prepare('SELECT DISTINCT a.alias,a.payload FROM ledger_access a WHERE EXISTS(SELECT 1 FROM portal_browser_sessions s WHERE s.alias=a.alias) OR EXISTS(SELECT 1 FROM portal_browser_pairs p WHERE p.alias=a.alias)').all()).results;
-    for(const row of linked){
-     const owner=await L.open(env,row.payload,'access:'+row.alias);
-     if(!removed.has(owner.memberId))continue;
-     statements.push(env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(row.alias));
-     statements.push(env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(row.alias));
-    }
+   const linked=(await env.DB.prepare('SELECT alias,revision,payload FROM ledger_access').all()).results;
+   const revoked=[];
+   for(const row of linked){
+    const owner=await L.open(env,row.payload,'access:'+row.alias);
+    if(activeMembers.has(owner.memberId))continue;
+    // Include orphaned aliases even when an older roster was missing.
+    removed.add(owner.memberId);
+    revoked.push(row.alias);
    }
-   await env.DB.batch(statements);
+   if(revoked.length){
+    // One JSON parameter keeps even bulk removals within D1 bind/query limits.
+    const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
+    for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    for(const table of ['portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    statements.push(env.DB.prepare("UPDATE commands SET status='rejected',result='accessChanged',envelope='' WHERE status='pending' AND "+scope).bind(aliases,payload));
+   }
+   statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));
+   const result=await env.DB.batch(statements);
+   if(!result[0].meta.changes)fail('Mitglieder oder Konten wurden gleichzeitig geändert. Bitte erneut synchronisieren.',409);
    return {ok:true,evidenceVersion:1,removedBrowserMembers:removed.size};
   }
   if(path==='/portal/browser/status'){
@@ -1087,7 +1114,7 @@
     allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true
    }))};
  }
- g.PortalService={route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
+ g.PortalService={assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
 })(globalThis);
 
 /* Cloudflare Workers Free + D1 Free. Financial records are encrypted at rest. */
@@ -1111,7 +1138,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"91252cf12dacbfdcea9ca01ebc3f5210488229c81d41f9fbc92931db25a033ad",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
@@ -1155,6 +1182,7 @@ export default {
     const row=await env.DB.prepare('SELECT COUNT(*) AS count FROM devices WHERE alias=? AND revision=?').bind(data.alias,data.revision).first();
     return reply({capability:await capability(env,data.alias,data.revision),actionCapability:await capability(env,data.alias,data.revision,'commands'),devices:row.count});
    }
+   if(!admin&&globalThis.PortalService){try{await globalThis.PortalService.assertAlias(env,data.alias);}catch(error){return reply({error:error.status?error.message:'Zugang derzeit nicht prüfbar.'},error.status||503);}}
    const record=await account(env,data.alias);if(!record)return reply({error:'Handyzugang noch nicht für Erinnerungen eingerichtet.'},404);
    if(path==='/commands/submit'||path==='/commands/status'||path==='/admin/commands/ack'){
     if(!REV.test(data.id||'')||data.revision!==record.revision)return reply({error:'Zugang oder Vorgang nicht mehr gültig.'},409);
