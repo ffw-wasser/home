@@ -69,7 +69,7 @@ function renderMembers() {
     `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
     ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
-  byId("members").innerHTML = sections.join("");
+  byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
   window.AttendanceSmart?.refresh(visibleMembers.length);
   requestAnimationFrame(fitMemberLastNames);
   byId("memberCount").textContent = multiMode ? `${chosenMemberIds.size} ausgewählt · ${availableMembers.length} offen` : `${availableMembers.length} offen`;
@@ -77,14 +77,16 @@ function renderMembers() {
 function attendanceStartState(){
   const running=Boolean(currentSessionId||currentOperationId),event=window.PortalAdmin?.selectedEvent?.(),type=running?sessionType:pendingSessionType||event?.attendanceType||(event?.sessionType==="Probe"?"Allgemeine Probe":event?.sessionType)||"";
   const rows=todayEntries(),pending=pendingMemberStatuses.size;
-  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Dein nächster Termin"),date:event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Spontanen Termin starten",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?"Terminart und Datum sind aus dem Kalender übernommen.":type?"Bereit für die Personenerfassung.":"Kalendertermin wählen oder eine spontane Erfassung beginnen."};
+  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?"Terminart und Datum sind aus dem Kalender übernommen.":type?"Bereit für die Personenerfassung.":"Kein Kalendertermin ausgewählt. Wähle einen Kalendertermin oder eine Terminart für eine spontane Erfassung."};
 }
 function syncAttendanceStart(){
   const card=byId('attendanceStartCard');if(!card)return;
   const state=attendanceStartState();
-  byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartSummary').textContent=state.summary;
+  byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;
   byId('attendanceStartEyebrow').textContent=state.running?'Laufender Termin':state.event?'Aus deinem Kalender':'Termin beginnen';
   const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
+  const calendarStatus=byId('attendanceStartCalendarStatus');if(calendarStatus){calendarStatus.textContent=byId('portal-calendar-status')?.textContent||'';calendarStatus.hidden=state.running||Boolean(state.type)||!calendarStatus.textContent;}
+  const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Erfassung starten“ zu den Personen wechseln.':'Terminart wählen und die Erfassung starten.';
   const choices=byId('attendanceAlternatives');if(choices)choices.hidden=state.running;
 }
 function beginAttendanceFromContext(){
@@ -103,7 +105,7 @@ function updatePrimaryAction() {
   button.title=pending?"Bitte zuerst die Markierungen übernehmen.":hasEntries?"Nächsten Schritt öffnen":"Mindestens eine Teilnahme erfassen";
   const save=byId('saveButton');if(save)save.hidden=pending===0;
   const summary=byId("step3ActionSummary");
-  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":"Markiere die Personen direkt auf ihren Karten.";
+  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
   syncAttendanceStart();window.PortalAdmin?.attendanceChanged?.();
 }
 function backToMembers() {
@@ -549,7 +551,7 @@ function setHomeFlowStage(stage){
   else syncDocumentReportVisibility?.(stage);
 
   if(stage===1){
-    if(!todayEntries().length)currentProbeDate=window.PortalAdmin?.selectedDate()||systemToday();
+    if(!currentSessionId&&!currentOperationId&&!todayEntries().length)currentProbeDate=window.PortalAdmin?.selectedDate()||systemToday();
     pendingSessionType="";
     if(byId("sessionTypes"))delete byId("sessionTypes").dataset.selectedSessionType;
     byId("sessionTypes")?.querySelectorAll("[data-session-type]").forEach(button=>{
@@ -639,7 +641,7 @@ function syncHomeFlowProgress(stage=homeFlowStage){
  const steps=operation?[[1,"Termin"],[2,"Personen"],[3,"Fahrzeuge"],[4,"Einsatzbericht"]]:[[1,"Termin"],[2,"Personen"],[3,"Abschluss"]];
  progress.innerHTML=steps.map(([number,label],index)=>`${index?"<i></i>":""}<button type="button" data-flow-indicator="${number}"><b>${number}</b><span>${label}</span></button>`).join("");
  progress.dataset.currentStage=String(current);
- progress.querySelectorAll("[data-flow-indicator]").forEach(item=>{const number=Number(item.dataset.flowIndicator),isCurrent=number===current,canReturnToReport=operation&&number===4&&Boolean(byId("operationReportForm"))&&Boolean(operationNames?.().length);item.classList.toggle("current",isCurrent);item.classList.toggle("completed",number<current);item.classList.toggle("upcoming",number>current);if(isCurrent)item.setAttribute("aria-current","step");else item.removeAttribute("aria-current");item.disabled=number>current&&!canReturnToReport;});
+ progress.querySelectorAll("[data-flow-indicator]").forEach(item=>{const number=Number(item.dataset.flowIndicator),isCurrent=number===current,canReturnToReport=operation&&number===4&&Boolean(byId("operationReportForm"))&&Boolean(operationNames?.().length);item.classList.toggle("current",isCurrent);item.classList.toggle("completed",number<current);item.classList.toggle("upcoming",number>current);if(isCurrent)item.setAttribute("aria-current","step");else item.removeAttribute("aria-current");const canResumePeople=number===2&&Boolean(currentSessionId||currentOperationId);item.disabled=number>current&&!canReturnToReport&&!canResumePeople;});
 }
 
 function ensureStagedHomeFlow(){
@@ -665,8 +667,8 @@ function ensureStagedHomeFlow(){
 
   const title=sessionPanel.querySelector("h2,h3");if(title)title.textContent="Dein Termin";
   if(!byId('attendanceStartCard')){
-    const card=document.createElement('section');card.id='attendanceStartCard';card.className='attendance-start-card';card.innerHTML='<p id="attendanceStartEyebrow" class="eyebrow"></p><h2 id="attendanceStartTitle"></h2><p id="attendanceStartMeta"></p><p id="attendanceStartSummary" role="status"></p><div id="attendanceStartActions" class="attendance-start-actions"></div><div id="attendanceStartSecondary"></div>';
-    const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen Termin wählen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontanen Termin starten</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
+    const card=document.createElement('section');card.id='attendanceStartCard';card.className='attendance-start-card';card.innerHTML='<p id="attendanceStartEyebrow" class="eyebrow"></p><h2 id="attendanceStartTitle"></h2><p id="attendanceStartMeta"></p><p id="attendanceStartSummary" role="status"></p><p id="attendanceStartCalendarStatus" class="help-text" role="status" hidden></p><div id="attendanceStartActions" class="attendance-start-actions"></div><div id="attendanceStartSecondary"></div>';
+    const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen Termin wählen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontane Terminart wählen</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
     sessionPanel.append(card,choices);
     const manual=byId('attendanceSpontaneous');manual.append(byId('sessionTypes'),byId('sessionHint'));
     const picker=sessionPanel.querySelector('.portal-calendar-picker');if(picker)byId('attendanceCalendarChoice').append(picker);

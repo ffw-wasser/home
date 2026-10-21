@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=fs.readFileSync('js/features/attendance/attendance-controller.js','utf8');
 function fixture(options={}){
  const nodes=new Map(),calls=[],get=id=>{if(!nodes.has(id))nodes.set(id,{querySelector:()=>({focus:()=>calls.push('focus')})});return nodes.get(id);};
- const c=vm.createContext({Intl,Date,currentSessionId:'',currentOperationId:'',sessionType:'Allgemeine Probe',pendingSessionType:'',pendingMemberStatuses:new Map(),today:()=> '2026-10-16',todayEntries:()=>[],window:{PortalAdmin:{selectedEvent:()=>options.event||null}},byId:get,setHomeFlowStage:stage=>calls.push(stage),renderSessionType(){},renderMembers(){},renderEntries(){},updateSelection(){},chooseSessionType(type,options){calls.push({type,calendar:options.calendar});c.pendingSessionType=type;},continueToAttendance:()=>calls.push('start'),...options});
+ const c=vm.createContext({Intl,Date,members:[],currentSessionId:'',currentOperationId:'',sessionType:'Allgemeine Probe',pendingSessionType:'',pendingMemberStatuses:new Map(),today:()=> '2026-10-16',todayEntries:()=>[],window:{PortalAdmin:{selectedEvent:()=>options.event||null}},byId:get,setHomeFlowStage:stage=>calls.push(stage),renderSessionType(){},renderMembers(){},renderEntries(){},updateSelection(){},chooseSessionType(type,options){calls.push({type,calendar:options.calendar});c.pendingSessionType=type;},continueToAttendance:()=>calls.push('start'),...options});
  vm.runInContext(source.slice(source.indexOf('function attendanceStartState'),source.indexOf('function backToMembers')),c);return {c,get,calls};
 }
 test('Kalendertermin zeigt Namen und startet direkt mit übernommener Terminart',()=>{
@@ -64,4 +64,26 @@ test('Probenabschluss übernimmt das Kalender-Thema, ohne das Textfeld zu sperre
  assert.equal(input.value,'','Nicht zu diesem Datum gehörende Kalendertermine dürfen nichts vorausfüllen');
  date='2026-10-18';selected=false;c.openProbeTopicDialog();
  assert.equal(input.value,'','Spontane Proben bleiben frei beschreibbar');
+});
+
+test('Leerer Start zeigt keinen erfundenen nächsten Termin und benennt die Auswahl korrekt',()=>{
+ const f=fixture(),state=f.c.attendanceStartState();assert.equal(state.title,'Termin beginnen');assert.equal(state.date,'');assert.equal(state.action,'Terminart wählen');assert.match(state.summary,/Kein Kalendertermin ausgewählt/);
+ f.get('portal-calendar-status').textContent='Kalender nicht verbunden';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,true);assert.equal(f.get('attendanceStartCalendarStatus').textContent,'Kalender nicht verbunden');assert.equal(f.get('attendanceStartCalendarStatus').hidden,false);
+ f.c.pendingSessionType='Unterricht';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,false);assert.equal(f.get('continueToAttendanceButton').textContent,'Erfassung starten');
+});
+test('Ohne Mitglieder führt der nächste Schritt zur Verbindung statt zu nicht vorhandenen Karten',()=>{
+ const f=fixture();f.c.updatePrimaryAction();assert.match(f.get('step3ActionSummary').textContent,/Keine Mitglieder geladen/);assert.equal(f.get('exportResetButton').disabled,true);
+ f.c.members=[{id:'test'}];f.c.updatePrimaryAction();assert.match(f.get('step3ActionSummary').textContent,/Markiere die Personen/);
+});
+test('Zurück zu Termin erhält ein gewähltes Datum auch vor der ersten Anmeldung',()=>{
+ for(const operation of [false,true]){
+ const c=vm.createContext({window:{},document:{querySelector:()=>null,querySelectorAll:()=>[]},byId:()=>null,currentSessionId:operation?'':'test',currentOperationId:operation?'test':'',currentProbeDate:'2026-10-19',pendingSessionType:'',todayEntries:()=>[],systemToday:()=> '2026-10-20',sessionType:operation?'Einsatz':'Allgemeine Probe',hideDocumentReportUi(){},updatePrimaryAction(){},syncHomeFlowProgress(){}});
+ vm.runInContext(source.slice(source.indexOf('function setHomeFlowStage('),source.indexOf('function continueToAttendance(')),c);c.setHomeFlowStage(1);assert.equal(c.currentProbeDate,'2026-10-19');
+ c.currentSessionId='';c.currentOperationId='';c.setHomeFlowStage(1);assert.equal(c.currentProbeDate,'2026-10-20');
+ }
+});
+test('Personenschritt bleibt bei laufender Erfassung erreichbar; Abschluss bleibt gesperrt',()=>{
+ const nodes=[1,2,3].map(number=>({dataset:{flowIndicator:String(number)},classList:{toggle(){}},setAttribute(){},removeAttribute(){}})),progress={dataset:{},querySelectorAll:()=>nodes};
+ const c=vm.createContext({byId:id=>id==='homeFlowProgress'?progress:null,sessionType:'Allgemeine Probe',currentSessionId:'test',currentOperationId:''});
+ vm.runInContext(source.slice(source.indexOf('function syncHomeFlowProgress('),source.indexOf('function ensureStagedHomeFlow(')),c);c.syncHomeFlowProgress(1);assert.equal(nodes[1].disabled,false);assert.equal(nodes[2].disabled,true);c.currentSessionId='';c.syncHomeFlowProgress(1);assert.equal(nodes[1].disabled,true);
 });

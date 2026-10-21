@@ -111,7 +111,7 @@
     for(const id of ['drinksTab','eventsTab','historyTab','statisticsTab','settingsTab','helpTab'])byId('compactMenu').append(byId(id));
     const hint=document.createElement('p');hint.id='attendanceDraftStatus';hint.className='ux-save-status';hint.setAttribute('role','status');byId('members')?.before(hint);attendanceState();
     const actions=document.createElement('details');actions.className='ux-other-actions';actions.innerHTML='<summary>Weitere Aktionen</summary><button class="danger-button" type="button" id="discardCurrentSessionButton">Termin verwerfen</button>';
-    const reset=byId('resetTodayParticipantsButton');if(reset){reset.before(actions);actions.append(reset);}else byId('attendanceView').append(actions);
+    const reset=byId('resetTodayParticipantsButton');if(reset){const explanation=reset.closest('.today-reset-area')?.querySelector('small');reset.before(actions);actions.append(reset);if(explanation)actions.append(explanation);}else byId('attendanceView').append(actions);
     byId('discardCurrentSessionButton').onclick=()=>{if(discardCurrentAttendanceSession())showView('attendanceView');};
     byId('entries').addEventListener('click',event=>{const button=event.target.closest('[data-edit-entry]');if(button)entryEditor(button.dataset.editEntry);});
     // Accessible full status names are generated at the same time as the member tiles.
