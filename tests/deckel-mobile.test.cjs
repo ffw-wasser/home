@@ -267,3 +267,13 @@ test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellun
  dom['portal-layout-transfer'].click();assert.equal(back.hidden,true);
  dom['portal-layout-reset-main'].click();assert.equal(back.hidden,false,'Standardanordnung stellt den Rückweg wieder her');
 });
+
+test('Ursprüngliche Hauptkacheln erhalten unter Mehr ebenfalls einen Rückweg',()=>{
+ const f=layoutFixture(),{dom}=f;
+ for(const [id,page] of [['portal-section','terms'],['portal-evidence','evidence'],['account','deckel'],['portal-points','points']]){
+  const back=new Node('button');back.classList.add('portal-more-back');dom['portal-page-'+page].append(back);
+  f.ctx.DeckelMobile.jump(id);assert.equal(back.hidden,true);
+  dom['portal-layout-item'].value=id;dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();assert.equal(back.hidden,false,id);
+  dom['portal-layout-transfer'].click();assert.equal(back.hidden,true,id);
+ }
+});
