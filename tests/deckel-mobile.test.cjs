@@ -254,3 +254,16 @@ test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit alte
  const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
  assert.equal(all.length,13);assert.equal(new Set(all).size,13);
 });
+
+test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellung',()=>{
+ const f=layoutFixture(),{dom}=f,back=new Node('button');back.classList.add('portal-more-back');dom['portal-page-more-security'].append(back);
+ f.ctx.DeckelMobile.jump('more-security');assert.equal(back.hidden,false);
+ dom['portal-layout-item'].value='more-security';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
+ assert.equal(back.hidden,true,'Hauptnavigation braucht keinen Rückweg zu Mehr');
+ assert.equal(dom['portal-page-more-security'].hidden,false);assert.equal(dom['deckel-nav'].hidden,false);
+ const restored=layoutFixture(f.storage),savedBack=new Node('button');savedBack.classList.add('portal-more-back');restored.dom['portal-page-more-security'].append(savedBack);
+ restored.ctx.DeckelMobile.jump('more-security');assert.equal(savedBack.hidden,true,'gespeicherte Position gilt beim nächsten Öffnen');
+ dom['portal-layout-transfer'].click();assert.equal(back.hidden,false,'zurück in Mehr wird der Rückweg wieder eingeblendet');
+ dom['portal-layout-transfer'].click();assert.equal(back.hidden,true);
+ dom['portal-layout-reset-main'].click();assert.equal(back.hidden,false,'Standardanordnung stellt den Rückweg wieder her');
+});
