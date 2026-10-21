@@ -19,6 +19,7 @@ verwenden, statt separate Doppelimplementierungen aufzubauen.
 | P0.1 Kritisch | Schreibvorgänge & Synchronisation | Speichern, Wiederholen, Korrigieren und Löschen erhalten nachvollziehbare, eindeutige Zustände | Netzunterbrechung und Wiederholung erzeugen keine stillen Duplikate; UI zeigt gespeichert/ausstehend/Fehler |
 | P0.2 Kritisch | Mitgliederaustritt & Rollen | Alle relevanten Geräte-, Link-, Gruppenführer-, Admin- und Worker-Rechte nachvollziehbar sperren | Entfernter Account kann über alten Link oder gespeicherten Zugang keine neuen geschützten Änderungen ausführen |
 | P0.3 Kritisch | Datenfluss Termin → Historie → Statistik | IDs und fachliche Zustände kartieren, Inkonsistenzen lokalisieren und ein einheitliches Modell **planen** | Korrektur ändert nachvollziehbar den gültigen Datensatz; keine Doppelzählung |
+| P0.4 Kritisch | Plausibilitätsprüfung vor Abschluss | Vor dem endgültigen Abschluss von Einsatz, Probe und Sonderprobe fachlich relevante Pflichtfelder, Teilnehmerzuordnung, Zeiten und widersprüchliche Zustände prüfen; Fehler blockieren, Hinweise bewusst bestätigbar machen | Testfälle für fehlende Angaben, Zeitkonflikte, doppelte Personen, Korrektur und erneuten Abschluss; kein stiller Datenverlust |
 | P1.1 Hoch | Gerätehaus-Workflow | Proben, Einsätze und Sonderfälle in konsistenten Schritten mit eindeutigem Abschluss | Schrittwechsel, Abbruch, Korrektur und Wiederaufnahme auf iPad nachvollziehbar |
 | P1.2 Hoch | Handy-Navigation | Termine und Rückmeldung zuerst; Nachweise und Mein Deckel ohne unnötige Umwege | iPhone/Android: wichtigste Aktion ohne Suche erreichbar; kein verdeckter Button |
 | P1.3 Hoch | Admin-Systemzustand | Verbindungszustände für OneDrive/SharePoint, Cloudflare, Kalender und Push getrennt anzeigen | Störungen klar zuordnen; keine Geheimnisse in Diagnoseausgaben |
@@ -33,7 +34,7 @@ verwenden, statt separate Doppelimplementierungen aufzubauen.
 2. **Bestandsaufnahme der kritischen Datenflüsse:** eine konkrete Beispielkette
    Termin erstellen → antworten → am iPad übernehmen → abschließen → korrigieren
    → Historie/Statistik prüfen. Parallel Rechte-/Austrittsfälle kartieren.
-3. **Kernfunktionen stabilisieren (P0):** isolierte PRs, Regressionstests,
+3. **Kernfunktionen stabilisieren (P0):** einschließlich Abschluss-Plausibilitätsprüfung, isolierte PRs, Regressionstests,
    Versionierung/Migration bei Bedarf mit sicherem Rückfallplan.
 4. **Bedienung verschlanken (P1):** drei Nutzungskontexte, Startansichten,
    Korrekturwege und zentralen Status verbessern, ohne unnötige Datenumbauten.
