@@ -58,3 +58,17 @@ Neue Terminpakete werden weiterhin über den vorhandenen iOS-Teilen-/Desktop-Dow
 Website: nur geprüften PR integrieren und erfolgreichen GitHub-Pages-Lauf kontrollieren. Worker: vorhandener Cloudflare-Git-Build muss `node ../../scripts/prepare-worker.cjs` erfolgreich ausführen, bevor Wrangler veröffentlicht. Danach `/health.sourceFingerprint` mit dem frisch erzeugten Bundle vergleichen. Keine Testzugänge oder produktiven Datensätze für diesen Versionsvergleich nötig.
 
 Rückfall per Revert des integrierten PRs und erneutem geprüften Build; keine neue D1-Schemamigration. Bereits widerrufene Zugänge bleiben widerrufen. Niemals durch Rückspielen alter Kontenzugänge oder Mitgliederlisten eine Sperre rückgängig machen. Ein Rollback auf den Ausgangscode nimmt auch dessen behobene Sicherheitslücken wieder in Kauf und sollte nur gezielt erfolgen.
+
+## Nachtrag: OneDrive-Verbindung nach Freigabewiderruf (2026.10.21.8)
+
+Nach dem Entfernen einer anonymen Ordnerfreigabe wurde ein 404 beim Historienabruf gemeldet. Der bisherige Resolver löste den gespeicherten Freigabelink nach jedem Neustart erneut ein. Eine weiterhin bestehende persönliche Berechtigung allein reichte damit nicht aus. Der Datenordner und die zentrale Datendatei wurden über die angemeldete Microsoft-Verbindung weiterhin gefunden; eine Datenlöschung wurde daraus nicht abgeleitet.
+
+Der Resolver prüft jetzt einen zuvor bestätigten Ordner direkt mit dem angemeldeten Microsoft-Konto. Der gespeicherte Bezug gilt nur für dieselbe Client-ID, Kontoidentität und Ordnerkonfiguration. Ein 403/404 beim direkten Ordnerzugriff bleibt ein Fehler; der Code löst dann keinen Freigabelink erneut ein und legt keine Ersatzdaten an. Konto-/Konfigurationswechsel und Abmeldung während eines Abrufs verwerfen dessen Ergebnis.
+
+Für die Neueinrichtung werden auch normale persönliche OneDrive-Ordneradressen mit `cid` und `id` bzw. `resid` unterstützt. Der Zugriff erfolgt ausschließlich authentifiziert über Microsoft Graph; eine anonyme Freigabe wird nicht benötigt. Die Verwaltung kann die Adresse nun auch bei bestehender Anmeldung speichern. Ungültige Ordnerlinks erhalten eine passende Fehlermeldung statt einer Behauptung über gelöschte Berichte; die letzte Historie bleibt erhalten.
+
+Die erneute Berechtigungsabfrage des App-Ordners, der zentralen Datendatei und der Dienstkonfiguration enthielt nur noch Eigentümer-/benannte Bearbeitungsrechte, keine anonymen Links. Dies ersetzt weder eine Prüfung sämtlicher OneDrive-Dateien noch die weiterhin offene Erneuerung des Dienstzugangs. Produktive Daten wurden für diese Korrektur nicht verändert.
+
+Regressionen prüfen Neustart nach Freigabewiderruf, erneute serverseitige Autorisierung, Konto-/Client-/Linkwechsel, fehlerhafte gespeicherte Bezüge, direkte Ordneradressen, 403/404, verwechslungsfreie Ordnerantworten, Abmeldung während des Abrufs, Erhalt der Historie und die Speichermöglichkeit in der Verwaltung. Die tatsächliche iPad-Verbindung nach dem Update muss am Gerät bestätigt werden; die Cloudflare-Abnahme bleibt separat offen.
+
+Validierung dieses Nachtrags: 684 Tests bestanden, 178 JavaScript-Dateien ohne Syntaxfehler; Worker-Bundle unverändert und konsistent. Die Release-/PWA-Prüfungen sind Bestandteil der bestandenen Gesamtsuite.
