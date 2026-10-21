@@ -270,6 +270,7 @@ test('WhatsApp/Safari: einmalig koppeln, Rückmeldung wiederholt ändern, Zeitpu
  assert.equal(list.value.events[0].id,event.id);
  assert.equal((await browser('overview',{...identity,eventId:event.id},auth)).status,401,'keine Führungsübersicht');
  assert.equal((await browser('evidence',identity,auth)).status,401,'keine Nachweise');
+ assert.equal((await browser('gf-breathing',identity,auth)).status,401,'WhatsApp-Browserzugang darf keine GF-Nachweise sehen');
  assert.equal((await browser('browser/start',identity,auth)).status,401,'keine weiteren Codes');
  const first=await browser('reply',{...identity,eventId:event.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()},auth);
  assert.equal(first.status,200);assert.equal(first.value.version,1);assert.ok(first.value.updatedAt>0);
