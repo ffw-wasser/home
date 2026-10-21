@@ -5,6 +5,35 @@ oder bestätigten Fehlerkorrekturen**. Zuerst separat prüfen und dann nach
 Priorität gemeinsam freigeben. Betrieb `main` und Cloudflare unangetastet lassen,
 solange nur vorbereitet wird.
 
+## Verifizierter Umsetzungsstand (21.10.2026)
+
+Die folgende Bestandsaufnahme trennt **implementierte Teilmaßnahmen** von der
+**vollständigen fachlichen Abnahme**. Ein grüner GitHub-Test ersetzt keine
+OneDrive-/D1- oder Gerätetests mit Testdaten.
+
+- **PR #20 (main):** Projektkarte, Leitfaden, fokussierte Tests und CI integriert.
+- **PR #21 (main):** OneDrive-Speicherfehler werden als Fehler statt als bloß
+  ausstehende lokale Synchronisation dargestellt.
+- **PR #22 (main):** Korrekturen verlangen eine eindeutig gekennzeichnete
+  OneDrive-Original-ZIP-ID; keine vollständige Ende-zu-Ende-Korrekturabnahme.
+- **PR #23 (main):** Automatischer Folgeabgleich nach Fehlern verzögert und bei
+  erforderlicher Neuanmeldung unterdrückt; keine garantierte Konfliktfreiheit.
+- **PR #24 (main):** Probeabschluss blockiert ungültige Status, fehlende Namen
+  und doppelte Einträge; weitere Fachprüfungen bleiben offen.
+- **CI:** Die beiden main-Läufe für Commit
+  `ff8137d9a21bc67a47d0ae23a7c5cb3993a5565d` waren erfolgreich.
+
+**Noch offen:** P0.1 (idempotente Schreib-/Löschvorgänge und reale
+Unterbrechungsfälle), P0.2, P0.3 und P0.4 (Zeitkonflikte, Einsatz und
+Sonderfälle) sowie P1.1–P1.4 und P2.1–P2.2. Die unten stehende Tabelle ist
+weiterhin die Zielplanung, keine Liste bereits erledigter Arbeiten.
+
+**Abnahme mit Testdaten erforderlich:** Mitglied entfernen und alte Links
+prüfen; Termin am Handy melden, am iPad abschließen, Originalbericht korrigieren
+und löschen, Historie/Statistik prüfen; Offline-/Wiederverbindungsfälle; iOS,
+Android und Gerätehaus-iPad; Cloudflare-Worker-Version und Berechtigungen.
+Produktive Berichte und Mitgliederdaten dabei nicht für Tests verwenden.
+
 ## Leitidee
 
 Einmal erfassen, an einem Ort verbindlich speichern, anderen Ansichten denselben
