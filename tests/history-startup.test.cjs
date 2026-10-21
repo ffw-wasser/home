@@ -195,3 +195,12 @@ test('Gelöschte ZIP entfernt den Sitzungszwischenspeicher; erneut angelegte ZIP
   state.empty=false;await context.window.loadOneDriveHistory();assert.equal(calls.download,2);
 });
 
+test('Abgelaufener Ordnerlink erhält die Historie und erklärt die Verbindungseinstellung',async()=>{
+  const {context,status,calls}=await app();await context.window.loadOneDriveHistory();
+  const previous=context.csvArchive;
+  context.oneDriveResolveSharedRoot=async()=>{throw Object.assign(new Error('Bitte unter Verbindung verwalten die aktuelle Ordneradresse eintragen.'),{status:404,code:'oneDriveFolderLinkInvalid'});};
+  assert.equal(await context.window.loadOneDriveHistory(),false);
+  assert.equal(context.csvArchive,previous);assert.equal(calls.list,1);
+  assert.match(status.textContent,/Ordneradresse/);assert.doesNotMatch(status.textContent,/verschoben oder gelöscht/);
+});
+

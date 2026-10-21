@@ -183,7 +183,8 @@
     } catch (error) {
       if(epoch!==loadEpoch)return false;
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
-      const hint = error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
+      const hint = ["oneDriveFolderUnavailable","oneDriveFolderLinkInvalid"].includes(error.code) ? error.message
+        : error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
         ? "Bitte OneDrive erneut anmelden."
         : error.status === 403 ? "Bitte die Zugriffsrechte auf den gemeinsamen OneDrive-Ordner prüfen."
         : error.status === 429 ? "OneDrive begrenzt momentan die Abrufe. Bitte etwas später erneut synchronisieren."
