@@ -3,8 +3,9 @@ on:
   push:
     branches:
       - main
-      - 'feature/**'
-      - 'fix/**'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,5 +27,7 @@ jobs:
         run: |
           node scripts/update-release.cjs
           git diff --exit-code -- index.html deckel.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest js/features/drinks/deckel-manifest.js
+      - name: Validate focused-test groups
+        run: node scripts/run-focused-tests.cjs --list
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
