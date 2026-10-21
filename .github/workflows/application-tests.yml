@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Cancel superseded PR checks; keep every main-branch check intact.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -16,13 +20,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
+      - name: Install pinned build dependencies
+        run: npm ci --ignore-scripts
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.cjs
       - name: Check bundled Cloudflare worker matches sources
         run: |
           node cloudflare/push/build.cjs
-          git diff --exit-code -- cloudflare/push/worker.bundle.js
+          git diff --exit-code -- cloudflare/push/worker.bundle.js js/vendor/passkeys-browser.js
       - name: Check release and service worker consistency
         run: |
           node scripts/update-release.cjs
@@ -31,3 +37,7 @@ jobs:
         run: node scripts/run-focused-tests.cjs --list
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
+      - name: Install browser for passkey integration test
+        run: npx playwright install --with-deps chromium
+      - name: Test passkey browser flow with synthetic credentials
+        run: node tests/passkey-browser.cjs

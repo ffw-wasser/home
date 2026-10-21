@@ -2,19 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const read=p=>fs.readFileSync(__dirname+'/../'+p,'utf8'),icsTime=ms=>new Date(ms).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
 function calendar(events){return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'+events.join('\r\n')+'\r\nEND:VCALENDAR\r\n';}
 function event(start=Date.now()+86400000,title='Testprobe',extra=''){return `BEGIN:VEVENT\r\nUID:test-event\r\nDTSTART:${icsTime(start)}\r\nDTEND:${icsTime(start+3600000)}\r\nSUMMARY:${title}\r\n${extra}\r\nEND:VEVENT`;}
-async function fixture(){
- const sql=new DatabaseSync(':memory:');for(const p of ['schema.sql','central.sql','challenge.sql'])sql.exec(read('cloudflare/push/'+p));
- let batchFailure=false;const DB={prepare(query){return {query,args:[],bind(...args){return {...this,args};},async first(){return sql.prepare(this.query).get(...this.args)||null;},async all(){return {results:sql.prepare(this.query).all(...this.args)};},async run(){const r=sql.prepare(this.query).run(...this.args);return {meta:{changes:Number(r.changes)}};}};},async batch(statements){sql.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());if(batchFailure){batchFailure=false;throw Error('failure');}sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
- const start=Date.now()+86400000-30000,sends=[];let raw=calendar([event(start)]),offline=false,calendarFetches=0;const clock={now:Date.now()};
- const c=vm.createContext({console,Date:class extends Date{static now(){return clock.now;}},Intl,TextEncoder,TextDecoder,crypto:webcrypto,Uint8Array,Uint32Array,atob,btoa,Request,Response,Headers,URL,AbortSignal,fetch:async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/')){calendarFetches++;if(offline)throw Error('offline');return new Response(raw,{headers:{'Content-Type':'text/calendar'}});}sends.push({url,options});return new Response(null,{status:201});}});c.globalThis=c;vm.runInContext(read('cloudflare/push/worker.bundle.js').replace('export default {','globalThis.worker = {'),c);
- const keys=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']),env={DB,ADMIN_TOKEN:'TEST-ONLY-ADMIN-'.padEnd(64,'x'),INVITE_SECRET:'TEST-ONLY-INVITE-'.padEnd(64,'y'),VAPID_PRIVATE_JWK:JSON.stringify(await webcrypto.subtle.exportKey('jwk',keys.privateKey)),VAPID_PUBLIC_KEY:Buffer.from(await webcrypto.subtle.exportKey('raw',keys.publicKey)).toString('base64url')},L=c.CentralLedger;
- await DB.prepare("INSERT INTO ledger_meta(id,source,state,seq,policy) VALUES(1,'test-source','active',0,?)").bind(await L.seal(env,{},'policy')).run();const people=[];
- for(let i=1;i<=5;i++){const p={version:1,alias:String(i).repeat(32),key:'a'.repeat(64),revision:'revision-'+i,memberId:'member-'+i};people.push(p);await DB.prepare('INSERT INTO accounts(alias,revision) VALUES(?,?)').bind(p.alias,p.revision).run();await DB.prepare('INSERT INTO ledger_access(alias,revision,payload) VALUES(?,?,?)').bind(p.alias,p.revision,await L.seal(env,p,'access:'+p.alias)).run();}
- const token=vm.runInContext('(env,r)=>capability(env,r.alias,r.revision,"commands")',c),call=async(path,data={},person=people[0],admin=false)=>{const auth=admin?env.ADMIN_TOKEN:await token(env,person),r=await c.worker.fetch(new Request('https://test.example'+(admin?'/admin/portal/':'/portal/')+path,{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer '+auth,'Content-Type':'application/json'},body:JSON.stringify(admin?{source:'test-source',...data}:{...data,alias:person.alias,revision:person.revision})}),env);return {status:r.status,value:await r.json()};};
- await call('configure',{calendarUrl:'https://calendar.google.com/calendar/ical/test-calendar/public/basic.ics',reminders:true,leadHours:24},null,true);await call('roster',{members:people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0}))},null,true);
- const initial=(await call('list',{},null,true)).value;assert.equal((await call('classify',{eventId:initial.events[0].id,kind:'probe',approved:true,expectedVersion:initial.rulesVersion},null,true)).status,200);
- return {c,env,DB,sql,L,people,start,sends,clock,call,raw:v=>raw=v,offline:v=>offline=v,failBatch:()=>batchFailure=true,calendarFetches:()=>calendarFetches};
-}
+const {fixture}=require('./helpers/portal-fixture.cjs');
 test('Kalenderprojektion: UID bleibt bei Titel-/Zeitwechsel stabil, abgesagte Termine verschwinden',async()=>{const f=await fixture(),first=(await f.call('list')).value.events[0];f.raw(calendar([event(f.start+3600000,'Unterricht') ]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);const changed=(await f.call('list')).value.events[0];assert.equal(changed.id,first.id);assert.equal(changed.title,'Unterricht');assert.equal(changed.start,first.start+3600000);f.raw(calendar([event(f.start,'Testprobe','STATUS:CANCELLED')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);assert.equal((await f.call('list')).value.events.length,0);});
 test('Rückmeldung: echte Speicherung, versionierte Änderung, Wiederholung und Konflikt',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0],data={eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()};assert.equal((await f.call('reply',data)).status,200);assert.equal((await f.call('reply',data)).value.version,1);assert.equal((await f.call('reply',{...data,status:'excused'})).status,409);assert.equal((await f.call('reply',{...data,requestId:webcrypto.randomUUID()})).status,409);assert.equal((await f.call('reply',{...data,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()})).value.version,2);assert.equal((await f.call('list')).value.events[0].status,'excused');assert.equal((await f.call('list',{},f.people[1])).value.events[0].status,'open');const raw=f.sql.prepare('SELECT payload FROM portal_replies').get().payload;assert.ok(!raw.includes('excused'));assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledgers').get().n,0);});
 test('Nur GF sieht Namen; Client-Rolle, fremde Token und ungültige Zugänge verleihen keine Rechte',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];assert.equal((await f.call('list')).value.leader,true);assert.equal((await f.call('overview',{eventId:e.id})).value.members.length,5);assert.equal((await f.call('list',{},f.people[1])).value.leader,false);assert.equal((await f.call('overview',{eventId:e.id,leader:true,challengeLevel:'GF'},f.people[1])).status,403);assert.equal((await f.call('list',{}, {...f.people[0],revision:'wrong-revision'})).status,401);assert.ok(!f.sql.prepare('SELECT payload FROM portal_roster').get().payload.includes('Testperson'));await f.call('roster',{members:[{id:f.people[1].memberId,name:'Testperson 2',leader:true}]},null,true);assert.equal((await f.call('list')).status,401);assert.equal((await f.call('overview',{eventId:e.id},f.people[1])).status,200);});
@@ -270,6 +258,7 @@ test('WhatsApp/Safari: einmalig koppeln, Rückmeldung wiederholt ändern, Zeitpu
  assert.equal(list.value.events[0].id,event.id);
  assert.equal((await browser('overview',{...identity,eventId:event.id},auth)).status,401,'keine Führungsübersicht');
  assert.equal((await browser('evidence',identity,auth)).status,401,'keine Nachweise');
+ assert.equal((await browser('gf-breathing',identity,auth)).status,401,'WhatsApp-Browserzugang darf keine GF-Nachweise sehen');
  assert.equal((await browser('browser/start',identity,auth)).status,401,'keine weiteren Codes');
  const first=await browser('reply',{...identity,eventId:event.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()},auth);
  assert.equal(first.status,200);assert.equal(first.value.version,1);assert.ok(first.value.updatedAt>0);
@@ -369,7 +358,7 @@ test('Browser-Einstellungen: nur eigene gültige Sitzungen zählen, keine Token 
  const start=(await f.call('browser/start')).value;
  const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:start.code})}),f.env);
  const session=await response.json();
- const own=await f.call('browser/status');assert.equal(own.status,200);assert.deepEqual(own.value,{sessions:1});
+ const own=await f.call('browser/status');assert.equal(own.status,200);assert.deepEqual(own.value,{sessions:1,passkeys:0});
  assert.equal((await f.call('browser/status',{},f.people[1])).value.sessions,0);
  const denied=await f.c.worker.fetch(new Request('https://test.example/portal/browser/status',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:p.alias,revision:p.revision})}),f.env);
  assert.equal(denied.status,401);
@@ -459,4 +448,77 @@ test('Health liefert den reproduzierbaren Fingerabdruck des Worker-Quellstands',
  const f=await fixture(),r=await f.c.worker.fetch(new Request('https://test.example/health'),f.env),value=await r.json();
  assert.equal(r.status,200);assert.match(value.sourceFingerprint,/^[a-f0-9]{64}$/);
  assert.ok(read('cloudflare/push/worker.bundle.js').includes(value.sourceFingerprint));
+});
+
+test('GF Atemschutz: Status, eindeutige AGT-Zuordnung und Rollenentzug',async()=>{
+ const f=await fixture(),E=f.c.MemberEvidence,valid='2099-12-31',expired='2020-01-01';
+ const make=(g263,instruction,ffi)=>E.project({breathingQualified:true,g263ValidUntil:g263,agtInstructionValidUntil:instruction,ffiValidUntil:ffi});
+ const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===4?null:i<3,
+  evidence:i===0?make(valid,valid,valid):i===1?make(valid,valid,''):i===2?make(valid,expired,valid):i===3?E.project({breathingQualified:false,g263ValidUntil:valid}):make(valid,valid,valid)}));
+ assert.equal((await f.call('roster',{members:people},null,true)).status,200);
+ const gf=await f.call('gf-breathing');
+ assert.equal(gf.status,200);
+ assert.equal(gf.value.people.length,3);
+ assert.equal(gf.value.people.filter(p=>p.status==='valid').length,1);
+ assert.equal(gf.value.people.filter(p=>p.status==='check').length,2);
+ assert.equal(gf.value.uncertain.length,1);
+ assert.equal(gf.value.stale,false);
+ assert.equal((await f.call('gf-breathing',{leader:true},f.people[1])).status,403);
+ const replaced={...f.people[0],revision:'wrong-revision'};
+ assert.equal((await f.call('gf-breathing',{},replaced)).status,401);
+ const next=people.map((p,i)=>({...p,leader:i===1}));
+ assert.equal((await f.call('roster',{members:next},null,true)).status,200);
+ assert.equal((await f.call('gf-breathing')).status,403);
+ assert.equal((await f.call('gf-breathing',{},f.people[1])).status,200);
+});
+
+// Software authenticator: real RSA signatures and CBOR registration, no production accounts.
+async function passkey(f){
+ const {encodeCBOR}=require('@levischuck/tiny-cbor'),{generateKeyPairSync}=require('node:crypto');
+ const keys=generateKeyPairSync('rsa',{modulusLength:2048}),jwk=keys.publicKey.export({format:'jwk'}),id=require('node:crypto').randomBytes(32),b64=x=>Buffer.from(x).toString('base64url');
+ const pub=new Map([[1,3],[3,-257],[-1,new Uint8Array(Buffer.from(jwk.n,'base64url'))],[-2,new Uint8Array(Buffer.from(jwk.e,'base64url'))]]);
+ const rp=require('node:crypto').createHash('sha256').update('ffw-wasser.github.io').digest();
+ const client=(type,challenge,origin='https://ffw-wasser.github.io')=>Buffer.from(JSON.stringify({type,challenge,origin,crossOrigin:false}));
+ const start=await f.call('passkey/register/options');assert.equal(start.status,200,JSON.stringify(start.value));
+ const auth=Buffer.concat([rp,Buffer.from([0x45]),Buffer.alloc(4),Buffer.alloc(16),Buffer.from([0,id.length]),id,Buffer.from(encodeCBOR(pub))]);
+ const response={id:b64(id),rawId:b64(id),type:'public-key',clientExtensionResults:{},response:{clientDataJSON:b64(client('webauthn.create',start.value.options.challenge)),attestationObject:b64(encodeCBOR(new Map([['fmt','none'],['attStmt',new Map()],['authData',new Uint8Array(auth)]])))}};
+ const register=await f.call('passkey/register/verify',{id:start.value.id,response});assert.equal(register.status,200,JSON.stringify(register.value));
+ const login=async({origin,flags=5,rpHash=rp,tamper=false}={})=>{
+  const challenge=await f.call('passkey/login/options'),data=client('webauthn.get',challenge.value.options.challenge,origin),auth=Buffer.concat([rpHash,Buffer.from([flags]),Buffer.alloc(4)]);
+  const signed=Buffer.concat([auth,require('node:crypto').createHash('sha256').update(data).digest()]);
+  const sig=require('node:crypto').sign('sha256',signed,keys.privateKey);if(tamper)sig[10]^=1;
+  return {id:challenge.value.id,response:{id:b64(id),rawId:b64(id),type:'public-key',clientExtensionResults:{},response:{clientDataJSON:b64(data),authenticatorData:b64(auth),signature:b64(sig),userHandle:start.value.options.user.id}}};
+ };
+ return {login,start,response};
+}
+async function bearer(f,path,session){const r=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision})}),f.env);return {status:r.status,value:await r.json()};}
+test('Passkey: echte Registrierung/Signatur, enge Rechte, Replay und gemeinsamer Widerruf',async()=>{
+ const f=await fixture(),p=await passkey(f);assert.equal((await f.call('browser/status')).value.passkeys,1);
+ assert.equal((await f.call('passkey/register/verify',{id:p.start.id,response:p.response})).status,401);
+ const request=await p.login(),login=await f.call('passkey/login/verify',request);assert.equal(login.status,200,JSON.stringify(login.value));
+ assert.equal((await f.call('passkey/login/verify',request)).status,401);
+ assert.equal((await bearer(f,'list',login.value)).status,200);
+ for(const path of ['gf-breathing','overview','evidence','passkey/register/options','passkey/revoke','subscribe'])assert.equal((await bearer(f,path,login.value)).status,401,path);
+ assert.equal((await f.call('browser/revoke')).status,200);
+ assert.equal((await bearer(f,'list',login.value)).status,401);
+ assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
+});
+test('Passkey: falsche Origin/RP, fehlende Benutzerprüfung, fremde Signatur und Timeout abweisen',async()=>{
+ const f=await fixture(),p=await passkey(f);
+ for(const bad of [{origin:'https://evil.example'},{flags:1},{rpHash:Buffer.alloc(32)},{tamper:true}])assert.equal((await f.call('passkey/login/verify',await p.login(bad))).status,401,JSON.stringify(bad));
+ const expired=await p.login();f.clock.now+=300001;assert.equal((await f.call('passkey/login/verify',expired)).status,401);
+});
+test('Passkey: nach Mitgliederentfernung sind Schlüssel und Sitzungen gesperrt',async()=>{
+ const f=await fixture(),p=await passkey(f),login=await f.call('passkey/login/verify',await p.login());assert.equal(login.status,200);
+ await f.call('roster',{members:[]},null,true);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passkeys').get().n,0);
+ assert.equal((await bearer(f,'list',login.value)).status,401);
+ assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
+});
+test('Passkey: Hauptzugangsrotation, Challenge-Bindung und Rate-Limit',async()=>{
+ const f=await fixture(),p=await passkey(f),pending=await f.call('passkey/register/options');
+ assert.equal((await f.call('passkey/register/verify',{id:pending.value.id,response:p.response},f.people[1])).status,401);
+ f.sql.prepare('UPDATE accounts SET revision=? WHERE alias=?').run('new-revision',f.people[0].alias);
+ assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
+ let result;for(let i=0;i<31;i++)result=await f.call('passkey/login/options');assert.equal(result.status,429);
 });
