@@ -218,6 +218,10 @@
    await env.DB.batch(statements);
    return {ok:true,evidenceVersion:1,removedBrowserMembers:removed.size};
   }
+  if(path==='/portal/browser/status'){
+   const row=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=? AND expires_at>?').bind(record.alias,record.revision,Date.now()).first();
+   return {sessions:row.n};
+  }
   if(path==='/portal/browser/renew')return browserRenew(env,record,auth);
   if(path==='/portal/browser/start'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browser-Einrichtung nur in der persönlichen H2O-App möglich.',403);return browserStart(env,record);}
    if(path==='/portal/browser/revoke'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browserzugänge können nur in der H2O-App zurückgesetzt werden.',403);return browserRevoke(env,record);}

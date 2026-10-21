@@ -98,7 +98,7 @@
    working=false;await refresh();
   }catch(error){
    working=false;
-   showPair((error.message||'Verbindung fehlgeschlagen.')+' Bitte in H₂O erneut auf „WhatsApp-Zugang aktivieren“ tippen.');
+   showPair((error.message||'Verbindung fehlgeschlagen.')+' Bitte in H₂O erneut auf „Browser verbinden“ tippen.');
   }
  }
  async function reply(event,choice){

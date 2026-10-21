@@ -362,3 +362,16 @@ test('Mitglied entfernt: OneDrive-Handyportal-Abgleich löscht Browserfreigaben 
  assert.equal((await f.call('browser/start')).status,403,'removed member cannot start new browser session');
  assert.equal((await f.call('list',{},f.people[1])).status,200,'remaining member still has access');
 });
+
+test('Browser-Einstellungen: nur eigene gültige Sitzungen zählen, keine Token offenlegen',async()=>{
+ const f=await fixture(),p=f.people[0];
+ assert.equal((await f.call('browser/status')).value.sessions,0);
+ const start=(await f.call('browser/start')).value;
+ const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:start.code})}),f.env);
+ const session=await response.json();
+ const own=await f.call('browser/status');assert.equal(own.status,200);assert.deepEqual(own.value,{sessions:1});
+ assert.equal((await f.call('browser/status',{},f.people[1])).value.sessions,0);
+ const denied=await f.c.worker.fetch(new Request('https://test.example/portal/browser/status',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:p.alias,revision:p.revision})}),f.env);
+ assert.equal(denied.status,401);
+ f.clock.now+=91*86400000;assert.equal((await f.call('browser/status')).value.sessions,0);
+});
