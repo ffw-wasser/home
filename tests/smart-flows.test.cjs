@@ -22,7 +22,7 @@ test('Neuer lokaler Stand während OneDrive-Lesen wird nicht durch die ältere A
  assert.equal(applied,0);assert.equal(written,1);assert.equal(c.getAppStorageState().kind,'cloud');
 });
 test('Fehlgeschlagenes OneDrive-Schreiben bestätigt keinen Cloud-Speicherstatus',async()=>{
- const {c}=syncApp();c.scheduleCloudSync();c.oneDriveWriteState=async()=>{throw Error('offline');};await c.syncOneDrive();assert.equal(c.getAppStorageState().kind,'local');assert.match(c.getAppStorageState().text,/noch nicht bestätigt/);
+ const {c}=syncApp();c.scheduleCloudSync();c.oneDriveWriteState=async()=>{throw Error('offline');};await c.syncOneDrive();assert.equal(c.getAppStorageState().kind,'error');assert.match(c.getAppStorageState().text,/Synchronisierung fehlgeschlagen/);
 });
 test('Ohne dauerhaften Browser-Speicher behauptet der Hinweis keine Gerätesicherung',()=>{
  const {c}=syncApp();c.safeStorage.persistent=false;c.oneDriveSignedIn=()=>false;c.scheduleCloudSync();assert.match(c.getAppStorageState().text,/Für diese Sitzung gespeichert/);
