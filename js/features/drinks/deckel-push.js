@@ -35,7 +35,7 @@
    const result=await g.H2OPortal.api('browser/status');
    if(version!==generation)return;
    if(!Number.isSafeInteger(result.sessions)||result.sessions<0)throw Error('Invalid browser status');
-   state(browser('state'),result.sessions?result.sessions+' Browser verbunden':'Nicht verbunden',result.sessions>0);
+   state(browser('state'),unified?'Mit H₂O verbunden':result.sessions?result.sessions+' Browser verbunden':'Nicht verbunden',unified||result.sessions>0);
   }catch{if(version===generation)state(browser('state'),'Status nicht verfügbar');}
  }
  async function enable(){if(busy||!access)return;busy=true;generation++;buttons();let created=null;try{
