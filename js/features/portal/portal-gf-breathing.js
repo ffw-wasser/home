@@ -63,7 +63,7 @@
    if(data.stale){
     // Never show apparently green clearances from an outdated or incomplete roster.
     snapshot=null;$('data').hidden=true;
-    $('status').textContent='⚠ Nachweisübersicht nicht aktuell. Bitte die Mitglieder- und Nachweisdaten am Gerätehaus-iPad erneut abgleichen. Bis dahin keine Freigabe aus dieser Ansicht ableiten.';
+    $('status').textContent=data.assignmentSyncRequired?'Bitte am Gerätehaus-iPad die Mitglieder erneut abgleichen. Für diese Liste zählt ausschließlich das Häkchen „Atemschutz“ unter Mitglieder.':'⚠ Nachweisübersicht nicht aktuell. Bitte die Mitglieder- und Nachweisdaten am Gerätehaus-iPad erneut abgleichen. Bis dahin keine Freigabe aus dieser Ansicht ableiten.';
    }else{
     snapshot=data;$('data').hidden=false;
     $('status').textContent='Nachweise aktuell abgeglichen. Die tatsächliche Einsatzfähigkeit ist gesondert zu prüfen.';
