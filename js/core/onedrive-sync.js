@@ -196,7 +196,7 @@ function oneDrivePayload(){return {schemaVersion:3,updatedAt:new Date().toISOStr
 function applyOneDrivePayload(data){if(!data||!Array.isArray(data.members)||!Array.isArray(data.entries))throw new Error("OneDrive-Datendatei ist ungültig");oneDriveApplying=true;members=data.members;entries=data.entries;const importedRoleTargets=data.roleTargets||{};const importedFunctionEntryEnabled=data.functionEntryEnabled!==false;safeStorage.setItem(KEYS.members,JSON.stringify(members));safeStorage.setItem(KEYS.entries,JSON.stringify(entries));safeStorage.removeItem?.(KEYS.archive);if(typeof saveRoleTargets==="function")saveRoleTargets(importedRoleTargets);else safeStorage.setItem(KEYS.roleTargets,JSON.stringify(importedRoleTargets));safeStorage.setItem(KEYS.functionEntry,String(importedFunctionEntryEnabled));oneDriveApplying=false;if(typeof renderMembers==="function")renderMembers();if(typeof renderToday==="function")renderToday();if(typeof renderAdmin==="function")renderAdmin();if(typeof renderStatistics==="function")renderStatistics();}
 async function oneDriveReadContacts(){
  if(!oneDriveAdministrationReady())throw new Error('Bitte zuerst OneDrive verbinden.');
- const response=await odFetch('https://graph.microsoft.com/v1.0/me/drive/root:/Feuerwehr-Kontakte-Privat/feuerwehr-emmendingen-kontakte.json:/content');
+ const response=await odFetch('https://graph.microsoft.com/v1.0/me/drive/root:/Feuerwehr%20Share/Webseite/Feuerwehr-Kontakte-Privat/feuerwehr-emmendingen-kontakte.json:/content');
  const contacts=await response.json();
  if(contacts?.schemaVersion!==1||!Array.isArray(contacts.groups))throw new Error('Kontaktverzeichnis hat ein ungültiges Format.');
  return contacts;

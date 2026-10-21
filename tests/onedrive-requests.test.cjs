@@ -18,6 +18,14 @@ function app(respond, {expired = false} = {}) {
 const response = (status, headers = {}, body = {}) => new Response(JSON.stringify(body), {status,headers});
 const url = 'https://graph.microsoft.com/v1.0/drives/test/items/test/children';
 
+test('Kontaktliste wird aus dem aktualisierten Feuerwehr Share/Webseite-Ordner gelesen',async()=>{
+ const contacts={schemaVersion:1,groups:[{title:'Ansprechpartner',contacts:[]}]};
+ const {context,calls}=app(()=>response(200,{},contacts));vm.runInContext("oneDriveAccessConfirmed=true",context);
+ assert.deepEqual(await context.oneDriveReadContacts(),contacts);
+ assert.equal(calls[0].url,'https://graph.microsoft.com/v1.0/me/drive/root:/Feuerwehr%20Share/Webseite/Feuerwehr-Kontakte-Privat/feuerwehr-emmendingen-kontakte.json:/content');
+ assert.equal(calls[0].options.headers.get('Authorization'),'Bearer initial');
+});
+
 test('Vorübergehende Netzwerkfehler bei GET werden mit wachsender Pause wiederholt', async()=>{
   let count=0;
   const {context,calls,waits}=app(()=>{if(++count<3)throw new TypeError('Failed to fetch');return response(200);});
