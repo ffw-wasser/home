@@ -139,7 +139,7 @@ test('Mehr-Kacheln öffnen eigene Rubriken und Rückkehr hält Mehr im Menü aus
  dom['deckel-nav'].querySelectorAll=()=>[button];
  const ctx=vm.createContext({innerHeight:844,history:{state:{},replaceState(){},pushState:state=>history.push(state.portalPage)},addEventListener:(key,fn)=>events[key]=fn,document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
- for(const target of ['more-bundesliga','more-bookings','more-security','more-help']){
+ for(const target of ['more-bundesliga','more-security','more-help']){
   ctx.DeckelMobile.jump('deckel-more');ctx.DeckelMobile.jump(target);
   assert.equal(dom['portal-page-'+target].hidden,false);assert.equal(dom['portal-page-more'].hidden,true);
   assert.equal(button.attributes['aria-current'],'page');assert.equal(history.at(-1),target);
@@ -151,7 +151,7 @@ test('Mehr-Kacheln öffnen eigene Rubriken und Rückkehr hält Mehr im Menü aus
 function layoutFixture(storage=new Map()){
  const dom=nodes(),main=dom['deckel-main'],nav=dom['deckel-nav'],grid=dom['portal-more-grid'];
  nav.id='deckel-nav';grid.id='portal-more-grid';
- const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-water','more-bookings','theater-phone-section','more-security','more-breathing','more-bundesliga','action-update','more-help'];
+ const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','action-update','more-help'];
  for(const [ids,parent] of [[mainIds,nav],[moreIds,grid]])for(const id of ids){const tile=new Node('button');tile.dataset.portalTile=id;tile.dataset.portalTitle=id;tile.dataset.deckelTarget=mainIds.includes(id)?id:'';if(moreIds.includes(id)&&!['theater-phone-section','action-update'].includes(id))tile.dataset.moreTarget=id;parent.append(tile);}
  const pinned=new Node('button');pinned.dataset.portalPinned='more';pinned.dataset.deckelTarget='deckel-more';nav.append(pinned);main.append(grid);
  const timers=new Map();let timerId=0,under=null;const ctx=vm.createContext({history:{state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}},innerWidth:390,innerHeight:844,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],createElement:tag=>new Node(tag),addEventListener(){},elementFromPoint:()=>under}});
@@ -202,7 +202,7 @@ test('Kopfbereich zeigt die gewählte Rubrik bei Menüwechsel, Unterseite und Ak
  const dom=nodes(),ctx=vm.createContext({innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
  assert.equal(dom['portal-menu-title'].textContent,'Termine');
- for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-bookings','Buchungen'],['more-help','Infos'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
+ for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-help','Infos'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
  ctx.DeckelMobile.show(false);assert.equal(dom['portal-menu-title'].textContent,'H₂O Portal');ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,'Termine');
 });
 
@@ -252,7 +252,7 @@ test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit alte
  assert.deepEqual(navIds(),['portal-section','account','more-water','portal-evidence']);
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-help'));
  const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
- assert.equal(all.length,12);assert.equal(new Set(all).size,12);
+ assert.equal(all.length,11);assert.equal(new Set(all).size,11);
 });
 
 test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellung',()=>{
