@@ -156,6 +156,6 @@ test('Kopfbereich zeigt die gewählte Rubrik bei Menüwechsel, Unterseite und Ak
  const dom=nodes(),ctx=vm.createContext({innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
  assert.equal(dom['portal-menu-title'].textContent,'Termine');
- for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-bookings','Buchungen'],['more-help','Hilfe'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
+ for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-bookings','Buchungen'],['more-help','Infos'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
  ctx.DeckelMobile.show(false);assert.equal(dom['portal-menu-title'].textContent,'H₂O Portal');ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,'Termine');
 });
