@@ -77,8 +77,12 @@ Validierung dieses Nachtrags: 684 Tests bestanden, 178 JavaScript-Dateien ohne S
 
 PR #30 wurde mit den Sicherheits- und OneDrive-Korrekturen aus main zusammengeführt. Releasekonflikte wurden auf Version 2026.10.21.9 aufgelöst. Unter „Mehr“ steht nun die Kachel „Wasserentnahme Elz“ mit Wassertropfen-Symbol. Es folgen Buchungen, Theater, Push & WhatsApp, Bundesliga, Aktualisieren und Hilfe; Hilfe verwendet die volle Rasterbreite.
 
-Die Infoseite nennt den Grenzwert von 1,58 m³/s oder weniger am Pegel Gutach/Elz und verweist für das Abfluss-Tagesmittel des Vortags auf das amtliche NIZ. Sie ordnet die Information dem Gemeingebrauch zu und behauptet keinen automatisch ermittelten Live-Messwert. Die Landkreisveröffentlichungen vom 16.06.2026 und 01.07.2025 wurden erneut geprüft und sind in der Ansicht verlinkt. Die externe NIZ-Seite wurde per HTTP mit Status 200 erreicht. Ihre interaktive Darstellung und tatsächliche Messwerte wurden nicht praktisch abgenommen.
+Die Infoseite nennt den Grenzwert von 1,58 m³/s oder weniger am Pegel Gutach/Elz und verweist für das Abfluss-Tagesmittel des Vortags auf das amtliche NIZ. Sie ordnet die Information dem Gemeingebrauch zu und zeigt keinen automatisch ermittelten Live-Messwert. Die Landkreisveröffentlichungen vom 16.06.2026 und 01.07.2025 wurden erneut geprüft und sind in der Ansicht verlinkt. Die externe NIZ-Seite wurde per HTTP mit Status 200 erreicht. Ihre interaktive Darstellung und tatsächliche Messwerte wurden nicht praktisch abgenommen.
 
 Regressionen prüfen Reihenfolge, Grenzwertdarstellung, Quellen-/NIZ-Links und die Seitennavigation einschließlich Browser-Zurück. Die vorhandenen Sicherheits- und OneDrive-Korrekturen bleiben Teil dieses Stands. Eine echte iOS-/Android-Geräteabnahme wird daraus nicht abgeleitet.
+
+## Nachtrag: kurze Elz-Kachel und direkter Ist-Abfluss-Link (2026.10.21.10)
+
+Die Kachel unter „Mehr“ heißt jetzt „Elz-Pegel“ und beschreibt kurz „Ist-Abfluss & Entnahmegrenze“. Auf der Infoseite führt ein hervorgehobener Link direkt zum aktuellen Abflusswert Q der amtlichen HVZ-Messstelle Gutach/Elz; der separate NIZ-Link führt zum rechtlich relevanten Tagesmittelwert des Vortags. Die HVZ begrüßt Verlinkungen, untersagt in ihren Nutzungshinweisen jedoch die Weiterveröffentlichung ihrer Mess- und Vorhersagedaten über Drittanbieter. Deshalb wird der Messwert nicht in die Feuerwehr-App kopiert. Ein Regressionstest prüft Beschriftung und beide Links. Die externe Messwertdarstellung wurde nicht praktisch abgenommen.
 
 Validierung dieses Nachtrags: 687 automatisierte Tests bestanden und 179 JavaScript-Dateien ohne Syntaxfehler. Die gezielte Prüfung von Elz-Ansicht, Mobilnavigation und WhatsApp-Navigation bestand mit 32 Tests.
