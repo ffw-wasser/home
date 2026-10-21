@@ -21466,7 +21466,7 @@ ${strMDSAlgs}`);
   if(path==='/admin/portal/contacts'){
    const contacts=data.contacts;
    if(!contacts||contacts.schemaVersion!==1||!Array.isArray(contacts.groups)||contacts.groups.length>12||JSON.stringify(contacts).length>16000)fail('Ungültiges Kontaktverzeichnis.',400);
-   const safe=v=>typeof v==='string'&&v.length<=180&&!/\x00-\x1f<>]/.test(v);
+   const safe=v=>typeof v==='string'&&v.length<=180&&!/[\x00-\x1f<>]/.test(v);
    if(!safe(contacts.title)||!safe(contacts.businessHours)||!safe(contacts.sourceDate)||contacts.groups.some(group=>!safe(group.title)||!Array.isArray(group.contacts)||group.contacts.length>25||group.contacts.some(p=>!safe(p.name)||!safe(p.role||'')||['phone','mobile','email'].some(k=>p[k]!==undefined&&!safe(p[k])))))fail('Kontaktdaten nicht gültig.',400);
    const payload=await L.seal(env,contacts,'portal-contacts');
    await env.DB.prepare('INSERT INTO portal_contacts(id,payload,updated_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(payload,Date.now()).run();
