@@ -58,12 +58,17 @@
    const data=await g.H2OPortal.api('gf-breathing');
    if(id!==generation)return;
    if(!Array.isArray(data.people)||!Array.isArray(data.uncertain)||typeof data.stale!=='boolean'||data.people.some(x=>!['valid','soon','check'].includes(x.status)||!Array.isArray(x.items)))throw Error('Der Dienst liefert keine vollständige Nachweisübersicht.');
-   snapshot=data;
-   $('data').hidden=false;
    $('synced').textContent='Letzter Mitgliederabgleich: '+(data.syncedAt?new Date(data.syncedAt).toLocaleString('de-DE'):'Unbekannt');
    $('status').dataset.stale=String(data.stale);
-   $('status').textContent=data.stale?'⚠ Datenstand nicht aktuell. Bitte vor einem Einsatz die Nachweise überprüfen.':'Nachweise abgeglichen. Die tatsächliche Einsatzfähigkeit ist gesondert zu prüfen.';
-   render();
+   if(data.stale){
+    // Never show apparently green clearances from an outdated or incomplete roster.
+    snapshot=null;$('data').hidden=true;
+    $('status').textContent='⚠ Nachweisübersicht nicht aktuell. Bitte die Mitglieder- und Nachweisdaten am Gerätehaus-iPad erneut abgleichen. Bis dahin keine Freigabe aus dieser Ansicht ableiten.';
+   }else{
+    snapshot=data;$('data').hidden=false;
+    $('status').textContent='Nachweise aktuell abgeglichen. Die tatsächliche Einsatzfähigkeit ist gesondert zu prüfen.';
+    render();
+   }
   }catch(e){
    if(id===generation){
     snapshot=null;$('data').hidden=true;
