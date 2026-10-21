@@ -1,3 +1,47 @@
+# Finaler Betrieb – verbindliche Passkey-Anmeldung
+
+Version 2026.10.21.24, aufbauend auf PR #47. Der Nutzer hat bestätigt, dass bislang
+nur Testnutzer die Alt-Zugänge verwenden, und die finale Umstellung beauftragt.
+**Die unten dokumentierte Übergangsfreigabe von 2026.10.21.23 ist damit beendet.**
+
+- Alle geschützten persönlichen Portal-APIs verlangen jetzt eine gültige zentrale
+  Passkey-Sitzung, unabhängig vom bisherigen Mitglieds-Migrationsmarker.
+- Alte persönliche Lese-/Command-Capabilities und alte WhatsApp-Kalendersitzungen
+  werden zurückgewiesen. Die früheren Browser-Pairing-/Erneuerungs- und separaten
+  WhatsApp-Passkey-Endpunkte sind abgeschaltet. Keine Aufwertung alter Sitzungen.
+- Die aktuelle Portaloberfläche liest keine alten verschlüsselten GitHub-Snapshots
+  mehr und stellt keine gespeicherten privaten Alt-Links wieder her. Alte URL-
+  Zugangsdaten werden aus der Adresszeile entfernt. Ohne Anmeldung bleiben die
+  persönlichen Seiten und Navigation verborgen; Konto → Sicherheit bietet den Einstieg.
+- Verwaltung: Einstellungen → H₂O Portal → Mitglied → „Passkey-Einrichtung freigeben“.
+  Ein einziger Einrichtungsknopf ersetzt die bisherige zusätzliche Dauerlink-Ausgabe.
+  Persönlich geprüfte Einmalfreigabe, Registrierung und frische Anmeldung bleiben
+  erforderlich. Bestehende gültige zentrale Passkey-Sitzungen bleiben nutzbar.
+- Im Mehr-Bereich gibt es keine separate WhatsApp-Einrichtung mehr. Push bleibt
+  ein unabhängiges Opt-in. Der gemeinsame Gerätehaus-/Microsoft-/Admin-Modus bleibt.
+- Keine Konten, PINs, Buchungen, Punkte oder Rückmeldungen werden gelöscht, keine
+  destruktive D1-Migration. Vorhandene Passkeys benötigen bei fehlender Portal-
+  Freigabe die einmalige Freigabe der Verwaltung. Testnutzer müssen sich neu verbinden.
+
+Prüfung: 702 Unit-Tests (davon 223 im Fokus Cloudflare/Sicherheit), 189 JavaScript-
+Dateien ohne Syntaxfehler, Bundle-/Release-Konsistenz und virtueller
+Chromium-Authenticator. Browser-Regression umfasst alten Link ohne Sitzung,
+Einrichtung, gemeinsamen WhatsApp-Zugang, Antwortkorrektur und Abmeldung.
+Die bisherigen realen iOS-/Android-/WhatsApp-Webview-/Gerätehaus-iPad- und isolierten
+Cloudflare-D1-Testlücken bleiben ausdrücklich offen. Produktive Health-/Version-
+und nicht authentifizierte 401-Prüfungen ersetzen diese Tests nicht.
+
+Historische Kopien im separaten Datenrepository/Git-Verlauf lassen sich durch diese
+Umstellung nicht zurückholen. Da laut Auftrag ausschließlich Testnutzer betroffen
+sind, wird dieses Repository weder gelöscht noch verändert. Local-Storage-/XSS-
+und synchronisierte-Geräte-Risiken gelten unverändert. Die Rollback-Regel ist jetzt
+für ALLE Mitglieder verbindlich: keinen alten Worker mit Legacy-Freigabe aktivieren;
+Autorisierungsschutz behalten, vorwärts korrigieren oder geschützte APIs sperren.
+Ein bereits heruntergeladener alter Client wird bei aktuellen persönlichen APIs
+serverseitig abgewiesen; historische Offline-/Git-Kopien bleiben davon unberührt.
+
+---
+
 # Zentrale Passkey-Anmeldung – Implementierung und Freigabe
 
 Basis: `main` 066dc12, Version 2026.10.21.22. Kandidat: 2026.10.21.23.

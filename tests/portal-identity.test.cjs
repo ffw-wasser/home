@@ -3,13 +3,13 @@ const {fixture}=require('./helpers/portal-fixture.cjs'),{passkey}=require('./hel
 async function request(f,path,data={},token=''){
  const response=await f.c.worker.fetch(new Request('https://test.example.workers.dev'+path,{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(data)}),f.env);return {status:response.status,value:await response.json()};
 }
-async function setup(){const f=await fixture();f.originalCall=f.call;f.call=(path,data={},token)=>token?request(f,'/portal/'+path,data,token):f.originalCall(path,data);return f;}
+async function setup(){const f=await fixture({authenticated:false});f.originalCall=f.call;f.call=(path,data={},token)=>token?request(f,'/portal/'+path,data,token):f.originalCall(path,data);return f;}
 async function ticket(f,p=f.people[0],reset=false){const result=await f.originalCall('identity-ticket',{alias:p.alias,revision:p.revision,reset},null,true);assert.equal(result.status,200,JSON.stringify(result.value));return result.value.code;}
 async function signin(f,p,code){return f.call('passkey/portal/login/verify',{...await p.login({portal:true}),...(code?{code}:{})});}
 async function enrolled(){const f=await setup(),code=await ticket(f),p=await passkey(f,{register:'passkey/enroll',code}),login=await signin(f,p);assert.equal(login.status,200,JSON.stringify(login.value));return {f,p,s:login.value};}
 const own=s=>({alias:s.alias,revision:s.revision});
 test('Portal: old WhatsApp passkey/session and personal capability cannot mint portal authority',async()=>{
- const f=await setup(),p=await passkey(f),calendar=(await f.call('passkey/login/verify',await p.login())).value;
+ const f=await setup(),p=await passkey(f),calendar=await f.c.WhatsAppPasskeys.route('login/verify',await p.login(),f.env);
  assert.equal((await signin(f,p)).status,403);
  for(const path of ['passkey/session','passkey/enroll/options','passkey/devices','gf-breathing'])assert.equal((await request(f,'/portal/'+path,own(calendar),calendar.token)).status,401,path);
  assert.equal((await f.call('passkey/enroll/options')).status,401);
@@ -20,7 +20,7 @@ test('Portal: old WhatsApp passkey/session and personal capability cannot mint p
 });
 test('Portal: enrollment needs admin one-use ticket, binds member; cutover only after successful assertion',async()=>{
  const f=await setup(),code=await ticket(f),p=await passkey(f,{register:'passkey/enroll',code});
- assert.equal((await f.originalCall('list')).status,200,'legacy preserved until assertion');
+ assert.equal((await f.originalCall('list')).status,401,'legacy blocked even before first assertion');
  assert.equal((await f.call('passkey/enroll/options',{code})).status,403);
  const login=await signin(f,p);assert.equal(login.status,200);
  assert.equal((await f.originalCall('list')).status,401);
@@ -98,11 +98,26 @@ test('Portal: drinks/cash retain member assignment, encryption and idempotency',
  const snapshot=await request(f,'/central/snapshot',{alias:s.alias},s.token),account=await f.c.DeckelCrypto.open(snapshot.value.envelope,person);assert.equal(account.balance,0);assert.equal(account.bookings.length,2);
 });
 test('Portal: security confirmation rotates only caller session; revoke others includes calendar',async()=>{
- const {f,p,s}=await enrolled(),other=(await signin(f,p)).value,calendar=(await f.call('passkey/login/verify',await p.login())).value;
+ const {f,p,s}=await enrolled(),other=(await signin(f,p)).value,calendar=await f.c.WhatsAppPasskeys.route('login/verify',await p.login(),f.env);
  const renewed=await request(f,'/portal/passkey/portal/login/verify',await p.login({portal:true}),s.token);assert.equal(renewed.status,200);
  assert.equal((await request(f,'/portal/list',own(s),s.token)).status,401);
  assert.equal((await request(f,'/portal/list',own(other),other.token)).status,200);
  assert.equal((await request(f,'/portal/passkey/sessions/revoke',{},renewed.value.token)).status,200);
  for(const old of [other,calendar])assert.equal((await request(f,'/portal/list',own(old),old.token)).status,401);
  assert.equal((await request(f,'/portal/list',own(renewed.value),renewed.value.token)).status,200);
+});
+
+test('Final: legacy links and all old calendar tokens fail before any member enrolls',async()=>{
+ const f=await setup(),person=f.people[0],p=await passkey(f),calendar=await f.c.WhatsAppPasskeys.route('login/verify',await p.login(),f.env);
+ const proof=require('node:crypto').createHash('sha256').update('deckel-read/v1:'+person.alias+':'+person.key).digest('base64url');
+ assert.equal((await request(f,'/central/snapshot',{alias:person.alias},proof)).status,401);
+ for(const path of ['list','reply','evidence','gf-breathing','contacts','theater/config']){
+  assert.equal((await f.originalCall(path)).status,401,'old command capability: '+path);
+  assert.equal((await request(f,'/portal/'+path,own(calendar),calendar.token)).status,401,'old calendar session: '+path);
+ }
+ assert.equal((await request(f,'/portal/browser/renew',own(calendar),calendar.token)).status,401);
+ assert.equal((await f.originalCall('passkey/register/options')).status,401);
+ const command=await require('node:vm').runInContext('(env,p)=>capability(env,p.alias,p.revision,"commands")',f.c)(f.env,person);
+ for(const path of ['/commands/status','/challenge/solo-status'])assert.equal((await request(f,path,{...own(person),id:require('node:crypto').randomUUID()},command)).status,401,path);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_identity_members').get().n,0);
 });

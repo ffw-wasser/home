@@ -249,131 +249,9 @@ test('Öffnen aktualisiert einen abgelaufenen Kalender auch ohne Cron und erlaub
 });
 
 
-test('WhatsApp/Safari: einmalig koppeln, Rückmeldung wiederholt ändern, Zeitpunkt anzeigen und Zugriff eingrenzen',async()=>{
- const f=await fixture(),event=(await f.call('list')).value.events[0];
- const code=(await f.call('browser/start')).value;
- assert.match(code.code,/^[A-F0-9]{24}$/);
- assert.equal(code.expiresAt-f.clock.now,5*60*1000);
- async function browser(path,body={},token=''){
-  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
-   method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
-   body:JSON.stringify(body)
-  }),f.env);
-  return {status:response.status,value:await response.json()};
- }
- const redeemed=await browser('browser/redeem',{code:code.code});
- assert.equal(redeemed.status,200);assert.match(redeemed.value.token,/^[a-f0-9]{64}$/);
- assert.equal((await browser('browser/redeem',{code:code.code})).status,401,'Einmalcode ist nur einmal nutzbar');
- const auth=redeemed.value.token,identity={alias:redeemed.value.alias,revision:redeemed.value.revision};
- const list=await browser('list',identity,auth);assert.equal(list.status,200);
- assert.equal(list.value.events[0].id,event.id);
- assert.equal((await browser('overview',{...identity,eventId:event.id},auth)).status,401,'keine Führungsübersicht');
- assert.equal((await browser('evidence',identity,auth)).status,401,'keine Nachweise');
- assert.equal((await browser('gf-breathing',identity,auth)).status,401,'WhatsApp-Browserzugang darf keine GF-Nachweise sehen');
- assert.equal((await browser('browser/start',identity,auth)).status,401,'keine weiteren Codes');
- const first=await browser('reply',{...identity,eventId:event.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()},auth);
- assert.equal(first.status,200);assert.equal(first.value.version,1);assert.ok(first.value.updatedAt>0);
- let current=(await browser('list',identity,auth)).value.events[0];
- assert.equal(current.status,'yes');assert.equal(current.updatedAt,first.value.updatedAt);
- const second=await browser('reply',{...identity,eventId:event.id,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()},auth);
- assert.equal(second.status,200);assert.equal(second.value.version,2);
- current=(await browser('list',identity,auth)).value.events[0];
- assert.equal(current.status,'excused');assert.equal(current.version,2);
- assert.equal((await f.call('overview',{eventId:event.id})).value.members.find(m=>m.name==='Testperson 1').status,'excused');
- assert.equal((await f.call('browser/revoke')).status,200);
- assert.equal((await browser('list',identity,auth)).status,401,'Browserzugang nach Sperre ungültig');
-});
-test('WhatsApp/Safari: Verbindungscode läuft ab, falsche Codes werden verworfen',async()=>{
+test('Alte Browser- und WhatsApp-Einrichtung ist auch mit gültiger Portalsitzung abgeschaltet',async()=>{
  const f=await fixture();
- const code=(await f.call('browser/start')).value;
- f.clock.now+=5*60*1000+1000;
- async function redeem(value){
-  const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json'},body:JSON.stringify({code:value})}),f.env);
-  return response.status;
- }
- assert.equal(await redeem(code.code),401);
- assert.equal(await redeem('garbage'),400);
-});
-
-
-test('WhatsApp Browser: automatische Verlängerung bei Nutzung, keine Verlängerung mit Fremdzugang',async()=>{
- const f=await fixture();
- const start=(await f.call('browser/start')).value;
- async function browser(path,body={},token){
-  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
-   method:'POST',
-   headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
-   body:JSON.stringify(body)
-  }),f.env);
-  return {status:response.status,value:await response.json()};
- }
- const paired=await browser('browser/redeem',{code:start.code});
- assert.equal(paired.status,200);
- assert.equal(paired.value.expiresAt-f.clock.now,90*86400000);
- const id={alias:paired.value.alias,revision:paired.value.revision},token=paired.value.token;
- f.clock.now+=89*86400000;
- const renewed=await browser('browser/renew',id,token);
- assert.equal(renewed.status,200);
- assert.equal(renewed.value.expiresAt-f.clock.now,90*86400000);
- assert.equal((await browser('list',id,token)).status,200);
- assert.equal((await browser('browser/renew',{...id,alias:f.people[1].alias},token)).status,401);
- assert.equal((await browser('evidence',id,token)).status,401,'Browser remains read/reply only');
- await f.call('browser/revoke');
- assert.equal((await browser('browser/renew',id,token)).status,401,'Revocation immediately terminates auto-renew');
-});
-test('WhatsApp Browser: nach 90 Tagen Inaktivität abgelaufen und nicht verlängerbar',async()=>{
- const f=await fixture(),start=(await f.call('browser/start')).value;
- const submit=async(path,data,token)=>{
-  const resp=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data)}),f.env);
-  return {status:resp.status,value:await resp.json()};
- };
- const paired=await submit('browser/redeem',{code:start.code});
- assert.equal(paired.status,200);
- f.clock.now+=90*86400000+1000;
- assert.equal((await submit('browser/renew',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
- assert.equal((await submit('list',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
-});
-
-
-test('Mitglied entfernt: OneDrive-Handyportal-Abgleich löscht Browserfreigaben und offene Verbindungslinks',async()=>{
- const f=await fixture();
- const first=await f.call('browser/start');
- assert.equal(first.status,200);
- async function request(path,body={},token=''){
-  const response=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{
-   method:'POST',headers:{Origin:'https://ffw-wasser.github.io','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
-   body:JSON.stringify(body)
-  }),f.env);
-  return {status:response.status,value:await response.json()};
- }
- const paired=await request('browser/redeem',{code:first.value.code});
- assert.equal(paired.status,200);
- assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,1);
- // Issue another unused single-use transfer: it too must be invalidated on deletion.
- assert.equal((await f.call('browser/start')).status,200);
- assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,1);
- const remaining=f.people.slice(1).map(p=>({id:p.memberId,name:'Testperson '+p.memberId.split('-')[1],leader:false}));
- const removed=await f.call('roster',{members:remaining},null,true);
- assert.equal(removed.status,200);assert.equal(removed.value.removedBrowserMembers,1);
- assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,0);
- assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,0);
- assert.equal((await request('list',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
- assert.equal((await request('browser/renew',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
- assert.equal((await f.call('browser/start')).status,401,'removed member cannot start new browser session');
- assert.equal((await f.call('list',{},f.people[1])).status,200,'remaining member still has access');
-});
-
-test('Browser-Einstellungen: nur eigene gültige Sitzungen zählen, keine Token offenlegen',async()=>{
- const f=await fixture(),p=f.people[0];
- assert.equal((await f.call('browser/status')).value.sessions,0);
- const start=(await f.call('browser/start')).value;
- const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:start.code})}),f.env);
- const session=await response.json();
- const own=await f.call('browser/status');assert.equal(own.status,200);assert.deepEqual(own.value,{sessions:1,passkeys:0});
- assert.equal((await f.call('browser/status',{},f.people[1])).value.sessions,0);
- const denied=await f.c.worker.fetch(new Request('https://test.example/portal/browser/status',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:p.alias,revision:p.revision})}),f.env);
- assert.equal(denied.status,401);
- f.clock.now+=91*86400000;assert.equal((await f.call('browser/status')).value.sessions,0);
+ for(const path of ['browser/start','browser/redeem','browser/renew','browser/status','browser/revoke','passkey/register/options','passkey/login/options'])assert.equal((await f.call(path)).status,401,path);
 });
 
 test('Mitgliederaustritt sperrt alle Aliase, Push, Deckel, Challenge und offene Buchungen atomar',async()=>{
@@ -424,14 +302,14 @@ test('Fehlende Mitgliederfreigabe sperrt Portalaktionen und Einlösen alter Verb
  const f=await fixture(),code=(await f.call('browser/start')).value.code;
  f.sql.exec('DELETE FROM portal_roster');
  assert.equal((await f.call('list')).status,403);
- assert.equal((await f.call('browser/start')).status,403);
+ assert.equal((await f.call('browser/start')).status,401);
  const p=f.people[0],commandToken=await vm.runInContext('(env,p)=>capability(env,p.alias,p.revision,"commands")',f.c)(f.env,p);
  for(const path of ['/commands/status','/challenge/solo-status','/subscribe']){
   const denied=await f.c.worker.fetch(new Request('https://test.example'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+commandToken},body:JSON.stringify({alias:p.alias,revision:p.revision,id:webcrypto.randomUUID(),endpoint:'https://fcm.googleapis.com/test'})}),f.env);
-  assert.equal(denied.status,403,path);
+  assert.equal(denied.status,path==='/subscribe'?403:401,path);
  }
  const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}),f.env);
- assert.equal(response.status,403);
+ assert.equal(response.status,401);
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,0);
 });
 
@@ -483,55 +361,8 @@ test('GF Atemschutz: Status, eindeutige AGT-Zuordnung und Rollenentzug',async()=
  assert.equal((await f.call('gf-breathing',{},f.people[1])).status,200);
 });
 
-// Software authenticator: real RSA signatures and CBOR registration, no production accounts.
-async function passkey(f){
- const {encodeCBOR}=require('@levischuck/tiny-cbor'),{generateKeyPairSync}=require('node:crypto');
- const keys=generateKeyPairSync('rsa',{modulusLength:2048}),jwk=keys.publicKey.export({format:'jwk'}),id=require('node:crypto').randomBytes(32),b64=x=>Buffer.from(x).toString('base64url');
- const pub=new Map([[1,3],[3,-257],[-1,new Uint8Array(Buffer.from(jwk.n,'base64url'))],[-2,new Uint8Array(Buffer.from(jwk.e,'base64url'))]]);
- const rp=require('node:crypto').createHash('sha256').update('ffw-wasser.github.io').digest();
- const client=(type,challenge,origin='https://ffw-wasser.github.io')=>Buffer.from(JSON.stringify({type,challenge,origin,crossOrigin:false}));
- const start=await f.call('passkey/register/options');assert.equal(start.status,200,JSON.stringify(start.value));
- const auth=Buffer.concat([rp,Buffer.from([0x45]),Buffer.alloc(4),Buffer.alloc(16),Buffer.from([0,id.length]),id,Buffer.from(encodeCBOR(pub))]);
- const response={id:b64(id),rawId:b64(id),type:'public-key',clientExtensionResults:{},response:{clientDataJSON:b64(client('webauthn.create',start.value.options.challenge)),attestationObject:b64(encodeCBOR(new Map([['fmt','none'],['attStmt',new Map()],['authData',new Uint8Array(auth)]])))}};
- const register=await f.call('passkey/register/verify',{id:start.value.id,response});assert.equal(register.status,200,JSON.stringify(register.value));
- const login=async({origin,flags=5,rpHash=rp,tamper=false}={})=>{
-  const challenge=await f.call('passkey/login/options'),data=client('webauthn.get',challenge.value.options.challenge,origin),auth=Buffer.concat([rpHash,Buffer.from([flags]),Buffer.alloc(4)]);
-  const signed=Buffer.concat([auth,require('node:crypto').createHash('sha256').update(data).digest()]);
-  const sig=require('node:crypto').sign('sha256',signed,keys.privateKey);if(tamper)sig[10]^=1;
-  return {id:challenge.value.id,response:{id:b64(id),rawId:b64(id),type:'public-key',clientExtensionResults:{},response:{clientDataJSON:b64(data),authenticatorData:b64(auth),signature:b64(sig),userHandle:start.value.options.user.id}}};
- };
- return {login,start,response};
-}
-async function bearer(f,path,session){const r=await f.c.worker.fetch(new Request('https://test.example/portal/'+path,{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision})}),f.env);return {status:r.status,value:await r.json()};}
-test('Passkey: echte Registrierung/Signatur, enge Rechte, Replay und gemeinsamer Widerruf',async()=>{
- const f=await fixture(),p=await passkey(f);assert.equal((await f.call('browser/status')).value.passkeys,1);
- assert.equal((await f.call('passkey/register/verify',{id:p.start.id,response:p.response})).status,401);
- const request=await p.login(),login=await f.call('passkey/login/verify',request);assert.equal(login.status,200,JSON.stringify(login.value));
- assert.equal((await f.call('passkey/login/verify',request)).status,401);
- assert.equal((await bearer(f,'list',login.value)).status,200);
- for(const path of ['gf-breathing','overview','evidence','passkey/register/options','passkey/revoke','subscribe'])assert.equal((await bearer(f,path,login.value)).status,401,path);
- assert.equal((await f.call('browser/revoke')).status,200);
- assert.equal((await bearer(f,'list',login.value)).status,401);
- assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
-});
-test('Passkey: falsche Origin/RP, fehlende Benutzerprüfung, fremde Signatur und Timeout abweisen',async()=>{
- const f=await fixture(),p=await passkey(f);
- for(const bad of [{origin:'https://evil.example'},{flags:1},{rpHash:Buffer.alloc(32)},{tamper:true}])assert.equal((await f.call('passkey/login/verify',await p.login(bad))).status,401,JSON.stringify(bad));
- const expired=await p.login();f.clock.now+=300001;assert.equal((await f.call('passkey/login/verify',expired)).status,401);
-});
-test('Passkey: nach Mitgliederentfernung sind Schlüssel und Sitzungen gesperrt',async()=>{
- const f=await fixture(),p=await passkey(f),login=await f.call('passkey/login/verify',await p.login());assert.equal(login.status,200);
- await f.call('roster',{members:[]},null,true);
- assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passkeys').get().n,0);
- assert.equal((await bearer(f,'list',login.value)).status,401);
- assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
-});
-test('Passkey: Hauptzugangsrotation, Challenge-Bindung und Rate-Limit',async()=>{
- const f=await fixture(),p=await passkey(f),pending=await f.call('passkey/register/options');
- assert.equal((await f.call('passkey/register/verify',{id:pending.value.id,response:p.response},f.people[1])).status,401);
- f.sql.prepare('UPDATE accounts SET revision=? WHERE alias=?').run('new-revision',f.people[0].alias);
- assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
- let result;for(let i=0;i<31;i++)result=await f.call('passkey/login/options');assert.equal(result.status,429);
+test('Zentrale Passkey-Challenges haben weiterhin ein IP-Limit',async()=>{
+ const f=await fixture();let result;for(let i=0;i<31;i++)result=await f.call('passkey/portal/login/options');assert.equal(result.status,429);
 });
 
 test('GF Atemschutz: alte Rollenprojektion bleibt bis zum Checkbox-Abgleich gesperrt',async()=>{

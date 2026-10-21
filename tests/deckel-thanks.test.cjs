@@ -7,6 +7,7 @@ async function fixture(){
  const data={balance:0,credit:0,needed:300,bonusCents:300,bookings:[],updatedAt:'2026-10-09T16:00:00Z'},ctx=vm.createContext({URL,URLSearchParams,Date,AbortController,Promise,
   setTimeout:(fn,delay)=>{timers.set(++next,{fn,at:now+delay});return next;},clearTimeout:id=>timers.delete(id),location:{href:url.href,hash:url.hash},
   document:{hidden:false,getElementById:id=>nodes.get(id)||nodes.set(id,element()).get(id),createElement:element,addEventListener:(name,fn)=>events[name]=fn},addEventListener:(name,fn)=>events[name]=fn,
+  H2OIdentity:{onboarding:()=>false,prepare:async()=>{},credentials:()=>({alias:'a'.repeat(32),key:'b'.repeat(64)})},DeckelLive:{load:async()=>{if(ctx.failedLoad)throw new TypeError('Failed to fetch');return {};}},
   DeckelCrypto:{access(){},open:async()=>structuredClone(data)},fetch:async()=>{if(ctx.failedLoad)throw new TypeError('Failed to fetch');return {ok:true,text:async()=> '{}'};}});
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/deckel-view.js'),'utf8'),ctx);await flush();
  return {ctx,data,nodes,events,async reload(){nodes.get('refresh').onclick();await flush();},advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
