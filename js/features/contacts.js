@@ -22,7 +22,7 @@ function paint(contacts,postfix){
   }
   area.append(section);
  }
- status.textContent=(contacts.businessHours||'')+' · Verzeichnisstand '+(contacts.sourceDate||'unbekannt');
+ status.textContent='Verzeichnisstand: '+(contacts.sourceDate||'unbekannt');
 }
 async function loadPhone(){
  if(state.phone)return;state.phone=true;const status=$('contacts-status');if(status)status.textContent='Kontakte werden geschützt geladen …';
