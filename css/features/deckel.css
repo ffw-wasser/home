@@ -140,7 +140,7 @@
 #portal-page-points .loyalty-card summary{font-size:1.0625rem;line-height:1.5}.loyalty-heading>div{min-width:0}.loyalty-heading{flex-wrap:wrap}
 
 /* Wasserentnahme Elz: gut lesbare Grenzwertinfo, keine irreführende Live-Ampel. */
-.portal-more-grid .portal-more-help-tile{grid-column:1/-1;min-height:100px}
+.portal-more-grid .portal-more-help-tile{grid-column:auto;aspect-ratio:1;min-height:0;align-self:start}
 .water-info{display:grid;gap:16px;max-width:680px;margin:0 auto 24px;padding:18px;border:1px solid #bed0dc;border-radius:20px;background:#fff;color:#183a50;line-height:1.55}
 .water-info-heading{display:flex;gap:14px;align-items:center}
 .water-info-heading h2{font-size:clamp(1.25rem,5vw,1.6rem);line-height:1.24;margin:3px 0 4px}
