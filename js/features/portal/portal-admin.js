@@ -26,7 +26,7 @@
   if(!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){storageChanged();return false;}
   rosterBusy=true;syncStatus('syncing','In OneDrive gespeichert · Handyportal wird abgeglichen …');
   try{
-   const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),leader:Array.isArray(m.roles)&&m.roles.includes('GF'),evidence:g.MemberEvidence.project(m)})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
+   const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),leader:Array.isArray(m.roles)&&m.roles.includes('GF'),agt:typeof m.breathingQualified==='boolean'?m.breathingQualified:Array.isArray(m.roles)&&m.roles.some(role=>['ATM','ATG'].includes(role))?true:null,evidence:g.MemberEvidence.project(m)})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
    if(key!==rosterKey||force){
     if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert.');
     const saved=await g.DrinksPush.request(c,'/admin/portal/roster',{source:c.source,members:people});
