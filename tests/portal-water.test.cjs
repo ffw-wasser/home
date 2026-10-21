@@ -18,8 +18,7 @@ test('Wasserentnahme nennt Schwelle einschließlich Gleichheit und Vortagesabflu
  assert.match(panel,/Tagesmittel am Vortag/);
  assert.match(panel,/Der aktuelle Messwert und der Wasserstand sind hierfür nicht maßgeblich/);
  assert.match(panel,/keinen Live-Messwert/);
- assert.match(panel,/www\.hvz\.baden-wuerttemberg\.de\/pegel\.html\?id=00300&amp;m=Q/);
- assert.match(panel,/Aktuellen Ist-Abfluss \(Q\) auf der HVZ ansehen/);
+ assert.match(panel,/Abfluss und Tagesmittelwert auf NIZ öffnen/);
  assert.match(panel,/NIZ-Tagesmittelwert des Vortags/);
  assert.match(panel,/niz\.baden-wuerttemberg\.de\/oberflaechengewaesser\/abfluss-wasserstand\?id=00300&amp;view=6/);
  assert.match(panel,/target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"/);
