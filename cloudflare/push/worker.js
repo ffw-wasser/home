@@ -19,7 +19,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"__WORKER_SOURCE_SHA256__",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
@@ -63,6 +63,7 @@ export default {
     const row=await env.DB.prepare('SELECT COUNT(*) AS count FROM devices WHERE alias=? AND revision=?').bind(data.alias,data.revision).first();
     return reply({capability:await capability(env,data.alias,data.revision),actionCapability:await capability(env,data.alias,data.revision,'commands'),devices:row.count});
    }
+   if(!admin&&globalThis.PortalService){try{await globalThis.PortalService.assertAlias(env,data.alias);}catch(error){return reply({error:error.status?error.message:'Zugang derzeit nicht prüfbar.'},error.status||503);}}
    const record=await account(env,data.alias);if(!record)return reply({error:'Handyzugang noch nicht für Erinnerungen eingerichtet.'},404);
    if(path==='/commands/submit'||path==='/commands/status'||path==='/admin/commands/ack'){
     if(!REV.test(data.id||'')||data.revision!==record.revision)return reply({error:'Zugang oder Vorgang nicht mehr gültig.'},409);

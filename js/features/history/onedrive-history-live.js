@@ -101,6 +101,7 @@
       correctedAt:info.correctedAt||"",
       revisions:Array.isArray(info.revisions)?clone(info.revisions):[],
       oneDriveLive: true,
+      oneDriveETag: file.eTag || "",
       hasImportedPdf: Boolean(pdfEntry),
       ...(isOperation ? {presentCount:Math.max(0,matrix.length-1),excusedCount:0,missingCount:0} : counts(rows))
     };
@@ -182,7 +183,8 @@
     } catch (error) {
       if(epoch!==loadEpoch)return false;
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
-      const hint = error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
+      const hint = ["oneDriveFolderUnavailable","oneDriveFolderLinkInvalid"].includes(error.code) ? error.message
+        : error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
         ? "Bitte OneDrive erneut anmelden."
         : error.status === 403 ? "Bitte die Zugriffsrechte auf den gemeinsamen OneDrive-Ordner prüfen."
         : error.status === 429 ? "OneDrive begrenzt momentan die Abrufe. Bitte etwas später erneut synchronisieren."
@@ -200,6 +202,11 @@
     }
   }
 
+  function checkedReportTag(item,metadata){
+    if(!metadata.eTag)throw new Error("Die Dateiversion konnte nicht geprüft werden. Bitte Historie erneut laden.");
+    if(item.oneDriveETag&&item.oneDriveETag!==metadata.eTag)throw Object.assign(new Error("Der Bericht wurde inzwischen geändert. Bitte Historie erneut laden und die Korrektur prüfen."),{status:412});
+    return metadata.eTag;
+  }
   window.deleteOneDriveHistoryItem = async item => {
     if(pendingLoad)await pendingLoad;
     if(!item?.oneDriveLive||!String(item.id||"").startsWith("onedrive-zip:"))throw new Error("Das Original-Terminpaket fehlt.");
@@ -209,7 +216,7 @@
     const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
     try{
       const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
-      await odFetch(url,{method:"DELETE",headers:metadata.eTag?{"If-Match":metadata.eTag}:{}});
+      await odFetch(url,{method:"DELETE",headers:{"If-Match":checkedReportTag(item,metadata)}});
     }catch(error){if(error.status!==404)throw error;}
     // Ein gleichzeitig gestarteter Abruf darf den gelöschten Bericht nicht wieder einsetzen.
     loadEpoch++;
@@ -225,7 +232,8 @@
     const root=await oneDriveResolveSharedRoot();
     const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
     const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
-    const zip=await JSZip.loadAsync(await (await odFetch(url+"/content")).blob());
+    const eTag=checkedReportTag(item,metadata);
+    const zip=await JSZip.loadAsync(await (await odFetch(url+"/content",{headers:{"If-Match":eTag}})).blob());
     const infoEntry=zip.file("paket-info.json");
     const info=infoEntry?JSON.parse(await infoEntry.async("string")):{};
     const oldCsv=info.csvName||Object.values(zip.files).find(entry=>!entry.dir&&/\.csv$/i.test(entry.name))?.name;
@@ -249,7 +257,7 @@
     zip.file(item.fileName,item.content);zip.file(item.pdfFileName,pdf);
     zip.file("paket-info.json",JSON.stringify({...info,operationData:item.operationData||info.operationData,csvName:item.fileName,pdfName:item.pdfFileName,correctedAt:item.correctedAt,revisions:item.revisions,files:Object.keys(zip.files)},null,2));
     const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
-    await odFetch(url+"/content",{method:"PUT",headers:{"Content-Type":"application/zip",...(metadata.eTag?{"If-Match":metadata.eTag}:{})},body:blob});
+    await odFetch(url+"/content",{method:"PUT",headers:{"Content-Type":"application/zip","If-Match":eTag},body:blob});
     reportCache.delete(fileId);
   };
   window.loadOneDriveHistory = loadOneDriveHistory;

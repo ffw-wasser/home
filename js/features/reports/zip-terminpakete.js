@@ -95,7 +95,10 @@ async function saveTerminPackage(fileName,blob,overwriteRequired=false){
 async function packageFilesFromZip(file){const zip=await JSZip.loadAsync(file),files=[];for(const entry of Object.values(zip.files)){if(entry.dir||!/\.(csv|pdf)$/i.test(entry.name))continue;const blob=await entry.async("blob"),name=entry.name.split("/").pop();files.push(new File([blob],name,{type:/\.csv$/i.test(name)?"text/csv":"application/pdf",lastModified:file.lastModified||Date.now()}));}return files;}
 
 /* Probe-/Terminabschluss: nur ein ZIP-Paket nach außen speichern. */
+let closingDay=false;
 window.closeDay=async function(topic=currentClosingTopic){
+  if(closingDay)return;closingDay=true;
+  try{
   if(typeof pendingMemberStatuses!=="undefined"&&pendingMemberStatuses.size)return showToast("Bitte zuerst die Auswahl übernehmen.","error");
   topic=String(topic||"").trim();if(!topic){openProbeTopicDialog();return;}
   const allCurrent=[...todayEntries()];
@@ -123,6 +126,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   if(result==="failed"||result==="cancelled")return showToast("Das Terminpaket konnte nicht gespeichert werden. Die Tagesdaten bleiben erhalten.","error");
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
   window.PortalAdmin?.discard();const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");showToast("Termin abgeschlossen. ZIP erstellt und an Teilen / Download übergeben. Bitte die Ablage prüfen.");
+  }finally{closingDay=false;}
 };
 
 /* Einsatzabschluss: direkt speichern, archivieren und anschließend zu Home zurückkehren. */
@@ -130,6 +134,7 @@ window.finishOperationZip=async function(){
   const button=byId("operationFinish"),validationBox=byId("operationValidation");
   const defaultButtonText="Einsatz abschließen · Terminpaket";
   if(!button)throw new Error("Der Abschlussbutton wurde nicht gefunden");
+  if(button.disabled)return;
   if(typeof captureQualitySnapshot==="function")captureQualitySnapshot("Vor Einsatzabschluss");
   button.textContent="Einsatz wird vorbereitet …";
   button.setAttribute("aria-busy","true");

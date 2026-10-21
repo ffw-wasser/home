@@ -17,7 +17,7 @@ async function fixture(){
 }
 test('Kalenderprojektion: UID bleibt bei Titel-/Zeitwechsel stabil, abgesagte Termine verschwinden',async()=>{const f=await fixture(),first=(await f.call('list')).value.events[0];f.raw(calendar([event(f.start+3600000,'Unterricht') ]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);const changed=(await f.call('list')).value.events[0];assert.equal(changed.id,first.id);assert.equal(changed.title,'Unterricht');assert.equal(changed.start,first.start+3600000);f.raw(calendar([event(f.start,'Testprobe','STATUS:CANCELLED')]));f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);assert.equal((await f.call('list')).value.events.length,0);});
 test('Rückmeldung: echte Speicherung, versionierte Änderung, Wiederholung und Konflikt',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0],data={eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()};assert.equal((await f.call('reply',data)).status,200);assert.equal((await f.call('reply',data)).value.version,1);assert.equal((await f.call('reply',{...data,status:'excused'})).status,409);assert.equal((await f.call('reply',{...data,requestId:webcrypto.randomUUID()})).status,409);assert.equal((await f.call('reply',{...data,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()})).value.version,2);assert.equal((await f.call('list')).value.events[0].status,'excused');assert.equal((await f.call('list',{},f.people[1])).value.events[0].status,'open');const raw=f.sql.prepare('SELECT payload FROM portal_replies').get().payload;assert.ok(!raw.includes('excused'));assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledgers').get().n,0);});
-test('Nur GF sieht Namen; Client-Rolle, fremde Token und ungültige Zugänge verleihen keine Rechte',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];assert.equal((await f.call('list')).value.leader,true);assert.equal((await f.call('overview',{eventId:e.id})).value.members.length,5);assert.equal((await f.call('list',{},f.people[1])).value.leader,false);assert.equal((await f.call('overview',{eventId:e.id,leader:true,challengeLevel:'GF'},f.people[1])).status,403);assert.equal((await f.call('list',{}, {...f.people[0],revision:'wrong-revision'})).status,401);assert.ok(!f.sql.prepare('SELECT payload FROM portal_roster').get().payload.includes('Testperson'));await f.call('roster',{members:[{id:f.people[1].memberId,name:'Testperson 2',leader:true}]},null,true);assert.equal((await f.call('list')).status,403);assert.equal((await f.call('overview',{eventId:e.id},f.people[1])).status,200);});
+test('Nur GF sieht Namen; Client-Rolle, fremde Token und ungültige Zugänge verleihen keine Rechte',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];assert.equal((await f.call('list')).value.leader,true);assert.equal((await f.call('overview',{eventId:e.id})).value.members.length,5);assert.equal((await f.call('list',{},f.people[1])).value.leader,false);assert.equal((await f.call('overview',{eventId:e.id,leader:true,challengeLevel:'GF'},f.people[1])).status,403);assert.equal((await f.call('list',{}, {...f.people[0],revision:'wrong-revision'})).status,401);assert.ok(!f.sql.prepare('SELECT payload FROM portal_roster').get().payload.includes('Testperson'));await f.call('roster',{members:[{id:f.people[1].memberId,name:'Testperson 2',leader:true}]},null,true);assert.equal((await f.call('list')).status,401);assert.equal((await f.call('overview',{eventId:e.id},f.people[1])).status,200);});
 test('Erinnerung geht an Zusagen und offene Antworten, niemals an Entschuldigte; Wiederholung bleibt einmalig',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];for(const p of f.people)assert.equal((await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p)).status,200);for(const [i,status] of [[0,'yes'],[1,'excused'],[2,'maybe']])await f.call('reply',{eventId:e.id,status,expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[i]);const data={eventId:e.id,requestId:webcrypto.randomUUID()};let r=await f.call('remind',data,null,true);assert.equal(r.status,200);assert.equal(r.value.accepted,2);assert.equal(r.value.remaining,2);r=await f.call('remind',data,null,true);assert.equal(r.value.accepted,2);assert.equal(r.value.remaining,0);assert.equal(f.sends.length,4);assert.ok(!f.sends.some(s=>s.url.endsWith('/member-2')));assert.ok(f.sends.every(s=>s.options.body===null));await f.call('remind',data,null,true);assert.equal(f.sends.length,4);assert.equal((await f.call('notification')).value.event.id,e.id);assert.equal((await f.call('notification',{},f.people[1])).value.event,null);});
 test('Geplanter Versand bleibt nach wiederholtem Cron einmalig und setzt keinen Admin-Aufruf voraus',async()=>{const f=await fixture();for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);await f.c.PortalService.scheduled(f.env);await f.c.PortalService.scheduled(f.env);await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5);await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5);});
 test('Unsichere Antwort bleibt gespeichert, versioniert und getrennt von offenen Antworten',async()=>{
@@ -166,7 +166,7 @@ test('Nachweise sind verschlüsselt, kalenderunabhängig und nur für das authen
  assert.ok(!JSON.stringify(await f.c.PortalService.publicCalendar(f.env)).includes('2030-05-12'));
  f.sql.exec('DELETE FROM portal_config; DELETE FROM portal_calendar');f.offline(true);assert.equal((await f.call('evidence')).status,200);
  const invalid=await f.c.worker.fetch(new Request('https://test.example/portal/evidence',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer invalid','Content-Type':'application/json'},body:JSON.stringify({alias:f.people[0].alias,revision:f.people[0].revision})}),f.env);assert.equal(invalid.status,401);
- await f.call('roster',{members:[people[1]]},null,true);assert.equal((await f.call('evidence')).status,403);
+ await f.call('roster',{members:[people[1]]},null,true);assert.equal((await f.call('evidence')).status,401);
 });
 test('Ältere Mitgliederabgleiche bewahren Nachweise und deren ursprünglichen Datenstand',async()=>{
  const f=await fixture(),m={id:f.people[0].memberId,name:'Testperson 1',leader:true,evidence:f.c.MemberEvidence.project({breathingQualified:true})};
@@ -359,7 +359,7 @@ test('Mitglied entfernt: OneDrive-Handyportal-Abgleich löscht Browserfreigaben 
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_pairs').get().n,0);
  assert.equal((await request('list',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
  assert.equal((await request('browser/renew',{alias:paired.value.alias,revision:paired.value.revision},paired.value.token)).status,401);
- assert.equal((await f.call('browser/start')).status,403,'removed member cannot start new browser session');
+ assert.equal((await f.call('browser/start')).status,401,'removed member cannot start new browser session');
  assert.equal((await f.call('list',{},f.people[1])).status,200,'remaining member still has access');
 });
 
@@ -374,4 +374,89 @@ test('Browser-Einstellungen: nur eigene gültige Sitzungen zählen, keine Token 
  const denied=await f.c.worker.fetch(new Request('https://test.example/portal/browser/status',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:p.alias,revision:p.revision})}),f.env);
  assert.equal(denied.status,401);
  f.clock.now+=91*86400000;assert.equal((await f.call('browser/status')).value.sessions,0);
+});
+
+test('Mitgliederaustritt sperrt alle Aliase, Push, Deckel, Challenge und offene Buchungen atomar',async()=>{
+ const f=await fixture(),p=f.people[0],other=f.people[1];
+ const extra={...p,alias:'f'.repeat(32),revision:'revision-extra'};
+ await f.DB.prepare('INSERT INTO accounts(alias,revision) VALUES(?,?)').bind(extra.alias,extra.revision).run();
+ await f.DB.prepare('INSERT INTO ledger_access(alias,revision,payload) VALUES(?,?,?)').bind(extra.alias,extra.revision,await f.L.seal(f.env,extra,'access:'+extra.alias)).run();
+ const saved=await f.L.seal(f.env,f.c.DrinksModel.empty(p.memberId),'ledger:'+p.memberId);
+ await f.DB.prepare('INSERT INTO ledgers(member,payload) VALUES(?,?)').bind(p.memberId,saved).run();
+ for(const person of [p,extra,other]){
+  await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+person.alias},person);
+  await f.DB.prepare('INSERT INTO commands(alias,revision,id,envelope,digest,created_at) VALUES(?,?,?,?,?,?)').bind(person.alias,person.revision,webcrypto.randomUUID(),'encrypted-test-request','test-digest',Date.now()).run();
+ }
+ const request=async(path,data,auth='')=>{
+  const response=await f.c.worker.fetch(new Request('https://test.example'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth},body:JSON.stringify(data)}),f.env);
+  return {status:response.status,value:await response.json()};
+ };
+ const remaining=f.people.slice(1).map(person=>({id:person.memberId,name:'Test '+person.memberId,leader:false}));
+ const seq=f.sql.prepare('SELECT seq FROM ledger_meta').get().seq;
+ f.failBatch();assert.equal((await f.call('roster',{members:remaining},null,true)).status,503);
+ assert.equal((await f.call('list')).status,200,'failed batch preserves membership and credentials');
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,6);
+ assert.equal(f.sql.prepare('SELECT seq FROM ledger_meta').get().seq,seq);
+ assert.equal((await f.call('roster',{members:remaining},null,true)).status,200);
+ assert.equal(f.sql.prepare('SELECT seq FROM ledger_meta').get().seq,seq+1);
+ assert.equal(f.sql.prepare('SELECT payload FROM ledgers WHERE member=?').get(p.memberId).payload,saved,'financial history preserved');
+ for(const person of [p,extra]){
+  const token=await vm.runInContext('(env,p)=>capability(env,p.alias,p.revision,"commands")',f.c)(f.env,person);
+  const readToken=await vm.runInContext('(p)=>hash("deckel-read/v1:"+p.alias+":"+p.key)',f.c)(person);
+  for(const path of ['/portal/list','/portal/evidence','/portal/overview','/portal/browser/start','/challenge/solo/status','/commands/status','/commands/submit']){
+   const result=await request(path,{alias:person.alias,revision:person.revision,id:webcrypto.randomUUID()},token);
+   assert.ok([401,403,404].includes(result.status),path+': '+JSON.stringify(result));
+  }
+  assert.equal((await request('/central/snapshot',{alias:person.alias},readToken)).status,404);
+  const push=await vm.runInContext('(env,p)=>capability(env,p.alias,p.revision)',f.c)(f.env,person);
+  assert.equal((await request('/subscribe',{alias:person.alias,endpoint:'https://fcm.googleapis.com/old'},push)).status,401);
+  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').get(person.alias).n,0);
+  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledger_access WHERE alias=?').get(person.alias).n,0);
+  const pending=f.sql.prepare('SELECT status,result,envelope FROM commands WHERE alias=?').get(person.alias);
+  assert.deepEqual({...pending},{status:'rejected',result:'accessChanged',envelope:''});
+  assert.equal((await request('/admin/account',{alias:person.alias,revision:person.revision},f.env.ADMIN_TOKEN)).status,409,'retired revision cannot be resurrected');
+ }
+ assert.equal((await f.call('list',{},other)).status,200);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').get(other.alias).n,1);
+});
+
+test('Fehlende Mitgliederfreigabe sperrt Portalaktionen und Einlösen alter Verbindungslinks',async()=>{
+ const f=await fixture(),code=(await f.call('browser/start')).value.code;
+ f.sql.exec('DELETE FROM portal_roster');
+ assert.equal((await f.call('list')).status,403);
+ assert.equal((await f.call('browser/start')).status,403);
+ const p=f.people[0],commandToken=await vm.runInContext('(env,p)=>capability(env,p.alias,p.revision,"commands")',f.c)(f.env,p);
+ for(const path of ['/commands/status','/challenge/solo-status','/subscribe']){
+  const denied=await f.c.worker.fetch(new Request('https://test.example'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+commandToken},body:JSON.stringify({alias:p.alias,revision:p.revision,id:webcrypto.randomUUID(),endpoint:'https://fcm.googleapis.com/test'})}),f.env);
+  assert.equal(denied.status,403,path);
+ }
+ const response=await f.c.worker.fetch(new Request('https://test.example/portal/browser/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}),f.env);
+ assert.equal(response.status,403);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_browser_sessions').get().n,0);
+});
+
+test('Mitgliedersperrung: konkurrierende Kontenänderung verhindert den gesamten veralteten Abgleich',async()=>{
+ const f=await fixture(),batch=f.env.DB.batch;let inject=true;
+ f.env.DB.batch=async statements=>{if(inject){inject=false;f.sql.exec('UPDATE ledger_meta SET seq=seq+1');}return batch(statements);};
+ const response=await f.call('roster',{members:[]},null,true);assert.equal(response.status,409);
+ assert.equal((await f.call('list')).status,200);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,5);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM retired').get().n,0);
+});
+test('Große Mitgliedersperrung bleibt unter dem D1-Free-Abfragelimit',async()=>{
+ const f=await fixture();
+ for(let i=10;i<130;i++){
+  const p={...f.people[0],alias:i.toString(16).padStart(32,'0')};
+  await f.DB.prepare('INSERT INTO accounts(alias,revision) VALUES(?,?)').bind(p.alias,p.revision).run();
+  await f.DB.prepare('INSERT INTO ledger_access(alias,revision,payload) VALUES(?,?,?)').bind(p.alias,p.revision,await f.L.seal(f.env,p,'access:'+p.alias)).run();
+ }
+ const prepare=f.DB.prepare;let count=0;f.DB.prepare=query=>{assert.ok(++count<=50,'D1 query budget exceeded');return prepare(query);};
+ assert.equal((await f.call('roster',{members:[]},null,true)).status,200);
+ assert.ok(count<20);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,0);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM retired').get().n,125);
+});
+test('Health liefert den reproduzierbaren Fingerabdruck des Worker-Quellstands',async()=>{
+ const f=await fixture(),r=await f.c.worker.fetch(new Request('https://test.example/health'),f.env),value=await r.json();
+ assert.equal(r.status,200);assert.match(value.sourceFingerprint,/^[a-f0-9]{64}$/);
+ assert.ok(read('cloudflare/push/worker.bundle.js').includes(value.sourceFingerprint));
 });

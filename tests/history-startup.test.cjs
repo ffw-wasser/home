@@ -32,7 +32,7 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
     oneDriveSignedIn: () => state.signedIn,
     oneDriveAccessToken: async () => "TEST-TOKEN",
     oneDriveHandleCallback: async () => {calls.callback++;},
-    oneDriveReadState: async () => {calls.read++; if (state.stateError) throw new Error('State unavailable'); return {updatedAt: remoteNewer ? '2099-01-01' : ''};},
+    oneDriveReadState: async () => {calls.read++; if (state.stateError) throw new Error('State unavailable'); if(!remoteNewer)throw new Error('itemNotFound');return {data:{updatedAt:'2099-01-01'},eTag:'test-tag',url:'https://graph.microsoft.com/test'};},
     oneDriveWriteState: async () => {calls.write++;},
     applyOneDrivePayload: () => {calls.apply++;},
     oneDriveResolveSharedRoot: async () => ({driveId: 'test-drive', id: 'test-root'}),
@@ -193,5 +193,14 @@ test('Gelöschte ZIP entfernt den Sitzungszwischenspeicher; erneut angelegte ZIP
   const {context, calls, state} = await app();await context.window.loadOneDriveHistory();
   state.empty=true;await context.window.loadOneDriveHistory();assert.equal(context.csvArchive.length,0);
   state.empty=false;await context.window.loadOneDriveHistory();assert.equal(calls.download,2);
+});
+
+test('Abgelaufener Ordnerlink erhält die Historie und erklärt die Verbindungseinstellung',async()=>{
+  const {context,status,calls}=await app();await context.window.loadOneDriveHistory();
+  const previous=context.csvArchive;
+  context.oneDriveResolveSharedRoot=async()=>{throw Object.assign(new Error('Bitte unter Verbindung verwalten die aktuelle Ordneradresse eintragen.'),{status:404,code:'oneDriveFolderLinkInvalid'});};
+  assert.equal(await context.window.loadOneDriveHistory(),false);
+  assert.equal(context.csvArchive,previous);assert.equal(calls.list,1);
+  assert.match(status.textContent,/Ordneradresse/);assert.doesNotMatch(status.textContent,/verschoben oder gelöscht/);
 });
 
