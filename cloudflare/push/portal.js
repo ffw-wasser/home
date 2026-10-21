@@ -249,6 +249,25 @@
   if(path==='/portal/browser/renew')return browserRenew(env,record,auth);
   if(path==='/portal/browser/start'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browser-Einrichtung nur in der persönlichen H2O-App möglich.',403);return browserStart(env,record);}
    if(path==='/portal/browser/revoke'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browserzugänge können nur in der H2O-App zurückgesetzt werden.',403);return browserRevoke(env,record);}
+
+   // Separate GF-only view; browser tokens are rejected by actor() for this path.
+   if(path==='/portal/gf-breathing'){
+    if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
+    const now=Date.now(),people=[],uncertain=[],limit=now-7*DAY;
+    for(const member of roster.members){
+     if(member.agt!==true){
+      if(member.agt!==false&&member.evidence?.breathing)uncertain.push({name:member.name,reason:'AGT-Zuordnung prüfen'});
+      continue;
+     }
+     const e=member.evidence?.breathing,details={version:1,medical:{g262:'',g263:e?.g263||''},breathing:{g263:e?.g263||'',instruction:e?.instruction||'',ffi:e?.ffi||''},driver:null};
+     const assessment=g.MemberEvidence.assess(details,now).find(group=>group.title==='Atemschutz');
+     const items=assessment.items.map(item=>({label:item.label,until:item.until,status:item.status}));
+     const status=items.some(item=>['expired','missing'].includes(item.status))?'check':items.some(item=>item.status==='soon')?'soon':'valid';
+     people.push({name:member.name,status,items});
+    }
+    const stale=!roster.updatedAt||roster.updatedAt<limit||roster.members.some(member=>member.agt===true&&(!member.evidenceUpdatedAt||member.evidenceUpdatedAt<limit));
+    return {people,uncertain,stale,syncedAt:roster.updatedAt||null,servedAt:now};
+   }
    if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
