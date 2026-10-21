@@ -104,6 +104,12 @@ window.closeDay=async function(topic=currentClosingTopic){
   const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
   const current=committeeExport?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   if(!current.length)return showToast("Es sind noch keine Anmeldungen vorhanden.","error");
+  // Unvollständige oder widersprüchliche Anwesenheiten nicht stillschweigend exportieren.
+  const invalid=current.filter(entry=>!["Anwesend","Entschuldigt","Fehlt","Betrifft nicht"].includes(entry.status));
+  if(invalid.length)return showToast("Bitte zuerst alle Anwesenheitsstatus prüfen. Termin wurde nicht abgeschlossen.","error");
+  const duplicateNames=new Set(),seenNames=new Set();
+  for(const entry of current){const name=String(entry.storedName||entry.displayName||"").trim();if(!name)return showToast("Ein Teilnehmer hat keinen Namen. Bitte die Auswahl korrigieren.","error");if(seenNames.has(name))duplicateNames.add(name);seenNames.add(name);}
+  if(duplicateNames.size)return showToast("Teilnehmer mehrfach erfasst: "+[...duplicateNames].join(", ")+". Bitte vor Abschluss korrigieren.","error");
   const organizers=current.filter(e=>e.status==="Anwesend"&&e.role==="Orga").length,present=current.filter(e=>e.status==="Anwesend"&&e.role!=="Orga").length,excused=current.filter(e=>e.status==="Entschuldigt").length;
   const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missingMembers=exportMembers.filter(m=>!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))),missing=missingMembers.length;
   if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Dokumentseiten",String(typeof pendingDocumentReport!=="undefined"?pendingDocumentReport?.pageCount||0:0)],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Als Fehlt exportiert",String(missing)]],[],{people:missingMembers.map(nameForTile),actions:[{label:"Datum bearbeiten",run:()=>{setHomeFlowStage(2);showView("attendanceView");byId("probeDateInput")?.focus();}},{label:"Thema bearbeiten",run:()=>openProbeTopicDialog()},{label:"Anwesenheit bearbeiten",run:()=>{setHomeFlowStage(2);showView("attendanceView");byId("members")?.focus();}}]});if(!approved){setHomeFlowStage(2);showView("attendanceView");return;}}
