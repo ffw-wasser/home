@@ -306,3 +306,29 @@
 #portal-browser-manual{font-size:.875rem;color:#355574}
 #portal-browser-link{box-sizing:border-box;width:100%;min-width:0;margin-top:8px;padding:10px;border:1px solid #9bb2ca;border-radius:8px;font-size:1rem}
 .portal-notification-settings [hidden]{display:none!important}
+
+/* GF-only Atemschutz, compact read-only mobile overview. */
+#portal-more-breathing-tile[hidden],#gf-breathing-data[hidden],#gf-breathing-uncertain[hidden]{display:none!important}
+#more-breathing{max-width:790px;margin:0 auto}
+#more-breathing .gf-breathing-intro{margin:8px 0 14px;color:#355574;font-size:.94rem;line-height:1.5}
+#gf-breathing-status{font-weight:700;line-height:1.4}
+#gf-breathing-status[data-stale=true]{background:#fff2d8;color:#79450c;border:1px solid #e9c07f;padding:12px;border-radius:12px}
+.gf-breathing-synced{font-size:.85rem;color:#455b73}
+.gf-breathing-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:15px 0}
+.gf-breathing-filters button{min-width:0;min-height:52px;padding:10px 5px;background:#f4f7fb;color:#1c3f5e;border:1px solid #b4c9dd;border-radius:12px;font-size:.87rem;font-weight:700;line-height:1.3}
+.gf-breathing-filters button[aria-pressed=true]{background:#daeefd;border-color:#276c9b;box-shadow:inset 0 0 0 1px #276c9b}
+.gf-breathing-filters strong{display:inline-block;font-size:1.15rem;margin-left:4px}
+.gf-breathing-search-label{font-weight:720;font-size:.91rem;display:block;margin:8px 0}
+#gf-breathing-search{width:100%;min-width:0;box-sizing:border-box;min-height:48px;border-radius:10px;padding:10px 12px;border:1px solid #a9bfd2}
+.gf-breathing-members{display:grid;gap:9px;margin:14px 0}
+.gf-breathing-person{border:1px solid #cddbe8;border-radius:13px;background:#fff;overflow:hidden}
+.gf-breathing-person summary{cursor:pointer;min-height:56px;padding:12px 13px;display:flex;flex-direction:column;gap:4px}
+.gf-breathing-person summary strong{color:#163f63;font-size:1.03rem;overflow-wrap:anywhere}
+.gf-breathing-person summary small{color:#41576f;font-weight:650;font-size:.875rem;overflow-wrap:anywhere}
+.gf-breathing-person[data-status=check]{border-left:5px solid #b34d36}
+.gf-breathing-person[data-status=soon]{border-left:5px solid #b78320}
+.gf-breathing-person[data-status=valid]{border-left:5px solid #2e8053}
+.gf-breathing-person ul{margin:0;padding:11px 16px 14px 30px;border-top:1px solid #e1e7ef;display:grid;gap:8px}
+.gf-breathing-person li{line-height:1.45;overflow-wrap:anywhere;color:#23445d}
+.gf-breathing-uncertain{margin-top:15px;padding:12px;background:#fff3db;border:1px solid #e1c18b;border-radius:12px;line-height:1.5}
+@media(min-width:650px){.gf-breathing-filters{grid-template-columns:repeat(4,minmax(0,1fr))}}
