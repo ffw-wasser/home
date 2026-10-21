@@ -3,7 +3,7 @@
  'use strict';
  const ORIGIN='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev',STORAGE='h2o-portal-identity-v1';
  let current=null,record=null,busy=false;
- const setupCode=(()=>{const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(!m)return '';history.replaceState(null,'',location.pathname+location.search);return m[1];})();
+ const setupCode=(()=>{const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(m||/(?:^#|&)[rak]=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);return m?.[1]||'';})();
  function read(){try{const s=JSON.parse(localStorage.getItem(STORAGE));return s?.scope==='portal'&&/^[\w-]{43}$/.test(s.token)&&/^[a-f0-9]{32}$/.test(s.alias)&&s.expiresAt>Date.now()?s:null;}catch{return null;}}
  function save(s){if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else localStorage.removeItem(STORAGE);current=s;record=null;}
  async function post(path,data={},token=current?.token||read()?.token){
@@ -41,7 +41,7 @@
   el('revoke-sessions').onclick=()=>run(async()=>{await login();await post('sessions/revoke');el('message').textContent='Alle anderen Portal- und Termin-Sitzungen wurden abgemeldet.';await g.DeckelReload?.();});
   el('logout').onclick=()=>run(async()=>{await post('logout');save(null);history.replaceState(null,'',location.pathname+location.search);await g.DeckelDevice?.clearLink?.();location.reload();});
  }
- g.H2OIdentity={onboarding:()=>!!setupCode&&!read(),usesPortal:()=>localStorage.getItem('h2o-portal-identity-mode')==='1',forget:()=>save(null),prepare,login,session:()=>current||read(),credentials:()=>record,post};
+ g.H2OIdentity={onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,session:()=>current||read(),credentials:()=>record,post};
  g.addEventListener('storage',event=>{if(event.key===STORAGE)location.reload();});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

@@ -17,14 +17,8 @@
  let session=null,items=[],stale=false,working=false,pending=null,memberName='';
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
- function restore(){const portal=globalThis.H2OIdentity?.session();if(portal)return portal;
-  try{
-   const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');
-   if(saved&&/^[a-f0-9]{64}$/.test(saved.token)&&/^[a-f0-9]{32}$/.test(saved.alias)&&typeof saved.revision==='string'&&Number.isSafeInteger(saved.expiresAt)&&saved.expiresAt>Date.now())return saved;
-  }catch{}
-  return null;
- }
- function persist(next){if(next?.scope==='portal')return;try{if(next)localStorage.setItem(STORAGE,JSON.stringify(next));else localStorage.removeItem(STORAGE);}catch{throw Error('Der Browser darf den Zugang nicht speichern. Bitte den privaten Modus ausschalten und erneut versuchen.');}}
+ function restore(){return globalThis.H2OIdentity?.session()||null;}
+ function persist(){localStorage.removeItem(STORAGE);}
  async function post(path,body,token){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   try{
@@ -97,21 +91,6 @@
   }catch(error){showPair(error.name==='NotAllowedError'?'Anmeldung abgebrochen oder kein Passkey verfügbar. Richte ihn zuerst in H₂O ein; öffne diesen Link bei Bedarf in Safari/Chrome.':error.message||'Anmeldung fehlgeschlagen.');}
   finally{working=false;el('passkey-login').disabled=false;}
  }
- async function connectWithH2O(code){
-  if(working)return;
-  if(!/^[a-f0-9]{24}$/.test(code||'')){showPair('Ungültiger Verbindungslink. Bitte in H₂O einen neuen Zugang vorbereiten.');return;}
-  working=true;status('Dein persönlicher H₂O-Zugang wird sicher verbunden …');
-  try{
-   const result=await post('browser/redeem',{code});
-   if(!/^[a-f0-9]{64}$/.test(result.token||'')||!/^[a-f0-9]{32}$/.test(result.alias||'')||!result.revision||!Number.isSafeInteger(result.expiresAt))throw Error('Der Browserzugang wurde nicht bestätigt.');
-   const next={token:result.token,alias:result.alias,revision:result.revision,expiresAt:result.expiresAt};
-   persist(next);session=next;
-   working=false;await refresh();
-  }catch(error){
-   working=false;
-   showPair((error.message||'Verbindung fehlgeschlagen.')+' Bitte in H₂O erneut auf „Browser verbinden“ tippen.');
-  }
- }
  async function reply(event,choice){
   if(working||stale||event.start<=Date.now()||!session)return;
   if(pending&&pending.eventId!==event.id)return;
@@ -172,5 +151,5 @@
   if(item)void reply(item,button.dataset.reply);
  });
  el('passkey-login').addEventListener('click',loginPasskey);
- session=restore();if(initialPair)void connectWithH2O(initialPair);else if(session)void refresh();else showPair();
+ session=restore();persist();if(initialPair)showPair('Die bisherige Browser-Verbindung wurde ersetzt. Bitte mit deinem zentralen H₂O-Passkey anmelden.');else if(session)void refresh();else showPair();
 })();

@@ -29,15 +29,16 @@ function page({badgeFails=false,failedLoad=false,hidden=false}={}){
  const document={hidden,getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);},createElement:node,addEventListener(){}};
  const ctx=vm.createContext({console,URL,URLSearchParams,AbortController,setTimeout,clearTimeout,Date,Promise,location:{href:url.href,hash:url.hash},document,
   navigator:{clearAppBadge:async()=>{clears++;if(badgeFails)throw Error('blocked');},serviceWorker:{getRegistration:async()=>({getNotifications:async options=>{calls.push(options.tag);return [{close:()=>closed.push('deckel-reminder')}];}})}},
+  H2OIdentity:{onboarding:()=>false,prepare:async()=>{},credentials:()=>({alias:'a'.repeat(32),key:'b'.repeat(64)})},DeckelLive:{load:async()=>{if(failedLoad)throw Error('offline');return {};}},
   DeckelDevice:{read:async()=>null},DeckelCrypto:{access(){},open:async()=>({balance:150,credit:0,needed:300,bonusCents:300,bookings:[],updatedAt:'2026-10-09T12:00:00Z'})},
   fetch:async()=>({ok:!failedLoad,text:async()=> '{}'}),addEventListener(){}});
  ctx.window=ctx;vm.runInContext(read('js/features/drinks/deckel-push.js'),ctx);
  return {ctx,nodes,closed,calls,get clears(){return clears;}};
 }
 test('Öffnen über das App-Symbol quittiert nur die Deckel-Erinnerung; verborgenes Fenster quittiert nichts',async()=>{
- const f=page();await f.ctx.DeckelPush.restore();const before=f.clears;await f.ctx.DeckelPush.markRead();assert.equal(f.clears,before+1);assert.ok(f.calls.every(tag=>['deckel-reminder','h2o-portal-reminder'].includes(tag)));assert.equal(f.closed.length,2*(before+1));
+ const f=page();const before=f.clears;await f.ctx.DeckelPush.markRead();assert.equal(f.clears,before+1);assert.ok(f.calls.every(tag=>['deckel-reminder','h2o-portal-reminder'].includes(tag)));assert.equal(f.closed.length,2*(before+1));
  f.ctx.document.hidden=true;await f.ctx.DeckelPush.markRead();assert.equal(f.clears,before+1);assert.equal(f.closed.length,2*(before+1));
- const blocked=page({badgeFails:true});await blocked.ctx.DeckelPush.restore();const old=blocked.closed.length;await blocked.ctx.DeckelPush.markRead();assert.equal(blocked.closed.length,old+2);
+ const blocked=page({badgeFails:true});const old=blocked.closed.length;await blocked.ctx.DeckelPush.markRead();assert.equal(blocked.closed.length,old+2);
 });
 test('Portal quittiert Hinweise erst nach erfolgreichem Kontoladen, nicht bei Fehlern oder verborgenem Fenster',async()=>{
  for(const options of [{},{failedLoad:true},{hidden:true}]){

@@ -10,29 +10,10 @@ class Node {
  setAttribute(name,value){this[name]=value;}
 }
 const elements=html=>Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(x=>[x[1],new Node()]));
-test('WhatsApp-Verbindung: die H2O-App bleibt offen und kann privaten Link nur kopieren',async()=>{
- const html=read('deckel.html'),dom=elements(html),copied=[];
- assert.match(html,/Push & WhatsApp/);
- assert.doesNotMatch(html,/id="portal-browser-open"/,'kein Link, der die installierte App verlässt');
- const link='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/test&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
- const apiCalls=[];
- const c=vm.createContext({
-   console,URL,AbortSignal,location:{href:link,hash:link.split('#')[1],search:''},
-   document:{hidden:false,readyState:'complete',getElementById:id=>dom[id],addEventListener(){}},
-   navigator:{clipboard:{writeText:async value=>copied.push(value)}},
-   DeckelDevice:{read:async()=>null,readLink:async()=>null},
-   H2OPortal:{api:async path=>{apiCalls.push(path);return {code:'B'.repeat(24),expiresAt:Date.now()+300000};}},
-   fetch:async()=>({ok:true,json:async()=>({browserPairVersion:1})})
- });
- vm.runInContext(read('js/features/drinks/deckel-push.js'),c);
- await c.DeckelPush.render({alias:'a'.repeat(32),revision:'revision-test',origin:'https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev'});
- await dom['portal-browser-start'].onclick();
- assert.deepEqual(apiCalls,['browser/status','browser/start']);
- assert.equal(dom['portal-browser-link-box'].hidden,false);
- await dom['portal-browser-copy'].onclick();
- assert.equal(copied.length,1);
- assert.equal(copied[0],'https://ffw-wasser.github.io/home/termin.html#pair='+'b'.repeat(24));
- assert.ok(!copied[0].includes('ffw-wasser/test')&&!copied[0].includes('&k='));
+test('WhatsApp-Einstellungen haben keine separate Verbindung oder Registrierung mehr',()=>{
+ const html=read('deckel.html');
+ for(const id of ['portal-browser-start','portal-browser-copy','portal-browser-revoke','portal-browser-legacy'])assert.ok(!html.includes('id="'+id+'"'));
+ assert.ok(html.includes('id="identity-login"'));
 });
 function responseContext({standalone=false,from='',historyLength=1,savedURL=null}={}){
  const dom=elements(read('termin.html')),assigned=[],back=[];
@@ -82,32 +63,14 @@ function settingsFixture({clipboardFails=false,saved=null,permission='granted',s
  const access={alias:'a'.repeat(32),revision:'revision-test',origin:'https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev'};
  return {dom,c,calls,copied,clock,access};
 }
-test('Einstellungen: aktives Push zeigt nur Deaktivieren, Browserstatus kommt vom Dienst',async()=>{
+test('Einstellungen: aktives Push bleibt unabhängig, WhatsApp verwendet die gemeinsame Anmeldung',async()=>{
  const f=settingsFixture({sessions:2,saved:{portal:true,alias:'a'.repeat(32),revision:'revision-test',endpoint:'https://test.invalid/push'}});
  await f.c.DeckelPush.render(f.access);
  assert.equal(f.dom['portal-push-state'].textContent,'Aktiv');
  assert.equal(f.dom['portal-push-enable'].hidden,true);assert.equal(f.dom['portal-push-disable'].hidden,false);
- assert.equal(f.dom['portal-browser-state'].textContent,'2 Browser verbunden');
- assert.deepEqual(f.calls,['browser/status']);
+ assert.equal(f.dom['portal-browser-state'].textContent,'Mit H₂O verbunden');
+ assert.deepEqual(f.calls,[]);
 });
-test('Einstellungen: Clipboard-Fehler bietet echten Kopiertext; abgelaufener Link wird gelöscht',async()=>{
- const f=settingsFixture({clipboardFails:true});await f.c.DeckelPush.render(f.access);
- await f.dom['portal-browser-start'].onclick();assert.equal(f.dom['portal-browser-start'].hidden,true);
- await f.dom['portal-browser-copy'].onclick();
- assert.equal(f.dom['portal-browser-manual'].hidden,false);assert.match(f.dom['portal-browser-link'].value,/#pair=b{24}$/);
- assert.equal(f.dom['portal-browser-link'].selected,true);
- f.clock.now+=300001;await f.dom['portal-browser-copy'].onclick();
- assert.equal(f.dom['portal-browser-link-box'].hidden,true);assert.equal(f.dom['portal-browser-link'].value,'');
- assert.equal(f.dom['portal-browser-start'].hidden,false);assert.match(f.dom['portal-browser-status'].textContent,/abgelaufen/);
-});
-test('Einstellungen: Kontowechsel entfernt privaten Link; Sperrbestätigung setzt Status zurück',async()=>{
- const f=settingsFixture({sessions:1});await f.c.DeckelPush.render(f.access);await f.dom['portal-browser-start'].onclick();
- await f.c.DeckelPush.render({...f.access,alias:'c'.repeat(32)});
- assert.equal(f.dom['portal-browser-link-box'].hidden,true);assert.equal(f.dom['portal-browser-copy'].disabled,true);
- await f.dom['portal-browser-revoke'].onclick();assert.equal(f.dom['portal-browser-state'].textContent,'Nicht verbunden');
- assert.equal(f.calls.at(-1),'browser/revoke');
-});
-
 test('Einstellungen: veraltete Push-Revision lässt sich erneut aktivieren',async()=>{
  const f=settingsFixture({saved:{portal:true,alias:'a'.repeat(32),revision:'old-revision',endpoint:'https://test.invalid/push'}});
  await f.c.DeckelPush.render(f.access);

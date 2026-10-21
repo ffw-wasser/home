@@ -21219,9 +21219,7 @@ ${strMDSAlgs}`);
  async function authorize(env,data,auth,legacy){
   const active=await session(env,auth);
   if(active){if(active.record.alias!==data.alias||data.revision&&active.record.revision!==data.revision)fail();return active;}
-  const record=await owner(env,data.alias,data.revision);
-  if(await migrated(env,record)||!equal(auth,legacy))fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
-  return {record};
+  fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
  }
  async function migrated(env,record){return !!await env.DB.prepare('SELECT member FROM portal_identity_members WHERE member=?').bind(record.memberId).first();}
  async function ticket(env,code){
@@ -21429,49 +21427,6 @@ ${strMDSAlgs}`);
   }return processed;
  }
  
-  /* A Safari session is intentionally limited to calendar list/reply. It is NEVER a ledger command capability. */
-  const browserPaths=new Set(['/portal/list','/portal/reply','/portal/browser/renew']);
-  const browserIdle=90*DAY; // Sliding login. Browser can stay linked while regularly used.
-  const hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
-  async function browserStart(env,record){
-   const now=Date.now(),code=hex(12);
-   await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE expires_at<? OR consumed=1').bind(now).run();
-   await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(record.alias).run();
-   await env.DB.prepare('INSERT INTO portal_browser_pairs(code_hash,alias,revision,expires_at) VALUES(?,?,?,?)').bind(await hash('h2o-browser-pair:'+code),record.alias,record.revision,now+5*60000).run();
-   return {code:code.toUpperCase(),expiresAt:now+5*60000};
-  }
-  async function browserRedeem(env,data){
-   const code=String(data.code||'').replace(/[\s-]/g,'').toLowerCase(),now=Date.now();
-   if(!/^[a-f0-9]{24}$/.test(code))fail('Ungültiger Verbindungscode.',400);
-   const row=await env.DB.prepare('UPDATE portal_browser_pairs SET consumed=1 WHERE code_hash=? AND consumed=0 AND expires_at>? RETURNING alias,revision').bind(await hash('h2o-browser-pair:'+code),now).first();
-   if(!row)fail('Der Code ist ungültig, abgelaufen oder wurde bereits verwendet.',401);
-   const active=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(row.alias,row.revision).first();
-   if(!active)fail('Der persönliche Zugang wurde inzwischen erneuert.',401);
-   const owner=await L.open(env,active.payload,'access:'+row.alias),members=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
-   if(!members?.members?.some(m=>m.id===owner.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
-   await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE expires_at<?').bind(now).run();
-   const amount=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=?').bind(row.alias,row.revision).first();
-   if(amount.n>=5)fail('Maximal fünf Browserzugänge. Bitte im H2O-Portal die Browserzugänge zurücksetzen.',429);
-   const token=hex(32),expiresAt=now+browserIdle;
-   await env.DB.prepare('INSERT INTO portal_browser_sessions(token_hash,alias,revision,expires_at) VALUES(?,?,?,?)').bind(await hash('h2o-browser-session:'+token),row.alias,row.revision,expiresAt).run();
-   return {token,alias:row.alias,revision:row.revision,expiresAt};
-  }
-  async function browserRenew(env,record,auth){
-   // Called only after actor() has verified the same browser-only bearer,
-   // alias/revision, active account and roster membership.
-   if(!/^[a-f0-9]{64}$/.test(auth||''))fail('Browserzugang nicht freigegeben.',401);
-   const now=Date.now(),expiresAt=now+browserIdle;
-   const row=await env.DB.prepare('UPDATE portal_browser_sessions SET expires_at=? WHERE token_hash=? AND alias=? AND revision=? AND expires_at>? RETURNING expires_at')
-    .bind(expiresAt,await hash('h2o-browser-session:'+auth),record.alias,record.revision,now).first();
-   if(!row)fail('Browserzugang abgelaufen oder gesperrt.',401);
-   return {ok:true,expiresAt:row.expires_at};
-  }
-  async function browserRevoke(env,record){
-   if(g.WhatsAppPasskeys)return g.WhatsAppPasskeys.revoke(env,record);
-   await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(record.alias).run();
-   await env.DB.prepare('DELETE FROM portal_browser_pairs WHERE alias=?').bind(record.alias).run();
-   return {ok:true};
-  }
   async function assertMember(env,record){
    await ready(env);
    const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
@@ -21490,14 +21445,7 @@ ${strMDSAlgs}`);
   if(!row)fail('Portalzugang wurde geändert. Bitte den persönlichen QR-Code erneut öffnen.',401);
    const identity=await g.WhatsAppPasskeys?.session(env,auth);
    if(identity){if(identity.record.alias!==data.alias||identity.record.revision!==data.revision)fail('Falsches Mitglied.',401);return identity.record;}
-   const legacy=equal(auth,await capability(env,data.alias,data.revision,'commands'));
-   if(legacy&&await g.WhatsAppPasskeys?.migrated(env,await L.open(env,row.payload,'access:'+data.alias)))fail('Bitte mit H₂O-Passkey anmelden.',401);
-   if(!legacy){
-    if(!browserPaths.has(path)||!/^[a-f0-9]{64}$/.test(auth||''))fail('Browserzugang für diese Funktion nicht freigegeben.',401);
-    const session=await env.DB.prepare('SELECT alias,revision,expires_at FROM portal_browser_sessions WHERE token_hash=?').bind(await hash('h2o-browser-session:'+auth)).first();
-    if(!session||session.alias!==data.alias||session.revision!==data.revision||session.expires_at<=Date.now())fail('Browserzugang abgelaufen. Bitte erneut mit H2O verbinden.',401);
-   }
-  return assertMember(env,await L.open(env,row.payload,'access:'+data.alias));
+   fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
  }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
  async function recipients(env){const rows=(await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE EXISTS(SELECT 1 FROM devices d JOIN portal_devices p ON p.id=d.id WHERE d.alias=a.alias AND d.revision=a.revision)').all()).results,result=new Map();for(const row of rows){const record=await L.open(env,row.payload,'access:'+row.alias);if(!result.has(record.memberId))result.set(record.memberId,[]);result.get(record.memberId).push(record);}return result;}
@@ -21560,8 +21508,8 @@ ${strMDSAlgs}`);
  async function route(path,data,env,auth,clientIP='unknown'){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
    if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
-   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);if(['/portal/passkey/login/options','/portal/passkey/login/verify'].includes(path))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env);}
-   if(path==='/portal/browser/redeem')return browserRedeem(env,data);
+   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
+   if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
@@ -21609,14 +21557,6 @@ ${strMDSAlgs}`);
    if(!result[0].meta.changes)fail('Mitglieder oder Konten wurden gleichzeitig geändert. Bitte erneut synchronisieren.',409);
    return {ok:true,evidenceVersion:1,removedBrowserMembers:removed.size};
   }
-  if(path==='/portal/browser/status'){
-   const row=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_browser_sessions WHERE alias=? AND revision=? AND expires_at>?').bind(record.alias,record.revision,Date.now()).first();
-   const passkeys=g.WhatsAppPasskeys?await g.WhatsAppPasskeys.route('status',data,env,record):{passkeys:0};return {sessions:row.n,...passkeys};
-  }
-  if(path==='/portal/browser/renew')return browserRenew(env,record,auth);
-  if(path==='/portal/browser/start'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browser-Einrichtung nur in der persönlichen H2O-App möglich.',403);return browserStart(env,record);}
-   if(path==='/portal/browser/revoke'){if(!equal(auth,await capability(env,record.alias,record.revision,'commands')))fail('Browserzugänge können nur in der H2O-App zurückgesetzt werden.',403);return browserRevoke(env,record);}
-
    // Separate GF-only view; browser tokens are rejected by actor() for this path.
    if(path==='/portal/gf-breathing'){
     if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
@@ -21730,7 +21670,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"94c7be80fc957af1aeb434e2bb2fbdcd9e99c98b761a3df6d8a3859127b89a49",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"c624900fe00b6cd58db7cb3d4718db01e73a6018c2d4e2be3dc8a88fbf1032cf",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}

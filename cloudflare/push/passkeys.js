@@ -59,9 +59,7 @@
  async function authorize(env,data,auth,legacy){
   const active=await session(env,auth);
   if(active){if(active.record.alias!==data.alias||data.revision&&active.record.revision!==data.revision)fail();return active;}
-  const record=await owner(env,data.alias,data.revision);
-  if(await migrated(env,record)||!equal(auth,legacy))fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
-  return {record};
+  fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
  }
  async function migrated(env,record){return !!await env.DB.prepare('SELECT member FROM portal_identity_members WHERE member=?').bind(record.memberId).first();}
  async function ticket(env,code){

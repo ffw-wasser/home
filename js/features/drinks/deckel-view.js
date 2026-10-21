@@ -43,7 +43,7 @@ function nudgeDeckel(){
  ];
  resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('deckel-quote').hidden=false;$('deckel-quote').textContent=sayings[quoteIndex++%sayings.length];$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint deckel-quote');funTimer=setTimeout(resetNudge,4000);
 }
-function credentials(){const identity=globalThis.H2OIdentity?.credentials();if(identity)return {repo:"portal",record:identity};const params=new URLSearchParams(location.hash.slice(1)),repo=params.get('r'),record={version:1,alias:params.get('a'),key:params.get('k')};if(!/^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo)||repo==='ffw-wasser/home')throw new Error('Bitte deinen persönlichen QR-Code am Gerätehaus-iPad scannen.');DeckelCrypto.access(record);return {repo,record};}
+function credentials(){const identity=globalThis.H2OIdentity?.credentials();if(!identity)throw Object.assign(Error('Bitte mit deinem H₂O-Passkey anmelden.'),{status:401});return {repo:'portal',record:identity};}
 function clear(){globalThis.H2OPortal?.clear();globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
 async function load(){
@@ -51,12 +51,12 @@ async function load(){
  const number=++generation;currentRequest?.abort();resetNudge();$('refresh').disabled=true;$('refresh').setAttribute?.('aria-busy','true');$('status').setAttribute?.('data-state','loading');enableNudge(false);hideThanks();$('status').textContent=hasData?'Kontostand wird geprüft …':'Kontostand wird geladen …';
  try{
   if(globalThis.H2OIdentity?.onboarding())throw Error('Bitte den freigegebenen Passkey unter Konto → Sicherheit einrichten oder anmelden.');
-  await globalThis.H2OIdentity?.prepare();
-  if(globalThis.H2OIdentity?.usesPortal()&&!globalThis.H2OIdentity?.credentials())throw Object.assign(Error('Bitte mit deinem H₂O-Passkey anmelden.'),{status:401});
-  if(!globalThis.H2OIdentity?.credentials())await globalThis.DeckelPush?.restore();globalThis.DeckelInstall?.refresh();const {repo,record}=credentials(),access=repo+':'+record.alias+':'+record.key;
+  await globalThis.H2OIdentity?.prepare();globalThis.DeckelInstall?.refresh();
+  if(!globalThis.H2OIdentity?.credentials())throw Object.assign(Error('Bitte mit deinem H₂O-Passkey anmelden.'),{status:401});
+  const {repo,record}=credentials(),access=repo+':'+record.alias+':'+record.key;
   if(access!==currentAccess){clear();lastUpdated='';currentAccess=access;}
   const controller=new AbortController();currentRequest=controller;const timer=setTimeout(()=>controller.abort(),20000);let response,text;
-  try{const live=await globalThis.DeckelLive?.load(record,controller.signal);if(live){response={ok:true};text=JSON.stringify(live);}else{response=await fetch('https://raw.githubusercontent.com/'+repo+'/main/deckel/'+record.alias+'.json?t='+Date.now(),{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:controller.signal});if(response.ok)text=await response.text();}}finally{clearTimeout(timer);if(currentRequest===controller)currentRequest=null;}
+  try{const live=await globalThis.DeckelLive.load(record,controller.signal);response={ok:true};text=JSON.stringify(live);}finally{clearTimeout(timer);if(currentRequest===controller)currentRequest=null;}
   if(!response.ok)throw new Error('Dein Deckel ist noch nicht verfügbar. Bitte am Gerätehaus-iPad aktualisieren.');
   if(text.length>8000)throw new Error('Die Deckel-Datei konnte nicht geprüft werden. Bitte erneut aktualisieren.');const data=await DeckelCrypto.open(JSON.parse(text),record);if(number!==generation||document.hidden)return;
   const layers=data.balance?Math.min(5,Math.ceil(data.balance/1000)):0;$('deckel-stack').parentElement.style.setProperty('--stack-count',layers);$('deckel-stack').replaceChildren();for(let i=layers-1;i>=0;i--){const layer=document.createElement('span');layer.className='deckel-layer';layer.style.setProperty('--layer',i);$('deckel-stack').append(layer);}$('stack-note').textContent=layers?'Je höher der offene Betrag, desto höher der Stapel. Die Schichten sind symbolisch.':'';
