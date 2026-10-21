@@ -219,8 +219,9 @@
   window.saveOneDriveHistoryCorrection = async (item, pdf, {preserveAttachments=true}={}) => {
     // Vorhandene Datei anhand ihrer ID ersetzen, auch bei geändertem Termindatum.
     if(pendingLoad)await pendingLoad;
-    const fileId=String(item.id||"").replace(/^onedrive-zip:/,"");
-    if(!item.oneDriveLive||!fileId)throw new Error("Das OneDrive-Terminpaket fehlt.");
+    if(!item?.oneDriveLive||!String(item.id||"").startsWith("onedrive-zip:"))throw new Error("Das Original-Terminpaket fehlt.");
+    const fileId=item.id.slice("onedrive-zip:".length);
+    if(!fileId)throw new Error("Die OneDrive-Dateikennung fehlt.");
     const root=await oneDriveResolveSharedRoot();
     const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
     const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
