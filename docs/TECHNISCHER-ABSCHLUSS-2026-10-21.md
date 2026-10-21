@@ -43,11 +43,11 @@ Neue Terminpakete werden weiterhin über den vorhandenen iOS-Teilen-/Desktop-Dow
 - `node scripts/prepare-worker.cjs`: Bundle-Erstellung, Worker-Syntax und gesamte Suite erfolgreich.
 - Release-/PWA-Konsistenz, Dateiverweise, private Cache-Ausschlüsse, Berechtigungen, WhatsApp-Navigation, Kalender-Rückmeldungen, Probe-/Einsatzkorrekturen, Statistik, PDF-Ausgabe, Deckel und Theater sind Gegenstand der vorhandenen Suite.
 - Zusätzliche Regressionen: mehrere Aliase je ausgeschiedenem Mitglied, fehlende Freigabe, atomarer Rollback, konkurrierender Abgleich, 125 gesperrte Aliase unter dem D1-Free-Abfragelimit, veraltete ZIP-Version, OneDrive-Konflikt, verlorene PUT-Antwort, erneuter Abschluss.
-- Quell-/Bundle-Abgleich und Releasegenerator erzeugen nach dem Build keine weiteren Änderungen. GitHub-PR- und main-Prüfstatus werden im privaten Endbericht konkret ergänzt.
+- Quell-/Bundle-Abgleich und Releasegenerator erzeugen nach dem Build keine weiteren Änderungen. PR #31 wurde nach erfolgreichem PR-Testlauf integriert (main `e7e1d96c2be9b480c6fc2d23ceb3aa17b530ab37`). Auch der main-Testlauf und GitHub Pages waren erfolgreich; die öffentliche `app-release.json` bestätigt 2026.10.21.7.
 
 ## Nicht praktisch verifiziert / weiter offen
 
-1. Tatsächliche Cloudflare-Version, Secrets, Kontorechte, DB-Bindung und Cron-Ausführung. Ein Repository-Merge ist kein Deploymentnachweis. Der direkte Health-Abruf war aus der Prüfumgebung nicht zugänglich.
+1. Tatsächliche Cloudflare-Version, Secrets, Kontorechte, DB-Bindung und Cron-Ausführung. Ein Repository-Merge ist kein Deploymentnachweis. Der Health-Abruf war mit Browser-User-Agent erfolgreich (HTTP 200); die bestehende Antwort bestätigt die Dienstmodule, enthält aber noch keinen neuen Quellfingerabdruck. Die Bereitstellung des geprüften Workerstands ist deshalb nicht belegt.
 2. Realer Microsoft-PUT/DELETE, Freigabewechsel, abgelaufene Anmeldung, iPad-Teilen-Dialog und vollständige Testkette Handy → iPad → ZIP → Korrektur → Löschen. Produktive Datensätze wurden nicht als Testmaterial verändert.
 3. Installierte iOS-/Android-PWA, WhatsApp-In-App-Browser, Tastatur, Safari-Dateiablage, Push-Empfang auf gesperrten Geräten und Betriebssystem-Installationswarnungen. Automatisierte Modell-/DOM-Tests sind keine Geräteabnahme.
 4. Vollständige fachliche Deduplizierung bestehender ZIPs und automatische Konfliktzusammenführung. Konflikte werden bewahrt und gemeldet; nicht automatisch durch Überschreiben aufgelöst.
