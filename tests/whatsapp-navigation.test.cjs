@@ -68,7 +68,7 @@ test('Einstellungen: aktives Push bleibt unabhängig, WhatsApp verwendet die gem
  await f.c.DeckelPush.render(f.access);
  assert.equal(f.dom['portal-push-state'].textContent,'Aktiv');
  assert.equal(f.dom['portal-push-enable'].hidden,true);assert.equal(f.dom['portal-push-disable'].hidden,false);
- assert.equal(f.dom['portal-browser-state'].textContent,'Mit H₂O verbunden');
+ assert.equal(f.dom['portal-browser-state'],undefined);
  assert.deepEqual(f.calls,[]);
 });
 test('Einstellungen: veraltete Push-Revision lässt sich erneut aktivieren',async()=>{

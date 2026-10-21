@@ -70,6 +70,8 @@ const {chromium}=require('playwright');
  await page.evaluate(()=>DeckelMobile.jump('deckel-more'));
  await page.locator('[data-more-target="more-security"]').click();
  await page.locator('#identity-account').waitFor({state:'visible'});
+ await page.locator('#portal-push-heading').waitFor({state:'visible'});
+ assert.equal(await page.locator('[data-portal-tile="more-reminders"]').count(),0);
  assert.equal(await page.locator('#identity-entry').textContent(),'');
  assert.equal(await page.locator('#identity-panel').evaluate(e=>e.parentElement.id),'identity-security-slot');
  await page.locator('#identity-logout').click();
