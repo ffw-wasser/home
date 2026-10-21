@@ -17,8 +17,8 @@ const groups = {
   deckel: [/^(deckel|drinks)(-|\.test)/],
   theater: [/^theater(-|\.test)/],
   portal: [/^portal\.test/, /^(portal|calendar|whatsapp)-/, /^member-evidence/],
-  sicherheit: [/^portal\.test/, /^(private-|admin-|setup-|onedrive-|member-|deckel-encrypted|portal-sync|whatsapp-navigation)/],
-  cloudflare: [/^portal\.test/, /^deckel-challenge\.test/, /^(deckel-push|drinks-central|drinks-phone-sync|portal-sync|portal-reply|portal-calendar|whatsapp|member-evidence|theater-phone-flow|drinks-challenge)/],
+  sicherheit: [/^portal-identity\.test/,/^portal\.test/, /^(private-|admin-|setup-|onedrive-|member-|deckel-encrypted|portal-sync|whatsapp-navigation)/],
+  cloudflare: [/^portal-identity\.test/,/^portal\.test/, /^deckel-challenge\.test/, /^(deckel-push|drinks-central|drinks-phone-sync|portal-sync|portal-reply|portal-calendar|whatsapp|member-evidence|theater-phone-flow|drinks-challenge)/],
   basis: [/^(build-assets|release-consistency|plausibility|consolidation|startup|usability|home-icons|backup-integrity)/]
 };
 const names = Object.keys(groups);

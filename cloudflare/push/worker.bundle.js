@@ -20819,16 +20819,19 @@ ${strMDSAlgs}`);
    if(m?.state!=='active')return {mode:'legacy'};
    const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=?').bind(data.alias||'').first();if(!row)fail('Handyzugang noch nicht übernommen. Bitte die Verwaltung informieren.',404);
    const record=await open(env,row.payload,'access:'+data.alias);
-   if(!equal(auth,await hash('deckel-read/v1:'+record.alias+':'+record.key)))fail('Handyzugang ungültig.',401);
+   const proof=await hash('deckel-read/v1:'+record.alias+':'+record.key);
+   const identity=g.WhatsAppPasskeys?await g.WhatsAppPasskeys.authorize(env,{alias:record.alias,revision:record.revision},auth,proof):null;
+   if(!identity&&!equal(auth,proof))fail('Handyzugang ungültig.',401);
    await g.PortalService?.assertMember(env,record);
    const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:identity?.row?auth:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
    if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||'')||!/^[a-f0-9-]{36}$/.test(data.id||''))fail('Ungültiger Auftrag.',400);
    const row=await env.DB.prepare('SELECT revision FROM ledger_access WHERE alias=?').bind(data.alias).first();
-   if(!row||row.revision!==data.revision||!equal(auth,await capability(env,data.alias,row.revision,'commands')))fail('Buchungszugang ersetzt. Bitte neu laden.',401);
+   if(!row||row.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,row.revision,'commands')))fail('Buchungszugang ersetzt. Bitte neu laden.',401);
+   if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,row.revision,'commands'));
    await g.PortalService?.assertAlias(env,data.alias);
    if(path==='/commands/status')return process(env,data);
    if(path!=='/commands/submit')fail('Nicht gefunden.',404);
@@ -20913,7 +20916,8 @@ ${strMDSAlgs}`);
  async function actor(env,data,auth){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Handyzugang.',400);
   const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(data.alias,data.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(data.alias).first();
-  if(!row||current?.revision!==data.revision||!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
+  if(!row||current?.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
+  if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,data.revision,'commands'));
   const record=await L.open(env,row.payload,'access:'+data.alias);
   await g.PortalService?.assertMember(env,record);return record;
  }
@@ -21154,7 +21158,7 @@ ${strMDSAlgs}`);
  g.TheaterService={route};
 })(globalThis);
 
-/* WhatsApp-only WebAuthn. Private keys and biometric data never leave the authenticator. */
+/* Shared WebAuthn identity; calendar sessions never confer portal authority. Private keys and biometric data never leave the authenticator. */
 (function(g){
  'use strict';
  const RP='ffw-wasser.github.io',ORIGIN='https://ffw-wasser.github.io',TTL=300000;
@@ -21162,6 +21166,10 @@ ${strMDSAlgs}`);
  const random=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
  const bytes=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  const schema=[
+ 'CREATE TABLE IF NOT EXISTS portal_identity_members (member TEXT PRIMARY KEY)',
+ 'CREATE TABLE IF NOT EXISTS portal_identity_grants (id TEXT PRIMARY KEY,alias TEXT NOT NULL)',
+ 'CREATE TABLE IF NOT EXISTS portal_identity_tickets (id TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,generation INTEGER NOT NULL,expires_at INTEGER NOT NULL)',
+ 'CREATE TABLE IF NOT EXISTS portal_identity_sessions (token_hash TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,credential TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL)',
  'CREATE TABLE IF NOT EXISTS portal_passkey_state (alias TEXT PRIMARY KEY,generation INTEGER NOT NULL DEFAULT 0)',
  'CREATE TABLE IF NOT EXISTS portal_passkeys (id TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,public_key TEXT NOT NULL,counter INTEGER NOT NULL,user_id TEXT NOT NULL)',
  'CREATE INDEX IF NOT EXISTS portal_passkeys_alias ON portal_passkeys(alias,revision)',
@@ -21197,37 +21205,105 @@ ${strMDSAlgs}`);
  async function revoke(env,record){
   await env.DB.batch([
    env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) VALUES(?,1) ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(record.alias),
-   ...['portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
+   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
   ]);return {ok:true};
  }
- async function route(path,data,env,record){
+ // Only a fresh, independently approved WebAuthn assertion can issue a portal session.
+ async function session(env,token){
+  await g.PortalService.ready(env);
+  if(!/^[\w-]{43}$/.test(token||''))return null;
+  const row=await env.DB.prepare('SELECT s.* FROM portal_identity_sessions s JOIN portal_passkeys p ON p.id=s.credential AND p.alias=s.alias AND p.revision=s.revision JOIN portal_identity_grants g ON g.id=p.id WHERE s.token_hash=? AND s.expires_at>?').bind(await hash('portal-session:'+token),Date.now()).first();
+  if(!row)return null;
+  return {row,record:await owner(env,row.alias,row.revision)};
+ }
+ async function authorize(env,data,auth,legacy){
+  const active=await session(env,auth);
+  if(active){if(active.record.alias!==data.alias||data.revision&&active.record.revision!==data.revision)fail();return active;}
+  const record=await owner(env,data.alias,data.revision);
+  if(await migrated(env,record)||!equal(auth,legacy))fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
+  return {record};
+ }
+ async function migrated(env,record){return !!await env.DB.prepare('SELECT member FROM portal_identity_members WHERE member=?').bind(record.memberId).first();}
+ async function ticket(env,code){
+  if(typeof code!=='string'||!/^[\w-]{43}$/.test(code))fail('Einmalige Freigabe der Verwaltung erforderlich.',403);
+  const row=await env.DB.prepare('SELECT * FROM portal_identity_tickets WHERE id=? AND expires_at>?').bind(await hash('portal-ticket:'+code),Date.now()).first();
+  if(!row||row.generation!==await generation(env,row.alias))fail('Freigabe abgelaufen oder bereits verwendet.',403);
+  return {...row,record:await owner(env,row.alias,row.revision)};
+ }
+ function recent(active){if(!active||active.row.created_at<Date.now()-TTL)fail('Bitte für diese Sicherheitsänderung erneut mit Passkey anmelden.',401);}
+ async function admin(env,data){
+  const record=await owner(env,data.alias,data.revision);
+  if(data.reset===true)await revoke(env,record); // Enrollment marker intentionally survives recovery.
+  const code=random(),id=await hash('portal-ticket:'+code),expiresAt=Date.now()+10*60000,epoch=await generation(env,record.alias);
+  await env.DB.batch([env.DB.prepare('DELETE FROM portal_identity_tickets WHERE alias=? OR expires_at<?').bind(record.alias,Date.now()),env.DB.prepare('INSERT INTO portal_identity_tickets(id,alias,revision,generation,expires_at) VALUES(?,?,?,?,?)').bind(id,record.alias,record.revision,epoch,expiresAt)]);
+  return {code,expiresAt};
+ }
+ async function identity(path,data,env,auth){
+  if(path==='portal/login/options')return challenge(env,'portal-login',await WebAuthnServer.generateAuthenticationOptions({rpID:RP,userVerification:'required'}));
+  if(path==='portal/login/verify')return route('login/verify',data,env,null,true,null,auth);
+  let active=await session(env,auth);
+  if(path.startsWith('enroll/')){
+   const approval=data.code?await ticket(env,data.code):null;
+   if(!approval){recent(active);}
+   const record=approval?.record||active.record;
+   return route(path.replace('enroll/','register/'),data,env,record,false,{approval,active});
+  }
+  if(!active)fail('Sitzung abgelaufen. Bitte mit Passkey anmelden.',401);
+  const {record,row}=active;
+  if(data.alias&&data.alias!==record.alias)fail();
+  if(path==='session')return {alias:record.alias,revision:record.revision,key:record.key,expiresAt:row.expires_at};
+  if(path==='logout'){await env.DB.prepare('DELETE FROM portal_identity_sessions WHERE token_hash=?').bind(row.token_hash).run();return {ok:true};}
+  if(path==='devices'){
+   const keys=(await env.DB.prepare('SELECT p.id FROM portal_passkeys p JOIN portal_identity_grants g ON g.id=p.id WHERE p.alias=? AND p.revision=?').bind(record.alias,record.revision).all()).results;
+   return {keys:keys.map(k=>({id:k.id,current:k.id===row.credential})),expiresAt:row.expires_at};
+  }
+  if(path==='sessions/revoke'){recent(active);await env.DB.batch([env.DB.prepare('DELETE FROM portal_identity_sessions WHERE alias=? AND token_hash<>?').bind(record.alias,row.token_hash),env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(record.alias)]);return {ok:true};}
+  if(path==='remove'){
+   recent(active);
+   const id=data.credential;
+   if(typeof id!=='string'||id===row.credential)fail('Den aktuell verwendeten Passkey bitte behalten. Bei Verlust hilft die Verwaltung.',400);
+   await env.DB.batch([env.DB.prepare('DELETE FROM portal_passkeys WHERE id=? AND alias=?').bind(id,record.alias),env.DB.prepare('DELETE FROM portal_identity_grants WHERE id=? AND alias=?').bind(id,record.alias),env.DB.prepare('DELETE FROM portal_identity_sessions WHERE credential=? AND alias=?').bind(id,record.alias),env.DB.prepare('DELETE FROM portal_browser_sessions WHERE alias=?').bind(record.alias)]);
+   return {ok:true};
+  }
+  fail('Nicht gefunden.',404);
+ }
+ async function route(path,data,env,record,portal=false,enrollment=null,replaceAuth=null){
   const W=WebAuthnServer;
   if(path==='status'){const row=await env.DB.prepare('SELECT COUNT(*) AS n FROM portal_passkeys WHERE alias=? AND revision=?').bind(record.alias,record.revision).first();return {passkeys:row.n};}
-  if(path==='revoke')return revoke(env,record);
+  if(path==='revoke'){if(await migrated(env,record))fail('Passkeys bitte unter Konto → Sicherheit verwalten.',403);return revoke(env,record);}
   if(path==='register/options'){
    const rows=(await env.DB.prepare('SELECT id FROM portal_passkeys WHERE alias=? AND revision=?').bind(record.alias,record.revision).all()).results;
-   if(rows.length>=5)fail('Bereits fünf Passkeys eingerichtet. Bei Bedarf den WhatsApp-Zugang zurücksetzen.',429);
+   if(rows.length>=5)fail('Bereits fünf Passkeys eingerichtet. Bei Bedarf Konto → Sicherheit öffnen.',429);
    const userID=bytes(await hash('passkey-user:'+record.alias+':'+record.revision));
-   const options=await W.generateRegistrationOptions({rpName:'H₂O WhatsApp-Termine',rpID:RP,userID,userName:'H₂O '+record.alias.slice(0,6),attestationType:'none',supportedAlgorithmIDs:[-7,-257],excludeCredentials:rows.map(r=>({id:r.id})),authenticatorSelection:{residentKey:'required',userVerification:'required'}});
-   return challenge(env,'register',options,record);
+   const options=await W.generateRegistrationOptions({rpName:'H₂O Portal',rpID:RP,userID,userName:'H₂O '+record.alias.slice(0,6),attestationType:'none',supportedAlgorithmIDs:[-7,-257],excludeCredentials:rows.map(r=>({id:r.id})),authenticatorSelection:{residentKey:'required',userVerification:'required'}});
+   return challenge(env,enrollment?'enroll:'+(enrollment.approval?.id||enrollment.active.row.token_hash):'register',options,record);
   }
   if(path==='register/verify'){
-   const pending=await consume(env,data.id,'register',record);let result;
+   const pending=await consume(env,data.id,enrollment?'enroll:'+(enrollment.approval?.id||enrollment.active.row.token_hash):'register',record);let result;
    try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
    if(!result.verified||!result.registrationInfo)fail();
    const c=result.registrationInfo.credential;await owner(env,record.alias,record.revision);
-   const inserted=await env.DB.prepare('INSERT OR IGNORE INTO portal_passkeys(id,alias,revision,public_key,counter,user_id) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM portal_passkey_state WHERE alias=? AND generation=?) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND (SELECT COUNT(*) FROM portal_passkeys WHERE alias=? AND revision=?)<5').bind(c.id,record.alias,record.revision,b64(c.publicKey),c.counter,b64(bytes(await hash('passkey-user:'+record.alias+':'+record.revision))),record.alias,pending.generation,record.alias,record.revision,record.alias,record.revision).run();
-   if(!inserted.meta.changes)fail();return {ok:true};
+   const guard=enrollment?.approval?' AND EXISTS(SELECT 1 FROM portal_identity_tickets WHERE id=? AND expires_at>?)':enrollment?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':'';
+   const proof=enrollment?[enrollment.approval?.id||enrollment.active.row.token_hash,Date.now()]:[];
+   const insert=env.DB.prepare('INSERT OR IGNORE INTO portal_passkeys(id,alias,revision,public_key,counter,user_id) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM portal_passkey_state WHERE alias=? AND generation=?) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND (SELECT COUNT(*) FROM portal_passkeys WHERE alias=? AND revision=?)<5'+guard).bind(c.id,record.alias,record.revision,b64(c.publicKey),c.counter,b64(bytes(await hash('passkey-user:'+record.alias+':'+record.revision))),record.alias,pending.generation,record.alias,record.revision,record.alias,record.revision,...proof);
+   const statements=[insert];
+   if(enrollment){
+    statements.push(env.DB.prepare('INSERT OR IGNORE INTO portal_identity_grants(id,alias) SELECT ?,? WHERE EXISTS(SELECT 1 FROM portal_passkeys WHERE id=? AND alias=? AND public_key=?)'+guard).bind(c.id,record.alias,c.id,record.alias,b64(c.publicKey),...proof));
+    if(enrollment.approval)statements.push(env.DB.prepare('DELETE FROM portal_identity_tickets WHERE id=? AND EXISTS(SELECT 1 FROM portal_identity_grants WHERE id=? AND alias=?)').bind(enrollment.approval.id,c.id,record.alias));
+   }
+   const inserted=await env.DB.batch(statements);
+   if(!inserted[0].meta.changes)fail();return {ok:true};
   }
   if(path==='login/options')return challenge(env,'login',await W.generateAuthenticationOptions({rpID:RP,userVerification:'required'}));
   if(path==='login/verify'){
-   const pending=await consume(env,data.id,'login');
+   const pending=await consume(env,data.id,portal?'portal-login':'login');
    if(typeof data.response?.id!=='string')fail();
    const row=await env.DB.prepare('SELECT * FROM portal_passkeys WHERE id=?').bind(data.response.id).first();if(!row)fail();
    if(data.response.response?.userHandle!==row.user_id)fail();
    await owner(env,row.alias,row.revision);let result;
    try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
    if(!result.verified)fail();
+   if(portal)return issuePortal(env,row,result.authenticationInfo.newCounter,data,replaceAuth);
    const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join(''),expiresAt=Date.now()+90*86400000;
    await env.DB.prepare('DELETE FROM portal_browser_sessions WHERE expires_at<?').bind(Date.now()).run();
    // Atomic counter CAS + session insert; reset/removal/rotation cannot resurrect credentials.
@@ -21241,7 +21317,29 @@ ${strMDSAlgs}`);
   }
   fail('Nicht gefunden.',404);
  }
- g.WhatsAppPasskeys={schema,limit,route,revoke};
+ async function issuePortal(env,key,newCounter,data,replaceAuth){
+  const record=await owner(env,key.alias,key.revision),approval=data.code?await ticket(env,data.code):null;
+  if(approval&&(approval.alias!==key.alias||approval.revision!==key.revision))fail('Freigabe gehört zu einem anderen Mitglied.',403);
+  const grant=await env.DB.prepare('SELECT id FROM portal_identity_grants WHERE id=?').bind(key.id).first();
+  if(!grant&&!approval)fail('Einmalige Portal-Freigabe durch die Verwaltung erforderlich. Bestehende Terminzugänge bleiben eingeschränkt.',403);
+  const token=random(),tokenHash=await hash('portal-session:'+token),now=Date.now(),expiresAt=now+30*86400000;
+  const permission=approval?'EXISTS(SELECT 1 FROM portal_identity_tickets WHERE id=? AND expires_at>?)':'EXISTS(SELECT 1 FROM portal_identity_grants WHERE id=?)';
+  const args=approval?[approval.id,now]:[key.id];
+  const guard='EXISTS(SELECT 1 FROM portal_passkeys WHERE id=? AND alias=? AND revision=? AND counter=?) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND '+permission;
+  const created='EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=?)';
+  // Rotate the caller's prior session only; other own devices stay signed in.
+  let previous=null;try{previous=await session(env,replaceAuth);}catch{}
+  const replace=previous?.record.alias===record.alias&&previous?.record.revision===record.revision?previous.row.token_hash:'';
+  const statements=[env.DB.prepare('DELETE FROM portal_identity_sessions WHERE expires_at<? OR token_hash=?').bind(now,replace),
+   env.DB.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) SELECT ?,?,?,?,?,? WHERE '+guard+' AND (SELECT COUNT(*) FROM portal_identity_sessions WHERE alias=?)<20').bind(tokenHash,key.alias,key.revision,key.id,now,expiresAt,key.id,key.alias,key.revision,key.counter,key.alias,key.revision,...args,key.alias),
+   env.DB.prepare('UPDATE portal_passkeys SET counter=? WHERE id=? AND '+created).bind(newCounter,key.id,tokenHash),
+   env.DB.prepare('INSERT OR IGNORE INTO portal_identity_grants(id,alias) SELECT ?,? WHERE '+created).bind(key.id,key.alias,tokenHash),
+   env.DB.prepare('INSERT OR IGNORE INTO portal_identity_members(member) SELECT ? WHERE '+created).bind(record.memberId,tokenHash)];
+  if(approval)statements.push(env.DB.prepare('DELETE FROM portal_identity_tickets WHERE id=? AND '+created).bind(approval.id,tokenHash));
+  const results=await env.DB.batch(statements);if(!results[1].meta.changes)fail();
+  return {token,alias:key.alias,revision:key.revision,expiresAt,scope:'portal'};
+ }
+ g.WhatsAppPasskeys={schema,limit,route,revoke,session,authorize,migrated,identity,admin};
 })(globalThis);
 
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
@@ -21390,7 +21488,11 @@ ${strMDSAlgs}`);
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Portalzugang.',400);
   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(data.alias,data.revision).first();
   if(!row)fail('Portalzugang wurde geändert. Bitte den persönlichen QR-Code erneut öffnen.',401);
-   if(!equal(auth,await capability(env,data.alias,data.revision,'commands'))){
+   const identity=await g.WhatsAppPasskeys?.session(env,auth);
+   if(identity){if(identity.record.alias!==data.alias||identity.record.revision!==data.revision)fail('Falsches Mitglied.',401);return identity.record;}
+   const legacy=equal(auth,await capability(env,data.alias,data.revision,'commands'));
+   if(legacy&&await g.WhatsAppPasskeys?.migrated(env,await L.open(env,row.payload,'access:'+data.alias)))fail('Bitte mit H₂O-Passkey anmelden.',401);
+   if(!legacy){
     if(!browserPaths.has(path)||!/^[a-f0-9]{64}$/.test(auth||''))fail('Browserzugang für diese Funktion nicht freigegeben.',401);
     const session=await env.DB.prepare('SELECT alias,revision,expires_at FROM portal_browser_sessions WHERE token_hash=?').bind(await hash('h2o-browser-session:'+auth)).first();
     if(!session||session.alias!==data.alias||session.revision!==data.revision||session.expires_at<=Date.now())fail('Browserzugang abgelaufen. Bitte erneut mit H2O verbinden.',401);
@@ -21457,7 +21559,8 @@ ${strMDSAlgs}`);
  }
  async function route(path,data,env,auth,clientIP='unknown'){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
-   if(path.startsWith('/portal/passkey/')){await g.WhatsAppPasskeys.limit(env,clientIP);if(['/portal/passkey/login/options','/portal/passkey/login/verify'].includes(path))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env);}
+   if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
+   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);if(['/portal/passkey/login/options','/portal/passkey/login/verify'].includes(path))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env);}
    if(path==='/portal/browser/redeem')return browserRedeem(env,data);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
@@ -21498,7 +21601,7 @@ ${strMDSAlgs}`);
     // One JSON parameter keeps even bulk removals within D1 bind/query limits.
     const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
     for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE '+scope).bind(aliases,payload));
-    for(const table of ['portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
     statements.push(env.DB.prepare("UPDATE commands SET status='rejected',result='accessChanged',envelope='' WHERE status='pending' AND "+scope).bind(aliases,payload));
    }
    statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));
@@ -21627,7 +21730,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"17f94947876e4f05a533dc977c9d7f82ef65da16191c7e7a6d0fae797dae813f",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"94c7be80fc957af1aeb434e2bb2fbdcd9e99c98b761a3df6d8a3859127b89a49",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
@@ -21675,7 +21778,8 @@ export default {
    const record=await account(env,data.alias);if(!record)return reply({error:'Handyzugang noch nicht für Erinnerungen eingerichtet.'},404);
    if(path==='/commands/submit'||path==='/commands/status'||path==='/admin/commands/ack'){
     if(!REV.test(data.id||'')||data.revision!==record.revision)return reply({error:'Zugang oder Vorgang nicht mehr gültig.'},409);
-    if(!admin&&!equal(auth,await capability(env,data.alias,record.revision,'commands')))return reply({error:'Buchungszugang ungültig. Deckel am iPad aktualisieren.'},401);
+    if(!admin&&globalThis.WhatsAppPasskeys)await globalThis.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,record.revision,'commands'));
+    if(!admin&&!globalThis.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,record.revision,'commands')))return reply({error:'Buchungszugang ungültig. Deckel am iPad aktualisieren.'},401);
     const old=await env.DB.prepare('SELECT status,result,digest FROM commands WHERE alias=? AND revision=? AND id=?').bind(data.alias,data.revision,data.id).first();
     if(path==='/commands/status')return old?reply({status:old.status,result:old.result}):reply({status:'missing'});
     if(path==='/admin/commands/ack'){

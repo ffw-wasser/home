@@ -1,5 +1,10 @@
 # Umsetzungsplanung: WhatsApp-Passkey und GF-Kachel „Atemschutz“
 
+> Fortentwicklung: Der Auftrag „Zentrale Passkey-Anmeldung“ ersetzt die frühere
+> Beschränkung auf WhatsApp. Umsetzung und verbindliche Migrations-/Freigabegrenzen:
+> [ZENTRALE-PASSKEY-ANMELDUNG.md](ZENTRALE-PASSKEY-ANMELDUNG.md).
+> Die folgenden Angaben beschreiben den bisherigen Stand, keine automatische Rechteerweiterung.
+
 **Status 21.10.2026:** Beide Funktionen für Release `2026.10.21.12` implementiert. Die folgende Planung bleibt als fachliche Referenz erhalten. Aktueller Implementierungs- und Prüfstand: `docs/PR36-ABSCHLUSS.md`. Der Nutzer hat Fertigstellung und Veröffentlichung ausdrücklich beauftragt.
 
 **Repository:** `ffw-wasser/home`, Basis `main`, 21.10.2026.  

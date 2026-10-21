@@ -17,14 +17,14 @@
  let session=null,items=[],stale=false,working=false,pending=null,memberName='';
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
- function restore(){
+ function restore(){const portal=globalThis.H2OIdentity?.session();if(portal)return portal;
   try{
    const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');
    if(saved&&/^[a-f0-9]{64}$/.test(saved.token)&&/^[a-f0-9]{32}$/.test(saved.alias)&&typeof saved.revision==='string'&&Number.isSafeInteger(saved.expiresAt)&&saved.expiresAt>Date.now())return saved;
   }catch{}
   return null;
  }
- function persist(next){try{if(next)localStorage.setItem(STORAGE,JSON.stringify(next));else localStorage.removeItem(STORAGE);}catch{throw Error('Der Browser darf den Zugang nicht speichern. Bitte den privaten Modus ausschalten und erneut versuchen.');}}
+ function persist(next){if(next?.scope==='portal')return;try{if(next)localStorage.setItem(STORAGE,JSON.stringify(next));else localStorage.removeItem(STORAGE);}catch{throw Error('Der Browser darf den Zugang nicht speichern. Bitte den privaten Modus ausschalten und erneut versuchen.');}}
  async function post(path,body,token){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   try{
@@ -37,7 +37,7 @@
  function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
-  status(message||'Melde dich mit deinem WhatsApp-Passkey an. Deine H₂O-App bleibt unverändert.');
+  status(message||'Melde dich mit deinem H₂O-Passkey an. Die Einrichtung erfolgt einmalig unter Konto → Sicherheit.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function paintEvents(){
@@ -70,7 +70,7 @@
   if(!session)return showPair();
   working=true;hide();status('Deine Termine werden geladen …');
   try{
-   const renewal=await post('browser/renew',{alias:session.alias,revision:session.revision},session.token);
+   const renewal=session.scope==='portal'?{ok:true,expiresAt:session.expiresAt}:await post('browser/renew',{alias:session.alias,revision:session.revision},session.token);
    if(renewal.ok!==true||!Number.isSafeInteger(renewal.expiresAt)||renewal.expiresAt<=Date.now())throw Error('Browser-Verbindung konnte nicht verlängert werden.');
    session.expiresAt=renewal.expiresAt;persist(session);
    const result=await post('list',{alias:session.alias,revision:session.revision},session.token);
@@ -92,10 +92,7 @@
   if(!globalThis.H2OPasskeys?.browserSupportsWebAuthn()){showPair('Bitte denselben Terminlink über das WhatsApp-Menü in Safari oder Chrome öffnen.');return;}
   working=true;el('passkey-login').disabled=true;status('Passkey wird geprüft …');
   try{
-   const request=await post('passkey/login/options',{});
-   const response=await H2OPasskeys.startAuthentication({optionsJSON:request.options});
-   const result=await post('passkey/login/verify',{id:request.id,response});
-   if(!/^[a-f0-9]{64}$/.test(result.token||'')||!/^[a-f0-9]{32}$/.test(result.alias||'')||!result.revision||!Number.isSafeInteger(result.expiresAt))throw Error('Anmeldung nicht bestätigt.');
+   const result=await globalThis.H2OIdentity.login();
    persist(result);session=result;working=false;await refresh();
   }catch(error){showPair(error.name==='NotAllowedError'?'Anmeldung abgebrochen oder kein Passkey verfügbar. Richte ihn zuerst in H₂O ein; öffne diesen Link bei Bedarf in Safari/Chrome.':error.message||'Anmeldung fehlgeschlagen.');}
   finally{working=false;el('passkey-login').disabled=false;}
@@ -154,6 +151,7 @@
     }
    }catch{/* A private link may not be available in this browser context. */}
   }
+  if(globalThis.H2OIdentity?.session()){location.assign(new URL('deckel.html',location.href).href);return;}
   try{
    const previous=new URL(document.referrer);
    if(previous.origin===location.origin&&previous.pathname===new URL('deckel.html',location.href).pathname&&history.length>1){
@@ -163,8 +161,9 @@
   }catch{}
   feedback.textContent='Öffne die H₂O-App über ihr Symbol auf deinem Home-Bildschirm. Wenn du Safari oder Chrome verwendest, wechsle über den App-Umschalter zu H₂O. Deine Anmeldung bleibt erhalten.';
  });
- el('remove').addEventListener('click',()=>{
+ el('remove').addEventListener('click',async()=>{
   if(!confirm('Browserzugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
+  if(session?.scope==='portal'){try{await globalThis.H2OIdentity.post('logout');globalThis.H2OIdentity.forget();}catch(e){status(e.message);return;}}
   session=null;pending=null;persist(null);showPair('Browserzugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{

@@ -1,5 +1,10 @@
 # PR #36 – WhatsApp-Passkeys und GF-Atemschutz
 
+> Fortentwicklung: Der Auftrag „Zentrale Passkey-Anmeldung“ ersetzt die frühere
+> Beschränkung auf WhatsApp. Umsetzung und verbindliche Migrations-/Freigabegrenzen:
+> [ZENTRALE-PASSKEY-ANMELDUNG.md](ZENTRALE-PASSKEY-ANMELDUNG.md).
+> Die folgenden Angaben beschreiben den bisherigen Stand, keine automatische Rechteerweiterung.
+
 Release: 2026.10.21.12. Veröffentlichung vom Nutzer am 21.10.2026 beauftragt.
 
 ## Umsetzung
