@@ -8,6 +8,7 @@
   'CREATE TABLE IF NOT EXISTS portal_birthdays (member TEXT NOT NULL,year INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(member,year))',
   'CREATE TABLE IF NOT EXISTS portal_devices (id TEXT PRIMARY KEY)',
   'CREATE TABLE IF NOT EXISTS portal_roster (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS portal_contacts (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,updated_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_config (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_calendar (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_replies (event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(event,member))',
@@ -216,6 +217,19 @@
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
+  if(path==='/admin/portal/contacts'){
+   const contacts=data.contacts;
+   if(!contacts||contacts.schemaVersion!==1||!Array.isArray(contacts.groups)||contacts.groups.length>12||JSON.stringify(contacts).length>16000)fail('Ungültiges Kontaktverzeichnis.',400);
+   const safe=v=>typeof v==='string'&&v.length<=180&&!/[\x00-\x1f<>]/.test(v);
+   if(!safe(contacts.title)||!safe(contacts.businessHours)||!safe(contacts.sourceDate)||contacts.groups.some(group=>!safe(group.title)||!Array.isArray(group.contacts)||group.contacts.length>25||group.contacts.some(p=>!safe(p.name)||!safe(p.role||'')||['phone','mobile','email'].some(k=>p[k]!==undefined&&!safe(p[k])))))fail('Kontaktdaten nicht gültig.',400);
+   const payload=await L.seal(env,contacts,'portal-contacts');
+   await env.DB.prepare('INSERT INTO portal_contacts(id,payload,updated_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(payload,Date.now()).run();
+   return {ok:true,updatedAt:Date.now()};
+  }
+  if(path==='/portal/contacts'){
+   const row=await env.DB.prepare('SELECT * FROM portal_contacts WHERE id=1').first();
+   return {contacts:await open(env,row,'portal-contacts'),updatedAt:row?.updated_at||null};
+  }
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
    let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
