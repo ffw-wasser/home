@@ -198,7 +198,7 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
   }finally{
     oneDriveBusy=false;renderOneDriveDialog();notifyAppStorageState();
     const again=oneDriveResyncRequested||(oneDriveLocalRevision>startRevision&&oneDriveLocalRevision!==oneDriveSyncedRevision);oneDriveResyncRequested=false;
-    if(again&&epoch===oneDriveSessionEpoch&&oneDriveSignedIn()){clearTimeout(oneDriveTimer);oneDriveTimer=setTimeout(()=>syncOneDrive(),900);}
+    if(again&&epoch===oneDriveSessionEpoch&&oneDriveSignedIn()&&!oneDriveNeedsLogin){clearTimeout(oneDriveTimer);oneDriveTimer=setTimeout(()=>syncOneDrive(),oneDriveLastError?5000:900);}
   }
 }
 function scheduleCloudSync(){if(oneDriveApplying)return;oneDriveLocalRevision++;oneDriveStateConfirmed=false;localStorage.setItem("fw_onedrive_local_updated",new Date().toISOString());notifyAppStorageState();if(!oneDriveSignedIn())return;clearTimeout(oneDriveTimer);oneDriveTimer=setTimeout(()=>syncOneDrive(),900);}
