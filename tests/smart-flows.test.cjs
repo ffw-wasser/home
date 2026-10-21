@@ -37,6 +37,9 @@ function completionApp(type='Unterricht'){
 test('Abschlussvorschau nennt auch unmarkierte Altersmitglieder, die CSV als Fehlt ausgibt',async()=>{
  const a=completionApp();await a.c.window.closeDay();assert.deepEqual(Array.from(a.getPreview()[3].people),['Test, B','Alter, C']);assert.equal(a.getPreview()[1].find(x=>x[0]==='Als Fehlt exportiert')[1],'2');assert.equal(a.getStage(),2);assert.equal(a.getView(),'attendanceView');
 });
+test('Doppelte Anwesenheit verhindert Abschluss vor ZIP-Erstellung',async()=>{
+ const a=completionApp();a.c.todayEntries=()=>[{storedName:'Test, A',status:'Anwesend',sessionType:'Unterricht'},{storedName:'Test, A',status:'Anwesend',sessionType:'Unterricht'}];await a.c.window.closeDay();assert.match(a.warnings.join(' '),/mehrfach erfasst/);assert.equal(a.getPreview(),undefined);
+});
 test('Ausschuss-Abschluss listet nur Ausschussmitglieder als Fehlt',async()=>{
  const a=completionApp('Ausschuss Sitzung');await a.c.window.closeDay();assert.deepEqual(Array.from(a.getPreview()[3].people),['Alter, C']);
 });
