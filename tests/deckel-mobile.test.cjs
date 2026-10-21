@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{webcrypto}=require('node:crypto');
 const read=name=>fs.readFileSync(require.resolve('../'+name),'utf8');
-class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.hidden=false;this.disabled=false;this.value='';this.checked=false;this.dataset={};this.attributes={};this.children=[];this.textContent='';this.style={};this.classList={add(){},remove(){},toggle(){}};}setAttribute(k,v){this.attributes[k]=v;}removeAttribute(k){delete this.attributes[k];}append(n){if(n.parentElement)n.parentElement.children=n.parentElement.children.filter(child=>child!==n);n.parentElement=this;this.children.push(n);}replaceChildren(){this.children.forEach(child=>child.parentElement=null);this.children=[];}addEventListener(k,fn){(this._listeners??={})[k]=[...(this._listeners?.[k]||[]),fn];this[k]=fn;}dispatch(k,event){for(const fn of this._listeners?.[k]||[])fn(event);}showModal(){this.open=true;}close(){this.open=false;}focus(){this.focused=true;}scrollIntoView(){this.scrolled=true;}contains(n){return this===n||this.children.some(child=>child.contains?.(n));}querySelectorAll(selector=''){const matches=(node)=>selector.split(',').some(part=>{part=part.trim();if(part==='[data-portal-tile]')return Boolean(node.dataset?.portalTile);if(part==='[data-deckel-target]')return Boolean(node.dataset?.deckelTarget);if(part==='[data-portal-pinned="more"]')return node.dataset?.portalPinned==='more';if(part.startsWith('.'))return Boolean(node.classList?.[part.slice(1)]);return false;});return this.children.flatMap(child=>[...(matches(child)?[child]:[]),...(child.querySelectorAll?.(selector)||[])]);}querySelector(selector){return this.querySelectorAll(selector)[0]||null;}getBoundingClientRect(){return {top:1000,left:0,width:100,height:80,bottom:1080};}}
+class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.hidden=false;this.disabled=false;this.value='';this.checked=false;this.dataset={};this.attributes={};this.children=[];this.textContent='';this.style={};this.classList={add(...names){for(const name of names)this[name]=true;},remove(...names){for(const name of names)delete this[name];},toggle(name,force){const value=force??!this[name];if(value)this[name]=true;else delete this[name];return value;}};}setAttribute(k,v){this.attributes[k]=v;}removeAttribute(k){delete this.attributes[k];}append(n){if(n.parentElement)n.parentElement.children=n.parentElement.children.filter(child=>child!==n);n.parentElement=this;this.children.push(n);}replaceChildren(){this.children.forEach(child=>child.parentElement=null);this.children=[];}addEventListener(k,fn){(this._listeners??={})[k]=[...(this._listeners?.[k]||[]),fn];this[k]=fn;}dispatch(k,event){for(const fn of this._listeners?.[k]||[])fn(event);}showModal(){this.open=true;}close(){this.open=false;}focus(){this.focused=true;}scrollIntoView(){this.scrolled=true;}contains(n){return this===n||this.children.some(child=>child.contains?.(n));}querySelectorAll(selector=''){const matches=(node)=>selector.split(',').some(part=>{part=part.trim();if(part==='[data-portal-tile]')return Boolean(node.dataset?.portalTile);if(part==='[data-deckel-target]')return Boolean(node.dataset?.deckelTarget);if(part==='[data-portal-pinned="more"]')return node.dataset?.portalPinned==='more';if(part.startsWith('.'))return Boolean(node.classList?.[part.slice(1)]);return false;});return this.children.flatMap(child=>[...(matches(child)?[child]:[]),...(child.querySelectorAll?.(selector)||[])]);}querySelector(selector){return this.querySelectorAll(selector)[0]||null;}getBoundingClientRect(){return {top:1000,left:0,width:100,height:80,bottom:1080};}}
 Node.prototype.closest=function(selector){for(let node=this;node;node=node.parentElement){if(selector.split(',').some(part=>{part=part.trim();return part==='[data-portal-tile]'?Boolean(node.dataset?.portalTile):part==='#deckel-nav'?node.id==='deckel-nav':part==='#portal-more-grid'?node.id==='portal-more-grid':false;}))return node;}return null;};
 function nodes(){const result={};for(const [,id] of read('deckel.html').matchAll(/id="([^"]+)"/g))result[id]=new Node();return result;}
 async function fixture(){const dom=nodes(),events={},requests=[],saved=new Map();let unavailable=false;const ctx=vm.createContext({console,crypto:webcrypto,TextEncoder,TextDecoder,Uint8Array,btoa,atob,URL,URLSearchParams,AbortSignal,location:{hash:'#r=ffw-wasser/test&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64)},confirm:()=>true,setTimeout:()=>1,clearTimeout(){},addEventListener:(key,fn)=>events[key]=fn,document:{hidden:false,readyState:'loading',getElementById:id=>dom[id],createElement:tag=>new Node(tag),addEventListener:(key,fn)=>events[key]=fn},DeckelDevice:{readCommand:async alias=>saved.get(alias)||null,saveCommand:async(alias,job)=>saved.set(alias,job)},fetch:async(url,options)=>{const body=JSON.parse(options.body);requests.push({url,body});if(unavailable)throw Error('Offline');return {ok:true,json:async()=>({status:url.endsWith('/commands/status')?'missing':'done'})};}});for(const name of ['deckel-commands','deckel-actions'])vm.runInContext(read('js/features/drinks/'+name+'.js'),ctx);events.DOMContentLoaded();const data={pointUnits:300,beerUnits:150,wineUnits:150,actions:{origin:'https://test.account.workers.dev',capability:'a'.repeat(43),revision:'revision-test-001',central:true,epoch:'0'}};await ctx.DeckelActions.render(data);return {ctx,dom,requests,saved,data,offline:value=>unavailable=value};}
@@ -204,4 +204,38 @@ test('Kopfbereich zeigt die gewählte Rubrik bei Menüwechsel, Unterseite und Ak
  assert.equal(dom['portal-menu-title'].textContent,'Termine');
  for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-bookings','Buchungen'],['more-help','Infos'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
  ctx.DeckelMobile.show(false);assert.equal(dom['portal-menu-title'].textContent,'H₂O Portal');ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,'Termine');
+});
+
+test('Wischen folgt verschobenen Hauptkacheln auch nach erneutem Laden',()=>{
+ const f=layoutFixture(),{dom,storage}=f;
+ const select=id=>{dom['portal-layout-item'].value=id;dom['portal-layout-item'].change();};
+ select('portal-evidence');dom['portal-layout-transfer'].click();
+ select('more-water');dom['portal-layout-transfer'].click();dom['portal-layout-earlier'].click();
+ const check=f=>{
+  const main=f.dom['deckel-main'],base={pointerId:1,pointerType:'touch',isPrimary:true,clientX:250,clientY:200,timeStamp:0,target:{closest:()=>null}};
+  for(const id of ['account','more-water','portal-points','deckel-more']){
+   main.dispatch('pointerdown',base);main.dispatch('pointerup',{...base,clientX:100,timeStamp:200});
+   assert.equal(f.ctx.history.state.portalPage,id);
+   const active=f.dom['deckel-nav'].querySelectorAll('[data-deckel-target]').filter(tile=>tile.attributes['aria-current']==='page');
+   assert.equal(active.length,1);assert.equal(active[0].dataset.deckelTarget,id);
+  }
+  main.dispatch('pointerdown',{...base,clientX:100});main.dispatch('pointerup',{...base,timeStamp:200});
+  assert.equal(f.ctx.history.state.portalPage,'portal-points');
+ };
+ check(f);const restored=layoutFixture(storage);check(restored);
+ assert.deepEqual(restored.dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','account','more-water','portal-points']);
+});
+test('Einfügemarkierungen verschwinden nach Ablegen, Abbruch und Ablegen außerhalb',()=>{
+ for(const finish of ['drop','cancel','outside']){
+  const f=layoutFixture(),main=f.dom['deckel-main'],nav=f.dom['deckel-nav'];
+  const water=f.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]')[0],account=nav.querySelectorAll('[data-portal-tile]')[2];
+  const start={target:water,button:0,pointerId:1,pointerType:'touch',clientX:20,clientY:20,timeStamp:0,isPrimary:true};
+  f.setUnder(water);main.dispatch('pointerdown',start);[...f.timers.values()].find(timer=>timer.delay===520).fn();
+  f.setUnder(account);const end={...start,clientX:80,timeStamp:600};main.dispatch('pointermove',end);
+  assert.equal(account.classList['portal-drop-after'],true);
+  if(finish==='outside')f.setUnder(null);
+  main.dispatch(finish==='cancel'?'pointercancel':'pointerup',end);
+  for(const surface of [main,nav])assert.equal(surface.querySelectorAll('.portal-drop-before,.portal-drop-after').length,0);
+  assert.ok(!water.classList['portal-tile-dragging']);
+ }
 });
