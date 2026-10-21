@@ -50,29 +50,80 @@
 
 ## 3. Umsetzung B: GF-Kachel „Atemschutz“ unter Mehr
 
-### Ansicht
+### Leitgedanke: Eine GF-Antwort in drei Sekunden
 
-- Neue kurze Kachel **„Atemschutz“**, Unterzeile z. B. „AGT-Status & Nachweise“.
-- **Nur für aktive Gruppenführer** (bereits aus administrierter GF-Rolle abgeleitet) nach erfolgreichem Rollenabgleich sichtbar. Falls Rollenstatus nicht sicher festgestellt werden kann, **nicht anzeigen**; keine sensiblen Antworten liefern.
-- Mobilansicht: kompaktes Dashboard mit Anzahl **„Nachweise vollständig“**, **„Bald fällig“**, **„Nicht vollständig / prüfen“** und durchsuchbarer Mitgliederliste. Farben zusätzlich mit klar lesbaren Text- und Symbolstatus; Detailansicht bei Antippen.
-- Für jede als Atemschutzgeräteträger geführte Person **G26.3**, AGT-Unterweisung und **FFI** zusammen aus vorhandenen Mitgliedsdaten prüfen; fällige/fehlende/abgelaufene Nachweise einzeln nennen (Datumsstand/Quelle/Synchronisationszeit). „Vollständig“ nur bei **allen** aktuell gültigen, nachgewiesenen Voraussetzungen. Ablaufwarnung (z. B. 60 Tage) getrennt von bereits fehlend/abgelaufen. Nachweisstatus ist **keine automatische Einsatzfreigabe**; Ausbildung, Tätigkeit, Tagesform und Einsatzentscheidung gehören zur verantwortlichen Führung.
-- Personen ohne Atemschutzqualifikation nicht fälschlich als Atemschutz-tauglich einstufen; G26.3 allein genügt ausdrücklich nicht. Keine ärztlichen Diagnosen/Befunde oder PDF-Untersuchungsunterlagen anzeigen.
-- Bei veralteter/fehlgeschlagener Synchronisierung nicht „alles grün“ zeigen: **„Datenstand nicht aktuell – keine verlässliche Freigabe“** mit letztem Synchronisationszeitpunkt. Kein dauerhaftes oder unberechtigtes Zwischenspeichern fremder Nachweise auf Geräten.
+Die Kachel heißt **„Atemschutz“**, die Unterzeile **„AGT-Status & Nachweise“**. Nur **aktive, serverseitig bestätigte Gruppenführer** sehen sie unter **Mehr**. Keine zusätzliche WhatsApp-/Passkey-Anmeldung. Nach dem Öffnen soll der GF ohne Fachcode-Rätsel sofort beantworten können:
 
-### Sicherheit/Datenschutz
+1. **Wer hat alle erforderlichen Atemschutz-Nachweise?**
+2. **Was wird demnächst fällig?**
+3. **Bei wem fehlt ein konkreter Nachweis oder ist bereits abgelaufen?**
 
-- Der **bestehende persönliche H₂O-Zugang** bleibt für die GF-Ansicht maßgeblich. **WhatsApp-Passkeys berechtigen ausdrücklich nicht zur GF-Ansicht.**
-- Cloudflare-API mit rollenbasierter Prüfung **auf jedem Abruf** (nicht nur Kachel verstecken); nur erforderliche Namen, Status und Gültigkeitsdaten des eigenen Feuerwehr-Mitgliederbestands zurückgeben. Zugriff nach GF-Rollenentzug/Entfernung ablehnen.
-- Bereits vorhandene verschlüsselte `portal_roster`-Projektion/MemberEvidence-Bewertung wiederverwenden, statt Parallelregister aufzubauen; prüfen, ob Rollenstand und Sync aktualisiert sind. Rechtsgrundlage/Zugriffskreis/Speicherort und ggf. Datenschutz-Folgenabschätzung mit Verantwortlichen prüfen, da medizinische Eignungsdaten besonders geschützt sein können.
+Wichtig: **Nachweise vollständig ≠ heute einsatzbereit / ärztlich uneingeschränkt tauglich.** Die Ansicht ist eine Entscheidungshilfe für die Führungskraft und ersetzt keine einsatzbezogene Eignungsbeurteilung, Ausbildungsvoraussetzungen, Geräteeinweisung oder Prüfung der Tagesform. Im Portal deshalb **nicht** als Gesamtstatus „Atemschutztauglich / einsatzfähig“ beschriften.
 
-### Akzeptanzkriterien B
+### Übersicht im Handy – kompakt und selbsterklärend
 
-- [ ] Kachel heißt **„Atemschutz“** und erscheint ausschließlich für aktive GF.
-- [ ] Direkter API-Aufruf durch Nicht-GF einschließlich WhatsApp-Passkey wird mit 403 zurückgewiesen.
-- [ ] G26.3 + AGT-Unterweisung + FFI vollständig, bald fällig, fehlt oder abgelaufen korrekt berechnet.
-- [ ] Datenfehlstand, deaktivierter Kamerad und GF-Rollenentzug lecken keine Informationen.
-- [ ] Kachel läuft auf kleinen iPhones/Android ohne horizontales Scrollen; Rückweg zu **Mehr** funktioniert.
-- [ ] Keine doppelten Mitgliedsdaten, Diagnosen oder personenbezogenen Nachweise auf GitHub.
+Oben **„Atemschutz“**, darunter klein **„Stand der hinterlegten Nachweise: [Datum, Uhrzeit]“**.
+
+Drei **einander ausschließende, antippbare Statusfilter** in einer kompakten Zeile (Zahlen beziehen sich nur auf als AGT zugeordnete Mitglieder und bilden zusammen die Gesamtzahl):
+
+| Anzeige | Bedeutung | Aussehen |
+| --- | --- | --- |
+| **Vollständig** | Alle drei erforderlichen Nachweise sind aktuell gültig, **keiner** wird innerhalb der Warnfrist fällig. | Haken + Grün |
+| **Bald fällig** | Alle drei Nachweise sind **noch gültig**, mindestens einer läuft innerhalb der nächsten **60 Tage** ab. | Uhr + Gelb |
+| **Prüfen** | Mindestens ein erforderlicher Nachweis **fehlt, ist abgelaufen oder ist nicht eindeutig zugeordnet**. | Ausrufezeichen + Rot/neutraler Prüfhinweis |
+
+Beispiel (rein fiktiv, keine Mitgliederdaten): **8 Vollständig · 2 Bald fällig · 3 Prüfen**.
+
+- Die drei Kacheln sind **Filter**, keine bloßen dekorativen Statistiken. Wahl einer Kachel zeigt sofort die zugehörigen Personen. Auswahl **„Alle (13)“** setzt den Filter zurück. Standardansicht: **„Alle“**, darin **„Prüfen“ zuerst**, danach „Bald fällig“, danach „Vollständig“, weil Handlungsbedarf hervorgehoben werden soll. Innerhalb jeder Gruppe alphabetisch sortieren.
+- Direkt darunter ein schmales **Suchfeld „Mitglied suchen“** und eine übersichtliche Liste. Keine verschachtelten Tabellen, keine horizontalen Scrollflächen, kein permanenter Langtext.
+- Pro Person **nur Name + kurzer Status + ggf. ein konkreter Grund**; höchstens zwei Zeilen in der eingeklappten Ansicht, z. B. **„FFI fehlt“**, **„AGT-Unterweisung abgelaufen“** oder **„G26.3 endet 11/2026 (noch gültig)“**. Bei mehreren Problemen **„2 Nachweise prüfen“** und nach Öffnen die vollständige Liste.
+- Bei Antippen einer Person **aufklappbare Details direkt in der Liste**, wieder antippen schließt. Keine zusätzliche komplexe Navigation, kein Dialogzwang. Bei mehreren geöffneten Details darf die Ansicht übersichtlich bleiben; bevorzugt nur eine aufgeklappte Person gleichzeitig.
+- Auf dem Handy ausreichende Button-/Zeilenhöhe, Schriftgröße und Kontrast; Status immer **Text + Symbol**, nicht allein Farbe. Auf kleinen iPhones ohne horizontales Scrollen, mit „← Zurück zu Mehr“.
+- Keine automatische Benachrichtigung, Download-/WhatsApp-Versand der Nachweisliste oder Bearbeitung von Mitgliederdaten innerhalb dieser GF-Ansicht. Sie ist **nur lesend**.
+
+### Aufgeklappte Details je Mitglied
+
+Immer **dieselben drei Nachweise in derselben Reihenfolge**, auch wenn sie gültig sind:
+
+| Verständliche Beschriftung | Ursprung im Datenmodell | Beispielstatus |
+| --- | --- | --- |
+| **G26.3 – ärztliche Eignung** | `breathing.g263` / vorhandenes G26.3-Gültigkeitsdatum | **Gültig bis 04/2027** |
+| **AGT-Unterweisung** | `breathing.instruction` (bisher `agtInstructionValidUntil`) | **Läuft bald ab · 11/2026** |
+| **FFI – Atemschutznachweis** | `breathing.ffi` (bisher `ffiValidUntil`) | **Fehlt** |
+
+- Sichtbar direkt je Nachweis: **Gültig bis MM/JJJJ**, **Bald fällig · MM/JJJJ**, **Abgelaufen seit MM/JJJJ** oder **Kein Nachweis hinterlegt**. Für den fachlichen Vergleich das **gespeicherte volle Datum** auswerten, auch wenn im UI nur Monat/Jahr gezeigt wird. Ist eine exakte Datumsgrenze wichtig (z. B. Ablauf am heutigen Tag), auf Detailansicht erforderlichenfalls TT.MM.JJJJ anbieten.
+- Hilfetext im Detail, sparsam: **„Alle drei Nachweise müssen hinterlegt und gültig sein. Diese Übersicht ersetzt keine Einsatzfreigabe.“** Nicht bei jedem Mitglied wiederholen.
+- **G26.2 ersetzt G26.3 nicht.** Die Anzeige für Nicht-AGT und deren G26.2-Nachweise gehört weiterhin in **„Meine Nachweise“**, nicht in die GF-Atemschutzübersicht.
+- Kein Einblick in ärztliche Diagnosen, Untersuchungsergebnisse, medizinische Dokumente oder PDF-Befunde.
+
+### Fachliche Grenzfälle explizit regeln
+
+1. **AGT-Zuordnung:** Nicht allein aus dem Vorhandensein einer G26.3 oder historischer Nachweisdaten auf „Atemschutzgeräteträger“ schließen. Primär das **explizite AGT-/breathingQualified-Kennzeichen** verwenden, soweit vorhanden, mit sinnvoller und dokumentierter Behandlung der bisherigen `ATM`/`ATG`-Rollen. Bei nur indirekt erkennbaren oder widersprüchlichen Legacy-Daten: **„Zuordnung prüfen“** anzeigen, **nicht** automatisch als voll qualifiziert markieren. Diese Fälle getrennt von den drei Statuszählern führen, bis ihre AGT-Zugehörigkeit geklärt ist.
+2. **Ablaufregeln:** Heute noch gültige Nachweise bleiben gültig; **„Bald fällig“ blockiert die Vollständigkeit nicht**. Sind gleichzeitig ein bald fälliger und ein fehlender/abgelaufener Nachweis vorhanden, **„Prüfen“ hat Vorrang**. Fehlend und abgelaufen nicht miteinander verwechseln; alle konkreten Ursachen im Detail benennen.
+3. **Fehlende Gesamtdaten/Serverfehler:** Kein scheinbar beruhigendes **„0 offen / alles vollständig“**. Stattdessen **„Nachweisübersicht derzeit nicht zuverlässig verfügbar“** mit „Erneut prüfen“. Keine lokal zwischengespeicherten fremden Nachweisdaten als aktuell ausgeben.
+4. **Veraltete Synchronisierung:** Stand und Datenquelle klar anzeigen. Wenn der letzte erfolgreiche Mitglieder-/Nachweisabgleich älter als eine **fachlich noch festzulegende, getestete Frischegrenze** ist, Übersicht sichtbar als **„Datenstand veraltet – vor Einsatz prüfen“** kennzeichnen; kein grüner Gesamteindruck ohne Warnung. Die Frischegrenze **nicht** mit der separaten Kalender-Frischegrenze verwechseln.
+5. **Kein AGT erfasst:** Freundlicher Leerzustand **„Derzeit keine Atemschutzgeräteträger zugeordnet“** plus Synchronisationshinweis statt leerer Tabelle.
+6. **Mitglied entfernt / GF-Rolle entzogen:** Person darf nicht mehr im aktiven Datensatz erscheinen; entzogenem GF darf der Worker keinerlei personenbezogene Nachweisübersicht mehr ausgeben. Auch bestehende Sitzungen nach serverseitiger Neuauswertung ablehnen.
+
+### Sicherheit/Datenschutz und vorhandener Code
+
+- Für die GF-Ansicht gilt **weiterhin die bisherige persönliche H₂O-Anmeldung**, **nicht** der WhatsApp-Passkey. Zwingend serverseitige Rollenprüfung in einer **separaten GF-Nachweis-API** bei jedem Abruf. **Nicht-GF, entfernte Mitglieder und WhatsApp-Passkey-only-Zugänge erhalten 403**, unabhängig vom versteckten Menüeintrag.
+- Das vorhandene `js/features/portal/member-evidence.js` kennt bereits `breathing` mit **G26.3, Unterweisung AGT und FFI**, die Statuswerte `valid / soon / expired / missing` und ein Warnfenster von **60 Tagen**. **Diesen gemeinsamen Bewertungsweg wiederverwenden**, statt widersprüchliche neue Berechnungen für GF einzubauen. Derzeit nutzt das Modell außerdem Legacy-Fallbacks für AGT-Zuordnung; diese für die GF-Liste fachlich abgesichert auflösen.
+- `cloudflare/push/portal.js` gibt über `/portal/evidence` bisher bewusst nur die **eigenen** Nachweise zurück und bietet `/portal/overview` bereits eine **serverseitig überprüfte GF-Rolle** für Terminrückmeldungen. Für AGT **keinesfalls** `/portal/evidence` pauschal für fremde Daten öffnen, sondern einen separaten, eng begrenzten Endpunkt mit minimalen Namen, Nachweisstatus und Gültigkeitsdaten einrichten.
+- Quelle soll die vorhandene verschlüsselte `portal_roster`-Projektion aus Mitgliederabgleich sein, keine doppelte Stammdatenverwaltung. Server liefert nur nötige Felder, Daten-/Rollen-Synchronisationszeitpunkte und bestätigten GF-Status, mit `no-store`. Keine zusätzlichen personenbezogenen Daten auf GitHub oder im PWA-Service-Worker.
+- Zugriffsberechtigung, Erforderlichkeit der Anzeige medizinischer Eignungsdaten, Aufbewahrung und Zugriffskreis mit der verantwortlichen Feuerwehr-/Datenschutzstelle prüfen, **bevor** die Funktion produktiv für GF freigegeben wird.
+
+### Abnahmekriterien B – nachvollziehbar testbar
+
+- [ ] Unter **Mehr** für berechtigte GF eine Kachel mit dem **kurzen Titel „Atemschutz“** und der Unterzeile **„AGT-Status & Nachweise“**; für Nicht-GF keine Kachel.
+- [ ] Überschrift, **drei klare Filter mit exklusiven Zählern**, Filter **Alle**, Suche und nachvollziehbare Sortierung auf iPhone und Android. Summe der drei Zähler = Anzahl eindeutig zugeordneter AGT; unklare Zuordnungen separat.
+- [ ] Jede eingeklappte Zeile zeigt **Name, eindeutigen Status und konkreten Grund**; nach Antippen genau die drei Nachweise G26.3, AGT-Unterweisung und FFI mit Gültigkeit und verständlichen Kurztexten.
+- [ ] Prüfe Beispiele: alle gültig; genau ein Ablauf in 60 Tagen; Ablaufdatum heute; bereits abgelaufen; fehlend; zugleich bald fällig und fehlend; widersprüchliche AGT-Zuordnung; nicht zugeordnete Person mit G26.3.
+- [ ] Keine Behauptung **„einsatzbereit“ / „atemschutztauglich“** allein durch Nachweisstatus; Warnung zur fachlichen Einsatzprüfung vorhanden.
+- [ ] Frischer vs. veralteter Datenstand, fehlende Daten, 403, 5xx und Offlinezustand zeigen **keine falschen grünen Gesamtwerte** und keine unberechtigten personenbezogenen Offline-Listen.
+- [ ] Direkter Worker-Endpunkt: Nicht-GF, entfernter GF, WhatsApp-Passkey, fremder oder widerrufener Zugang **403**; GF sieht nur die freigegebenen nötigen Felder, keine Diagnosen.
+- [ ] Kein horizontaler Überlauf bei 320px Bildschirmbreite oder vergrößerter Systemschrift; bedienbare Filter und klare Zurück-Navigation.
+- [ ] Bestehende **„Meine Nachweise“**, Terminrückmeldungen und Push behalten ihre Funktion; es entstehen keine doppelt gepflegten personenbezogenen Nachweisdaten.
 
 ## 4. Bestandsdateien zur gezielten Bearbeitung
 
