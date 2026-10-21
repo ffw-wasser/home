@@ -9,7 +9,7 @@ test('Mehr bietet Wasserentnahme und ordnet Hilfe bewusst ganz unten an',()=>{
  assert.match(css,/\.portal-more-grid \.portal-more-help-tile\{grid-column:1\/-1/);
  assert.match(mobile,/'more-water':'more-water'/);
  assert.match(mobile,/'more-water':'Wasserentnahme Elz'/);
- assert.match(more,/<strong>Elz-Pegel<\/strong><span>Ist-Abfluss &amp; Entnahmegrenze<\/span>/);
+ assert.match(more,/<strong>Elz-Pegel<\/strong><span(?: class="portal-tile-description")?>Ist-Abfluss &amp; Entnahmegrenze<\/span>/);
 });
 test('Wasserentnahme nennt Schwelle einschließlich Gleichheit und Vortagesabfluss, ohne Live-Wert vorzutäuschen',()=>{
  const panel=html.split('<div id="portal-page-more-water"')[1].split('<div id="portal-page-more-bundesliga"')[0];
