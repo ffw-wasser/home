@@ -232,7 +232,7 @@ function deleteMember(id) {
   renderMembers();
   renderAdmin();
   updateSelection();
-  showToast("Mitglied wurde gelöscht.");
+  showToast("Mitglied auf diesem Gerät entfernt. OneDrive und Handyzugänge werden abgeglichen; bitte den Synchronisierungsstatus prüfen.");
 }
 function changePin() {
   if(!requireAdmin("settingsSecurityView"))return;
