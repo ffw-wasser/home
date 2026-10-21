@@ -6,7 +6,8 @@
  async function actor(env,data,auth){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Handyzugang.',400);
   const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(data.alias,data.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(data.alias).first();
-  if(!row||current?.revision!==data.revision||!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
+  if(!row||current?.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
+  if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,data.revision,'commands'));
   const record=await L.open(env,row.payload,'access:'+data.alias);
   await g.PortalService?.assertMember(env,record);return record;
  }

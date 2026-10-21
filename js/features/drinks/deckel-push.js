@@ -2,13 +2,12 @@
 (function(g){
  'use strict';let access=null,busy=false,pairingLink='',pairingExpires=0,pushConfigured=false,pushActive=false,otherAccount=false,generation=0;const $=id=>document.getElementById('portal-push-'+id);const browser=id=>document.getElementById('portal-browser-'+id);
  async function markRead(){if(document.hidden)return;try{await navigator.clearAppBadge?.();}catch{}try{const reg=await navigator.serviceWorker?.getRegistration();for(const tag of ['deckel-reminder','h2o-portal-reminder'])for(const note of await reg?.getNotifications?.({tag})||[])note.close();}catch{}}
- async function restore(){if(!location.hash)try{const saved=await DeckelDevice.read(),url=saved?.url||await DeckelDevice.readLink?.();if(url){const target=new URL(url);target.search=location.search;history.replaceState(null,'',target.href);}}catch{}}
+ async function restore(){if(g.H2OIdentity?.usesPortal()||g.H2OIdentity?.onboarding())return;if(!location.hash)try{const saved=await DeckelDevice.read(),url=saved?.url||await DeckelDevice.readLink?.();if(url){const target=new URL(url);target.search=location.search;history.replaceState(null,'',target.href);}}catch{}}
  function clearPair(){pairingLink='';pairingExpires=0;browser('link-box').hidden=true;browser('manual').hidden=true;browser('link').value='';}
  function state(element,text,active=false){element.textContent=text;element.setAttribute('data-active',String(active));}
  function buttons(){
   if(!$('enable'))return;
   if(pairingLink&&pairingExpires<=Date.now())clearPair();
-  if(document.getElementById('portal-passkey-register'))document.getElementById('portal-passkey-register').disabled=busy||!access;
   browser('start').hidden=Boolean(pairingLink);browser('start').disabled=busy||!access;
   browser('copy').disabled=busy||!pairingLink;browser('revoke').disabled=busy||!access;
   const supported='serviceWorker' in navigator&&'PushManager' in g&&'Notification' in g;
@@ -23,6 +22,7 @@
  async function render(value){
   if(busy)return;
   if(access&&(access.alias!==value.alias||access.revision!==value.revision||access.origin!==value.origin)){clearPair();$('status').textContent='';browser('status').textContent='';}
+  const unified=!!g.H2OIdentity?.session();for(const id of ['portal-browser-legacy','portal-browser-legacy-reset']){const element=document.getElementById(id);if(element)element.hidden=unified;}
   access=value;const version=++generation;buttons();
   try{
    const saved=await DeckelDevice.read(),reg=await navigator.serviceWorker?.getRegistration(),sub=await reg?.pushManager?.getSubscription();
@@ -35,8 +35,7 @@
    const result=await g.H2OPortal.api('browser/status');
    if(version!==generation)return;
    if(!Number.isSafeInteger(result.sessions)||result.sessions<0)throw Error('Invalid browser status');
-   const passkeyStatus=document.getElementById('portal-passkey-status');if(passkeyStatus)passkeyStatus.textContent=result.passkeys>0?'✓ WhatsApp-Passkey eingerichtet':g.H2OPasskeys?.browserSupportsWebAuthn()?'Einmal mit Face ID, Fingerabdruck oder Geräte-PIN bestätigen.':'Passkeys hier nicht verfügbar. Verwende Safari/Chrome oder „Ohne Passkey verbinden“. ';
-   state(browser('state'),result.sessions?result.sessions+' Browser verbunden':'Nicht verbunden',result.sessions>0);
+   state(browser('state'),unified?'Mit H₂O verbunden':result.sessions?result.sessions+' Browser verbunden':'Nicht verbunden',unified||result.sessions>0);
   }catch{if(version===generation)state(browser('state'),'Status nicht verfügbar');}
  }
  async function enable(){if(busy||!access)return;busy=true;generation++;buttons();let created=null;try{
@@ -47,9 +46,9 @@
   const c=access;await navigator.serviceWorker.register('service-worker.js');const reg=await navigator.serviceWorker.ready;
   const response=await fetch(c.origin+'/health',{cache:'no-store',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)}),health=await response.json();if(!response.ok||health.portalVersion!==1||!/^[A-Za-z0-9_-]{87}$/.test(health.publicKey||''))throw Error('Bitte den Cloudflare-Dienst für das H₂O Portal aktualisieren.');
   const key=Uint8Array.from(atob(health.publicKey.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-health.publicKey.length%4)%4)),v=>v.charCodeAt(0));let sub=await reg.pushManager.getSubscription();if(!sub){sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});created=sub;}
-  await g.H2OPortal.api('subscribe',{endpoint:sub.endpoint});const personalURL=new URL(location.href);personalURL.search='';await DeckelDevice.write({portal:true,url:personalURL.href,origin:c.origin,alias:c.alias,revision:c.revision,capability:c.capability,endpoint:sub.endpoint});created=null;pushConfigured=true;pushActive=true;otherAccount=false;$('status').textContent='Mitteilungen aktiviert.';
+  await g.H2OPortal.api('subscribe',{endpoint:sub.endpoint});const personalURL=new URL(location.href);personalURL.search='';if(g.H2OIdentity?.session())personalURL.hash='';await DeckelDevice.write({portal:true,url:personalURL.href,origin:c.origin,alias:c.alias,revision:c.revision,capability:c.capability,endpoint:sub.endpoint});created=null;pushConfigured=true;pushActive=true;otherAccount=false;$('status').textContent='Mitteilungen aktiviert.';
  }catch(e){await created?.unsubscribe().catch(()=>{});$('status').textContent=e.message||'Erinnerungen konnten nicht aktiviert werden.';}finally{busy=false;buttons();}}
- async function disable(){if(busy)return;busy=true;generation++;buttons();try{const saved=await DeckelDevice.read();if(saved?.url)await DeckelDevice.saveLink(saved.url);if(saved?.endpoint&&saved.portal){const response=await fetch(saved.origin+'/portal/unsubscribe',{method:'POST',headers:{Authorization:'Bearer '+saved.capability,'Content-Type':'application/json'},body:JSON.stringify({alias:saved.alias,revision:saved.revision,endpoint:saved.endpoint}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Abmeldung beim Dienst noch nicht bestätigt. Bitte erneut versuchen.');}const reg=await navigator.serviceWorker?.getRegistration(),sub=await reg?.pushManager?.getSubscription();if(sub&&!await sub.unsubscribe())throw Error('Gerät konnte noch nicht abgemeldet werden.');await DeckelDevice.clear();pushConfigured=false;pushActive=false;otherAccount=false;await markRead();$('status').textContent='Mitteilungen deaktiviert.';}catch(e){$('status').textContent=e.message;}finally{busy=false;buttons();}}
+ async function disable(){if(busy)return;busy=true;generation++;buttons();try{const saved=await DeckelDevice.read();if(saved?.url)await DeckelDevice.saveLink(saved.url);if(saved?.endpoint&&saved.portal){const response=await fetch(saved.origin+'/portal/unsubscribe',{method:'POST',headers:{Authorization:'Bearer '+(access?.alias===saved.alias?access.capability:saved.capability),'Content-Type':'application/json'},body:JSON.stringify({alias:saved.alias,revision:saved.revision,endpoint:saved.endpoint}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Abmeldung beim Dienst noch nicht bestätigt. Bitte erneut versuchen.');}const reg=await navigator.serviceWorker?.getRegistration(),sub=await reg?.pushManager?.getSubscription();if(sub&&!await sub.unsubscribe())throw Error('Gerät konnte noch nicht abgemeldet werden.');await DeckelDevice.clear();pushConfigured=false;pushActive=false;otherAccount=false;await markRead();$('status').textContent='Mitteilungen deaktiviert.';}catch(e){$('status').textContent=e.message;}finally{busy=false;buttons();}}
  
  async function startBrowserPair(){
   if(busy||!access)return;busy=true;generation++;clearPair();buttons();browser('status').textContent='Verbindung wird vorbereitet …';
@@ -88,24 +87,10 @@
  async function revokeBrowsers(){
   if(busy||!access||!confirm('Alle WhatsApp-Passkeys und Browser-Verbindungen für diesen H₂O-Zugang wirklich sperren?'))return;
   busy=true;generation++;buttons();
-  try{await g.H2OPortal.api('browser/revoke');clearPair();state(browser('state'),'Nicht verbunden');document.getElementById('portal-passkey-status').textContent='WhatsApp-Zugang zurückgesetzt.';browser('status').textContent='Alle Browserverbindungen getrennt.';}
+  try{await g.H2OPortal.api('browser/revoke');clearPair();state(browser('state'),'Nicht verbunden');browser('status').textContent='Alle Browserverbindungen getrennt.';}
   catch(e){browser('status').textContent=e.message||'Zurücksetzen nicht bestätigt.';}
   finally{busy=false;buttons();}
  }
- async function registerPasskey(){
-  if(busy||!access)return;
-  const note=document.getElementById('portal-passkey-status');
-  if(!g.H2OPasskeys?.browserSupportsWebAuthn()){note.textContent='Passkeys hier nicht verfügbar. Bitte Safari/Chrome verwenden oder „Ohne Passkey verbinden“ öffnen.';return;}
-  busy=true;generation++;buttons();note.textContent='WhatsApp-Passkey wird eingerichtet …';
-  try{
-   const request=await g.H2OPortal.api('passkey/register/options');
-   const response=await g.H2OPasskeys.startRegistration({optionsJSON:request.options});
-   const result=await g.H2OPortal.api('passkey/register/verify',{id:request.id,response});
-   if(result.ok!==true)throw Error('Einrichtung nicht bestätigt.');
-   note.textContent='✓ WhatsApp-Zugang eingerichtet. Öffne den Terminlink und wähle „Mit Passkey anmelden“.';
-  }catch(error){note.textContent=error.name==='NotAllowedError'?'Einrichtung abgebrochen. Du kannst es erneut versuchen.':error.message||'Passkey nicht eingerichtet. In Safari/Chrome erneut versuchen.';}
-  finally{busy=false;buttons();}
- }
- function init(){const passkey=document.getElementById('portal-passkey-register');if(passkey)passkey.onclick=registerPasskey;if($('enable'))$('enable').onclick=enable;if($('disable'))$('disable').onclick=disable;if(browser('start'))browser('start').onclick=startBrowserPair;if(browser('copy'))browser('copy').onclick=copyBrowserLink;if(browser('revoke'))browser('revoke').onclick=revokeBrowsers;document.addEventListener('visibilitychange',()=>{if(!document.hidden&&access&&!busy)void render(access);});buttons();}
+ function init(){if($('enable'))$('enable').onclick=enable;if($('disable'))$('disable').onclick=disable;if(browser('start'))browser('start').onclick=startBrowserPair;if(browser('copy'))browser('copy').onclick=copyBrowserLink;if(browser('revoke'))browser('revoke').onclick=revokeBrowsers;document.addEventListener('visibilitychange',()=>{if(!document.hidden&&access&&!busy)void render(access);});buttons();}
  g.DeckelPush={restore,markRead,render};restore();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

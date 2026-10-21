@@ -144,7 +144,11 @@
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Portalzugang.',400);
   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(data.alias,data.revision).first();
   if(!row)fail('Portalzugang wurde geändert. Bitte den persönlichen QR-Code erneut öffnen.',401);
-   if(!equal(auth,await capability(env,data.alias,data.revision,'commands'))){
+   const identity=await g.WhatsAppPasskeys?.session(env,auth);
+   if(identity){if(identity.record.alias!==data.alias||identity.record.revision!==data.revision)fail('Falsches Mitglied.',401);return identity.record;}
+   const legacy=equal(auth,await capability(env,data.alias,data.revision,'commands'));
+   if(legacy&&await g.WhatsAppPasskeys?.migrated(env,await L.open(env,row.payload,'access:'+data.alias)))fail('Bitte mit H₂O-Passkey anmelden.',401);
+   if(!legacy){
     if(!browserPaths.has(path)||!/^[a-f0-9]{64}$/.test(auth||''))fail('Browserzugang für diese Funktion nicht freigegeben.',401);
     const session=await env.DB.prepare('SELECT alias,revision,expires_at FROM portal_browser_sessions WHERE token_hash=?').bind(await hash('h2o-browser-session:'+auth)).first();
     if(!session||session.alias!==data.alias||session.revision!==data.revision||session.expires_at<=Date.now())fail('Browserzugang abgelaufen. Bitte erneut mit H2O verbinden.',401);
@@ -211,7 +215,8 @@
  }
  async function route(path,data,env,auth,clientIP='unknown'){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
-   if(path.startsWith('/portal/passkey/')){await g.WhatsAppPasskeys.limit(env,clientIP);if(['/portal/passkey/login/options','/portal/passkey/login/verify'].includes(path))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env);}
+   if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
+   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);if(['/portal/passkey/login/options','/portal/passkey/login/verify'].includes(path))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env);}
    if(path==='/portal/browser/redeem')return browserRedeem(env,data);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
@@ -252,7 +257,7 @@
     // One JSON parameter keeps even bulk removals within D1 bind/query limits.
     const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
     for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE '+scope).bind(aliases,payload));
-    for(const table of ['portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
     statements.push(env.DB.prepare("UPDATE commands SET status='rejected',result='accessChanged',envelope='' WHERE status='pending' AND "+scope).bind(aliases,payload));
    }
    statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));
