@@ -161,10 +161,10 @@ test('Portal-Kacheln lassen sich verschieben, sortieren, kompakt anzeigen und zu
  const f=layoutFixture(),{dom,storage}=f;dom['portal-layout-open'].click();assert.equal(dom['portal-layout-dialog'].open,true);
  dom['portal-layout-item'].value='more-water';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
  let navTiles=dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
- assert.deepEqual(navTiles,['portal-section','portal-evidence','account','portal-points','more-water']);
+ assert.deepEqual(navTiles,['portal-section','portal-evidence','account','more-water']);
  dom['portal-layout-item'].value='account';dom['portal-layout-item'].change();dom['portal-layout-earlier'].click();
  navTiles=dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
- assert.deepEqual(navTiles,['portal-section','account','portal-evidence','portal-points','more-water']);
+ assert.deepEqual(navTiles,['portal-section','account','portal-evidence','more-water']);
  dom['portal-layout-item'].value='more-water';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
  assert.ok(!dom['deckel-nav'].querySelectorAll('[data-portal-tile]').some(tile=>tile.dataset.portalTile==='more-water'));
  assert.ok(dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').some(tile=>tile.dataset.portalTile==='more-water'));
@@ -189,7 +189,7 @@ test('Langes Drücken verschiebt Kacheln ohne Scrollen und Wischnavigation',()=>
  f.dom['deckel-main'].dispatch('pointerup',{...start,target:account,clientX:80,clientY:20,timeStamp:610});
  assert.equal(f.dom['portal-menu-title'].textContent,'Termine','langer Druck löst keine Wischnavigation aus');
  const navIds=f.dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
- assert.deepEqual(navIds,['portal-section','portal-evidence','account','more-water','portal-points']);
+ assert.deepEqual(navIds,['portal-section','portal-evidence','account','more-water']);
  assert.ok(JSON.parse(f.storage.get('h2o_portal_layout_v1')).main.includes('more-water'));
 });
 
@@ -238,4 +238,19 @@ test('Einfügemarkierungen verschwinden nach Ablegen, Abbruch und Ablegen außer
   for(const surface of [main,nav])assert.equal(surface.querySelectorAll('.portal-drop-before,.portal-drop-after').length,0);
   assert.ok(!water.classList['portal-tile-dragging']);
  }
+});
+
+test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit altem Speicherstand',()=>{
+ const storage=new Map([['h2o_portal_layout_v1',JSON.stringify({main:['portal-section','account','more-water','more-help','portal-evidence','portal-points'],more:[]})]]);
+ const f=layoutFixture(storage),{dom}=f;
+ const navIds=()=>dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
+ assert.deepEqual(navIds(),['portal-section','account','more-water','more-help']);
+ assert.equal(dom['deckel-nav'].children.length,5);
+ const saved=JSON.parse(storage.get('h2o_portal_layout_v1'));
+ assert.ok(saved.more.includes('portal-evidence'));assert.ok(saved.more.includes('portal-points'));
+ dom['portal-layout-item'].value='portal-evidence';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
+ assert.deepEqual(navIds(),['portal-section','account','more-water','portal-evidence']);
+ assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-help'));
+ const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
+ assert.equal(all.length,12);assert.equal(new Set(all).size,12);
 });
