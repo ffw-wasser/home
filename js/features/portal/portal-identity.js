@@ -31,6 +31,7 @@
   await post('enroll/verify',{...data,id:request.id,response});
  }
  const el=id=>document.getElementById('identity-'+id);
+ function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=true;}}
  function paint(){if(!el('state'))return;el('state').textContent=current?'Mit Passkey angemeldet':'Persönlich anmelden';el('login').textContent=current?'Anmeldung erneut bestätigen':'Mit Passkey anmelden';el('logout').hidden=!current;el('devices').hidden=!current;el('revoke-sessions').hidden=!current;el('register').textContent=current?'Weiteren Passkey hinzufügen':'Passkey einrichten';}
  async function run(action){if(busy)return;if(g.DeckelActions?.hasUnsaved?.())return void(el('message').textContent='Bitte zuerst offene Getränkeeingaben abschließen.');busy=true;try{el('message').textContent='Bitte am Gerät bestätigen …';await action();paint();}catch(e){el('message').textContent=e.name==='NotAllowedError'?'Abgebrochen oder kein passender Passkey verfügbar. Bitte erneut versuchen oder die Verwaltung um eine Freigabe bitten.':e.message;}finally{busy=false;}}
  async function devices(){const value=await post('devices');el('list').replaceChildren();for(const [i,key] of value.keys.entries()){const row=document.createElement('p');row.textContent='Passkey '+(i+1)+(key.current?' · aktuell verwendet':'');if(!key.current){const button=document.createElement('button');button.type='button';button.textContent='Sperren';button.onclick=()=>run(async()=>{await login();await post('remove',{credential:key.id});await devices();el('message').textContent='Passkey und zugehörige Sitzungen gesperrt.';await g.DeckelReload?.();});row.append(' ',button);}el('list').append(row);}}
@@ -41,7 +42,7 @@
   el('revoke-sessions').onclick=()=>run(async()=>{await login();await post('sessions/revoke');el('message').textContent='Alle anderen Portal- und Termin-Sitzungen wurden abgemeldet.';await g.DeckelReload?.();});
   el('logout').onclick=()=>run(async()=>{await post('logout');save(null);history.replaceState(null,'',location.pathname+location.search);await g.DeckelDevice?.clearLink?.();location.reload();});
  }
- g.H2OIdentity={onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,session:()=>current||read(),credentials:()=>record,post};
+ g.H2OIdentity={setPortalVisible,onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,session:()=>current||read(),credentials:()=>record,post};
  g.addEventListener('storage',event=>{if(event.key===STORAGE)location.reload();});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
