@@ -20,17 +20,18 @@ test('Sprüche bleiben unterhalb des Deckels, Betrag bleibt beim Antippen sichtb
  assert.doesNotMatch(view,/for\(const id of \['balance','balanceLabel','updated'\]\)\$\(id\)\.hidden=true/);
  assert.match(view,/\$\('coaster'\)\.setAttribute\?\.\('aria-describedby','updated deckel-tap-hint deckel-quote'\)/);
 });
-test('Portalnavigation hat fünf gleich große Kacheln und umbrechende Texte',()=>{
+test('Portalnavigation bleibt erreichbar und erweitert sich bei verschobenen Kacheln horizontal',()=>{
  const nav=html.slice(html.indexOf('<nav id="deckel-nav"'),html.indexOf('</nav>',html.indexOf('<nav id="deckel-nav"')));
  assert.equal((nav.match(/data-deckel-target=/g)||[]).length,5);
  assert.match(nav,/data-deckel-target="account" aria-label="Mein Deckel"/);
- assert.match(nav,/aria-label="Mein Deckel"><span aria-hidden="true">◉<\/span>Deckel/);
- assert.match(css,/\.deckel-nav\{[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+ assert.match(nav,/aria-label="Mein Deckel"><span class="portal-nav-symbol" aria-hidden="true">◉<\/span><strong>Deckel<\/strong>/);
+ assert.match(nav,/data-portal-pinned="more"/);
+ assert.match(portalCss,/\.deckel-nav\{[^}]*overflow-x:auto/);
  const match=portalCss.match(/\.deckel-nav button\{([^}]+)\}/);
  assert.ok(match,'Kachelformatierung');
  assert.match(match[1],/white-space:normal/);
  assert.match(match[1],/overflow-wrap:anywhere/);
- assert.match(match[1],/min-width:0/);
+ assert.match(match[1],/min-width:68px/);
  assert.doesNotMatch(match[1],/white-space:nowrap/);
 });
 test('Navigations-IDs bleiben eindeutig und JS syntaktisch gültig',()=>{
