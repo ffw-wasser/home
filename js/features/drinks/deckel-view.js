@@ -46,8 +46,8 @@ function nudgeDeckel(){
 function credentials(){const identity=globalThis.H2OIdentity?.credentials();if(!identity)throw Object.assign(Error('Bitte mit deinem H₂O-Passkey anmelden.'),{status:401});return {repo:'portal',record:identity};}
 function clear(){globalThis.H2OPortal?.clear();globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('bookings').replaceChildren();$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
-async function load(){
- globalThis.DeckelUpdate?.check();
+async function load(options={}){
+ if(options.checkUpdate!==false)globalThis.DeckelUpdate?.check();
  const number=++generation;currentRequest?.abort();resetNudge();$('refresh').disabled=true;$('refresh').setAttribute?.('aria-busy','true');$('status').setAttribute?.('data-state','loading');enableNudge(false);hideThanks();$('status').textContent=hasData?'Kontostand wird geprüft …':'Kontostand wird geladen …';
  try{
   if(globalThis.H2OIdentity?.onboarding())throw Error('Bitte den freigegebenen Passkey unter Konto → Sicherheit einrichten oder anmelden.');
@@ -71,7 +71,7 @@ async function load(){
  }catch(error){if(number!==generation||document.hidden)return;if(!hasData||error.status===401||error.status===403)clear();if(globalThis.H2OIdentity&&!hasData)document.getElementById('identity-account').open=true;$('status').setAttribute?.('data-state','error');$('status').textContent=loadError(error)+(hasData?' Angezeigt bleibt der Stand vom '+new Date(lastUpdated).toLocaleString('de-DE')+'.':'');}
  finally{if(number===generation){$('refresh').disabled=false;$('refresh').setAttribute?.('aria-busy','false');enableNudge(hasData&&!document.hidden);}}
 }
-$('coaster').onclick=nudgeDeckel;$('coaster').onkeydown=event=>{if((event.key==='Enter'||event.key===' ')&&!event.repeat){event.preventDefault();nudgeDeckel();}};globalThis.DeckelReload=load;$('refresh').onclick=load;
+$('coaster').onclick=nudgeDeckel;$('coaster').onkeydown=event=>{if((event.key==='Enter'||event.key===' ')&&!event.repeat){event.preventDefault();nudgeDeckel();}};globalThis.DeckelReload=load;$('refresh').onclick=()=>globalThis.DeckelUpdate?.refresh?globalThis.DeckelUpdate.refresh():load();
 globalThis.addEventListener('hashchange',()=>{generation++;currentRequest?.abort();currentAccess='';lastUpdated='';clear();load();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;currentRequest?.abort();clear();$('refresh').disabled=false;}else load();});
 globalThis.addEventListener('pageshow',event=>{if(event.persisted)load();});load();

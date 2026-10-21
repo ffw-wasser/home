@@ -151,8 +151,8 @@ test('Mehr-Kacheln öffnen eigene Rubriken und Rückkehr hält Mehr im Menü aus
 function layoutFixture(storage=new Map()){
  const dom=nodes(),main=dom['deckel-main'],nav=dom['deckel-nav'],grid=dom['portal-more-grid'];
  nav.id='deckel-nav';grid.id='portal-more-grid';
- const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','action-update','more-help'];
- for(const [ids,parent] of [[mainIds,nav],[moreIds,grid]])for(const id of ids){const tile=new Node('button');tile.dataset.portalTile=id;tile.dataset.portalTitle=id;tile.dataset.deckelTarget=mainIds.includes(id)?id:'';if(moreIds.includes(id)&&!['theater-phone-section','action-update'].includes(id))tile.dataset.moreTarget=id;parent.append(tile);}
+ const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-help'];
+ for(const [ids,parent] of [[mainIds,nav],[moreIds,grid]])for(const id of ids){const tile=new Node('button');tile.dataset.portalTile=id;tile.dataset.portalTitle=id;tile.dataset.deckelTarget=mainIds.includes(id)?id:'';if(moreIds.includes(id)&&id!=='theater-phone-section')tile.dataset.moreTarget=id;parent.append(tile);}
  const pinned=new Node('button');pinned.dataset.portalPinned='more';pinned.dataset.deckelTarget='deckel-more';nav.append(pinned);main.append(grid);
  const timers=new Map();let timerId=0,under=null;const ctx=vm.createContext({history:{state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}},innerWidth:390,innerHeight:844,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],createElement:tag=>new Node(tag),addEventListener(){},elementFromPoint:()=>under}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);return{ctx,dom,storage,timers,setUnder:node=>under=node};
@@ -252,7 +252,7 @@ test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit alte
  assert.deepEqual(navIds(),['portal-section','account','more-water','portal-evidence']);
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-help'));
  const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
- assert.equal(all.length,11);assert.equal(new Set(all).size,11);
+ assert.equal(all.length,10);assert.equal(new Set(all).size,10);
 });
 
 test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellung',()=>{
