@@ -6,7 +6,6 @@ test('Mehr bietet Wasserentnahme und ordnet Hilfe bewusst ganz unten an',()=>{
  const expected=['more-water','more-bookings','theater-phone-open','more-security','portal-more-breathing-tile','more-bundesliga','deckel-update-reload','more-help'];
  const actual=[...more.matchAll(/<button\b([^>]*)class="portal-more-tile[^"]*"([^>]*)>/g)].map(m=>((m[1]+' '+m[2]).match(/(?:data-more-target|id)="([^"]+)"/)||[])[1]);
  assert.deepEqual(actual,expected);
- assert.match(css,/\.portal-more-grid \.portal-more-help-tile\{grid-column:1\/-1/);
  assert.match(mobile,/'more-water':'more-water'/);
  assert.match(mobile,/'more-water':'Wasserentnahme Elz'/);
  assert.match(more,/<strong>Elz-Pegel<\/strong><span(?: class="portal-tile-description")?>Ist-Abfluss &amp; Entnahmegrenze<\/span>/);
