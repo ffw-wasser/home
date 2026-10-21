@@ -16,3 +16,11 @@ test('Handyabgleich bietet Wiederholen nur bei ausstehenden Daten oder Fehlern',
  f.fail(false);await f.c.PortalAdmin.syncRoster(true);assert.equal(f.button.hidden,true);
  f.c.oneDriveStateConfirmed=false;await f.c.PortalAdmin.syncRoster(true);assert.equal(f.button.hidden,false);assert.equal(f.button.disabled,true);
 });
+
+test('Atemschutz-Zuordnung folgt ausschließlich dem Mitglieder-Häkchen, nicht Rollen oder Nachweisen',async()=>{
+ const f=fixture();
+ f.people([{id:'checked',breathingQualified:true,roles:[]},{id:'unchecked',breathingQualified:false,roles:['ATM','ATG'],g263ValidUntil:'2099-12-31'},{id:'legacy-role',roles:['ATM']},{id:'legacy-evidence',agtInstructionValidUntil:'2099-12-31',ffiValidUntil:'2099-12-31'}]);
+ await f.c.PortalAdmin.syncRoster(true);
+ assert.equal(f.requests[0].data.agtSource,'member-checkbox');
+ assert.deepEqual(Array.from(f.requests[0].data.members,m=>m.agt),[true,false,false,false]);
+});

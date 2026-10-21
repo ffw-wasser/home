@@ -455,19 +455,19 @@ test('GF Atemschutz: Status, eindeutige AGT-Zuordnung und Rollenentzug',async()=
  const make=(g263,instruction,ffi)=>E.project({breathingQualified:true,g263ValidUntil:g263,agtInstructionValidUntil:instruction,ffiValidUntil:ffi});
  const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===4?null:i<3,
   evidence:i===0?make(valid,valid,valid):i===1?make(valid,valid,''):i===2?make(valid,expired,valid):i===3?E.project({breathingQualified:false,g263ValidUntil:valid}):make(valid,valid,valid)}));
- assert.equal((await f.call('roster',{members:people},null,true)).status,200);
+ assert.equal((await f.call('roster',{members:people,agtSource:'member-checkbox'},null,true)).status,200);
  const gf=await f.call('gf-breathing');
  assert.equal(gf.status,200);
  assert.equal(gf.value.people.length,3);
  assert.equal(gf.value.people.filter(p=>p.status==='valid').length,1);
  assert.equal(gf.value.people.filter(p=>p.status==='check').length,2);
- assert.equal(gf.value.uncertain.length,1);
+ assert.equal(gf.value.uncertain.length,0);
  assert.equal(gf.value.stale,false);
  assert.equal((await f.call('gf-breathing',{leader:true},f.people[1])).status,403);
  const replaced={...f.people[0],revision:'wrong-revision'};
  assert.equal((await f.call('gf-breathing',{},replaced)).status,401);
  const next=people.map((p,i)=>({...p,leader:i===1}));
- assert.equal((await f.call('roster',{members:next},null,true)).status,200);
+ assert.equal((await f.call('roster',{members:next,agtSource:'member-checkbox'},null,true)).status,200);
  assert.equal((await f.call('gf-breathing')).status,403);
  assert.equal((await f.call('gf-breathing',{},f.people[1])).status,200);
 });
@@ -521,4 +521,15 @@ test('Passkey: Hauptzugangsrotation, Challenge-Bindung und Rate-Limit',async()=>
  f.sql.prepare('UPDATE accounts SET revision=? WHERE alias=?').run('new-revision',f.people[0].alias);
  assert.equal((await f.call('passkey/login/verify',await p.login())).status,401);
  let result;for(let i=0;i<31;i++)result=await f.call('passkey/login/options');assert.equal(result.status,429);
+});
+
+test('GF Atemschutz: alte Rollenprojektion bleibt bis zum Checkbox-Abgleich gesperrt',async()=>{
+ const f=await fixture(),members=f.people.map((p,i)=>({id:p.memberId,name:'Test '+i,leader:i===0,agt:true,evidence:f.c.MemberEvidence.project({breathingQualified:true})}));
+ await f.call('roster',{members},null,true);
+ let result=(await f.call('gf-breathing')).value;
+ assert.equal(result.assignmentSyncRequired,true);assert.equal(result.stale,true);assert.equal(result.people.length,0);assert.equal(result.uncertain.length,0);
+ await f.call('roster',{members:members.map((m,i)=>({...m,agt:i===1})),agtSource:'member-checkbox'},null,true);
+ result=(await f.call('gf-breathing')).value;assert.equal(result.people.length,1);assert.equal(result.people[0].name,'Test 1');assert.equal(result.stale,false);
+ await f.call('roster',{members:members.map(m=>({...m,agt:false})),agtSource:'member-checkbox'},null,true);
+ result=(await f.call('gf-breathing')).value;assert.equal(result.people.length,0);assert.equal(result.uncertain.length,0);
 });
