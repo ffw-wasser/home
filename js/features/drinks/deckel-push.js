@@ -1,6 +1,6 @@
 /* Portal notifications: explicit opt-in; personal URL and credentials stay on the phone. */
 (function(g){
- 'use strict';let access=null,busy=false,pushConfigured=false,pushActive=false,otherAccount=false,generation=0;const $=id=>document.getElementById('portal-push-'+id);const browser=id=>document.getElementById('portal-browser-'+id);
+ 'use strict';let access=null,busy=false,pushConfigured=false,pushActive=false,otherAccount=false,generation=0;const $=id=>document.getElementById('portal-push-'+id);
  async function markRead(){if(document.hidden)return;try{await navigator.clearAppBadge?.();}catch{}try{const reg=await navigator.serviceWorker?.getRegistration();for(const tag of ['deckel-reminder','h2o-portal-reminder'])for(const note of await reg?.getNotifications?.({tag})||[])note.close();}catch{}}
  function state(element,text,active=false){element.textContent=text;element.setAttribute('data-active',String(active));}
  function buttons(){
@@ -25,7 +25,6 @@
    pushActive=pushConfigured&&!otherAccount&&saved.revision===value.revision&&sub?.endpoint===saved.endpoint&&g.Notification?.permission==='granted';
    buttons();
   }catch{if(version===generation)state($('state'),'Nicht geprüft');}
-  state(browser('state'),'Mit H₂O verbunden',true);
  }
  async function enable(){if(busy||!access)return;busy=true;generation++;buttons();let created=null;try{
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;if(ios&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches)throw Error('Bitte zuerst über Teilen → Zum Home-Bildschirm hinzufügen und das H₂O-Symbol öffnen.');
