@@ -115,8 +115,14 @@
  // WhatsApp cannot guarantee returning to the originating group from a browser.
  el('back-to-whatsapp').addEventListener('click',()=>{
   el('back-to-h2o-status').textContent='Öffne WhatsApp. Deine Rückmeldung bleibt gespeichert. Wechsle bei Bedarf selbst zur ursprünglichen Gruppe.';
-  // A universal WhatsApp landing link is more broadly supported than the custom URL scheme.
-  location.assign('https://wa.me/');
+  // The bare wa.me URL can trigger a failed link-validation screen in WhatsApp.
+  // Prefer returning through the real browser history if the user arrived from WhatsApp.
+  // Otherwise open the WhatsApp app directly, without a universal-link validation hop.
+  try{
+   const previous=new URL(document.referrer);
+   if(/(^|\\.)whatsapp\\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
+  }catch{}
+  location.assign('whatsapp://app');
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
   const focus=wanted();
