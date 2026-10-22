@@ -66,3 +66,16 @@ test('Terminlink meldet nicht eingeladene Mitglieder ohne Termindetails',async()
  assert.equal(invited.value.eventLinkStatus,null);
  assert.equal(invited.value.events.some(e=>e.id===id),true);
 });
+
+test('Organizer is excluded from personal WhatsApp reminders, including direct prepare',async()=>{
+ const f=await setup();
+ await contact(f,0);
+ await contact(f,1);
+ const list=await f.call('whatsapp-recipients',{eventId:f.event.id},f.people[0]);
+ assert.equal(list.status,200);
+ assert.ok(!list.value.members.some(m=>m.id===f.people[0].memberId));
+ assert.ok(list.value.members.some(m=>m.id===f.people[1].memberId));
+ const own=await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[0].memberId},f.people[0]);
+ assert.equal(own.value.eligible,false);
+ assert.equal(own.value.phone,null);
+});
