@@ -321,13 +321,16 @@
     if(!saved[0].meta.changes)fail('Mitglieder wurden gleichzeitig geändert. Bitte erneut prüfen.',409);
     return {ok:true};
    }
+   const organizerId=admin?(typeof data.organizerMemberId==='string'?data.organizerMemberId:''):record.memberId;
+   if(admin&&organizerId&&!roster.members.some(p=>p.id===organizerId))fail('Abfragendes Mitglied nicht gefunden.',400);
+   if(admin&&whatsappAction==='prepare'&&!organizerId)fail('Bitte zuerst den Abfragenden auswählen.',400);
    const people=[],statuses=new Map();
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results;
    for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
    for(const person of roster?.members||[]){
-    if(!isRecipient(event,person.id)||(!admin&&person.id===record.memberId)||whatsappAction==='prepare'&&person.id!==data.memberId)continue;
+    if(!isRecipient(event,person.id)||person.id===organizerId||whatsappAction==='prepare'&&person.id!==data.memberId)continue;
     const status=statuses.get(person.id)||'open',eligible=['open','maybe'].includes(status),contact=person.whatsapp;
-    people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible,phone:eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
+    people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible:eligible&&(!admin||!!organizerId),phone:organizerId&&eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
    }
    if(whatsappAction==='prepare')return {event:memberEvent(event),eligible:people[0]?.eligible===true,phone:people[0]?.phone||null};
    return {event:memberEvent(event),members:people};
