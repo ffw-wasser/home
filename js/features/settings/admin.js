@@ -203,8 +203,8 @@ function prepareMemberUpdate(id, row) {
   const phoneInput=row.querySelector("[data-whatsapp-phone]");
   const allowedInput=row.querySelector("[data-whatsapp-allowed]");
   if(phoneInput){
-    const phone=phoneInput.value.trim().replace(/[\\s()\\-]/g,"").replace(/^00/,"+");
-    if(phone&&!/^\\+[1-9]\\d{7,14}$/.test(phone))throw Error("WhatsApp-Nummer bitte mit + und Ländervorwahl eingeben.");
+    const phone=phoneInput.value.trim().replace(/[\s()-]/g,"").replace(/^00/,"+");
+    if(phone&&!/^\+[1-9]\d{7,14}$/.test(phone))throw Error("WhatsApp-Nummer bitte mit + und Ländervorwahl eingeben.");
     member.whatsappPhone=phone;
     member.whatsappAllowed=Boolean(phone&&allowedInput?.checked);
   }
