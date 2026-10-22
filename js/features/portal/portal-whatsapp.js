@@ -120,7 +120,13 @@
    const previous=new URL(document.referrer);
    if(/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
   }catch{}
-  feedback.textContent='Öffne WhatsApp über den App-Umschalter. Deine Rückmeldung ist gespeichert.';
+  // A link opened from the native WhatsApp app usually has no referrer. Open the app directly on phones.
+  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'')){
+   feedback.textContent='WhatsApp wird geöffnet. Falls das nicht klappt, wechsle über den App-Umschalter zurück.';
+   location.assign('whatsapp://app');
+   return;
+  }
+  feedback.textContent='Wechsle zum WhatsApp-Fenster zurück. Deine Rückmeldung ist gespeichert.';
  });
  // Return only to the already authenticated installed PWA, or genuine in-tab history.
  // Never fall back to a generic deckel.html link: that could restart QR onboarding.
