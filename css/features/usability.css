@@ -133,6 +133,12 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 #settingsDrinksView .settings-menu-card{padding:18px;border-radius:14px;gap:8px;min-height:0}
 #settingsDrinksView .settings-menu-card>.step{display:none!important}
 #settingsDrinksView .settings-menu-card h3,#settingsDrinksView .settings-menu-card p{margin:0}
-@media(max-width:600px){#settingsView .settings-menu-grid{grid-template-columns:1fr}#settingsView .settings-menu-card{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:14px 16px}#settingsView .settings-task-group .settings-menu-card button{margin-top:5px}.settings-view>.screen-heading>button,.settings-subpage>.screen-heading>.view-home-button{flex-basis:100%;width:100%;text-align:left}}
+@media(max-width:600px){#settingsView .settings-menu-grid{grid-template-columns:1fr}#settingsView .settings-menu-card{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:14px 16px}#settingsView .settings-task-group .settings-menu-card button{margin-top:5px}}
 
 .ux-member-open.is-pending{display:inline-block;color:#78520c;background:#fff3cf;border-radius:6px;padding:4px 8px;white-space:normal;font-size:.875rem}
+
+@media(max-width:760px){
+ .settings-view>.screen-heading,.settings-subpage>.screen-heading{flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+ .settings-view>.screen-heading>div,.settings-subpage>.screen-heading>div{width:100%;min-width:0}
+ .settings-view>.screen-heading>button,.settings-subpage>.screen-heading>.view-home-button{flex:none;width:100%;text-align:left;margin-left:0}
+}
