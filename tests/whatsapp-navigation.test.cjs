@@ -32,36 +32,18 @@ function responseContext({standalone=false,from='',historyLength=1,savedURL=null
  vm.runInContext(read('js/features/portal/portal-whatsapp.js'),c);
  return {dom,assigned,back};
 }
-test('WhatsApp-Rückweg: nur bei echtem WhatsApp-Referrer Verlauf nutzen',()=>{
- const fromWhatsApp=responseContext({from:'https://web.whatsapp.com/',historyLength:3,search:'?event=test'});
- fromWhatsApp.dom['back-to-whatsapp'].events.click();assert.equal(fromWhatsApp.back.length,1);
- const unrelated=responseContext({from:'https://example.com/',historyLength:3,search:'?event=test'});
- unrelated.dom['back-to-whatsapp'].events.click();assert.equal(unrelated.back.length,0);
- assert.match(unrelated.dom['back-to-h2o-status'].textContent,/WhatsApp-Fenster/);
+test('WhatsApp öffnen nutzt den universellen Link ohne Gruppen-Rücksprungversprechen',()=>{
+ const run=responseContext({search:'?event=test'});
+ run.dom['back-to-whatsapp'].events.click();
+ assert.deepEqual(run.assigned,['https://wa.me/']);
+ assert.match(run.dom['back-to-h2o-status'].textContent,/ursprünglichen Gruppe/);
+ assert.equal(run.back.length,0);
 });
-test('WhatsApp-Rückweg öffnet die native App auf iPhone und Android ohne Referrer',()=>{
- for(const userAgent of ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)','Mozilla/5.0 (Linux; Android 15; Pixel)']){
-  const run=responseContext({userAgent,search:'?event=test'});
-  run.dom['back-to-whatsapp'].events.click();
-  assert.deepEqual(run.assigned,['whatsapp://app']);
-  assert.equal(run.back.length,0);
- }
-});
-test('Zurück: installierte H2O-App wird nur mit gespeichertem privaten Link geöffnet',async()=>{
- const personal='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/test&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
- const run=responseContext({standalone:true,savedURL:personal});
- await run.dom['back-to-h2o'].events.click();
- assert.deepEqual(run.assigned,[personal]);assert.equal(run.back.length,0);
-});
-test('Zurück: gültige Verlaufshistorie funktioniert; sonst erfolgt keine QR-Umleitung',async()=>{
- const from=responseContext({from:'https://ffw-wasser.github.io/home/deckel.html',historyLength:3});
- await from.dom['back-to-h2o'].events.click();
- assert.equal(from.back.length,1);
- const unknown=responseContext({});
- await unknown.dom['back-to-h2o'].events.click();
- assert.equal(unknown.assigned.length,0);
- assert.equal(unknown.back.length,0);
- assert.match(unknown.dom['back-to-h2o-status'].textContent,/Home-Bildschirm/);
+test('Terminseite enthält keine überflüssigen Zugangs- und H2O-Buttons',()=>{
+ const html=read('termin.html');
+ assert.ok(!html.includes('id="back-to-h2o"'));
+ assert.ok(!html.includes('id="remove"'));
+ assert.ok(!html.includes('Bisherige Verbindung während der Umstellung'));
 });
 
 function settingsFixture({clipboardFails=false,saved=null,permission='granted',sessions=0}={}){
