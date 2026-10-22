@@ -32,8 +32,8 @@
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}return new TextDecoder().decode(bytes);
  }
  async function projection(url){const raw=await download(url),items=g.PortalCalendar.parse(raw),events=[];for(const item of items){const {key,seriesKey,...rest}=item;events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:await hash('h2o-series/v1:'+url+':'+seriesKey),...rest});}return events;}
- async function calendar(env,force=false){
-  const c=await config(env);if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
+ async function calendar(env,force=false,configuration){
+  const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
   const old=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();if(old&&!force&&old.fetched_at>Date.now()-300000)return {...await open(env,old,'portal-calendar'),configured:true,fetchedAt:old.fetched_at,stale:false};
   if(loads.has(env.DB))return loads.get(env.DB);
   const promise=(async()=>{try{const events=await projection(c.calendarUrl),fetchedAt=Date.now(),payload=await L.seal(env,{events},'portal-calendar');
@@ -75,11 +75,14 @@
   if(old.value.revision===data.revision){if(old.value.awardUnits!==data.awardUnits)fail('Diese Bonusversion wurde bereits anders verwendet.');return {birthdayPolicy:old.value};}
   if(data.expectedRevision!==old.value.revision)fail('Geburtstagspunkte wurden inzwischen geändert. Bitte neu laden.');const policy={revision:data.revision,awardUnits:data.awardUnits},payload=await L.seal(env,policy,'portal-birthday-policy'),result=old.row?await env.DB.prepare('UPDATE portal_bonus_policy SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.row.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_bonus_policy(id,payload) VALUES(1,?)').bind(payload).run();if(!result.meta.changes)fail('Geburtstagspunkte wurden gleichzeitig geändert. Bitte erneut prüfen.');return {birthdayPolicy:policy};
  }
- const berlinDay=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+ let berlinDayFormatter;
+ const berlinDay=ms=>(berlinDayFormatter??=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'})).format(new Date(ms));
  async function awardBirthdays(env,cal){
-  const today=berlinDay(Date.now()),year=Number(today.slice(0,4)),rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster'),ruleRow=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();if(!roster||!ruleRow)return 0;
+  const today=berlinDay(Date.now()),birthdays=cal.events.filter(e=>e.kind==='birthday'&&e.memberId&&berlinDay(e.start)===today);
+  if(!birthdays.length)return 0; // Ordinary minutes need no birthday database reads or decryption.
+  const year=Number(today.slice(0,4)),rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster'),ruleRow=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();if(!roster||!ruleRow)return 0;
   const policy=await birthdayPolicy(env);const awarded=new Set((await env.DB.prepare('SELECT member FROM portal_birthdays WHERE year=?').bind(year).all()).results.map(r=>r.member));let processed=0;
-  for(const e of cal.events){if(e.kind!=='birthday'||!e.memberId||berlinDay(e.start)!==today||awarded.has(e.memberId)||!roster.members.some(m=>m.id===e.memberId))continue;if(processed>=2)break;
+  for(const e of birthdays){if(awarded.has(e.memberId)||!roster.members.some(m=>m.id===e.memberId))continue;if(processed>=2)break;
    const m=await L.meta(env);L.active(m);const current=await L.read(env,e.memberId),booking={id:'birthday-'+year,type:'birthday-reward',confirmation:'birthday',year,cents:policy.value.awardUnits,createdAt:new Date(Date.now()).toISOString()},next=g.DrinksModel.appendBirthdayReward(current.account,booking),marker=await L.seal(env,{eventId:e.id,awardUnits:policy.value.awardUnits,awardedAt:Date.now()},'birthday:'+e.memberId+':'+year),payload=await L.seal(env,next,'ledger:'+e.memberId),guard='EXISTS(SELECT 1 FROM portal_birthdays WHERE member=? AND year=? AND payload=?)';
    const first=env.DB.prepare("INSERT OR IGNORE INTO portal_birthdays(member,year,payload) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=? AND state='active') AND EXISTS(SELECT 1 FROM portal_rules WHERE id=1 AND payload=?) AND EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?) AND "+(policy.row?'EXISTS(SELECT 1 FROM portal_bonus_policy WHERE id=1 AND payload=?)':'NOT EXISTS(SELECT 1 FROM portal_bonus_policy WHERE id=1)')+' AND '+(current.version?'EXISTS(SELECT 1 FROM ledgers WHERE member=? AND version=?)':'NOT EXISTS(SELECT 1 FROM ledgers WHERE member=?)')).bind(e.memberId,year,marker,m.seq,ruleRow.payload,rosterRow.payload,...(policy.row?[policy.row.payload]:[]),e.memberId,...(current.version?[current.version]:[]));
    const write=current.version?env.DB.prepare('UPDATE ledgers SET payload=?,version=version+1 WHERE member=? AND '+guard).bind(payload,e.memberId,e.memberId,year,marker):env.DB.prepare('INSERT INTO ledgers(member,payload,version) SELECT ?,?,1 WHERE '+guard).bind(e.memberId,payload,e.memberId,year,marker);
@@ -158,7 +161,7 @@
   for(const id of obsoleteIds)await env.DB.prepare('DELETE FROM portal_replies WHERE event=?').bind(id).run();
  }
  async function scheduled(env){
-  await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env));if(cal.stale)return;
+  await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env,false,c));if(cal.stale)return;
   await pruneFinishedEvents(env,cal);
   await env.DB.prepare('DELETE FROM portal_sends WHERE created_at<?').bind(Date.now()-30*DAY).run();
   await env.DB.prepare('DELETE FROM portal_replies WHERE updated_at<?').bind(Date.now()-400*DAY).run();
