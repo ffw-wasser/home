@@ -5,6 +5,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
   const page=await browser.newPage({viewport:{width,height:844},isMobile:width<500,hasTouch:true});
   await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="host"></div>'}));
   await page.goto('https://example.test/home/deckel.html#private-key');
+  await page.addStyleTag({content:fs.readFileSync('css/features/deckel.css','utf8')});
   await page.addStyleTag({content:fs.readFileSync('css/features/portal.css','utf8')});
   await page.addScriptTag({content:fs.readFileSync('js/features/portal/portal-reminders.js','utf8')});
   await page.evaluate(()=>{
@@ -13,6 +14,12 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
    window.calls=[];window.fail=false;window.req=async(path,data)=>{calls.push({path,data});if(fail)throw Error('Rolle nicht mehr berechtigt');if(path==='whatsapp-events')return {events:structuredClone(events)};if(path==='whatsapp-prepare'){const p=people.find(p=>p.id===data.memberId);return {event:structuredClone(events[0]),eligible:['open','maybe'].includes(p.status),phone:p.phone};}return {event:structuredClone(events[0]),members:structuredClone(people)};};
    window.mount=()=>H2OReminders.mount(document.getElementById('host'),{eventId:'event1',scope:'synthetic',request:req});mount();
   });
+  const modeButtons=page.locator('.portal-reminder-actions button');
+  const firstMode=await modeButtons.nth(0).boundingBox(),secondMode=await modeButtons.nth(1).boundingBox();
+  assert.ok(Math.abs(firstMode.y-secondMode.y)<1,'reminder modes share one compact row');
+  assert.ok(firstMode.height>=44&&firstMode.height<=60,'mobile touch target stays compact');
+  assert.ok(secondMode.x>=firstMode.x+firstMode.width,'mode buttons never overlap');
+  if(width===390)await page.screenshot({path:'/tmp/whatsapp-buttons-mobile.png'});
   const row=name=>page.locator('.portal-reminder-person').filter({hasText:name});
   await page.getByText('2 Erinnerungen vorgesehen', {exact:false}).waitFor();
   assert.equal(await page.locator('input:checked').count(),2);assert.equal(await row('Test Clara').locator('input').isDisabled(),true);assert.equal(await row('Test Eva').locator('input').isChecked(),false);
