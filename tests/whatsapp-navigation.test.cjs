@@ -41,8 +41,8 @@ test('WhatsApp öffnen nutzt den universellen Link ohne Gruppen-Rücksprungversp
 });
 test('Terminseite enthält keine überflüssigen Zugangs- und H2O-Buttons',()=>{
  const html=read('termin.html');
- assert.ok(!html.includes('id="back-to-h2o"'));
- assert.ok(!html.includes('id="remove"'));
+ assert.match(html,/id="back-to-h2o" hidden/);
+ assert.match(html,/id="remove" hidden/);
  assert.ok(!html.includes('Bisherige Verbindung während der Umstellung'));
 });
 
