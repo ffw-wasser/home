@@ -97,7 +97,7 @@
  }
  async function refresh(){if(!access||busy||pending||document.hidden)return;const version=generation;busy=true;controls();const evidence=refreshEvidence(version);$('status').textContent=loaded?'Termine werden aktualisiert …':'Kalender wird geladen …';try{const result=await api('list');if(version!==generation)return;loaded=true;paint(result);$('status').textContent=!result.configured?'Der Kalender wird von der Verwaltung noch verbunden.':(result.stale?'Kalender konnte nicht aktuell geprüft werden. Angezeigt bleibt der letzte Stand. ':'')+'Zuletzt aktualisiert: '+new Date(result.fetchedAt).toLocaleString('de-DE')+'.';}catch(e){if(version===generation){const network=e.name==='TimeoutError'||e.name==='AbortError'||e instanceof TypeError||/abort|load failed|fetch/i.test(e.message||'');$('status').textContent=(navigator.onLine===false?'Offline. ':network?(g.ConnectionStatus?.message(e)||'Die Kalenderverbindung wurde unterbrochen. Bitte erneut versuchen.')+' ':e.message)+(loaded?' Der zuletzt geladene Stand bleibt angezeigt.':'');}}finally{if(version===generation){busy=false;controls();schedule();}await evidence;}}
  let overviewDialog=null,overviewRequest=0;
- function closeOverview(){overviewRequest++;overviewDialog?.close();}
+ function closeOverview(){g.H2OReminders?.close();overviewRequest++;overviewDialog?.close();}
  async function shareEvent(event,feedback){
   // Keep navigator.share inside the original user gesture: async health checks above it
   // can consume transient activation on iOS Safari and prevent the share sheet.
@@ -117,7 +117,7 @@
   }}
  }
  async function showOverview(event){
-  if(!overviewDialog){overviewDialog=node('dialog');overviewDialog.className='portal-calendar-dialog portal-overview-dialog';overviewDialog.setAttribute('aria-labelledby','portal-overview-title');document.body.append(overviewDialog);overviewDialog.addEventListener('close',()=>{overviewRequest++;});}
+  if(!overviewDialog){overviewDialog=node('dialog');overviewDialog.className='portal-calendar-dialog portal-overview-dialog';overviewDialog.setAttribute('aria-labelledby','portal-overview-title');document.body.append(overviewDialog);overviewDialog.addEventListener('close',()=>{overviewRequest++;g.H2OReminders?.close();});}
   const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.onclick=closeOverview;const share=node('button','Über WhatsApp teilen'),shareStatus=node('p');share.type='button';share.className='portal-overview-open';share.disabled=true;share.onclick=()=>shareEvent(event,shareStatus);shareStatus.setAttribute('role','status');overviewDialog.replaceChildren(heading,title,share,shareStatus,close,content);if(!overviewDialog.open)overviewDialog.showModal();
   if(event.start>Date.now()&&access?.origin){
    shareStatus.textContent='WhatsApp-Verknüpfung wird geprüft …';
@@ -132,6 +132,7 @@
    })();
   }
   try{const result=await api('overview',{eventId:event.id});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;content.replaceChildren();
+   const remind=node('button','Erinnern'),reminderHost=node('div');remind.type='button';remind.disabled=result.stale||!(result.event?.start>Date.now());remind.onclick=()=>g.H2OReminders.mount(reminderHost,{eventId:result.event.id,request:api,scope:access.origin+':'+access.alias});content.append(remind,reminderHost);
    if(result.stale)content.append(node('p','Kalender aktuell nicht bestätigt. Rückmeldungen wurden aktuell geladen.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){const people=result.members.filter(m=>m.status===value);content.append(node('h3',label+' ('+people.length+')'),node('p',people.map(m=>m.name).join(' · ')||'Keine'));}
   }catch(error){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;const retry=node('button','Erneut laden');retry.type='button';retry.onclick=()=>showOverview(event);content.replaceChildren(node('p',g.ConnectionStatus?.message(error)||error.message),retry);}
