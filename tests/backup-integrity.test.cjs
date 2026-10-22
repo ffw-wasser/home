@@ -9,6 +9,17 @@ const member = {id:'test',firstName:'Test',lastName:'Person',roles:['ATM'],ageDe
   machinistVehicles:['LF'],g262ValidUntil:'2028-03-04',g263ValidUntil:'2027-01-02',agtInstructionValidUntil:'2027-03-04',
   ffiValidUntil:'2027-05-06',breathingClearanceUntil:'2027-01-02',driverLicenseCheckedOn:'2026-01-01',breathingQualified:false,driverLicenseIntervalMonths:6};
 
+test('WhatsApp-Kontaktdaten bleiben beim Backup und Wiederherstellen erhalten', () => {
+  const input={...member,whatsappPhone:'+4915112345678',whatsappAllowed:true};
+  const backup=BackupEngine.create({members:[input],entries:[],csvArchive:[],roleTargets:{}});
+  const normalized=BackupEngine.normalize(JSON.parse(JSON.stringify(backup)));
+  const context=vm.createContext({window:{},document:{addEventListener(){}},AVAILABLE_ROLES:['ATM'],console});
+  vm.runInContext(source('js/features/history/archive.js'),context);
+  const restored=context.normalizeCompleteBackupData(normalized).members[0];
+  assert.equal(restored.whatsappPhone,input.whatsappPhone);
+  assert.equal(restored.whatsappAllowed,true);
+});
+
 test('Komplettbackup erhält alle drei Atemschutztermine bis zur tatsächlichen Wiederherstellung', () => {
   const original = JSON.stringify(member);
   const backup = BackupEngine.create({members:[member],entries:[],csvArchive:[],roleTargets:{}});
