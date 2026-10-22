@@ -15,13 +15,13 @@ test('WhatsApp-Einstellungen haben keine separate Verbindung oder Registrierung 
  for(const id of ['portal-browser-start','portal-browser-copy','portal-browser-revoke','portal-browser-legacy'])assert.ok(!html.includes('id="'+id+'"'));
  assert.ok(html.includes('id="identity-login"'));
 });
-function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search=''}={}){
+function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search='',userAgent=''}={}){
  const dom=elements(read('termin.html')),assigned=[],back=[];
  const location={href:'https://ffw-wasser.github.io/home/termin.html',origin:'https://ffw-wasser.github.io',pathname:'/home/termin.html',search,hash:'',assign:url=>assigned.push(url)};
  const history={length:historyLength,replaceState(){},back:()=>back.push(true)};
  const c=vm.createContext({
   console,URL,URLSearchParams,Intl,Date,location,history,
-  navigator:{standalone},
+  navigator:{standalone,userAgent},
   document:{referrer:from,getElementById:id=>dom[id],createElement:()=>new Node()},
   matchMedia:()=>({matches:standalone}),localStorage:{getItem:()=>null,removeItem(){}},
   DeckelDevice:{read:async()=>savedURL?{url:savedURL}:null,readLink:async()=>null},
@@ -37,7 +37,15 @@ test('WhatsApp-Rückweg: nur bei echtem WhatsApp-Referrer Verlauf nutzen',()=>{
  fromWhatsApp.dom['back-to-whatsapp'].events.click();assert.equal(fromWhatsApp.back.length,1);
  const unrelated=responseContext({from:'https://example.com/',historyLength:3,search:'?event=test'});
  unrelated.dom['back-to-whatsapp'].events.click();assert.equal(unrelated.back.length,0);
- assert.match(unrelated.dom['back-to-h2o-status'].textContent,/App-Umschalter/);
+ assert.match(unrelated.dom['back-to-h2o-status'].textContent,/WhatsApp-Fenster/);
+});
+test('WhatsApp-Rückweg öffnet die native App auf iPhone und Android ohne Referrer',()=>{
+ for(const userAgent of ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)','Mozilla/5.0 (Linux; Android 15; Pixel)']){
+  const run=responseContext({userAgent,search:'?event=test'});
+  run.dom['back-to-whatsapp'].events.click();
+  assert.deepEqual(run.assigned,['whatsapp://app']);
+  assert.equal(run.back.length,0);
+ }
 });
 test('Zurück: installierte H2O-App wird nur mit gespeichertem privaten Link geöffnet',async()=>{
  const personal='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/test&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
