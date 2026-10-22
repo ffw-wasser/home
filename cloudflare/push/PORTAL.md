@@ -18,9 +18,10 @@ Die öffentliche Adresse bleibt in diesem Browser gespeichert. Sobald das iPad
 mit OneDrive verbunden ist und der Kontodienst zur Verfügung steht, wird die
 Adresse auch aus der vorhandenen Verbindung übernommen.
 
-Nur die Leseansicht allgemein freigegebener Termine funktioniert ohne OneDrive.
-Sonderproben mit ausgewählten Empfängern erscheinen aus Datenschutzgründen
-nicht in dieser öffentlichen Ansicht. Persönliche Rückmeldungen,
+Die Leseansicht zeigt ohne OneDrive alle ausdrücklich freigegebenen Proben und
+Sonderproben, auch solche für ausgewählte Mitglieder. Diese Termine sind mit
+„Nur ausgewählte Mitglieder“ gekennzeichnet. Weder Empfängerlisten noch
+Mitgliedernamen werden öffentlich übertragen. Persönliche Rückmeldungen,
 Geburtstagszuordnungen, Freigaben, QR-Verwaltung und Push-Versand bleiben
 durch die bisherigen Zugangskontrollen geschützt. Die Kalenderverwaltung
 im H₂O Portal benötigt weiterhin eine bestätigte OneDrive-Anmeldung.

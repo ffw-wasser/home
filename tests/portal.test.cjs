@@ -70,7 +70,7 @@ test('Sonderprobe beschränkt Liste, Antworten, GF-Übersicht und Push auf ausge
  for(const route of ['reply','overview'])assert.equal((await f.call(route,{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[2])).status,404);
  for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
  await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[1]);await f.call('remind',{eventId:e.id,requestId:webcrypto.randomUUID()},null,true);assert.equal(f.sends.length,1);assert.ok(f.sends[0].url.endsWith('/member-1'));
- assert.equal((await f.c.PortalService.publicCalendar(f.env)).events.length,0);
+ const publicEvents=(await f.c.PortalService.publicCalendar(f.env)).events;assert.equal(publicEvents.length,1);assert.equal(publicEvents[0].audienceRestricted,true);assert.equal(publicEvents[0].recipientIds,undefined);assert.ok(!JSON.stringify(publicEvents).includes('member-'));
 });
 
 test('Normale Probe kann nachträglich auf bestimmte Mitglieder begrenzt und erneut für alle freigegeben werden',async()=>{
@@ -84,7 +84,7 @@ test('Normale Probe kann nachträglich auf bestimmte Mitglieder begrenzt und ern
  assert.deepEqual(Array.from(list.events[0].recipientIds),ids);
  assert.equal((await f.call('list',{},f.people[2])).value.events.length,0);
  assert.equal((await f.call('list',{},f.people[0])).value.events.length,1);
- assert.equal((await f.c.PortalService.publicCalendar(f.env)).events.length,0);
+ const publicEvents=(await f.c.PortalService.publicCalendar(f.env)).events;assert.equal(publicEvents.length,1);assert.equal(publicEvents[0].audienceRestricted,true);assert.equal(publicEvents[0].recipientIds,undefined);assert.ok(!JSON.stringify(publicEvents).includes('member-'));
  const reopen=await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Probe',attendanceType:'Allgemeine Probe',approved:true,recipientIds:null,expectedVersion:list.rulesVersion},null,true);
  assert.equal(reopen.status,200);
  list=(await f.call('list',{},null,true)).value;
@@ -95,8 +95,18 @@ test('Normale Probe kann nachträglich auf bestimmte Mitglieder begrenzt und ern
 });
 
 test('Öffentlicher Kalender enthält nur neutrale freigegebene Termine und keine privaten Daten',async()=>{
- const f=await fixture(),r=await f.c.worker.fetch(new Request('https://test.example/calendar/public',{headers:{Origin:'https://ffw-wasser.github.io'}}),f.env);assert.equal(r.status,200);assert.equal(r.headers.get('Cache-Control'),'no-store');const data=await r.json();assert.equal(data.events.length,1);assert.ok(['Probe','Sonderprobe'].includes(data.events[0].title));assert.deepEqual(Object.keys(data.events[0]).sort(),['allDay','approved','attendanceType','end','id','kind','sessionType','start','title']);assert.ok(!JSON.stringify(data).includes('Testperson'));assert.ok(!JSON.stringify(data).includes('calendar.google.com'));assert.equal(data.rulesVersion,undefined);
+ const f=await fixture(),r=await f.c.worker.fetch(new Request('https://test.example/calendar/public',{headers:{Origin:'https://ffw-wasser.github.io'}}),f.env);assert.equal(r.status,200);assert.equal(r.headers.get('Cache-Control'),'no-store');const data=await r.json();assert.equal(data.events.length,1);assert.ok(['Probe','Sonderprobe'].includes(data.events[0].title));assert.deepEqual(Object.keys(data.events[0]).sort(),['allDay','approved','attendanceType','audienceRestricted','end','id','kind','sessionType','start','title']);assert.equal(data.events[0].audienceRestricted,false);assert.ok(!JSON.stringify(data).includes('Testperson'));assert.ok(!JSON.stringify(data).includes('calendar.google.com'));assert.equal(data.rulesVersion,undefined);
  const forbidden=await f.c.worker.fetch(new Request('https://test.example/admin/portal/list',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),f.env);assert.equal(forbidden.status,401);
+});
+
+test('Öffentlicher Kalender zeigt ausgewählte Termine anonym; persönliche Liste bleibt eingeschränkt',async()=>{
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,e=cal.events[0],ids=[f.people[0].memberId,f.people[1].memberId];
+ const saved=await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Sonderprobe',recipientIds:ids,approved:true,expectedVersion:cal.rulesVersion},null,true);assert.equal(saved.status,200);
+ const response=await f.c.worker.fetch(new Request('https://test.example/calendar/public',{headers:{Origin:'https://ffw-wasser.github.io'}}),f.env);assert.equal(response.status,200);
+ const body=await response.json();assert.equal(body.events.length,1);assert.equal(body.events[0].audienceRestricted,true);assert.equal(body.events[0].title,'Sonderprobe');
+ for(const forbidden of ['recipientIds','member-1','member-2','Testprobe','Testperson','calendar.google.com'])assert.ok(!JSON.stringify(body).includes(forbidden),forbidden);
+ assert.equal((await f.call('list',{},f.people[2])).value.events.length,0);
+ assert.equal((await f.call('list',{},f.people[1])).value.events.length,1);
 });
 
 test('Terminarten und Empfängerauswahl werden serverseitig validiert',async()=>{

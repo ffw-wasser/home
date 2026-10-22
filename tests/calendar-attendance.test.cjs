@@ -13,6 +13,12 @@ test('Hauptansicht ersetzt neutrale Sonderprobe nach OneDrive-Bestätigung autom
  const f=fixture();await f.c.PortalAdmin.refreshAttendance(true);assert.match(f.label(),/Sonderprobe/);assert.ok(!f.label().includes('Sonderprobe · Sonderprobe'));assert.equal(f.requests.length,0);
  await f.login();assert.match(f.label(),/Funkübung · Sonderprobe/);assert.ok(f.requests.some(p=>p.endsWith('/replies')));
 });
+test('Öffentlicher Gerätehaus-Kalender zeigt ausgewählte Termine mit Kennzeichnung',async()=>{
+ const f=fixture();f.privateCal.events[0].audienceRestricted=true;f.privateCal.events[0].recipientIds=['mitglied-1'];
+ await f.c.PortalAdmin.refreshAttendance(true);assert.match(f.label(),/Sonderprobe · Nur ausgewählte Mitglieder/);
+ await f.login();assert.match(f.label(),/Funkübung · Sonderprobe · Nur ausgewählte Mitglieder/);
+});
+
 test('Anmeldung während eines laufenden öffentlichen Abrufs verliert die automatische Aktualisierung nicht',async()=>{
  const f=fixture();let release;f.gate(new Promise(r=>release=r));const first=f.c.PortalAdmin.refreshAttendance(true);await f.publicStarted;await f.login();release();await first;assert.match(f.label(),/Funkübung · Sonderprobe/);
 });

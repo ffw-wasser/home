@@ -343,11 +343,12 @@
  async function publicCalendar(env){
   await ready(env);
   const cal=await decorate(env,await cachedCalendar(env));
-  // Only explicitly approved probe dates. Never expose member names, birthdays, replies, or the private iCal URL.
+  // Show all approved probe dates, including selected-member appointments. Never expose the recipient list, member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
-   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()&&!Array.isArray(e.recipientIds)).map(e=>({
+   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()).map(e=>({
     id:e.id,title:e.sessionType==='Probe'?'Probe':'Sonderprobe',start:e.start,end:e.end,
-    allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true
+    allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true,
+    audienceRestricted:Array.isArray(e.recipientIds)
    }))};
  }
  g.PortalService={assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
