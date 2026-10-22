@@ -11,7 +11,7 @@
 <script src="js/features/drinks/push-device.js" defer></script>
 <script src="js/vendor/passkeys-browser.js" defer></script>
 <script src="js/features/portal/portal-identity.js" defer></script>
-<script src="js/features/portal/portal-whatsapp.js" defer></script>
+<script src="js/features/portal/portal-whatsapp.js?v=20261022-whatsapp-fix2" defer></script>
 </head>
 <body>
 <main>
@@ -38,6 +38,9 @@
 <section class="card secondary">
 <button type="button" id="back-to-whatsapp" class="quiet" hidden>WhatsApp öffnen</button>
 <p id="back-to-h2o-status" role="status" aria-live="polite" class="small"></p>
+<!-- Hidden compatibility elements for cached older JavaScript; not shown to members. -->
+<button type="button" id="back-to-h2o" hidden aria-hidden="true" tabindex="-1"></button>
+<button type="button" id="remove" hidden aria-hidden="true" tabindex="-1"></button>
 </section>
 <footer>H₂O Portal · Feuerwehr Wasser</footer>
 </main>
