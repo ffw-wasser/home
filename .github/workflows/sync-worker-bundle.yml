@@ -1,0 +1,38 @@
+name: Regenerate worker bundle and release
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-worker-bundle.yml'
+      - 'cloudflare/push/portal.js'
+      - 'js/features/portal/portal-identity.js'
+      - 'js/features/portal/portal-admin.js'
+      - 'js/features/settings/admin.js'
+      - 'js/features/attendance/attendance-controller.js'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: node scripts/check-syntax.cjs
+      - run: node cloudflare/push/build.cjs
+      - run: node scripts/update-release.cjs
+      - run: node --test tests/*.test.cjs
+      - name: Commit generated files if changed
+        run: |
+          git add cloudflare/push/worker.bundle.js js/vendor/passkeys-browser.js index.html deckel.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest js/features/drinks/deckel-manifest.js
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Regenerate verified Worker bundle and release assets"
+            git push
+          fi
