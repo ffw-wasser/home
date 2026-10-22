@@ -52,3 +52,16 @@ test('Failed contact transaction changes neither contact nor synchronization seq
  const f=await setup(),before=f.sql.prepare('SELECT seq FROM ledger_meta').get().seq;f.failBatch();assert.equal((await contact(f,0)).status,503);
  assert.equal(f.sql.prepare('SELECT seq FROM ledger_meta').get().seq,before);assert.equal((await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[0].memberId})).value.phone,null);
 });
+
+test('Terminlink meldet nicht eingeladene Mitglieder ohne Termindetails',async()=>{
+ const f=await setup(),id=f.event.id;
+ const before=await f.call('list',{eventId:id},f.people[1]);
+ assert.equal(before.status,200);assert.equal(before.value.eventLinkStatus,'unavailable');
+ const cal=(await f.call('list',{},null,true)).value;
+ await f.call('classify',{eventId:id,kind:'probe',sessionType:'Sonderprobe',approved:true,recipientIds:[f.people[0].memberId],expectedVersion:cal.rulesVersion},null,true);
+ const excluded=await f.call('list',{eventId:id},f.people[1]);
+ assert.equal(excluded.status,200);assert.equal(excluded.value.eventLinkStatus,'not-relevant');
+ assert.equal(excluded.value.events.some(e=>e.id===id),false);
+ const invited=await f.call('list',{eventId:id},f.people[0]);
+ assert.equal(invited.value.events.some(e=>e.id===id),true);
+});
