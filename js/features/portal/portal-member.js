@@ -118,23 +118,26 @@
  }
  async function showOverview(event){
   if(!overviewDialog){overviewDialog=node('dialog');overviewDialog.className='portal-calendar-dialog portal-overview-dialog';overviewDialog.setAttribute('aria-labelledby','portal-overview-title');document.body.append(overviewDialog);overviewDialog.addEventListener('close',()=>{overviewRequest++;g.H2OReminders?.close();});}
-  const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.className='portal-overview-close';close.textContent='×';close.setAttribute('aria-label','Schließen');close.onclick=closeOverview;const share=node('button','Über WhatsApp teilen'),shareStatus=node('p');share.type='button';share.className='portal-overview-open';share.disabled=true;share.onclick=()=>shareEvent(event,shareStatus);shareStatus.setAttribute('role','status');const header=node('div'),actions=node('div');header.className='portal-overview-heading';actions.className='portal-overview-actions';header.append(heading,close);actions.append(share);overviewDialog.replaceChildren(header,title,actions,shareStatus,content);if(!overviewDialog.open)overviewDialog.showModal();
+  const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.className='portal-overview-close';close.textContent='×';close.setAttribute('aria-label','Schließen');close.onclick=closeOverview;const share=node('button','Terminlink teilen'),shareStatus=node('p');share.type='button';share.className='portal-overview-open';share.disabled=true;share.onclick=()=>shareEvent(event,shareStatus);shareStatus.setAttribute('role','status');const header=node('div'),actions=node('div');header.className='portal-overview-heading';actions.className='portal-overview-actions';header.append(heading,close);actions.append(share);overviewDialog.replaceChildren(header,title,actions,shareStatus,content);if(!overviewDialog.open)overviewDialog.showModal();
   if(event.start>Date.now()&&access?.origin){
-   shareStatus.textContent='WhatsApp-Verknüpfung wird geprüft …';
+   shareStatus.textContent='Teilen wird vorbereitet …';
    void (async()=>{
     try{
      const response=await fetch(access.origin+'/health',{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(12000)});
      const health=await response.json();
      if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;
      if(response.ok&&health.browserPairVersion===1){share.disabled=false;shareStatus.textContent='';}
-     else shareStatus.textContent='Der Cloudflare-Dienst unterstützt die WhatsApp-Browserlinks noch nicht.';
-    }catch{if(request===overviewRequest&&overviewDialog.open)shareStatus.textContent='WhatsApp-Verknüpfung derzeit nicht erreichbar. Bitte später erneut versuchen.';}
+     else shareStatus.textContent='Der Terminlink kann gerade nicht geteilt werden. Bitte später erneut versuchen.';
+    }catch{if(request===overviewRequest&&overviewDialog.open)shareStatus.textContent='Teilen ist gerade nicht möglich. Bitte später erneut versuchen.';}
    })();
   }
   try{const result=await api('overview',{eventId:event.id});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;content.replaceChildren();
-   const remind=node('button','Erinnern'),reminderHost=node('div');remind.type='button';remind.disabled=result.stale||!(result.event?.start>Date.now());remind.onclick=()=>{g.H2OReminders.mount(reminderHost,{eventId:result.event.id,request:api,scope:access.origin+':'+access.alias});remind.hidden=true;};actions.append(remind);content.append(reminderHost);
-   if(result.stale)content.append(node('p','Kalender aktuell nicht bestätigt. Rückmeldungen wurden aktuell geladen.'));
-   for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){const people=result.members.filter(m=>m.status===value);content.append(node('h3',label+' ('+people.length+')'),node('p',people.map(m=>m.name).join(' · ')||'Keine'));}
+   const remind=node('button','Personen erinnern'),reminderHost=node('div'),summary=node('div'),back=node('button','← Rückmeldungen');remind.type='button';remind.className='portal-overview-remind';back.type='button';back.className='portal-overview-back';back.hidden=true;
+   back.onclick=()=>{g.H2OReminders?.close();showOverview(event);};
+   remind.disabled=result.stale||!(result.event?.start>Date.now());
+   remind.onclick=()=>{g.H2OReminders.mount(reminderHost,{eventId:result.event.id,request:api,scope:access.origin+':'+access.alias});remind.hidden=true;share.hidden=true;shareStatus.hidden=true;summary.hidden=true;back.hidden=false;heading.textContent='WhatsApp';};actions.append(remind,back);content.append(reminderHost,summary);
+   if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
+   for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){const people=result.members.filter(m=>m.status===value);summary.append(node('h3',label+' ('+people.length+')'),node('p',people.map(m=>m.name).join(' · ')||'Keine'));}
   }catch(error){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;const retry=node('button','Erneut laden');retry.type='button';retry.onclick=()=>showOverview(event);content.replaceChildren(node('p',g.ConnectionStatus?.message(error)||error.message),retry);}
  }
  function paint(result){latestResult=result;globalThis.H2OIdentity?.setMemberName?.(result.memberName||'');const gfTile=document.getElementById('portal-more-breathing-tile');if(gfTile)gfTile.hidden=result.leader!==true;$('birthday').hidden=!result.birthday?.today;$('birthday').textContent=result.birthday?.today?'🎂 Alles Gute zum Geburtstag! '+(result.birthday.awarded?'Dein Geburtstagsbonus wurde gutgeschrieben: ':'Dein Geburtstagsbonus wird heute gutgeschrieben: ')+(result.birthday.awardUnits/150).toLocaleString('de-DE')+' Treuepunkt'+(result.birthday.awardUnits===150?'':'e')+'.':'';$('events').replaceChildren();const sections=eventSections(result.events),upcoming=sections.ordered;for(const event of upcoming){
