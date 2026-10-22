@@ -116,7 +116,11 @@
  el('back-to-whatsapp').addEventListener('click',()=>{
   const feedback=el('back-to-h2o-status');
   feedback.textContent='Wechsle zurück zu WhatsApp. Deine Rückmeldung bleibt gespeichert.';
-  if(history.length>1){history.back();}
+  try{
+   const previous=new URL(document.referrer);
+   if(/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
+  }catch{}
+  feedback.textContent='Öffne WhatsApp über den App-Umschalter. Deine Rückmeldung ist gespeichert.';
  });
  // Return only to the already authenticated installed PWA, or genuine in-tab history.
  // Never fall back to a generic deckel.html link: that could restart QR onboarding.
