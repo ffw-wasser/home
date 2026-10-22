@@ -104,7 +104,8 @@
   if(event.audienceRestricted&&!confirm('Dieser Termin ist nur für ausgewählte Mitglieder freigegeben. In einer WhatsApp-Gruppe können auch andere Personen die Terminangaben lesen. Trotzdem teilen?'))return;
   const url=new URL('termin.html',location.href);url.hash='';url.search='';url.searchParams.set('event',event.id);
   const start=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start));
-  const message='🚒 Feuerwehr Wasser\n\n'+(event.sessionType||'Termin')+' · '+event.title+'\n📅 '+start+' Uhr\n📍 '+(event.location||'GH Wasser')+'\n\nBitte über H₂O eine Rückmeldung abgeben:';
+  const clothing=event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing==='Tagdienst'?'Tagesdienst':(event.clothing||'').trim();
+  const message='🚒 Feuerwehr Wasser\n\n'+(event.sessionType||'Termin')+' · '+event.title+'\n📅 '+start+' Uhr\n📍 '+(event.location||'GH Wasser')+(clothing?'\n👕 Kleidung: '+clothing:'')+'\n\nBitte über H₂O eine Rückmeldung abgeben:';
   try{
    if(navigator.share){await navigator.share({title:'Feuerwehr Wasser · '+event.title,text:message,url:url.href});feedback.textContent='Teilen-Menü geöffnet. Der Versand erfolgt erst durch deine Bestätigung.';}
    else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(message+'\n'+url.href);feedback.textContent='Nachricht mit gemeinsamem Terminlink kopiert. In WhatsApp einfügen.';}
