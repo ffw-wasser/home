@@ -328,9 +328,9 @@
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results;
    for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
    for(const person of roster?.members||[]){
-    if(!isRecipient(event,person.id)||person.id===organizerId||whatsappAction==='prepare'&&person.id!==data.memberId)continue;
+    if(!isRecipient(event,person.id)||whatsappAction==='prepare'&&(person.id===organizerId||person.id!==data.memberId)||!admin&&person.id===organizerId)continue;
     const status=statuses.get(person.id)||'open',eligible=['open','maybe'].includes(status),contact=person.whatsapp;
-    people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible:eligible&&(!admin||!!organizerId),phone:organizerId&&eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
+    people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible:eligible&&person.id!==organizerId&&(!admin||!!organizerId),phone:person.id!==organizerId&&organizerId&&eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
    }
    if(whatsappAction==='prepare')return {event:memberEvent(event),eligible:people[0]?.eligible===true,phone:people[0]?.phone||null};
    return {event:memberEvent(event),members:people};
