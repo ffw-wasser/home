@@ -56,12 +56,13 @@ test('Failed contact transaction changes neither contact nor synchronization seq
 test('Terminlink meldet nicht eingeladene Mitglieder ohne Termindetails',async()=>{
  const f=await setup(),id=f.event.id;
  const before=await f.call('list',{eventId:id},f.people[1]);
- assert.equal(before.status,200);assert.equal(before.value.eventLinkStatus,'unavailable');
+ assert.equal(before.status,200);assert.equal(before.value.eventLinkStatus,null);
  const cal=(await f.call('list',{},null,true)).value;
  await f.call('classify',{eventId:id,kind:'probe',sessionType:'Sonderprobe',approved:true,recipientIds:[f.people[0].memberId],expectedVersion:cal.rulesVersion},null,true);
  const excluded=await f.call('list',{eventId:id},f.people[1]);
  assert.equal(excluded.status,200);assert.equal(excluded.value.eventLinkStatus,'not-relevant');
  assert.equal(excluded.value.events.some(e=>e.id===id),false);
  const invited=await f.call('list',{eventId:id},f.people[0]);
+ assert.equal(invited.value.eventLinkStatus,null);
  assert.equal(invited.value.events.some(e=>e.id===id),true);
 });
