@@ -325,7 +325,7 @@
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results;
    for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
    for(const person of roster?.members||[]){
-    if(!isRecipient(event,person.id)||whatsappAction==='prepare'&&person.id!==data.memberId)continue;
+    if(!isRecipient(event,person.id)||(!admin&&person.id===record.memberId)||whatsappAction==='prepare'&&person.id!==data.memberId)continue;
     const status=statuses.get(person.id)||'open',eligible=['open','maybe'].includes(status),contact=person.whatsapp;
     people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible,phone:eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
    }
