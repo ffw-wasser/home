@@ -52,13 +52,13 @@
     return row;
    }
    body.append(node('h4','Empfänger'));
-   if(!available.length)body.append(node('p','Für die offenen Rückmeldungen ist keine WhatsApp-Nummer hinterlegt.'));
+   if(!available.length)body.append(node('p','Für die noch offenen Rückmeldungen ist derzeit keine freigegebene WhatsApp-Nummer verfügbar. Mitgliedschaft allein reicht nicht aus.'));
    for(const m of available)body.append(person(m));
    const next=selected.find(m=>!progress.opened.includes(m.id));
    if(next&&available.length>1)body.append(button('Nächste Nachricht ansehen',()=>prepare(next.id),true));
    if(selected.some(m=>progress.opened.includes(m.id)))body.append(node('p','Geöffnete Chats bitte selbst auf Versand prüfen.'));
    function folder(title,subset,hint){if(!subset.length)return;const box=node('details');box.className='portal-reminder-folder';box.append(node('summary',title+' ('+subset.length+')'));if(hint)box.append(node('p',hint));for(const m of subset)box.append(person(m));body.append(box);return box;}
-   const missingBox=folder('Ohne WhatsApp-Nummer',missing,'Hier fehlt eine für WhatsApp freigegebene Nummer. Du kannst den Nachrichtentext trotzdem kopieren und selbst weitergeben.');if(missingBox&&!available.length)missingBox.open=true;
+   const missingBox=folder('WhatsApp-Kontakt fehlt oder nicht freigegeben',missing,'Die Nummer fehlt, ist ungültig oder nicht für Erinnerungen freigegeben. Die Verwaltung kann das unter den WhatsApp-Kontaktdaten prüfen.');if(missingBox&&!available.length)missingBox.open=true;
    folder('Keine Erinnerung nötig',answered,'Diese Personen haben bereits zugesagt oder sich entschuldigt.');
    folder('Von dir erledigt',done,'Von dir als erledigt markiert. Das Portal kann nicht prüfen, ob eine Nachricht gesendet wurde.');
    const tools=node('div');tools.className='portal-reminder-tools';tools.append(button('Rückmeldungen neu laden',load));
