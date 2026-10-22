@@ -1,28 +1,34 @@
 # Halbautomatische WhatsApp-Terminerinnerungen
 
-Vorbereitet auf `feature/whatsapp-term-reminders`, Basis main `114dcab`,
-Release-Kandidat `2026.10.22.19`. Kein Merge und kein Deployment durch diesen Auftrag.
+Grundfunktion veröffentlicht mit PR #68, kompaktere Buttons mit PR #69.
+Die hier beschriebene sprachliche und strukturelle Überarbeitung ist für
+Release-Kandidat `2026.10.22.21` in PR #70 vorbereitet und noch nicht veröffentlicht.
 
 ## Bedienung
 
-- Gruppenführer: Termine → Rückmeldungen ansehen → Erinnern.
-- Verwaltung: Rückmeldungen des ausgewählten Termins → Erinnern · WhatsApp.
+- Gruppenführer: Termine → Rückmeldungen ansehen → Personen erinnern.
+- Verwaltung: Rückmeldungen des ausgewählten Termins → WhatsApp-Erinnerung.
 - „Einzeln erinnern“ wählt nur eingeladene Mitglieder mit offenem oder unsicherem
   Status und freigegebenem WhatsApp-Kontakt vor. Zusagen und Entschuldigungen sind
   gesperrt. Kontakte ohne Freigabe/Nummer stehen in einer eigenen Gruppe.
-- Nachricht bearbeiten, „Prüfen & WhatsApp öffnen“, in WhatsApp selbst senden,
-  zurückkehren und manuell als bearbeitet markieren. Anschließend den nächsten
-  offenen Empfänger vorbereiten. Öffnen, Kopieren und Teilen belegen keinen Versand.
+- „Nachricht ansehen“ wählen, Text prüfen und „WhatsApp öffnen“. In WhatsApp selbst
+  senden, zurückkehren und „Als erledigt markieren“ wählen. Anschließend die nächste
+  Nachricht ansehen. „Erledigt“ ist nur die eigene Bearbeitungsmarkierung. Öffnen, Kopieren und Teilen belegen keinen Versand.
 - Ohne Nummer: Nachricht bearbeiten und nach erneuter Statusprüfung kopieren.
 - „Gruppeninfo“ bietet kommende freigegebene Termine zur Mehrfachauswahl an.
   Eingeschränkte Termine sind abgewählt und erfordern eine ausdrückliche Warnbestätigung.
   Der generierte Text enthält keine Teilnehmerlisten oder Rückmeldestatus.
   Bearbeiten und über das native Teilen-Menü selbst an die gewünschte Gruppe senden.
 
+Die Rückmeldungsübersicht und die Erinnerungsauswahl werden getrennt angezeigt.
+„Terminlink teilen“ teilt den allgemeinen Termintext; „Personen erinnern“ führt zur
+persönlichen Auswahl. „← Rückmeldungen“ lädt die Übersicht erneut. Bereits beantwortete
+Personen und eigene erledigte Einträge sind eingeklappt; fehlende Nummern stehen separat.
+
 ## Kontakte, Berechtigungen und Datenschutz
 
 In der bestehenden Mitgliederverwaltung wurde kein persönliches Telefonnummernfeld
-gefunden. Die Verwaltung kann daher im Erinnerungsbereich beim Mitglied „Kontakt“
+gefunden. Die Verwaltung kann daher im Erinnerungsbereich beim Mitglied „Nummer bearbeiten“
 öffnen, eine internationale Nummer eintragen und die dokumentierte Einwilligung oder
 sonstige zulässige Grundlage bestätigen. Das Häkchen ersetzt keine Einwilligungserhebung.
 Eine leere Nummer löscht die Zuordnung; eine entfernte Freigabe sperrt die direkte Chatöffnung.
@@ -47,8 +53,7 @@ Links führen auf den bestehenden öffentlichen `termin.html?event=…`-Ablauf.
 Fortschritt enthält nur Mitgliedskennungen und die Zustände geöffnet, abgewählt und
 manuell bearbeitet, keine Namen, Nummern oder Nachrichtentexte. Er bleibt bis zu
 24 Stunden im selben Browser-Tab (`sessionStorage`) erhalten. Geschlossene Tabs,
-Browserbereinigung oder ein Gerätewechsel können ihn verlieren. „Neuen Durchgang
-starten“ setzt ihn nach Warnung zurück. Geöffnete Nachrichten werden nicht automatisch
+Browserbereinigung oder ein Gerätewechsel können ihn verlieren. „Erinnerungsliste zurücksetzen“ setzt ihn nach Warnung zurück. Geöffnete Nachrichten werden nicht automatisch
 erneut angeboten; erneutes Öffnen verlangt eine Bestätigung. Es gibt keinen globalen
 Versandschutz zwischen mehreren Bedienern/Geräten und keine Zustellbestätigung.
 Textentwürfe werden nicht dauerhaft gespeichert.
