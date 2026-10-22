@@ -2,13 +2,14 @@ const test=require('node:test'),assert=require('node:assert/strict'),{webcrypto}
 const {fixture}=require('./helpers/portal-fixture.cjs');
 async function setup(){const f=await fixture(),event=(await f.call('list')).value.events[0];return {...f,event};}
 const contact=(f,i,allowed=true,phone='+49 151 0000000'+i)=>f.call('whatsapp-contact',{eventId:f.event.id,memberId:f.people[i].memberId,phone,allowed},null,true);
+const adminRecipients=f=>f.call('whatsapp-recipients',{eventId:f.event.id,organizerMemberId:f.people[4].memberId},null,true);
 const reply=(f,i,status)=>f.call('reply',{eventId:f.event.id,status,expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[i]);
 test('WhatsApp selects only open/maybe, encrypts contacts and rechecks changed replies without sending',async()=>{
  const f=await setup();for(let i=0;i<4;i++)assert.equal((await contact(f,i)).status,200);
  await reply(f,1,'maybe');await reply(f,2,'yes');await reply(f,3,'excused');
- const r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.equal(r.status,200);
+ const r=await adminRecipients(f);assert.equal(r.status,200);
  assert.deepEqual(r.value.members.filter(m=>m.eligible&&m.phone).map(m=>m.id),f.people.slice(0,2).map(p=>p.memberId));
- assert.equal(r.value.members[4].phone,null);assert.equal(r.value.members[2].phone,null);assert.equal(r.value.members[0].contactPhone,undefined);
+ assert.equal(r.value.members[4].phone,null);assert.equal(r.value.members[2].phone,null);assert.equal(r.value.members[0].contactPhone,'+4915100000000');
  const raw=f.sql.prepare('SELECT payload FROM portal_roster').get().payload;assert.ok(!raw.includes('491510000000'));
  await reply(f,0,'yes');const checked=await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[0].memberId});assert.equal(checked.value.eligible,false);assert.equal(checked.value.phone,null);
  assert.equal(f.sends.length,0);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_sends').get().n,0);
@@ -21,16 +22,16 @@ test('WhatsApp requires role, session, contact permission and current event audi
  assert.equal((await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[0].memberId})).value.phone,null);
  const cal=(await f.call('list',{},null,true)).value;
  await f.call('classify',{eventId:f.event.id,kind:'probe',sessionType:'Sonderprobe',approved:true,recipientIds:[f.people[0].memberId],expectedVersion:cal.rulesVersion},null,true);
- assert.equal((await f.call('whatsapp-recipients',{eventId:f.event.id})).value.members.length,1);
+ assert.equal((await f.call('whatsapp-recipients',{eventId:f.event.id})).value.members.length,0);
  assert.equal((await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[1].memberId})).value.eligible,false);
  const group=(await f.call('whatsapp-events')).value.events[0];assert.equal(group.audienceRestricted,true);assert.equal(group.recipientIds,undefined);assert.equal(group.members,undefined);
  const unauthed=await fixture({authenticated:false});assert.equal((await unauthed.call('whatsapp-events')).status,401);
 });
 test('Contact mapping survives roster sync, disappears on removal, and can be cleared',async()=>{
  const f=await setup();await contact(f,0);const roster=f.people.map((p,i)=>({id:p.memberId,name:'Synthetic '+i,firstName:'Test'+i,leader:i===0}));
- await f.call('roster',{members:roster},null,true);let r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.ok(r.value.members[0].phone);assert.equal(r.value.members[0].firstName,'Test0');
- await contact(f,0,false,'');r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.equal(r.value.members[0].phone,null);
- await contact(f,1);await f.call('roster',{members:roster.filter(p=>p.id!==f.people[1].memberId)},null,true);r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.ok(!r.value.members.some(p=>p.id===f.people[1].memberId));
+ await f.call('roster',{members:roster},null,true);let r=await adminRecipients(f);assert.ok(r.value.members[0].phone);assert.equal(r.value.members[0].firstName,'Test0');
+ await contact(f,0,false,'');r=await adminRecipients(f);assert.equal(r.value.members[0].phone,null);
+ await contact(f,1);await f.call('roster',{members:roster.filter(p=>p.id!==f.people[1].memberId)},null,true);r=await adminRecipients(f);assert.ok(!r.value.members.some(p=>p.id===f.people[1].memberId));
 });
 test('Stale, started and cancelled events cannot prepare reminders',async()=>{
  const f=await setup();f.offline(true);f.clock.now+=901000;assert.equal((await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[0].memberId})).status,503);
