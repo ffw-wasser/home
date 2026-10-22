@@ -308,7 +308,7 @@
     button.disabled=true;input.value='';delete box.dataset.dirty;status.textContent='PIN wird gespeichert …';
     try{await S.setPin(button.dataset.drSavePin,pin);status.textContent='PIN gespeichert.';showToast('Getränke-PIN gespeichert.');return true;}
     catch(error){status.textContent=error.message||'PIN konnte nicht gespeichert werden. Bitte erneut eingeben.';return false;}
-    finally{button.disabled=false;}
+    finally{button.disabled=false;global.Usability?.memberSaveState?.();}
   }
   function finishSession(){if(menuMemberId&&!cardUnlocked(menuMemberId,S.cached(menuMemberId)))menuMemberId='';resetSession();screen('members');render();renderPeople();focusCard();}
   function updatePinDots(){const length=pinChecking?4:(el('pin')?.value.length||0);root?.querySelectorAll('.dr-pin-dot').forEach((node,i)=>node.classList.toggle('is-filled',i<length));if(el('pin-progress'))el('pin-progress').textContent=pinChecking?'Vier Ziffern eingegeben. PIN wird geprüft.':length+' von 4 Ziffern eingegeben';}

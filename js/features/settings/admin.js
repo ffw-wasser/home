@@ -171,6 +171,7 @@ function loginArchive() {
 
 function addMember() {
   if(!requireAdmin("settingsMembersView"))return;
+  if(window.Usability?.hasMemberDraft())return showToast("Bitte offene Mitgliederänderungen zuerst zentral speichern oder verwerfen.","error");
   const lastName = byId("newLastName").value.trim();
   const firstName = byId("newFirstName").value.trim();
   if (!lastName || !firstName) return showToast("Bitte Nachname und Vorname eingeben.", "error");
@@ -184,20 +185,19 @@ function addMember() {
   renderAdmin();
   showToast("Mitglied angelegt. Bitte Funktionen und Berechtigungen gezielt auswählen.");
 }
-function updateMember(id, row) {
-  if(!requireAdmin("settingsMembersView"))return;
+function prepareMemberUpdate(id, row) {
   const lastName = row.querySelector("[data-last-name]").value.trim();
   const firstName = row.querySelector("[data-first-name]").value.trim();
-  if (!lastName || !firstName) return showToast("Name darf nicht leer sein.", "error");
-  const member = members.find(item => item.id === id);
-  if (!member) return;
+  if (!lastName || !firstName) throw Error("Name darf nicht leer sein.");
+  const current = members.find(item => item.id === id);
+  if (!current) throw Error("Mitglied wurde inzwischen entfernt. Bitte die Liste neu laden.");
+  const member = {...current};
   const driverDate=row.querySelector("[data-driver-license-checked]")?.value||"";
-  if(row.querySelectorAll("[data-machinist-vehicle]:checked").length&&!driverDate)return showToast("Bitte das Datum der letzten Führerscheinkontrolle eintragen.","error");
+  if(row.querySelectorAll("[data-machinist-vehicle]:checked").length&&!driverDate)throw Error("Bitte das Datum der letzten Führerscheinkontrolle eintragen.");
   const interval=Number(row.querySelector("[data-driver-license-interval]")?.value||12);
-  if(!Number.isInteger(interval)||interval<1||interval>36)return showToast("Bitte ein Kontrollintervall von 1 bis 36 Monaten eingeben.","error");
-  if(driverDate&&(!MemberEvidence.date(driverDate)||driverDate>systemToday()))return showToast("Bitte ein gültiges Datum der letzten Führerscheinkontrolle bis heute eingeben.","error");
-  for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.monthEnd(value))return showToast("Bitte einen gültigen Monat und ein Jahr für den Nachweis eingeben.","error");}
-  window.Usability?.savedMember(row);
+  if(!Number.isInteger(interval)||interval<1||interval>36)throw Error("Bitte ein Kontrollintervall von 1 bis 36 Monaten eingeben.");
+  if(driverDate&&(!MemberEvidence.date(driverDate)||driverDate>systemToday()))throw Error("Bitte ein gültiges Datum der letzten Führerscheinkontrolle bis heute eingeben.");
+  for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.monthEnd(value))throw Error("Bitte einen gültigen Monat und ein Jahr für den Nachweis eingeben.");}
   member.lastName = lastName;
   member.firstName = firstName;
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
@@ -214,16 +214,33 @@ function updateMember(id, row) {
   member.breathingClearanceUntil = breathingDates.every(Boolean)?breathingDates.slice().sort()[0]:"";
   member.machinistVehicles = [...row.querySelectorAll("[data-machinist-vehicle]:checked")].map(input => input.dataset.machinistVehicle);
   member.driverLicenseCheckedOn = row.querySelector("[data-driver-license-checked]")?.value || "";
-  if(member.machinistVehicles.length&&!member.driverLicenseCheckedOn)return showToast("Bitte das Datum der letzten Führerscheinkontrolle eintragen.","error");
-  members = sortMembers(members);
-  saveMembers();
-  renderMembers();
-  renderAdmin();
-  updateSelection();
-  showToast("Mitglied auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt.");return true;
+  if(member.machinistVehicles.length&&!member.driverLicenseCheckedOn)throw Error("Bitte das Datum der letzten Führerscheinkontrolle eintragen.");
+  return member;
 }
+function updateMembers(rows) {
+  if(!requireAdmin("settingsMembersView"))return false;
+  const updates=new Map();
+  for(const {id,row} of rows){
+    try{updates.set(id,prepareMemberUpdate(id,row));}
+    catch(error){
+      if(row.dataset)row.open=true;
+      row.scrollIntoView?.({block:"center",behavior:"smooth"});
+      showToast(error.message,"error");return false;
+    }
+  }
+  if(!updates.size)return true;
+  // Validate the complete selection before changing any member or starting sync.
+  members=sortMembers(members.map(member=>updates.get(member.id)||member));
+  saveMembers();
+  for(const {row} of rows)window.Usability?.savedMember(row);
+  renderMembers();renderAdmin();updateSelection();
+  showToast(updates.size===1?"Mitglied auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt.":updates.size+" Mitglieder auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt.");
+  return true;
+}
+function updateMember(id,row){return updateMembers([{id,row}]);}
 function deleteMember(id) {
   if(!requireAdmin("settingsMembersView"))return;
+  if(window.Usability?.hasMemberDraft())return showToast("Bitte offene Mitgliederänderungen zuerst zentral speichern oder verwerfen.","error");
   const member = members.find(item => item.id === id);
   if (!member || !confirm(`${nameForTile(member)} wirklich löschen?`)) return;
   members = members.filter(item => item.id !== id);

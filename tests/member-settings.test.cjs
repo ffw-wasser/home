@@ -14,3 +14,21 @@ test('Monatsgenaue Atemschutznachweise enden zum Monatsletzten; alte exakte Date
  f.c.updateMember('test-member',row({'data-g263-valid-until':'2028-06'}));
  assert.equal(f.c.members[0].g263ValidUntil,'2028-06-30');
 });
+
+
+test('Sammelspeichern validiert alle Personen vor dem ersten Schreibvorgang',()=>{
+ const f=fixture();f.c.members=[{id:'a',lastName:'Alt A',firstName:'Test'},{id:'b',lastName:'Alt B',firstName:'Test'}];
+ const before=JSON.stringify(f.c.members);
+ assert.equal(f.c.updateMembers([{id:'a',row:row({'data-ffi-valid-until':'2027-02'})},{id:'b',row:row({'data-g263-valid-until':'2026-13'})}]),false);
+ assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);
+});
+test('Sammelspeichern übernimmt mehrere Personen mit genau einem Speichervorgang',()=>{
+ const f=fixture();f.c.members=[{id:'a',lastName:'Alt A',firstName:'Test'},{id:'b',lastName:'Alt B',firstName:'Test'},{id:'c',lastName:'Unverändert',firstName:'Test'}];
+ assert.equal(f.c.updateMembers([{id:'a',row:row({'data-ffi-valid-until':'2027-02'})},{id:'b',row:row({'data-g263-valid-until':'2027-03'})}]),true);
+ assert.equal(f.saved.length,1);assert.equal(f.c.members[0].ffiValidUntil,'2027-02-28');assert.equal(f.c.members[1].g263ValidUntil,'2027-03-31');assert.equal(f.c.members[2].lastName,'Unverändert');
+});
+test('Sammelspeichern bricht bei zwischenzeitlich entferntem Mitglied ohne Teiländerung ab',()=>{
+ const f=fixture();f.c.members=[{id:'a',lastName:'Alt',firstName:'Test'}];const before=JSON.stringify(f.c.members);
+ assert.equal(f.c.updateMembers([{id:'a',row:row()},{id:'removed',row:row()}]),false);
+ assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);
+});
