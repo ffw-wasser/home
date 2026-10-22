@@ -66,7 +66,7 @@ const {chromium}=require('playwright');
  await page.goto('https://ffw-wasser.github.io/home/termin.html?event='+event.id);
  await page.locator('#chosen').waitFor({state:'visible'});
  await page.getByRole('button',{name:'Bin dabei',exact:true}).click();
- await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Rückmeldung gespeichert'));
+ await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Gespeichert!'));
  const centralSession=await page.evaluate(()=>H2OIdentity.session());
  const list=await page.evaluate(async s=>(await fetch('https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/portal/list',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({alias:s.alias,revision:s.revision})})).json(),centralSession);assert.equal(list.events[0].status,'yes');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -74,7 +74,7 @@ const {chromium}=require('playwright');
  await page.evaluate(()=>localStorage.removeItem('h2o-portal-identity-v1'));await page.reload();await page.locator('#pairing').waitFor({state:'visible'});
  await page.getByRole('button',{name:'Mit Passkey anmelden',exact:true}).click();await page.locator('#chosen').waitFor({state:'visible'});
  assert.equal(await page.locator('#event-title').textContent(),event.title);
- await page.getByRole('button',{name:'Entschuldigt',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Rückmeldung gespeichert'));
+ await page.getByRole('button',{name:'Entschuldigt',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Gespeichert!'));
  assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passkeys').get().n,1);
 
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');
