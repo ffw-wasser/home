@@ -93,6 +93,7 @@
 .portal-more-grid .portal-more-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:6px;min-height:146px;padding:16px;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:0 4px 12px #10284308;margin:0;border-radius:18px}
 .portal-more-tile .portal-more-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#e7f1fa;color:#075baf;font-size:1.5rem}
 .portal-more-tile strong{font-size:1.0625rem;line-height:1.25}
+[data-portal-tile="more-hydrants"] strong{hyphens:none;-webkit-hyphens:none}
 .portal-more-tile>span:last-child{font-size:.875rem;line-height:1.35;font-weight:500;color:var(--muted)}
 .portal-more-detail .portal-more-back{width:auto;min-height:48px;margin-bottom:18px;padding:10px 16px}
 .portal-more-detail .portal-notifications{margin-top:0;border-top:0}
