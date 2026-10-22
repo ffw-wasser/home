@@ -6,7 +6,7 @@ const reply=(f,i,status)=>f.call('reply',{eventId:f.event.id,status,expectedVers
 test('WhatsApp selects only open/maybe, encrypts contacts and rechecks changed replies without sending',async()=>{
  const f=await setup();for(let i=0;i<4;i++)assert.equal((await contact(f,i)).status,200);
  await reply(f,1,'maybe');await reply(f,2,'yes');await reply(f,3,'excused');
- const r=await f.call('whatsapp-recipients',{eventId:f.event.id});assert.equal(r.status,200);
+ const r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.equal(r.status,200);
  assert.deepEqual(r.value.members.filter(m=>m.eligible&&m.phone).map(m=>m.id),f.people.slice(0,2).map(p=>p.memberId));
  assert.equal(r.value.members[4].phone,null);assert.equal(r.value.members[2].phone,null);assert.equal(r.value.members[0].contactPhone,undefined);
  const raw=f.sql.prepare('SELECT payload FROM portal_roster').get().payload;assert.ok(!raw.includes('491510000000'));
