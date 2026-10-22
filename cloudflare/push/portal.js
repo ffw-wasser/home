@@ -2,6 +2,7 @@
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap();
  const ddl=[
+  'CREATE TABLE IF NOT EXISTS portal_groups (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   ...g.PortalEvidence.schema,
   ...g.PortalHydrants.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
@@ -47,9 +48,26 @@
   if(e.birthdayHint){const title=e.title.replace(/geburtstag|birthday|geb\.|🎂/gi,' ').replace(/\b(?:von|happy)\b/gi,' '),key=nameKey(title),matches=(roster?.members||[]).filter(m=>nameKey(m.name)===key);return {kind:'birthday',sessionType:null,memberId:matches.length===1?matches[0].id:null};}
   return {kind:'probe',sessionType:!/sonderprobe/i.test(e.title)&&/(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title)?'Probe':'Sonderprobe',memberId:null};
  }
- async function decorate(env,cal){const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');return {...cal,rulesVersion:row?.version||0,events:cal.events.map(e=>{const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null,clothingValue=rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');return {...e,location:rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds:kind==='probe'&&Array.isArray(rule?.recipientIds)?rule.recipientIds:null,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};})};}
+ async function audienceGroups(env){
+  const row=await env.DB.prepare('SELECT * FROM portal_groups WHERE id=1').first();
+  const value=row?await open(env,row,'portal-groups'):{groups:g.PortalGroups.defaults()};
+  // Corrupt or missing persisted groups must never turn a restricted audience into everyone.
+  if(!value||!Array.isArray(value.groups))fail('Gruppendaten konnten nicht sicher gelesen werden.',503);
+  return {groups:g.PortalGroups.validate(value.groups),version:row?.version||0};
+ }
+ async function decorate(env,cal){
+  const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),groups=await audienceGroups(env);
+  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster);
+  return {...cal,rulesVersion:row?.version||0,groupsVersion:groups.version,rosterUpdatedAt:roster?.updatedAt||null,events:cal.events.map(e=>{
+   const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null,clothingValue=rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
+   const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',automaticAudience=resolveAudience(e.title);
+   // Every rule predating groups is protected, including recipientIds:null (everyone).
+   const recipientIds=kind!=='probe'?null:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
+   return {...e,location:rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:automaticAudience.groupIds,automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
+  })};
+ }
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
- function memberEvent(event){const {recipientIds,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
+ function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,recipientMode,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
   if(data.kind==='birthday'&&data.memberId&&!roster?.members.some(m=>m.id===data.memberId))fail('Bitte den Geburtstag einem aktuellen Mitglied zuordnen.',400);
@@ -62,12 +80,21 @@
   const attendanceType=data.kind==='probe'?(data.attendanceType||event.attendanceType||(targetType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null;
   if(data.attendanceType!==undefined&&data.kind!=='probe')fail('Eine iPad-Terminart kann nur Proben und Sonderproben zugeordnet werden.',400);
   if(data.kind==='probe'&&!['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(attendanceType))fail('Ungültige iPad-Terminart.',400);
+  if(data.recipientMode!==undefined&&!['automatic','manual','legacy'].includes(data.recipientMode))fail('Ungültige Mitgliederauswahl.',400);
+  const previousMode=event.recipientMode;
+  if(data.recipientMode==='legacy'&&previousMode!=='legacy')fail('Ungültige bisherige Auswahl.',400);
+  const recipientMode=data.kind==='probe'?(data.recipientMode||(data.recipientIds!==undefined?'manual':previousMode==='automatic'?(event.automatic?'legacy':'manual'):previousMode)):'legacy';
+  if(recipientMode==='automatic'){
+   if(data.expectedGroupsVersion!==cal.groupsVersion)fail('Schlagwort-Gruppen wurden inzwischen geändert. Bitte neu laden.');
+   // New rules may use the defaults before the first explicit group save.
+   data.recipientIds=event.automaticRecipientIds;
+  }else if(data.recipientIds===undefined)data.recipientIds=data.kind==='probe'&&(previousMode!=='automatic'||!event.automatic)?event.recipientIds:null;
   if(data.recipientIds!==undefined&&data.recipientIds!==null){
-   if(data.kind!=='probe'||!Array.isArray(data.recipientIds)||!data.recipientIds.length||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||!roster?.members||data.recipientIds.some(id=>typeof id!=='string'||!roster.members.some(m=>m.id===id)))fail('Bitte gültige Mitglieder für diesen Termin auswählen.',400);
+   if(data.kind!=='probe'||!Array.isArray(data.recipientIds)||(recipientMode!=='automatic'&&!data.recipientIds.length)||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||!roster?.members||data.recipientIds.some(id=>typeof id!=='string'||!roster.members.some(m=>m.id===id)))fail('Bitte gültige Mitglieder für diesen Termin auswählen.',400);
   }
   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
-  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,location,clothing,...(data.kind==='probe'?{sessionType:targetType,attendanceType,...(Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
-  const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,old.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) VALUES(1,?)').bind(payload).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,attendanceType,recipientIds:data.kind==='probe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
+  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,location,clothing,...(data.kind==='probe'?{sessionType:targetType,attendanceType,recipientMode,groupsVersion:cal.groupsVersion,groupIds:event.groupIds,...(Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
+  const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=? AND COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,old.version,cal.groupsVersion).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) SELECT 1,? WHERE COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,cal.groupsVersion).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,attendanceType,recipientMode,recipientIds:data.kind==='probe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
  }
  async function birthdayPolicy(env){const row=await env.DB.prepare('SELECT * FROM portal_bonus_policy WHERE id=1').first();return {row,value:await open(env,row,'portal-birthday-policy')||{revision:'birthday-default-v1',awardUnits:150}};}
  async function saveBirthdayPolicy(env,data){
@@ -178,6 +205,18 @@
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster');
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
+  if(path==='/admin/portal/groups'){
+   const current=await audienceGroups(env);
+   if(data.groups===undefined)return {...current,rosterUpdatedAt:roster?.updatedAt||null,members:(roster?.members||[]).map(({id,name,agt,leader,ageDepartment,committeeMember})=>({id,name,agt,leader,ageDepartment,committeeMember}))};
+   if(!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion!==current.version)fail('Gruppen wurden inzwischen geändert. Bitte neu laden.');
+   let groups;try{groups=g.PortalGroups.validate(data.groups);}catch(e){fail(e.message,400);}
+   const oldIds=new Set(current.groups.flatMap(group=>group.memberIds));
+   if(groups.some(group=>group.memberIds.some(id=>!roster?.members.some(m=>m.id===id)&&!oldIds.has(id))))fail('Mitglied nicht mehr vorhanden. Bitte neu laden.',400);
+   const payload=await L.seal(env,{groups},'portal-groups');
+   const result=current.version?await env.DB.prepare('UPDATE portal_groups SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,current.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_groups(id,payload) VALUES(1,?)').bind(payload).run();
+   if(!result.meta.changes)fail('Gruppen wurden gleichzeitig geändert. Bitte neu laden.');
+   return {ok:true,version:current.version+1};
+  }
   if(path==='/admin/portal/contacts'){
    const contacts=data.contacts;
    if(!contacts||contacts.schemaVersion!==1||!Array.isArray(contacts.groups)||contacts.groups.length>12||JSON.stringify(contacts).length>16000)fail('Ungültiges Kontaktverzeichnis.',400);
@@ -192,8 +231,8 @@
    return {contacts:await open(env,row,'portal-contacts'),updatedAt:row?.updated_at||null};
   }
   if(path==='/admin/portal/roster'){
-   if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',whatsapp:roster?.members.find(p=>p.id===m.id)?.whatsapp||null,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
+   if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||['ageDepartment','committeeMember'].some(k=>m[k]!==undefined&&typeof m[k]!=='boolean')||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,ageDepartment:m.ageDepartment===undefined?roster?.members.find(p=>p.id===m.id)?.ageDepartment===true:m.ageDepartment===true,committeeMember:m.committeeMember===undefined?roster?.members.find(p=>p.id===m.id)?.committeeMember===true:m.committeeMember===true,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',whatsapp:roster?.members.find(p=>p.id===m.id)?.whatsapp||null,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
    // A roster change and every credential revocation are one transaction.
    // The sequence CAS also invalidates ledger/game writes started before removal.
    const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
