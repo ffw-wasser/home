@@ -38,7 +38,7 @@
    details.append(summary);
    const list=node('ul');
    for(const i of p.items){
-    const row=node('li');row.append(node('strong',labels[i.label]||i.label),node('span',' · '+reason(i)));list.append(row);
+    const row=node('li');row.append(node('strong',labels[i.label]||i.label),node('span',' · '+reason(i)+(i.source==='self'?' · Eigenangabe':' · Verwaltung')+(i.updatedAt?' · '+new Date(i.updatedAt).toLocaleDateString('de-DE'):'')));list.append(row);
    }
    details.append(list);root.append(details);
   }

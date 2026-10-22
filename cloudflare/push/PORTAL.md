@@ -250,3 +250,34 @@ dokumentierte GitHub-Build-Verbindung automatisch veröffentlicht,
 kommt die Änderung mit einem erfolgreichen Cloudflare-Produktionsbuild
 auf `main`; andernfalls muss `worker.bundle.js` im vorhandenen Worker
 veröffentlicht werden. Es werden **keine** Datenbankmigrationen benötigt.
+
+## Persönliche Eigenangaben zu Nachweisen
+
+Unter „Status“ können Mitglieder mit der synchronisierten AGT-Zuordnung FFI,
+G26.2/G26.3 und die Sicherheitsunterweisung selbst melden. Die Passkey-Sitzung
+bestimmt das Mitglied; Rollen, Fahrzeuge und Kontrollintervalle werden niemals
+vom Eingabeformular übernommen. Bei G26 wird die dokumentierte Gültigkeit als
+Monat/Jahr erfasst. FFI und Unterweisung verwenden die bestehende jährliche
+Frist. Es werden keine Befunde oder Dokumentkopien erhoben.
+
+Fahrberechtigte können das tatsächliche Datum einer Führerscheinkontrolle und
+optional eine Kontrollperson melden. Die Eigenangabe ersetzt die zuletzt
+bestätigte Kontrolle erst nach Prüfung durch die Verwaltung unter
+„Einstellungen → H₂O Portal → Mitglied auswählen → Persönliche Nachweise prüfen“.
+Die Verwaltung kann Eigenangaben bestätigen, ablehnen oder korrigieren.
+
+Die neuen Tabellen `portal_evidence_entries` und `portal_evidence_audit` werden
+additiv angelegt. Angaben und Änderungsereignisse sind mit dem bestehenden
+Kontodienst-Schlüssel verschlüsselt. Versionsprüfungen verhindern Übernahme
+veralteter Formulare; dieselbe Speichernummer kann nach unklarer Übertragung
+wiederholt werden. Der Verlauf ist für das jeweilige Mitglied und die Verwaltung
+sichtbar; Gruppenführer erhalten nur die freigegebene AGT-Übersicht mit Herkunft
+und Datum. Finanzdaten und Kontostände werden dabei nicht verändert.
+
+OneDrive/SharePoint bleibt die Quelle für Mitgliedschaft und Berechtigungen.
+Portal-Eigenangaben liegen als separate Ergänzung im Kontodienst: Ein unveränderter
+Mitgliederabgleich erhält sie. Ändert die Verwaltung den ursprünglichen Nachweis
+in den Mitgliederdaten gezielt, hat diese neue Basis Vorrang; alte Eigenangaben
+werden nicht erneut aktiv, wenn das frühere Datum später wieder eingetragen wird.
+Portalbestätigungen werden nicht automatisch in die lokalen Gerätehaus-Nachweise
+zurückgeschrieben. Die konkrete Einsatzfreigabe ist gesondert zu prüfen.

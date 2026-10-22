@@ -43,3 +43,5 @@ jobs:
         run: node tests/passkey-browser.cjs
       - name: Test FFW update notice and safe reload
         run: node tests/app-update-browser.cjs
+      - name: Test personal evidence and driver review
+        run: node tests/portal-evidence-browser.cjs

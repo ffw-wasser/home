@@ -35,6 +35,7 @@
  function blocked(){
   if((typeof currentSessionId!=='undefined'&&currentSessionId)||(typeof currentOperationId!=='undefined'&&currentOperationId))return 'Bitte den laufenden Termin oder Einsatz zuerst abschließen. Danach kannst du aktualisieren.';
   if(typeof oneDriveBusy!=='undefined'&&oneDriveBusy)return 'OneDrive synchronisiert gerade. Bitte die Speicherung abwarten und erneut aktualisieren.';
+  if(g.PortalEvidenceAdmin?.hasUnsaved?.())return 'Bitte die laufende Nachweisprüfung zuerst abschließen.';
   if(g.TheaterAdmin?.hasUnsaved?.())return 'Bitte die Theater-Änderungen zuerst speichern und laufende Vorgänge abwarten.';
   if(document.querySelector('dialog[open]'))return 'Bitte den geöffneten Dialog zuerst abschließen oder schließen.';
   // Reuse the existing guards for drinks, member edits and pending attendance.

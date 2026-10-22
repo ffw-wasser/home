@@ -360,3 +360,21 @@
 .identity-actions{padding:12px 0;border-top:1px solid #e1e8f0}
 .identity-actions h3{margin:0 0 4px;font-size:1.05rem;color:#16365a}
 #identity-list p{padding:8px 0;border-bottom:1px solid #e1e8f0}
+
+.portal-evidence-source{font-size:.85rem;line-height:1.5;color:#4b6074}
+.portal-evidence-editor,.portal-evidence-history{margin:16px 0;padding:16px;background:#fff;border:1px solid #cbdceb;border-radius:16px;min-width:0}
+.portal-evidence-editor h3,.portal-evidence-editor h4{margin:0 0 10px;color:#16365a}
+.portal-evidence-editor p,.portal-evidence-history p{line-height:1.5;overflow-wrap:anywhere}
+.portal-evidence-editor button{min-height:46px;max-width:100%;margin:6px 6px 6px 0;white-space:normal}
+.portal-evidence-editor form{padding:14px 0;border-top:1px solid #cbdceb;display:grid;gap:10px}
+.portal-evidence-editor label{display:grid;gap:6px;line-height:1.5;min-width:0}
+.portal-evidence-editor input{box-sizing:border-box;min-width:0;max-width:100%;min-height:46px;width:100%;padding:10px;border:1px solid #a9bfd5;border-radius:10px;font-size:1rem}
+.portal-evidence-editor input[type=checkbox]{width:26px;min-height:26px;accent-color:#0862a6}
+.portal-evidence-history summary{min-height:44px;cursor:pointer;font-weight:700}
+
+.portal-evidence-admin button{min-height:46px;max-width:100%;margin:6px 8px 6px 0;white-space:normal}
+.portal-evidence-review-card{padding:14px 0;border-bottom:1px solid #cfdae5;min-width:0}
+.portal-evidence-review-card form{display:grid;gap:10px;margin-top:12px}
+.portal-evidence-review-card label{display:grid;gap:6px;min-width:0}
+.portal-evidence-review-card input{max-width:100%;min-width:0;width:100%;box-sizing:border-box;min-height:46px;font-size:1rem;padding:10px}
+.portal-evidence-review-card p{overflow-wrap:anywhere}
