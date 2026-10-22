@@ -28,9 +28,9 @@ test('WhatsApp requires role, session, contact permission and current event audi
 });
 test('Contact mapping survives roster sync, disappears on removal, and can be cleared',async()=>{
  const f=await setup();await contact(f,0);const roster=f.people.map((p,i)=>({id:p.memberId,name:'Synthetic '+i,firstName:'Test'+i,leader:i===0}));
- await f.call('roster',{members:roster},null,true);let r=await f.call('whatsapp-recipients',{eventId:f.event.id});assert.ok(r.value.members[0].phone);assert.equal(r.value.members[0].firstName,'Test0');
- await contact(f,0,false,'');r=await f.call('whatsapp-recipients',{eventId:f.event.id});assert.equal(r.value.members[0].phone,null);
- await contact(f,1);await f.call('roster',{members:roster.filter(p=>p.id!==f.people[1].memberId)},null,true);r=await f.call('whatsapp-recipients',{eventId:f.event.id});assert.ok(!r.value.members.some(p=>p.id===f.people[1].memberId));
+ await f.call('roster',{members:roster},null,true);let r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.ok(r.value.members[0].phone);assert.equal(r.value.members[0].firstName,'Test0');
+ await contact(f,0,false,'');r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.equal(r.value.members[0].phone,null);
+ await contact(f,1);await f.call('roster',{members:roster.filter(p=>p.id!==f.people[1].memberId)},null,true);r=await f.call('whatsapp-recipients',{eventId:f.event.id},null,true);assert.ok(!r.value.members.some(p=>p.id===f.people[1].memberId));
 });
 test('Stale, started and cancelled events cannot prepare reminders',async()=>{
  const f=await setup();f.offline(true);f.clock.now+=901000;assert.equal((await f.call('whatsapp-prepare',{eventId:f.event.id,memberId:f.people[0].memberId})).status,503);
