@@ -2,7 +2,7 @@
 (function(g){
  'use strict';
  const labels={open:'Ohne Rückmeldung',maybe:'Noch unsicher',yes:'Zugesagt',excused:'Entschuldigt'};
- const eligible=m=>['open','maybe'].includes(m.status);
+ const eligible=m=>m.eligible!==false&&['open','maybe'].includes(m.status);
  function publicLink(event){const u=new URL('termin.html',location.href);u.search='';u.hash='';u.searchParams.set('event',event.id);return u.href;}
  function details(e){const when=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',...(e.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(e.start));const clothing=e.clothing==='Einsatz'?'Einsatzkleidung':e.clothing==='Tagdienst'?'Tagesdienst':e.clothing;return '📅 '+when+(e.allDay?' · ganztägig':' Uhr')+'\n🚒 '+[e.sessionType,e.title].filter(Boolean).join(' · ')+'\n📍 '+(e.location||'GH Wasser')+(clothing?'\n👕 '+clothing:'');}
  function individual(e,m){const ask=m.status==='maybe'?'Du warst noch unsicher. Kannst du inzwischen verbindlich zu- oder absagen?':'Deine Rückmeldung fehlt noch. Bist du dabei?';return '🚒 FFW Wasser – Terminerinnerung\n\nHallo'+(m.firstName?' '+m.firstName:'')+',\n\n'+ask+'\n\n'+details(e)+'\n\n🔗 '+publicLink(e)+'\n\nDanke!';}
