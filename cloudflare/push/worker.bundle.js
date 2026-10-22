@@ -21831,13 +21831,16 @@ g.PortalHydrants={schema,route};
     if(!saved[0].meta.changes)fail('Mitglieder wurden gleichzeitig geändert. Bitte erneut prüfen.',409);
     return {ok:true};
    }
+   const organizerId=admin?(typeof data.organizerMemberId==='string'?data.organizerMemberId:''):record.memberId;
+   if(admin&&organizerId&&!roster.members.some(p=>p.id===organizerId))fail('Abfragendes Mitglied nicht gefunden.',400);
+   if(admin&&whatsappAction==='prepare'&&!organizerId)fail('Bitte zuerst den Abfragenden auswählen.',400);
    const people=[],statuses=new Map();
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results;
    for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
    for(const person of roster?.members||[]){
-    if(!isRecipient(event,person.id)||whatsappAction==='prepare'&&person.id!==data.memberId)continue;
+    if(!isRecipient(event,person.id)||whatsappAction==='prepare'&&(person.id===organizerId||person.id!==data.memberId)||!admin&&person.id===organizerId)continue;
     const status=statuses.get(person.id)||'open',eligible=['open','maybe'].includes(status),contact=person.whatsapp;
-    people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible,phone:eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
+    people.push({id:person.id,name:person.name,firstName:person.firstName||'',status,eligible:eligible&&person.id!==organizerId&&(!admin||!!organizerId),phone:person.id!==organizerId&&organizerId&&eligible&&contact?.allowed===true&&/^[1-9]\d{7,14}$/.test(contact.phone)?contact.phone:null,...(admin?{contactPhone:contact?.phone?'+'+contact.phone:'',allowed:contact?.allowed===true}:{})});
    }
    if(whatsappAction==='prepare')return {event:memberEvent(event),eligible:people[0]?.eligible===true,phone:people[0]?.phone||null};
    return {event:memberEvent(event),members:people};
@@ -21901,7 +21904,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"95e2f55bb87d0e498f2f219c5a7486a351a2a621044c50bdbebf157a75827df1",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"b3b7f2190a5329251f34080b87d36e17d3713e823b90a4e10bd929709a601d4a",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
