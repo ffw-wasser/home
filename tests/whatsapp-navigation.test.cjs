@@ -15,9 +15,9 @@ test('WhatsApp-Einstellungen haben keine separate Verbindung oder Registrierung 
  for(const id of ['portal-browser-start','portal-browser-copy','portal-browser-revoke','portal-browser-legacy'])assert.ok(!html.includes('id="'+id+'"'));
  assert.ok(html.includes('id="identity-login"'));
 });
-function responseContext({standalone=false,from='',historyLength=1,savedURL=null}={}){
+function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search=''}={}){
  const dom=elements(read('termin.html')),assigned=[],back=[];
- const location={href:'https://ffw-wasser.github.io/home/termin.html',origin:'https://ffw-wasser.github.io',pathname:'/home/termin.html',search:'',hash:'',assign:url=>assigned.push(url)};
+ const location={href:'https://ffw-wasser.github.io/home/termin.html',origin:'https://ffw-wasser.github.io',pathname:'/home/termin.html',search,hash:'',assign:url=>assigned.push(url)};
  const history={length:historyLength,replaceState(){},back:()=>back.push(true)};
  const c=vm.createContext({
   console,URL,URLSearchParams,Intl,Date,location,history,
@@ -32,6 +32,13 @@ function responseContext({standalone=false,from='',historyLength=1,savedURL=null
  vm.runInContext(read('js/features/portal/portal-whatsapp.js'),c);
  return {dom,assigned,back};
 }
+test('WhatsApp-Rückweg: nur bei echtem WhatsApp-Referrer Verlauf nutzen',()=>{
+ const fromWhatsApp=responseContext({from:'https://web.whatsapp.com/',historyLength:3,search:'?event=test'});
+ fromWhatsApp.dom['back-to-whatsapp'].events.click();assert.equal(fromWhatsApp.back.length,1);
+ const unrelated=responseContext({from:'https://example.com/',historyLength:3,search:'?event=test'});
+ unrelated.dom['back-to-whatsapp'].events.click();assert.equal(unrelated.back.length,0);
+ assert.match(unrelated.dom['back-to-h2o-status'].textContent,/App-Umschalter/);
+});
 test('Zurück: installierte H2O-App wird nur mit gespeichertem privaten Link geöffnet',async()=>{
  const personal='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/test&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
  const run=responseContext({standalone:true,savedURL:personal});
