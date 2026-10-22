@@ -20,7 +20,7 @@ async function route(path,data,env,admin){
  const action=path.split('/').pop();
  if(admin&&action==='begin'){
   if(!Number.isInteger(data.size)||data.size<5||data.size>MAX||typeof data.sha256!=='string'||!/^[a-f0-9]{64}$/.test(data.sha256))fail('Bitte eine PDF bis 8 MB verwenden.');
-  const id=crypto.randomUUID(),meta={version:id,title:'Hydrantenplan Wasser',fileName:'Hydrantenplan-Wasser.pdf',size:data.size,sha256:data.sha256,parts:Math.ceil(data.size/CHUNK),chunkSize:CHUNK,updatedAt:Date.now()};
+  const id=crypto.randomUUID(),meta={version:id,title:'Hydrantenplan',fileName:'Hydrantenplan-Wasser.pdf',size:data.size,sha256:data.sha256,parts:Math.ceil(data.size/CHUNK),chunkSize:CHUNK,updatedAt:Date.now()};
   // Remove abandoned uploads, retaining the last published plan.
   const current=await env.DB.prepare('SELECT version FROM portal_plan_current WHERE id=1').first();
   await env.DB.batch([

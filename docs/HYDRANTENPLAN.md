@@ -1,4 +1,4 @@
-# Hydrantenplan Wasser
+# Hydrantenplan
 
 Das Original liegt in OneDrive unter
 `Feuerwehr Share/Webseite/Hydrantenplan/Hydrantenplan-Wasser.pdf`.
