@@ -12,26 +12,25 @@
  let active=null;
  function close(){if(active){active.dispose();active=null;}}
  function mount(host,{eventId,request,scope,admin=false}){
-  close();let alive=true,busy=false,snapshot=null,current=null,mode='individual';
+  close();let alive=true,busy=false,snapshot=null,current=null;
   const key='h2o-whatsapp-progress:'+scope+':'+eventId;
   let progress={done:[],excluded:[],opened:[]};try{const saved=JSON.parse(sessionStorage.getItem(key));if(saved&&Date.now()-saved.at<86400000&&Array.isArray(saved.done)&&Array.isArray(saved.excluded))progress={...saved,opened:Array.isArray(saved.opened)?saved.opened:[]};}catch{}
   const save=()=>{try{sessionStorage.setItem(key,JSON.stringify({at:Date.now(),done:progress.done,excluded:progress.excluded,opened:progress.opened}));}catch{notice.textContent='Fortschritt bleibt nur bis zum Schließen dieser Ansicht erhalten.';}};
   const root=node('section'),nav=node('div'),body=node('div'),notice=node('p');root.className='portal-reminders';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');
-  const single=button('Einzeln erinnern',()=>{mode='individual';load();}),groups=button('Gruppeninfo',()=>{mode='group';loadGroups();});single.className='';groups.className='';single.setAttribute('aria-pressed','true');groups.setAttribute('aria-pressed','false');nav.className='portal-reminder-actions';nav.append(single,groups);nav.setAttribute('aria-label','Art der WhatsApp-Erinnerung');root.append(nav,notice,body);host.replaceChildren(root);
+  root.append(notice,body);host.replaceChildren(root);
   function dispose(){alive=false;root.remove();}
   active={dispose};
-  async function run(fn){if(busy||!alive)return;busy=true;root.setAttribute('aria-busy','true');try{await fn();}catch(e){if(alive){current=null;body.replaceChildren();notice.textContent=e.message;body.append(button('Erneut prüfen',()=>mode==='group'?loadGroups():load()));}}finally{busy=false;root.removeAttribute('aria-busy');}}
+  async function run(fn){if(busy||!alive)return;busy=true;root.setAttribute('aria-busy','true');try{await fn();}catch(e){if(alive){current=null;body.replaceChildren();notice.textContent=e.message;body.append(button('Erneut prüfen',load));}}finally{busy=false;root.removeAttribute('aria-busy');}}
   async function fetchList(){const r=await request('whatsapp-recipients',{eventId});if(!alive)return null;snapshot=r;return r;}
-  function load(){single.setAttribute('aria-pressed','true');groups.setAttribute('aria-pressed','false');return run(async()=>{if(await fetchList())paint();});}
+  function load(){return run(async()=>{if(await fetchList())paint();});}
   function paint(){
    if(!alive)return;current=null;body.replaceChildren();
-   const people=snapshot.members,waiting=people.filter(eligible),available=waiting.filter(m=>m.phone&&!progress.done.includes(m.id)),missing=waiting.filter(m=>!m.phone&&!progress.done.includes(m.id)),done=people.filter(m=>progress.done.includes(m.id)),answered=people.filter(m=>!eligible(m)&&!progress.done.includes(m.id)),selected=available.filter(m=>!progress.excluded.includes(m.id));
+   const people=snapshot.members,waiting=people.filter(eligible),available=waiting.filter(m=>m.phone&&!progress.done.includes(m.id)),missing=waiting.filter(m=>!m.phone&&!progress.done.includes(m.id)),done=people.filter(m=>progress.done.includes(m.id)),answered=people.filter(m=>!eligible(m)&&!progress.done.includes(m.id)),selected=available;
    notice.textContent=selected.length+' Person'+(selected.length===1?'':'en')+' für WhatsApp ausgewählt'+(done.length?' · '+done.length+' erledigt':'');
    body.append(node('p','Ohne Rückmeldung und noch unsicher werden erinnert.'));
-   function person(m,selectable=false){
+   function person(m){
     const row=node('div');row.className='portal-reminder-person';
-    const identity=node(selectable?'label':'div'),name=node('strong',m.name),status=node('small',labels[m.status]);identity.className='portal-reminder-identity';
-    if(selectable){const check=node('input');check.type='checkbox';check.checked=!progress.excluded.includes(m.id);check.setAttribute('aria-label',m.name+' auswählen');check.onchange=()=>{progress.excluded=progress.excluded.filter(id=>id!==m.id);if(!check.checked)progress.excluded.push(m.id);save();paint();};identity.append(check);}
+    const identity=node('div'),name=node('strong',m.name),status=node('small',labels[m.status]);identity.className='portal-reminder-identity';
     const description=node('span');description.append(name,status);identity.append(description);row.append(identity);
     if(eligible(m)&&!progress.done.includes(m.id)){
      row.append(button(progress.opened.includes(m.id)?'Erneut öffnen':'WhatsApp vorbereiten',()=>prepare(m.id)));
@@ -42,7 +41,7 @@
    }
    body.append(node('h4','Empfänger'));
    if(!available.length)body.append(node('p','Keine Empfänger mit WhatsApp-Nummer.'));
-   for(const m of available)body.append(person(m,true));
+   for(const m of available)body.append(person(m));
    const next=selected.find(m=>!progress.opened.includes(m.id));
    if(next&&available.length>1)body.append(button('Nächste Nachricht ansehen',()=>prepare(next.id),true));
    if(selected.some(m=>progress.opened.includes(m.id)))body.append(node('p','Geöffnete Chats bitte selbst auf Versand prüfen.'));
@@ -63,27 +62,6 @@
     });};
     const instruction=node('p',m.phone?'Prüfe den Text und öffne WhatsApp. Dort sendest du die Nachricht selbst. Danach kommst du hierher zurück.':'Prüfe den Text, kopiere ihn und sende ihn selbst an die Person.');const label=node('label','Deine Nachricht');label.append(text);const finish=node('div');finish.className='portal-reminder-finish';finish.append(node('p','Nach dem Senden kannst du die Person hier für dich als erledigt markieren. Das Portal erhält keine Versandbestätigung.'),button('Als erledigt markieren',()=>mark(id)));body.append(node('h4','Nachricht an '+m.name),instruction,label,button(m.phone?'WhatsApp öffnen':'Text kopieren',()=>verify(m.phone?'chat':'text'),true),hint,finish,button('Zurück zur Auswahl',load));
   });}
-  function loadGroups(){
-   single.setAttribute('aria-pressed','false');groups.setAttribute('aria-pressed','true');
-   return run(async()=>{
-    const r=await request('whatsapp-events',{});if(!alive)return;body.replaceChildren();
-    const selected=new Set(r.events.filter(e=>!e.audienceRestricted&&e.id===eventId).map(e=>e.id)),text=node('textarea');text.rows=8;text.setAttribute('aria-label','Gruppeninfo bearbeiten');
-    const regenerate=()=>{text.value=group(r.events.filter(e=>selected.has(e.id)));notice.textContent=selected.size+' Termin'+(selected.size===1?'':'e')+' ausgewählt';};
-    body.append(node('p','Eine allgemeine Nachricht für deine WhatsApp-Gruppe. Namen und persönliche Rückmeldungen werden nicht eingefügt.'),node('h4','1. Termine auswählen'));
-    if(!r.events.length)body.append(node('p','Zurzeit gibt es keine kommenden freigegebenen Termine.'));
-    for(const e of r.events){
-     const label=node('label'),check=node('input'),description=node('span');label.className='portal-reminder-event';check.type='checkbox';check.checked=selected.has(e.id);
-     check.onchange=()=>{if(check.checked&&e.audienceRestricted&&!confirm('Dieser Termin betrifft nur ausgewählte Mitglieder. In deiner WhatsApp-Gruppe könnten auch andere Personen mitlesen. Trotzdem in die Gruppeninfo aufnehmen?')){check.checked=false;return;}if(check.checked)selected.add(e.id);else selected.delete(e.id);regenerate();};
-     description.append(node('strong',e.title),node('small',details(e).split('\n')[0]));if(e.audienceRestricted)description.append(node('small','Nur für ausgewählte Mitglieder'));label.append(check,description);body.append(label);
-    }
-    regenerate();const label=node('label','2. Nachricht prüfen und bei Bedarf ändern');label.append(text);
-    body.append(label,node('p','3. Teile die Nachricht. Wähle im Teilen-Menü WhatsApp und anschließend deine Gruppe.'),button('Gruppeninfo teilen',async()=>{
-     if(!selected.size){notice.textContent='Wähle zuerst mindestens einen Termin aus.';return;}
-     try{if(navigator.share){await navigator.share({title:'FFW Wasser – Termine',text:text.value});notice.textContent='Teilen-Menü geschlossen. Bitte prüfe in WhatsApp, ob du die Nachricht gesendet hast.';}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text.value);notice.textContent='Text kopiert. Öffne deine WhatsApp-Gruppe, füge ihn ein und sende ihn dort.';}else{prompt('Gruppeninfo kopieren',text.value);notice.textContent='Kopiere den Text und sende ihn selbst an deine WhatsApp-Gruppe.';}}
-     catch(e){if(e.name!=='AbortError')notice.textContent='Das Teilen hat nicht funktioniert. Kopiere den Text aus dem Nachrichtenfeld und öffne WhatsApp selbst.';}
-    },true));
-   });
-  }
   load();return {dispose};
  }
  g.H2OReminders={mount,close,eligible,individual,group};
