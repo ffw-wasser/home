@@ -31,7 +31,7 @@ async function load(){
   $('hydrants-open').href=url;$('hydrants-open').hidden=false;
   try{viewer=g.PlanZoom.create($('hydrants-map'),bytes);await viewer.ready;}catch{if(epoch!==generation)return;viewer?.destroy();viewer=null;$('hydrants-frame').src=url+'#view=FitH';$('hydrants-frame').hidden=false;}
   if(epoch!==generation)return;
-  status.textContent='Hydrantenplan Wasser · Abgeglichen am '+new Date(plan.updatedAt).toLocaleString('de-DE');
+  status.textContent='Hydrantenplan · Abgeglichen am '+new Date(plan.updatedAt).toLocaleString('de-DE');
  }catch(e){if(epoch===generation)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
  finally{if(epoch===generation){busy=false;button.disabled=false;}}
 }
