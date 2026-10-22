@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/sync-worker-bundle.yml'
+      - 'app-release.json'
       - 'cloudflare/push/portal.js'
       - 'js/features/portal/portal-identity.js'
       - 'js/features/portal/portal-admin.js'
