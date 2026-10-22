@@ -30,7 +30,7 @@ export default {
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
-    const value=await body(request,(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
+    const value=await body(request,path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
     try{return reply(await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown'));}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
    }

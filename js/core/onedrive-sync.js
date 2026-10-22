@@ -202,6 +202,17 @@ async function oneDriveReadContacts(){
  return contacts;
 }
 window.oneDriveReadContacts=oneDriveReadContacts;
+async function oneDriveReadHydrants(){
+ if(!oneDriveAdministrationReady())throw new Error('Bitte zuerst OneDrive verbinden.');
+ const epoch=oneDriveSessionEpoch,response=await odFetch('https://graph.microsoft.com/v1.0/me/drive/root:/Feuerwehr%20Share/Webseite/Hydrantenplan/Hydrantenplan-Wasser.pdf:/content');
+ if(Number(response.headers.get('content-length'))>8*1024*1024)throw new Error('Der Plan darf höchstens 8 MB groß sein.');
+ const reader=response.body.getReader(),chunks=[];let size=0;
+ try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>8*1024*1024)throw new Error('Der Plan darf höchstens 8 MB groß sein.');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
+ assertOneDriveSession(epoch);const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+ if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw new Error('Die OneDrive-Datei ist keine PDF.');
+ return bytes;
+}
+window.oneDriveReadHydrants=oneDriveReadHydrants;
 async function oneDriveReadState({versioned=false}={}){
   const epoch=oneDriveSessionEpoch,root=await oneDriveResolveSharedRoot(),path=`${odItemBase(root)}:/${encodeURIComponent(OD_STATE_FILE)}`;
   if(!versioned){const data=await (await odFetch(path+":/content")).json();assertOneDriveSession(epoch);return data;}

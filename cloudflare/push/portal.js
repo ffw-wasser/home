@@ -3,6 +3,7 @@
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap();
  const ddl=[
   ...g.PortalEvidence.schema,
+  ...g.PortalHydrants.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
   'CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_rules (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
@@ -88,7 +89,7 @@
  
   async function assertMember(env,record){
    await ready(env);
-   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+  const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
    if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
    return record;
   }
@@ -171,6 +172,7 @@
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
+  if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
   if(path==='/admin/portal/contacts'){

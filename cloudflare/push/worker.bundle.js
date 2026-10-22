@@ -21436,11 +21436,84 @@ ${strMDSAlgs}`);
  g.PortalEvidence={schema,fields,revisions,rows,view,read,write};
 })(globalThis);
 
+/* Private plans: encrypted chunks, atomic publication, no public file URLs. */
+(function(g){
+'use strict';
+const L=g.CentralLedger,CHUNK=196608,MAX=8*1024*1024;
+const schema=[
+ 'CREATE TABLE IF NOT EXISTS portal_plan_versions (id TEXT PRIMARY KEY,payload TEXT NOT NULL,created_at INTEGER NOT NULL)',
+ 'CREATE TABLE IF NOT EXISTS portal_plan_chunks (version TEXT NOT NULL,part INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(version,part))',
+ 'CREATE TABLE IF NOT EXISTS portal_plan_current (id INTEGER PRIMARY KEY CHECK(id=1),version TEXT NOT NULL)'
+];
+const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+const validId=id=>typeof id==='string'&&/^[a-f0-9-]{36}$/.test(id);
+const hex=buffer=>Array.from(new Uint8Array(buffer),v=>v.toString(16).padStart(2,'0')).join('');
+async function version(env,id){
+ if(!validId(id))fail('Ungültige Planversion.');
+ const row=await env.DB.prepare('SELECT * FROM portal_plan_versions WHERE id=?').bind(id).first();
+ if(!row)fail('Planversion nicht verfügbar. Bitte erneut laden.',404);
+ return L.open(env,row.payload,'plan-meta:'+id);
+}
+async function route(path,data,env,admin){
+ const action=path.split('/').pop();
+ if(admin&&action==='begin'){
+  if(!Number.isInteger(data.size)||data.size<5||data.size>MAX||typeof data.sha256!=='string'||!/^[a-f0-9]{64}$/.test(data.sha256))fail('Bitte eine PDF bis 8 MB verwenden.');
+  const id=crypto.randomUUID(),meta={version:id,title:'Hydrantenplan Wasser',fileName:'Hydrantenplan-Wasser.pdf',size:data.size,sha256:data.sha256,parts:Math.ceil(data.size/CHUNK),chunkSize:CHUNK,updatedAt:Date.now()};
+  // Remove abandoned uploads, retaining the last published plan.
+  const current=await env.DB.prepare('SELECT version FROM portal_plan_current WHERE id=1').first();
+  await env.DB.batch([
+   env.DB.prepare('DELETE FROM portal_plan_chunks WHERE version IN (SELECT id FROM portal_plan_versions WHERE created_at<? AND id<>?)').bind(Date.now()-3600000,current?.version||''),
+   env.DB.prepare('DELETE FROM portal_plan_versions WHERE created_at<? AND id<>?').bind(Date.now()-3600000,current?.version||'')
+  ]);
+  await env.DB.prepare('INSERT INTO portal_plan_versions(id,payload,created_at) VALUES(?,?,?)').bind(id,await L.seal(env,meta,'plan-meta:'+id),Date.now()).run();
+  return {plan:meta};
+ }
+ if(admin&&action==='chunk'){
+  const meta=await version(env,data.version),current=await env.DB.prepare('SELECT version FROM portal_plan_current WHERE id=1').first();
+  if(current?.version===data.version)fail('Veröffentlichte Pläne können nicht verändert werden.',409);
+  if(!Number.isInteger(data.part)||data.part<0||data.part>=meta.parts||typeof data.bytes!=='string'||data.bytes.length>262144||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.bytes))fail('Ungültiger Planabschnitt.');
+  const bytes=atob(data.bytes),expected=Math.min(CHUNK,meta.size-data.part*CHUNK);
+  if(bytes.length!==expected)fail('Unvollständiger Planabschnitt.');
+  await env.DB.prepare('INSERT OR IGNORE INTO portal_plan_chunks(version,part,payload) VALUES(?,?,?)').bind(data.version,data.part,await L.seal(env,{bytes:data.bytes},'plan-chunk:'+data.version+':'+data.part)).run();
+  const saved=await env.DB.prepare('SELECT payload FROM portal_plan_chunks WHERE version=? AND part=?').bind(data.version,data.part).first();
+  if(!saved||(await L.open(env,saved.payload,'plan-chunk:'+data.version+':'+data.part)).bytes!==data.bytes)fail('Planabschnitt bereits anders übertragen. Bitte neu abgleichen.',409);
+  return {ok:true};
+ }
+ if(admin&&action==='publish'){
+  const meta=await version(env,data.version),rows=(await env.DB.prepare('SELECT * FROM portal_plan_chunks WHERE version=? ORDER BY part').bind(meta.version).all()).results;
+  if(rows.length!==meta.parts)fail('Der Plan ist noch nicht vollständig übertragen.',409);
+  const bytes=new Uint8Array(meta.size);
+  for(let part=0;part<rows.length;part++){
+   if(rows[part].part!==part)fail('Planabschnitt fehlt.',409);
+   const raw=atob((await L.open(env,rows[part].payload,'plan-chunk:'+meta.version+':'+part)).bytes);
+   bytes.set(Uint8Array.from(raw,c=>c.charCodeAt(0)),part*CHUNK);
+  }
+  if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-'||hex(await crypto.subtle.digest('SHA-256',bytes))!==meta.sha256)fail('Die PDF-Prüfung ist fehlgeschlagen.',409);
+  await env.DB.prepare('INSERT INTO portal_plan_current(id,version) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version').bind(meta.version).run();
+  return {ok:true,plan:meta};
+ }
+ if(!admin&&(action==='info'||action==='part')){
+  const row=await env.DB.prepare('SELECT version FROM portal_plan_current WHERE id=1').first();
+  if(!row)fail('Der Hydrantenplan wurde noch nicht vom Gerätehaus-iPad abgeglichen.',404);
+  const meta=await version(env,row.version);
+  if(action==='info')return {plan:meta};
+  if(data.version!==row.version)fail('Der Plan wurde aktualisiert. Bitte erneut laden.',409);
+  if(!Number.isInteger(data.part)||data.part<0||data.part>=meta.parts)fail('Ungültiger Planabschnitt.');
+  const chunk=await env.DB.prepare('SELECT payload FROM portal_plan_chunks WHERE version=? AND part=?').bind(meta.version,data.part).first();
+  if(!chunk)fail('Planabschnitt nicht verfügbar.',503);
+  return L.open(env,chunk.payload,'plan-chunk:'+meta.version+':'+data.part);
+ }
+ fail('Nicht gefunden.',404);
+}
+g.PortalHydrants={schema,route};
+})(globalThis);
+
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap();
  const ddl=[
   ...g.PortalEvidence.schema,
+  ...g.PortalHydrants.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
   'CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_rules (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
@@ -21526,7 +21599,7 @@ ${strMDSAlgs}`);
  
   async function assertMember(env,record){
    await ready(env);
-   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+  const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
    if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
    return record;
   }
@@ -21609,6 +21682,7 @@ ${strMDSAlgs}`);
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
+  if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
   if(path==='/admin/portal/contacts'){
@@ -21775,7 +21849,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"1696e43ebd43920279b2935cac541e6597021bfbff262ecde8eced436fd469dc",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"3d8de820d1999554936d87f2c252f708bdfa3c88966d35a0b66bc4a7eee1f025",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
@@ -21786,7 +21860,7 @@ export default {
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
-    const value=await body(request,(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
+    const value=await body(request,path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
     try{return reply(await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown'));}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
    }

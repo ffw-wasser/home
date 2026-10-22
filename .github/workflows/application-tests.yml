@@ -43,6 +43,8 @@ jobs:
         run: node tests/passkey-browser.cjs
       - name: Test FFW update notice and safe reload
         run: node tests/app-update-browser.cjs
+      - name: Test protected hydrant plan view
+        run: node tests/portal-hydrants-browser.cjs
       - name: Test personal evidence and driver review
         run: node tests/portal-evidence-browser.cjs
       - name: Test member batch editing and mobile cards
