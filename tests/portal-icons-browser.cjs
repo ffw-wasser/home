@@ -1,0 +1,41 @@
+// All content is local; no production account or external service is accessed.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
+const root=path.resolve(__dirname,'..');
+(async()=>{
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ try{
+  for(const width of [320,390,768]){
+   const page=await browser.newPage({viewport:{width,height:844},serviceWorkers:'block'});
+   await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});return route.abort();});
+   await page.goto('https://ffw-wasser.github.io/home/deckel.html');
+   await page.waitForFunction(()=>globalThis.DeckelMobile);
+   await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('deckel-more');document.querySelector('[data-portal-tile="more-breathing"]').hidden=false;});
+   // Reproduce the original drag-and-drop of the hydrant tile into the bottom menu.
+   const from=await page.locator('[data-portal-tile="more-hydrants"]').boundingBox(),nav=await page.locator('#deckel-nav').boundingBox();
+   await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();await page.waitForTimeout(600);await page.mouse.move(nav.x+nav.width*.65,nav.y+nav.height/2,{steps:8});await page.mouse.up();
+   await page.waitForFunction(()=>document.querySelector('#deckel-nav [data-portal-tile="more-hydrants"]'));
+   const verify=async(group,size,artSize)=>{
+    const metrics=await page.locator(group+' [data-portal-tile]:not([hidden])').evaluateAll(tiles=>tiles.map(tile=>{const icon=tile.querySelector('.portal-nav-symbol,.portal-more-icon'),art=icon?.querySelector('svg,img'),r=icon?.getBoundingClientRect(),a=art?.getBoundingClientRect();return {id:tile.dataset.portalTile,w:r?.width,h:r?.height,top:r.top-tile.getBoundingClientRect().top,font:getComputedStyle(icon).fontSize,art:a?{w:a.width,h:a.height}:null,center:Math.abs(r.left+r.width/2-(a?a.left+a.width/2:r.left+r.width/2)),overflow:tile.scrollWidth>tile.clientWidth+1};}));
+    if(metrics.length)for(const m of metrics)assert.ok(Math.abs(m.top-metrics[0].top)<1,'icons share a top alignment: '+JSON.stringify(metrics));
+    for(const m of metrics){assert.equal(m.w,size,JSON.stringify(m));assert.equal(m.h,size,JSON.stringify(m));assert.equal(m.overflow,false,JSON.stringify(m));if(m.art){assert.equal(m.art.w,artSize,JSON.stringify(m));assert.equal(m.art.h,artSize,JSON.stringify(m));assert.ok(m.center<1,JSON.stringify(m));}}
+   };
+   await verify('#deckel-nav',28,24);await verify('#portal-more-grid',42,26);
+   if(width===390&&process.env.PORTAL_ICON_SCREENSHOT)await page.screenshot({path:process.env.PORTAL_ICON_SCREENSHOT});
+   // Every movable tile must use the same container rules in both directions.
+   await page.locator('#portal-layout-open').click();
+   const ids=await page.locator('#portal-layout-item option').evaluateAll(items=>items.map(item=>item.value));
+   for(const id of ids){
+    await page.locator('#portal-layout-item').selectOption(id);
+    const wasMain=await page.locator('#deckel-nav [data-portal-tile="'+id+'"]').count();
+    await page.locator('#portal-layout-transfer').click();
+    const target=wasMain?'#portal-more-grid':'#deckel-nav';assert.equal(await page.locator(target+' [data-portal-tile="'+id+'"]').count(),1);
+    await verify('#deckel-nav',28,24);await verify('#portal-more-grid',42,26);
+    await page.locator('#portal-layout-transfer').click();
+   }
+   await page.locator('#portal-layout-close').click();
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await page.close();
+  }
+  console.log('Portal icon sizing passed at 320/390/768px, including drag and every tile transfer.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
