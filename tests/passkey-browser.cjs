@@ -4,11 +4,17 @@ const {fixture}=require('./helpers/portal-fixture.cjs');
 const {chromium}=require('playwright');
 (async()=>{
  const f=await fixture({authenticated:false}),browser=await chromium.launch({headless:true,args:['--no-sandbox']}),page=await browser.newPage({viewport:{width:320,height:740}}),errors=[];
+ let addPasskey=false;
  page.setDefaultTimeout(15000);
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
   const req=route.request(),u=new URL(req.url());
   if(u.hostname.endsWith('workers.dev')){
+   if(addPasskey&&u.pathname.endsWith('/enroll/options')){
+    await client.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId});
+    await client.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+    addPasskey=false;
+   }
    const r=await f.c.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),...(req.method()==='POST'?{body:req.postData()}: {})}),f.env);
    return route.fulfill({status:r.status,headers:Object.fromEntries(r.headers),body:await r.text()});
   }
@@ -18,7 +24,7 @@ const {chromium}=require('playwright');
   }
   return route.abort();
  });
- const client=await page.context().newCDPSession(page);await client.send('WebAuthn.enable');await client.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+ const client=await page.context().newCDPSession(page);await client.send('WebAuthn.enable');const {authenticatorId}=await client.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const event=(await f.call('list',{},null,true)).value.events[0];
  const person=f.people[0];
  const ticket=(await f.call('identity-ticket',{alias:person.alias,revision:person.revision},null,true)).value;
@@ -80,11 +86,37 @@ const {chromium}=require('playwright');
  assert.equal(await page.locator('[data-portal-tile="more-reminders"]').count(),0);
  assert.equal(await page.locator('#identity-entry').textContent(),'');
  assert.equal(await page.locator('#identity-panel').evaluate(e=>e.parentElement.id),'identity-security-slot');
+ assert.equal(await page.locator('#identity-login').isVisible(),false);
+ assert.equal(await page.locator('#identity-setup').isVisible(),false);
+ assert.equal(await page.locator('#identity-intro').isVisible(),false);
+ assert.equal(await page.locator('#identity-member').textContent(),'Angemeldet als Testperson 1');
+ assert.equal(await page.locator('#identity-state').getAttribute('data-active'),'true');
+ await page.locator('#identity-devices').click();
+ await page.waitForFunction(()=>document.querySelector('#identity-list').textContent.includes('aktuell verwendet'));
+ assert.equal(await page.locator('#identity-list button').count(),0,'current passkey cannot be removed');
+ addPasskey=true; // Confirm with the existing key, then enroll a different authenticator.
+ await page.locator('#identity-register').click();
+ await page.waitForFunction(()=>document.querySelector('#identity-message').textContent.includes('Du bleibst angemeldet')).catch(async error=>{console.error(await page.locator('#identity-message').textContent());throw error;});
+ await page.waitForFunction(()=>!document.querySelector('#refresh').disabled);
+ assert.equal(await page.locator('#identity-login').isVisible(),false);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passkeys').get().n,2);
+ await page.locator('#identity-devices').click();
+ await page.waitForFunction(()=>document.querySelector('#identity-list').children.length===2);
+ assert.equal(await page.locator('#identity-list button').count(),1);
+ for(const width of [320,390,768]){
+  await page.setViewportSize({width,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'security settings fit '+width+'px');
+ }
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:'/tmp/h2o-security-settings.png',fullPage:true});
  await page.locator('#identity-logout').click();
  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Passkey anmelden'));
  assert.equal(await page.locator('#identity-panel').evaluate(e=>e.parentElement.id),'identity-entry');
  assert.equal(await page.locator('#deckel-nav').isVisible(),false);
  assert.equal(await page.locator('#account').isVisible(),false);
+ assert.equal(await page.locator('#identity-login').isVisible(),true);
+ assert.equal(await page.locator('#identity-member').textContent(),'');
+ assert.equal(await page.locator('#identity-list').textContent(),'');
  await f.call('identity-ticket',{alias:person.alias,revision:person.revision,reset:true},null,true);await page.goto('https://ffw-wasser.github.io/home/termin.html?event='+event.id);await page.locator('#pairing').waitFor({state:'visible'});
  assert.deepEqual(errors,[]);console.log('Browser E2E OK: central onboarding, portal session, WhatsApp with/without existing session, reply and later correction, reload, admin recovery; no overflow at 320px.');
  await browser.close();
