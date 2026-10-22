@@ -41,3 +41,17 @@ Verschlüsselung gegenüber dem Kontodienst.
 Maximal 8 MiB, Abschnitte mit 192 KiB; dadurch bleibt jeder verschlüsselte D1-Wert
 unter dem Größenlimit. Unveröffentlichte Übertragungen werden beim nächsten
 Abgleich nach einer Stunde bereinigt. Der veröffentlichte Plan bleibt erhalten.
+
+## Vergrößern und Verschieben
+
+Auf Smartphone und Gerätehaus-Tablet lässt sich der Plan direkt mit zwei Fingern
+auseinanderziehen (bis zur 32-fachen Übersichtsgröße). Mit einem Finger wird der
+Ausschnitt verschoben. Die Geste bleibt auf den Plan begrenzt und löst keinen
+Seitenwechsel aus. Die Anzeige rendert nur eine Bildschirmfläche neu aus der PDF,
+sodass hohe Zoomstufen keine riesigen Canvas-Flächen im Tablet-Speicher erzeugen.
+
+PDF.js 5.4.624 liegt mit Apache-2.0-Lizenz lokal unter js/vendor/pdfjs. Es werden
+keine PDF-Inhalte an externe Anzeigedienste gesendet. Der Import erfolgt erst beim
+Öffnen eines Plans. Reproduzierbarer Bezug: npm ci --ignore-scripts und
+node scripts/prepare-plan-pdf.cjs. Falls der Renderer auf einem älteren Browser
+nicht geladen werden kann, bleibt die bisherige native PDF-Ansicht verfügbar.
