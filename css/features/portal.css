@@ -350,8 +350,13 @@
 #portal-page-more-help .portal-help{margin:14px 0;padding:14px;border-radius:16px}#portal-page-more-help .portal-help h3{font-size:1.05rem;margin:0 0 6px}#portal-page-more-help .portal-help>details{padding:0 4px}#portal-page-more-help .portal-help summary{font-size:.94rem}
 @media(min-width:680px){#helpView>.contacts-pane{max-width:900px;margin:16px auto 22px}.contacts-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* Account access stays outside the individually arranged portal tiles. */
-#identity-account{margin:8px 0;border:1px solid #d2e1ef;border-radius:14px;padding:0 12px;background:#fff}
-#identity-account>summary{min-height:40px;padding:9px 0;font-size:.85rem}
-#identity-account button{margin:8px 0}#identity-account input{display:block;width:100%;min-width:0;min-height:48px;padding:10px;border:1px solid #a9bfd5;border-radius:10px}
-#identity-account p{font-size:.9rem}#identity-state{font-weight:500}
+/* Account settings move into the security tile after sign-in. */
+#identity-account{margin:0 0 16px;border:1px solid #d7e1ed;border-radius:18px;padding:4px 16px;background:#fff;box-shadow:0 3px 12px #10284308}
+#identity-account>summary{min-height:44px;padding:12px 0;font-size:1rem;font-weight:700;line-height:1.5;color:#16365a;cursor:pointer}
+#identity-account button{margin:8px 0;min-height:46px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+#identity-account input{display:block;width:100%;min-width:0;min-height:48px;padding:10px;border:1px solid #a9bfd5;border-radius:10px}
+#identity-account p{font-size:.9375rem;overflow-wrap:anywhere}
+#identity-member{font-weight:700;color:#16365a}
+.identity-actions{padding:12px 0;border-top:1px solid #e1e8f0}
+.identity-actions h3{margin:0 0 4px;font-size:1.05rem;color:#16365a}
+#identity-list p{padding:8px 0;border-bottom:1px solid #e1e8f0}
