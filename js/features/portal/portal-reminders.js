@@ -48,7 +48,6 @@
      row.append(button(progress.opened.includes(m.id)?'Erneut öffnen':'WhatsApp vorbereiten',()=>prepare(m.id)));
      if(progress.opened.includes(m.id))row.append(button('Als erledigt markieren',()=>mark(m.id)));
     }
-    if(admin)row.append(button('Nummer bearbeiten',()=>contact(m)));
     return row;
    }
    body.append(node('h4','Empfänger'));
@@ -58,14 +57,13 @@
    if(next&&available.length>1)body.append(button('Nächste Nachricht ansehen',()=>prepare(next.id),true));
    if(selected.some(m=>progress.opened.includes(m.id)))body.append(node('p','Geöffnete Chats bitte selbst auf Versand prüfen.'));
    function folder(title,subset,hint){if(!subset.length)return;const box=node('details');box.className='portal-reminder-folder';box.append(node('summary',title+' ('+subset.length+')'));if(hint)box.append(node('p',hint));for(const m of subset)box.append(person(m));body.append(box);return box;}
-   const missingBox=folder('WhatsApp-Kontakt fehlt oder nicht freigegeben',missing,'Die Nummer fehlt, ist ungültig oder nicht für Erinnerungen freigegeben. Die Verwaltung kann das unter den WhatsApp-Kontaktdaten prüfen.');if(missingBox&&!available.length)missingBox.open=true;
+   const missingBox=folder('WhatsApp-Kontakt fehlt oder nicht freigegeben',missing,'Die Nummer fehlt, ist ungültig oder nicht für Erinnerungen freigegeben. Das Mitglied kann die Nummer unter Konto & Sicherheit selbst eintragen.');if(missingBox&&!available.length)missingBox.open=true;
    folder('Keine Erinnerung nötig',answered,'Diese Personen haben bereits zugesagt oder sich entschuldigt.');
    folder('Von dir erledigt',done,'Von dir als erledigt markiert. Das Portal kann nicht prüfen, ob eine Nachricht gesendet wurde.');
    const tools=node('div');tools.className='portal-reminder-tools';tools.append(button('Rückmeldungen neu laden',load));
    if(progress.done.length||progress.opened.length)tools.append(button('Erinnerungsliste zurücksetzen',()=>{if(!confirm('Deine Markierungen löschen? Bereits bearbeitete Personen können danach erneut erinnert werden.'))return;progress={done:[],excluded:[],opened:[]};save();load();}));body.append(tools);
   }
   function mark(id){if(!progress.done.includes(id))progress.done.push(id);save();load();}
-  function contact(m){body.replaceChildren();const label=node('label','WhatsApp-Nummer (international, z. B. +49 …)'),input=node('input');input.type='tel';input.autocomplete='off';input.value=m.contactPhone||'';label.append(input);const consent=node('label'),check=node('input');check.type='checkbox';check.checked=m.allowed===true;consent.append(check,node('span','Einwilligung oder zulässige Grundlage für persönliche WhatsApp-Erinnerungen ist dokumentiert.'));body.append(node('h4','WhatsApp-Nummer für '+m.name),label,consent,button('Nummer speichern',()=>run(async()=>{await request('whatsapp-contact',{eventId,memberId:m.id,phone:input.value,allowed:check.checked});if(await fetchList())paint();})),button('Zurück',paint));}
   function prepare(id){return run(async()=>{const r=await fetchList();if(!r)return;const m=r.members.find(p=>p.id===id);if(!m||!eligible(m)||progress.done.includes(id)){paint();notice.textContent='Für diese Person ist keine weitere Erinnerung nötig.';return;}current={id,event:r.event};notice.textContent='';body.replaceChildren();const text=node('textarea');text.rows=8;text.value=individual(r.event,m);text.setAttribute('aria-label','Nachricht bearbeiten');const hint=node('p');hint.setAttribute('role','status');
     const verify=async action=>{await run(async()=>{const fresh=await request('whatsapp-prepare',{eventId,memberId:id});if(!alive)return;if(!fresh.eligible){await fetchList();paint();notice.textContent='Rückmeldung geändert. Keine Erinnerung mehr vorgesehen.';return;}if(JSON.stringify(fresh.event)!==JSON.stringify(current.event)){await fetchList();paint();notice.textContent='Termindaten geändert. Bitte Nachricht neu vorbereiten.';return;}if(action==='chat'&&!fresh.phone)throw Error('Die WhatsApp-Nummer ist nicht mehr verfügbar. Bitte zurück zur Liste gehen und den Text kopieren.');
      // Navigation in the same tab needs no popup permission after asynchronous validation.
