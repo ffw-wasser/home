@@ -21702,8 +21702,8 @@ g.PortalHydrants={schema,route};
    return {contacts:await open(env,row,'portal-contacts'),updatedAt:row?.updated_at||null};
   }
   if(path==='/admin/portal/roster'){
-   if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'||m.whatsappPhone!==undefined&&(typeof m.whatsappPhone!=='string'||m.whatsappPhone!==''&&!/^\+[1-9]\d{7,14}$/.test(m.whatsappPhone))||m.whatsappAllowed!==undefined&&typeof m.whatsappAllowed!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',whatsapp:m.whatsappPhone?{phone:String(m.whatsappPhone).replace(/^\+/,''),allowed:m.whatsappAllowed===true,updatedAt:Date.now()}:null,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
+   if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',whatsapp:roster?.members.find(p=>p.id===m.id)?.whatsapp||null,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
    // A roster change and every credential revocation are one transaction.
    // The sequence CAS also invalidates ledger/game writes started before removal.
    const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
@@ -21732,7 +21732,23 @@ g.PortalHydrants={schema,route};
    return {ok:true,evidenceVersion:1,removedBrowserMembers:removed.size};
   }
    // Separate GF-only view; browser tokens are rejected by actor() for this path.
-   if(path==='/portal/gf-breathing'){
+   if(path==='/portal/whatsapp-preference'){
+   const own=roster?.members?.find(person=>person.id===record.memberId);
+   if(!own)fail('Mitglied nicht gefunden. Bitte die Verwaltung informieren.',404);
+   const current=own.whatsapp||null;
+   if(data.phone===undefined&&data.allowed===undefined)return {phone:current?.phone?'+'+current.phone:'',allowed:current?.allowed===true};
+   if(typeof data.phone!=='string'||typeof data.allowed!=='boolean')fail('Ungültige WhatsApp-Einstellungen.',400);
+   const phone=data.phone.trim().replace(/[\s()-]/g,'').replace(/^00/,'+');
+   if(phone&&!/^\+[1-9]\d{7,14}$/.test(phone))fail('Handynummer bitte mit + und Ländervorwahl eingeben.',400);
+   if(data.allowed&&!phone)fail('Bitte zuerst eine Handynummer eingeben.',400);
+   const whatsapp=phone?{phone:phone.slice(1),allowed:data.allowed,updatedAt:Date.now()}:null;
+   const updated={...roster,members:roster.members.map(person=>person.id===record.memberId?{...person,whatsapp}:person),updatedAt:Date.now()};
+   const sealed=await L.seal(env,updated,'portal-roster');
+   const result=await env.DB.prepare('UPDATE portal_roster SET payload=? WHERE id=1 AND payload=?').bind(sealed,rosterRow.payload).run();
+   if(!result.meta.changes)fail('Die Mitgliederdaten wurden gleichzeitig geändert. Bitte erneut versuchen.',409);
+   return {ok:true,phone:whatsapp?'+'+whatsapp.phone:'',allowed:whatsapp?.allowed===true};
+  }
+  if(path==='/portal/gf-breathing'){
     if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
     const now=Date.now(),people=[],uncertain=[],limit=now-7*DAY;
     const evidenceRows=await g.PortalEvidence.rows(env);
@@ -21885,7 +21901,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"cd4f3c18dc21435184bbbcaa2205a806920559f778196abd30b6c14b35f30f48",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"95e2f55bb87d0e498f2f219c5a7486a351a2a621044c50bdbebf157a75827df1",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
