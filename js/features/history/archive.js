@@ -112,6 +112,7 @@ function normalizeCompleteBackupData(data) {
     ageDepartment:Boolean(member.ageDepartment),
     machinistVehicles:Array.isArray(member.machinistVehicles)?member.machinistVehicles.filter(value=>value==="LF"||value==="TSF"):[],
     rfidId:String(member.rfidId||"").trim(),
+    whatsappPhone:String(member.whatsappPhone||"").trim(),whatsappAllowed:member.whatsappAllowed===true,
     committeeMember:Boolean(member.committeeMember),
     breathingClearance:Boolean(member.breathingClearance),breathingClearanceUntil:String(member.breathingClearanceUntil||""),
     g262ValidUntil:String(member.g262ValidUntil||""),g263ValidUntil:String(member.g263ValidUntil||""),agtInstructionValidUntil:String(member.agtInstructionValidUntil||""),ffiValidUntil:String(member.ffiValidUntil||""),
