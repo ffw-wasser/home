@@ -10,3 +10,7 @@ CREATE TABLE IF NOT EXISTS portal_devices (id TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS portal_rules (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS portal_birthdays (member TEXT NOT NULL, year INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(member,year));
 CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
+
+-- Encrypted current eigenangaben and immutable change events.
+CREATE TABLE IF NOT EXISTS portal_evidence_entries(member TEXT NOT NULL,field TEXT NOT NULL,version INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(member,field));
+CREATE TABLE IF NOT EXISTS portal_evidence_audit(member TEXT NOT NULL,id TEXT NOT NULL,payload TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(member,id));

@@ -19,7 +19,7 @@ const groups = {
   portal: [/^portal\.test/, /^(portal|calendar|whatsapp)-/, /^member-evidence/],
   sicherheit: [/^portal-identity\.test/,/^portal\.test/, /^(private-|admin-|setup-|onedrive-|member-|deckel-encrypted|portal-sync|whatsapp-navigation)/],
   cloudflare: [/^portal-identity\.test/,/^portal\.test/, /^deckel-challenge\.test/, /^(deckel-push|drinks-central|drinks-phone-sync|portal-sync|portal-reply|portal-calendar|whatsapp|member-evidence|theater-phone-flow|drinks-challenge)/],
-  basis: [/^(build-assets|release-consistency|plausibility|consolidation|startup|usability|home-icons|backup-integrity)/]
+  basis: [/^app-update\.test/, /^(build-assets|release-consistency|plausibility|consolidation|startup|usability|home-icons|backup-integrity)/]
 };
 const names = Object.keys(groups);
 const files = fs.readdirSync(testDir).filter(name => name.endsWith('.test.cjs')).sort();

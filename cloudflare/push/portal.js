@@ -2,6 +2,7 @@
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap();
  const ddl=[
+  ...g.PortalEvidence.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
   'CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_rules (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
@@ -187,7 +188,7 @@
   }
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
    // A roster change and every credential revocation are one transaction.
    // The sequence CAS also invalidates ledger/game writes started before removal.
    const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
@@ -219,20 +220,28 @@
    if(path==='/portal/gf-breathing'){
     if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
     const now=Date.now(),people=[],uncertain=[],limit=now-7*DAY;
+    const evidenceRows=await g.PortalEvidence.rows(env);
     // Older projections could infer membership from roles. Require a fresh checkbox-only projection.
     if(roster.agtSource!=='member-checkbox')return {people,uncertain,stale:true,assignmentSyncRequired:true,syncedAt:roster.updatedAt||null,servedAt:now};
     for(const member of roster.members){
      if(member.agt!==true)continue;
-     const e=member.evidence?.breathing,details={version:1,medical:{g262:'',g263:e?.g263||''},breathing:{g263:e?.g263||'',instruction:e?.instruction||'',ffi:e?.ffi||''},driver:null};
+     const merged=await g.PortalEvidence.view(env,member,roster,evidenceRows),e=merged.evidence?.breathing,details={version:1,medical:{g262:'',g263:e?.g263||''},breathing:{g263:e?.g263||'',instruction:e?.instruction||'',ffi:e?.ffi||''},driver:null};
      const assessment=g.MemberEvidence.assess(details,now).find(group=>group.title==='Atemschutz');
-     const items=assessment.items.map(item=>({label:item.label,until:item.until,status:item.status}));
+     const keys=['g263','instruction','ffi'],items=assessment.items.map((item,i)=>({label:item.label,until:item.until,status:item.status,source:merged.entries[keys[i]].source,updatedAt:merged.entries[keys[i]].updatedAt}));
      const status=items.some(item=>['expired','missing'].includes(item.status))?'check':items.some(item=>item.status==='soon')?'soon':'valid';
      people.push({name:member.name,status,items});
     }
     const stale=!roster.updatedAt||roster.updatedAt<limit||roster.members.some(member=>member.agt===true&&(!member.evidenceUpdatedAt||member.evidenceUpdatedAt<limit));
     return {people,uncertain,stale,syncedAt:roster.updatedAt||null,servedAt:now};
    }
-   if(path==='/portal/evidence'){const own=roster?.members.find(m=>m.id===record.memberId);return {evidence:own?.evidence||null,syncedAt:own?.evidenceUpdatedAt||null,servedAt:Date.now()};}
+   if(path==='/portal/evidence'||path==='/portal/evidence/report'){
+    const own=roster?.members.find(member=>member.id===record.memberId);
+    return path.endsWith('/report')?g.PortalEvidence.write(env,own,roster,data,false,m):g.PortalEvidence.read(env,own,roster);
+   }
+   if(path==='/admin/portal/evidence'||path==='/admin/portal/evidence/review'){
+    const member=roster?.members.find(person=>person.id===data.memberId);
+    return path.endsWith('/review')?g.PortalEvidence.write(env,member,roster,data,true,m):g.PortalEvidence.read(env,member,roster);
+   }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
   if(path==='/admin/portal/config'){

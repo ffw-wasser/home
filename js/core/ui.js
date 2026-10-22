@@ -40,6 +40,7 @@ function showView(viewId) {
   const theaterMode=({theaterCashView:"cash",theaterStatsView:"stats",theaterManageView:"manage"})[viewId];
   if(theaterMode)viewId="theaterView";
   if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView","settingsPortalView"].includes(viewId)&&!requireAdmin(requestedView))return false;
+  if(window.PortalEvidenceAdmin?.beforeView(viewId)===false)return false;
   if(window.TheaterAdmin?.beforeView(viewId)===false)return false;
   if(window.DrinksQuizQuestions?.beforeView(viewId)===false)return false;
   if(window.DrinksAdminBookings?.beforeView(viewId)===false)return false;

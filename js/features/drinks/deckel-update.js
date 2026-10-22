@@ -35,9 +35,10 @@
  }
  function reload(){
   const messages=[];
+  if(g.PortalEvidenceEditor?.hasUnsaved?.())messages.push('Status: Die Nachweiseingabe zuerst speichern oder abbrechen. Bei unbestätigter Speicherung erneut prüfen.');
   if(g.DeckelActions?.hasUnsaved?.())messages.push('Mein Deckel: Vorgemerkte Getränke zuerst speichern oder verwerfen. Bei einer gesendeten Buchung die Speicherung erneut prüfen.');
   if(g.TheaterPhone?.hasUnsaved?.())messages.push('Theater: Die vorgemerkte Bestellung zuerst senden oder die Mengen mit Minus auf null setzen. Bei unbestätigter Übertragung „Übertragung erneut prüfen“ wählen.');
-  else if(g.H2OPortal?.hasUnsaved?.())messages.push('Termine: Bei unbestätigten Termin-Rückmeldungen die Bestätigung abwarten oder „Speicherung erneut prüfen“ wählen.');
+  else if(g.H2OPortal?.hasUnsaved?.()&&!g.PortalEvidenceEditor?.hasUnsaved?.())messages.push('Termine: Bei unbestätigten Termin-Rückmeldungen die Bestätigung abwarten oder „Speicherung erneut prüfen“ wählen.');
   if(messages.length){
    $('deckel-update-banner').hidden=false;
    $('deckel-update-message').textContent=messages.join(' ');
