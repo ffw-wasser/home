@@ -5,6 +5,25 @@ Das Original liegt in OneDrive unter
 Die bestehenden OneDrive-Freigaben bleiben auf ausdrücklichen Wunsch unverändert.
 Der Plan und seine Inhalte gehören nicht ins öffentliche GitHub-Repository.
 
+## Gemeinsame Ablage auf mehreren Gerätehaus-iPads
+
+Hydrantenplan und Ansprechpartner werden über die geprüfte gemeinsame
+OneDrive-/SharePoint-Bibliothek gelesen. Das persönliche Laufwerk des jeweils
+angemeldeten Microsoft-Kontos wird dafür nicht verwendet.
+
+Ist „Webseite“ direkt als gemeinsamer Ordner eingerichtet, werden die Unterordner
+`Hydrantenplan` und `Feuerwehr-Kontakte-Privat` relativ dazu gelesen. Bei
+„Feuerwehr Share“ wird zusätzlich `Webseite` verwendet. Liegt der konfigurierte
+App-Datenordner an einer anderen Stelle, bleibt der bisherige Pfad
+`Feuerwehr Share/Webseite` erhalten, wird aber in der geprüften gemeinsamen
+Bibliothek aufgelöst. Es findet keine Suche in anderen Laufwerken statt.
+
+Jedes iPad muss mit derselben gemeinsamen Ablage verbunden sein; das jeweilige
+Microsoft-Konto braucht Leserechte auf die beiden Dateien. Bei 403 wird der Zugriff
+abgebrochen, bei 404 werden Ablage und Dateiname verständlich genannt. Weder
+Berechtigungen noch Dateien werden durch den Abruf geändert. Ein Wechsel der
+Verbindung oder eine Abmeldung während des Downloads verwirft das Ergebnis.
+
 ## Bereitstellung
 
 Nach Veröffentlichung des aktualisierten Workers und der App am Gerätehaus-iPad:
