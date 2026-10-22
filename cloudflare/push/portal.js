@@ -193,7 +193,7 @@
   }
   if(path==='/admin/portal/roster'){
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'||m.whatsappPhone!==undefined&&(typeof m.whatsappPhone!=='string'||m.whatsappPhone!==''&&!/^\+[1-9]\d{7,14}$/.test(m.whatsappPhone))||m.whatsappAllowed!==undefined&&typeof m.whatsappAllowed!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',whatsapp:m.whatsappPhone?{phone:String(m.whatsappPhone).replace(/^\+/,'').replace(/[\s()-]/g,''),allowed:roster?.members.find(p=>p.id===m.id)?.whatsapp?.allowed===true,updatedAt:Date.now()}:null,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',whatsapp:roster?.members.find(p=>p.id===m.id)?.whatsapp||null,leader:m.leader,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
    // A roster change and every credential revocation are one transaction.
    // The sequence CAS also invalidates ledger/game writes started before removal.
    const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
@@ -225,13 +225,18 @@
    if(path==='/portal/whatsapp-preference'){
    const own=roster?.members?.find(person=>person.id===record.memberId);
    if(!own)fail('Mitglied nicht gefunden. Bitte die Verwaltung informieren.',404);
-   if(data.allowed===undefined)return {allowed:own.whatsapp?.allowed===true,hasPhone:!!own.whatsapp?.phone};
-   if(typeof data.allowed!=='boolean')fail('Ungültige WhatsApp-Freigabe.',400);
-   const updated={...roster,members:roster.members.map(person=>person.id===record.memberId?{...person,whatsapp:person.whatsapp?{...person.whatsapp,allowed:data.allowed,updatedAt:Date.now()}:null}:person),updatedAt:Date.now()};
+   const current=own.whatsapp||null;
+   if(data.phone===undefined&&data.allowed===undefined)return {phone:current?.phone?'+'+current.phone:'',allowed:current?.allowed===true};
+   if(typeof data.phone!=='string'||typeof data.allowed!=='boolean')fail('Ungültige WhatsApp-Einstellungen.',400);
+   const phone=data.phone.trim().replace(/[\\s()-]/g,'').replace(/^00/,'+');
+   if(phone&&!/^\\+[1-9]\\d{7,14}$/.test(phone))fail('Handynummer bitte mit + und Ländervorwahl eingeben.',400);
+   if(data.allowed&&!phone)fail('Bitte zuerst eine Handynummer eingeben.',400);
+   const whatsapp=phone?{phone:phone.slice(1),allowed:data.allowed,updatedAt:Date.now()}:null;
+   const updated={...roster,members:roster.members.map(person=>person.id===record.memberId?{...person,whatsapp}:person),updatedAt:Date.now()};
    const sealed=await L.seal(env,updated,'portal-roster');
    const result=await env.DB.prepare('UPDATE portal_roster SET payload=? WHERE id=1 AND payload=?').bind(sealed,rosterRow.payload).run();
    if(!result.meta.changes)fail('Die Mitgliederdaten wurden gleichzeitig geändert. Bitte erneut versuchen.',409);
-   return {ok:true,allowed:updated.members.find(person=>person.id===record.memberId).whatsapp?.allowed===true,hasPhone:!!own.whatsapp?.phone};
+   return {ok:true,phone:whatsapp?'+'+whatsapp.phone:'',allowed:whatsapp?.allowed===true};
   }
   if(path==='/portal/gf-breathing'){
     if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
