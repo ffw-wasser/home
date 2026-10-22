@@ -45,3 +45,5 @@ jobs:
         run: node tests/app-update-browser.cjs
       - name: Test personal evidence and driver review
         run: node tests/portal-evidence-browser.cjs
+      - name: Test member batch editing and mobile cards
+        run: node tests/members-editor-browser.cjs

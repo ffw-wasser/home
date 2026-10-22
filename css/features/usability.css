@@ -17,6 +17,31 @@ body .member-status-action{min-width:48px;min-height:54px}
 body .member-card.ux-member{background:#fff;border:1px solid var(--ux-line);border-top:1px solid var(--ux-line);box-shadow:none;border-radius:14px;padding:0;margin-bottom:12px}
 .ux-member>summary{display:flex;align-items:center;gap:12px;list-style:none;padding:16px;cursor:pointer;min-height:64px;background:#f6f8f9;border-radius:14px}.ux-member>summary::-webkit-details-marker{display:none}.ux-member>summary::before{content:'▸';font-size:1.25rem}.ux-member[open]>summary::before{content:'▾'}.ux-member>summary strong{flex:1;overflow-wrap:anywhere}.ux-member>summary .member-card-number{display:none}.ux-member-open{font-size:0.875rem;color:var(--ux-muted)}
 .ux-member>:not(summary){margin:16px!important}.ux-member-section{border:1px solid var(--ux-line);padding:12px;border-radius:10px}.ux-member-section>summary{min-height:48px;cursor:pointer;font-weight:600}.ux-member-status{font-size:1rem;color:var(--ux-muted)}.ux-member[data-member-dirty] .ux-member-status{color:#705116}
+/* Shared member save action and narrow-screen member cards. */
+.member-save-bar{position:sticky;top:88px;z-index:4;padding:14px 16px;margin:12px 0 18px;border:1px solid #b8cbd3;border-radius:12px;background:#f0f7fa;box-shadow:0 3px 10px #23333c12}
+.member-save-bar p{margin:0 0 10px;line-height:1.4;overflow-wrap:anywhere}
+.member-save-bar>div{display:flex;flex-wrap:wrap;gap:10px}
+#settingsMembersView .ux-member,#settingsMembersView .ux-member-section,#settingsMembersView .member-name-fields>label,#settingsMembersView .breathing-clearance-grid>label,#settingsMembersView .driver-license-control>label{min-width:0}
+#settingsMembersView .ux-member input:not([type=checkbox]),#settingsMembersView .ux-member select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+#settingsMembersView .ux-member legend{max-width:100%;white-space:normal;overflow-wrap:anywhere;box-sizing:border-box}
+#settingsMembersView .ux-member>summary{color:var(--ux-ink)}
+#settingsMembersView .ux-member .role-checkbox{display:flex;gap:10px}
+#settingsMembersView .ux-member .role-checkbox input{flex:0 0 auto}
+#settingsMembersView .ux-member .role-checkbox span{min-width:0;overflow-wrap:anywhere}
+@media(max-width:700px){
+ .member-save-bar{position:static;padding:12px}
+ .member-save-bar>div{display:grid;grid-template-columns:minmax(0,1fr)}
+ #settingsMembersView .ux-member>:not(summary){margin:12px!important}
+ #settingsMembersView .ux-member>summary{padding:12px;flex-wrap:wrap}
+ #settingsMembersView .ux-member>summary strong{min-width:0;flex:1 1 150px}
+ #settingsMembersView .ux-member .member-name-fields,#settingsMembersView .ux-member .member-role-editor,#settingsMembersView .ux-member .member-safety-settings,#settingsMembersView .ux-member .breathing-clearance-grid,#settingsMembersView .ux-member .driver-license-control{display:grid;grid-template-columns:minmax(0,1fr)!important;padding:0;gap:12px}
+ #settingsMembersView .ux-member .member-safety-settings{margin:0!important}
+ #settingsMembersView .ux-member .member-card-actions{grid-template-columns:minmax(0,1fr);padding:12px}
+ #settingsMembersView .ux-member .member-card-actions button{width:100%;white-space:normal;overflow-wrap:anywhere}
+ #settingsMembersView .ux-member .driver-license-control>small{grid-column:auto}
+ #settingsMembersView .ux-member .breathing-clearance-card{min-width:0;padding:10px}
+ #settingsMembersView .ux-member .dr-pin-editor{min-width:0;padding:12px;box-sizing:border-box}
+}
 .ux-history-status{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border:1px solid var(--ux-line);border-radius:12px;background:#f6f8f9;margin:16px 0}.ux-history-status p{margin:0;line-height:1.5;overflow-wrap:anywhere}.ux-history-status button{flex-shrink:0}.ux-history-status.is-error{border-color:#c5a466;background:#fff6df}
 .ux-backup-scope{padding:16px 0;margin-bottom:16px;border-bottom:1px solid var(--ux-line)}.ux-backup-scope h3{margin-top:0}.ux-backup-scope p{font-size:1rem;color:var(--ux-ink);line-height:1.5}.ux-backup-scope summary{padding:12px 0;font-weight:700;cursor:pointer}
 body #statisticsPdfButton{width:auto!important;min-height:48px!important;font-size:1rem!important;padding:12px 18px!important;display:inline-flex}

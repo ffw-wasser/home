@@ -1,14 +1,15 @@
 /* Gemeinsame Bedienhilfen. Keine PINs oder Getränkebuchungen im Gerätespeicher. */
 (function(){
   'use strict';
-  let ready=false,memberQuery='',openMemberId='',lastHistoryLoad='',historyMessage='';
+  let memberSaving=false,memberSaveMessage='',ready=false,memberQuery='',openMemberId='',lastHistoryLoad='',historyMessage='';
   const dirtyRows=()=>[...document.querySelectorAll('#memberAdmin [data-member-dirty],#memberAdmin .dr-pin-editor[data-dirty]')];
   function beforeLeave(view){
+    if(memberSaving){showToast('Bitte die gemeinsame Speicherung abwarten.','error');return false;}
     if(view==='settingsMembersView'||byId('settingsMembersView')?.hidden!==false||!dirtyRows().length)return true;
     if(!confirm('Ungespeicherte Mitgliederdaten oder PIN-Eingaben verwerfen und diese Seite verlassen?'))return false;
     dirtyRows().forEach(row=>{delete row.dataset.memberDirty;delete row.dataset.dirty;});renderAdmin();return true;
   }
-  function savedMember(row){delete row.dataset.memberDirty;}
+  function savedMember(row){delete row.dataset.memberDirty;const status=row.querySelector('.ux-member-status');if(status)status.textContent='Mitgliederdaten: '+getAppStorageState().text;refreshMemberSaveState();}
   function attendanceState(){
     const hint=byId('attendanceDraftStatus');if(!hint)return;
     const count=pendingMemberStatuses.size;
@@ -36,19 +37,8 @@
       const summary=document.createElement('summary');summary.innerHTML=header.innerHTML+'<span class="ux-member-open">Bearbeiten</span>';
       header.remove();row.append(summary);while(article.firstChild)row.append(article.firstChild);article.replaceWith(row);
       row.querySelector('[data-save-member]').textContent='Nur Mitgliederdaten speichern';
-      const all=document.createElement('button');all.type='button';all.className='primary-button';all.dataset.saveMemberAll=id;all.textContent='Änderungen speichern';row.querySelector('.member-card-actions').prepend(all);
-      all.onclick=async()=>{
-        if(!requireAdmin('settingsMembersView'))return;
-        const pin=row.querySelector('[data-dr-new-pin]')?.value||'';
-        if(pin&&!/^\d{4}$/.test(pin)){row.querySelector('[data-dr-pin-status]').textContent='Bitte vier Ziffern eingeben.';row.querySelector('[data-dr-new-pin]').focus();return;}
-        if(updateMember(id,row)!==true)return;
-        const fresh=[...byId('memberAdmin').querySelectorAll('[data-member-id]')].find(n=>n.dataset.memberId===id);if(!fresh)return;
-        const outcome=fresh.querySelector('.ux-member-status');
-        if(pin){const input=fresh.querySelector('[data-dr-new-pin]'),button=fresh.querySelector('[data-dr-save-pin]');input.value=pin;fresh.dataset.pinOutcome='PIN wird gespeichert …';outcome.textContent='Mitgliederdaten: '+getAppStorageState().text+' · '+fresh.dataset.pinOutcome;
-          const saved=await window.Drinks.saveAdminPin(button);if(!fresh.isConnected)return;fresh.dataset.pinOutcome=saved?'PIN in OneDrive gespeichert':'PIN nicht gespeichert · bitte erneut eingeben';
-        }
-        outcome.textContent='Mitgliederdaten: '+getAppStorageState().text+' · '+(fresh.dataset.pinOutcome||'PIN unverändert');
-      };
+      const all=document.createElement('button');all.type='button';all.className='primary-button';all.dataset.saveMemberAll=id;all.textContent='Dieses Mitglied speichern';row.querySelector('.member-card-actions').prepend(all);
+      all.onclick=()=>saveMemberRows([row],true);
       const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in OneDrive';row.querySelector('.member-card-actions').before(dirty);
       // Names are the quick edit. Qualifications remain grouped inside native disclosures.
       const roles=row.querySelector('.member-role-editor'),safety=row.querySelector('.member-safety-settings');
@@ -58,6 +48,7 @@
       row.addEventListener('input',event=>{
         const pin=event.target.closest('.dr-pin-editor');if(pin){pin.dataset.dirty=event.target.value?'1':'';if(!event.target.value)delete pin.dataset.dirty;pin.querySelector('[data-dr-pin-status]').textContent=event.target.value?'PIN noch nicht gespeichert. „PIN in OneDrive speichern“ antippen.':'PIN wird separat gespeichert.';}
         else {row.dataset.memberDirty='1';dirty.textContent='Mitgliederdaten noch nicht gespeichert';}
+        memberSaveMessage='';refreshMemberSaveState();
       });
       row.open=id===openMemberId;
       row.addEventListener('toggle',()=>{
@@ -68,7 +59,64 @@
         window.Drinks?.loadPinStatus(row);
       });
     });
-    filterMembers();
+    ensureMemberSaveBar();filterMembers();refreshMemberSaveState();
+  }
+  function changedMemberRows(){
+    return [...byId('memberAdmin').querySelectorAll('[data-member-id]')].filter(row=>row.hasAttribute('data-member-dirty')||row.querySelector('.dr-pin-editor[data-dirty]'));
+  }
+  function refreshMemberSaveState(){
+    const count=changedMemberRows().length,button=byId('membersSaveAll'),discard=byId('membersDiscardAll'),status=byId('membersSaveStatus');
+    if(!button)return;
+    button.textContent=memberSaving?'Änderungen werden gespeichert …':'Alle Änderungen speichern'+(count?' ('+count+')':'');
+    button.disabled=memberSaving||!count;discard.disabled=memberSaving||!count;
+    status.textContent=memberSaving?'Bitte die Speicherung abwarten.':memberSaveMessage||(count?count+' Mitglied'+(count===1?'':'er')+' mit offenen Änderungen.':'Keine offenen Änderungen.');
+  }
+  function ensureMemberSaveBar(){
+    if(byId('membersSaveBar'))return;
+    const bar=document.createElement('section');bar.id='membersSaveBar';bar.className='member-save-bar';bar.setAttribute('aria-label','Mitglieder gemeinsam speichern');
+    bar.innerHTML='<p id="membersSaveStatus" role="status" aria-live="polite"></p><div><button id="membersSaveAll" type="button" class="primary-button">Alle Änderungen speichern</button><button id="membersDiscardAll" type="button" class="outline-button">Änderungen verwerfen</button></div>';
+    byId('memberAdmin').before(bar);
+    byId('membersSaveAll').onclick=()=>saveMemberRows(changedMemberRows());
+    byId('membersDiscardAll').onclick=()=>{
+      if(memberSaving||!requireAdmin('settingsMembersView')||!confirm('Alle noch nicht gespeicherten Mitgliederänderungen und PIN-Eingaben verwerfen?'))return;
+      dirtyRows().forEach(row=>{delete row.dataset.memberDirty;delete row.dataset.dirty;});
+      memberSaveMessage='Offene Änderungen verworfen.';renderAdmin();
+    };
+  }
+  async function saveMemberRows(rows,includeUnchanged=false){
+    if(memberSaving||!rows.length||!requireAdmin('settingsMembersView'))return;
+    const jobs=rows.map(row=>({row,id:row.dataset.memberId,pin:row.querySelector('[data-dr-new-pin]')?.value||''}));
+    for(const job of jobs){
+      if(job.pin&&!/^\d{4}$/.test(job.pin)){
+        job.row.open=true;job.row.querySelector('[data-dr-pin-status]').textContent='Bitte vier Ziffern eingeben.';
+        job.row.querySelector('[data-dr-new-pin]').focus();return;
+      }
+    }
+    const dataJobs=jobs.filter(job=>includeUnchanged||job.row.hasAttribute('data-member-dirty'));
+    // Validate every row before committing member data or any independent PIN write.
+    for(const job of dataJobs){try{prepareMemberUpdate(job.id,job.row);}catch(error){job.row.open=true;job.row.querySelectorAll('.ux-member-section').forEach(section=>section.open=true);showToast(error.message,'error');job.row.scrollIntoView({block:'center'});return;}}
+    const box=byId('memberAdmin');memberSaving=true;box.inert=true;refreshMemberSaveState();
+    let pinFailed=0,completed=false;
+    try{
+      if(!updateMembers(dataJobs))return;
+      for(const job of jobs){
+        if(!job.pin)continue;
+        const button=job.row.querySelector('[data-dr-save-pin]');
+        const saved=await window.Drinks.saveAdminPin(button);
+        job.row.dataset.pinOutcome=saved?'PIN in OneDrive gespeichert':'PIN nicht gespeichert · bitte erneut eingeben';
+        if(!saved)pinFailed++;
+        job.row.querySelector('.ux-member-status').textContent='Mitgliederdaten: '+getAppStorageState().text+' · '+job.row.dataset.pinOutcome;
+      }
+      memberSaveMessage=(dataJobs.length?dataJobs.length+' Mitglied'+(dataJobs.length===1?'':'er')+' auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt. ':'')+(pinFailed?pinFailed+' PIN nicht gespeichert. Bitte erneut eingeben.':jobs.some(job=>job.pin)?'PIN-Eingaben in OneDrive gespeichert.':'');
+      completed=true;
+    }catch(error){
+      memberSaveMessage='Speicherung nicht abgeschlossen. Bitte die Angaben und den Speicherstatus prüfen.';showToast(error.message||memberSaveMessage,'error');
+    }finally{
+      memberSaving=false;box.inert=false;
+      // Keep per-member results visible; a later list refresh still respects other drafts.
+      if(completed&&!pinFailed&&!dirtyRows().length)renderAdmin();
+      refreshMemberSaveState();
+    }
   }
   function historyStatus(text,last){
     if(text!==undefined)historyMessage=text;if(last)lastHistoryLoad=last;
@@ -123,9 +171,9 @@
     byId('exportCompleteBackupButton').textContent='App-Daten sichern';byId('importCompleteBackupButton').textContent='App-Datensicherung wiederherstellen';
     renderMemberList();statistics();historyStatus();
 
-    window.addEventListener('beforeunload',event=>{if(dirtyRows().length||pendingMemberStatuses.size){event.preventDefault();event.returnValue='';}});
+    window.addEventListener('beforeunload',event=>{if(memberSaving||dirtyRows().length||pendingMemberStatuses.size){event.preventDefault();event.returnValue='';}});
   }
-  window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>dirtyRows().length>0,attendanceState,editEntry:entryEditor,members:renderMemberList,statistics,historyStatus};
+  window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>memberSaving||dirtyRows().length>0,attendanceState,editEntry:entryEditor,members:renderMemberList,memberSaveState:refreshMemberSaveState,statistics,historyStatus};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();
 
