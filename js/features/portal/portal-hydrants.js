@@ -2,10 +2,10 @@
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id),MAX=8*1024*1024;
-let generation=0,url='',busy=false,syncing=false,ipadGeneration=0,ipadUrl='';
+let generation=0,url='',busy=false,syncing=false,ipadGeneration=0,ipadUrl='',viewer=null,ipadViewer=null;
 const hex=buffer=>Array.from(new Uint8Array(buffer),v=>v.toString(16).padStart(2,'0')).join('');
 function clear(){
- generation++;busy=false;
+ generation++;busy=false;viewer?.destroy();viewer=null;
  const frame=$('hydrants-frame');if(frame){frame.removeAttribute('src');frame.hidden=true;}
  const link=$('hydrants-open');if(link){link.hidden=true;link.removeAttribute('href');}
  if(url)URL.revokeObjectURL(url);url='';
@@ -28,13 +28,15 @@ async function load(){
   if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-'||hex(await crypto.subtle.digest('SHA-256',bytes))!==plan.sha256)throw Error('Der Plan konnte nicht vollständig geprüft werden. Bitte erneut laden.');
   if(epoch!==generation)return;
   url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-  $('hydrants-frame').src=url+'#view=FitH';$('hydrants-frame').hidden=false;$('hydrants-open').href=url;$('hydrants-open').hidden=false;
+  $('hydrants-open').href=url;$('hydrants-open').hidden=false;
+  try{viewer=g.PlanZoom.create($('hydrants-map'),bytes);await viewer.ready;}catch{if(epoch!==generation)return;viewer?.destroy();viewer=null;$('hydrants-frame').src=url+'#view=FitH';$('hydrants-frame').hidden=false;}
+  if(epoch!==generation)return;
   status.textContent='Hydrantenplan Wasser · Abgeglichen am '+new Date(plan.updatedAt).toLocaleString('de-DE');
  }catch(e){if(epoch===generation)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
  finally{if(epoch===generation){busy=false;button.disabled=false;}}
 }
 function clearIpad(){
- ipadGeneration++;const frame=$('hydrants-ipad-frame'),link=$('hydrants-ipad-large'),dialog=$('hydrants-ipad-dialog');
+ ipadGeneration++;ipadViewer?.destroy();ipadViewer=null;const frame=$('hydrants-ipad-frame'),link=$('hydrants-ipad-large'),dialog=$('hydrants-ipad-dialog');
  frame?.removeAttribute('src');link?.removeAttribute('href');if(ipadUrl)URL.revokeObjectURL(ipadUrl);ipadUrl='';if(dialog?.open)dialog.close();
  if($('hydrants-ipad-open'))$('hydrants-ipad-open').disabled=false;
  if($('hydrants-ipad-state'))$('hydrants-ipad-state').textContent='';
@@ -43,8 +45,9 @@ async function viewIpad(){
  clearIpad();const epoch=ipadGeneration,status=$('hydrants-ipad-state'),button=$('hydrants-ipad-open');button.disabled=true;status.textContent='Hydrantenplan wird aus OneDrive geladen …';
  try{
   const bytes=await g.oneDriveReadHydrants();if(epoch!==ipadGeneration)return;
-  ipadUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));$('hydrants-ipad-frame').src=ipadUrl+'#view=FitH';$('hydrants-ipad-large').href=ipadUrl;
-  $('hydrants-ipad-dialog').showModal();status.textContent='';
+  ipadUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));$('hydrants-ipad-large').href=ipadUrl;
+  $('hydrants-ipad-frame').hidden=true;$('hydrants-ipad-dialog').showModal();status.textContent='';
+  try{ipadViewer=g.PlanZoom.create($('hydrants-ipad-map'),bytes);await ipadViewer.ready;}catch{if(epoch!==ipadGeneration)return;ipadViewer?.destroy();ipadViewer=null;$('hydrants-ipad-frame').src=ipadUrl+'#view=FitH';$('hydrants-ipad-frame').hidden=false;}
  }catch(e){if(epoch===ipadGeneration)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
  finally{if(epoch===ipadGeneration)button.disabled=false;}
 }

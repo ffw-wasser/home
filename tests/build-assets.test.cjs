@@ -7,3 +7,8 @@ test('Öffentliche HTML-, CSS-, Manifest- und Dokumentverweise zeigen auf vorhan
  const problems=[];let checked=0;
  function walk(dir){for(const entry of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){const file=path.posix.join(dir,entry.name);if(entry.isDirectory()){if(!entry.name.startsWith('.')&&!['tests','js','scripts','node_modules'].includes(entry.name))walk(file);continue;}const ext=path.extname(file),s=read(file);let refs=[];if(ext==='.html')refs=[...s.matchAll(/(?:src|href)=["']([^"']+)["']/g)].map(m=>m[1]);else if(ext==='.css')refs=[...s.matchAll(/url\(\s*["']?([^\s)'";]+)["']?\s*\)/g)].map(m=>m[1]);else if(ext==='.md')refs=[...s.matchAll(/\]\(([^\s)]+)\)/g)].map(m=>m[1]);else if(ext==='.webmanifest')refs=JSON.parse(s).icons.map(i=>i.src);for(const ref of refs){if(/^(?:[a-z]+:|\/\/|#|\/)/i.test(ref)||ref.includes('${'))continue;const target=decodeURIComponent(ref.split(/[?#]/)[0]);if(!target)continue;checked++;if(!fs.existsSync(path.resolve(root,path.dirname(file),target)))problems.push(file+' -> '+ref);}}}walk('');assert.deepEqual(problems,[]);assert.ok(checked>100);
 });
+
+test('PDF-Zoom verwendet die unveränderte festgelegte PDF.js-Version samt Lizenz',()=>{
+ const version=require('../package.json').dependencies['pdfjs-dist'];
+ for(const [source,target] of [['build/pdf.min.mjs',`pdf-${version}.min.mjs`],['build/pdf.worker.min.mjs',`pdf.worker-${version}.min.mjs`],['LICENSE','LICENSE']])assert.equal(read('node_modules/pdfjs-dist/'+source),read('js/vendor/pdfjs/'+target));
+});
