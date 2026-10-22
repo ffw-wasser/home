@@ -21458,7 +21458,7 @@ async function route(path,data,env,admin){
  const action=path.split('/').pop();
  if(admin&&action==='begin'){
   if(!Number.isInteger(data.size)||data.size<5||data.size>MAX||typeof data.sha256!=='string'||!/^[a-f0-9]{64}$/.test(data.sha256))fail('Bitte eine PDF bis 8 MB verwenden.');
-  const id=crypto.randomUUID(),meta={version:id,title:'Hydrantenplan Wasser',fileName:'Hydrantenplan-Wasser.pdf',size:data.size,sha256:data.sha256,parts:Math.ceil(data.size/CHUNK),chunkSize:CHUNK,updatedAt:Date.now()};
+  const id=crypto.randomUUID(),meta={version:id,title:'Hydrantenplan',fileName:'Hydrantenplan-Wasser.pdf',size:data.size,sha256:data.sha256,parts:Math.ceil(data.size/CHUNK),chunkSize:CHUNK,updatedAt:Date.now()};
   // Remove abandoned uploads, retaining the last published plan.
   const current=await env.DB.prepare('SELECT version FROM portal_plan_current WHERE id=1').first();
   await env.DB.batch([
@@ -21849,7 +21849,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"3d8de820d1999554936d87f2c252f708bdfa3c88966d35a0b66bc4a7eee1f025",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"efe9830ba5947e60193867a92d82956f08551d977ec9c2410763aced18449332",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
