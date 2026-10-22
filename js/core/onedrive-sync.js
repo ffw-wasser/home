@@ -194,21 +194,44 @@ async function oneDriveResolveSharedRoot(){
 const odItemBase=(root=oneDriveSharedRoot)=>`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(root.id)}`;
 function oneDrivePayload(){return {schemaVersion:3,updatedAt:new Date().toISOString(),members,entries,csvArchive,roleTargets:typeof getRoleTargets==="function"?getRoleTargets():{},functionEntryEnabled:typeof isFunctionEntryEnabled==="function"?isFunctionEntryEnabled():true};}
 function applyOneDrivePayload(data){if(!data||!Array.isArray(data.members)||!Array.isArray(data.entries))throw new Error("OneDrive-Datendatei ist ungültig");oneDriveApplying=true;members=data.members;entries=data.entries;const importedRoleTargets=data.roleTargets||{};const importedFunctionEntryEnabled=data.functionEntryEnabled!==false;safeStorage.setItem(KEYS.members,JSON.stringify(members));safeStorage.setItem(KEYS.entries,JSON.stringify(entries));safeStorage.removeItem?.(KEYS.archive);if(typeof saveRoleTargets==="function")saveRoleTargets(importedRoleTargets);else safeStorage.setItem(KEYS.roleTargets,JSON.stringify(importedRoleTargets));safeStorage.setItem(KEYS.functionEntry,String(importedFunctionEntryEnabled));oneDriveApplying=false;if(typeof renderMembers==="function")renderMembers();if(typeof renderToday==="function")renderToday();if(typeof renderAdmin==="function")renderAdmin();if(typeof renderStatistics==="function")renderStatistics();}
-async function oneDriveReadContacts(){
+// Resolve protected website files in the shared drive, never the caller's /me/drive.
+async function oneDriveWebsiteFile(relativePath,label){
  if(!oneDriveAdministrationReady())throw new Error('Bitte zuerst OneDrive verbinden.');
- const response=await odFetch('https://graph.microsoft.com/v1.0/me/drive/root:/Feuerwehr%20Share/Webseite/Feuerwehr-Kontakte-Privat/feuerwehr-emmendingen-kontakte.json:/content');
- const contacts=await response.json();
+ const epoch=oneDriveSessionEpoch,share=localStorage.getItem(OD_SHARE_KEY)||'',clientId=odConfig().clientId;
+ const root=await oneDriveResolveSharedRoot();
+ const assertCurrent=()=>{assertOneDriveSession(epoch);if(!oneDriveAdministrationReady()||oneDriveSharedRoot!==root||share!==(localStorage.getItem(OD_SHARE_KEY)||'')||clientId!==odConfig().clientId)throw new Error('OneDrive-Verbindung wurde geändert. Bitte erneut öffnen.');};
+ assertCurrent();
+ const name=root.name.trim().toLocaleLowerCase('de-DE'),segments=relativePath.split('/');
+ let base=odItemBase(root),path=segments;
+ if(name==='feuerwehr share')path=['Webseite',...segments];
+ else if(name!=='webseite'){
+  // Existing app-data folders can be elsewhere in the same shared drive/library.
+  // Preserve the established website location, but bind it to the verified drive.
+  base=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/root`;
+  path=['Feuerwehr Share','Webseite',...segments];
+ }
+ try{
+  const response=await odFetch(base+':/'+path.map(encodeURIComponent).join('/')+':/content');assertCurrent();return {response,assertCurrent};
+ }catch(error){
+  assertCurrent();
+  if(error.status===404)throw Object.assign(new Error(label+' wurde in der gemeinsamen Ablage nicht gefunden. Bitte Datei unter Feuerwehr Share/Webseite/'+relativePath+' und die Zugriffsrechte dieses Microsoft-Kontos prüfen.'),{status:404,code:'oneDriveWebsiteFileMissing'});
+  if(error.status===403)throw Object.assign(new Error(label+' kann mit diesem Microsoft-Konto nicht gelesen werden. Bitte die Zugriffsrechte in der gemeinsamen Ablage prüfen.'),{status:403,code:'oneDriveWebsiteFileForbidden'});
+  throw error;
+ }
+}
+async function oneDriveReadContacts(){
+ const {response,assertCurrent}=await oneDriveWebsiteFile('Feuerwehr-Kontakte-Privat/feuerwehr-emmendingen-kontakte.json','Das Kontaktverzeichnis');
+ const contacts=await response.json();assertCurrent();
  if(contacts?.schemaVersion!==1||!Array.isArray(contacts.groups))throw new Error('Kontaktverzeichnis hat ein ungültiges Format.');
  return contacts;
 }
 window.oneDriveReadContacts=oneDriveReadContacts;
 async function oneDriveReadHydrants(){
- if(!oneDriveAdministrationReady())throw new Error('Bitte zuerst OneDrive verbinden.');
- const epoch=oneDriveSessionEpoch,response=await odFetch('https://graph.microsoft.com/v1.0/me/drive/root:/Feuerwehr%20Share/Webseite/Hydrantenplan/Hydrantenplan-Wasser.pdf:/content');
+ const {response,assertCurrent}=await oneDriveWebsiteFile('Hydrantenplan/Hydrantenplan-Wasser.pdf','Der Hydrantenplan');
  if(Number(response.headers.get('content-length'))>8*1024*1024)throw new Error('Der Plan darf höchstens 8 MB groß sein.');
  const reader=response.body.getReader(),chunks=[];let size=0;
- try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>8*1024*1024)throw new Error('Der Plan darf höchstens 8 MB groß sein.');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
- assertOneDriveSession(epoch);const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+ try{while(true){const {done,value}=await reader.read();assertCurrent();if(done)break;size+=value.byteLength;if(size>8*1024*1024)throw new Error('Der Plan darf höchstens 8 MB groß sein.');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
+ assertCurrent();const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
  if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw new Error('Die OneDrive-Datei ist keine PDF.');
  return bytes;
 }
