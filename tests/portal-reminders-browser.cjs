@@ -24,7 +24,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
   await page.getByText('2 Personen für WhatsApp ausgewählt', {exact:false}).waitFor();
   assert.equal(await page.locator('input:checked').count(),2);assert.equal(await row('Test Clara').locator('input').count(),0);assert.equal(await row('Test Eva').locator('input').count(),0);assert.equal(await row('Test Clara').getByRole('button').count(),0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
-  await row('Test Anna').getByRole('button',{name:'Nachricht ansehen',exact:true}).click();
+  await row('Test Anna').getByRole('button',{name:'WhatsApp vorbereiten',exact:true}).click();
   assert.ok((await page.locator('textarea').inputValue()).includes('Hallo Anna'));
   assert.ok(!(await page.locator('textarea').inputValue()).includes('private-key'));
   assert.equal(await page.getByRole('button',{name:'WhatsApp öffnen',exact:true}).count(),1);
@@ -32,11 +32,11 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
   await page.evaluate(()=>people[0].status='yes');await page.getByRole('button',{name:'WhatsApp öffnen'}).click();
   await page.getByText('Rückmeldung geändert. Keine Erinnerung mehr vorgesehen.').waitFor();
   assert.equal(await page.evaluate(()=>calls.filter(c=>c.path==='whatsapp-prepare').length),1);
-  await row('Test Bea').getByRole('button',{name:'Nachricht ansehen',exact:true}).click();
+  await row('Test Bea').getByRole('button',{name:'WhatsApp vorbereiten',exact:true}).click();
   assert.equal(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('h2o-whatsapp-progress:synthetic:event1')||'{"done":[]}').done.length),0,'preparation is not delivery');
   await page.getByRole('button',{name:'Als erledigt markieren'}).click();await page.getByText('1 erledigt',{exact:false}).waitFor();
   await page.evaluate(()=>mount());await page.getByText('1 erledigt',{exact:false}).waitFor();assert.equal(await row('Test Bea').getByRole('button').count(),0);
-  const missingFolder=page.locator('details').filter({hasText:'Ohne WhatsApp-Nummer (1)'});if(await missingFolder.getAttribute('open')===null)await missingFolder.locator('summary').click();await row('Test Eva').getByRole('button',{name:'Nachricht ansehen',exact:true}).click();await page.locator('textarea').fill('Bearbeiteter Text');
+  const missingFolder=page.locator('details').filter({hasText:'Ohne WhatsApp-Nummer (1)'});if(await missingFolder.getAttribute('open')===null)await missingFolder.locator('summary').click();await row('Test Eva').getByRole('button',{name:'WhatsApp vorbereiten',exact:true}).click();await page.locator('textarea').fill('Bearbeiteter Text');
   await page.evaluate(()=>{people[4].status='excused';});await page.getByRole('button',{name:'Text kopieren'}).click();await page.getByText('Rückmeldung geändert. Keine Erinnerung mehr vorgesehen.').waitFor();
   await page.getByRole('button',{name:'Gruppeninfo',exact:true}).click();await page.getByRole('button',{name:'Gruppeninfo teilen'}).waitFor();
   if(width===390)await page.screenshot({path:'/tmp/whatsapp-clear-group.png'});

@@ -14,7 +14,7 @@
   history.replaceState(null,'',location.pathname+location.search);
   return match[1].toLowerCase();
  })();
- let session=null,items=[],stale=false,working=false,pending=null,memberName='';
+ let session=null,items=[],stale=false,working=false,pending=null,memberName='',eventLinkStatus=null;
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
  function restore(){return globalThis.H2OIdentity?.session()||null;}
@@ -28,10 +28,10 @@
    return data;
   }finally{clearTimeout(timer);}
  }
- function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
+ function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;el('back-to-whatsapp').hidden=!wanted();}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
-  status(message||'Melde dich mit deinem H₂O-Passkey an. Die Einrichtung erfolgt einmalig unter Konto → Sicherheit.');
+  status(message||'Bitte mit Passkey anmelden.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function paintEvents(){
@@ -44,7 +44,7 @@
  }
  function renderEvent(event){
   hide();el('remove').hidden=false;el('heading').textContent=memberName?'Rückmeldung für '+memberName:'Deine Terminrückmeldung';
-  if(!event){status('Dieser Termin ist für deinen Zugang nicht freigegeben, wurde abgesagt oder ist bereits beendet.');return;}
+  if(!event){status(eventLinkStatus==='not-relevant'?'Dieser Termin ist für dich nicht relevant!':'Dieser Termin ist nicht mehr verfügbar.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
   el('event-when').textContent='📅 '+fmt.format(new Date(event.start))+' Uhr';
@@ -58,7 +58,7 @@
    button.disabled=locked;button.setAttribute('aria-pressed',String(chosen));
    button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Entschuldigt',maybe:'Noch unsicher'}[button.dataset.reply]);
   }
-  status(stale?'Kalender ist derzeit nicht bestätigt. Antworten sind vorübergehend gesperrt.':'Du kannst deine Antwort direkt hier speichern.');
+  status(stale?'Kalender nicht aktuell. Antworten vorübergehend gesperrt.':'Wähle deine Rückmeldung.');
  }
  async function refresh(){
   if(!session)return showPair();
@@ -67,10 +67,10 @@
    const renewal=session.scope==='portal'?{ok:true,expiresAt:session.expiresAt}:await post('browser/renew',{alias:session.alias,revision:session.revision},session.token);
    if(renewal.ok!==true||!Number.isSafeInteger(renewal.expiresAt)||renewal.expiresAt<=Date.now())throw Error('Browser-Verbindung konnte nicht verlängert werden.');
    session.expiresAt=renewal.expiresAt;persist(session);
-   const result=await post('list',{alias:session.alias,revision:session.revision},session.token);
+   const result=await post('list',{alias:session.alias,revision:session.revision,eventId:wanted()},session.token);
    memberName=typeof result.memberName==='string'?result.memberName:'';
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
-   stale=result.stale===true;el('remove').hidden=false;el('pairing').hidden=true;
+   stale=result.stale===true;eventLinkStatus=result.eventLinkStatus;el('remove').hidden=false;el('pairing').hidden=true;
    working=false;
    if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
    if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
@@ -101,7 +101,7 @@
   try{
    const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
    if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
-   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Rückmeldung gespeichert. Du kannst denselben WhatsApp-Link jederzeit wieder öffnen und bis zum Terminbeginn ändern.');
+   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Gespeichert!');
   }catch(e){
    if([400,401,403,404,409].includes(e.status))pending=null;
    status((e.message||'Speicherung nicht bestätigt.')+(pending?' Bitte dieselbe Antwort erneut antippen.':' Bitte den Termin erneut laden.'));
@@ -112,6 +112,16 @@
    status(note);
   }
  }
+ // WhatsApp does not provide a reliable browser return URL. Never guess a chat or use an untrusted referrer as a destination.
+ el('back-to-whatsapp').addEventListener('click',()=>{
+  const feedback=el('back-to-h2o-status');
+  feedback.textContent='Wechsle zurück zu WhatsApp. Deine Rückmeldung bleibt gespeichert.';
+  try{
+   const previous=new URL(document.referrer);
+   if(/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
+  }catch{}
+  feedback.textContent='Öffne WhatsApp über den App-Umschalter. Deine Rückmeldung ist gespeichert.';
+ });
  // Return only to the already authenticated installed PWA, or genuine in-tab history.
  // Never fall back to a generic deckel.html link: that could restart QR onboarding.
  el('back-to-h2o').addEventListener('click',async()=>{

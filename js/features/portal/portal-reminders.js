@@ -5,7 +5,7 @@
  const eligible=m=>['open','maybe'].includes(m.status);
  function publicLink(event){const u=new URL('termin.html',location.href);u.search='';u.hash='';u.searchParams.set('event',event.id);return u.href;}
  function details(e){const when=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',...(e.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(e.start));const clothing=e.clothing==='Einsatz'?'Einsatzkleidung':e.clothing==='Tagdienst'?'Tagesdienst':e.clothing;return '📅 '+when+(e.allDay?' · ganztägig':' Uhr')+'\n🚒 '+[e.sessionType,e.title].filter(Boolean).join(' · ')+'\n📍 '+(e.location||'GH Wasser')+(clothing?'\n👕 '+clothing:'');}
- function individual(e,m){return '🚒 FFW Wasser – Terminerinnerung\n\nHallo'+(m.firstName?' '+m.firstName:'')+',\n\nfür folgenden Termin fehlt uns noch deine verbindliche Rückmeldung:\n\n'+details(e)+'\n\nBitte teile uns über das H2O Portal mit, ob du teilnehmen kannst.\n\n🔗 '+publicLink(e)+'\n\nVielen Dank!';}
+ function individual(e,m){const ask=m.status==='maybe'?'Du warst noch unsicher. Kannst du inzwischen verbindlich zu- oder absagen?':'Deine Rückmeldung fehlt noch. Bist du dabei?';return '🚒 FFW Wasser – Terminerinnerung\n\nHallo'+(m.firstName?' '+m.firstName:'')+',\n\n'+ask+'\n\n'+details(e)+'\n\n🔗 '+publicLink(e)+'\n\nDanke!';}
  function group(events){return '🚒 FFW Wasser – Kommende Termine\n\nHallo zusammen,\nbitte denkt an unsere kommenden Termine und gebt eure Rückmeldung im H2O Portal ab:\n\n'+events.map(e=>details(e)+'\n🔗 '+publicLink(e)).join('\n\n')+'\n\nVielen Dank!';}
  const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  const button=(text,fn,primary=false)=>{const b=node('button',text);b.type='button';b.className=primary?'portal-reminder-primary':'portal-reminder-secondary';b.onclick=fn;return b;};
@@ -27,25 +27,25 @@
    if(!alive)return;current=null;body.replaceChildren();
    const people=snapshot.members,waiting=people.filter(eligible),available=waiting.filter(m=>m.phone&&!progress.done.includes(m.id)),missing=waiting.filter(m=>!m.phone&&!progress.done.includes(m.id)),done=people.filter(m=>progress.done.includes(m.id)),answered=people.filter(m=>!eligible(m)&&!progress.done.includes(m.id)),selected=available.filter(m=>!progress.excluded.includes(m.id));
    notice.textContent=selected.length+' Person'+(selected.length===1?'':'en')+' für WhatsApp ausgewählt'+(done.length?' · '+done.length+' erledigt':'');
-   body.append(node('p','Ausgewählt sind Eingeladene ohne feste Rückmeldung. Wer zugesagt oder sich entschuldigt hat, wird nicht erinnert.'));
+   body.append(node('p','Ohne Rückmeldung und noch unsicher werden erinnert.'));
    function person(m,selectable=false){
     const row=node('div');row.className='portal-reminder-person';
     const identity=node(selectable?'label':'div'),name=node('strong',m.name),status=node('small',labels[m.status]);identity.className='portal-reminder-identity';
     if(selectable){const check=node('input');check.type='checkbox';check.checked=!progress.excluded.includes(m.id);check.setAttribute('aria-label',m.name+' auswählen');check.onchange=()=>{progress.excluded=progress.excluded.filter(id=>id!==m.id);if(!check.checked)progress.excluded.push(m.id);save();paint();};identity.append(check);}
     const description=node('span');description.append(name,status);identity.append(description);row.append(identity);
     if(eligible(m)&&!progress.done.includes(m.id)){
-     row.append(button(progress.opened.includes(m.id)?'Weiter bearbeiten':'Nachricht ansehen',()=>prepare(m.id)));
+     row.append(button(progress.opened.includes(m.id)?'Erneut öffnen':'WhatsApp vorbereiten',()=>prepare(m.id)));
      if(progress.opened.includes(m.id))row.append(button('Als erledigt markieren',()=>mark(m.id)));
     }
     if(admin)row.append(button('Nummer bearbeiten',()=>contact(m)));
     return row;
    }
-   body.append(node('h4','Wen möchtest du erinnern?'));
-   if(!available.length)body.append(node('p','Keine offenen Personen mit WhatsApp-Nummer.'));
+   body.append(node('h4','Empfänger'));
+   if(!available.length)body.append(node('p','Keine Empfänger mit WhatsApp-Nummer.'));
    for(const m of available)body.append(person(m,true));
    const next=selected.find(m=>!progress.opened.includes(m.id));
    if(next&&available.length>1)body.append(button('Nächste Nachricht ansehen',()=>prepare(next.id),true));
-   if(selected.some(m=>progress.opened.includes(m.id)))body.append(node('p','Schon geöffnete Nachrichten findest du unter „Weiter bearbeiten“. Bitte prüfe selbst, ob du sie gesendet hast.'));
+   if(selected.some(m=>progress.opened.includes(m.id)))body.append(node('p','Geöffnete Chats bitte selbst auf Versand prüfen.'));
    function folder(title,subset,hint){if(!subset.length)return;const box=node('details');box.className='portal-reminder-folder';box.append(node('summary',title+' ('+subset.length+')'));if(hint)box.append(node('p',hint));for(const m of subset)box.append(person(m));body.append(box);return box;}
    const missingBox=folder('Ohne WhatsApp-Nummer',missing,'Hier fehlt eine für WhatsApp freigegebene Nummer. Du kannst den Nachrichtentext trotzdem kopieren und selbst weitergeben.');if(missingBox&&!available.length)missingBox.open=true;
    folder('Keine Erinnerung nötig',answered,'Diese Personen haben bereits zugesagt oder sich entschuldigt.');
