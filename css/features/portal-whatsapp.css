@@ -27,3 +27,7 @@ label{font-weight:700;font-size:.9rem}
 .quiet{margin:auto;background:#fff;color:#274f82;border:1px solid #b4c1d1}
 .event-option{background:#e8eff7;color:#173e73;width:100%;text-align:left;margin:8px 0;font-size:.9rem}
 @media(max-width:370px){.answers button{min-height:60px}}
+
+/* Hidden controls must remain hidden despite the generic button display rule. */
+[hidden]{display:none!important}
+#back-to-whatsapp{width:100%;min-height:54px}
