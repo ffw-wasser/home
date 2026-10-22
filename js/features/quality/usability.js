@@ -32,13 +32,10 @@
       byId('memberSearch').addEventListener('input',event=>{memberQuery=event.target.value;filterMembers();});
     }
     box.querySelectorAll('article.admin-row').forEach(article=>{
-      const id=article.querySelector('[data-save-member]').dataset.saveMember,header=article.querySelector('.member-card-header');
+      const id=article.dataset.memberId,header=article.querySelector('.member-card-header');
       const row=document.createElement('details');row.className='admin-row member-card ux-member';row.dataset.memberId=id;
       const summary=document.createElement('summary');summary.innerHTML=header.innerHTML+'<span class="ux-member-open">Bearbeiten</span>';
       header.remove();row.append(summary);while(article.firstChild)row.append(article.firstChild);article.replaceWith(row);
-      row.querySelector('[data-save-member]').textContent='Nur Mitgliederdaten speichern';
-      const all=document.createElement('button');all.type='button';all.className='primary-button';all.dataset.saveMemberAll=id;all.textContent='Dieses Mitglied speichern';row.querySelector('.member-card-actions').prepend(all);
-      all.onclick=()=>saveMemberRows([row],true);
       const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in OneDrive';row.querySelector('.member-card-actions').before(dirty);
       // Names are the quick edit. Qualifications remain grouped inside native disclosures.
       const roles=row.querySelector('.member-role-editor'),safety=row.querySelector('.member-safety-settings');
@@ -46,8 +43,8 @@
         if(!node)continue;const details=document.createElement('details');details.className='ux-member-section';details.innerHTML=`<summary>${title}</summary>`;node.before(details);details.append(node);
       }
       row.addEventListener('input',event=>{
-        const pin=event.target.closest('.dr-pin-editor');if(pin){pin.dataset.dirty=event.target.value?'1':'';if(!event.target.value)delete pin.dataset.dirty;pin.querySelector('[data-dr-pin-status]').textContent=event.target.value?'PIN noch nicht gespeichert. „PIN in OneDrive speichern“ antippen.':'PIN wird separat gespeichert.';}
-        else {row.dataset.memberDirty='1';dirty.textContent='Mitgliederdaten noch nicht gespeichert';}
+        const pin=event.target.closest('.dr-pin-editor');if(pin){pin.dataset.dirty=event.target.value?'1':'';if(!event.target.value)delete pin.dataset.dirty;pin.querySelector('[data-dr-pin-status]').textContent=event.target.value?'PIN noch nicht gespeichert. „Alle Änderungen speichern“ übernimmt auch die PIN.':'PIN wird separat gespeichert.';}
+        else {row.dataset.memberDirty='1';dirty.textContent='Ungespeicherte Änderungen · oben „Alle Änderungen speichern“ wählen';}
         memberSaveMessage='';refreshMemberSaveState();
       });
       row.open=id===openMemberId;
@@ -69,6 +66,11 @@
     if(!button)return;
     button.textContent=memberSaving?'Änderungen werden gespeichert …':'Alle Änderungen speichern'+(count?' ('+count+')':'');
     button.disabled=memberSaving||!count;discard.disabled=memberSaving||!count;
+    document.querySelectorAll('#memberAdmin details[data-member-id]').forEach(row=>{
+      const pending=row.hasAttribute('data-member-dirty')||Boolean(row.querySelector('.dr-pin-editor[data-dirty]'));
+      const label=row.querySelector('.ux-member-open');
+      if(label){label.textContent=pending?'Ungespeichert':'Bearbeiten';label.classList.toggle('is-pending',pending);}
+    });
     status.textContent=memberSaving?'Bitte die Speicherung abwarten.':memberSaveMessage||(count?count+' Mitglied'+(count===1?'':'er')+' mit offenen Änderungen.':'Keine offenen Änderungen.');
   }
   function ensureMemberSaveBar(){
@@ -83,7 +85,7 @@
       memberSaveMessage='Offene Änderungen verworfen.';renderAdmin();
     };
   }
-  async function saveMemberRows(rows,includeUnchanged=false){
+  async function saveMemberRows(rows){
     if(memberSaving||!rows.length||!requireAdmin('settingsMembersView'))return;
     const jobs=rows.map(row=>({row,id:row.dataset.memberId,pin:row.querySelector('[data-dr-new-pin]')?.value||''}));
     for(const job of jobs){
@@ -92,7 +94,7 @@
         job.row.querySelector('[data-dr-new-pin]').focus();return;
       }
     }
-    const dataJobs=jobs.filter(job=>includeUnchanged||job.row.hasAttribute('data-member-dirty'));
+    const dataJobs=jobs.filter(job=>job.row.hasAttribute('data-member-dirty'));
     // Validate every row before committing member data or any independent PIN write.
     for(const job of dataJobs){try{prepareMemberUpdate(job.id,job.row);}catch(error){job.row.open=true;job.row.querySelectorAll('.ux-member-section').forEach(section=>section.open=true);showToast(error.message,'error');job.row.scrollIntoView({block:'center'});return;}}
     const box=byId('memberAdmin');memberSaving=true;box.inert=true;refreshMemberSaveState();

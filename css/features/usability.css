@@ -57,7 +57,7 @@ body .crew-position{min-height:76px;cursor:pointer}body .crew-position small{fon
 @keyframes burst-pop{0%,48%{opacity:0;transform:scale(.1)}65%{opacity:1;transform:scale(1.25)}100%{opacity:0;transform:scale(1.6)}}
 @keyframes burst-confetti{0%{opacity:0;transform:rotate(var(--angle)) translateY(0)}10%{opacity:1}100%{opacity:0;transform:rotate(var(--angle)) translateY(-140px) rotate(140deg)}}
 @media(prefers-reduced-motion:reduce){.dr-burst img{animation:none}.dr-burst-pop,.dr-burst i{display:none}.dr-thanks *{animation:none!important}}
-@media(max-width:700px){.ux-history-status{align-items:stretch;flex-direction:column}.ux-reminder-row{grid-template-columns:minmax(0,1fr) auto}.ux-reminder-row button{grid-column:1/-1}.ux-member-open{display:none}.ux-dialog-actions>*{width:100%}}
+@media(max-width:700px){.ux-history-status{align-items:stretch;flex-direction:column}.ux-reminder-row{grid-template-columns:minmax(0,1fr) auto}.ux-reminder-row button{grid-column:1/-1}.ux-member-open:not(.is-pending){display:none}.ux-dialog-actions>*{width:100%}}
 /* Vorrang vor früheren, ausdrücklich ausgeblendeten Menüeinträgen. */
 html body #compactMenu #historyTab,html body #compactMenu #statisticsTab{display:flex!important}
 html body .top-nav #attendanceTab,html body .top-nav #menuToggleButton,html body .top-nav #cloudSyncButton{height:auto!important;min-height:48px!important;max-height:none!important}
@@ -134,3 +134,5 @@ html body .tactics-visual img{height:140px!important;max-height:140px!important;
 #settingsDrinksView .settings-menu-card>.step{display:none!important}
 #settingsDrinksView .settings-menu-card h3,#settingsDrinksView .settings-menu-card p{margin:0}
 @media(max-width:600px){#settingsView .settings-menu-grid{grid-template-columns:1fr}#settingsView .settings-menu-card{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:14px 16px}#settingsView .settings-task-group .settings-menu-card button{margin-top:5px}.settings-view>.screen-heading>button,.settings-subpage>.screen-heading>.view-home-button{flex-basis:100%;width:100%;text-align:left}}
+
+.ux-member-open.is-pending{display:inline-block;color:#78520c;background:#fff3cf;border-radius:6px;padding:4px 8px;white-space:normal;font-size:.875rem}

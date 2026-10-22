@@ -237,9 +237,7 @@ byId("exportCompleteBackupButton").addEventListener("click", exportCompleteBacku
 byId("importCompleteBackupButton").addEventListener("click", () => byId("completeBackupFileInput").click());
 byId("completeBackupFileInput").addEventListener("change", event => { const file = event.target.files?.[0]; if (file) importCompleteBackup(file); });
 byId("memberAdmin").addEventListener("click", event => {
-  const save = event.target.closest("[data-save-member]");
   const remove = event.target.closest("[data-delete-member]");
-  if (save) updateMember(save.dataset.saveMember, save.closest(".admin-row"));
   if (remove) deleteMember(remove.dataset.deleteMember);
 });
 
