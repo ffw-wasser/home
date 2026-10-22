@@ -276,7 +276,7 @@
    const stillAvailable=list.some(e=>e.id===current);
    const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list[0]?.id||''));
    picker.replaceChildren();const none=node('option','Ohne Kalendertermin / spontan');none.value='';picker.append(none);
-   for(const e of list){const kind=e.sessionType||'Probe',title=e.title||kind,label=title.trim().toLocaleLowerCase('de')===kind.toLocaleLowerCase('de')?title:title+' · '+kind;const option=node('option',date(e)+' · '+label);option.value=e.id;picker.append(option);}
+   for(const e of list){const kind=e.sessionType||'Probe',title=e.title||kind,label=(title.trim().toLocaleLowerCase('de')===kind.toLocaleLowerCase('de')?title:title+' · '+kind)+(e.audienceRestricted===true||Array.isArray(e.recipientIds)?' · Nur ausgewählte Mitglieder':'');const option=node('option',date(e)+' · '+label);option.value=e.id;picker.append(option);}
    picker.value=nextId||'';
    // Automatically pick the next event only while no attendance session runs.
    // Applying the selection also sets its date and the centrally configured

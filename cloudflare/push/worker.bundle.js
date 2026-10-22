@@ -21853,11 +21853,12 @@ g.PortalHydrants={schema,route};
  async function publicCalendar(env){
   await ready(env);
   const cal=await decorate(env,await cachedCalendar(env));
-  // Only explicitly approved probe dates. Never expose member names, birthdays, replies, or the private iCal URL.
+  // Show all approved probe dates, including selected-member appointments. Never expose the recipient list, member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
-   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()&&!Array.isArray(e.recipientIds)).map(e=>({
+   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()).map(e=>({
     id:e.id,title:e.sessionType==='Probe'?'Probe':'Sonderprobe',start:e.start,end:e.end,
-    allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true
+    allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true,
+    audienceRestricted:Array.isArray(e.recipientIds)
    }))};
  }
  g.PortalService={assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
@@ -21884,7 +21885,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"13327960ac557e9208548745a57b489a9b50ed22c5e4a8f447213aacb949174f",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"b57a9b16a297b6230d6a321d7d4cb14bd7eac7d3d1772e17b248654e58e882cf",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{return reply(await globalThis.PortalService.publicCalendar(env));}
