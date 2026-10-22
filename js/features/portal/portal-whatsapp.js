@@ -112,17 +112,15 @@
    status(note);
   }
  }
- // WhatsApp cannot guarantee returning to the originating group from a browser.
+ // Never launch an external WhatsApp URL: iOS may show a failed link verification.
  el('back-to-whatsapp').addEventListener('click',()=>{
-  el('back-to-h2o-status').textContent='Öffne WhatsApp. Deine Rückmeldung bleibt gespeichert. Wechsle bei Bedarf selbst zur ursprünglichen Gruppe.';
-  // The bare wa.me URL can trigger a failed link-validation screen in WhatsApp.
-  // Prefer returning through the real browser history if the user arrived from WhatsApp.
-  // Otherwise open the WhatsApp app directly, without a universal-link validation hop.
+  const feedback=el('back-to-h2o-status');
+  feedback.textContent='Deine Rückmeldung ist gespeichert. Wechsle über „Zurück“ oder den App-Umschalter wieder zu WhatsApp.';
+  // Only use history when the referrer really belongs to WhatsApp Web.
   try{
    const previous=new URL(document.referrer);
    if(/(^|\\.)whatsapp\\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
   }catch{}
-  location.assign('whatsapp://app');
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
   const focus=wanted();
