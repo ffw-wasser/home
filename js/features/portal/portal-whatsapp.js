@@ -14,7 +14,7 @@
   history.replaceState(null,'',location.pathname+location.search);
   return match[1].toLowerCase();
  })();
- let session=null,items=[],stale=false,working=false,pending=null,memberName='';
+ let session=null,items=[],stale=false,working=false,pending=null,memberName='',eventLinkStatus=null;
  const status=message=>{el('status').textContent=message;};
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
  function restore(){return globalThis.H2OIdentity?.session()||null;}
@@ -44,7 +44,7 @@
  }
  function renderEvent(event){
   hide();el('remove').hidden=false;el('heading').textContent=memberName?'Rückmeldung für '+memberName:'Deine Terminrückmeldung';
-  if(!event){status('Dieser Termin ist für dich nicht relevant oder nicht mehr verfügbar.');return;}
+  if(!event){status(eventLinkStatus==='not-relevant'?'Dieser Termin ist für dich nicht relevant!':'Dieser Termin ist nicht mehr verfügbar.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
   el('event-when').textContent='📅 '+fmt.format(new Date(event.start))+' Uhr';
@@ -67,10 +67,10 @@
    const renewal=session.scope==='portal'?{ok:true,expiresAt:session.expiresAt}:await post('browser/renew',{alias:session.alias,revision:session.revision},session.token);
    if(renewal.ok!==true||!Number.isSafeInteger(renewal.expiresAt)||renewal.expiresAt<=Date.now())throw Error('Browser-Verbindung konnte nicht verlängert werden.');
    session.expiresAt=renewal.expiresAt;persist(session);
-   const result=await post('list',{alias:session.alias,revision:session.revision},session.token);
+   const result=await post('list',{alias:session.alias,revision:session.revision,eventId:wanted()},session.token);
    memberName=typeof result.memberName==='string'?result.memberName:'';
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
-   stale=result.stale===true;el('remove').hidden=false;el('pairing').hidden=true;
+   stale=result.stale===true;eventLinkStatus=result.eventLinkStatus;el('remove').hidden=false;el('pairing').hidden=true;
    working=false;
    if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
    if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
