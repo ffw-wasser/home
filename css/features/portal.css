@@ -444,3 +444,5 @@
 .portal-reminder-finish{margin:18px 0;padding:12px;border:1px solid #d7e1eb;border-radius:12px;background:#f7f9fc}
 .portal-reminder-finish p{margin-top:0}
 .portal-overview-actions .portal-overview-back{background:#edf5fc;color:#075baf;border-color:#b9d2e8}
+
+.portal-keyword-management{margin-block:1rem}.portal-keyword-management summary{font-weight:700;cursor:pointer;min-height:44px;padding:12px;overflow-wrap:anywhere}.portal-keyword-card{border:1px solid #b9c8d8;border-radius:12px;margin-block:10px;padding:10px;min-width:0}.portal-keyword-card label{display:block;margin-block:10px}.portal-keyword-card input[type=checkbox]{width:24px;height:24px;vertical-align:middle}.portal-keyword-card .portal-recipient-list label{display:flex;gap:10px;align-items:center}.portal-keyword-management button{min-height:44px;white-space:normal;margin:4px;max-width:100%}.portal-keyword-management textarea{width:100%;box-sizing:border-box}.portal-keyword-management p{overflow-wrap:anywhere}
