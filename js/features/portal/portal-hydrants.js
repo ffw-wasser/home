@@ -2,7 +2,7 @@
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id),MAX=8*1024*1024;
-let generation=0,url='',busy=false,syncing=false;
+let generation=0,url='',busy=false,syncing=false,ipadGeneration=0,ipadUrl='';
 const hex=buffer=>Array.from(new Uint8Array(buffer),v=>v.toString(16).padStart(2,'0')).join('');
 function clear(){
  generation++;busy=false;
@@ -33,6 +33,21 @@ async function load(){
  }catch(e){if(epoch===generation)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
  finally{if(epoch===generation){busy=false;button.disabled=false;}}
 }
+function clearIpad(){
+ ipadGeneration++;const frame=$('hydrants-ipad-frame'),link=$('hydrants-ipad-large'),dialog=$('hydrants-ipad-dialog');
+ frame?.removeAttribute('src');link?.removeAttribute('href');if(ipadUrl)URL.revokeObjectURL(ipadUrl);ipadUrl='';if(dialog?.open)dialog.close();
+ if($('hydrants-ipad-open'))$('hydrants-ipad-open').disabled=false;
+ if($('hydrants-ipad-state'))$('hydrants-ipad-state').textContent='';
+}
+async function viewIpad(){
+ clearIpad();const epoch=ipadGeneration,status=$('hydrants-ipad-state'),button=$('hydrants-ipad-open');button.disabled=true;status.textContent='Hydrantenplan wird aus OneDrive geladen …';
+ try{
+  const bytes=await g.oneDriveReadHydrants();if(epoch!==ipadGeneration)return;
+  ipadUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));$('hydrants-ipad-frame').src=ipadUrl+'#view=FitH';$('hydrants-ipad-large').href=ipadUrl;
+  $('hydrants-ipad-dialog').showModal();status.textContent='';
+ }catch(e){if(epoch===ipadGeneration)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
+ finally{if(epoch===ipadGeneration)button.disabled=false;}
+}
 async function sync(){
  if(syncing)return;
  if(typeof requireAdmin==='function'&&!requireAdmin('helpView'))return;
@@ -53,10 +68,11 @@ async function sync(){
  finally{syncing=false;button.disabled=false;}
 }
 function init(){
+ $('hydrants-ipad-open')?.addEventListener('click',viewIpad);$('hydrants-ipad-close')?.addEventListener('click',clearIpad);$('hydrants-ipad-dialog')?.addEventListener('close',()=>{if(ipadUrl)clearIpad();});
  $('hydrants-load')?.addEventListener('click',load);$('hydrants-sync')?.addEventListener('click',sync);
  g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-hydrants')load();else clear();});
- g.addEventListener('pagehide',clear);
+ g.addEventListener('pagehide',()=>{clear();clearIpad();});
 }
-g.PortalHydrantsView={clear};
+g.PortalHydrantsView={clear,clearIpad};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

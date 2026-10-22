@@ -33,6 +33,17 @@ const root=path.resolve(__dirname,'..');
    await page.evaluate(()=>H2OPortal.clear());assert.equal(await page.locator('#hydrants-frame').getAttribute('src'),null);
    assert.deepEqual(errors,[]);await page.close();
   }
+  const tablet=await browser.newPage({viewport:{width:1024,height:768}});
+  const app=fs.readFileSync(path.join(root,'index.html'),'utf8'),start=app.indexOf('<section class="panel" aria-labelledby="hydrants-admin-title">'),end=app.indexOf('</section>',start)+10;
+  assert.ok(start>=0);await tablet.setContent(app.slice(start,end));await tablet.addStyleTag({path:path.join(root,'css/features/portal.css')});
+  await tablet.evaluate(()=>{window.oneDriveReadHydrants=async()=>new TextEncoder().encode('%PDF-1.5\n%%EOF');});
+  await tablet.addScriptTag({path:path.join(root,'js/features/portal/portal-hydrants.js')});
+  await tablet.locator('#hydrants-ipad-open').click();await tablet.waitForFunction(()=>document.querySelector('#hydrants-ipad-dialog').open);
+  assert.match(await tablet.locator('#hydrants-ipad-frame').getAttribute('src'),/^blob:/);
+  await tablet.locator('#hydrants-ipad-close').click();assert.equal(await tablet.locator('#hydrants-ipad-frame').getAttribute('src'),null);
+  await tablet.locator('#hydrants-ipad-open').click();await tablet.waitForFunction(()=>document.querySelector('#hydrants-ipad-dialog').open);await tablet.evaluate(()=>PortalHydrantsView.clearIpad());
+  assert.equal(await tablet.locator('#hydrants-ipad-dialog').evaluate(e=>e.open),false);assert.equal(await tablet.locator('#hydrants-ipad-large').getAttribute('href'),null);
+  await tablet.close();
   console.log('Hydrantenplan: mobile/tablet navigation, protected load, overflow and logout cleanup passed.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

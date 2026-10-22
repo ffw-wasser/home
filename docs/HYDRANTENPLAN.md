@@ -14,6 +14,11 @@ Nach Veröffentlichung des aktualisierten Workers und der App am Gerätehaus-iPa
 3. Erst nach vollständiger Übertragung und erfolgreicher PDF-/SHA-256-Prüfung wird
    die neue Fassung im Portal freigeschaltet. Bei Abbruch bleibt die vorherige Fassung.
 
+Am Gerätehaus-Tablet öffnet **Hydrantenplan ansehen** unter Infos/Hilfe das
+Original direkt aus OneDrive. Dafür ist die bestehende OneDrive-Verbindung, aber
+keine zusätzliche Admin-Freigabe nötig. Schließen oder Microsoft-Abmeldung räumt
+die temporäre PDF-Ansicht auf.
+
 Nach Austausch des OneDrive-Originals erneut abgleichen. Smartphone-Mitglieder
 benötigen keine Microsoft-Anmeldung. Die Kachel liegt standardmäßig unter Mehr
 und nimmt an der vorhandenen individuellen Menüanordnung teil.
