@@ -41,8 +41,9 @@
   for(const id of ['login','intro','setup'])el(id).hidden=signedIn;
   for(const id of ['logout','devices','revoke-sessions','session-actions','passkeys-heading'])el(id).hidden=!signedIn;
   el('register').textContent=signedIn?'Weiteren Passkey hinzufügen':'Passkey einrichten';
-  if(signedIn){el('setup').open=false;el('code').value='';} whatsappSettings();document.getElementById('identity-whatsapp-settings')?.load?.();
+  if(signedIn){el('setup').open=false;el('code').value='';}
   else{setMemberName('');el('list').replaceChildren();}
+  whatsappSettings();document.getElementById('identity-whatsapp-settings')?.load?.();
  }
  async function run(action){if(busy)return;if(g.PortalEvidenceEditor?.hasUnsaved?.())return void(el('message').textContent='Bitte die Nachweiseingabe zuerst speichern oder abbrechen.');if(g.DeckelActions?.hasUnsaved?.())return void(el('message').textContent='Bitte zuerst offene Getränkeeingaben abschließen.');busy=true;try{el('message').textContent='Bitte am Gerät bestätigen …';await action();paint();}catch(e){el('message').textContent=e.name==='NotAllowedError'?'Abgebrochen oder kein passender Passkey verfügbar. Bitte erneut versuchen oder die Verwaltung um eine Freigabe bitten.':e.message;}finally{busy=false;}}
  async function devices(){const value=await post('devices');el('list').replaceChildren();for(const [i,key] of value.keys.entries()){const row=document.createElement('p');row.textContent='Passkey '+(i+1)+(key.current?' · aktuell verwendet':'');if(!key.current){const button=document.createElement('button');button.type='button';button.textContent='Sperren';button.onclick=()=>run(async()=>{await login();await post('remove',{credential:key.id});await devices();el('message').textContent='Passkey und zugehörige Sitzungen gesperrt.';await g.DeckelReload?.();});row.append(' ',button);}el('list').append(row);}}
