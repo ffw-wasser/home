@@ -51,3 +51,5 @@ jobs:
         run: node tests/portal-evidence-browser.cjs
       - name: Test member batch editing and mobile cards
         run: node tests/members-editor-browser.cjs
+      - name: Test manual WhatsApp reminder flow on mobile viewports
+        run: node tests/portal-reminders-browser.cjs
