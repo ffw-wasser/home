@@ -21,9 +21,9 @@ label{font-weight:700;font-size:.9rem}
 #status{font-size:.93rem;margin-bottom:0}
 .eyebrow{font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:.78rem;color:#346ca8;margin:0 0 8px}
 .answer-status{font-weight:700;margin:17px 0 10px;color:#28436c}
-.answers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.answers button{padding:12px 5px;font-size:.86rem;line-height:1.2}
+.answers{display:grid;grid-template-columns:1fr;gap:12px}
+.answers button{width:100%;min-height:64px;padding:16px;font-size:1.08rem;line-height:1.3;text-align:center;border-radius:16px}
 .answers button[aria-pressed="true"]{background:#21634a}
 .quiet{margin:auto;background:#fff;color:#274f82;border:1px solid #b4c1d1}
 .event-option{background:#e8eff7;color:#173e73;width:100%;text-align:left;margin:8px 0;font-size:.9rem}
-@media(max-width:370px){.answers{grid-template-columns:1fr}.answers button{min-height:42px}}
+@media(max-width:370px){.answers button{min-height:60px}}
