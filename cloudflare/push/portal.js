@@ -228,8 +228,8 @@
    const current=own.whatsapp||null;
    if(data.phone===undefined&&data.allowed===undefined)return {phone:current?.phone?'+'+current.phone:'',allowed:current?.allowed===true};
    if(typeof data.phone!=='string'||typeof data.allowed!=='boolean')fail('Ungültige WhatsApp-Einstellungen.',400);
-   const phone=data.phone.trim().replace(/[\\s()-]/g,'').replace(/^00/,'+');
-   if(phone&&!/^\\+[1-9]\\d{7,14}$/.test(phone))fail('Handynummer bitte mit + und Ländervorwahl eingeben.',400);
+   const phone=data.phone.trim().replace(/[\s()-]/g,'').replace(/^00/,'+');
+   if(phone&&!/^\+[1-9]\d{7,14}$/.test(phone))fail('Handynummer bitte mit + und Ländervorwahl eingeben.',400);
    if(data.allowed&&!phone)fail('Bitte zuerst eine Handynummer eingeben.',400);
    const whatsapp=phone?{phone:phone.slice(1),allowed:data.allowed,updatedAt:Date.now()}:null;
    const updated={...roster,members:roster.members.map(person=>person.id===record.memberId?{...person,whatsapp}:person),updatedAt:Date.now()};
