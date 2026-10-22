@@ -41,3 +41,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test passkey browser flow with synthetic credentials
         run: node tests/passkey-browser.cjs
+      - name: Test FFW update notice and safe reload
+        run: node tests/app-update-browser.cjs
