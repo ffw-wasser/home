@@ -12,7 +12,7 @@
  let active=null;
  function close(){if(active){active.dispose();active=null;}}
  function mount(host,{eventId,request,scope,admin=false}){
-  close();let alive=true,busy=false,snapshot=null,current=null;
+  close();let alive=true,busy=false,snapshot=null,current=null,organizerId='';
   const key='h2o-whatsapp-progress:'+scope+':'+eventId;
   let progress={done:[],excluded:[],opened:[]};try{const saved=JSON.parse(sessionStorage.getItem(key));if(saved&&Date.now()-saved.at<86400000&&Array.isArray(saved.done)&&Array.isArray(saved.excluded))progress={...saved,opened:Array.isArray(saved.opened)?saved.opened:[]};}catch{}
   const save=()=>{try{sessionStorage.setItem(key,JSON.stringify({at:Date.now(),done:progress.done,excluded:progress.excluded,opened:progress.opened}));}catch{notice.textContent='Fortschritt bleibt nur bis zum Schließen dieser Ansicht erhalten.';}};
@@ -21,11 +21,13 @@
   function dispose(){alive=false;root.remove();}
   active={dispose};
   async function run(fn){if(busy||!alive)return;busy=true;root.setAttribute('aria-busy','true');try{await fn();}catch(e){if(alive){current=null;body.replaceChildren();notice.textContent=e.message;body.append(button('Erneut prüfen',load));}}finally{busy=false;root.removeAttribute('aria-busy');}}
-  async function fetchList(){const r=await request('whatsapp-recipients',{eventId});if(!alive)return null;snapshot=r;return r;}
+  async function fetchList(){const r=await request('whatsapp-recipients',{eventId,...(admin?{organizerMemberId:organizerId}:{})});if(!alive)return null;snapshot=r;return r;}
   function load(){return run(async()=>{if(await fetchList())paint();});}
   function paint(){
    if(!alive)return;current=null;body.replaceChildren();
-   const people=snapshot.members,waiting=people.filter(eligible),available=waiting.filter(m=>m.phone&&!progress.done.includes(m.id)),missing=waiting.filter(m=>!m.phone&&!progress.done.includes(m.id)),done=people.filter(m=>progress.done.includes(m.id)),answered=people.filter(m=>!eligible(m)&&!progress.done.includes(m.id)),selected=available;
+   const people=snapshot.members;
+   if(admin){const label=node('label','Wer fragt den Termin ab?'),picker=node('select');const placeholder=node('option','Abfragenden auswählen');placeholder.value='';picker.append(placeholder);for(const m of people){const option=node('option',m.name);option.value=m.id;picker.append(option);}picker.value=organizerId;picker.onchange=()=>{organizerId=picker.value;progress={done:[],excluded:[],opened:[]};load();};label.append(picker);body.append(label);if(!organizerId){body.append(node('p','Bitte zuerst deinen Namen auswählen. Du wirst dann nicht selbst erinnert.'));notice.textContent='Abfragenden auswählen';return;}}
+   const waiting=people.filter(eligible),available=waiting.filter(m=>m.phone&&!progress.done.includes(m.id)),missing=waiting.filter(m=>!m.phone&&!progress.done.includes(m.id)),done=people.filter(m=>progress.done.includes(m.id)),answered=people.filter(m=>!eligible(m)&&!progress.done.includes(m.id)),selected=available;
    notice.textContent=selected.length+' Person'+(selected.length===1?'':'en')+' für WhatsApp ausgewählt'+(done.length?' · '+done.length+' erledigt':'');
    if(!waiting.length){
     notice.textContent='Keine Erinnerung erforderlich.';
@@ -65,7 +67,7 @@
   }
   function mark(id){if(!progress.done.includes(id))progress.done.push(id);save();load();}
   function prepare(id){return run(async()=>{const r=await fetchList();if(!r)return;const m=r.members.find(p=>p.id===id);if(!m||!eligible(m)||progress.done.includes(id)){paint();notice.textContent='Für diese Person ist keine weitere Erinnerung nötig.';return;}current={id,event:r.event};notice.textContent='';body.replaceChildren();const text=node('textarea');text.rows=8;text.value=individual(r.event,m);text.setAttribute('aria-label','Nachricht bearbeiten');const hint=node('p');hint.setAttribute('role','status');
-    const verify=async action=>{await run(async()=>{const fresh=await request('whatsapp-prepare',{eventId,memberId:id});if(!alive)return;if(!fresh.eligible){await fetchList();paint();notice.textContent='Rückmeldung geändert. Keine Erinnerung mehr vorgesehen.';return;}if(JSON.stringify(fresh.event)!==JSON.stringify(current.event)){await fetchList();paint();notice.textContent='Termindaten geändert. Bitte Nachricht neu vorbereiten.';return;}if(action==='chat'&&!fresh.phone)throw Error('Die WhatsApp-Nummer ist nicht mehr verfügbar. Bitte zurück zur Liste gehen und den Text kopieren.');
+    const verify=async action=>{await run(async()=>{const fresh=await request('whatsapp-prepare',{eventId,memberId:id,...(admin?{organizerMemberId:organizerId}:{})});if(!alive)return;if(!fresh.eligible){await fetchList();paint();notice.textContent='Rückmeldung geändert. Keine Erinnerung mehr vorgesehen.';return;}if(JSON.stringify(fresh.event)!==JSON.stringify(current.event)){await fetchList();paint();notice.textContent='Termindaten geändert. Bitte Nachricht neu vorbereiten.';return;}if(action==='chat'&&!fresh.phone)throw Error('Die WhatsApp-Nummer ist nicht mehr verfügbar. Bitte zurück zur Liste gehen und den Text kopieren.');
      // Navigation in the same tab needs no popup permission after asynchronous validation.
      if(action==='chat'){if(progress.opened.includes(id)&&!confirm('Diese Nachricht wurde bereits geöffnet. Erneut öffnen?'))return;if(!progress.opened.includes(id))progress.opened.push(id);save();location.assign('https://wa.me/'+fresh.phone+'?text='+encodeURIComponent(text.value));hint.textContent='Sende die Nachricht in WhatsApp. Kehre danach hierher zurück und markiere die Person als erledigt.';}
      else {try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text.value);else prompt('Nachricht kopieren',text.value);if(!progress.opened.includes(id))progress.opened.push(id);save();hint.textContent='Füge den Text in den gewünschten Chat ein und sende ihn dort. Markiere die Person danach hier als erledigt.';}catch{prompt('Nachricht kopieren',text.value);hint.textContent='Kopiere den Text aus dem Textfeld und sende ihn selbst weiter.';}}
