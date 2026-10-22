@@ -28,7 +28,7 @@
    return data;
   }finally{clearTimeout(timer);}
  }
- function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;el('back-to-whatsapp').hidden=!wanted();}
+ function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('back-to-whatsapp').hidden=!wanted();}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
   status(message||'Bitte mit Passkey anmelden.');
@@ -43,7 +43,7 @@
   if(!items.length)list.append(element('p','Zurzeit keine freigegebenen Termine vorhanden.'));
  }
  function renderEvent(event){
-  hide();el('remove').hidden=false;el('heading').textContent=memberName?'Rückmeldung für '+memberName:'Deine Terminrückmeldung';
+  hide();el('heading').textContent=memberName?'Rückmeldung für '+memberName:'Deine Terminrückmeldung';
   if(!event){status(eventLinkStatus==='not-relevant'?'Dieser Termin ist für dich nicht relevant!':'Dieser Termin ist nicht mehr verfügbar.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
@@ -70,7 +70,7 @@
    const result=await post('list',{alias:session.alias,revision:session.revision,eventId:wanted()},session.token);
    memberName=typeof result.memberName==='string'?result.memberName:'';
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
-   stale=result.stale===true;eventLinkStatus=result.eventLinkStatus;el('remove').hidden=false;el('pairing').hidden=true;
+   stale=result.stale===true;eventLinkStatus=result.eventLinkStatus;el('pairing').hidden=true;
    working=false;
    if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
    if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
@@ -112,54 +112,11 @@
    status(note);
   }
  }
- // WhatsApp does not provide a reliable browser return URL. Never guess a chat or use an untrusted referrer as a destination.
+ // WhatsApp cannot guarantee returning to the originating group from a browser.
  el('back-to-whatsapp').addEventListener('click',()=>{
-  const feedback=el('back-to-h2o-status');
-  feedback.textContent='Wechsle zurück zu WhatsApp. Deine Rückmeldung bleibt gespeichert.';
-  try{
-   const previous=new URL(document.referrer);
-   if(/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
-  }catch{}
-  // A link opened from the native WhatsApp app usually has no referrer. Open the app directly on phones.
-  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'')){
-   feedback.textContent='WhatsApp wird geöffnet. Falls das nicht klappt, wechsle über den App-Umschalter zurück.';
-   location.assign('whatsapp://app');
-   return;
-  }
-  feedback.textContent='Wechsle zum WhatsApp-Fenster zurück. Deine Rückmeldung ist gespeichert.';
- });
- // Return only to the already authenticated installed PWA, or genuine in-tab history.
- // Never fall back to a generic deckel.html link: that could restart QR onboarding.
- el('back-to-h2o').addEventListener('click',async()=>{
-  const feedback=el('back-to-h2o-status');
-  const standalone=Boolean(navigator.standalone||matchMedia('(display-mode: standalone)').matches);
-  if(standalone&&globalThis.DeckelDevice){
-   try{
-    const stored=await DeckelDevice.read();
-    const personal=stored?.url||await DeckelDevice.readLink();
-    if(personal){
-     const url=new URL(personal);
-     if(url.origin===location.origin&&url.pathname===new URL('deckel.html',location.href).pathname&&!url.search){
-      location.assign(url.href);
-      return;
-     }
-    }
-   }catch{/* A private link may not be available in this browser context. */}
-  }
-  if(globalThis.H2OIdentity?.session()){location.assign(new URL('deckel.html',location.href).href);return;}
-  try{
-   const previous=new URL(document.referrer);
-   if(previous.origin===location.origin&&previous.pathname===new URL('deckel.html',location.href).pathname&&history.length>1){
-    history.back();
-    return;
-   }
-  }catch{}
-  feedback.textContent='Öffne die H₂O-App über ihr Symbol auf deinem Home-Bildschirm. Wenn du Safari oder Chrome verwendest, wechsle über den App-Umschalter zu H₂O. Deine Anmeldung bleibt erhalten.';
- });
- el('remove').addEventListener('click',async()=>{
-  if(!confirm('Browserzugang auf diesem Gerät entfernen? Rückmeldungen bleiben gespeichert.'))return;
-  if(session?.scope==='portal'){try{await globalThis.H2OIdentity.post('logout');globalThis.H2OIdentity.forget();}catch(e){status(e.message);return;}}
-  session=null;pending=null;persist(null);showPair('Browserzugang auf diesem Gerät entfernt. Andere Browserzugänge kannst du in H₂O sperren.');
+  el('back-to-h2o-status').textContent='Öffne WhatsApp. Deine Rückmeldung bleibt gespeichert. Wechsle bei Bedarf selbst zur ursprünglichen Gruppe.';
+  // A universal WhatsApp landing link is more broadly supported than the custom URL scheme.
+  location.assign('https://wa.me/');
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
   const focus=wanted();
