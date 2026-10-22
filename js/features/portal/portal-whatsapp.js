@@ -31,7 +31,7 @@
  function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
-  status(message||'Melde dich mit deinem H₂O-Passkey an. Die Einrichtung erfolgt einmalig unter Konto → Sicherheit.');
+  status(message||'Bitte mit Passkey anmelden.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function paintEvents(){
@@ -44,7 +44,7 @@
  }
  function renderEvent(event){
   hide();el('remove').hidden=false;el('heading').textContent=memberName?'Rückmeldung für '+memberName:'Deine Terminrückmeldung';
-  if(!event){status('Dieser Termin ist für deinen Zugang nicht freigegeben, wurde abgesagt oder ist bereits beendet.');return;}
+  if(!event){status('Dieser Termin ist für dich nicht relevant oder nicht mehr verfügbar.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
   el('event-when').textContent='📅 '+fmt.format(new Date(event.start))+' Uhr';
@@ -58,7 +58,7 @@
    button.disabled=locked;button.setAttribute('aria-pressed',String(chosen));
    button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Entschuldigt',maybe:'Noch unsicher'}[button.dataset.reply]);
   }
-  status(stale?'Kalender ist derzeit nicht bestätigt. Antworten sind vorübergehend gesperrt.':'Du kannst deine Antwort direkt hier speichern.');
+  status(stale?'Kalender nicht aktuell. Antworten vorübergehend gesperrt.':'Wähle deine Rückmeldung.');
  }
  async function refresh(){
   if(!session)return showPair();
@@ -101,7 +101,7 @@
   try{
    const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
    if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
-   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Rückmeldung gespeichert. Du kannst denselben WhatsApp-Link jederzeit wieder öffnen und bis zum Terminbeginn ändern.');
+   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Gespeichert!');
   }catch(e){
    if([400,401,403,404,409].includes(e.status))pending=null;
    status((e.message||'Speicherung nicht bestätigt.')+(pending?' Bitte dieselbe Antwort erneut antippen.':' Bitte den Termin erneut laden.'));
