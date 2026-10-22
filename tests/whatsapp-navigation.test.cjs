@@ -32,10 +32,10 @@ function responseContext({standalone=false,from='',historyLength=1,savedURL=null
  vm.runInContext(read('js/features/portal/portal-whatsapp.js'),c);
  return {dom,assigned,back};
 }
-test('WhatsApp öffnen nutzt den universellen Link ohne Gruppen-Rücksprungversprechen',()=>{
+test('WhatsApp öffnen nutzt den App-Link ohne fehlerhafte wa.me-Linkprüfung',()=>{
  const run=responseContext({search:'?event=test'});
  run.dom['back-to-whatsapp'].events.click();
- assert.deepEqual(run.assigned,['https://wa.me/']);
+ assert.deepEqual(run.assigned,['whatsapp://app']);
  assert.match(run.dom['back-to-h2o-status'].textContent,/ursprünglichen Gruppe/);
  assert.equal(run.back.length,0);
 });
