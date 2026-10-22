@@ -27,6 +27,18 @@
    if(!alive)return;current=null;body.replaceChildren();
    const people=snapshot.members,waiting=people.filter(eligible),available=waiting.filter(m=>m.phone&&!progress.done.includes(m.id)),missing=waiting.filter(m=>!m.phone&&!progress.done.includes(m.id)),done=people.filter(m=>progress.done.includes(m.id)),answered=people.filter(m=>!eligible(m)&&!progress.done.includes(m.id)),selected=available;
    notice.textContent=selected.length+' Person'+(selected.length===1?'':'en')+' für WhatsApp ausgewählt'+(done.length?' · '+done.length+' erledigt':'');
+   if(!waiting.length){
+    notice.textContent='Keine Erinnerung erforderlich.';
+    body.append(node('p','Alle betroffenen Mitglieder haben bereits zugesagt oder sich entschuldigt. Es wird niemand erinnert.'));
+    body.append(button('Rückmeldungen neu prüfen',load));
+    return;
+   }
+   if(!available.length&&!missing.length){
+    notice.textContent='Alle Erinnerungen bearbeitet.';
+    body.append(node('p','Für diesen Termin sind aktuell keine weiteren Personen zu erinnern.'));
+    body.append(button('Rückmeldungen neu prüfen',load));
+    return;
+   }
    body.append(node('p','Ohne Rückmeldung und noch unsicher werden erinnert.'));
    function person(m){
     const row=node('div');row.className='portal-reminder-person';
@@ -40,7 +52,7 @@
     return row;
    }
    body.append(node('h4','Empfänger'));
-   if(!available.length)body.append(node('p','Keine Empfänger mit WhatsApp-Nummer.'));
+   if(!available.length)body.append(node('p','Für die offenen Rückmeldungen ist keine WhatsApp-Nummer hinterlegt.'));
    for(const m of available)body.append(person(m));
    const next=selected.find(m=>!progress.opened.includes(m.id));
    if(next&&available.length>1)body.append(button('Nächste Nachricht ansehen',()=>prepare(next.id),true));
