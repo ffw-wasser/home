@@ -28,7 +28,7 @@
    return data;
   }finally{clearTimeout(timer);}
  }
- function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;}
+ function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('remove').hidden=!session;el('back-to-whatsapp').hidden=!wanted();}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
   status(message||'Bitte mit Passkey anmelden.');
@@ -112,6 +112,12 @@
    status(note);
   }
  }
+ // WhatsApp does not provide a reliable browser return URL. Never guess a chat or use an untrusted referrer as a destination.
+ el('back-to-whatsapp').addEventListener('click',()=>{
+  const feedback=el('back-to-h2o-status');
+  feedback.textContent='Wechsle zurück zu WhatsApp. Deine Rückmeldung bleibt gespeichert.';
+  if(history.length>1){history.back();}
+ });
  // Return only to the already authenticated installed PWA, or genuine in-tab history.
  // Never fall back to a generic deckel.html link: that could restart QR onboarding.
  el('back-to-h2o').addEventListener('click',async()=>{
