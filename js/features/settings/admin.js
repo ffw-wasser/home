@@ -201,12 +201,11 @@ function prepareMemberUpdate(id, row) {
   member.lastName = lastName;
   member.firstName = firstName;
   const phoneInput=row.querySelector("[data-whatsapp-phone]");
-  const allowedInput=row.querySelector("[data-whatsapp-allowed]");
   if(phoneInput){
     const phone=phoneInput.value.trim().replace(/[\s()-]/g,"").replace(/^00/,"+");
     if(phone&&!/^\+[1-9]\d{7,14}$/.test(phone))throw Error("WhatsApp-Nummer bitte mit + und Ländervorwahl eingeben.");
     member.whatsappPhone=phone;
-    member.whatsappAllowed=Boolean(phone&&allowedInput?.checked);
+    // Consent belongs to the authenticated member in the portal, not the admin form.
   }
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
   member.ageDepartment = Boolean(row.querySelector("[data-age-department]")?.checked);
