@@ -42,8 +42,8 @@
   pages.forEach((page,i)=>{
    const topY=48+legendRow*13;text(page,'Farben:',M,topY,7.5,true);
    for(const entry of legendSlots){const y=topY-entry.row*13,swatches=entry.swatches||[entry];swatches.forEach((swatch,n)=>{const x=entry.x+n*15;page.drawRectangle({x,y:y-1,width:12,height:8,color:swatch.background,borderColor:rgb(.65,.7,.74),borderWidth:.4});if(swatch.color)page.drawRectangle({x,y:y-1,width:swatch.accent?12:3,height:8,color:swatch.accent||swatch.color});});text(page,entry.label,entry.x+swatches.length*15+1,y,7.5);}
-   if(native)text(page,'Google = individuell aus Google; App = ergänzende App-Farbe. Zuordnung anhand der angezeigten Termine.',M,32,7);
-   text(page,compact?'DIN A4 quer · Alle Tage · Zusatzangaben und umfangreiche Tage: vollständige Angaben im Kalender.':'Zwei-Seiten-Übersicht. Zusatzinfos und sehr umfangreiche Tage ggf. gekürzt; vollständige Angaben in der Kalenderansicht.',M,compact?18:30,compact?6.8:7);text(page,'Seite '+(i+1)+' / 2',W-78,compact?18:30,7);if(!compact)text(page,wrap(note,6,1000)[0]||'',M,18,6);
+   if(native&&compact)text(page,'Google = individuell aus Google; App = ergänzende App-Farbe. Zuordnung anhand der angezeigten Termine.',M,32,7);
+   text(page,compact?'DIN A4 quer · Alle Tage · Zusatzangaben und umfangreiche Tage: vollständige Angaben im Kalender.':'Zwei-Seiten-Übersicht. Zusatzinfos und sehr umfangreiche Tage ggf. gekürzt; vollständige Angaben in der Kalenderansicht.',M,compact?18:30,compact?6.8:7);text(page,'Seite '+(i+1)+' / 2',W-78,compact?18:30,7);if(!compact)text(page,native?'Google = individuell aus Google; App = ergänzende App-Farbe.':wrap(note,6,1000)[0]||'',M,18,6);
   });pdf.setTitle('Jahresprobenplan '+year);pdf.setAuthor('Feuerwehr Wasser');return {bytes:await pdf.save(),pageCount:2,condensed};
  }
  let dialog,host,status,previous,next,counter,link,download,viewer,url='',bytes=null,pageCount=0,current=1,generation=0,notice='',valid=()=>false;
