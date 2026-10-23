@@ -4483,8 +4483,8 @@ body {
 
 .participant-nav {
   display: grid!important;
-  grid-template-columns: minmax(40px,1fr) minmax(0,auto)!important;
-  grid-template-areas: "brand actions" "status status"!important;
+  grid-template-columns: minmax(0,1fr) minmax(0,auto) minmax(0,1fr)!important;
+  grid-template-areas: "brand actions menu" "status status status"!important;
   gap: 0 14px!important;
   width: min(1500px,100%)!important;
   min-height: 62px;
