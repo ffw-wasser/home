@@ -15,6 +15,7 @@
     const count=pendingMemberStatuses.size;
     hint.textContent=count?`${count} Änderung${count===1?'':'en'} noch nicht übernommen`:`${todayEntries().length} Anmeldung${todayEntries().length===1?'':'en'} für diesen Termin übernommen`;
     const cloud=document.createElement('small');cloud.id='attendanceCloudStatus';cloud.textContent=(count?'Letzter übernommener Stand: ':'')+getAppStorageState().text;hint.append(cloud);
+    if(typeof attendanceDraftOutcome!=='undefined'&&attendanceDraftOutcome){const draft=document.createElement('small');draft.textContent=attendanceDraftOutcome;hint.append(draft);}
     hint.classList.toggle('is-pending',count>0);window.WorkflowUX?.attendance();
   }
   function filterMembers(){

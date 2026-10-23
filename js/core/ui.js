@@ -29,6 +29,7 @@ function lockAdministration(){
   window.TheaterAdmin?.lock();window.PortalAdmin?.lock();window.DrinksAdminBookings?.lock();
   window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();window.DrinksBirthdaySettings?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
+  window.SmartWorkflow?.settings();
   for(const id of ['settingsView','settingsOptionsView','settingsHistoryView','settingsStatisticsView','theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView','settingsCalendarView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id==='theaterView'?(theaterReturn||'eventsView'):id;showView('adminLoginView');break;}
   }

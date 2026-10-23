@@ -153,6 +153,17 @@
   finally{busy=false;submit.disabled=false;for(const [button,disabled] of buttons)if(button.isConnected)button.disabled=disabled;if(reviewSnapshot)reviewControls();}
  }
  function calendarCategory(e){return e.kind==='probe'?(e.sessionType==='Probe'?'probe':'special'):e.kind==='birthday'?'birthday':e.kind==='info'?'info':'other';}
+ function reviewOverview(){
+  if(!adminUnlocked||!oneDriveAdministrationReady())return null;
+  if(!reviewSnapshot||reviewSnapshot.overviewSource!==g.DrinksStore.sourceKey())return {known:false};
+  const events=reviewSnapshot.events.filter(currentEvent);
+  return {known:true,count:events.filter(needsReview).length,groups:events.filter(e=>e.googleIssues?.length).length,stale:reviewSnapshot.stale===true,checkedAt:reviewLastLoad};
+ }
+ function openReview(){
+  if(showView(CALENDAR)===false)return;
+  reviewShowSaved=false;reviewPinned.clear();reviewFilter='all';reviewQuery='';$('review-search').value='';reviewControls();
+  document.getElementById('portal-calendar-nav-events')?.click();
+ }
  function matchesReview(e){return currentEvent(e)&&(reviewShowSaved||needsReview(e)||reviewPinned.has(e.id))&&(reviewFilter==='all'||calendarCategory(e)===reviewFilter)&&(!reviewQuery||[e.title,e.location,date(e),e.sessionType,e.attendanceType,e.clothing].filter(Boolean).join(' ').toLocaleLowerCase('de').includes(reviewQuery));}
  function canRelease(e){return currentEvent(e)&&e.start>Date.now()&&e.kind==='probe'&&!e.approved&&(!Array.isArray(e.recipientIds)||e.recipientIds.length>0);}
  function automaticCandidates(){return (reviewSnapshot?.events||[]).filter(e=>matchesReview(e)&&canRelease(e)&&reviewSelection.has(e.id)&&!reviewEdited.has(e.id));}
@@ -198,12 +209,12 @@
    // Sort chronologically so a just-saved card does not jump to the bottom.
    upcoming.sort((a,b)=>a.start-b.start);
    if(automatic&&previous&&previous.rulesVersion===cal.rulesVersion&&previous.groupsVersion===cal.groupsVersion&&previous.rosterUpdatedAt===cal.rosterUpdatedAt&&previous.stale===cal.stale&&JSON.stringify(previous.events.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic,e.recipientMode,e.groupIds,e.googleIssues,e.note]))===JSON.stringify(upcoming.map(e=>[e.id,e.title,e.kind,e.sessionType,e.approved,e.memberId,e.recipientIds,e.attendanceType,e.location,e.clothing,e.start,e.end,e.automatic,e.recipientMode,e.groupIds,e.googleIssues,e.note]))){
-    reviewSnapshot={...cal,events:previous.events};reviewControls();scheduleExpiry();return;
+    reviewSnapshot={...cal,overviewSource:g.DrinksStore.sourceKey(),events:previous.events};reviewControls();scheduleExpiry();return;
    }
    // Finished events no longer belong to the active H₂O calendar management.
    // The underlying Google calendar and the separately archived attendance
    // protocol are never changed here. Birthday series associations survive.
-   reviewSnapshot={...cal,events:upcoming};
+   reviewSnapshot={...cal,overviewSource:g.DrinksStore.sourceKey(),events:upcoming};
    reviewEdited.clear();reviewEditors.clear();$('review-events').replaceChildren();
    for(const e of reviewSnapshot.events){
     const card=node('article');card.className='portal-event';card.dataset.category=calendarCategory(e);card.dataset.eventId=e.id;card.dataset.saved=String(e.automatic===false);card.dataset.state=needsReview(e)?'unresolved':'saved';
@@ -487,5 +498,5 @@
   queueMicrotask(()=>refreshAttendance(true));
   setInterval(()=>{if(document.hidden)return;if(!byId('attendanceView').hidden)refreshAttendance();if(!document.getElementById(CALENDAR).hidden&&!document.getElementById('portal-calendar-administration').hidden)reviewCalendar({automatic:true});},60000);
  }
- g.PortalAdmin={load,loadCalendar,lock,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

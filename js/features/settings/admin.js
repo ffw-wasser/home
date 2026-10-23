@@ -64,6 +64,7 @@ function ensureProbeTopicDialog() {
   const focusTopicInput=()=>{try{input?.focus({preventScroll:true});}catch(error){input?.focus();}};
   dialog.addEventListener("click",event=>{if(event.target===input||event.target.closest('label[for="probeTopicInput"]'))focusTopicInput();});
   input?.addEventListener("pointerdown",focusTopicInput,{passive:true});
+  input?.addEventListener('input',()=>{currentClosingTopic=input.value;persistAttendanceDraft();});
 }
 function suggestedProbeTopic(){
   if(sessionType==="Einsatz")return "";

@@ -222,6 +222,7 @@ function renderOperationAssignmentStep(){
   status.innerHTML=`<strong>${complete} von ${names.length} vollständig zugeordnet</strong>${errors.length?`<small>${escapeHtml(errors[0])}${errors.length>1?` · ${errors.length-1} weiterer Hinweis${errors.length===2?"":"e"}`:""}</small>`:"<small>Zuordnung ist gültig.</small>"}`;
   footer.classList.toggle("has-errors",errors.length>0);
   footer.querySelector("button").disabled=!names.length||errors.length>0;
+  persistAttendanceDraft();
 }
 function showOperationAttendance(){
   setHomeFlowStage(2);

@@ -1,4 +1,4 @@
-/* Focused workflow feedback. Personal data stays in existing stores; no new persistence. */
+/* Focused workflow feedback; drafts belong to the attendance controller. */
 (function(global){
  'use strict';
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};

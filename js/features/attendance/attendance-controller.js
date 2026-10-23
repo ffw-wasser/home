@@ -1,4 +1,47 @@
 const pendingMemberStatuses=new Map();
+const attendanceDraftKey='fw_v1_attendance_draft';
+let attendanceDraftOutcome='',attendanceDraftSignature='',attendanceDraftSession='',attendanceDraftScope='';
+function attendanceDraftSource(){return JSON.stringify(['fw_onedrive_client_id','fw_onedrive_shared_folder_url'].map(key=>safeStorage.getItem(key)||''));}
+function persistAttendanceDraft(){
+  if(window.AppPrivacy?.clearing)return;
+  const id=currentOperationId||currentSessionId;
+  try{
+    if(!id){safeStorage.removeItem(attendanceDraftKey);attendanceDraftSignature='';attendanceDraftOutcome='';attendanceDraftSession='';attendanceDraftScope='';return;}
+    if(attendanceDraftSession!==id){attendanceDraftSession=id;attendanceDraftScope=attendanceDraftSource();}
+    if(attendanceDraftScope!==attendanceDraftSource()){attendanceDraftOutcome='Datenordner geändert. Den laufenden Termin bitte im bisherigen Ordner fortsetzen.';return;}
+    const data={version:1,id,source:attendanceDraftSource(),type:sessionType,date:today(),topic:currentClosingTopic,pending:[...pendingMemberStatuses],assignments:operationAssignments,roles:operationAssignmentRoles,breathing:breathingProtectionPlanned};
+    const signature=JSON.stringify(data);if(signature===attendanceDraftSignature)return;
+    safeStorage.setItem(attendanceDraftKey,JSON.stringify({...data,updatedAt:Date.now()}));
+    attendanceDraftSignature=signature;attendanceDraftOutcome=safeStorage.persistent?'Entwurf auf diesem Gerät gesichert.':'Entwurf nur für diese Browsersitzung gemerkt.';
+  }catch{attendanceDraftOutcome='Entwurf konnte nicht gesichert werden. Diese Seite bitte geöffnet lassen.';}
+}
+function restoreAttendanceDraft(){
+  try{
+    const saved=JSON.parse(safeStorage.getItem(attendanceDraftKey)||'null'),id=currentOperationId||safeStorage.getItem('fw_v1_current_session_id');
+    if(!id)return;
+    if(saved?.id===id){attendanceDraftSession=id;attendanceDraftScope=saved.source;}
+    const rows=entries.filter(e=>e.operationId===id||e.sessionId===id);
+    if(saved&&saved.id===id&&saved.source===attendanceDraftSource()&&saved.version===1&&['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(saved.type)){
+      if(saved.type==='Einsatz'&&!currentOperationId||saved.type!=='Einsatz'&&currentOperationId)return;
+      sessionType=saved.type;if(!currentOperationId)currentSessionId=id;
+      if(/^\d{4}-\d{2}-\d{2}$/.test(saved.date)&&!Number.isNaN(Date.parse(saved.date)))currentProbeDate=saved.date;
+      currentClosingTopic=String(saved.topic||'').slice(0,300);breathingProtectionPlanned=saved.breathing===true;
+      const allowed=sessionType==='Einsatz'?['Anwesend']:sessionType==='Allgemeine Probe'?['Anwesend','Entschuldigt','Orga']:sessionType==='Sonderprobe'?['Anwesend','Entschuldigt','Betrifft nicht']:['Anwesend','Entschuldigt'];
+      for(const pair of Array.isArray(saved.pending)?saved.pending:[]){if(!Array.isArray(pair))continue;const [memberId,status]=pair,member=members.find(m=>m.id===memberId);if(member&&allowed.includes(status)&&!(sessionType==='Einsatz'&&member.ageDepartment)&&!(sessionType==='Ausschuss Sitzung'&&!member.committeeMember)&&!rows.some(e=>e.storedName===nameForStorage(member)||e.displayName===nameForTile(member)))pendingMemberStatuses.set(memberId,status);}
+      chosenMemberIds=new Set(pendingMemberStatuses.keys());chosenRole='Anwesend';
+      if(currentOperationId){operationAssignments={...(saved.assignments||{})};operationAssignmentRoles={...(saved.roles||{})};}
+      attendanceDraftOutcome='Entwurf wiederhergestellt · Markierungen bitte prüfen und übernehmen.';
+    }else if(!saved&&rows.length){sessionType=rows[0].sessionType||sessionType;currentProbeDate=rows[0].date||systemToday();if(!currentOperationId)currentSessionId=id;}
+  }catch{attendanceDraftOutcome='Gesicherter Entwurf konnte nicht gelesen werden.';}
+}
+function flushAttendanceDraft(){
+  if(window.AppPrivacy?.clearing)return;
+  if(currentOperationId&&byId('operationReportForm')?.hidden===false)try{persistOperationDraft(collectOperationData());}catch{}
+  persistAttendanceDraft();
+}
+window.addEventListener('pagehide',flushAttendanceDraft);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushAttendanceDraft();});
+document.addEventListener('change',event=>{if(['probeDateInput','breathingProtectionPlanned'].includes(event.target?.id))persistAttendanceDraft();});
 let probeCompletionMode="direct";
 function syncStep3ButtonState(){
   const button=byId("exportResetButton");
@@ -105,6 +148,7 @@ function beginOperationFromHome(){
   continueToAttendance();
 }
 function updatePrimaryAction() {
+  persistAttendanceDraft();
   const button=byId("exportResetButton"),rows=todayEntries(),count=rows.length,hasEntries=count>0,pending=pendingMemberStatuses.size;
   if(!button)return;
   button.textContent=sessionType==="Allgemeine Probe"?"Weiter zu Schritt 3":sessionType==="Einsatz"?"Fahrzeuge zuordnen":"Termin prüfen und abschließen";
@@ -126,6 +170,7 @@ function backToMembers() {
 }
 
 function updateSelection() {
+  persistAttendanceDraft();
   const selected = members.find(member => member.id === chosenMemberId);
   const isStandard = sessionType === "Allgemeine Probe";
   const isSpecial = sessionType === "Sonderprobe";
@@ -500,6 +545,7 @@ function requestReturnToHomeStage(){ setHomeFlowStage(1); return true; }
 function discardCurrentAttendanceSession(keepCalendar=false){
   if(!currentSessionId&&!currentOperationId)return false;
   if(!confirm("Termin wirklich abbrechen? Alle Anmeldungen, die Fahrzeugbesetzung und ungespeicherte Berichtsangaben dieses Termins werden verworfen. Abgeschlossene Berichte bleiben erhalten."))return false;
+  window.TerminPackageStatus=null;
   const ids=new Set(todayEntries().map(entry=>entry.id));
   window.PortalAdmin?.discard(keepCalendar);
   entries=entries.filter(entry=>!ids.has(entry.id));
