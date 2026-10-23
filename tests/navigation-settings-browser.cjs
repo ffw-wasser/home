@@ -3,14 +3,23 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const home=page.getByRole('button',{name:'Termin',exact:true});assert.equal(await home.textContent(),'Termin');assert.equal(await home.locator('svg').count(),0);
  assert.equal(await page.locator('.top-nav #cloudSyncButton').count(),0,'connection state is separate from navigation');
  assert.equal(await page.locator('#appConnectionStatus #cloudSyncButton').count(),1);
+ assert.equal(await page.locator('main + #appConnectionStatus + footer.app-footer').count(),1,'status is directly above copyright/version');
  assert.equal(await page.locator('#attendanceView h2').filter({hasText:'Termin beginnen'}).count(),1);
  assert.equal(await page.locator('#attendanceStartEyebrow').isVisible(),false,'no duplicate start heading');
  for(const width of [320,390,768,1024]){
   await page.setViewportSize({width,height:900});
-  const layout=await page.evaluate(()=>{const nav=document.querySelector('.top-nav').getBoundingClientRect(),status=document.querySelector('#appConnectionStatus').getBoundingClientRect(),buttons=['attendanceTab','drinksShortcut','menuToggleButton'].map(id=>document.getElementById(id).getBoundingClientRect());return {fits:document.documentElement.scrollWidth<=innerWidth,separate:status.top>=nav.bottom-1,overlap:buttons.some((a,i)=>buttons.slice(i+1).some(b=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top)),height:buttons.every(b=>b.height>=44)};});
+  const layout=await page.evaluate(()=>{const nav=document.querySelector('.top-nav').getBoundingClientRect(),status=document.querySelector('#appConnectionStatus').getBoundingClientRect(),buttons=['attendanceTab','drinksShortcut','menuToggleButton'].map(id=>document.getElementById(id).getBoundingClientRect());return {fits:document.documentElement.scrollWidth<=innerWidth,separate:status.bottom<=document.querySelector('.app-footer').getBoundingClientRect().top+1&&status.top>=document.querySelector('main').getBoundingClientRect().bottom-1,overlap:buttons.some((a,i)=>buttons.slice(i+1).some(b=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top)),height:buttons.every(b=>b.height>=44)};});
   assert.ok(layout.fits&&layout.separate&&!layout.overlap&&layout.height,JSON.stringify({width,layout}));
   const contrast=await page.locator('#cloudSyncButton').evaluate(n=>({button:getComputedStyle(n).color,label:getComputedStyle(n.querySelector('small')).color,visible:getComputedStyle(n.querySelector('.cloud-sync-copy')).display!=='none'}));assert.ok(contrast.visible&&contrast.button===contrast.label&&contrast.label!=='rgb(255, 255, 255)','connection status is readable '+width);
  }
+ for(const width of [320,390,768,1024])for(const scale of [100,200])for(const state of ['online','error']){
+  await page.setViewportSize({width,height:900});await page.evaluate(({scale,state})=>{document.documentElement.style.fontSize=scale+'%';oneDriveStatus(state==='online'?'Synchronisiert':'Synchronisierung fehlgeschlagen',state);},{scale,state});
+  await page.locator('#cloudSyncButton').scrollIntoViewIfNeeded();
+  const layout=await page.locator('#cloudSyncButton').evaluate(el=>{const r=el.getBoundingClientRect();return {fits:r.left>=0&&r.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth,touch:r.height>=44,wrap:el.scrollWidth<=el.clientWidth+1};});
+  assert.ok(layout.fits&&layout.touch&&layout.wrap,JSON.stringify({width,scale,state,layout}));
+ }
+ await page.evaluate(()=>document.documentElement.style.fontSize='100%');
+ if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.setViewportSize({width:390,height:780});await page.evaluate(()=>oneDriveStatus('Synchronisiert','online'));await page.locator('.app-footer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.QA_OUTPUT,'sync-footer-390.png')});}
  await page.evaluate(()=>{window.qaSignedIn=oneDriveSignedIn;oneDriveSignedIn=()=>true;oneDriveStateConfirmed=true;oneDriveLocalRevision=oneDriveSyncedRevision;notifyAppStorageState();});
  assert.equal(await page.locator('#cloudSyncState').textContent(),'Synchronisiert');
  await page.evaluate(()=>{oneDriveLocalRevision++;notifyAppStorageState();});assert.equal(await page.locator('#cloudSyncState').textContent(),'Speicherung ausstehend');
