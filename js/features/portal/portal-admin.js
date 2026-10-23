@@ -11,7 +11,7 @@
  async function request(path,data={}){
   const version=generation,source=g.DrinksStore.sourceKey(),c=await connection();
   const current=()=>{if(version!==generation)throw Error('Zugang wurde geändert. Bitte erneut öffnen.');if(source!==c.source||g.DrinksStore.sourceKey()!==source){lock();throw Error('Mitgliederordner wurde geändert. Bitte erneut öffnen.');}};
-  try{current();const result=await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});current();return result;}
+  try{current();const result=await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});current();if((['configure','classify','groups','colors','google-colors','display'].includes(path)&&Object.keys(data).length>0)||(path==='list'&&data.force===true))g.CalendarSidebar?.clear();return result;}
   catch(e){if(e.status===404&&e.message==='Nicht gefunden.')throw Error('Bitte zuerst den bestehenden Cloudflare-Worker für das H₂O Portal aktualisieren.');throw Object.assign(Error(g.ConnectionStatus?.message(e)||e.message),{status:e.status});}
  }
 

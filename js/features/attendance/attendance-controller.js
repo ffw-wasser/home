@@ -579,7 +579,7 @@ function setHomeFlowStage(stage){
   if(stage===2)window.PortalAdmin?.autoStageCalendarReplies?.();
   updatePrimaryAction();
   window.syncHeaderProbeSummary?.();
-  syncHomeFlowProgress(stage);if(stage===1)window.CalendarSidebar?.refresh();else window.CalendarSidebar?.clear();window.WorkflowUX?.attendance();
+  syncHomeFlowProgress(stage);if(stage===1)window.CalendarSidebar?.refresh();else window.CalendarSidebar?.hide();window.WorkflowUX?.attendance();
 }
 
 function continueToAttendance(){
