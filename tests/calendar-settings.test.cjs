@@ -8,3 +8,12 @@ function fixture(allowed){
 test('Kalenderverwaltung bleibt ohne Freigabe verborgen und ruft keine privaten Daten ab',async()=>{const f=fixture(false);await f.c.PortalAdmin.loadCalendar();assert.equal(f.get('portal-calendar-administration').hidden,true);assert.equal(f.requests.length,0);});
 test('Kalenderverwaltung öffnet geschützt und entfernt private Inhalte beim Sperren',async()=>{const f=fixture(true);await f.c.PortalAdmin.loadCalendar();assert.equal(f.get('portal-calendar-administration').hidden,false);assert.equal(f.get('portal-admin-calendar').value,'https://example.invalid/test.ics');f.c.PortalAdmin.lock();assert.equal(f.get('portal-calendar-administration').hidden,true);assert.equal(f.get('portal-admin-calendar').value,'');assert.equal(f.get('portal-calendar-admin-open').hidden,false);});
 test('Persönlicher Code lädt Mitglieder unabhängig von der Kalenderkonfiguration',async()=>{const f=fixture(true);f.get('settingsCalendarView').hidden=true;await f.c.PortalAdmin.load();assert.equal(f.requests.length,0);assert.match(f.get('portal-admin-status').textContent,/Mitglied auswählen/);});
+
+for(const reason of ['Sperren','Quellenwechsel'])test('Verspäteter Kalenderabruf nach '+reason+' stellt keine privaten Inhalte wieder her',async()=>{
+ const f=fixture(true),request=f.c.DrinksPush.request;let release,started;const pending=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
+ f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/list')){started();await pending;}return request(...args);};
+ const opening=f.c.PortalAdmin.loadCalendar();await waiting;
+ if(reason==='Sperren')f.c.PortalAdmin.lock();else f.c.DrinksStore.sourceKey=()=> 'different-source';
+ release();await opening;
+ assert.equal(f.get('portal-calendar-administration').hidden,true);assert.equal(f.get('portal-admin-calendar').value,'');assert.equal(f.get('portal-admin-review-events').children.length,0);assert.equal(f.get('portal-keyword-groups').children.length,0);
+});
