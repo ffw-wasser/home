@@ -10,6 +10,7 @@
  function accessCurrent(){return authorized()&&(portal||source===g.DrinksStore.sourceKey());}
  function render(){
   if(!$('months'))return;
+  if(portal){g.YearPlanPdf?.clear();$('print').disabled=!loaded||!privateData;}
   $('heading-year').textContent=year;$('year').value=year;$('prev').disabled=year<=2000;$('next').disabled=year>=2100;
   $('unlock').hidden=portal||privateData;
   $('birthdays').disabled=!privateData;
@@ -92,13 +93,19 @@
   const change=next=>{if(!Number.isInteger(next)||next<2000||next>2100){$('year').value=year;return;}year=next;load();};
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
   $('today').onclick=()=>{year=Number(dayKey(Date.now()).slice(0,4));load(true);};$('reload').onclick=()=>load();
-  $('unlock').onclick=()=>{if(!portal&&requireAdmin('yearPlanView'))load();};$('print').onclick=()=>{if(privateData&&!accessCurrent())return lock();g.print();};
+  $('unlock').onclick=()=>{if(!portal&&requireAdmin('yearPlanView'))load();};$('print').onclick=()=>{
+   if(privateData&&!accessCurrent())return lock();
+   if(!portal){g.print();return;}
+   if(!loaded||!privateData)return;
+   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,weekend:row.classList.contains('is-weekend'),holiday:row.classList.contains('is-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:event.querySelector('p')?.textContent||'',birthday:event.classList.contains('is-birthday')}))}))}));
+   g.YearPlanPdf.open({year,months,note:message+' '+$('holiday-status').textContent,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
+  };
   for(const id of ['filter','birthdays','holidays'])$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
   const monthLabel=node('label','Monat '),monthSelect=node('select');monthLabel.className='year-plan-month-jump';monthSelect.id='year-plan-month';monthSelect.setAttribute('aria-label','Zum Monat springen');
   for(let month=0;month<12;month++){const option=node('option',format(Date.UTC(2026,month,15),{month:'long'}));option.value=month;monthSelect.append(option);}monthSelect.value=Number(dayKey(Date.now()).slice(5,7))-1;monthLabel.append(monthSelect);$('today').before(monthLabel);
   monthSelect.onchange=()=>document.getElementById('year-plan-month-'+monthSelect.value)?.scrollIntoView({block:'start',behavior:portal?'instant':'smooth'});
   if(portal){
-   $('reload').textContent='↻';$('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Drucken / PDF';
+   $('reload').textContent='↻';$('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Als PDF ansehen';
    // The personal portal has its own authentication and scrolling lifecycle.
    g.addEventListener('portal-pagechange',e=>{if(e.detail?.page==='more-year-plan')load(true);else if(privateData||message==='Jahresplan wird geladen …')lock();});
    const other=$('filter').querySelector('option[value="other"]');if(other)other.remove();
