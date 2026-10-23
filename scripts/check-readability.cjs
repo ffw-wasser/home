@@ -16,7 +16,7 @@ function inspect(){
   if(size>0&&(size<14-.01||ratio<min&&!image))findings.push({selector:e.id?'#'+e.id:e.tagName.toLowerCase()+'.'+[...e.classList].join('.'),text:text.slice(0,70),size,ratio:+ratio.toFixed(2),color:s.color,bg:bg.map(Math.round),image});
  }
  const overflow=document.documentElement.scrollWidth>innerWidth||[...document.querySelectorAll('main')].some(e=>e.clientWidth&&e.scrollWidth>e.clientWidth+1);
- const overflowElements=overflow?[...document.querySelectorAll('body *')].filter(e=>e.checkVisibility()&&e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,id:e.id,classes:e.className,text:e.textContent.slice(0,60),width:e.getBoundingClientRect().width})).slice(-20):[];return {findings,overflow,overflowElements};
+ const overflowElements=overflow?[...document.querySelectorAll('body *')].filter(e=>e.checkVisibility()&&(e.getBoundingClientRect().right>innerWidth+1||e.clientWidth&&e.scrollWidth>e.clientWidth+1)).map(e=>({tag:e.tagName,id:e.id,classes:e.className,text:e.textContent.slice(0,60),width:e.getBoundingClientRect().width,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth})).slice(-20):[];return {findings,overflow,overflowElements};
 }
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.QA_BROWSER?{channel:process.env.QA_BROWSER}:{})});const results=[],errors=[];try{
  const page=await browser.newPage({serviceWorkers:'block'});page.on('pageerror',e=>errors.push(e.message));
@@ -38,6 +38,6 @@ function inspect(){
  assert.equal(await page.locator('#portal-events article').count(),3,'all cards remain visible in chronological order');
  assert.equal(await page.locator('#portal-later-events').count(),0,'answered appointments are never collapsed');
  const out=process.env.QA_REPORT||path.join(root,'../readability-results.json');fs.writeFileSync(out,JSON.stringify({results,errors},null,2));
- console.log('Readability inventory:',out);console.log(JSON.stringify({screens:results.length,overflow:results.filter(r=>r.overflow).map(r=>[r.page,r.width]),uniqueFindings:[...new Map(results.flatMap(r=>r.findings).map(f=>[f.selector+f.color+f.size,f])).values()],errors},null,2));
+ console.log('Readability inventory:',out);console.log(JSON.stringify({screens:results.length,overflow:results.filter(r=>r.overflow).map(r=>({page:r.page,width:r.width,elements:r.overflowElements})),uniqueFindings:[...new Map(results.flatMap(r=>r.findings).map(f=>[f.selector+f.color+f.size,f])).values()],errors},null,2));
  if(process.env.QA_STRICT){assert.deepEqual(errors,[]);assert.equal(results.some(r=>r.overflow),false,'horizontal overflow');assert.equal(results.some(r=>r.findings.length),false,'font size or contrast findings');}
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
