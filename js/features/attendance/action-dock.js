@@ -54,7 +54,7 @@
     if (scheduled) return;
     scheduled = true;requestAnimationFrame(sync);
   }
-  document.addEventListener("DOMContentLoaded", schedule, {once: true});
+  document.addEventListener("DOMContentLoaded",()=>{document.getElementById("homeOperationStart")?.addEventListener("click",beginOperationFromHome);schedule();},{once:true});
   document.addEventListener("attendance:updated", schedule);
   document.addEventListener("click", schedule, true);
   document.addEventListener("change", schedule, true);

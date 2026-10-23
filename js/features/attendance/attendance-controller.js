@@ -97,6 +97,13 @@ function beginAttendanceFromContext(){
   byId('attendanceAlternatives').open=true;byId('attendanceSpontaneous').open=true;
   byId('sessionTypes')?.querySelector('button')?.focus();
 }
+function beginOperationFromHome(){
+  if(window.__sessionTypeTransitionRunning)return;
+  if(currentOperationId&&sessionType==='Einsatz')return beginAttendanceFromContext();
+  if((currentSessionId||currentOperationId)&&!discardCurrentAttendanceSession())return;
+  chooseSessionType('Einsatz');
+  continueToAttendance();
+}
 function updatePrimaryAction() {
   const button=byId("exportResetButton"),rows=todayEntries(),count=rows.length,hasEntries=count>0,pending=pendingMemberStatuses.size;
   if(!button)return;
@@ -532,6 +539,7 @@ function setHomeFlowStage(stage){
     else{element.style.display="none";element.setAttribute("aria-hidden","true");}
   };
 
+  applyVisibility(byId("homeStartLayout"),stage===1,"grid");
   applyVisibility(sessionPanel,stage===1,"block");
   applyVisibility(attendanceLayout,stage===2,"grid");
   applyVisibility(workspace,stage===2,"grid");
@@ -660,7 +668,7 @@ function ensureStagedHomeFlow(){
     sessionHeading.style.setProperty("transform","none","important");
   }
   if(!byId("homeFlowProgress")){
-    const progress=document.createElement("nav");progress.id="homeFlowProgress";progress.className="home-flow-progress";progress.setAttribute("aria-label","Terminablauf");sessionPanel.parentElement.insertBefore(progress,sessionPanel);
+    const progress=document.createElement("nav");progress.id="homeFlowProgress";progress.className="home-flow-progress";progress.setAttribute("aria-label","Terminablauf");attendance.insertBefore(progress,byId("homeStartLayout")||sessionPanel);
     progress.addEventListener("click",event=>{const button=event.target.closest("[data-flow-indicator]");if(!button||button.disabled)return;const number=Number(button.dataset.flowIndicator);if(number===1){setHomeFlowStage(1);requestAnimationFrame(()=>sessionPanel.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===2){setHomeFlowStage(2);requestAnimationFrame(()=>(byId("homeFlowProgress")||workspace)?.scrollIntoView({behavior:"smooth",block:"start"}));}else if(number===3){setHomeFlowStage(3);}else if(number===4&&sessionType==="Einsatz"){if(!operationNames?.().length)return;setHomeFlowStage(3);openOperationReportForm?.();syncHomeFlowProgress(4);}});
   }
   syncHomeFlowProgress(homeFlowStage);

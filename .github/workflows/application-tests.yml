@@ -63,3 +63,5 @@ jobs:
         run: node tests/calendar-groups-browser.cjs
       - name: Test calendar information, colors and read-only iPad sidebar
         run: node tests/calendar-display-browser.cjs
+      - name: Test separate incident tile and responsive home layout
+        run: node tests/home-operation-browser.cjs
