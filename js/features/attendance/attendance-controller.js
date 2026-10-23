@@ -126,7 +126,7 @@ function syncAttendanceStart(){
   const card=byId('attendanceStartCard');if(!card)return;
   const state=attendanceStartState();
   byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;
-  byId('attendanceStartEyebrow').textContent=state.running?'Laufender Termin':state.event?'Aus deinem Kalender':'Termin beginnen';
+  const eyebrow=byId('attendanceStartEyebrow');eyebrow.textContent=state.running?'Laufender Termin':state.event?'Aus deinem Kalender':'';eyebrow.hidden=!eyebrow.textContent;
   const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
   const calendarStatus=byId('attendanceStartCalendarStatus');if(calendarStatus){calendarStatus.textContent=byId('portal-calendar-status')?.textContent||'';calendarStatus.hidden=state.running||Boolean(state.type)||!calendarStatus.textContent;}
   const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Erfassung starten“ zu den Personen wechseln.':'Terminart wählen und die Erfassung starten.';
@@ -720,7 +720,7 @@ function ensureStagedHomeFlow(){
   }
   syncHomeFlowProgress(homeFlowStage);
 
-  const title=sessionPanel.querySelector("h2,h3");if(title)title.textContent="Dein Termin";
+  sessionPanel.querySelector(".panel-heading")?.remove();
   if(!byId('attendanceStartCard')){
     const card=document.createElement('section');card.id='attendanceStartCard';card.className='attendance-start-card';card.innerHTML='<p id="attendanceStartEyebrow" class="eyebrow"></p><h2 id="attendanceStartTitle"></h2><p id="attendanceStartMeta"></p><p id="attendanceStartSummary" role="status"></p><p id="attendanceStartCalendarStatus" class="help-text" role="status" hidden></p><div id="attendanceStartActions" class="attendance-start-actions"></div><div id="attendanceStartSecondary"></div>';
     const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen Termin wählen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontane Terminart wählen</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
