@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=fs.readFileSync('js/features/attendance/attendance-controller.js','utf8');
 function fixture(options={}){
  const nodes=new Map(),calls=[],get=id=>{if(!nodes.has(id))nodes.set(id,{querySelector:()=>({focus:()=>calls.push('focus')})});return nodes.get(id);};
- const c=vm.createContext({Intl,Date,members:[],currentSessionId:'',currentOperationId:'',sessionType:'Allgemeine Probe',pendingSessionType:'',pendingMemberStatuses:new Map(),today:()=> '2026-10-16',todayEntries:()=>[],window:{PortalAdmin:{selectedEvent:()=>options.event||null}},byId:get,setHomeFlowStage:stage=>calls.push(stage),renderSessionType(){},renderMembers(){},renderEntries(){},updateSelection(){},chooseSessionType(type,options){calls.push({type,calendar:options.calendar});c.pendingSessionType=type;},continueToAttendance:()=>calls.push('start'),...options});
+ const c=vm.createContext({Intl,Date,persistAttendanceDraft(){},members:[],currentSessionId:'',currentOperationId:'',sessionType:'Allgemeine Probe',pendingSessionType:'',pendingMemberStatuses:new Map(),today:()=> '2026-10-16',todayEntries:()=>[],window:{PortalAdmin:{selectedEvent:()=>options.event||null}},byId:get,setHomeFlowStage:stage=>calls.push(stage),renderSessionType(){},renderMembers(){},renderEntries(){},updateSelection(){},chooseSessionType(type,options){calls.push({type,calendar:options.calendar});c.pendingSessionType=type;},continueToAttendance:()=>calls.push('start'),...options});
  vm.runInContext(source.slice(source.indexOf('function attendanceStartState'),source.indexOf('function backToMembers')),c);return {c,get,calls};
 }
 test('Kalendertermin zeigt Namen und startet direkt mit übernommener Terminart',()=>{

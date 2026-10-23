@@ -74,6 +74,23 @@
     const button=card.querySelector('button');button.textContent=label;button.onclick=()=>openSetupStep(key);
     if(!document.getElementById('smartSetupReview')){const details=document.createElement('details');details.id='smartSetupReview';details.className='dr-admin-details';details.innerHTML='<summary>Einrichtung prüfen</summary><p>Verbindung, Passwort und Mitglieder prüfen. Sicherungen findest du unter „Berichte und Datensicherung“; Getränkekonten unter „Getränkeverwaltung → Sichern &amp; Zurücksetzen“.</p>';details.ontoggle=()=>{if(details.open)updateSetupStatus();};page.append(details);}
     if(document.getElementById('smartSetupReview').open)updateSetupStatus();
+    renderTasks(page);
+  }
+  function renderTasks(page){
+    let panel=document.getElementById('smartTasks');
+    if(!panel){panel=document.createElement('article');panel.id='smartTasks';panel.className='panel smart-tasks';page.querySelector('.screen-heading')?.after(panel);}
+    if(!adminUnlocked){panel.hidden=true;panel.replaceChildren();return;}panel.hidden=false;
+    const tasks=[],calendar=window.PortalAdmin?.reviewOverview?.(),state=getAppStorageState();
+    if(window.TerminPackageStatus?.failed)tasks.push({title:'Terminpaket nicht gespeichert',text:'Der Abschluss ist noch offen. Eingaben prüfen und erneut speichern.',run:()=>{setHomeFlowStage(2);showView('attendanceView');}});
+    if(state.kind!=='cloud')tasks.push({title:'Speicherstand prüfen',text:state.text,run:()=>document.getElementById('cloudSyncButton')?.click()});
+    if(!calendar?.known)tasks.push({title:'Kalender prüfen',text:'Noch kein Kalenderstand für die Prüfung geladen.',run:()=>window.PortalAdmin?.openReview()});
+    else if(calendar.stale||Date.now()-calendar.checkedAt>300000)tasks.push({title:'Kalender aktualisieren',text:'Die Prüfung benötigt einen aktuellen Kalenderstand.',run:()=>window.PortalAdmin?.openReview()});
+    else if(calendar.count)tasks.push({title:calendar.count+' Termine prüfen',text:calendar.groups?calendar.groups+' Termine mit Hinweisen zu den Google-Angaben.':'Einordnung oder Freigabe noch offen.',run:()=>window.PortalAdmin?.openReview()});
+    const quality=qualityData();if(quality.length)tasks.push({title:'Berichte vervollständigen',text:quality.length+' Hinweise in den geladenen Berichten.',run:()=>{showView('settingsStatisticsView');window.SmartWorkflow.statistics();document.getElementById('smartDataQualityPanel')?.scrollIntoView({block:'start'});}});
+    panel.innerHTML='<h3>Handlungsbedarf</h3><p class="help-text">Aktueller Speicherstand und geladene Kalender- und Berichtsdaten.</p><div class="smart-task-list"></div>';
+    const list=panel.querySelector('.smart-task-list');
+    if(!tasks.length){list.textContent='Keine offenen Hinweise in den geladenen Daten.';return;}
+    for(const task of tasks){const button=document.createElement('button');button.type='button';button.className='smart-task';button.innerHTML='<span><strong>'+esc(task.title)+'</strong><small>'+esc(task.text)+'</small></span><span aria-hidden="true">→</span>';button.onclick=task.run;list.append(button);}
   }
   function syncOneDriveFreshness(){const el=document.getElementById('oneDriveDetail');if(!el)return;const last=localStorage.getItem('fw_onedrive_last_sync');if(last&&!el.textContent.includes('Letzte erfolgreiche')){const d=new Date(last);if(!Number.isNaN(d.getTime()))el.textContent+=' · Letzte erfolgreiche Synchronisierung: '+d.toLocaleString('de-DE');}}
   function ensureSetupStatus(){let d=document.getElementById('smartSetupStatus');if(d)return d;d=document.createElement('section');d.id='smartSetupStatus';d.className='smart-setup-inline';d.innerHTML='<p class="smart-setup-status" role="status"></p><ol><li data-setup="onedrive"><b>1</b><div><strong>OneDrive</strong><span></span></div></li><li data-setup="password"><b>2</b><div><strong>Admin-Passwort</strong><span></span></div></li><li data-setup="members"><b>3</b><div><strong>Mitglieder</strong><span></span></div></li></ol>';document.getElementById('smartSetupReview').append(d);for(const item of d.querySelectorAll('[data-setup]')){const button=document.createElement('button');button.type='button';button.className='outline-button';button.textContent='Öffnen';button.onclick=()=>openSetupStep(item.dataset.setup);item.append(button);}return d;}

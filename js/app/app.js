@@ -166,11 +166,15 @@ function buildSettingsSubpages(){
   const filesDescription=byId("settingsFilesView")?.querySelector(".screen-heading p:not(.eyebrow)");if(filesDescription)filesDescription.textContent="Terminpakete, optionale Einzel-Exporte und App-Datensicherungen verwalten.";
 }
 
-function updateHelpForCurrentFeatures(){}
+function updateHelpForCurrentFeatures(){
+  const help=byId('helpView');if(!help||byId('attendanceDraftHelp'))return;
+  const section=document.createElement('details');section.id='attendanceDraftHelp';section.className='help-section';section.innerHTML='<summary>Begonnene Erfassung fortsetzen</summary><p>Datum, Thema, offene Anwesenheitsmarkierungen und Einsatzzuordnungen werden als Entwurf auf diesem Gerät gesichert. Nach dem Neuladen auf „Erfassung fortsetzen“ tippen und die Angaben prüfen. Markierungen zählen erst nach „Übernehmen“ als erfasst.</p><p>Einsatzberichte behalten auch ihre Texte. Ein lokaler Entwurf ersetzt die Ablage des Terminpakets in OneDrive nicht. Erst die bestätigte Speicherung schließt den Termin ab. „Termin abbrechen“ oder Abmelden entfernt den Entwurf. Ein Entwurf aus einem anderen Datenordner wird nicht übernommen.</p>';help.append(section);
+}
 
 members = loadArray(KEYS.members, DEFAULT_MEMBERS);
 entries = loadArray(KEYS.entries, []);
 csvArchive = loadArray(KEYS.archive, []);
+restoreAttendanceDraft();
 
 byId("sessionTypes")?.addEventListener("click", event => {
   const button=event.target.closest("[data-session-type]");

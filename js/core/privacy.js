@@ -10,6 +10,7 @@
   safeStorage.setItem(MARKER,'1');
   // Clear all currently displayed data immediately; reloading releases remaining JS references.
   global.Drinks?.reset();global.clearOneDriveHistory?.();global.WorkflowUX?.reset();
+  global.TerminPackageStatus=null;
   members=[];entries=[];csvArchive=[];adminUnlocked=false;pendingSettingsTarget='';chosenMemberId='';chosenMemberIds.clear();
   if(typeof pendingMemberStatuses!=='undefined')pendingMemberStatuses.clear();
   if(typeof resetDocumentReportState==='function')resetDocumentReportState();
