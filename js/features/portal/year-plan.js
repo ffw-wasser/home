@@ -40,7 +40,7 @@
      const key=prefix+'-'+String(day).padStart(2,'0'),noon=Date.parse(key+'T12:00:00Z'),row=node('div');row.className='year-plan-day';
      if(new Date(noon).getUTCDay()===0)row.classList.add('is-sunday');if(key===today)row.classList.add('is-today');
      const date=node('span',day+' '+format(noon,{weekday:'short'}));date.className='year-plan-date';const content=node('div');row.append(date,content);card.append(row);
-     if($('holidays').checked)for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');const label=node('small',holiday.name);label.className='year-plan-holiday';content.append(label);}
+     if($('holidays').checked)for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');const label=node('small',holiday.name);label.className='year-plan-holiday';label.dataset.holidayStart=String(holiday.start===key||key===year+'-01-01');content.append(label);}
      for(const holiday of g.PublicHolidays.forDay(key)){row.classList.add('is-public-holiday');const label=node('small',holiday.name);label.className='year-plan-public-holiday';content.append(label);}
      for(const {event:e,starts,time:clock} of byDay.get(key)||[]){
       const details=node('details');details.className='year-plan-event '+(e.kind==='birthday'?'is-birthday':e.kind==='probe'?'is-probe':'is-other');
@@ -98,7 +98,7 @@
  function afterView(view){
   const settings=document.getElementById('settingsView'),tab=document.getElementById('settingsTab');
   if(tab){const active=view.startsWith('settings')||view==='adminLoginView';tab.classList.toggle('active',active);if(active)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');}
-  if(view==='attendanceView')g.CalendarSidebar?.refresh();else g.CalendarSidebar?.clear();
+  if(view==='attendanceView')g.CalendarSidebar?.refresh();else g.CalendarSidebar?.hide();
   if(view==='yearPlanView')load(true);
   else if(privateData||message==='Jahresplan wird geladen …')lock();
  }
@@ -111,7 +111,7 @@
   $('print').textContent='Als PDF ansehen';$('print').onclick=()=>{
    if(privateData&&!accessCurrent())return lock();
    if(!loaded||!privateData)return;
-   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,googleColor:event.dataset.googleColor,birthday:event.classList.contains('is-birthday')}))}))}));
+   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),compactHolidays:[...row.querySelectorAll('.year-plan-public-holiday,.year-plan-holiday[data-holiday-start="true"]')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,googleColor:event.dataset.googleColor,birthday:event.classList.contains('is-birthday')}))}))}));
    g.YearPlanPdf.open({year,months,colors,personal:portal,note:message+' '+$('holiday-status').textContent,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
   };
   for(const id of ['filter','birthdays','holidays'])$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
