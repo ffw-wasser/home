@@ -6,13 +6,12 @@
  const format=(ms,options)=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',...options}).format(new Date(ms));
  const dayKey=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
  let year=Number(dayKey(Date.now()).slice(0,4)),events=[],generation=0,privateData=false,loaded=false,source='',message='';
- function authorized(){return portal?g.H2OPortal?.hasAccess()===true:typeof adminUnlocked!=='undefined'&&adminUnlocked&&checkAdminSession()&&oneDriveAdministrationReady();}
+ function authorized(){return portal?g.H2OPortal?.hasAccess()===true:typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady();}
  function accessCurrent(){return authorized()&&(portal||source===g.DrinksStore.sourceKey());}
  function render(){
   if(!$('months'))return;
   if(portal){g.YearPlanPdf?.clear();$('print').disabled=!loaded||!privateData;}
   $('heading-year').textContent=year;$('year').value=year;$('prev').disabled=year<=2000;$('next').disabled=year>=2100;
-  $('unlock').hidden=portal||privateData;
   $('birthdays').disabled=!privateData;
   $('status').textContent=message;
   $('holiday-status').textContent=g.SchoolHolidays.complete(year)?'Landesweite Ferien für '+year+' vollständig erfasst.':'Für '+year+' liegen keine vollständigen Feriendaten vor. Einzelne bekannte Zeiträume werden angezeigt.';
@@ -63,24 +62,28 @@
     if(!privateAccess)throw Error('Bitte mit deinem persönlichen H₂O-Zugang anmelden.');
     result=await g.H2OPortal.api('year',{year:selected});
     if(epoch!==generation)return;if(!authorized())throw Error('Der Portalzugang wurde gesperrt.');
-   }else if(privateAccess){
+   }else{
+    if(!privateAccess)throw Error('Bitte die vorhandene OneDrive-Verbindung des Gerätehauses herstellen und den Jahresplan aktualisieren. Eine Verwaltungs-PIN ist nicht erforderlich.');
     const c=await g.DrinksCentral.connection();if(!c)throw Error('Bitte den Kontodienst verbinden.');source=g.DrinksStore.sourceKey();
     if(c.source!==source)throw Error('Der Datenordner wurde gewechselt.');
-    result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected});
-    if(epoch!==generation)return;if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Verwaltung wurde gesperrt oder der Datenordner gewechselt.');
-   }else{
-    const origin=localStorage.getItem('h2o_calendar_public_origin')||'';
-    if(!g.DrinksPush.validOrigin(origin))throw Error('Bitte die Kalenderverbindung unter Verwaltung → Kalender & Gruppen einrichten.');
-    const response=await fetch(origin.replace(/\/$/,'')+'/calendar/public?year='+selected,{cache:'no-store',redirect:'error'});result=await response.json();if(!response.ok)throw Error(result.error||'Kalender momentan nicht erreichbar.');
+    // This read-only view uses the configured device connection independently
+    // of the administration PIN. Never fall back to the reduced public feed.
+    for(let attempt=0;attempt<2;attempt++){
+     if(epoch!==generation)return;
+     if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
+     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected},20000);break;}
+     catch(e){const network=e instanceof TypeError||['AbortError','TimeoutError'].includes(e?.name)||/load failed|failed to fetch|networkerror|network request failed/i.test(e?.message||'');if(attempt||!network)throw e;}
+    }
+    if(epoch!==generation)return;if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
    }
    if(epoch!==generation)return;
    if(result.year!==selected||!Array.isArray(result.events))throw Error('Für den Jahresplan bitte den aktualisierten Kalenderdienst bereitstellen.');
    events=result.events.filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;
-   message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben und dein Geburtstag. ':privateAccess?'Vollständiger Jahresplan. ':'Öffentliche Ansicht: nur freigegebene Proben, ohne persönliche Angaben. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
+   message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben und dein Geburtstag. ':'Vollständiger Jahresplan für das Gerätehaus. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
    render();if(scroll)jump();
-  }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=e.message;render();}
+  }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();}
  }
- function lock(){generation++;events=[];privateData=false;loaded=false;source='';message=portal?'Bitte den persönlichen Portalzugang erneut öffnen.':'Verwaltung gesperrt. Zum Laden der öffentlichen Ansicht „Aktualisieren“ wählen.';render();}
+ function lock(){generation++;events=[];privateData=false;loaded=false;source='';message=portal?'Bitte den persönlichen Portalzugang erneut öffnen.':'Bitte den Jahresplan über die Gerätehaus-Verbindung erneut laden.';render();}
  function afterView(view){
   const settings=document.getElementById('settingsView'),tab=document.getElementById('settingsTab');
   if(tab){const active=view.startsWith('settings')||view==='adminLoginView';tab.classList.toggle('active',active);if(active)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');}
@@ -93,7 +96,7 @@
   const change=next=>{if(!Number.isInteger(next)||next<2000||next>2100){$('year').value=year;return;}year=next;load();};
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
   $('today').onclick=()=>{year=Number(dayKey(Date.now()).slice(0,4));load(true);};$('reload').onclick=()=>load();
-  $('unlock').onclick=()=>{if(!portal&&requireAdmin('yearPlanView'))load();};$('print').onclick=()=>{
+  $('print').onclick=()=>{
    if(privateData&&!accessCurrent())return lock();
    if(!portal){g.print();return;}
    if(!loaded||!privateData)return;
