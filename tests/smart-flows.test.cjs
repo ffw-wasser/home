@@ -52,3 +52,11 @@ test('Doppeltes Abschließen während der Vorschau startet nur eine Prüfung; Ab
  const first=f.c.window.closeDay();await f.c.window.closeDay();assert.equal(previews,1);release(false);await first;
  const next=f.c.window.closeDay();assert.equal(previews,2);release(false);await next;
 });
+
+test('Gruppenprobe zählt nur eingeladene, nicht erfasste Personen als fehlend',async()=>{
+ for(const ids of [['a'],['a','b'],[]]){const f=completionApp('Sonderprobe');f.c.window.PortalAdmin={attendanceAudience:()=>({recipientIds:ids})};await f.c.window.closeDay();assert.equal(f.getPreview()[1].find(x=>x[0]==='Als Fehlt exportiert')[1],ids.includes('b')?'1':'0');}
+});
+test('Unbekannte private Einladungsliste verhindert falschen Export',async()=>{const f=completionApp();f.c.window.PortalAdmin={attendanceAudience:()=>({pending:true})};await f.c.window.closeDay();assert.equal(f.getPreview(),undefined);assert.match(f.warnings[0],/eingeladenen Personen/);});
+test('CSV und PDF behandeln nicht eingeladene Mitglieder als Betrifft nicht, explizites Fehlt bleibt erhalten',async()=>{
+ const f=completionApp('Sonderprobe');f.c.window.PortalAdmin={attendanceAudience:()=>({recipientIds:['a','b']})};f.c.window.SmartWorkflow.confirm=async()=>true;f.c.todayEntries=()=>[{storedName:'Test, A',status:'Anwesend',sessionType:'Sonderprobe'},{storedName:'Test, B',status:'Fehlt',sessionType:'Sonderprobe',date:'2026-10-09',time:''}];f.c.csvCell=x=>String(x??'');f.c.probePdfBlob=(rows,type,counts)=>{assert.equal(rows.find(x=>x.name==='Alter, C').status,'Betrifft nicht');assert.equal(rows.find(x=>x.name==='Test, B').status,'Fehlt');assert.equal(counts.missing,1);assert.equal(counts.notApplicable,1);return {};};f.c.buildTerminPackage=async options=>{assert.match(options.csvContent,/Alter, C;Sonderprobe;Betrifft nicht/);throw Error('captured');};await assert.rejects(f.c.window.closeDay(),/captured/);
+});

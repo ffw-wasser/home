@@ -445,6 +445,14 @@
  function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if((currentOperationId||currentSessionId&&(todayEntries().length||pendingMemberStatuses.size))&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Der laufende Termin enthält bereits Anwesenheiten. Bitte diesen Termin zuerst abschließen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){const spontaneous=document.getElementById('attendanceSpontaneous');if(spontaneous)spontaneous.open=false;if(!currentSessionId&&!currentOperationId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(sessionType)){if(typeof chooseSessionType==='function')chooseSessionType(sessionType,{calendar:true});else document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
   if(currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));g.syncAttendanceStart?.();if(!automatic&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady())replies().catch(e=>{document.getElementById('portal-calendar-status').textContent=e.message;});}
  function selectedEvent(){return list.find(e=>e.id===chosen())||null;}
+ function attendanceAudience(){
+  const id=chosen();if(!id)return null;
+  const event=replyData?.event?.id===id&&!replyData.stale?replyData.event:selectedEvent();
+  // Public calendars deliberately omit private recipient IDs. Never interpret
+  // a restricted public event without its roster as an invitation to everyone.
+  if(!event||event.audienceRestricted===true&&!Array.isArray(event.recipientIds))return {pending:true};
+  return {recipientIds:Array.isArray(event.recipientIds)?[...event.recipientIds]:null};
+ }
  function useSpontaneous(){if(currentSessionId||currentOperationId)return false;selected=null;manualNoCalendar=true;replyData=null;const picker=document.getElementById('portal-calendar-pick');if(picker)picker.value='';currentProbeDate=typeof systemToday==='function'?systemToday():new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());const input=byId('probeDateInput');if(input)input.value=currentProbeDate;paintReplies();return true;}
  function selectedDate(){const e=list.find(e=>e.id===chosen());return e?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start)):null;}
  function sessionStarted(){const date=selectedDate();if(date)currentProbeDate=date;if(selected&&currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));paintReplies();}
@@ -479,5 +487,5 @@
   queueMicrotask(()=>refreshAttendance(true));
   setInterval(()=>{if(document.hidden)return;if(!byId('attendanceView').hidden)refreshAttendance();if(!document.getElementById(CALENDAR).hidden&&!document.getElementById('portal-calendar-administration').hidden)reviewCalendar({automatic:true});},60000);
  }
- g.PortalAdmin={load,loadCalendar,lock,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={load,loadCalendar,lock,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

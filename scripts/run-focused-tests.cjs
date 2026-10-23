@@ -11,13 +11,13 @@ const testDir = path.join(root, 'tests');
 // Deliberately broad first-pass selections, not a dependency graph.
 const groups = {
   kalender: [/^(year-plan|calendar|portal-calendar|portal-reply|portal-priority|portal-share|portal-reminders|portal-sync|whatsapp|term-)/],
-  einsatz: [/^(operation-|report-|document-report|tactics-|archive-step2)/],
-  geraetehaus: [/^(attendance-|tactics-|term-|operation-|smart-flows|startup)/],
+  einsatz: [/^(operation-|report-|termin-package-|document-report|tactics-|archive-step2)/],
+  geraetehaus: [/^(attendance-|tactics-|term-|termin-package-|operation-|smart-flows|startup)/],
   historie: [/^(history-|archive-|operation-correction|operation-overwrite|backup-)/],
   deckel: [/^(deckel|drinks)(-|\.test)/],
   theater: [/^theater(-|\.test)/],
   portal: [/^portal\.test/, /^(portal|calendar|whatsapp)-/, /^member-evidence/],
-  sicherheit: [/^portal-identity\.test/,/^portal\.test/, /^(private-|admin-|setup-|onedrive-|member-|deckel-encrypted|portal-sync|whatsapp-navigation)/],
+  sicherheit: [/^portal-identity\.test/,/^portal\.test/, /^(private-|admin-|setup-|termin-package-|onedrive-|member-|deckel-encrypted|portal-sync|whatsapp-navigation)/],
   cloudflare: [/^portal-identity\.test/,/^portal\.test/, /^deckel-challenge\.test/, /^(deckel-push|drinks-central|drinks-phone-sync|portal-sync|portal-reply|portal-calendar|whatsapp|member-evidence|theater-phone-flow|drinks-challenge)/],
   basis: [/^app-update\.test/, /^(build-assets|release-consistency|plausibility|consolidation|startup|usability|home-icons|backup-integrity)/]
 };

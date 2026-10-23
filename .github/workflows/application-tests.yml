@@ -38,7 +38,13 @@ jobs:
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
       - name: Install browser for passkey integration test
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
+        run: |
+          # The Azure HTTP mirror repeatedly stalls while downloading font packages.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+          npx playwright install --with-deps chromium
       - name: Test passkey browser flow with synthetic credentials
         run: node tests/passkey-browser.cjs
       - name: Test FFW update notice and safe reload
@@ -67,3 +73,16 @@ jobs:
         run: node tests/home-operation-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: node tests/navigation-settings-browser.cjs
+      - name: Test auxiliary navigation, portal access, touch and event flows
+        run: |
+          node scripts/check-browser.cjs
+          node scripts/check-portal-qr.cjs
+          node scripts/check-portal-gestures.cjs
+          node scripts/check-theater.cjs
+          node scripts/check-theater-controls.cjs
+      - name: Test readability at normal and doubled text size
+        env:
+          QA_STRICT: "1"
+        run: |
+          node scripts/check-readability.cjs
+          QA_TEXT_SCALE=200 node scripts/check-readability.cjs
