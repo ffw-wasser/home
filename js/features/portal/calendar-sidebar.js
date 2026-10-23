@@ -28,11 +28,11 @@
   if(!cached)host().replaceChildren(node('h2','Kalender'),node('p','Kalender wird geladen …'));
   const current=()=>epoch===generation&&authorized()&&source===g.DrinksStore.sourceKey();
   try{
-   const c=await g.DrinksCentral.connection();if(!current())return;if(!c||c.source!==source)throw Error('Bitte Gerätehaus-Verbindung prüfen.');
+   const c=await g.DrinksCentral.connection();if(!current())return;if(!c||c.source!==source)throw Object.assign(Error('Bitte Gerätehaus-Verbindung prüfen.'),{status:403});
    const cal=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year},35000);if(!current())return;
    if(cal.year!==year||!Array.isArray(cal.events))throw Error('Kalender bitte aktualisieren.');
    cached=cal;loadedAt=Date.now();if(active())paint(cal,year);
-  }catch(e){if(current()&&active()){const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(cached){message.className='calendar-sidebar-load-status';host().querySelector('.calendar-sidebar-load-status')?.remove();host().append(message);}else host().replaceChildren(node('h2','Kalender'),message);}}
+  }catch(e){if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(cached){message.className='calendar-sidebar-load-status';host().querySelector('.calendar-sidebar-load-status')?.remove();host().append(message);}else host().replaceChildren(node('h2','Kalender'),message);}}
   finally{if(epoch===generation)pending=false;}
  }
  g.CalendarSidebar={refresh,hide,clear};g.addEventListener('resize',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});setInterval(refresh,60000);setInterval(()=>{if(source&&(!authorized()||source!==g.DrinksStore.sourceKey()))clear();else if(source&&!active()&&!host()?.hidden)hide();},1000);document.addEventListener('DOMContentLoaded',refresh,{once:true});
