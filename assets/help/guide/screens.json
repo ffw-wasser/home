@@ -46,5 +46,9 @@
   "geraetehaus-onedrive": {
     "width": 560,
     "height": 880
+  },
+  "geraetehaus-datenstatus": {
+    "width": 390,
+    "height": 68
   }
 }
