@@ -169,7 +169,7 @@ self.addEventListener("fetch",event=>{
   if(request.method!=="GET"||url.origin!==scope.origin||!url.pathname.startsWith(scope.pathname)||request.headers.has("Authorization"))return;
   const path=url.pathname.slice(scope.pathname.length);
   const navigation=request.mode==="navigate"&&(path===""||path==="index.html"||path==="deckel.html");
-  const asset=/^(?:js\/.*\.js|css\/.*\.css|assets\/help\/guide\/[a-z-]+\.jpg|assets\/templates\/[^/]+\.(?:docx|jpg)|assets\/drinks\/[^/]+\.(?:webp|png|svg)|assets\/branding\/(?:ffw-home-\d+\.png|ffw-header\.svg)|icon-(?:192|512)\.png|taktik-[^/]+\.(?:webp|svg)|(?:manifest|deckel|deckel-android)\.webmanifest)$/.test(path);
+  const asset=/^(?:js\/.*\.js|css\/.*\.css|assets\/help\/guide\/[a-z0-9-]+\.jpg|assets\/templates\/[^/]+\.(?:docx|jpg)|assets\/drinks\/[^/]+\.(?:webp|png|svg)|assets\/branding\/(?:ffw-home-\d+\.png|ffw-header\.svg)|icon-(?:192|512)\.png|taktik-[^/]+\.(?:webp|svg)|(?:manifest|deckel|deckel-android)\.webmanifest)$/.test(path);
   if(!navigation&&!asset)return;
   // OAuth-Codes in der Rücksprung-URL niemals als Cache-Schlüssel speichern.
   const cacheKey=navigation?new URL(path==="deckel.html"?"deckel.html":"index.html",scope).href:request;

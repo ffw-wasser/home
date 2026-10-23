@@ -5,6 +5,13 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require.resolve('../service-worker.js'), 'utf8');
 const root = 'https://ffw-wasser.github.io/home/';
 
+test('Originalbilder der Anleitung sind nach Abruf offline verfügbar, autorisierte Daten bleiben außerhalb', async () => {
+  const w=worker(),names=Object.keys(JSON.parse(fs.readFileSync(require.resolve('../assets/help/guide/screens.json'),'utf8')));
+  for(const name of names){const url=root+'assets/help/guide/'+name+'.jpg';await w.request(url);assert.ok(w.writes.some(key=>key===url||key.url===url));const privateRequest=worker();assert.equal(await privateRequest.request(url,{auth:true}),undefined);assert.equal(privateRequest.writes.length,0);}
+  const image={ok:true,type:'basic'},offline=worker({offline:true,cached:image});assert.equal(await offline.request(root+'assets/help/guide/h2o-termine.jpg'),image);
+  const untouched=worker();assert.equal(await untouched.request(root+'assets/help/guide/private-record.json'),undefined);assert.equal(untouched.writes.length,0);
+});
+
 function worker({offline = false, responseOk = true, cached = undefined} = {}) {
   const events = {}, writes = [], reads = [], deleted = [];
   const context = vm.createContext({URL, Promise, importScripts:()=>{},
