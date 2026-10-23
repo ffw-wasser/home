@@ -112,8 +112,8 @@ test('Öffentlicher Kalender zeigt ausgewählte Termine anonym; persönliche Lis
 test('Terminarten und Empfängerauswahl werden serverseitig validiert',async()=>{
  const f=await fixture(),cal=(await f.call('list',{},null,true)).value,base={eventId:cal.events[0].id,kind:'probe',sessionType:'Sonderprobe',approved:true,expectedVersion:cal.rulesVersion};
  for(const recipientIds of [[],['unknown'],['member-1','member-1']])assert.equal((await f.call('classify',{...base,recipientIds},null,true)).status,400);
- assert.equal((await f.call('classify',{...base,attendanceType:'unknown'},null,true)).status,400);
- for(const attendanceType of ['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz']){const current=(await f.call('list',{},null,true)).value;assert.equal((await f.call('classify',{...base,attendanceType,expectedVersion:current.rulesVersion},null,true)).status,200);assert.equal((await f.call('list',{},null,true)).value.events[0].attendanceType,attendanceType);}
+ assert.equal((await f.call('classify',{...base,attendanceType:'Einsatz'},null,true)).status,400);
+ for(const attendanceType of ['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung']){const current=(await f.call('list',{},null,true)).value;assert.equal((await f.call('classify',{...base,attendanceType,expectedVersion:current.rulesVersion},null,true)).status,200);assert.equal((await f.call('list',{},null,true)).value.events[0].attendanceType,attendanceType);}
 });
 
 test('Bereinigung entfernt Rückmeldungen nach sechs Stunden, erhält Kalender-Korrekturen 31 Tage',async()=>{

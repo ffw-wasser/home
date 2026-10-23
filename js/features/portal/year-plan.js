@@ -5,12 +5,12 @@
  const $=id=>document.getElementById('year-plan-'+id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  const format=(ms,options)=>new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',...options}).format(new Date(ms));
  const dayKey=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
- let year=Number(dayKey(Date.now()).slice(0,4)),events=[],generation=0,privateData=false,loaded=false,source='',message='';
+ let year=Number(dayKey(Date.now()).slice(0,4)),events=[],generation=0,privateData=false,loaded=false,source='',message='',colors=g.CalendarPresentation.defaults();
  function authorized(){return portal?g.H2OPortal?.hasAccess()===true:typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady();}
  function accessCurrent(){return authorized()&&(portal||source===g.DrinksStore.sourceKey());}
  function render(){
   if(!$('months'))return;
-  if(portal){g.YearPlanPdf?.clear();$('print').disabled=!loaded||!privateData;}
+  g.YearPlanPdf?.clear();$('print').disabled=!loaded||!privateData;
   $('heading-year').textContent=year;$('year').value=year;$('prev').disabled=year<=2000;$('next').disabled=year>=2100;
   $('birthdays').disabled=!privateData;
   $('status').textContent=message;
@@ -38,16 +38,17 @@
     const days=new Date(Date.UTC(year,month+1,0)).getUTCDate();
     for(let day=1;day<=days;day++){
      const key=prefix+'-'+String(day).padStart(2,'0'),noon=Date.parse(key+'T12:00:00Z'),row=node('div');row.className='year-plan-day';
-     if([0,6].includes(new Date(noon).getUTCDay()))row.classList.add('is-weekend');if(key===today)row.classList.add('is-today');
+     if(new Date(noon).getUTCDay()===0)row.classList.add('is-sunday');if(key===today)row.classList.add('is-today');
      const date=node('span',day+' '+format(noon,{weekday:'short'}));date.className='year-plan-date';const content=node('div');row.append(date,content);card.append(row);
      if($('holidays').checked)for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');const label=node('small',holiday.name);label.className='year-plan-holiday';content.append(label);}
      for(const holiday of g.PublicHolidays.forDay(key)){row.classList.add('is-public-holiday');const label=node('small',holiday.name);label.className='year-plan-public-holiday';content.append(label);}
      for(const {event:e,starts,time:clock} of byDay.get(key)||[]){
       const details=node('details');details.className='year-plan-event '+(e.kind==='birthday'?'is-birthday':e.kind==='probe'?'is-probe':'is-other');
       const time=e.allDay?'Ganztägig':starts<key?'Fortsetzung':clock;
+      const style=g.CalendarPresentation.style(e,colors);details.style.setProperty('--event-accent',style.accent);details.style.setProperty('--event-bg',style.background);details.dataset.eventType=g.CalendarPresentation.key(e);
       const summary=node('summary',(e.kind==='birthday'?'🎂 ':'')+time+' · '+e.title);details.append(summary);
       if(e.id===next?.id){details.classList.add('is-next');summary.append(node('small',' · Nächster Termin'));}
-      if(e.kind!=='birthday')details.append(node('p',[e.location,e.clothing].filter(Boolean).join(' · ')||'Keine weiteren Angaben.'));
+      if(e.kind!=='birthday'){for(const value of [e.location,e.clothing,e.note].filter(Boolean))details.append(node('p',value));}details.dataset.note=e.note||'';
       content.append(details);
      }
     }
@@ -84,8 +85,8 @@
    }
    if(epoch!==generation)return;
    if(result.year!==selected||!Array.isArray(result.events))throw Error('Für den Jahresplan bitte den aktualisierten Kalenderdienst bereitstellen.');
-   events=result.events.filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;
-   message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben und dein Geburtstag. ':'Vollständiger Jahresplan für das Gerätehaus. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
+   colors=result.colors||g.CalendarPresentation.defaults();events=result.events.filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;
+   message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben, Kalenderinformationen und dein Geburtstag. ':'Vollständiger Jahresplan für das Gerätehaus. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
    render();jump();
   }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();jump();}
  }
@@ -93,6 +94,7 @@
  function afterView(view){
   const settings=document.getElementById('settingsView'),tab=document.getElementById('settingsTab');
   if(tab){const active=view.startsWith('settings')||view==='adminLoginView';tab.classList.toggle('active',active);if(active)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');}
+  if(view==='attendanceView')g.CalendarSidebar?.refresh();else g.CalendarSidebar?.clear();
   if(view==='yearPlanView')load(true);
   else if(privateData||message==='Jahresplan wird geladen …')lock();
  }
@@ -102,12 +104,11 @@
   const change=next=>{if(!Number.isInteger(next)||next<2000||next>2100){$('year').value=year;return;}year=next;load();};
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
   $('today').onclick=()=>{const today=dayKey(Date.now()),currentYear=Number(today.slice(0,4)),month=Number(today.slice(5,7))-1;if(year!==currentYear){load(true);return;}jump(month);};$('reload').onclick=()=>load();
-  $('print').onclick=()=>{
+  $('print').textContent='Als PDF ansehen';$('print').onclick=()=>{
    if(privateData&&!accessCurrent())return lock();
-   if(!portal){g.print();return;}
    if(!loaded||!privateData)return;
-   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,weekend:row.classList.contains('is-weekend'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:event.querySelector('p')?.textContent||'',birthday:event.classList.contains('is-birthday')}))}))}));
-   g.YearPlanPdf.open({year,months,note:message+' '+$('holiday-status').textContent,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
+   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,birthday:event.classList.contains('is-birthday')}))}))}));
+   g.YearPlanPdf.open({year,months,colors,personal:portal,note:message+' '+$('holiday-status').textContent,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
   };
   for(const id of ['filter','birthdays','holidays'])$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
   const monthLabel=node('label','Monat '),monthSelect=node('select');monthLabel.className='year-plan-month-jump';monthSelect.id='year-plan-month';monthSelect.setAttribute('aria-label','Zum Monat springen');

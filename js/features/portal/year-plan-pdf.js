@@ -1,7 +1,7 @@
 /* Personal annual PDF: generated locally from the authorized, filtered view. */
 (function(g){
  'use strict';
- async function build({year,months,note}){
+ async function build({year,months,note,colors=g.CalendarPresentation?.defaults(),personal=true}){
   const {PDFDocument,StandardFonts,rgb}=g.PDFLib,pdf=await PDFDocument.create();
   const regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
   // Standard PDF fonts support German and Western European names. Unsupported
@@ -11,12 +11,14 @@
    const lines=[];let line='';
    for(const word of safe(value).split(/\s+/)){
     if(!word)continue;
-    if(line&&regular.widthOfTextAtSize(line+' '+word,size)<=width){line+=' '+word;continue;}
+    if(line&&bold.widthOfTextAtSize(line+' '+word,size)<=width){line+=' '+word;continue;}
     if(line){lines.push(line);line='';}
     for(const char of word){if(line&&regular.widthOfTextAtSize(line+char,size)>width){lines.push(line);line='';}line+=char;}
    }
    if(line)lines.push(line);return lines;
   }
+  const appendix=[],references=new Map();
+  const color=hex=>{const values=hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255);return rgb(...values);};
   const W=1190.55,H=841.89,M=28,gap=7,col=(W-M*2-gap*5)/6,pages=[];
   const text=(page,value,x,y,size=7.5,strong=false,color=rgb(.08,.18,.26))=>page.drawText(safe(value),{x,y,size,font:strong?bold:regular,color});
   for(let half=0;half<2;half++){
@@ -25,32 +27,33 @@
     page=pdf.addPage([W,H]);pages.push(page);y=H-108;
     page.drawRectangle({x:M,y:H-65,width:W-2*M,height:37,color:rgb(.08,.21,.32)});
     text(page,'Jahresprobenplan '+year+' - Feuerwehr Wasser',M+12,H-51,18,true,rgb(1,1,1));
-    text(page,'Persönlicher Jahresplan - '+(half?'Juli bis Dezember':'Januar bis Juni'),M,H-80,9);
-    group.forEach((month,i)=>{const x=M+i*(col+gap);page.drawRectangle({x,y:y+3,width:col,height:20,color:rgb(.89,.94,.97)});text(page,month.title,x+5,y+9,10,true);});
+    text(page,(personal?'Persönlicher Jahresplan - ':'Gesamtplan - ')+(half?'Juli bis Dezember':'Januar bis Juni'),M,H-80,9);
+    group.forEach((month,i)=>{const x=M+i*(col+gap);page.drawRectangle({x,y:y+3,width:col,height:20,color:rgb(.91,.9,.9)});text(page,month.title,x+5,y+9,10,true);});
    };
    begin();
    for(let day=0;day<31;day++){
     const cells=group.map(month=>{
      const row=month.days[day];if(!row)return null;
      const lines=[];
-     for(const holiday of row.holidays)for(const line of wrap(holiday,6.5,col-39))lines.push({line,size:6.5,color:rgb(.44,.28,.12)});
-     for(const event of row.events){for(const line of wrap(event.title,7.5,col-39))lines.push({line,size:7.5,color:event.birthday?rgb(.52,.13,.22):rgb(0,.31,.53)});for(const line of wrap(event.details,6.5,col-39))lines.push({line,size:6.5});}
+     for(const holiday of row.holidays)for(const line of wrap(holiday,8,col-39))lines.push({line,size:8,strong:true,color:rgb(.22,.36,.2)});
+     for(const event of row.events){const raw=colors?.[event.type]|| (event.birthday?'#AF526F':'#326A9B'),channels=raw.slice(1).match(/../g).map(v=>parseInt(v,16)),ink=rgb(...channels.map(v=>Math.min(v,175)/255)),background=rgb(...channels.map(v=>(229.5+v*.1)/255));let ref='';if(event.note&&event.note.length>100){const key=event.title+'|'+event.note;if(!references.has(key)){references.set(key,appendix.length+1);appendix.push({title:event.title,note:event.note});}ref=' ['+references.get(key)+']';}for(const line of wrap(event.title+ref,9,col-39))lines.push({line,size:9,strong:true,color:ink,background});for(const line of wrap(event.details,8,col-39))lines.push({line,size:8});if(event.note&&!ref)for(const line of wrap(event.note,8,col-39))lines.push({line,size:8});}
      return {...row,lines};
     });
     // An exceptionally busy day continues on another page instead of clipping.
     let offset=0,total=Math.max(1,...cells.map(c=>c?.lines.length||0));
     while(offset<total){
      if(y<75)begin();
-     const take=Math.min(total-offset,Math.max(1,Math.floor((y-58)/9))),height=Math.max(19,take*9+6);
-     cells.forEach((cell,i)=>{if(!cell)return;const x=M+i*(col+gap),background=cell.birthday?rgb(1,.86,.88):cell.publicHoliday?rgb(.89,.96,.87):cell.holiday?rgb(1,.91,.82):cell.weekend?rgb(1,.97,.78):rgb(.98,.99,1);
+     const take=Math.min(total-offset,Math.max(1,Math.floor((y-58)/11))),height=Math.max(18,take*11+6);
+     cells.forEach((cell,i)=>{if(!cell)return;const x=M+i*(col+gap),background=cell.holiday?rgb(1,1,.8):cell.publicHoliday?rgb(.89,.96,.87):cell.sunday?rgb(1,.8,.6):rgb(1,1,1);
       page.drawRectangle({x,y:y-height,width:col,height,color:background,borderColor:rgb(.79,.84,.87),borderWidth:.4});
       text(page,cell.date,x+3,y-11,7,true);
-      cell.lines.slice(offset,offset+take).forEach((line,n)=>text(page,line.line,x+34,y-11-n*9,line.size,false,line.color));
+      cell.lines.slice(offset,offset+take).forEach((line,n)=>{if(line.background){page.drawRectangle({x:x+32,y:y-14-n*11,width:col-33,height:11,color:line.background});page.drawRectangle({x:x+32,y:y-14-n*11,width:2,height:11,color:line.color});}text(page,line.line,x+36,y-11-n*11,line.size,line.strong,line.color);});
      });y-=height;offset+=take;
     }
    }
   }
-  pages.forEach((page,i)=>{text(page,'Gelb: Wochenende | Apricot: Ferien | Rosa: Geburtstag | Blau: Probe | Grün: Feiertag',M,36,7);text(page,'Seite '+(i+1)+' / '+pages.length,W-100,36,7);text(page,wrap(note,6,1000)[0]||'',M,24,6);});
+  if(appendix.length){let page,y;const begin=()=>{page=pdf.addPage([W,H]);pages.push(page);text(page,'Zusatzinformationen zum Jahresplan '+year,M,H-46,18,true);y=H-80;};begin();for(let i=0;i<appendix.length;i++){const item=appendix[i],lines=[...wrap('['+(i+1)+'] '+item.title,11,W-2*M),...wrap(item.note,10,W-2*M)];for(let n=0;n<lines.length;n++){if(y<65)begin();text(page,lines[n],M,y,n===0?11:10,n===0);y-=15;}y-=14;}}
+  pages.forEach((page,i)=>{text(page,'Hellgelb: Ferien | Apricot: Sonntag | Terminfarben nach Art | Feiertage mit Namen',M,36,7);text(page,'Seite '+(i+1)+' / '+pages.length,W-100,36,7);text(page,wrap(note,6,1000)[0]||'',M,24,6);});
   pdf.setTitle('Jahresprobenplan '+year);pdf.setAuthor('Feuerwehr Wasser');
   return {bytes:await pdf.save(),pageCount:pages.length};
  }
