@@ -28,6 +28,7 @@ const root=path.resolve(__dirname,'..');
    await atMonth(currentMonth);await page.locator('#year-plan-month').selectOption('0');await atMonth(0);await page.locator('#year-plan-today').click();await atMonth(currentMonth);assert.equal(yearCalls,1,'Today scrolls during a pending request without starting another');
    yearMode='success';releaseYear();await page.locator('#year-plan-status').filter({hasText:'Deine freigegebenen Proben'}).waitFor();await atMonth(currentMonth);
    assert.equal(await page.locator('#more-year-plan>.year-plan-controls').count(),1);
+   if(width<=600){const today=await page.locator('#year-plan-today').evaluate(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize),fits:n.scrollWidth<=n.clientWidth}));assert.ok(today.width>=100&&today.height>=48&&today.font>=16&&today.fits,'Today is readable and easy to tap '+width);}
    assert.equal(await page.locator('#year-plan-filter').isVisible(),true,'filters are visible as in the main application');
    assert.equal(await page.locator('.year-plan-legend').isVisible(),true,'shared colour legend remains visible');
    const columns=await page.locator('.year-plan-half').first().evaluate(n=>getComputedStyle(n).gridTemplateColumns.split(' ').length);assert.equal(columns,width<=600?1:width<=1000?2:3);
