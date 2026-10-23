@@ -17,3 +17,11 @@ for(const reason of ['Sperren','Quellenwechsel'])test('Verspäteter Kalenderabru
  release();await opening;
  assert.equal(f.get('portal-calendar-administration').hidden,true);assert.equal(f.get('portal-admin-calendar').value,'');assert.equal(f.get('portal-admin-review-events').children.length,0);assert.equal(f.get('portal-keyword-groups').children.length,0);
 });
+
+test('Kalender öffnet direkt über dieselbe Zugangskontrolle wie die Mitgliederverwaltung',()=>{
+ const targets=[];const c=vm.createContext({window:{},requireAdmin:target=>{targets.push(target);return false;}});
+ const source=fs.readFileSync('js/core/ui.js','utf8');
+ vm.runInContext(source.slice(source.indexOf('function showView('),source.indexOf('\nfunction renderSessionType')),c);
+ assert.equal(c.showView('settingsCalendarView'),false);
+ assert.deepEqual(targets,['settingsCalendarView']);
+});

@@ -31,9 +31,9 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
   assert.equal((await f.call('list',{},null,true)).value.events[0].recipientMode,'manual');
   await page.getByRole('button',{name:'Gruppen',exact:true}).click();const groups=page.locator('#portal-calendar-groups');
   const groupCard=name=>groups.locator('.portal-keyword-card').filter({has:page.getByRole('heading',{name,exact:true})});
-  const committee=groupCard('Ausschuss');
+  const committee=groupCard('Ausschuss');await committee.locator('summary').click();
   assert.match(await committee.textContent(),/Zugeordnete Personen \(1\)/);assert.equal(await committee.locator('.portal-name-list li').count(),1);assert.match(await committee.locator('.portal-name-list').textContent(),/Testperson/);
-  const agt=groupCard('Atemschutz');assert.equal(await agt.locator('.portal-name-list li').count(),2);assert.equal(await agt.locator('.portal-name-list').isVisible(),true,'Automatic group names visible without editing');
+  const agt=groupCard('Atemschutz');assert.equal(await agt.getAttribute('open'),null);await agt.locator('summary').click();assert.equal(await agt.locator('.portal-name-list li').count(),2);assert.equal(await agt.locator('.portal-name-list').isVisible(),true,'Automatic group names visible without editing');await agt.locator('summary').click();assert.equal(await agt.locator('.portal-name-list').isVisible(),false);await agt.locator('summary').click();assert.equal(await agt.locator('.portal-name-list').isVisible(),true);
   await committee.getByRole('button',{name:'Gruppe bearbeiten'}).click();assert.equal(await committee.getByLabel('Personen zuordnen über').inputValue(),'committee');
   await committee.getByLabel('Gruppenname',{exact:true}).fill('Ausschuss Entwurf');
   page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Termine',exact:true}).click();assert.equal(await groups.isVisible(),true);assert.equal(await committee.count(),0);
