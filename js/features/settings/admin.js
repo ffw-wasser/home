@@ -125,7 +125,7 @@ async function confirmProbeTopic() {
   }
 }
 function cancelAdminLogin(){
-  const target=String(pendingSettingsTarget||"").startsWith("theater")?"eventsView":"attendanceView";
+  const target=pendingSettingsTarget==="yearPlanView"?"yearPlanView":String(pendingSettingsTarget||"").startsWith("theater")?"eventsView":"attendanceView";
   pendingSettingsTarget="";byId("adminPin").value="";byId("pinError").hidden=true;
   showView(target);
 }

@@ -32,7 +32,16 @@
   const reader=response.body.getReader(),chunks=[];let size=0;try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>2000000)fail('Der Kalender ist zu groß.',400);chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}return new TextDecoder().decode(bytes);
  }
- async function projection(url){const raw=await download(url),items=g.PortalCalendar.parse(raw),events=[];for(const item of items){const {key,seriesKey,...rest}=item;events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:await hash('h2o-series/v1:'+url+':'+seriesKey),...rest});}return events;}
+ async function projection(url,range=null){const raw=await download(url),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[];for(const item of items){const {key,seriesKey,...rest}=item;events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:await hash('h2o-series/v1:'+url+':'+seriesKey),...rest});}return events;}
+ async function yearCalendar(env,year){
+  if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
+  const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
+  const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
+  // Read the same Google source without replacing the operational/bonus cache.
+  const events=await projection(c.calendarUrl,range);
+  if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
+  return {year,...await decorate(env,{configured:true,events,fetchedAt:Date.now(),stale:false})};
+ }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
   const old=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();if(old&&!force&&old.fetched_at>Date.now()-300000)return {...await open(env,old,'portal-calendar'),configured:true,fetchedAt:old.fetched_at,stale:false};
@@ -304,6 +313,7 @@
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path==='/admin/portal/year')return yearCalendar(env,data.year);
   if(path==='/admin/portal/config'){
    const c=await config(env);return {configured:!!c,config:c||null};
   }
@@ -398,12 +408,12 @@
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
- async function publicCalendar(env){
+ async function publicCalendar(env,year=null){
   await ready(env);
-  const cal=await decorate(env,await cachedCalendar(env));
+  const cal=year===null?await decorate(env,await cachedCalendar(env)):await yearCalendar(env,year);
   // Show all approved probe dates, including selected-member appointments. Never expose the recipient list, member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
-   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()).map(e=>({
+   ...(year===null?{}:{year}),events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&(year!==null||e.end>Date.now())).map(e=>({
     id:e.id,title:e.sessionType==='Probe'?'Probe':'Sonderprobe',start:e.start,end:e.end,
     allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true,
     audienceRestricted:Array.isArray(e.recipientIds)

@@ -1,9 +1,10 @@
 /* RFC 5545 calendar projection. Identity follows UID / original recurrence, never title. */
 (function(g){
  'use strict';
- function parse(raw,now=Date.now()){
+ function parse(raw,now=Date.now(),range=null){
   if(typeof raw!=='string'||raw.length>2000000||!raw.trimStart().startsWith('BEGIN:VCALENDAR'))throw Error('Keine gültige iCal-Kalenderdatei.');
-  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=now-31*86400000,to=now+370*86400000,events=[],groups=new Map();let steps=0;
+  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=range?.from??now-31*86400000,to=range?.to??now+370*86400000,events=[],groups=new Map();let steps=0;
+  if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from||to-from>740*86400000)throw Error('Ungültiger Kalenderzeitraum.');
   I.TimezoneService.reset();
   for(const c of root.getAllSubcomponents('vtimezone'))I.TimezoneService.register(new I.Timezone(c));
   const components=root.getAllSubcomponents('vevent');if(components.length>10000)throw Error('Der Kalender enthält zu viele Einträge.');
@@ -18,7 +19,7 @@
   };
   function add(uid,event,original,start,end,recurring){
    if(event.component.getFirstPropertyValue('status')==='CANCELLED')return;
-   const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if(ms<from||ms>to)return;
+   const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if((range?finish<=from:ms<from)||ms>=to)return;
    events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
   }
   for(const [uid,items] of groups){

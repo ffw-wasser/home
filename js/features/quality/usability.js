@@ -153,12 +153,6 @@
   }
   function initialize(){
     ready=true;
-    // Keep reports in the menu instead of behind a configuration page.
-    for(const [id,text,fn] of [['historyTab','Historie',()=>{renderHistory();showView('settingsHistoryView');window.loadOneDriveHistory?.();}],['statisticsTab','Statistik',()=>{renderStatistics();showView('settingsStatisticsView');}]]){
-      let button=byId(id);if(!button){button=document.createElement('button');button.id=id;button.type='button';button.className='compact-menu-button';byId('settingsTab').before(button);}
-      const clean=button.cloneNode(true);button.replaceWith(clean);clean.textContent=text;clean.onclick=fn;
-    }
-    for(const id of ['drinksTab','eventsTab','historyTab','statisticsTab','settingsTab','helpTab'])byId('compactMenu').append(byId(id));
     const hint=document.createElement('p');hint.id='attendanceDraftStatus';hint.className='ux-save-status';hint.setAttribute('role','status');byId('members')?.before(hint);attendanceState();
     const actions=document.createElement('details');actions.className='ux-other-actions';actions.innerHTML='<summary>Weitere Aktionen</summary><button class="danger-button" type="button" id="discardCurrentSessionButton">Termin verwerfen</button>';
     const reset=byId('resetTodayParticipantsButton');if(reset){const explanation=reset.closest('.today-reset-area')?.querySelector('small');reset.before(actions);actions.append(reset);if(explanation)actions.append(explanation);}else byId('attendanceView').append(actions);

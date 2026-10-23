@@ -28,8 +28,9 @@ function lockAdministration(){
   if(byId('deckel-token'))byId('deckel-token').value='';
   window.TheaterAdmin?.lock();window.PortalAdmin?.lock();window.DrinksAdminBookings?.lock();
   window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();window.DrinksBirthdaySettings?.lock();
+  window.YearPlan?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
-  for(const id of ['theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView','settingsCalendarView']){
+  for(const id of ['settingsView','settingsOptionsView','settingsHistoryView','settingsStatisticsView','theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView','settingsCalendarView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id==='theaterView'?(theaterReturn||'eventsView'):id;showView('adminLoginView');break;}
   }
   for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
@@ -39,6 +40,7 @@ function showView(viewId) {
   const requestedView=viewId;
   const theaterMode=({theaterCashView:"cash",theaterStatsView:"stats",theaterManageView:"manage"})[viewId];
   if(theaterMode)viewId="theaterView";
+  if(["settingsView","settingsOptionsView","settingsHistoryView","settingsStatisticsView"].includes(viewId)&&!requireAdmin(requestedView,{allowDisconnected:true}))return false;
   if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView","settingsPortalView","settingsCalendarView"].includes(viewId)&&!requireAdmin(requestedView))return false;
   if(window.PortalEvidenceAdmin?.beforeView(viewId)===false)return false;
   if(window.PortalAdmin?.beforeView(viewId)===false)return false;
@@ -60,6 +62,8 @@ function showView(viewId) {
   byId("drinksShortcut")?.classList.toggle("active",viewId==="drinksView");
   byId("attendanceTab").classList.toggle("active", viewId === "attendanceView");
   if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.toggle("active",viewId==="settingsHistoryView");if(byId("statisticsTab"))byId("statisticsTab").classList.toggle("active",viewId==="settingsStatisticsView");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
+  window.YearPlan?.afterView(viewId);
+  for(const [id,active] of [["yearPlanTab",viewId==="yearPlanView"],["plansTab",viewId==="plansView"],["eventsTab",viewId==="eventsView"||viewId==="theaterView"]]){const tab=byId(id);tab?.classList.toggle("active",active);if(tab){if(active)tab.setAttribute("aria-current","page");else tab.removeAttribute("aria-current");}}
   window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
   if(viewId==="settingsView")window.SmartWorkflow?.settings();
   if(viewId==="theaterView")window.TheaterAdmin?.load();

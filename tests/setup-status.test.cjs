@@ -15,7 +15,7 @@ test('Gespeichertes Passwort aktualisiert den Einrichtungshinweis sofort; ungül
 });
 test('Öffnen der Einstellungen prüft auch ein bereits eingerichtetes Passwort erneut',()=>{
  const source=fs.readFileSync('js/core/ui.js','utf8');let updates=0;
- const c=vm.createContext({window:{scrollTo(){},SmartWorkflow:{settings(){updates++;}}},byId:()=>({classList:{remove(){},toggle(){}}}),document:{querySelectorAll:()=>[]},clearTimeout(){},toastTimer:0,closeCompactMenu(){},hideDocumentReportUi(){}});
+ const c=vm.createContext({requireAdmin:()=>true,window:{scrollTo(){},SmartWorkflow:{settings(){updates++;}}},byId:()=>({setAttribute(){},removeAttribute(){},classList:{remove(){},toggle(){}}}),document:{querySelectorAll:()=>[]},clearTimeout(){},toastTimer:0,closeCompactMenu(){},hideDocumentReportUi(){}});
  vm.runInContext(source.slice(source.indexOf('function showView('),source.indexOf('function renderSessionType(')),c);
  c.showView('settingsView');assert.equal(updates,1);c.showView('attendanceView');assert.equal(updates,1);
 });

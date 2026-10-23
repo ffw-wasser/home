@@ -526,12 +526,8 @@ function ensureHistoryView(){
     else if(remove)deleteArchiveItem(remove.dataset.historyDelete);
   });
 }
-function ensureHistoryMenu(){
-  if(byId("historyTab"))return;
-  const button=document.createElement("button");button.className="compact-menu-button";button.id="historyTab";button.type="button";button.textContent="Historie";
-  const menu=byId("compactMenu"), help=byId("helpTab");menu.insertBefore(button,help||null);
-  button.addEventListener("click",()=>{renderHistory();showView("historyView");});
-}
+// History is reached through Verwaltung → Berichte & Statistik.
+function ensureHistoryMenu(){}
 function historyMonthKey(item){return historyDateFromItem(item).slice(0,7)||"Unbekannt";}
 function historyMonthLabel(key){
   if(!/^\d{4}-\d{2}$/.test(key))return "Unbekannter Monat";

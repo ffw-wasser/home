@@ -55,5 +55,7 @@ jobs:
         run: |
           node tests/portal-reminders-browser.cjs
           node tests/whatsapp-reply-browser.cjs
+      - name: Test annual plan, navigation and private access
+        run: node tests/year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
         run: node tests/calendar-groups-browser.cjs

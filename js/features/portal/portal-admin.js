@@ -185,7 +185,7 @@
  async function reviewCalendar({automatic=false,snapshot=null}={}){
   reviewControls();if(automatic&&(groupsDirty||reviewEdited.size||reviewOpen.size||groupEditing||busy||reviewLoading||Date.now()-reviewLastLoad<60000))return;
   const version=++calendarGeneration;reviewLoading=true;$('review-load').hidden=true;try{admin();if(!automatic)$('review-status').textContent='Kalendereinträge werden geladen …';const cal=snapshot||await request('list');if(version!==calendarGeneration||automatic&&(reviewEdited.size||reviewOpen.size||groupsDirty||groupEditing))return;admin();if(!groupsDirty&&cal.groupsVersion!==undefined&&(groupSnapshot?.version!==cal.groupsVersion||groupSnapshot?.rosterUpdatedAt!==cal.rosterUpdatedAt))await loadGroups();if(version!==calendarGeneration||automatic&&(reviewEdited.size||reviewOpen.size||groupsDirty||groupEditing))return;reviewLastLoad=Date.now();$('review-load').hidden=!cal.stale;
-   const upcoming=cal.events.filter(currentEvent);
+   const upcoming=cal.events.filter(e=>currentEvent(e)&&e.kind!=='birthday');
    const previous=reviewSnapshot;
    // Sort chronologically so a just-saved card does not jump to the bottom.
    upcoming.sort((a,b)=>a.start-b.start);
