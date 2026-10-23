@@ -110,3 +110,65 @@ test('Angemeldete Verwaltung kann eine geänderte Ordneradresse speichern; norma
   f.c.adminUnlocked=false;f.c.renderOneDriveDialog();assert.equal(button.hidden,true);
   f.run('oneDriveNeedsLogin=true');f.c.renderOneDriveDialog();assert.equal(button.hidden,false);assert.match(button.textContent,/Anmeldung erneuern/);
 });
+
+
+function directFixture(){
+ const f=fixture();Object.assign(f.c,{adminUnlocked:true,requireAdmin:()=>f.c.adminUnlocked,byId:()=>null,showToast:(text,kind)=>f.messages.push({text,kind}),renderOneDriveDialog(){}});
+ f.messages=[];f.run('oneDriveAccessConfirmed=true');
+ f.respond=url=>new Response(JSON.stringify(url.includes(':/feuerwehr-wasser-daten.json?')?{id:'state-file',file:{}}:folder));return f;
+}
+
+test('Umstellung prüft vorhandenen Ordner und Datendatei nur lesend; IDs, Token und Kontoquelle bleiben gleich',async()=>{
+ let f=directFixture();await f.c.oneDriveResolveSharedRoot();f.calls.length=0;
+ const originalToken=f.local.get('fw_onedrive_tokens'),scope=JSON.stringify(['test-client','https://example.test/old-share']);
+ f.local.set('fw_v1_attendance_draft',JSON.stringify({version:1,id:'draft-test',source:scope,topic:'Testthema',pending:[['test','Anwesend']]}));
+ f.run('let attendanceDraftScope='+JSON.stringify(scope)+';let attendanceDraftSignature="old"');
+ assert.equal(await f.c.oneDriveUseDirectFolder(),true);
+ const address=f.local.get('fw_onedrive_shared_folder_url');assert.equal(address,'https://graph.microsoft.com/v1.0/drives/test-drive/items/test-folder');
+ assert.equal(f.calls.length,2);for(const call of f.calls){assert.doesNotMatch(call.url,/\/shares\//);assert.equal(call.options.method,undefined);assert.equal(call.options.headers.get('Authorization'),'Bearer TEST-TOKEN');assert.equal(call.options.headers.has('Prefer'),false);}
+ assert.equal(f.local.get('fw_onedrive_tokens'),originalToken);
+ const draft=JSON.parse(f.local.get('fw_v1_attendance_draft'));assert.equal(draft.topic,'Testthema');assert.deepEqual(draft.pending,[['test','Anwesend']]);assert.equal(draft.source,JSON.stringify(['test-client',address]));assert.equal(f.run('attendanceDraftScope'),draft.source);
+ f=fixture(f.local);f.respond=()=>new Response(JSON.stringify(folder));const root=await f.c.oneDriveResolveSharedRoot();
+ assert.equal(root.driveId+':'+root.id,'test-drive:test-folder');assert.equal(f.calls.length,1);assert.doesNotMatch(f.calls[0].url,/\/shares\//);
+});
+
+for(const condition of ['403','404','file','wrong-id','wrong-drive','missing-state','logout','account','locked','busy','storage'])test('Fehler '+condition+' stellt die Ordneradresse nicht um',async()=>{
+ const f=directFixture();await f.c.oneDriveResolveSharedRoot();f.calls.length=0;
+ const share=f.local.get('fw_onedrive_shared_folder_url'),saved=f.local.get('fw_onedrive_verified_root');
+ f.respond=url=>{
+  if(condition==='403'||condition==='404')return errorResponse(Number(condition));
+  if(condition==='logout')f.c.endOneDriveSession();
+  if(condition==='account')f.local.set('fw_onedrive_tokens',JSON.stringify(token('other')));
+  if(condition==='locked')f.c.adminUnlocked=false;
+  let item=url.includes(':/feuerwehr-wasser-daten.json?')?{id:'state-file',file:{}}:{...folder};
+  if(condition==='file'){delete item.folder;item.file={};}
+  if(condition==='wrong-id')item.id='other';if(condition==='wrong-drive')item.parentReference={driveId:'other'};
+  if(condition==='missing-state'&&item.file)item={id:'not-a-file'};
+  return new Response(JSON.stringify(item));
+ };
+ if(condition==='busy')f.run('oneDriveBusy=true');
+ if(condition==='storage'){const set=f.c.localStorage.setItem;f.c.localStorage.setItem=(key,value)=>{if(key==='fw_onedrive_shared_folder_url'&&value!==share)throw Error('quota');set(key,value);};}
+ assert.equal(await f.c.oneDriveUseDirectFolder(),false);
+ assert.equal(f.local.get('fw_onedrive_shared_folder_url'),share);
+ if(condition!=='logout')assert.equal(f.local.get('fw_onedrive_verified_root'),saved);
+ assert.equal(f.messages.at(-1).kind,'error');
+});
+
+test('Fremder Entwurf bleibt unverändert und die Umstellung ist wiederholbar',async()=>{
+ const f=directFixture(),draft=JSON.stringify({version:1,source:'other',topic:'Test'});f.local.set('fw_v1_attendance_draft',draft);
+ assert.equal(await f.c.oneDriveUseDirectFolder(),true);const address=f.local.get('fw_onedrive_shared_folder_url');
+ assert.equal(await f.c.oneDriveUseDirectFolder(),true);assert.equal(f.local.get('fw_onedrive_shared_folder_url'),address);assert.equal(f.local.get('fw_v1_attendance_draft'),draft);
+});
+
+test('Direkte Graph-Adresse akzeptiert ausschließlich feste Ordnerkennungen ohne Query, Fragment oder Unterpfad',()=>{
+ const f=fixture(),base='https://graph.microsoft.com/v1.0/drives/test-drive/items/test-folder';
+ assert.equal(f.c.odDirectFolderReference(base).id,'test-folder');
+ for(const address of [base+'/content',base+'?expand=children',base+'#anything',base.replace('test-folder','test%2Ffolder'),base.replace('graph.microsoft.com','graph.microsoft.com.evil.test'),base.replace('https:','http:')])assert.equal(f.c.odDirectFolderReference(address),null);
+});
+
+
+test('Ungespeicherte Einrichtung wird nicht durch die Übernahme des bisherigen Ordners überschrieben',async()=>{
+ const f=directFixture();f.c.byId=id=>id==='oneDriveShareUrl'?{value:'https://example.test/unsaved'}:null;
+ assert.equal(await f.c.oneDriveUseDirectFolder(),false);assert.equal(f.calls.length,0);
+ assert.equal(f.local.get('fw_onedrive_shared_folder_url'),'https://example.test/old-share');assert.match(f.messages[0].text,/ungespeicherte/);
+});
