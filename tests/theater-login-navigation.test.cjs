@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 function fixture(){
- const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,{id,hidden:true,value:'',classList:{add(){},remove(){},toggle(){}},setAttribute(){},select(){},close(){}});return nodes.get(id);};
+ const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,{id,hidden:true,value:'',classList:{add(){},remove(){},toggle(){}},setAttribute(){},removeAttribute(){},select(){},close(){}});return nodes.get(id);};
  for(const id of ['eventsView','theaterView','adminLoginView','attendanceView'])get(id);
  get('eventsView').hidden=false;
  const calls=[];

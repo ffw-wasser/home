@@ -346,7 +346,7 @@
   }
   function init(){
     root=byId('drinksView');if(!root)return;
-    byId('drinksTab').addEventListener('click',open);byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
+    byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
     el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
     el('confirm')?.addEventListener('click',()=>confirmCards());
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});

@@ -20370,9 +20370,10 @@ ${strMDSAlgs}`);
 /* RFC 5545 calendar projection. Identity follows UID / original recurrence, never title. */
 (function(g){
  'use strict';
- function parse(raw,now=Date.now()){
+ function parse(raw,now=Date.now(),range=null){
   if(typeof raw!=='string'||raw.length>2000000||!raw.trimStart().startsWith('BEGIN:VCALENDAR'))throw Error('Keine gültige iCal-Kalenderdatei.');
-  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=now-31*86400000,to=now+370*86400000,events=[],groups=new Map();let steps=0;
+  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=range?.from??now-31*86400000,to=range?.to??now+370*86400000,events=[],groups=new Map();let steps=0;
+  if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from||to-from>740*86400000)throw Error('Ungültiger Kalenderzeitraum.');
   I.TimezoneService.reset();
   for(const c of root.getAllSubcomponents('vtimezone'))I.TimezoneService.register(new I.Timezone(c));
   const components=root.getAllSubcomponents('vevent');if(components.length>10000)throw Error('Der Kalender enthält zu viele Einträge.');
@@ -20387,7 +20388,7 @@ ${strMDSAlgs}`);
   };
   function add(uid,event,original,start,end,recurring){
    if(event.component.getFirstPropertyValue('status')==='CANCELLED')return;
-   const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if(ms<from||ms>to)return;
+   const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if((range?finish<=from:ms<from)||ms>=to)return;
    events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
   }
   for(const [uid,items] of groups){
@@ -21584,7 +21585,16 @@ g.PortalHydrants={schema,route};
   const reader=response.body.getReader(),chunks=[];let size=0;try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>2000000)fail('Der Kalender ist zu groß.',400);chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}return new TextDecoder().decode(bytes);
  }
- async function projection(url){const raw=await download(url),items=g.PortalCalendar.parse(raw),events=[];for(const item of items){const {key,seriesKey,...rest}=item;events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:await hash('h2o-series/v1:'+url+':'+seriesKey),...rest});}return events;}
+ async function projection(url,range=null){const raw=await download(url),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[];for(const item of items){const {key,seriesKey,...rest}=item;events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:await hash('h2o-series/v1:'+url+':'+seriesKey),...rest});}return events;}
+ async function yearCalendar(env,year){
+  if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
+  const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
+  const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
+  // Read the same Google source without replacing the operational/bonus cache.
+  const events=await projection(c.calendarUrl,range);
+  if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
+  return {year,...await decorate(env,{configured:true,events,fetchedAt:Date.now(),stale:false})};
+ }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
   const old=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();if(old&&!force&&old.fetched_at>Date.now()-300000)return {...await open(env,old,'portal-calendar'),configured:true,fetchedAt:old.fetched_at,stale:false};
@@ -21856,6 +21866,7 @@ g.PortalHydrants={schema,route};
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path==='/admin/portal/year')return yearCalendar(env,data.year);
   if(path==='/admin/portal/config'){
    const c=await config(env);return {configured:!!c,config:c||null};
   }
@@ -21950,12 +21961,12 @@ g.PortalHydrants={schema,route};
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
- async function publicCalendar(env){
+ async function publicCalendar(env,year=null){
   await ready(env);
-  const cal=await decorate(env,await cachedCalendar(env));
+  const cal=year===null?await decorate(env,await cachedCalendar(env)):await yearCalendar(env,year);
   // Show all approved probe dates, including selected-member appointments. Never expose the recipient list, member names, birthdays, replies, or the private iCal URL.
   return {configured:cal.configured===true,fetchedAt:cal.fetchedAt||null,stale:cal.stale===true,
-   events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&e.end>Date.now()).map(e=>({
+   ...(year===null?{}:{year}),events:cal.events.filter(e=>e.approved===true&&e.kind==='probe'&&(year!==null||e.end>Date.now())).map(e=>({
     id:e.id,title:e.sessionType==='Probe'?'Probe':'Sonderprobe',start:e.start,end:e.end,
     allDay:e.allDay===true,sessionType:e.sessionType==='Probe'?'Probe':'Sonderprobe',attendanceType:e.attendanceType,kind:'probe',approved:true,
     audienceRestricted:Array.isArray(e.recipientIds)
@@ -21985,10 +21996,10 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"9d76da36a379afd46a17229b62ff09b84daa94b83bc6c93e6219e452f70b2f75",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"607b360771cf98f0536ae21bceab2c13a66216b3c4532f01041f6cc21ab3fc4b",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
-    try{return reply(await globalThis.PortalService.publicCalendar(env));}
+    try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}
     catch(error){return reply({error:error.status?error.message:'Kalender derzeit nicht erreichbar. Bitte erneut versuchen.'},error.status||503);}
    }
    if(request.method!=='POST')return reply({error:'Nicht gefunden.'},404);

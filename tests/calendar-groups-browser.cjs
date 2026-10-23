@@ -54,12 +54,12 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
    await card.getByRole('button',{name:'Abbrechen',exact:true}).click();await page.getByRole('button',{name:'Verbindung',exact:true}).click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Connection fits '+width);
    await page.getByRole('button',{name:'Gruppen',exact:true}).click();
   }
-  await page.setViewportSize({width:390,height:844});await agt.screenshot({path:'/tmp/calendar-group-new-mobile.png'});
-  await page.getByRole('button',{name:'Termine',exact:true}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'/tmp/calendar-new-mobile.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});await agt.screenshot({path:path.join(require('node:os').tmpdir(),'calendar-group-new-mobile.png')});
+  await page.getByRole('button',{name:'Termine',exact:true}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(require('node:os').tmpdir(),'calendar-new-mobile.png'),fullPage:true});
   await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();const auto=card.getByRole('button',{name:'Automatische Gruppenauswahl erneut übernehmen'});await auto.click();assert.equal(await card.locator('.portal-recipient-list input:checked').count(),2);
   await Promise.all([page.waitForResponse(r=>r.url().endsWith('/admin/portal/classify')),card.getByRole('button',{name:'Speichern',exact:true}).click()]);await card.getByRole('button',{name:'Bearbeiten',exact:true}).waitFor();
   assert.equal((await f.call('list',{},null,true)).value.events[0].recipientMode,'automatic');assert.equal((await f.call('list',{},null,true)).value.events[0].approved,false,'Audience never approves event');
-  await page.setViewportSize({width:1024,height:900});await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'/tmp/calendar-new-tablet.png',fullPage:true});
+  await page.setViewportSize({width:1024,height:900});await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(require('node:os').tmpdir(),'calendar-new-tablet.png'),fullPage:true});
   await page.getByRole('button',{name:'Gruppen',exact:true}).click();await page.evaluate(()=>PortalAdmin.lock());assert.equal(await groups.locator('.portal-name-list li').count(),0,'Lock removes private names');assert.equal(await tester.count(),0,'Lock removes title test and results');
   assert.deepEqual(errors,[]);console.log('Calendar browser OK: visible automatic names, effective audience, group/term editing, draft guards, resolver, tabs, privacy, 320/390/412/768/1024.');
  }finally{await browser.close();}

@@ -10,7 +10,7 @@ const testDir = path.join(root, 'tests');
 
 // Deliberately broad first-pass selections, not a dependency graph.
 const groups = {
-  kalender: [/^(calendar|portal-calendar|portal-reply|portal-priority|portal-share|portal-reminders|portal-sync|whatsapp|term-)/],
+  kalender: [/^(year-plan|calendar|portal-calendar|portal-reply|portal-priority|portal-share|portal-reminders|portal-sync|whatsapp|term-)/],
   einsatz: [/^(operation-|report-|document-report|tactics-|archive-step2)/],
   geraetehaus: [/^(attendance-|tactics-|term-|operation-|smart-flows|startup)/],
   historie: [/^(history-|archive-|operation-correction|operation-overwrite|backup-)/],

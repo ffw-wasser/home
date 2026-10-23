@@ -73,7 +73,7 @@ function ensureSettingsNavigation(){
     home.dataset.bound="true";
     home.addEventListener("click",()=>showView("attendanceView"));
   }
-  section.querySelectorAll("[data-settings-page]").forEach(pageButton=>{
+  document.querySelectorAll("[data-settings-page]").forEach(pageButton=>{
     if(pageButton.dataset.bound)return;
     pageButton.dataset.bound="true";
     pageButton.addEventListener("click",()=>{
@@ -121,20 +121,21 @@ function restructureMainViews(){
     admin.querySelectorAll(".admin-card-number").forEach(badge=>badge.remove());
   }
   const sub=admin?.querySelector(".screen-heading .eyebrow");if(sub)sub.textContent="Mitglieder, Ziele und Sicherheit";
-  ["adminView","statisticsView","archiveView"].forEach(id=>{const b=byId(id)?.querySelector("[data-home-button]");if(b)b.textContent="← Zu Einstellungen";});
+  ["adminView","statisticsView","archiveView"].forEach(id=>{const b=byId(id)?.querySelector("[data-home-button]");if(b)b.textContent="← Zur Verwaltung";});
 }
 
 function buildSettingsSubpages(){
   const main=document.querySelector("main.app-shell"),legacyAdmin=byId("adminView");
   const makePage=(id,title,description,node)=>{
     let page=byId(id);
-    if(!page){page=document.createElement("section");page.id=id;page.className="view settings-subpage";page.hidden=true;page.innerHTML=`<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>${title}</h2></div><button class="outline-button view-home-button" data-settings-back type="button">← Zu Einstellungen</button></div><div class="settings-subpage-content"></div>`;main.appendChild(page);page.querySelector("[data-settings-back]").addEventListener("click",()=>showView("settingsView"));}
+    if(!page){page=document.createElement("section");page.id=id;page.className="view settings-subpage";page.hidden=true;page.innerHTML=`<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>${title}</h2></div><button class="outline-button view-home-button" data-settings-back type="button">← Zur Verwaltung</button></div><div class="settings-subpage-content"></div>`;main.appendChild(page);page.querySelector("[data-settings-back]").addEventListener("click",()=>showView("settingsView"));}
     if(node)page.querySelector(".settings-subpage-content").appendChild(node);
     return page;
   };
   const members=byId("admin-members"),goals=byId("admin-settings"),pinArticle=byId("changePinButton")?.closest("article");
   if(pinArticle)pinArticle.remove();
   const membersPage=makePage("settingsMembersView","Mitglieder","Mitglieder, Funktionen und Berechtigungen verwalten.",members);
+  if(membersPage&&!byId('portal-admin-open')){const button=document.createElement('button');button.id='portal-admin-open';button.type='button';button.className='outline-button';button.textContent='Portalzugänge';membersPage.prepend(button);}
   if(membersPage&&!byId('memberEvidenceSync')){
     const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Nachweise · Handy-Abgleich</h3><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
     byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync');button.disabled=true;try{await window.PortalAdmin.syncRoster(true);}catch{/* The status card shows the confirmed sync result. */}finally{window.PortalAdmin.renderSyncStatus();}};
@@ -155,7 +156,7 @@ function buildSettingsSubpages(){
   const statistics=byId("statisticsView");if(statistics){statistics.id="settingsStatisticsView";statistics.classList.add("settings-subpage");}
   const history=byId("settingsHistoryView")||byId("historyView");if(history){history.id="settingsHistoryView";history.classList.add("settings-subpage");}
   const files=byId("settingsFilesView")||byId("archiveView");if(files){files.id="settingsFilesView";files.classList.add("settings-subpage");}
-  [statistics,history,files].forEach(page=>{if(!page)return;const back=page.querySelector(".view-home-button,[data-home-button],[data-history-home]");if(back){back.textContent="← Zu Einstellungen";back.onclick=()=>showView("settingsView");}});
+  [statistics,history,files].forEach(page=>{if(!page)return;const back=page.querySelector(".view-home-button,[data-home-button],[data-history-home]");if(back){back.textContent="← Zur Verwaltung";back.onclick=()=>showView("settingsView");}});
   legacyAdmin?.remove();
   document.querySelectorAll(".admin-section-nav,.admin-card-number").forEach(node=>node.remove());
   ensureArchiveStorageCenter();
@@ -189,14 +190,14 @@ byId("attendanceTab").addEventListener("click", () => {
   requestAnimationFrame(()=>byId("homeFlowProgress")?.scrollIntoView({behavior:"smooth",block:"start"}));
 });
 document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => {const target=button.closest("#settingsView")?"attendanceView":"settingsView";if(target==="attendanceView"&&!requestReturnToHomeStage())return;showView(target);}));
-byId("adminTab").addEventListener("click", () => showView(adminUnlocked ? "adminView" : "adminLoginView"));
-byId("archiveTab").addEventListener("click", () => { if (adminUnlocked) { renderArchive(); showView("archiveView"); } else showView("archiveLoginView"); });
+byId("adminTab")?.addEventListener("click", () => showView(adminUnlocked ? "adminView" : "adminLoginView"));
+byId("archiveTab")?.addEventListener("click", () => { if (adminUnlocked) { renderArchive(); showView("archiveView"); } else showView("archiveLoginView"); });
 byId("helpTab")?.addEventListener("click", () => showView("helpView"));
 byId("finalizeProbeButton").addEventListener("click", finalizeProbeFromTactics);
 // Der zusätzliche Abbruchknopf ist redundant: Home und „Zurück zu Schritt 1“ übernehmen den Rückweg.
 const cancelTacticsCloseButton=byId("cancelTacticsCloseButton");
 if(cancelTacticsCloseButton)cancelTacticsCloseButton.remove();
-byId("statisticsTab").addEventListener("click", () => { renderStatistics(); showView("settingsStatisticsView"); });
+byId("statisticsTab")?.addEventListener("click", () => { renderStatistics(); showView("settingsStatisticsView"); });
 byId("statisticsPdfButton").addEventListener("click", exportStatisticsPdf);
 byId("statisticsYearSelect").addEventListener("change",event=>{selectedStatisticsYear=event.target.value;renderStatistics();const selected=byId("individualMemberSelect").value;if(selected)renderIndividualStatistics(selected);});
 byId("individualMemberSelect").addEventListener("change", event => renderIndividualStatistics(event.target.value));
