@@ -20370,6 +20370,7 @@ ${strMDSAlgs}`);
 /* RFC 5545 calendar projection. Identity follows UID / original recurrence, never title. */
 (function(g){
  'use strict';
+ let berlinFormatter;
  function parse(raw,now=Date.now(),range=null){
   if(typeof raw!=='string'||raw.length>2000000||!raw.trimStart().startsWith('BEGIN:VCALENDAR'))throw Error('Keine gültige iCal-Kalenderdatei.');
   const I=g.ICAL,root=new I.Component(I.parse(raw)),from=range?.from??now-31*86400000,to=range?.to??now+370*86400000,events=[],groups=new Map();let steps=0;
@@ -20378,16 +20379,21 @@ ${strMDSAlgs}`);
   for(const c of root.getAllSubcomponents('vtimezone'))I.TimezoneService.register(new I.Timezone(c));
   const components=root.getAllSubcomponents('vevent');if(components.length>10000)throw Error('Der Kalender enthält zu viele Einträge.');
   for(const c of components){const uid=c.getFirstPropertyValue('uid');if(!uid)throw Error('Kalendereintrag ohne feste Kennung.');if(!groups.has(uid))groups.set(uid,[]);groups.get(uid).push(c);}
+  const localTimes=new Map(),wallTime=t=>Date.UTC(t.year,t.month-1,t.day,t.hour||0,t.minute||0,t.second||0);
   const timestamp=t=>{
    if(t.zone===I.Timezone.localTimezone){
     // Floating/date-only Google entries use the brigade's Berlin timezone.
-    const wall=Date.UTC(t.year,t.month-1,t.day,t.hour||0,t.minute||0,t.second||0);let guess=wall;
-    for(let i=0;i<3;i++){const parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(guess)),v=Object.fromEntries(parts.map(p=>[p.type,p.value]));guess=wall-(Date.UTC(+v.year,+v.month-1,+v.day,+v.hour,+v.minute,+v.second)-guess);}return guess;
+    const wall=wallTime(t);if(localTimes.has(wall))return localTimes.get(wall);let guess=wall;
+    berlinFormatter??=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+    for(let i=0;i<3;i++){const parts=berlinFormatter.formatToParts(new Date(guess)),v=Object.fromEntries(parts.map(p=>[p.type,p.value])),next=wall-(Date.UTC(+v.year,+v.month-1,+v.day,+v.hour,+v.minute,+v.second)-guess);if(next===guess)break;guess=next;}localTimes.set(wall,guess);return guess;
    }
    return t.toJSDate().getTime();
   };
   function add(uid,event,original,start,end,recurring){
    if(event.component.getFirstPropertyValue('status')==='CANCELLED')return;
+   // Berlin floating dates cannot cross more than a day relative to UTC.
+   // Reject old series instances before doing any timezone formatting.
+   if(start.zone===I.Timezone.localTimezone&&end.zone===I.Timezone.localTimezone&&(wallTime(end)<from-86400000||wallTime(start)>to+86400000))return;
    const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if((range?finish<=from:ms<from)||ms>=to)return;
    events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
   }
@@ -20397,9 +20403,22 @@ ${strMDSAlgs}`);
    const event=new I.Event(main),recurring=event.isRecurring();if(main.getFirstPropertyValue('status')==='CANCELLED')continue;
    for(const c of items.filter(c=>c!==main))event.relateException(new I.Event(c));
    if(!recurring){add(uid,event,event.startDate,event.startDate,event.endDate,false);continue;}
-   const it=event.iterator();let occurrence;while((occurrence=it.next())){
+   let anchor;
+   const rules=main.getAllProperties('rrule');
+   // A simple unbounded annual date has the same anchor every year. Start near
+   // the requested year instead of walking through decades of old birthdays.
+   // Counts, complex rules, RDATEs and moved exceptions retain the full iterator.
+   if(items.length===1&&event.startDate.isDate&&event.duration.toSeconds()>0&&event.duration.toSeconds()<=172800&&rules.length===1&&!main.hasProperty('rdate')){
+    const rule=rules[0].getFirstValue(),start=event.startDate;
+    if(rule.freq==='YEARLY'&&rule.interval===1&&!rule.count&&!Object.keys(rule.parts).length){
+     let near=Math.max(start.year,new Date(from).getUTCFullYear()-2);
+     if(start.month===2&&start.day===29)while(near>start.year&&new Date(Date.UTC(near,1,29)).getUTCMonth()!==1)near--;
+     if(near>start.year){anchor=start.clone();anchor.year=near;}
+    }
+   }
+   const it=event.iterator(anchor);let occurrence;while((occurrence=it.next())){
     if(++steps>50000)throw Error('Die Terminserie ist zu umfangreich. Bitte Kalender eingrenzen.');
-    if(timestamp(occurrence)>to+370*86400000)break;
+    if(occurrence.zone===I.Timezone.localTimezone?wallTime(occurrence)>to+371*86400000:timestamp(occurrence)>to+370*86400000)break;
     const details=event.getOccurrenceDetails(occurrence);add(uid,details.item,occurrence,details.startDate,details.endDate,true);
    }
   }
@@ -21553,7 +21572,7 @@ g.PortalHydrants={schema,route};
 
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
- 'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap();
+ 'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
  const ddl=[
   'CREATE TABLE IF NOT EXISTS portal_groups (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   ...g.PortalEvidence.schema,
@@ -21567,6 +21586,7 @@ g.PortalHydrants={schema,route};
   'CREATE TABLE IF NOT EXISTS portal_contacts (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,updated_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_config (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_calendar (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS portal_calendar_year (year INTEGER PRIMARY KEY,payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_replies (event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(event,member))',
   "CREATE TABLE IF NOT EXISTS portal_sends (id TEXT PRIMARY KEY,event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',campaign TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL)",
   'CREATE INDEX IF NOT EXISTS portal_sends_created ON portal_sends(created_at)',
@@ -21585,15 +21605,37 @@ g.PortalHydrants={schema,route};
   const reader=response.body.getReader(),chunks=[];let size=0;try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>2000000)fail('Der Kalender ist zu groß.',400);chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}return new TextDecoder().decode(bytes);
  }
- async function projection(url,range=null){const raw=await download(url),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[];for(const item of items){const {key,seriesKey,...rest}=item;events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:await hash('h2o-series/v1:'+url+':'+seriesKey),...rest});}return events;}
+ async function projection(url,range=null){const raw=await download(url),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[],series=new Map();for(const item of items){const {key,seriesKey,...rest}=item;if(!series.has(seriesKey))series.set(seriesKey,await hash('h2o-series/v1:'+url+':'+seriesKey));events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:series.get(seriesKey),...rest});}return events;}
  async function yearCalendar(env,year){
   if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
   const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
   const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
-  // Read the same Google source without replacing the operational/bonus cache.
-  const events=await projection(c.calendarUrl,range);
+  // Keep only raw projections in this bounded, per-database memory cache.
+  // Rules, roster and recipient restrictions are applied afresh on every read.
+  let years=yearLoads.get(env.DB);if(!years){years=new Map();yearLoads.set(env.DB,years);}
+  for(const [key,value] of years)if(value.url!==c.calendarUrl)years.delete(key);
+  let entry=years.get(year);
+  if(!entry||!entry.pending&&entry.fetchedAt<=Date.now()-300000){
+   const previous=entry;entry={url:c.calendarUrl,fetchedAt:0,pending:null};years.set(year,entry);
+   while(years.size>3)years.delete(years.keys().next().value);
+   entry.pending=(async()=>{let fallback=previous?.events?previous:null;
+    try{
+     // Encrypted snapshots also serve cold isolates without recalculating every
+     // historical series. They never contain recipient decisions or reply data.
+     const row=await env.DB.prepare('SELECT * FROM portal_calendar_year WHERE year=?').bind(year).first(),saved=await open(env,row,'portal-calendar-year:'+year);if(saved?.calendarUrl===c.calendarUrl&&Array.isArray(saved.events)&&(!fallback||row.fetched_at>fallback.fetchedAt))fallback={events:saved.events,fetchedAt:row.fetched_at};
+     if(fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
+     const events=await projection(c.calendarUrl,range),fetchedAt=Date.now();
+     if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
+     const payload=await L.seal(env,{calendarUrl:c.calendarUrl,events},'portal-calendar-year:'+year);
+     await env.DB.prepare('INSERT INTO portal_calendar_year(year,payload,fetched_at) VALUES(?,?,?) ON CONFLICT(year) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at WHERE portal_calendar_year.fetched_at<=excluded.fetched_at').bind(year,payload,fetchedAt).run();
+     entry.events=events;entry.fetchedAt=fetchedAt;return {events,fetchedAt,stale:false};
+    }
+    catch(error){if(fallback){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:true};}if(years.get(year)===entry)years.delete(year);throw error;}
+    finally{entry.pending=null;}})();
+  }
+  const cal=entry.pending?await entry.pending:{events:entry.events,fetchedAt:entry.fetchedAt,stale:false};
   if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
-  return {year,...await decorate(env,{configured:true,events,fetchedAt:Date.now(),stale:false})};
+  return {year,...await decorate(env,{configured:true,...cal})};
  }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
@@ -22006,7 +22048,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"bc95e55ed29d568474a3fc09ad2f019e2b4fd18df7644781f6418a5651f014b8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"c2495f96b2fb3d90af00ca4f1f09f097221cfdb67c1e7f1f00cfc081c119d1fe",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

@@ -63,7 +63,7 @@ function showView(viewId) {
   if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("historyTab"))byId("historyTab").classList.toggle("active",viewId==="settingsHistoryView");if(byId("statisticsTab"))byId("statisticsTab").classList.toggle("active",viewId==="settingsStatisticsView");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
   window.YearPlan?.afterView(viewId);
   for(const [id,active] of [["yearPlanTab",viewId==="yearPlanView"],["plansTab",viewId==="plansView"],["eventsTab",viewId==="eventsView"||viewId==="theaterView"]]){const tab=byId(id);tab?.classList.toggle("active",active);if(tab){if(active)tab.setAttribute("aria-current","page");else tab.removeAttribute("aria-current");}}
-  window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
+  if(viewId!=="yearPlanView")window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
   if(viewId==="settingsView")window.SmartWorkflow?.settings();
   if(viewId==="theaterView")window.TheaterAdmin?.load();
   if(viewId==="settingsPortalView")window.PortalAdmin?.load();

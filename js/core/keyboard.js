@@ -11,10 +11,10 @@
     root.style.setProperty("--ios-visual-height",`${Math.max(120,height)}px`);
     root.style.setProperty("--ios-visual-top",`${Math.max(0,top)}px`);root.style.setProperty("--ios-keyboard-height",`${keyboardHeight}px`);
     document.body.classList.toggle("ios-keyboard-visible",keyboardHeight>120);
-    if(!active)return;
+    if(!active||active!==document.activeElement)return;
     cancelAnimationFrame(raf);
     raf=requestAnimationFrame(()=>{
-      if(!active?.isConnected)return;
+      if(!active?.isConnected||active!==document.activeElement)return;
       const bounds=active.getBoundingClientRect(),visibleTop=(viewport?.offsetTop||0)+12,visibleBottom=(viewport?.offsetTop||0)+(viewport?.height||innerHeight)-18;
       if(bounds.top<visibleTop||bounds.bottom>visibleBottom){
         active.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"});

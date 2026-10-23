@@ -16,7 +16,7 @@
 .year-plan-date{white-space:nowrap}
 [data-portal-tile="more-year-plan"] strong{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.15;word-break:normal;overflow-wrap:normal}
 #more-year-plan .year-plan-heading{padding:14px 12px;margin-top:12px}#more-year-plan h1{font-size:clamp(1.2rem,5vw,1.8rem);overflow-wrap:anywhere}
-#more-year-plan .year-plan-tools button{background:#fff;color:#18344c;border:1px solid #a6b6c4;border-radius:9px;padding:8px;font:inherit;min-width:44px}
+#more-year-plan .year-plan-tools button{background:#fff;color:#18344c;border:1px solid #a6b6c4;border-radius:9px;padding:8px;font:inherit;min-width:44px;width:auto!important}
 #more-year-plan .year-plan-display{background:#fff;border:1px solid #cbd5df;border-radius:10px;padding:0 12px}#more-year-plan .year-plan-display>summary{min-height:44px;padding:12px 0;font-weight:700;cursor:pointer}
 #more-year-plan .year-plan-tools label{min-width:0}#more-year-plan .year-plan-tools select{min-width:0;max-width:100%}
 #more-year-plan>.year-plan-tools{position:sticky;top:0;z-index:2;background:#eef4fa;padding:8px 0}
@@ -50,3 +50,5 @@
 
 .year-plan-pdf-dialog{width:min(1100px,calc(100vw - 16px));max-width:none;height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);padding:12px;border:1px solid #a6b6c4;border-radius:12px;background:#f4f7fa;color:#18344c;box-sizing:border-box}.year-plan-pdf-dialog[open]{display:flex;flex-direction:column;gap:8px}.year-plan-pdf-dialog::backdrop{background:#102534b3}.year-plan-pdf-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.year-plan-pdf-actions h2{font-size:1.1rem;margin:0 auto 0 0}.year-plan-pdf-actions button,.year-plan-pdf-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;border:1px solid #a6b6c4;border-radius:8px;background:#fff;color:#18344c;font:inherit;padding:8px;box-sizing:border-box}.year-plan-pdf-actions [hidden]{display:none}.year-plan-pdf-dialog p{margin:0;font-size:.85rem}.year-plan-pdf-map{flex:1;min-height:160px;height:auto!important;width:100%;background:#dce5ec}.year-plan-pdf-actions span{font-size:.85rem}
 .year-plan-pdf-actions button,.year-plan-pdf-actions a{width:auto!important;flex:0 0 auto}.year-plan-pdf-actions h2{flex:1 1 auto}.year-plan-pdf-actions button:disabled{opacity:.45}
+
+.year-plan-day.is-public-holiday{background:#e3f3dd}.year-plan-public-holiday{display:block;font-size:.75rem;font-weight:700;color:#285127}@media print{.year-plan-public-holiday{font-size:6pt}}
