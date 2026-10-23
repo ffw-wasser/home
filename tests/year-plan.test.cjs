@@ -30,3 +30,17 @@ test('Ferien schließen beide Grenztage ein, laufen über den Jahreswechsel und 
  const c=vm.createContext({});vm.runInContext(fs.readFileSync('js/features/portal/school-holidays.js','utf8'),c);const h=c.SchoolHolidays;
  assert.equal(h.forDay('2026-01-05')[0].name,'Weihnachtsferien');assert.equal(h.forDay('2026-01-06').length,0);assert.equal(h.forDay('2027-01-09')[0].name,'Weihnachtsferien');assert.equal(h.forDay('2027-01-10').length,0);assert.equal(h.complete(2026),true);assert.equal(h.complete(2030),false);
 });
+test('Persönlicher Jahresplan wahrt Empfängergrenzen und zeigt ausschließlich den eigenen Geburtstag',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00:00Z')});
+ f.raw(ics([event('allowed','20260620','Probe Allgemein'),event('restricted','20260710','Probe Vertraulich'),event('unapproved','20260801','Probe Noch nicht freigegeben'),event('own-birthday','20260910','Geburtstag Eigene Testperson'),event('other-birthday','20260911','Geburtstag Andere Testperson')]));
+ f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
+ for(const [title,kind,memberId,recipientIds] of [['Probe Allgemein','probe',null,null],['Probe Vertraulich','probe',null,[f.people[1].memberId]],['Geburtstag Eigene Testperson','birthday',f.people[0].memberId],['Geburtstag Andere Testperson','birthday',f.people[1].memberId]]){
+  const cal=(await f.call('list',{},null,true)).value,e=cal.events.find(e=>e.title===title);
+  assert.equal((await f.call('classify',{eventId:e.id,kind,approved:kind==='probe',memberId,expectedVersion:cal.rulesVersion,...(kind==='probe'?{recipientIds}:{})},null,true)).status,200);
+ }
+ const response=await f.call('year',{year:2026});assert.equal(response.status,200);assert.deepEqual(response.value.events.map(e=>e.title),['Probe Allgemein','Dein Geburtstag']);
+ for(const e of response.value.events)for(const key of ['memberId','seriesId','recipientIds','automaticRecipientIds','recipientMode','groupIds'])assert.equal(e[key],undefined);
+ const other=await f.call('year',{year:2026},f.people[1]);assert.deepEqual(other.value.events.map(e=>e.title),['Probe Allgemein','Probe Vertraulich','Dein Geburtstag']);
+ assert.equal((await f.call('year',{year:2026}, {...f.people[0],testToken:'invalid'})).status,401);
+ f.sql.prepare('DELETE FROM portal_roster').run();assert.equal((await f.call('year',{year:2026})).status,403);
+});
