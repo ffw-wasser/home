@@ -4,7 +4,7 @@
  const types=[['general','Allgemeine Probe','#326A9B'],['special','Sonderprobe','#82559C'],['lesson','Unterricht','#39765A'],['committee','Ausschusssitzung','#96652E'],['other','Weitere Termine','#566773'],['info','Kalenderinformation','#66717A'],['birthday','Geburtstag','#AF526F']].map(([id,label,color])=>({id,label,color}));
  const defaults=()=>Object.fromEntries(types.map(t=>[t.id,t.color]));
  function validate(colors){if(!colors||typeof colors!=='object'||Array.isArray(colors)||Object.keys(colors).length!==types.length||types.some(t=>!/^#[0-9a-f]{6}$/i.test(colors[t.id]||'')))throw Error('Bitte für jede Terminart eine gültige Farbe wählen.');return Object.fromEntries(types.map(t=>[t.id,colors[t.id].toUpperCase()]));}
- function key(e){return e.kind==='birthday'?'birthday':e.kind==='info'?'info':e.kind!=='probe'?'other':e.attendanceType==='Unterricht'?'lesson':e.attendanceType==='Ausschuss Sitzung'?'committee':e.attendanceType==='Allgemeine Probe'?'general':e.sessionType==='Probe'?'general':'special';}
+ function key(e){return e.kind==='birthday'?'birthday':e.kind==='info'?'info':e.kind!=='probe'?'other':e.attendanceType==='Unterricht'?'lesson':e.attendanceType==='Ausschuss Sitzung'?'committee':e.attendanceType==='Allgemeine Probe'?'general':e.attendanceType==='Sonderprobe'?'special':e.sessionType==='Probe'?'general':'special';}
  function style(e,colors=defaults()){
   const color=colors[key(e)]||defaults()[key(e)],v=color.slice(1).match(/../g).map(s=>parseInt(s,16)),hex=values=>'#'+values.map(n=>Math.round(n).toString(16).padStart(2,'0')).join('');
   return {accent:hex(v.map(n=>Math.min(n,175))),background:hex(v.map(n=>255*.9+n*.1)),text:'#18344C',label:types.find(t=>t.id===key(e)).label};

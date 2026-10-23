@@ -24,3 +24,5 @@ test('Zentrale Terminfarben sind streng validiert, versioniert und rein gestalte
 test('Google-Beschreibung und mehrtägige INFO bleiben Klartext mit exklusivem Enddatum',async()=>{
  const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});f.raw('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:multi-info\r\nDTSTART;VALUE=DATE:20260701\r\nDTEND;VALUE=DATE:20260704\r\nSUMMARY:INFO: Sommerhinweis\r\nDESCRIPTION:<p>Hinweis</p><script>secret()</script>\r\nEND:VEVENT\r\nEND:VCALENDAR');const year=(await f.call('year',{year:2026},null,true)).value,e=year.events[0];assert.equal(e.kind,'info');assert.equal(e.note,'Hinweis');assert.equal(e.allDay,true);assert.equal(e.end-e.start,3*86400000);assert.equal(e.approved,false);
 });
+
+test('Explizite Terminart bestimmt ihre Farbe unabhängig von der bisherigen Probe-Einordnung',async()=>{const f=await fixture();assert.equal(f.c.CalendarPresentation.key({kind:'probe',sessionType:'Probe',attendanceType:'Sonderprobe'}),'special');assert.equal(f.c.CalendarPresentation.key({kind:'probe',sessionType:'Sonderprobe',attendanceType:'Allgemeine Probe'}),'general');});
