@@ -649,6 +649,7 @@ function syncHomeFlowProgress(stage=homeFlowStage){
  const steps=operation?[[1,"Termin"],[2,"Personen"],[3,"Fahrzeuge"],[4,"Einsatzbericht"]]:[[1,"Termin"],[2,"Personen"],[3,"Abschluss"]];
  progress.innerHTML=steps.map(([number,label],index)=>`${index?"<i></i>":""}<button type="button" data-flow-indicator="${number}"><b>${number}</b><span>${label}</span></button>`).join("");
  progress.dataset.currentStage=String(current);
+ progress.hidden=stage===1;
  progress.querySelectorAll("[data-flow-indicator]").forEach(item=>{const number=Number(item.dataset.flowIndicator),isCurrent=number===current,canReturnToReport=operation&&number===4&&Boolean(byId("operationReportForm"))&&Boolean(operationNames?.().length);item.classList.toggle("current",isCurrent);item.classList.toggle("completed",number<current);item.classList.toggle("upcoming",number>current);if(isCurrent)item.setAttribute("aria-current","step");else item.removeAttribute("aria-current");const canResumePeople=number===2&&Boolean(currentSessionId||currentOperationId);item.disabled=number>current&&!canReturnToReport&&!canResumePeople;});
 }
 
@@ -689,7 +690,7 @@ function ensureStagedHomeFlow(){
     byId("attendanceStartActions").appendChild(actions);
     byId("continueToAttendanceButton").addEventListener("click",beginAttendanceFromContext);
   }
-  const step=sessionPanel.querySelector(".step");if(step)step.textContent="1";
+  sessionPanel.querySelector(".step")?.remove();
   workspace.classList.add("home-flow-card","home-flow-stage-2");
   if(!byId("stage2Heading")){const h=document.createElement("div");h.id="stage2Heading";h.className="flow-stage-heading";workspace.prepend(h);}
   const stage2Heading=byId("stage2Heading");if(stage2Heading)stage2Heading.innerHTML=`<span>2</span><div><strong>Anwesenheit erfassen</strong><small>${escapeHtml(sessionType)}</small></div>`;
