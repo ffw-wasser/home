@@ -31,8 +31,9 @@ Jahresansicht bleibt über das Menü erreichbar; „Heute“ springt zum aktuell
 Monat. Beim Trennen oder Wechseln der Datenquelle werden Kalenderdaten entfernt.
 
 „Als PDF ansehen“ verwendet in Gerätehaus und H₂O denselben Export: A3 quer,
-sechs Monate pro Halbjahr, zusätzliche Seiten bei umfangreichen Tagen. Lange
-Zusatzinfos werden nummeriert im Anhang vollständig ausgegeben. Die aktive
+genau zwei Seiten mit je sechs Monaten. Die Monatsspalten nutzen ihren Platz
+unabhängig. Lange Zusatzinfos und ausnahmsweise überfüllte Tage werden in dieser
+Übersicht erkennbar gekürzt; vollständig bleiben sie in der Kalenderansicht. Die aktive
 Filterauswahl gilt auch für das PDF. Persönliche PDFs werden beim Abmelden
 geschlossen und ihre lokalen Dateiverweise verworfen.
 

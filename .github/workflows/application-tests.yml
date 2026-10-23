@@ -65,3 +65,5 @@ jobs:
         run: node tests/calendar-display-browser.cjs
       - name: Test separate incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
+      - name: Test home icon, administration cards and portal navigation
+        run: node tests/navigation-settings-browser.cjs

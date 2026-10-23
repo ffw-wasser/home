@@ -6,12 +6,12 @@ test('Jahres-PDF umfasst beide Halbjahre als echte A3-Seiten',async()=>{
  assert.equal(result.pageCount,2);assert.equal(doc.getPageCount(),2);assert.equal(doc.getTitle(),'Jahresprobenplan 2026');
  assert.ok(Math.abs(doc.getPage(0).getWidth()-1190.55)<.1);assert.ok(Math.abs(doc.getPage(0).getHeight()-841.89)<.1);
 });
-test('Lange Themen und viele Termine erzeugen Fortsetzungsseiten ohne Exportabbruch',async()=>{
+test('Auch überfüllte Tage bleiben auf zwei Seiten mit ausdrücklicher Kürzungsmarkierung',async()=>{
  const data=months();data[0].days[0].events=Array.from({length:160},(_,i)=>({title:'Probe '+i+' Überprüfung Atemschutzgeräteträger '+('Langwort'.repeat(8))+' 🚒',details:'Gerätehaus Wasser · Einsatzkleidung'}));
  const result=await fixture().build({year:2026,months:data,note:'Nur Testdaten'}),doc=await PDFLib.PDFDocument.load(result.bytes);
- assert.ok(result.pageCount>2);assert.equal(doc.getPageCount(),result.pageCount);
+ assert.equal(result.pageCount,2);assert.equal(result.condensed,true);assert.equal(doc.getPageCount(),result.pageCount);
 });
 
-test('Lange Zusatzinfos werden vollständig als nummerierter Anhang exportiert',async()=>{
- const data=months();data[0].days[1].events=[{title:'INFO: Mehrtägige Zusatzinfo',type:'info',note:'Lange wichtige Information. '.repeat(180),details:''}];const result=await fixture().build({year:2026,months:data,note:'Test',personal:false}),doc=await PDFLib.PDFDocument.load(result.bytes);assert.ok(result.pageCount>=3);assert.equal(doc.getPageCount(),result.pageCount);
+test('Lange Zusatzinfos erzeugen keinen zusätzlichen PDF-Anhang',async()=>{
+ const data=months();data[0].days[1].events=[{title:'INFO: Mehrtägige Zusatzinfo',type:'info',note:'Lange wichtige Information. '.repeat(180),details:''}];const result=await fixture().build({year:2026,months:data,note:'Test',personal:false}),doc=await PDFLib.PDFDocument.load(result.bytes);assert.equal(result.pageCount,2);assert.equal(result.condensed,true);assert.equal(doc.getPageCount(),result.pageCount);
 });
