@@ -32,7 +32,7 @@ jobs:
       - run: node --test tests/*.test.cjs
       - name: Commit generated files if changed
         run: |
-          git add cloudflare/push/worker.bundle.js js/vendor/passkeys-browser.js index.html deckel.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest js/features/drinks/deckel-manifest.js
+          git add cloudflare/push/worker.bundle.js js/vendor/passkeys-browser.js index.html deckel.html termin.html service-worker.js manifest.webmanifest deckel.webmanifest deckel-android.webmanifest js/features/drinks/deckel-manifest.js
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

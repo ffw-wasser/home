@@ -15,13 +15,13 @@ test('WhatsApp-Einstellungen haben keine separate Verbindung oder Registrierung 
  for(const id of ['portal-browser-start','portal-browser-copy','portal-browser-revoke','portal-browser-legacy'])assert.ok(!html.includes('id="'+id+'"'));
  assert.ok(html.includes('id="identity-login"'));
 });
-function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search='',userAgent=''}={}){
+function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search='',userAgent='',platform='',maxTouchPoints=0,blocked=false}={}){
  const dom=elements(read('termin.html')),assigned=[],back=[];
- const location={href:'https://ffw-wasser.github.io/home/termin.html',origin:'https://ffw-wasser.github.io',pathname:'/home/termin.html',search,hash:'',assign:url=>assigned.push(url)};
+ const location={href:'https://ffw-wasser.github.io/home/termin.html',origin:'https://ffw-wasser.github.io',pathname:'/home/termin.html',search,hash:'',assign:url=>{assigned.push(url);if(blocked)throw Error('blocked');}};
  const history={length:historyLength,replaceState(){},back:()=>back.push(true)};
  const c=vm.createContext({
   console,URL,URLSearchParams,Intl,Date,location,history,
-  navigator:{standalone,userAgent},
+  navigator:{standalone,userAgent,platform,maxTouchPoints},
   document:{referrer:from,getElementById:id=>dom[id],createElement:()=>new Node()},
   matchMedia:()=>({matches:standalone}),localStorage:{getItem:()=>null,removeItem(){}},
   DeckelDevice:{read:async()=>savedURL?{url:savedURL}:null,readLink:async()=>null},
@@ -32,16 +32,28 @@ function responseContext({standalone=false,from='',historyLength=1,savedURL=null
  vm.runInContext(read('js/features/portal/portal-whatsapp.js'),c);
  return {dom,assigned,back};
 }
-test('WhatsApp öffnen startet keinen externen Link und zeigt sicheren Rückweg',()=>{
- const run=responseContext({search:'?event=test'});
- run.dom['back-to-whatsapp'].events.click();
- assert.deepEqual(run.assigned,[]);
+test('WhatsApp öffnet auf Handys und iPad erst beim Tippen ohne Termindaten',()=>{
+ for(const device of [{userAgent:'iPhone'},{userAgent:'Android'},{userAgent:'iPad'},{userAgent:'Macintosh',platform:'MacIntel',maxTouchPoints:5}]){
+  const run=responseContext({...device,search:'?event=private-event&token=private-token'});
+  assert.deepEqual(run.assigned,[]);
+  run.dom['back-to-whatsapp'].events.click();
+  assert.deepEqual(run.assigned,['whatsapp://app']);
+  assert.match(run.dom['back-to-h2o-status'].textContent,/App-Umschalter/);
+  assert.ok(!run.dom['back-to-h2o-status'].textContent.includes('gespeichert'));
+ }
+});
+test('Desktop öffnet WhatsApp Web; nur ein echter HTTPS-WhatsApp-Verlauf geht zurück',()=>{
+ const desktop=responseContext();desktop.dom['back-to-whatsapp'].events.click();assert.deepEqual(desktop.assigned,['https://web.whatsapp.com/']);
+ const web=responseContext({from:'https://web.whatsapp.com/',historyLength:2});
+ assert.equal(web.back.length,0);web.dom['back-to-whatsapp'].events.click();assert.equal(web.back.length,1);assert.deepEqual(web.assigned,[]);
+ for(const from of ['https://fakewhatsapp.com/','https://whatsapp.com.evil.test/','http://web.whatsapp.com/','']){
+  const fake=responseContext({from,historyLength:2,userAgent:'Android'});fake.dom['back-to-whatsapp'].events.click();assert.equal(fake.back.length,0);assert.deepEqual(fake.assigned,['whatsapp://app']);
+ }
+});
+test('Blockierter App-Aufruf behält einen verständlichen manuellen Rückweg',()=>{
+ const run=responseContext({userAgent:'iPhone',blocked:true});
+ assert.doesNotThrow(()=>run.dom['back-to-whatsapp'].events.click());
  assert.match(run.dom['back-to-h2o-status'].textContent,/App-Umschalter/);
- assert.equal(run.back.length,0);
- assert.ok(!run.dom['back-to-h2o-status'].textContent.includes('gespeichert'));
- assert.equal(responseContext({from:'https://web.whatsapp.com/',historyLength:2}).back.length,0);
- const web=responseContext({from:'https://web.whatsapp.com/',historyLength:2});web.dom['back-to-whatsapp'].events.click();assert.equal(web.back.length,1);
- const fake=responseContext({from:'https://fakewhatsapp.com/',historyLength:2});fake.dom['back-to-whatsapp'].events.click();assert.equal(fake.back.length,0);
 });
 test('Terminseite enthält keine überflüssigen Zugangs- und H2O-Buttons',()=>{
  const html=read('termin.html');
