@@ -11,3 +11,7 @@ test('Lange Themen und viele Termine erzeugen Fortsetzungsseiten ohne Exportabbr
  const result=await fixture().build({year:2026,months:data,note:'Nur Testdaten'}),doc=await PDFLib.PDFDocument.load(result.bytes);
  assert.ok(result.pageCount>2);assert.equal(doc.getPageCount(),result.pageCount);
 });
+
+test('Lange Zusatzinfos werden vollständig als nummerierter Anhang exportiert',async()=>{
+ const data=months();data[0].days[1].events=[{title:'INFO: Mehrtägige Zusatzinfo',type:'info',note:'Lange wichtige Information. '.repeat(180),details:''}];const result=await fixture().build({year:2026,months:data,note:'Test',personal:false}),doc=await PDFLib.PDFDocument.load(result.bytes);assert.ok(result.pageCount>=3);assert.equal(doc.getPageCount(),result.pageCount);
+});

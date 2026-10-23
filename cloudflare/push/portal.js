@@ -14,6 +14,8 @@
   'CREATE TABLE IF NOT EXISTS portal_contacts (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,updated_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_config (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_calendar (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS portal_calendar_display (event TEXT PRIMARY KEY,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
+  'CREATE TABLE IF NOT EXISTS portal_calendar_colors (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_calendar_year (year INTEGER PRIMARY KEY,payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_replies (event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(event,member))',
   "CREATE TABLE IF NOT EXISTS portal_sends (id TEXT PRIMARY KEY,event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',campaign TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL)",
@@ -77,6 +79,7 @@
  }
  function nameKey(value){return String(value).toLocaleLowerCase('de-DE').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').match(/[a-z]+/g)?.sort().join(' ')||'';}
  function detected(e,roster){
+  if(g.CalendarPresentation.isInfo(e.title))return {kind:'info',sessionType:null,memberId:null};
   if(e.birthdayHint){const title=e.title.replace(/geburtstag|birthday|geb\.|🎂/gi,' ').replace(/\b(?:von|happy)\b/gi,' '),key=nameKey(title),matches=(roster?.members||[]).filter(m=>nameKey(m.name)===key);return {kind:'birthday',sessionType:null,memberId:matches.length===1?matches[0].id:null};}
   return {kind:'probe',sessionType:!/sonderprobe/i.test(e.title)&&/(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title)?'Probe':'Sonderprobe',memberId:null};
  }
@@ -89,19 +92,39 @@
  }
  async function decorate(env,cal){
   const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),groups=await audienceGroups(env);
-  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster);
-  return {...cal,rulesVersion:row?.version||0,groupsVersion:groups.version,rosterUpdatedAt:roster?.updatedAt||null,events:cal.events.map(e=>{
-   const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null,clothingValue=rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
-   const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',automaticAudience=resolveAudience(e.title);
+  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster),design=await calendarColors(env),display=new Map();for(const item of (await env.DB.prepare('SELECT * FROM portal_calendar_display').all()).results)display.set(item.event,{...await open(env,item,'calendar-display:'+item.event),version:item.version});
+  return {...cal,colors:design.colors,colorVersion:design.version,displayFeatureVersion:1,rulesVersion:row?.version||0,groupsVersion:groups.version,rosterUpdatedAt:roster?.updatedAt||null,events:cal.events.map(e=>{
+   const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=auto.kind==='info'?'info':rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null,clothingValue=rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
+   const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',automaticAudience=kind==='probe'?resolveAudience(e.title):{recipientIds:[],groupIds:[]},meta=display.get(e.id)||{};
    // Every rule predating groups is protected, including recipientIds:null (everyone).
-   const recipientIds=kind!=='probe'?null:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
-   return {...e,location:rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,approved:rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:automaticAudience.groupIds,automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
+   const recipientIds=kind==='info'?(meta.recipientIds??null):kind!=='probe'?null:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
+   return {...e,note:g.CalendarPresentation.plain(meta.note??e.description),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,approved:kind==='probe'&&rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:automaticAudience.groupIds,automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
   })};
+ }
+ async function calendarColors(env,data={}){
+  const row=await env.DB.prepare('SELECT * FROM portal_calendar_colors WHERE id=1').first(),current=row?await open(env,row,'calendar-colors'):g.CalendarPresentation.defaults();
+  if(data.colors===undefined)return {colors:current,version:row?.version||0};
+  let colors;try{colors=g.CalendarPresentation.validate(data.colors);}catch(e){fail(e.message,400);}
+  if(data.expectedVersion!==(row?.version||0))fail('Farben wurden inzwischen geändert. Bitte neu laden.');
+  const payload=await L.seal(env,colors,'calendar-colors'),saved=row?await env.DB.prepare('UPDATE portal_calendar_colors SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,row.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_colors(id,payload) VALUES(1,?)').bind(payload).run();
+  if(!saved.meta.changes)fail('Farben wurden gleichzeitig geändert. Bitte neu laden.');return {colors,version:(row?.version||0)+1};
+ }
+ async function saveCalendarDisplay(env,data,cal,roster){
+  const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Kalendereintrag nicht mehr vorhanden.',404);if(cal.stale)fail('Kalenderstand bitte zuerst aktualisieren.',503);
+  if(data.note!==null&&(typeof data.note!=='string'||data.note.length>4000))fail('Zusatzinfo darf höchstens 4000 Zeichen enthalten.',400);
+  if(typeof data.infoVisible!=='boolean'||event.kind!=='info'&&data.infoVisible)fail('Ungültige Informationsfreigabe.',400);
+  if(data.recipientIds!==null&&(!Array.isArray(data.recipientIds)||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||data.recipientIds.some(id=>!roster?.members.some(m=>m.id===id))))fail('Bitte gültige Mitglieder wählen.',400);
+  if(event.kind==='info'&&data.infoVisible&&Array.isArray(data.recipientIds)&&!data.recipientIds.length)fail('Bitte mindestens eine Person wählen oder die H2O-Anzeige ausschalten.',400);
+  const row=await env.DB.prepare('SELECT * FROM portal_calendar_display WHERE event=?').bind(event.id).first();if(data.expectedVersion!==(row?.version||0))fail('Zusatzinfo wurde inzwischen geändert. Bitte neu laden.');
+  const value={note:data.note===null?null:g.CalendarPresentation.plain(data.note),infoVisible:event.kind==='info'&&data.infoVisible,recipientIds:event.kind==='info'?data.recipientIds:null},payload=await L.seal(env,value,'calendar-display:'+event.id);
+  const saved=row?await env.DB.prepare('UPDATE portal_calendar_display SET payload=?,version=version+1 WHERE event=? AND version=?').bind(payload,event.id,row.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_display(event,payload) VALUES(?,?)').bind(event.id,payload).run();
+  if(!saved.meta.changes)fail('Zusatzinfo wurde gleichzeitig geändert. Bitte neu laden.');return {...value,version:(row?.version||0)+1};
  }
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
  function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,recipientMode,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
+  if(event.kind==='info')fail('INFO-Einträge sind reine Kalenderinformationen. Bitte nur Darstellung und Sichtbarkeit bearbeiten.',400);
   if(data.kind==='birthday'&&data.memberId&&!roster?.members.some(m=>m.id===data.memberId))fail('Bitte den Geburtstag einem aktuellen Mitglied zuordnen.',400);
   const targetType=data.kind==='probe'?(data.sessionType||event.sessionType||'Sonderprobe'):null;
   if(data.clothing!==undefined&&(typeof data.clothing!=='string'||data.clothing.trim().length>120||/[\x00-\x1f\x7f]/.test(data.clothing)))fail('Bitte Kleidung als Text mit höchstens 120 Zeichen eingeben.',400);
@@ -111,7 +134,7 @@
   const clothing=clothingInput==='Tagdienst'?'Tagesdienst':clothingInput==='Einsatz'?'Einsatzkleidung':clothingInput;
   const attendanceType=data.kind==='probe'?(data.attendanceType||event.attendanceType||(targetType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null;
   if(data.attendanceType!==undefined&&data.kind!=='probe')fail('Eine iPad-Terminart kann nur Proben und Sonderproben zugeordnet werden.',400);
-  if(data.kind==='probe'&&!['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(attendanceType))fail('Ungültige iPad-Terminart.',400);
+  if(data.kind==='probe'&&!['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung'].includes(attendanceType))fail('Ungültige iPad-Terminart.',400);
   if(data.recipientMode!==undefined&&!['automatic','manual','legacy'].includes(data.recipientMode))fail('Ungültige Mitgliederauswahl.',400);
   const previousMode=event.recipientMode;
   if(data.recipientMode==='legacy'&&previousMode!=='legacy')fail('Ungültige bisherige Auswahl.',400);
@@ -336,15 +359,16 @@
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path==='/admin/portal/colors')return calendarColors(env,data);
   if(path==='/admin/portal/year')return yearCalendar(env,data.year);
   if(path==='/portal/year'){
    const cal=await yearCalendar(env,data.year);
    // Preserve the same audience as the personal appointment list. Other people's
    // birthdays, unapproved entries and administration metadata stay private.
-   return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,
-    events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&isRecipient(e,record.memberId)||e.kind==='birthday'&&e.memberId===record.memberId).map(e=>({
+   return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,colors:cal.colors,colorVersion:cal.colorVersion,
+    events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&isRecipient(e,record.memberId)||e.kind==='birthday'&&e.memberId===record.memberId||e.kind==='info'&&e.infoVisible&&isRecipient(e,record.memberId)).map(e=>({
      id:e.id,title:e.kind==='birthday'?'Dein Geburtstag':e.title,start:e.start,end:e.end,allDay:e.allDay===true,kind:e.kind,
-     ...(e.kind==='probe'?{sessionType:e.sessionType,location:e.location,clothing:e.clothing,approved:true}:{})
+     ...(e.kind==='probe'?{sessionType:e.sessionType,attendanceType:e.attendanceType,location:e.location,clothing:e.clothing,note:e.note,approved:true}:e.kind==='info'?{note:e.note}:{})
     }))};
   }
   if(path==='/admin/portal/config'){
@@ -366,6 +390,7 @@
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
   const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list'):calendar(env)));
+  if(path==='/admin/portal/display')return saveCalendarDisplay(env,data,cal,roster);
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
    const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(isRecipient(requestedEvent,record.memberId)?null:'not-relevant'):'unavailable';return {...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&e.end>Date.now()&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
