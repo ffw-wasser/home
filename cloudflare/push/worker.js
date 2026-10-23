@@ -10,7 +10,7 @@ async function vapid(env,url){const jwk=JSON.parse(env.VAPID_PRIVATE_JWK);const 
 async function body(request,maxLength=6000){const raw=await request.text();if(raw.length>maxLength)throw Object.assign(new Error('Die Anfrage überschreitet die zulässige Größe.'),{status:413});const data=JSON.parse(raw);if(!data||Array.isArray(data)||typeof data!=='object')throw new Error('Ungültige Anfrage.');return data;}
 async function account(env,alias){return env.DB.prepare('SELECT alias, revision, last_sent FROM accounts WHERE alias=?').bind(alias).first();}
 export default {
- async fetch(request,env){
+ async fetch(request,env,ctx){
   const origin=request.headers.get('Origin');const headers={'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'};
   if(origin===ORIGIN){headers['Access-Control-Allow-Origin']=ORIGIN;headers['Access-Control-Allow-Headers']='Authorization, Content-Type';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';}
   const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers});
@@ -31,7 +31,7 @@ export default {
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
     const value=await body(request,path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
-    try{return reply(await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown'));}
+    try{return reply(await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx));}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
    }
    if(globalThis.DeckelChallengeService&&(path.startsWith('/challenge/')||path.startsWith('/admin/challenge/'))){

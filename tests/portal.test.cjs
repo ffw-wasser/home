@@ -385,3 +385,28 @@ test('GF Atemschutz: alte Rollenprojektion bleibt bis zum Checkbox-Abgleich gesp
  await f.call('roster',{members:members.map(m=>({...m,agt:false})),agtSource:'member-checkbox'},null,true);
  result=(await f.call('gf-breathing')).value;assert.equal(result.people.length,0);assert.equal(result.uncertain.length,0);
 });
+
+
+test('Terminliste antwortet bei blockiertem Google aus dem Snapshot und aktualisiert im Hintergrund',async()=>{
+ const f=await fixture(),e=(await f.call('list')).value.events[0];f.clock.now+=901000;
+ const original=f.c.fetch,jobs=[];let release,entered;
+ const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);
+ f.c.fetch=async(...args)=>{if(String(args[0]).startsWith('https://calendar.google.com/')){entered();await gate;}return original(...args);};
+ const response=f.call('list',{},f.people[0],false,{waitUntil:job=>jobs.push(job)});
+ await started;
+ try{
+  const result=await Promise.race([response,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('Terminliste wartet auf Google')),1000);timer.unref();})]);
+  const list=result.value;assert.equal(result.status,200);assert.equal(list.stale,true);assert.equal(list.events[0].id,e.id);assert.equal(jobs.length,1);
+  assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,503);
+ }finally{release();await Promise.all(jobs);}
+ assert.equal((await f.call('list')).value.stale,false);
+ assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,200);
+});
+
+test('Optionale Google-Farben blockieren die Terminliste auch beim ersten Abruf nicht',async()=>{
+ let release;const gate=new Promise(resolve=>release=resolve),jobs=[];
+ const c=vm.createContext({URL,AbortSignal,Date,Intl,Map,WeakMap,fetch:async()=>{await gate;throw Error('offline');}});
+ vm.runInContext(read('cloudflare/push/google-calendar-colors.js'),c);
+ const env={DB:{}},config={calendarUrl:'https://calendar.google.com/calendar/ical/test/public/basic.ics',googleColorBridge:{endpoint:'https://script.google.com/macros/s/'+'a'.repeat(25)+'/exec',secret:'s'.repeat(32)}};
+ try{const colors=await c.GoogleCalendarColors.read(env,config,[{start:Date.now(),end:Date.now()+3600000}],{waitUntil:job=>jobs.push(job)});assert.equal(colors.status,'fallback');assert.equal(jobs.length,1);}finally{release();await Promise.all(jobs);}
+});

@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 (async()=>{
  const browser=await chromium.launch({headless:true});
  try{
-  for(const width of [320,360,390,412,768]){
+  for(const width of [320,360,390,412,768,1024,1366]){
    const page=await browser.newPage({viewport:{width,height:844},serviceWorkers:'block'}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.stack||e.message));
    await page.addInitScript(()=>{window.testPdfBlobs=new Map();const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL);URL.createObjectURL=blob=>{const url=create(blob);testPdfBlobs.set(url,blob);return url;};URL.revokeObjectURL=url=>{testPdfBlobs.delete(url);revoke(url);};});
    await page.addInitScript(()=>localStorage.setItem('h2o_portal_layout_v1',JSON.stringify({main:['portal-section','portal-evidence','account','portal-points'],more:['more-water','more-hydrants','more-help']})));
@@ -24,17 +24,21 @@ const root=path.resolve(__dirname,'..');
    assert.deepEqual((await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile))).slice(0,3),['more-water','more-hydrants','more-help'],'existing custom order is preserved');
    await tile.click();await firstYear;
    const currentMonth=await page.evaluate(()=>Number(new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',month:'2-digit'}).format(new Date()))-1);
-   const atMonth=month=>page.waitForFunction(month=>{const n=document.querySelector('#year-plan-month-'+month),tools=document.querySelector('#more-year-plan>.year-plan-tools'),r=n.getBoundingClientRect();return document.querySelector('#year-plan-month').value===String(month)&&r.top>=tools.getBoundingClientRect().bottom-1&&r.top<innerHeight;},month).catch(async e=>{console.error({width,month,...await page.evaluate(month=>({value:document.querySelector('#year-plan-month').value,top:document.querySelector('#year-plan-month-'+month).getBoundingClientRect().top,tools:document.querySelector('#more-year-plan>.year-plan-tools').getBoundingClientRect().bottom,scroll:document.querySelector('#deckel-main').scrollTop}),month)});throw e;});
+   const atMonth=month=>page.waitForFunction(month=>{const n=document.querySelector('#year-plan-month-'+month),tools=document.querySelector('#more-year-plan>.year-plan-controls'),r=n.getBoundingClientRect();return document.querySelector('#year-plan-month').value===String(month)&&r.top>=tools.getBoundingClientRect().bottom-1&&r.top<innerHeight;},month).catch(async e=>{console.error({width,month,...await page.evaluate(month=>({value:document.querySelector('#year-plan-month').value,top:document.querySelector('#year-plan-month-'+month).getBoundingClientRect().top,tools:document.querySelector('#more-year-plan>.year-plan-controls').getBoundingClientRect().bottom,scroll:document.querySelector('#deckel-main').scrollTop}),month)});throw e;});
    await atMonth(currentMonth);await page.locator('#year-plan-month').selectOption('0');await atMonth(0);await page.locator('#year-plan-today').click();await atMonth(currentMonth);assert.equal(yearCalls,1,'Today scrolls during a pending request without starting another');
    yearMode='success';releaseYear();await page.locator('#year-plan-status').filter({hasText:'Deine freigegebenen Proben'}).waitFor();await atMonth(currentMonth);
+   assert.equal(await page.locator('#more-year-plan>.year-plan-controls').count(),1);
+   assert.equal(await page.locator('#year-plan-filter').isVisible(),true,'filters are visible as in the main application');
+   assert.equal(await page.locator('.year-plan-legend').isVisible(),true,'shared colour legend remains visible');
+   const columns=await page.locator('.year-plan-half').first().evaluate(n=>getComputedStyle(n).gridTemplateColumns.split(' ').length);assert.equal(columns,width<=600?1:width<=1000?2:3);
    assert.equal(await page.locator('.year-plan-month').count(),12);assert.equal(await page.locator('.year-plan-event').count(),2);assert.equal(await page.locator('#year-plan-unlock').isVisible(),false);
    assert.equal(await page.locator('.year-plan-public-holiday').count(),12);assert.match(await page.locator('#year-plan-month-0').textContent(),/Heilige Drei Könige/);
    await page.locator('#year-plan-month').selectOption('0');await atMonth(0);
-   if(width<=600)assert.equal(await page.evaluate(()=>document.querySelector('#year-plan-month-0').getBoundingClientRect().top>=document.querySelector('#more-year-plan>.year-plan-tools').getBoundingClientRect().bottom),true,'month heading stays below the sticky controls');
+   if(width<=600)assert.equal(await page.evaluate(()=>document.querySelector('#year-plan-month-0').getBoundingClientRect().top>=document.querySelector('#more-year-plan>.year-plan-controls').getBoundingClientRect().bottom),true,'month heading stays below the sticky controls');
    assert.match(await page.locator('#year-plan-month-0').textContent(),/19:30 Uhr/);assert.match(await page.locator('#year-plan-month-0').textContent(),/ausführlichem\s+Themennamen/);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'page overflow '+width);assert.equal(await page.locator('#more-year-plan').evaluate(n=>n.scrollWidth>n.clientWidth),false,'plan overflow '+width);
    await page.locator('.year-plan-event summary').first().click();assert.match(await page.locator('.year-plan-event').first().textContent(),/Gerätehaus Wasser/);
-   await page.locator('.year-plan-display>summary').click();await page.locator('#year-plan-birthdays').uncheck();assert.equal(await page.locator('.is-birthday').count(),0);await page.locator('#year-plan-birthdays').check();
+   await page.locator('#year-plan-birthdays').uncheck();assert.equal(await page.locator('.is-birthday').count(),0);await page.locator('#year-plan-birthdays').check();
    await page.locator('#year-plan-holidays').uncheck();assert.equal(await page.locator('.year-plan-public-holiday').count(),12,'public holidays do not depend on the school-holiday filter');await page.locator('#year-plan-holidays').check();
    // A real PDF uses the same filtered personal projection, with both halves.
    await page.locator('#year-plan-birthdays').uncheck();

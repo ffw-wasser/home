@@ -10,13 +10,18 @@
  async function series(url,uid){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('h2o-series/v1:'+url+':'+uid));return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
  const day=value=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
  const eventKey=e=>e.seriesId+'|'+(e.allDay?'d'+day(e.start):'t'+e.start);
- async function read(env,config,events){
+ async function read(env,config,events,ctx){
   if(!config?.googleColorBridge)return {status:'not-configured',colors:new Map()};
   let bridge;try{bridge=validate(config.googleColorBridge.endpoint,config.googleColorBridge.secret);}catch{return {status:'fallback',colors:new Map()};}
   const key=config.calendarUrl+'|'+bridge.endpoint+'|'+bridge.secret;
   if(!events.length)return {status:'configured',colors:new Map()};
   const from=Math.min(...events.map(e=>e.start))-86400000,to=Math.max(...events.map(e=>e.end))+86400000,old=cache.get(env.DB),now=Date.now();
   if(old?.key===key&&old.from<=from&&old.to>=to&&now-old.at<(old.status==='current'?300000:60000))return old;
+  if(ctx?.waitUntil){
+   // Optional colours must not delay personal appointments, even on a cold worker.
+   ctx.waitUntil(read(env,config,events).catch(()=>{}));
+   return old?.key===key&&old.from<=from&&old.to>=to?old:{status:'fallback',colors:new Map()};
+  }
   if(pending.has(env.DB)){await pending.get(env.DB);return read(env,config,events);}
   const load=(async()=>{
    try{

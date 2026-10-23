@@ -61,7 +61,7 @@
  }
  function jump(month=Number($('month')?.value||0)){
   updateToolsOffset();const epoch=generation,selected=year;
-  requestAnimationFrame(()=>{if(epoch!==generation||selected!==year||document.getElementById(portal?'portal-page-more-year-plan':'yearPlanView')?.hidden)return;if($('month'))$('month').value=month;const card=document.getElementById('year-plan-month-'+month);if(card){const tools=document.querySelector(portal?'#more-year-plan>.year-plan-tools':'#yearPlanView>.year-plan-controls'),offset=portal?0:parseFloat(getComputedStyle(tools).top)||0;card.style.scrollMarginTop=(tools.getBoundingClientRect().height+offset+(portal?32:16))+'px';}card?.scrollIntoView({block:'start',behavior:'auto'});});
+  requestAnimationFrame(()=>{if(epoch!==generation||selected!==year||document.getElementById(portal?'portal-page-more-year-plan':'yearPlanView')?.hidden)return;if($('month'))$('month').value=month;const card=document.getElementById('year-plan-month-'+month);if(card){const tools=document.querySelector(portal?'#more-year-plan>.year-plan-controls':'#yearPlanView>.year-plan-controls'),offset=portal?0:parseFloat(getComputedStyle(tools).top)||0;card.style.scrollMarginTop=(tools.getBoundingClientRect().height+offset+(portal?32:16))+'px';}card?.scrollIntoView({block:'start',behavior:'auto'});});
  }
  async function load(scroll=false){
   if(scroll){const today=dayKey(Date.now());year=Number(today.slice(0,4));if($('month'))$('month').value=Number(today.slice(5,7))-1;}
@@ -119,7 +119,7 @@
   for(let month=0;month<12;month++){const option=node('option',format(Date.UTC(2026,month,15),{month:'long'}));option.value=month;monthSelect.append(option);}monthSelect.value=Number(dayKey(Date.now()).slice(5,7))-1;monthLabel.append(monthSelect);$('today').before(monthLabel);
   monthSelect.onchange=()=>jump(Number(monthSelect.value));
   if(portal){
-   $('reload').textContent='↻';$('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Als PDF ansehen';
+   $('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Als PDF ansehen';
    // The personal portal has its own authentication and scrolling lifecycle.
    g.addEventListener('portal-pagechange',e=>{if(e.detail?.page==='more-year-plan')load(true);else if(privateData||message==='Jahresplan wird geladen …')lock();});
    const other=$('filter').querySelector('option[value="other"]');if(other)other.remove();
