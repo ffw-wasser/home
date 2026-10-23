@@ -20375,14 +20375,30 @@ ${strMDSAlgs}`);
  function validate(colors){if(!colors||typeof colors!=='object'||Array.isArray(colors)||Object.keys(colors).length!==types.length||types.some(t=>!/^#[0-9a-f]{6}$/i.test(colors[t.id]||'')))throw Error('Bitte für jede Terminart eine gültige Farbe wählen.');return Object.fromEntries(types.map(t=>[t.id,colors[t.id].toUpperCase()]));}
  function key(e){return e.kind==='birthday'?'birthday':e.kind==='info'?'info':e.kind!=='probe'?'other':e.attendanceType==='Unterricht'?'lesson':e.attendanceType==='Ausschuss Sitzung'?'committee':e.attendanceType==='Allgemeine Probe'?'general':e.attendanceType==='Sonderprobe'?'special':e.sessionType==='Probe'?'general':'special';}
  function style(e,colors=defaults()){
-  const color=colors[key(e)]||defaults()[key(e)],v=color.slice(1).match(/../g).map(s=>parseInt(s,16)),hex=values=>'#'+values.map(n=>Math.round(n).toString(16).padStart(2,'0')).join('');
-  return {accent:hex(v.map(n=>Math.min(n,175))),background:hex(v.map(n=>255*.9+n*.1)),text:'#18344C',label:types.find(t=>t.id===key(e)).label};
+  const color=/^#[0-9a-f]{6}$/i.test(e.googleColor||'')?e.googleColor:colors[key(e)]||defaults()[key(e)],v=color.slice(1).match(/../g).map(s=>parseInt(s,16)),hex=values=>'#'+values.map(n=>Math.round(n).toString(16).padStart(2,'0')).join('');
+  return {accent:e.googleColor?color.toUpperCase():hex(v.map(n=>Math.min(n,175))),background:hex(v.map(n=>255*.9+n*.1)),text:'#18344C',label:types.find(t=>t.id===key(e)).label};
  }
  function plain(value,max=4000){
   const entities={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' '};
   return String(value||'').replace(/<\s*(script|style)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'').replace(/<\s*(?:br|\/p|\/div|\/li)\s*\/?\s*>/gi,'\n').replace(/<[^>]*>/g,'').replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi,(all,k)=>{if(k[0]!=='#')return entities[k.toLowerCase()]||all;const n=parseInt(k.slice(k[1]?.toLowerCase()==='x'?2:1),k[1]?.toLowerCase()==='x'?16:10);return n>0&&n<=0x10ffff?String.fromCodePoint(n):'';}).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g,'').replace(/\r\n?/g,'\n').trim().slice(0,max);
  }
- g.CalendarPresentation={types,defaults,validate,key,style,plain,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ // Optional, explicit Google description controls. Never infer control values from prose.
+ function instructions(value){
+  const fields={},issues=[],note=[];
+  for(const line of plain(value).split('\n')){
+   const match=/^\s*(Terminart|Gruppen?|Kleidung|Freigabe)\s*:\s*(.*?)\s*$/i.exec(line);
+   if(!match){note.push(line);continue;}
+   const key=/^gruppe/i.test(match[1])?'group':({terminart:'type',kleidung:'clothing',freigabe:'release'})[match[1].toLocaleLowerCase('de')];
+   if(Object.hasOwn(fields,key))issues.push('Die Angabe '+match[1]+' ist mehrfach vorhanden.');
+   fields[key]=match[2];if(!match[2])issues.push('Die Angabe '+match[1]+' ist leer.');
+  }
+  const names={'probe':'Allgemeine Probe','allgemeine probe':'Allgemeine Probe','sonderprobe':'Sonderprobe','unterricht':'Unterricht','ausschusssitzung':'Ausschuss Sitzung','ausschuss sitzung':'Ausschuss Sitzung','veranstaltung':'other','weitere termine':'other','sonstiges':'other','information':'info','info':'info'};
+  if(fields.type!==undefined){const type=names[fields.type.toLocaleLowerCase('de')];if(!type)issues.push('Unbekannte Terminart: '+fields.type);fields.type=type||null;}
+  if(fields.clothing?.length>120)issues.push('Kleidung darf höchstens 120 Zeichen enthalten.');
+  if(fields.release!==undefined){const word=fields.release.toLocaleLowerCase('de');if(!['ja','nein'].includes(word))issues.push('Freigabe muss Ja oder Nein sein.');fields.release=word==='ja';}
+  return {fields,issues,note:note.join('\n').trim()};
+ }
+ g.CalendarPresentation={types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);
 
 /* RFC 5545 calendar projection. Identity follows UID / original recurrence, never title. */
@@ -21588,6 +21604,52 @@ async function route(path,data,env,admin){
 g.PortalHydrants={schema,route};
 })(globalThis);
 
+/* Optional Google-owned, read-only colour bridge. Never affects audiences or approval. */
+(function(g){
+ 'use strict';
+ const cache=new WeakMap(),pending=new WeakMap(),hex=value=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value);
+ function validate(endpoint,secret){
+  if(typeof endpoint!=='string'||!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,200}\/exec$/.test(endpoint))throw Error('Bitte die bereitgestellte Google-Apps-Script-Web-App-Adresse eingeben.');
+  if(typeof secret!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(secret))throw Error('Bitte einen Zugangsschlüssel mit 32 bis 128 Zeichen eingeben.');
+  return {endpoint,secret};
+ }
+ async function series(url,uid){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('h2o-series/v1:'+url+':'+uid));return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+ const day=value=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+ const eventKey=e=>e.seriesId+'|'+(e.allDay?'d'+day(e.start):'t'+e.start);
+ async function read(env,config,events){
+  if(!config?.googleColorBridge)return {status:'not-configured',colors:new Map()};
+  let bridge;try{bridge=validate(config.googleColorBridge.endpoint,config.googleColorBridge.secret);}catch{return {status:'fallback',colors:new Map()};}
+  const key=config.calendarUrl+'|'+bridge.endpoint+'|'+bridge.secret;
+  if(!events.length)return {status:'configured',colors:new Map()};
+  const from=Math.min(...events.map(e=>e.start))-86400000,to=Math.max(...events.map(e=>e.end))+86400000,old=cache.get(env.DB),now=Date.now();
+  if(old?.key===key&&old.from<=from&&old.to>=to&&now-old.at<(old.status==='current'?300000:60000))return old;
+  if(pending.has(env.DB)){await pending.get(env.DB);return read(env,config,events);}
+  const load=(async()=>{
+   try{
+    if(to-from>740*86400000)throw Error('Zeitraum zu groß.');
+    const calendarId=decodeURIComponent(new URL(config.calendarUrl).pathname.split('/')[3]);
+    const response=await fetch(bridge.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:bridge.secret,calendarId,from:new Date(from).toISOString(),to:new Date(to).toISOString()}),signal:AbortSignal.timeout(15000),redirect:'follow'});
+    if(!response.ok||response.url&&!['script.google.com','script.googleusercontent.com'].includes(new URL(response.url).hostname))throw Error('Google-Farbabruf fehlgeschlagen.');
+    const raw=await response.text();if(raw.length>2000000)throw Error('Google-Antwort zu groß.');const data=JSON.parse(raw);
+    if(data.version!==1||data.calendarId!==calendarId||!Array.isArray(data.events)||data.events.length>5000)throw Error('Google-Farbantwort ungültig.');
+    const colors=new Map(),ids=new Map();
+    for(const item of data.events){
+     if(typeof item.uid!=='string'||!item.uid||item.uid.length>500||!hex(item.color))throw Error('Google-Terminfarbe ungültig.');
+     if(!ids.has(item.uid))ids.set(item.uid,await series(config.calendarUrl,item.uid));
+     const when=typeof item.day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(item.day)?'d'+item.day:Number.isFinite(item.start)?'t'+item.start:null;
+     if(!when)throw Error('Google-Farbdatum ungültig.');
+     colors.set(ids.get(item.uid)+'|'+when,{color:item.color.toUpperCase()});
+    }
+    const result={key,from,to,at:now,status:'current',colors};cache.set(env.DB,result);return result;
+   }catch{
+    // A failed colour service must never prevent calendar, approval or attendance access.
+    const result={key,from,to,at:now,status:'fallback',colors:new Map()};cache.set(env.DB,result);return result;
+   }
+  })();pending.set(env.DB,load);try{return await load;}finally{pending.delete(env.DB);}
+ }
+ g.GoogleCalendarColors={read,validate,eventKey};
+})(globalThis);
+
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
@@ -21655,7 +21717,7 @@ g.PortalHydrants={schema,route};
   }
   const cal=entry.pending?await entry.pending:{events:entry.events,fetchedAt:entry.fetchedAt,stale:false};
   if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
-  return {year,...await decorate(env,{configured:true,...cal})};
+  return {year,...await decorate(env,{configured:true,...cal},c)};
  }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
@@ -21671,6 +21733,8 @@ g.PortalHydrants={schema,route};
  function detected(e,roster){
   if(g.CalendarPresentation.isInfo(e.title))return {kind:'info',sessionType:null,memberId:null};
   if(e.birthdayHint){const title=e.title.replace(/geburtstag|birthday|geb\.|🎂/gi,' ').replace(/\b(?:von|happy)\b/gi,' '),key=nameKey(title),matches=(roster?.members||[]).filter(m=>nameKey(m.name)===key);return {kind:'birthday',sessionType:null,memberId:matches.length===1?matches[0].id:null};}
+  if(/(?:^|[\s:-])unterricht(?:$|[\s:,-])/i.test(e.title))return {kind:'probe',sessionType:'Sonderprobe',attendanceType:'Unterricht',memberId:null};
+  if(/ausschuss[\s-]*sitzung/i.test(e.title))return {kind:'probe',sessionType:'Sonderprobe',attendanceType:'Ausschuss Sitzung',memberId:null};
   return {kind:'probe',sessionType:!/sonderprobe/i.test(e.title)&&/(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title)?'Probe':'Sonderprobe',memberId:null};
  }
  async function audienceGroups(env){
@@ -21680,15 +21744,28 @@ g.PortalHydrants={schema,route};
   if(!value||!Array.isArray(value.groups))fail('Gruppendaten konnten nicht sicher gelesen werden.',503);
   return {groups:g.PortalGroups.validate(value.groups),version:row?.version||0};
  }
- async function decorate(env,cal){
+ async function decorate(env,cal,configuration){
   const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),groups=await audienceGroups(env);
-  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster),design=await calendarColors(env),display=new Map();for(const item of (await env.DB.prepare('SELECT * FROM portal_calendar_display').all()).results)display.set(item.event,{...await open(env,item,'calendar-display:'+item.event),version:item.version});
-  return {...cal,colors:design.colors,colorVersion:design.version,displayFeatureVersion:1,rulesVersion:row?.version||0,groupsVersion:groups.version,rosterUpdatedAt:roster?.updatedAt||null,events:cal.events.map(e=>{
-   const rule=rules[e.id]||rules[e.seriesId],auto=detected(e,roster),kind=auto.kind==='info'?'info':rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null,clothingValue=rule?.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
-   const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',automaticAudience=kind==='probe'?resolveAudience(e.title):{recipientIds:[],groupIds:[]},meta=display.get(e.id)||{};
-   // Every rule predating groups is protected, including recipientIds:null (everyone).
+  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster),design=await calendarColors(env),googleColors=await g.GoogleCalendarColors.read(env,configuration===undefined?await config(env):configuration,cal.events),display=new Map();for(const item of (await env.DB.prepare('SELECT * FROM portal_calendar_display').all()).results)display.set(item.event,{...await open(env,item,'calendar-display:'+item.event),version:item.version});
+  return {...cal,googleColorStatus:googleColors.status,colors:design.colors,colorVersion:design.version,displayFeatureVersion:1,rulesVersion:row?.version||0,groupsVersion:groups.version,rosterUpdatedAt:roster?.updatedAt||null,events:cal.events.map(e=>{
+   const rule=rules[e.id]||rules[e.seriesId],source=g.CalendarPresentation.instructions(e.description),fields=source.fields,issues=[...source.issues],auto=detected(e,roster);
+   const controlled=auto.kind!=='info'&&auto.kind!=='birthday';
+   if(controlled&&fields.type){auto.kind=['other','info'].includes(fields.type)?fields.type:'probe';auto.attendanceType=auto.kind==='probe'?fields.type:null;auto.sessionType=auto.kind==='probe'?(fields.type==='Allgemeine Probe'?'Probe':'Sonderprobe'):null;}
+   const kind=g.CalendarPresentation.isInfo(e.title)?'info':rule?.kind||auto.kind,sessionType=kind==='probe'?(rule?.sessionType||auto.sessionType||'Sonderprobe'):null;
+   let automaticAudience=kind==='probe'?resolveAudience(e.title):{recipientIds:[],groupIds:[]};
+   if(kind==='probe'&&fields.group!==undefined){
+    const enabled=groups.groups.filter(group=>group.enabled),find=name=>enabled.find(group=>g.PortalGroups.normalize(group.name)===g.PortalGroups.normalize(name));
+    const exact=find(fields.group),names=exact?[fields.group]:fields.group.split(';').map(value=>value.trim()),selected=names.map(find);
+    if(!roster||selected.some(group=>!group)){issues.push('Gruppe unbekannt, deaktiviert oder Mitgliederstand fehlt: '+fields.group);automaticAudience={recipientIds:[],groupIds:[]};}
+    else automaticAudience={recipientIds:[...new Set(selected.flatMap(group=>g.PortalGroups.members(group,roster)))],groupIds:selected.map(group=>group.id)};
+   }
+   const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',meta=display.get(e.id)||{};
    const recipientIds=kind==='info'?(meta.recipientIds??null):kind!=='probe'?null:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
-   return {...e,note:g.CalendarPresentation.plain(meta.note??e.description),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,approved:kind==='probe'&&rule?.kind==='probe'&&rule.approved===true,memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:automaticAudience.groupIds,automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType|| (sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
+   const recognized=!!fields.type||!!auto.attendanceType||/sonderprobe|(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title);
+   if(!rule&&fields.release===true&&kind==='probe'&&!recognized)issues.push('Titel oder Terminart ist nicht eindeutig. Bitte Terminart angeben.');
+   if(!rule&&fields.release===true&&kind==='probe'&&!automaticAudience.recipientIds.length)issues.push('Keine Mitglieder für die Freigabe zugeordnet.');
+   const clothingValue=rule?.clothing??fields.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
+   return {...e,...(googleColors.colors.get(g.GoogleCalendarColors.eventKey(e))?{googleColor:googleColors.colors.get(g.GoogleCalendarColors.eventKey(e)).color}:{}),description:source.note,note:g.CalendarPresentation.plain(meta.note??source.note),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,googleManaged:!rule,googleIssues:issues,approved:kind==='probe'&&(rule?rule.kind==='probe'&&rule.approved===true:fields.release===true&&!issues.length),memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:automaticAudience.groupIds,automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType||auto.attendanceType||(sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
   })};
  }
  async function calendarColors(env,data={}){
@@ -21711,10 +21788,20 @@ g.PortalHydrants={schema,route};
   if(!saved.meta.changes)fail('Zusatzinfo wurde gleichzeitig geändert. Bitte neu laden.');return {...value,version:(row?.version||0)+1};
  }
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
- function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,recipientMode,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
+ function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
   if(event.kind==='info')fail('INFO-Einträge sind reine Kalenderinformationen. Bitte nur Darstellung und Sichtbarkeit bearbeiten.',400);
+  if(data.followGoogle!==undefined&&typeof data.followGoogle!=='boolean')fail('Ungültige Google-Übernahme.',400);
+  if(data.followGoogle===true){
+   if(event.kind==='birthday'||data.kind==='birthday')fail('Geburtstagszuordnungen bitte gesondert pflegen.',400);
+   if(data.expectedGroupsVersion!==cal.groupsVersion)fail('Gruppen wurden inzwischen geändert. Bitte neu laden.');
+   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};
+   if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
+   delete rules[event.id];
+   const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=? AND COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,old.version,cal.groupsVersion).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) SELECT 1,? WHERE COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,cal.groupsVersion).run();
+   if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1,googleManaged:true};
+  }
   if(data.kind==='birthday'&&data.memberId&&!roster?.members.some(m=>m.id===data.memberId))fail('Bitte den Geburtstag einem aktuellen Mitglied zuordnen.',400);
   const targetType=data.kind==='probe'?(data.sessionType||event.sessionType||'Sonderprobe'):null;
   if(data.clothing!==undefined&&(typeof data.clothing!=='string'||data.clothing.trim().length>120||/[\x00-\x1f\x7f]/.test(data.clothing)))fail('Bitte Kleidung als Text mit höchstens 120 Zeichen eingeben.',400);
@@ -21833,7 +21920,7 @@ g.PortalHydrants={schema,route};
   for(const id of obsoleteIds)await env.DB.prepare('DELETE FROM portal_replies WHERE event=?').bind(id).run();
  }
  async function scheduled(env){
-  await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env,false,c));if(cal.stale)return;
+  await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env,false,c),null);if(cal.stale)return;
   await pruneFinishedEvents(env,cal);
   await env.DB.prepare('DELETE FROM portal_sends WHERE created_at<?').bind(Date.now()-30*DAY).run();
   await env.DB.prepare('DELETE FROM portal_replies WHERE updated_at<?').bind(Date.now()-400*DAY).run();
@@ -21949,6 +22036,14 @@ g.PortalHydrants={schema,route};
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path==='/admin/portal/google-colors'){
+   const row=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),c=await open(env,row,'portal-config');if(!c)fail('Bitte zuerst den Google-Kalender verbinden.',400);
+   if(data.enabled===undefined)return {configured:!!c.googleColorBridge,endpoint:c.googleColorBridge?.endpoint||'',version:row.version};
+   if(typeof data.enabled!=='boolean'||data.expectedVersion!==row.version)fail('Kalenderverbindung wurde geändert. Bitte neu laden.',409);
+   if(data.enabled){try{c.googleColorBridge=g.GoogleCalendarColors.validate(data.endpoint,data.secret||c.googleColorBridge?.secret);}catch(e){fail(e.message,400);}}else delete c.googleColorBridge;
+   const payload=await L.seal(env,c,'portal-config'),saved=await env.DB.prepare('UPDATE portal_config SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,row.version).run();if(!saved.meta.changes)fail('Kalenderverbindung wurde gleichzeitig geändert.',409);
+   return {configured:!!c.googleColorBridge,endpoint:c.googleColorBridge?.endpoint||'',version:row.version+1};
+  }
   if(path==='/admin/portal/colors')return calendarColors(env,data);
   if(path==='/admin/portal/year')return yearCalendar(env,data.year);
   if(path==='/portal/year'){
@@ -21957,17 +22052,17 @@ g.PortalHydrants={schema,route};
    // birthdays, unapproved entries and administration metadata stay private.
    return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,colors:cal.colors,colorVersion:cal.colorVersion,
     events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&isRecipient(e,record.memberId)||e.kind==='birthday'&&e.memberId===record.memberId||e.kind==='info'&&e.infoVisible&&isRecipient(e,record.memberId)).map(e=>({
-     id:e.id,title:e.kind==='birthday'?'Dein Geburtstag':e.title,start:e.start,end:e.end,allDay:e.allDay===true,kind:e.kind,
+     id:e.id,title:e.kind==='birthday'?'Dein Geburtstag':e.title,start:e.start,end:e.end,allDay:e.allDay===true,kind:e.kind,...(e.googleColor?{googleColor:e.googleColor}:{}),
      ...(e.kind==='probe'?{sessionType:e.sessionType,attendanceType:e.attendanceType,location:e.location,clothing:e.clothing,note:e.note,approved:true}:e.kind==='info'?{note:e.note}:{})
     }))};
   }
   if(path==='/admin/portal/config'){
-   const c=await config(env);return {configured:!!c,config:c||null};
+   const c=await config(env),safe=c?{...c}:c;if(safe)delete safe.googleColorBridge;return {configured:!!c,config:safe||null};
   }
   if(path==='/admin/portal/configure'){
    const url=calendarURL(data.calendarUrl);if(![1,2,6,12,24,48].includes(data.leadHours))fail('Ungültige Erinnerungseinstellungen.',400);
    const old=await config(env);if(old&&old.calendarUrl!==url)fail('Ein Kalenderwechsel würde die Terminzuordnung ändern. Bitte den vorhandenen Kalender weiterverwenden.');
-   const events=await projection(url),c={calendarUrl:url,reminders:true,leadHours:data.leadHours},payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events},'portal-calendar');
+   const events=await projection(url),existing=await config(env),c={...(existing?.calendarUrl===url?existing:{}),calendarUrl:url,reminders:true,leadHours:data.leadHours},payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events},'portal-calendar');
    await env.DB.batch([env.DB.prepare('INSERT INTO portal_config(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=version+1').bind(payload),env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(cal,Date.now())]);return {ok:true,count:events.length};
   }
   if(path==='/portal/subscribe'||path==='/portal/unsubscribe'){
@@ -21985,7 +22080,7 @@ g.PortalHydrants={schema,route};
   if(path==='/portal/list'){
    const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(isRecipient(requestedEvent,record.memberId)?null:'not-relevant'):'unavailable';return {...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday,leader:roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&e.end>Date.now()&&isRecipient(e,record.memberId)).map(e=>({...memberEvent(e),...(map.get(e.id)||{status:'open',version:0})}))};
   }
-  if(path==='/admin/portal/list')return {...cal,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1};
+  if(path==='/admin/portal/list')return {...cal,googleInstructionVersion:1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1};
   const whatsappAction=path.match(/^\/(?:admin\/)?portal\/whatsapp-(events|recipients|prepare|contact)$/)?.[1];
   if(whatsappAction){
    if(!admin&&!roster?.members.some(p=>p.id===record.memberId&&p.leader===true))fail('Nur für berechtigte Gruppenführer freigegeben.',403);
@@ -22091,7 +22186,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"d8050b54ebefd1e62504a3c0afeaf74af0c26d137372c0f41ef92ddef62540b2",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"cf9e4d942eece2d794fe0af85f80d523b8f5f0b8b101c3fd9c842e85eb4750e6",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}
