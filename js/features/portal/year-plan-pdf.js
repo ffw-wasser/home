@@ -1,11 +1,11 @@
-/* Annual PDF from the authorized view: A4 for the devices at the fire station. */
+/* Shared A4 annual PDF layout; each authorized view supplies its own events. */
 (function(g){
  'use strict';
- async function build({year,months,note,colors=g.CalendarPresentation?.defaults(),personal=true}){
+ async function build({year,months,note,colors=g.CalendarPresentation?.defaults()}){
   const {PDFDocument,StandardFonts,rgb}=g.PDFLib,pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
   const safe=value=>[...String(value||'').replace(/[\r\n\t]+/g,' ').replace(/[–—]/g,'-')].map(c=>{try{regular.encodeText(c);return c;}catch{return '?';}}).join('');
   function wrap(value,size,width){const lines=[];let line='';for(const word of safe(value).split(/\s+/)){if(!word)continue;if(line&&bold.widthOfTextAtSize(line+' '+word,size)<=width){line+=' '+word;continue;}if(line){lines.push(line);line='';}for(const char of word){if(line&&bold.widthOfTextAtSize(line+char,size)>width){lines.push(line);line='';}line+=char;}}if(line)lines.push(line);return lines;}
-  const compact=!personal,W=compact?841.89:1190.55,H=compact?595.28:841.89,M=compact?18:28,gap=compact?5:7,col=(W-M*2-gap*5)/6,offset=compact?25:36,width=col-offset-4,top=H-(compact?88:108),ink=rgb(.08,.18,.26),pages=[];
+  const compact=true,W=compact?841.89:1190.55,H=compact?595.28:841.89,M=compact?18:28,gap=compact?5:7,col=(W-M*2-gap*5)/6,offset=compact?25:36,width=col-offset-4,top=H-(compact?88:108),ink=rgb(.08,.18,.26),pages=[];
   let condensed=false,bottom=compact?66:62,available=top-bottom;
   const text=(page,value,x,y,size=8,strong=false,color=ink)=>page.drawText(safe(value),{x,y,size,font:strong?bold:regular,color});
   const palette=(raw,native=false)=>{const channels=raw.slice(1).match(/../g).map(v=>parseInt(v,16));return {color:native?ink:rgb(...channels.map(v=>Math.min(v,175)/255)),accent:native?rgb(...channels.map(v=>v/255)):null,background:rgb(...channels.map(v=>(229.5+v*.1)/255))};};

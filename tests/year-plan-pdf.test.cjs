@@ -1,10 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),PDFLib=require('../js/vendor/pdf-lib.min.js');
 function fixture(){const c=vm.createContext({setTimeout,Uint8Array,ArrayBuffer});vm.runInContext(fs.readFileSync('js/vendor/pdf-lib.min.js','utf8'),c);vm.runInContext(fs.readFileSync('js/features/portal/calendar-presentation.js','utf8'),c);vm.runInContext(fs.readFileSync('js/features/portal/year-plan-pdf.js','utf8'),c);return c.YearPlanPdf;}
 const months=()=>Array.from({length:12},(_,month)=>({title:new Intl.DateTimeFormat('de-DE',{month:'long'}).format(new Date(2026,month,1)),days:Array.from({length:new Date(2026,month+1,0).getDate()},(_,i)=>({date:(i+1)+' Mo',holidays:[],events:[],weekend:false,holiday:false,birthday:false}))}));
-test('Jahres-PDF umfasst beide Halbjahre als echte A3-Seiten',async()=>{
+test('Jahres-PDF umfasst beide Halbjahre im gemeinsamen A4-Querformat',async()=>{
  const result=await fixture().build({year:2026,months:months(),note:'Synthetische Testdaten'}),doc=await PDFLib.PDFDocument.load(result.bytes);
  assert.equal(result.pageCount,2);assert.equal(doc.getPageCount(),2);assert.equal(doc.getTitle(),'Jahresprobenplan 2026');
- assert.ok(Math.abs(doc.getPage(0).getWidth()-1190.55)<.1);assert.ok(Math.abs(doc.getPage(0).getHeight()-841.89)<.1);
+ assert.ok(Math.abs(doc.getPage(0).getWidth()-841.89)<.1);assert.ok(Math.abs(doc.getPage(0).getHeight()-595.28)<.1);
 });
 test('Auch überfüllte Tage bleiben auf zwei Seiten mit ausdrücklicher Kürzungsmarkierung',async()=>{
  const data=months();data[0].days[0].events=Array.from({length:160},(_,i)=>({title:'Probe '+i+' Überprüfung Atemschutzgeräteträger '+('Langwort'.repeat(8))+' 🚒',details:'Gerätehaus Wasser · Einsatzkleidung'}));
@@ -29,3 +29,14 @@ test('A4 lässt Zusatzbeschreibungen weg und druckt Feriennamen nur bei markiert
 });
 
 test('Google-Legende erklärt gemischte Terminarten je Farbe und weiterhin verwendete App-Farben',async()=>{const data=months();data[0].days[0].events=[{title:'Probe',type:'special',googleColor:'#F6BF26'},{title:'Funk',type:'lesson',googleColor:'#F6BF26'},{title:'Probe blau',type:'special',googleColor:'#039BE5'},{title:'Allgemeine Probe',type:'general'}];const result=await fixture().build({year:2026,months:data,personal:false}),doc=await PDFLib.PDFDocument.load(result.bytes);for(const page of doc.getPages()){const raw=page.node.Contents().asArray().map(ref=>Buffer.from(PDFLib.decodePDFRawStream(doc.context.lookup(ref)).decode()).toString('latin1')).join(' ');for(const text of ['Sonderprobe / Unterricht','Sonderprobe','Allgemeine Probe'])assert.ok(raw.includes(Buffer.from(text,'latin1').toString('hex').toUpperCase()),text);}});
+
+
+test('H₂O und Hauptanwendung verwenden dieselben PDF-Maße und Ferienbeschriftungen',async()=>{
+ const data=months();for(let n=0;n<5;n++)Object.assign(data[0].days[n],{holiday:true,holidays:['Testferien'],compactHolidays:n===0?['Testferien']:[]});
+ for(const personal of [false,true]){
+  const result=await fixture().build({year:2026,months:data,personal}),doc=await PDFLib.PDFDocument.load(result.bytes);
+  assert.equal(doc.getPageCount(),2);assert.equal(doc.getPage(0).getWidth(),841.89);assert.equal(doc.getPage(0).getHeight(),595.28);
+  const raw=doc.getPage(0).node.Contents().asArray().map(ref=>Buffer.from(PDFLib.decodePDFRawStream(doc.context.lookup(ref)).decode()).toString('latin1')).join(' ');
+  assert.equal(raw.split(Buffer.from('Testferien','latin1').toString('hex').toUpperCase()).length-1,1);
+ }
+});

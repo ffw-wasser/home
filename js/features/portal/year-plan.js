@@ -40,7 +40,7 @@
      const key=prefix+'-'+String(day).padStart(2,'0'),noon=Date.parse(key+'T12:00:00Z'),row=node('div');row.className='year-plan-day';
      if(new Date(noon).getUTCDay()===0)row.classList.add('is-sunday');if(key===today)row.classList.add('is-today');
      const date=node('span',day+' '+format(noon,{weekday:'short'}));date.className='year-plan-date';const content=node('div');row.append(date,content);card.append(row);
-     if($('holidays').checked)for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');const label=node('small',holiday.name);label.className='year-plan-holiday';label.dataset.holidayStart=String(holiday.start===key||key===year+'-01-01');content.append(label);}
+     if($('holidays').checked)for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');if(holiday.start===key||key===year+'-01-01'){const label=node('small',holiday.name);label.className='year-plan-holiday';label.dataset.holidayStart='true';content.append(label);}}
      for(const holiday of g.PublicHolidays.forDay(key)){row.classList.add('is-public-holiday');const label=node('small',holiday.name);label.className='year-plan-public-holiday';content.append(label);}
      for(const {event:e,starts,time:clock} of byDay.get(key)||[]){
       const details=node('details');details.className='year-plan-event '+(e.kind==='birthday'?'is-birthday':e.kind==='probe'?'is-probe':'is-other');
