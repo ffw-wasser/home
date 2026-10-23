@@ -5,7 +5,7 @@
   const {PDFDocument,StandardFonts,rgb}=g.PDFLib,pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
   const safe=value=>[...String(value||'').replace(/[\r\n\t]+/g,' ').replace(/[–—]/g,'-')].map(c=>{try{regular.encodeText(c);return c;}catch{return '?';}}).join('');
   function wrap(value,size,width){const lines=[];let line='';for(const word of safe(value).split(/\s+/)){if(!word)continue;if(line&&bold.widthOfTextAtSize(line+' '+word,size)<=width){line+=' '+word;continue;}if(line){lines.push(line);line='';}for(const char of word){if(line&&bold.widthOfTextAtSize(line+char,size)>width){lines.push(line);line='';}line+=char;}}if(line)lines.push(line);return lines;}
-  const W=1190.55,H=841.89,M=28,gap=7,col=(W-M*2-gap*5)/6,top=H-108,bottom=76,available=top-bottom,ink=rgb(.08,.18,.26),pages=[];
+  const W=1190.55,H=841.89,M=28,gap=7,col=(W-M*2-gap*5)/6,top=H-108,bottom=62,available=top-bottom,ink=rgb(.08,.18,.26),pages=[];
   let condensed=false;
   const text=(page,value,x,y,size=8,strong=false,color=ink)=>page.drawText(safe(value),{x,y,size,font:strong?bold:regular,color});
   const palette=raw=>{const channels=raw.slice(1).match(/../g).map(v=>parseInt(v,16));return {color:rgb(...channels.map(v=>Math.min(v,175)/255)),background:rgb(...channels.map(v=>(229.5+v*.1)/255))};};
@@ -34,8 +34,8 @@
   }
   pages.forEach((page,i)=>{
    const legend=[{label:'Ferien',background:rgb(1,1,.8)},{label:'Sonntag',background:rgb(1,.8,.6)},{label:'Feiertag',background:rgb(.89,.96,.87)},...(g.CalendarPresentation?.types||[]).map(type=>({label:type.label,...palette(colors?.[type.id]||type.color)}))];
-   let x=M+40,y=56;text(page,'Farben:',M,y,7.5,true);
-   for(const entry of legend){const width=regular.widthOfTextAtSize(safe(entry.label),7.5)+27;if(x+width>W-M){x=M;y-=13;}page.drawRectangle({x,y:y-1,width:12,height:8,color:entry.background,borderColor:rgb(.65,.7,.74),borderWidth:.4});if(entry.color)page.drawRectangle({x,y:y-1,width:3,height:8,color:entry.color});text(page,entry.label,x+16,y,7.5);x+=width;}
+   let x=M+40,y=48;text(page,'Farben:',M,y,7.5,true);
+   for(const entry of legend){const width=regular.widthOfTextAtSize(safe(entry.label),7.5)+27;page.drawRectangle({x,y:y-1,width:12,height:8,color:entry.background,borderColor:rgb(.65,.7,.74),borderWidth:.4});if(entry.color)page.drawRectangle({x,y:y-1,width:3,height:8,color:entry.color});text(page,entry.label,x+16,y,7.5);x+=width;}
    text(page,'Zwei-Seiten-Übersicht. Zusatzinfos und sehr umfangreiche Tage ggf. gekürzt; vollständige Angaben in der Kalenderansicht.',M,30,7);text(page,'Seite '+(i+1)+' / 2',W-100,30,7);text(page,wrap(note,6,1000)[0]||'',M,18,6);
   });pdf.setTitle('Jahresprobenplan '+year);pdf.setAuthor('Feuerwehr Wasser');return {bytes:await pdf.save(),pageCount:2,condensed};
  }
