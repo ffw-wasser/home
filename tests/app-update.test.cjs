@@ -51,3 +51,5 @@ test('FFW: hidden app pauses checks; return and network recovery resume checking
 test('FFW: release comparison handles sequence 9 to 10 and year changes',async()=>{
  for(const remote of ['20261022.10','20270101.1']){const f=await fixture({remote});assert.equal(f.nodes['app-update-now'].hidden,false);}
 });
+
+test('Haus lädt auch ohne neue Version neu und respektiert laufende Erfassungen sowie ungespeicherte Änderungen',async()=>{const f=await fixture({remote:'20261022.6'}),reads=f.calls.length;assert.equal(f.c.FFWUpdate.refreshHome(),true);assert.equal(f.reloads,1);assert.equal(f.calls.length,reads);for(const [key,value] of [['currentSessionId','test-session'],['currentOperationId','test-operation'],['oneDriveBusy',true]]){const blocked=await fixture();blocked.c[key]=value;assert.equal(blocked.c.FFWUpdate.refreshHome(),false);assert.equal(blocked.reloads,0);}const dirty=await fixture();dirty.target.addEventListener('beforeunload',e=>e.preventDefault());assert.equal(dirty.c.FFWUpdate.refreshHome(),false);assert.equal(dirty.reloads,0);});
