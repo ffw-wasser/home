@@ -53,3 +53,27 @@ lokalen Tests nicht abgedeckt. Die GitHub-Prüfung muss zusätzlich erfolgreich 
 Version 2026.10.23.4 ist als PR-Kandidat vorbereitet. Erst nach Freigabe zusammenführen.
 Für die Jahresansicht ist der aktualisierte Worker zusammen mit den Frontend-Dateien
 erforderlich. Ein erfolgreicher Quelltest bestätigt keine produktive Veröffentlichung.
+
+## Jahresplan im persönlichen H₂O-Portal
+
+Version 2026.10.23.5 ergänzt unter Mehr die Kachel „Jahresplan“. Der kurze Titel
+bleibt auch nach dem Verschieben in die untere Handynavigation lesbar. Eine bestehende
+individuelle Kachelanordnung bleibt erhalten; die neue Kachel wird in Mehr ergänzt.
+Der Portalplan verwendet dieselbe Darstellung und Ferienquelle wie die FFW-Ansicht.
+Auf dem Handy stehen Monate untereinander. Monatswahl und Heute bleiben beim Scrollen
+erreichbar; selten benötigte Filter liegen unter Anzeige & Filter. Lange Terminthemen
+werden umgebrochen, nicht abgeschnitten. Ereignisse werden vor der Darstellung nach
+Tag indiziert, um wiederholte Datumsformatierung auf dem Handy zu vermeiden.
+
+Die persönliche Jahresabfrage verlangt die bestehende Passkey-Sitzung. Sie liefert
+nur freigegebene Proben für das betreffende Mitglied und dessen eigenen Geburtstag.
+Andere Geburtstagsnamen, unfreigegebene Einträge, Mitgliederkennungen und
+Empfängerlisten werden nicht ausgegeben. Bonusbuchungen bleiben unverändert.
+Beim Abmelden, Kontowechsel und Verlassen der Jahresansicht werden persönliche
+Jahresdaten aus der Darstellung entfernt. Verspätete Antworten dürfen sie nach
+dem Sperren nicht wiederherstellen.
+
+Zusätzliche Prüfung: Empfängergrenzen und widerrufene Zugänge auf dem Worker sowie
+ein Portal-Browsertest auf 320, 360, 390, 412 und 768 Pixeln. Er prüft bestehende
+Anordnungen, Kacheltitel in beiden Navigationsbereichen, lange Termintexte,
+Monatsauswahl, Details, Filter und das Entfernen persönlicher Inhalte beim Abmelden.

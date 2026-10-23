@@ -314,6 +314,16 @@
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
   if(path==='/admin/portal/year')return yearCalendar(env,data.year);
+  if(path==='/portal/year'){
+   const cal=await yearCalendar(env,data.year);
+   // Preserve the same audience as the personal appointment list. Other people's
+   // birthdays, unapproved entries and administration metadata stay private.
+   return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,
+    events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&isRecipient(e,record.memberId)||e.kind==='birthday'&&e.memberId===record.memberId).map(e=>({
+     id:e.id,title:e.kind==='birthday'?'Dein Geburtstag':e.title,start:e.start,end:e.end,allDay:e.allDay===true,kind:e.kind,
+     ...(e.kind==='probe'?{sessionType:e.sessionType,location:e.location,clothing:e.clothing,approved:true}:{})
+    }))};
+  }
   if(path==='/admin/portal/config'){
    const c=await config(env);return {configured:!!c,config:c||null};
   }

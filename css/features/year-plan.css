@@ -14,14 +14,36 @@
 .year-plan-event{margin:2px 0;overflow-wrap:anywhere}.year-plan-event summary{padding:7px 2px;min-height:36px;cursor:pointer;line-height:1.4}.year-plan-event p{font-size:.8rem;margin:2px 0 8px}.year-plan-event.is-probe{color:#0062a3}.year-plan-event.is-other{color:#7030a0}.year-plan-event.is-birthday{background:#ffd9d9;color:#7e2535}.year-plan-event.is-next{font-weight:700;border-left:3px solid #0062a3;padding-left:4px}.year-plan-event summary small{display:block;font-size:.72rem}
 .year-plan-source,.year-plan-legend{font-size:.85rem;color:#465766}.year-plan-source{padding:16px 0}#plansView .water-info{background:#fff;border:1px solid #cbd5df;border-radius:12px;padding:22px;margin-top:18px}#plansView .water-info a{overflow-wrap:anywhere}
 .year-plan-date{white-space:nowrap}
+[data-portal-tile="more-year-plan"] strong{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.15;word-break:normal;overflow-wrap:normal}
+#more-year-plan .year-plan-heading{padding:14px 12px;margin-top:12px}#more-year-plan h1{font-size:clamp(1.2rem,5vw,1.8rem);overflow-wrap:anywhere}
+#more-year-plan .year-plan-tools button{background:#fff;color:#18344c;border:1px solid #a6b6c4;border-radius:9px;padding:8px;font:inherit;min-width:44px}
+#more-year-plan .year-plan-display{background:#fff;border:1px solid #cbd5df;border-radius:10px;padding:0 12px}#more-year-plan .year-plan-display>summary{min-height:44px;padding:12px 0;font-weight:700;cursor:pointer}
+#more-year-plan .year-plan-tools label{min-width:0}#more-year-plan .year-plan-tools select{min-width:0;max-width:100%}
+#more-year-plan>.year-plan-tools{position:sticky;top:0;z-index:2;background:#eef4fa;padding:8px 0}
+@media(max-width:600px){
+ #more-year-plan>.year-plan-tools{display:grid;grid-template-columns:44px minmax(0,1fr) 44px 44px;gap:8px}
+ #more-year-plan #year-plan-prev{grid-column:1;grid-row:1}#more-year-plan>.year-plan-tools>label:first-of-type{grid-column:2;grid-row:1;justify-content:center}
+ #more-year-plan #year-plan-next{grid-column:3;grid-row:1}#more-year-plan #year-plan-reload{grid-column:4;grid-row:1}
+ #more-year-plan .year-plan-month-jump{grid-column:1/4;grid-row:2}#more-year-plan .year-plan-month-jump select{flex:1}
+ #more-year-plan #year-plan-today{grid-column:4;grid-row:2;padding:3px;font-size:.8rem}#more-year-plan #year-plan-print{display:none}
+ #more-year-plan .year-plan-legend{display:none}#more-year-plan .year-plan-month{scroll-margin-top:160px}
+ #more-year-plan #year-plan-year{width:5.2rem;padding:6px}#more-year-plan .year-plan-day{grid-template-columns:52px minmax(0,1fr)}
+}
+@media print{
+ html:has(#portal-page-more-year-plan:not([hidden])){height:auto!important;overflow:visible!important}
+ body:has(#portal-page-more-year-plan:not([hidden])){display:block!important}
+ body:has(#portal-page-more-year-plan:not([hidden])) main>:not(#portal-page-more-year-plan){display:none!important}
+ body:has(#portal-page-more-year-plan:not([hidden])) #deckel-header,body:has(#portal-page-more-year-plan:not([hidden])) #deckel-nav,body:has(#portal-page-more-year-plan:not([hidden])) #deckel-header-identity,body:has(#portal-page-more-year-plan:not([hidden])) #more-year-plan>.portal-more-back,body:has(#portal-page-more-year-plan:not([hidden])) .year-plan-display{display:none!important}
+ body:has(#portal-page-more-year-plan:not([hidden])),body:has(#portal-page-more-year-plan:not([hidden])) #deckel-main{height:auto!important;overflow:visible!important;max-width:none!important;padding:0!important;margin:0!important}
+}
 @media(max-width:1000px){.year-plan-half{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.year-plan-half{grid-template-columns:1fr}.year-plan-heading{padding:16px}.administration-grid{grid-template-columns:1fr}.year-plan-day{min-height:32px}.year-plan-event summary{min-height:44px}}
 @media print{
  @page{size:A3 landscape;margin:10mm}
- body:has(#yearPlanView:not([hidden])){background:#fff!important}
- body:has(#yearPlanView:not([hidden])) .top-nav,body:has(#yearPlanView:not([hidden])) #protectedAppContent>footer,body:has(#yearPlanView:not([hidden])) .app-update-banner,body:has(#yearPlanView:not([hidden])) #toast{display:none!important}
- body:has(#yearPlanView:not([hidden])) main.app-shell{padding:0!important;margin:0!important;max-width:none!important}
- #yearPlanView .year-plan-tools{display:none!important}#yearPlanView .year-plan-heading{padding:0;margin:0 0 8px}#yearPlanView .year-plan-heading h1{font-size:17pt}
- #yearPlanView .year-plan-half{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3mm;align-items:start;break-inside:avoid}#yearPlanView .year-plan-half+ .year-plan-half{break-before:page}
- #yearPlanView .year-plan-month{border-radius:0;outline:none}#yearPlanView .year-plan-month h2{font-size:10pt;padding:4px}#yearPlanView .year-plan-day{font-size:7pt;grid-template-columns:28px minmax(0,1fr);min-height:15px}#yearPlanView .year-plan-date{padding:3px 1px}#yearPlanView .year-plan-day>div{padding:1px 2px}#yearPlanView .year-plan-event summary{padding:1px;min-height:0;font-size:7pt}#yearPlanView .year-plan-event p{display:block;font-size:6pt;margin:0}#yearPlanView .year-plan-event summary::marker{content:''}#yearPlanView .year-plan-holiday{font-size:6pt}#yearPlanView *{print-color-adjust:exact;-webkit-print-color-adjust:exact}#yearPlanView .year-plan-legend,#yearPlanView .year-plan-source,#year-plan-status{font-size:7pt}
+ body:has(#yearPlanView:not([hidden]),#portal-page-more-year-plan:not([hidden])){background:#fff!important}
+ body:has(#yearPlanView:not([hidden]),#portal-page-more-year-plan:not([hidden])) .top-nav,body:has(#yearPlanView:not([hidden]),#portal-page-more-year-plan:not([hidden])) #protectedAppContent>footer,body:has(#yearPlanView:not([hidden]),#portal-page-more-year-plan:not([hidden])) .app-update-banner,body:has(#yearPlanView:not([hidden]),#portal-page-more-year-plan:not([hidden])) #toast{display:none!important}
+ body:has(#yearPlanView:not([hidden]),#portal-page-more-year-plan:not([hidden])) main.app-shell{padding:0!important;margin:0!important;max-width:none!important}
+ :is(#yearPlanView,#more-year-plan) .year-plan-tools{display:none!important}:is(#yearPlanView,#more-year-plan) .year-plan-heading{padding:0;margin:0 0 8px}:is(#yearPlanView,#more-year-plan) .year-plan-heading h1{font-size:17pt}
+ :is(#yearPlanView,#more-year-plan) .year-plan-half{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3mm;align-items:start;break-inside:avoid}:is(#yearPlanView,#more-year-plan) .year-plan-half+ .year-plan-half{break-before:page}
+ :is(#yearPlanView,#more-year-plan) .year-plan-month{border-radius:0;outline:none}:is(#yearPlanView,#more-year-plan) .year-plan-month h2{font-size:10pt;padding:4px}:is(#yearPlanView,#more-year-plan) .year-plan-day{font-size:7pt;grid-template-columns:28px minmax(0,1fr);min-height:15px}:is(#yearPlanView,#more-year-plan) .year-plan-date{padding:3px 1px}:is(#yearPlanView,#more-year-plan) .year-plan-day>div{padding:1px 2px}:is(#yearPlanView,#more-year-plan) .year-plan-event summary{padding:1px;min-height:0;font-size:7pt}:is(#yearPlanView,#more-year-plan) .year-plan-event p{display:block;font-size:6pt;margin:0}:is(#yearPlanView,#more-year-plan) .year-plan-event summary::marker{content:''}:is(#yearPlanView,#more-year-plan) .year-plan-holiday{font-size:6pt}:is(#yearPlanView,#more-year-plan) *{print-color-adjust:exact;-webkit-print-color-adjust:exact}:is(#yearPlanView,#more-year-plan) .year-plan-legend,:is(#yearPlanView,#more-year-plan) .year-plan-source,#year-plan-status{font-size:7pt}
 }
