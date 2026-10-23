@@ -31,7 +31,7 @@ test('Portalnavigation bleibt erreichbar und passt ohne horizontales Scrollen au
  assert.ok(match,'Kachelformatierung');
  assert.match(match[1],/white-space:normal/);
  assert.match(match[1],/overflow-wrap:anywhere/);
- assert.match(match[1],/min-width:0/);
+ // Real navigation width and text enlargement are checked in check-readability.cjs.
  assert.doesNotMatch(match[1],/white-space:nowrap/);
 });
 test('Navigations-IDs bleiben eindeutig und JS syntaktisch gültig',()=>{
