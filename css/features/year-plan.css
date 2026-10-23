@@ -61,5 +61,5 @@
 
 #attendanceTab{display:inline-flex!important;align-items:center;justify-content:center;min-width:48px!important;width:48px!important;height:48px;padding:10px!important}.home-nav-icon{width:26px;height:26px;flex:none}.settings-member-actions{display:flex;align-items:center;gap:10px;margin-left:auto}.settings-member-actions button{min-height:44px;margin:0}@media(max-width:600px){.settings-member-actions{margin-left:0;width:100%}.settings-member-actions button{width:100%}}
 
-#settingsView>.screen-heading{justify-content:space-between;text-align:left}#settingsView>.screen-heading>div{margin:0}#settingsView>.screen-heading>button{order:1;margin-left:auto}
-#settingsMembersView>.screen-heading{justify-content:space-between;gap:12px 20px}#settingsMembersView>.screen-heading>div:first-child{margin:0;flex:1 1 180px;text-align:left}#settingsMembersView>.screen-heading>.view-home-button{order:2;flex:0 0 auto;margin:0}#settingsMembersView>.screen-heading>.settings-member-actions{order:1;margin-left:auto;flex:0 0 auto}
+
+.calendar-sidebar-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}.calendar-sidebar-heading h2{margin:0}.calendar-sidebar-heading button{min-height:44px;padding:8px 12px;margin:0;flex:0 0 auto}
