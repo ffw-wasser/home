@@ -52,6 +52,8 @@ jobs:
       - name: Test member batch editing and mobile cards
         run: node tests/members-editor-browser.cjs
       - name: Test manual WhatsApp reminder flow on mobile viewports
-        run: node tests/portal-reminders-browser.cjs
+        run: |
+          node tests/portal-reminders-browser.cjs
+          node tests/whatsapp-reply-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
         run: node tests/calendar-groups-browser.cjs

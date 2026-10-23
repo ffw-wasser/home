@@ -7,16 +7,16 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://*.workers.dev; base-uri 'none'; form-action 'none'">
 <title>Terminrückmeldung · H₂O Feuerwehr Wasser</title>
 <link rel="icon" type="image/png" href="assets/drinks/h2o-symbol-white-192.png">
-<link rel="stylesheet" href="css/features/portal-whatsapp.css">
+<link rel="stylesheet" href="css/features/portal-whatsapp.css?v=20261023-whatsapp-ux1">
 <script src="js/features/drinks/push-device.js" defer></script>
 <script src="js/vendor/passkeys-browser.js" defer></script>
 <script src="js/features/portal/portal-identity.js" defer></script>
-<script src="js/features/portal/portal-whatsapp.js?v=20261022-whatsapp-safe4" defer></script>
+<script src="js/features/portal/portal-whatsapp.js?v=20261023-whatsapp-ux1" defer></script>
 </head>
 <body>
 <main>
 <header><img src="assets/drinks/h2o-symbol-white-96.png" alt="" width="56" height="56"><div><p>Feuerwehr Wasser</p><h1>H₂O · Terminrückmeldung</h1></div></header>
-<section class="card"><h2 id="heading">Deinen Termin öffnen</h2><p id="status" role="status" aria-live="polite">Verbindung wird geprüft …</p></section>
+<section class="card"><h2 id="heading">Deinen Termin öffnen</h2><p id="status" role="status" aria-live="polite">Verbindung wird geprüft …</p><button type="button" id="retry-reply" class="quiet" hidden>Speicherung prüfen</button><button type="button" id="reload-event" class="quiet" hidden>Termin neu laden</button></section>
 <section id="pairing" class="card" hidden>
 <h2>Mit H₂O-Passkey anmelden</h2>
 <button type="button" id="passkey-login">Mit Passkey anmelden</button>
@@ -26,7 +26,7 @@
 <section id="events" class="card" hidden><h2>Deine Termine</h2><div id="event-list"></div></section>
 <section id="chosen" class="card" hidden>
 <p id="session-type" class="eyebrow"></p><h2 id="event-title"></h2>
-<p id="event-when"></p><p id="event-location"></p>
+<p id="event-when"></p><p id="event-location"></p><p id="event-clothing" hidden></p>
 <p id="event-status" class="answer-status"></p>
 <div class="answers">
 <button type="button" data-reply="yes">Bin dabei</button>
@@ -36,7 +36,7 @@
 <p class="small">Du kannst deine Antwort später ändern.</p>
 </section>
 <section class="card secondary">
-<button type="button" id="back-to-whatsapp" class="quiet" hidden>WhatsApp öffnen</button>
+<button type="button" id="back-to-whatsapp" class="quiet" hidden>Zurück zu WhatsApp</button>
 <p id="back-to-h2o-status" role="status" aria-live="polite" class="small"></p>
 <!-- Hidden compatibility elements for cached older JavaScript; not shown to members. -->
 <button type="button" id="back-to-h2o" hidden aria-hidden="true" tabindex="-1"></button>

@@ -16,6 +16,8 @@
  })();
  let session=null,items=[],stale=false,working=false,pending=null,memberName='',eventLinkStatus=null;
  const status=message=>{el('status').textContent=message;};
+ const dayFmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+ const when=event=>event.allDay?dayFmt.format(new Date(event.start))+' · ganztägig':fmt.format(new Date(event.start))+' Uhr';
  const fmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
  function restore(){return globalThis.H2OIdentity?.session()||null;}
  function persist(){localStorage.removeItem(STORAGE);}
@@ -37,7 +39,7 @@
  function paintEvents(){
   const list=el('event-list');list.replaceChildren();
   for(const event of items){
-   const btn=element('button',event.title+' · '+fmt.format(new Date(event.start))+' Uhr');
+   const btn=element('button',event.title+' · '+when(event));
    btn.className='event-option';btn.type='button';btn.onclick=()=>{const u=new URL(location.href);u.searchParams.set('event',event.id);history.replaceState(null,'',u);renderEvent(event);};list.append(btn);
   }
   if(!items.length)list.append(element('p','Zurzeit keine freigegebenen Termine vorhanden.'));
@@ -47,7 +49,8 @@
   if(!event){status(eventLinkStatus==='not-relevant'?'Dieser Termin ist für dich nicht relevant!':'Dieser Termin ist nicht mehr verfügbar.');return;}
   el('chosen').hidden=false;el('session-type').textContent=event.sessionType||'Termin';
   el('event-title').textContent=event.title||'Feuerwehr-Termin';
-  el('event-when').textContent='📅 '+fmt.format(new Date(event.start))+' Uhr';
+  el('event-when').textContent='📅 '+when(event);
+  el('event-clothing').hidden=!event.clothing;el('event-clothing').textContent=event.clothing?'👕 '+(event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing==='Tagdienst'?'Tagesdienst':event.clothing):'';
   el('event-location').textContent='📍 '+(event.location||'GH Wasser');
   const state={yes:'✓ Du bist dabei',excused:'Entschuldigt',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
   const changed=Number.isSafeInteger(event.updatedAt)&&event.updatedAt>0?' · Zuletzt geändert: '+new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.updatedAt))+' Uhr':'';
@@ -58,9 +61,12 @@
    button.disabled=locked;button.setAttribute('aria-pressed',String(chosen));
    button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Entschuldigt',maybe:'Noch unsicher'}[button.dataset.reply]);
   }
-  status(stale?'Kalender nicht aktuell. Antworten vorübergehend gesperrt.':'Wähle deine Rückmeldung.');
+  status(stale?'Kalender nicht aktuell. Bitte neu laden.':event.start<=Date.now()?'Termin hat bereits begonnen.':'');
  }
  async function refresh(){
+  if(working)return;
+  if(pending){status('Bitte zuerst die offene Speicherung prüfen.');return;}
+  el('reload-event').hidden=true;
   if(!session)return showPair();
   working=true;hide();status('Deine Termine werden geladen …');
   try{
@@ -70,7 +76,7 @@
    const result=await post('list',{alias:session.alias,revision:session.revision,eventId:wanted()},session.token);
    memberName=typeof result.memberName==='string'?result.memberName:'';
    items=Array.isArray(result.events)?result.events.filter(e=>ID.test(e.id||'')):[];
-   stale=result.stale===true;eventLinkStatus=result.eventLinkStatus;el('pairing').hidden=true;
+   stale=result.stale===true;el('reload-event').hidden=!stale;eventLinkStatus=result.eventLinkStatus;el('pairing').hidden=true;
    working=false;
    if(wanted()&&!ID.test(wanted())){el('heading').textContent='Ungültiger Testlink';status('In diesem Link fehlt eine gültige Termin-ID. Bitte einen echten Termin über den Gruppenführer teilen.');return;}
    if(wanted()){renderEvent(items.find(e=>e.id===wanted()));}
@@ -78,7 +84,7 @@
   }catch(error){
    working=false;
    if(error.status===401||error.status===403){session=null;persist(null);showPair('Der Browserzugang ist nicht mehr gültig. Bitte H₂O erneut verbinden.');}
-   else{status(error.message||'Termine konnten nicht geladen werden.');el('pairing').hidden=false;}
+   else{status(error.message||'Termine konnten nicht geladen werden.');el('reload-event').hidden=false;}
   }
  }
  async function loginPasskey(){
@@ -93,18 +99,21 @@
  }
  async function reply(event,choice){
   if(working||stale||event.start<=Date.now()||!session)return;
+  el('back-to-h2o-status').textContent='';
   if(pending&&pending.eventId!==event.id)return;
   const newStatus=event.status===choice?'open':choice;
   if(!pending)pending={eventId:event.id,status:newStatus,expectedVersion:event.version,requestId:crypto.randomUUID()};
   else if(pending.status!==newStatus){status('Bitte zuerst die unbestätigte Speicherung erneut prüfen.');return;}
-  working=true;renderEvent(event);status('Antwort wird sicher gespeichert …');
+  el('retry-reply').hidden=true;working=true;renderEvent(event);status('Antwort wird sicher gespeichert …');
   try{
    const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
    if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
    event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Gespeichert!');
   }catch(e){
-   if([400,401,403,404,409].includes(e.status))pending=null;
-   status((e.message||'Speicherung nicht bestätigt.')+(pending?' Bitte dieselbe Antwort erneut antippen.':' Bitte den Termin erneut laden.'));
+   if([400,401,403,404,409].includes(e.status)){pending=null;stale=true;el('reload-event').hidden=false;}
+   if(e.status===401||e.status===403)session=null;
+   el('retry-reply').hidden=!pending;
+   status((e.message||'Speicherung nicht bestätigt.')+(pending?' Bitte Speicherung prüfen.':' Bitte den Termin erneut laden.'));
   }finally{
    working=false;
    const note=el('status').textContent;
@@ -115,11 +124,11 @@
  // Never launch an external WhatsApp URL: iOS may show a failed link verification.
  el('back-to-whatsapp').addEventListener('click',()=>{
   const feedback=el('back-to-h2o-status');
-  feedback.textContent='Deine Rückmeldung ist gespeichert. Wechsle über „Zurück“ oder den App-Umschalter wieder zu WhatsApp.';
+  feedback.textContent='Wechsle über „Zurück“ oder den App-Umschalter wieder zu WhatsApp.';
   // Only use history when the referrer really belongs to WhatsApp Web.
   try{
    const previous=new URL(document.referrer);
-   if(/(^|\\.)whatsapp\\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
+   if(/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
   }catch{}
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
@@ -127,6 +136,8 @@
   const item=items.find(e=>e.id===focus);
   if(item)void reply(item,button.dataset.reply);
  });
+ el('retry-reply').addEventListener('click',()=>{const event=items.find(e=>e.id===pending?.eventId);if(event)void reply(event,pending.status==='open'?event.status:pending.status);});
+ el('reload-event').addEventListener('click',()=>void refresh());
  el('passkey-login').addEventListener('click',loginPasskey);
  session=restore();persist();if(initialPair)showPair('Die bisherige Browser-Verbindung wurde ersetzt. Bitte mit deinem zentralen H₂O-Passkey anmelden.');else if(session)void refresh();else showPair();
 })();

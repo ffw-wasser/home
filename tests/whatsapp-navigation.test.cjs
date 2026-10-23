@@ -38,6 +38,10 @@ test('WhatsApp öffnen startet keinen externen Link und zeigt sicheren Rückweg'
  assert.deepEqual(run.assigned,[]);
  assert.match(run.dom['back-to-h2o-status'].textContent,/App-Umschalter/);
  assert.equal(run.back.length,0);
+ assert.ok(!run.dom['back-to-h2o-status'].textContent.includes('gespeichert'));
+ assert.equal(responseContext({from:'https://web.whatsapp.com/',historyLength:2}).back.length,0);
+ const web=responseContext({from:'https://web.whatsapp.com/',historyLength:2});web.dom['back-to-whatsapp'].events.click();assert.equal(web.back.length,1);
+ const fake=responseContext({from:'https://fakewhatsapp.com/',historyLength:2});fake.dom['back-to-whatsapp'].events.click();assert.equal(fake.back.length,0);
 });
 test('Terminseite enthält keine überflüssigen Zugangs- und H2O-Buttons',()=>{
  const html=read('termin.html');
