@@ -135,7 +135,7 @@
 
 #phone-cash-open{display:flex;align-items:center;justify-content:center;gap:8px;background:#20583b;color:#fff}.cash-icon{display:block;width:30px;height:22px;flex-shrink:0}
 
-.deckel-title>div{min-width:0}.deckel-title #portal-menu-title{font-size:clamp(1.125rem,5vw,1.5rem);line-height:1.2;overflow-wrap:normal;hyphens:auto}
+.deckel-title>div{min-width:0}.deckel-title #portal-menu-title{font-size:clamp(1.125rem,5vw,1.5rem);line-height:1.2;overflow-wrap:anywhere;hyphens:auto}
 
 #portal-page-points .loyalty-card summary{font-size:1.0625rem;line-height:1.5}.loyalty-heading>div{min-width:0}.loyalty-heading{flex-wrap:wrap}
 
