@@ -49,7 +49,7 @@ const root=path.resolve(__dirname,'..');
    assert.deepEqual(errors,[]);await page.close();
   }
   const tablet=await browser.newPage({viewport:{width:1024,height:768}});
-  const app=fs.readFileSync(path.join(root,'index.html'),'utf8'),start=app.indexOf('<section class="panel" aria-labelledby="hydrants-admin-title">'),end=app.indexOf('</section>',start)+10;
+  const app=fs.readFileSync(path.join(root,'index.html'),'utf8'),start=app.indexOf('<section class="water-info hydrants-plan-card" aria-labelledby="hydrants-admin-title">'),end=app.indexOf('</section>',start)+10;
   assert.ok(start>=0);await tablet.route('https://ffw-wasser.github.io/home/**',route=>{const pathname=new URL(route.request().url()).pathname;if(pathname.endsWith('/tablet-test.html'))return route.fulfill({body:app.slice(start,end),contentType:'text/html'});return route.fulfill({path:path.join(root,pathname.replace(/^\/home\//,'')),contentType:'text/javascript'});});await tablet.goto('https://ffw-wasser.github.io/home/tablet-test.html');await tablet.addStyleTag({path:path.join(root,'css/features/portal.css')});
   await tablet.evaluate(data=>{window.oneDriveReadHydrants=async()=>new Uint8Array(data);},Array.from(bytes));
   await tablet.addScriptTag({path:path.join(root,'js/features/portal/plan-zoom.js')});

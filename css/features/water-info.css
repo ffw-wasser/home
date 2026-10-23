@@ -19,3 +19,10 @@
 .water-info p{line-height:1.5}
 .water-info a{overflow-wrap:anywhere}
 .water-info .note{font-size:.875rem;color:#425d77}
+
+.hydrants-plan-card [role="status"]:empty{display:none}
+.hydrants-plan-card #hydrants-admin-state{font-size:.875rem;color:#425d77}
+
+.plans-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:24px;align-items:start;max-width:1384px;margin:18px auto 24px}
+.plans-cards>.water-info{width:100%;max-width:none;min-width:0;margin:0}
+.water-info button.water-info-link{border:0;cursor:pointer}
