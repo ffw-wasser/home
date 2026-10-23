@@ -31,7 +31,7 @@ function ensureIpadTerminPackageDialog(){
 function finishIpadTerminPackageSave(result){
   const pending=pendingTerminPackageSave;if(!pending)return;
   pendingTerminPackageSave=null;try{pending.dialog.close();}catch{pending.dialog.removeAttribute("open");}
-  window.WorkflowUX?.packageReady(pending.fileName,pending.blob,result);pending.resolve(result);
+  pending.resolve(result);
 }
 async function sharePendingTerminPackage(){
   const pending=pendingTerminPackageSave;if(!pending)return;
@@ -83,7 +83,7 @@ async function saveTerminPackage(fileName,blob,overwriteRequired=false){
   // abgelaufener Verzeichnis-Handle darf den ZIP-Download nicht mehr verhindern.
   try{
     if(!(blob instanceof Blob)||!blob.size)throw new Error("Das ZIP-Paket ist leer.");
-    downloadBlob(fileName,blob);window.WorkflowUX?.packageReady(fileName,blob,"downloaded");
+    downloadBlob(fileName,blob);
     return "downloaded";
   }catch(error){
     console.error("ZIP-Download fehlgeschlagen",error);
@@ -125,7 +125,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Probe"}),result=await saveTerminPackage(`${base}.zip`,packageResult.zipBlob);
   if(result==="failed"||result==="cancelled")return showToast("Das Terminpaket konnte nicht gespeichert werden. Die Tagesdaten bleiben erhalten.","error");
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
-  window.PortalAdmin?.discard();const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");showToast("Termin abgeschlossen. ZIP erstellt und an Teilen / Download übergeben. Bitte die Ablage prüfen.");
+  window.PortalAdmin?.discard();const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");window.WorkflowUX?.terminCompleted(result);
   }finally{closingDay=false;}
 };
 
@@ -177,7 +177,7 @@ window.finishOperationZip=async function(){
         entries=entries.filter(entry=>entry.operationId!==currentOperationId);saveEntries();
         resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();
         setHomeFlowStage(1);showView("attendanceView");
-        showToast("Original-Terminpaket in OneDrive überschrieben und als korrigiert markiert.");
+        window.WorkflowUX?.terminCompleted("saved");
         return true;
       }
       // Neu und Korrektur speichern ausschließlich ein ZIP. Bei der Korrektur
@@ -187,7 +187,7 @@ window.finishOperationZip=async function(){
       if(result==="failed"||result==="cancelled"){showToast("Das Einsatz-Terminpaket konnte nicht gespeichert werden. Daten bleiben erhalten.","error");return false;}
       const item={id:previous?.id||makeId(),packageFileName:zipName,fileName:csvName,pdfFileName:pdfName,content:csv,sessionType:"Einsatz",topic:`${d.type} · ${d.location}`,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),presentCount:(Array.isArray(d.members)?d.members.length:0),excusedCount:0,missingCount:0,operationData:d,hasImportedPdf:true,revisions:[...(previous?.revisions||[]),...(previous?[{correctedAt:new Date().toISOString(),reason:"Einsatzbericht korrigiert",previousOperationData:previous.operationData}]:[])]};
       try{await saveImportedReportPdf(item.id,new File([packageResult.finalPdf],pdfName,{type:"application/pdf"}));await commitPendingDocumentReport?.(item.id);csvArchive=previous?csvArchive.map(entry=>entry.id===item.id?item:entry):[item,...csvArchive];saveArchive();}catch(error){console.error("Lokales Einsatzarchiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
-      entries=entries.filter(e=>e.operationId!==currentOperationId);saveEntries();resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();setHomeFlowStage(1);showView("attendanceView");showToast(previous?"Korrigiertes Einsatz-Terminpaket erstellt. Bitte die Ablage prüfen.":"Einsatz-Terminpaket erstellt. Bitte die Ablage prüfen.");return true;
+      entries=entries.filter(e=>e.operationId!==currentOperationId);saveEntries();resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();setHomeFlowStage(1);showView("attendanceView");window.WorkflowUX?.terminCompleted(result);return true;
     });
     if(!completed)showToast("Finales Speichern abgebrochen. Einsatzdaten bleiben zur Bearbeitung erhalten.","error");
   }catch(error){console.error("Einsatzabschluss fehlgeschlagen",error);try{if(typeof collectOperationData==="function")persistOperationDraft?.(collectOperationData());}catch(saveError){console.warn("Einsatzbericht konnte nach dem Fehler nicht erneut gesichert werden",saveError);}const raw=String(error?.message||error||""),message=/Failed to fetch/i.test(raw)?"PDF konnte nicht über OneDrive erzeugt werden. Bitte Internetverbindung und OneDrive-Anmeldung prüfen. Alle Protokolleinträge wurden gespeichert.":`${raw||"Unbekannter Fehler"} Alle Protokolleinträge wurden gespeichert.`;showToast(`Einsatz konnte nicht abgeschlossen werden. ${message}`,"error");}

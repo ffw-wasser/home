@@ -12,6 +12,7 @@
 .admin-row .text-input { min-height: 42px; background: #fff; }
 .admin-layout .primary-button { margin-top: 14px; }
 .toast { position: fixed; right: 20px; bottom: 20px; z-index: 100; max-width: min(400px, calc(100vw - 40px)); padding: 14px 17px; border-radius: 9px; color: #fff; background: #222; box-shadow: 0 8px 25px rgba(0,0,0,.26); opacity: 0; transform: translateY(14px); pointer-events: none; transition: .2s; font-weight: 750; }
+.toast:empty { display: none; }
 .toast.visible { opacity: 1; transform: none; }
 .toast.success { background: var(--green); }
 .toast.error { background: #8e0000; }

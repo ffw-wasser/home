@@ -2,7 +2,7 @@
 (function(global){
  'use strict';
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
- let packageFile=null,selectionUndo=null,selectionKey='',initialized=false,backupChecked=false,historyReturn=null;
+ let selectionUndo=null,selectionKey='',initialized=false,backupChecked=false,historyReturn=null;
  function connectionNotice(){
   const view=document.querySelector('main.app-shell > .view:not([hidden])');if(!view)return;
   let box=view.querySelector('.workflow-connection');
@@ -39,18 +39,9 @@
   snapshot.forEach((status,id)=>{const m=members.find(p=>p.id===id);if(m&&!recorded.has(nameForStorage(m))&&!recorded.has(nameForTile(m)))pendingMemberStatuses.set(id,status);});
   chosenMemberIds=new Set(pendingMemberStatuses.keys());renderMembers();updateSelection();updateProbeWorkflow();attendance();
  }
- function packageReady(name,blob,result){
-  if(!['shared','downloaded'].includes(result))return;packageFile={name,blob,result};
-  let box=byId('workflowPackageReceipt');if(!box){box=document.createElement('article');box.id='workflowPackageReceipt';box.className='panel workflow-package-receipt';box.innerHTML='<h3>Terminpaket erstellt</h3><p data-name></p><p data-status role="status"></p><div class="workflow-actions"><button type="button" class="primary-button" data-again>Erneut teilen / herunterladen</button><button type="button" class="outline-button" data-confirm>Ablage geprüft</button><button type="button" class="outline-button" data-dismiss>Schließen</button></div>';byId('attendanceView').prepend(box);
-   box.querySelector('[data-again]').onclick=async()=>{if(!packageFile)return;const button=box.querySelector('[data-again]');button.disabled=true;try{await saveTerminPackage(packageFile.name,packageFile.blob);}finally{button.disabled=false;}};
-   box.querySelector('[data-confirm]').onclick=()=>{text(box.querySelector('[data-status]'),'Ablage von dir bestätigt.');box.querySelector('[data-confirm]').hidden=true;};
-   box.querySelector('[data-dismiss]').onclick=()=>{box.hidden=true;packageFile=null;};
-  }
-  box.hidden=false;box.querySelector('[data-confirm]').hidden=false;text(box.querySelector('[data-name]'),name);
-  text(box.querySelector('[data-status]'),result==='shared'?'An den Teilen-Dialog übergeben. Bitte prüfen, ob die ZIP in deinem OneDrive-Ordner liegt.':'Download gestartet. Bitte die heruntergeladene ZIP in deinem OneDrive-Ordner ablegen.');
- }
+ function terminCompleted(result){byId('workflowPackageReceipt')?.remove();const toast=byId('toast');if(toast){toast.classList.remove('visible');toast.textContent='';}global.DrinksExtras?.celebrate(0,null,{kind:'termin',result});}
  function afterView(view){if(view==='settingsHistoryView'&&historyReturn){const top=historyReturn;historyReturn=null;setTimeout(()=>window.scrollTo({top,left:0,behavior:'instant'}),0);}}
- function reset(){packageFile=null;selectionUndo=null;backupChecked=false;historyReturn=null;const receipt=byId('workflowPackageReceipt');if(receipt){receipt.hidden=true;receipt.querySelector('[data-name]').textContent='';}}
+ function reset(){selectionUndo=null;backupChecked=false;historyReturn=null;const receipt=byId('workflowPackageReceipt');if(receipt){receipt.hidden=true;receipt.querySelector('[data-name]').textContent='';}}
  function backupResult(name,payload,result){
   const scope=document.querySelector('.ux-backup-scope');if(!scope)return;
   let box=byId('workflowBackupResult');if(!box){box=document.createElement('aside');box.id='workflowBackupResult';box.className='workflow-session';box.innerHTML='<p role="status"></p><button type="button" class="outline-button">Sicherung und Ablage geprüft</button>';scope.append(box);box.querySelector('button').onclick=()=>{backupChecked=true;text(box.querySelector('p'),'Sicherung und Ablage von dir bestätigt. Getränkedaten bitte separat in OneDrive sichern.');};}
@@ -72,6 +63,6 @@
   document.addEventListener('click',event=>{if(event.target.closest('[data-history-pdf],[data-history-correct]'))historyReturn=window.scrollY;});document.addEventListener('close',event=>{if(['historyPdfPreviewDialog','archiveCorrectionDialog'].includes(event.target.id)&&byId('settingsHistoryView')?.hidden===false)afterView('settingsHistoryView');},true);
   global.addEventListener('online',storage);global.addEventListener('offline',storage);storage();
  }
- global.WorkflowUX={storage,attendance,beforeSelection,clearSelectionUndo,connectionNotice,packageReady,backupResult,afterView,reset,get backupChecked(){return backupChecked;}};
+ global.WorkflowUX={storage,attendance,beforeSelection,clearSelectionUndo,connectionNotice,terminCompleted,backupResult,afterView,reset,get backupChecked(){return backupChecked;}};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);
