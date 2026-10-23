@@ -42,7 +42,7 @@
     while(offset<total){
      if(y<75)begin();
      const take=Math.min(total-offset,Math.max(1,Math.floor((y-58)/9))),height=Math.max(19,take*9+6);
-     cells.forEach((cell,i)=>{if(!cell)return;const x=M+i*(col+gap),background=cell.birthday?rgb(1,.86,.88):cell.holiday?rgb(1,.91,.82):cell.weekend?rgb(1,.97,.78):rgb(.98,.99,1);
+     cells.forEach((cell,i)=>{if(!cell)return;const x=M+i*(col+gap),background=cell.birthday?rgb(1,.86,.88):cell.publicHoliday?rgb(.89,.96,.87):cell.holiday?rgb(1,.91,.82):cell.weekend?rgb(1,.97,.78):rgb(.98,.99,1);
       page.drawRectangle({x,y:y-height,width:col,height,color:background,borderColor:rgb(.79,.84,.87),borderWidth:.4});
       text(page,cell.date,x+3,y-11,7,true);
       cell.lines.slice(offset,offset+take).forEach((line,n)=>text(page,line.line,x+34,y-11-n*9,line.size,false,line.color));
@@ -50,7 +50,7 @@
     }
    }
   }
-  pages.forEach((page,i)=>{text(page,'Gelb: Wochenende | Apricot: Ferien | Rosa: Geburtstag | Blau: Probe',M,36,7);text(page,'Seite '+(i+1)+' / '+pages.length,W-100,36,7);text(page,wrap(note,6,1000)[0]||'',M,24,6);});
+  pages.forEach((page,i)=>{text(page,'Gelb: Wochenende | Apricot: Ferien | Rosa: Geburtstag | Blau: Probe | Grün: Feiertag',M,36,7);text(page,'Seite '+(i+1)+' / '+pages.length,W-100,36,7);text(page,wrap(note,6,1000)[0]||'',M,24,6);});
   pdf.setTitle('Jahresprobenplan '+year);pdf.setAuthor('Feuerwehr Wasser');
   return {bytes:await pdf.save(),pageCount:pages.length};
  }

@@ -41,6 +41,7 @@
      if([0,6].includes(new Date(noon).getUTCDay()))row.classList.add('is-weekend');if(key===today)row.classList.add('is-today');
      const date=node('span',day+' '+format(noon,{weekday:'short'}));date.className='year-plan-date';const content=node('div');row.append(date,content);card.append(row);
      if($('holidays').checked)for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');const label=node('small',holiday.name);label.className='year-plan-holiday';content.append(label);}
+     for(const holiday of g.PublicHolidays.forDay(key)){row.classList.add('is-public-holiday');const label=node('small',holiday.name);label.className='year-plan-public-holiday';content.append(label);}
      for(const {event:e,starts,time:clock} of byDay.get(key)||[]){
       const details=node('details');details.className='year-plan-event '+(e.kind==='birthday'?'is-birthday':e.kind==='probe'?'is-probe':'is-other');
       const time=e.allDay?'Ganztägig':starts<key?'Fortsetzung':clock;
@@ -53,9 +54,14 @@
    }
   }
  }
- function jump(){if(year===Number(dayKey(Date.now()).slice(0,4)))requestAnimationFrame(()=>{const month=Number(dayKey(Date.now()).slice(5,7))-1;if($('month'))$('month').value=month;document.getElementById('year-plan-month-'+month)?.scrollIntoView({block:'start',behavior:portal?'instant':'smooth'});});}
+ function jump(month=Number($('month')?.value||0)){
+  const epoch=generation,selected=year;
+  requestAnimationFrame(()=>{if(epoch!==generation||selected!==year||document.getElementById(portal?'portal-page-more-year-plan':'yearPlanView')?.hidden)return;if($('month'))$('month').value=month;const card=document.getElementById('year-plan-month-'+month);if(card&&portal)card.style.scrollMarginTop=(document.querySelector('#more-year-plan>.year-plan-tools').getBoundingClientRect().height+32)+'px';card?.scrollIntoView({block:'start',behavior:'auto'});});
+ }
  async function load(scroll=false){
+  if(scroll){const today=dayKey(Date.now());year=Number(today.slice(0,4));if($('month'))$('month').value=Number(today.slice(5,7))-1;}
   const epoch=++generation,selected=year;events=[];privateData=false;loaded=false;message='Jahresplan wird geladen …';render();
+  jump();
   try{
    const privateAccess=authorized();let result;
    if(portal){
@@ -71,7 +77,7 @@
     for(let attempt=0;attempt<2;attempt++){
      if(epoch!==generation)return;
      if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
-     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected},20000);break;}
+     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected},35000);break;}
      catch(e){const network=e instanceof TypeError||['AbortError','TimeoutError'].includes(e?.name)||/load failed|failed to fetch|networkerror|network request failed/i.test(e?.message||'');if(attempt||!network)throw e;}
     }
     if(epoch!==generation)return;if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
@@ -80,8 +86,8 @@
    if(result.year!==selected||!Array.isArray(result.events))throw Error('Für den Jahresplan bitte den aktualisierten Kalenderdienst bereitstellen.');
    events=result.events.filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;
    message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben und dein Geburtstag. ':'Vollständiger Jahresplan für das Gerätehaus. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
-   render();if(scroll)jump();
-  }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();}
+   render();jump();
+  }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();jump();}
  }
  function lock(){generation++;events=[];privateData=false;loaded=false;source='';message=portal?'Bitte den persönlichen Portalzugang erneut öffnen.':'Bitte den Jahresplan über die Gerätehaus-Verbindung erneut laden.';render();}
  function afterView(view){
@@ -95,18 +101,18 @@
   if(!portal){document.getElementById('yearPlanTab').onclick=()=>showView('yearPlanView');document.getElementById('plansTab').onclick=()=>showView('plansView');}
   const change=next=>{if(!Number.isInteger(next)||next<2000||next>2100){$('year').value=year;return;}year=next;load();};
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
-  $('today').onclick=()=>{year=Number(dayKey(Date.now()).slice(0,4));load(true);};$('reload').onclick=()=>load();
+  $('today').onclick=()=>{const today=dayKey(Date.now()),currentYear=Number(today.slice(0,4)),month=Number(today.slice(5,7))-1;if(year!==currentYear){load(true);return;}jump(month);};$('reload').onclick=()=>load();
   $('print').onclick=()=>{
    if(privateData&&!accessCurrent())return lock();
    if(!portal){g.print();return;}
    if(!loaded||!privateData)return;
-   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,weekend:row.classList.contains('is-weekend'),holiday:row.classList.contains('is-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:event.querySelector('p')?.textContent||'',birthday:event.classList.contains('is-birthday')}))}))}));
+   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,weekend:row.classList.contains('is-weekend'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:event.querySelector('p')?.textContent||'',birthday:event.classList.contains('is-birthday')}))}))}));
    g.YearPlanPdf.open({year,months,note:message+' '+$('holiday-status').textContent,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
   };
   for(const id of ['filter','birthdays','holidays'])$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
   const monthLabel=node('label','Monat '),monthSelect=node('select');monthLabel.className='year-plan-month-jump';monthSelect.id='year-plan-month';monthSelect.setAttribute('aria-label','Zum Monat springen');
   for(let month=0;month<12;month++){const option=node('option',format(Date.UTC(2026,month,15),{month:'long'}));option.value=month;monthSelect.append(option);}monthSelect.value=Number(dayKey(Date.now()).slice(5,7))-1;monthLabel.append(monthSelect);$('today').before(monthLabel);
-  monthSelect.onchange=()=>document.getElementById('year-plan-month-'+monthSelect.value)?.scrollIntoView({block:'start',behavior:portal?'instant':'smooth'});
+  monthSelect.onchange=()=>jump(Number(monthSelect.value));
   if(portal){
    $('reload').textContent='↻';$('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Als PDF ansehen';
    // The personal portal has its own authentication and scrolling lifecycle.
