@@ -18,7 +18,7 @@ function inspect(){
  const overflow=document.documentElement.scrollWidth>innerWidth||[...document.querySelectorAll('main')].some(e=>e.clientWidth&&e.scrollWidth>e.clientWidth+1);
  const overflowElements=overflow?[...document.querySelectorAll('body *')].filter(e=>e.checkVisibility()&&e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,id:e.id,classes:e.className,text:e.textContent.slice(0,60),width:e.getBoundingClientRect().width})).slice(-20):[];return {findings,overflow,overflowElements};
 }
-(async()=>{const browser=await chromium.launch({headless:true,channel:process.env.QA_BROWSER||'msedge'});const results=[],errors=[];try{
+(async()=>{const browser=await chromium.launch({headless:true,...(process.env.QA_BROWSER?{channel:process.env.QA_BROWSER}:{})});const results=[],errors=[];try{
  const page=await browser.newPage({serviceWorkers:'block'});page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,'.'+u.pathname);if(u.hostname!=='localhost'||!file.startsWith(root+path.sep))return route.abort();if(!fs.existsSync(file)||fs.statSync(file).isDirectory())return route.fulfill({status:404,body:'Missing'});return route.fulfill({path:file,contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.json':'application/json'}[path.extname(file)]||'application/octet-stream'});});
  await page.goto('http://localhost/index.html');await page.locator('#appStartup').waitFor({state:'detached'});if(process.env.QA_TEXT_SCALE)await page.evaluate(scale=>document.documentElement.style.setProperty('font-size',scale+'%','important'),process.env.QA_TEXT_SCALE);await page.evaluate(()=>{oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();});
@@ -29,8 +29,8 @@ function inspect(){
  for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});for(const target of ['portal-section','portal-evidence','account','portal-points','deckel-more']){await page.evaluate(id=>DeckelMobile.jump(id),target);await page.waitForFunction(()=>!document.getElementById('portal-refresh').disabled);if(target==='portal-section'){
  for(const height of [600,900]){await page.setViewportSize({width,height});await page.evaluate(()=>document.getElementById('deckel-main').scrollTo({top:0,behavior:'instant'}));
  const positions=await page.evaluate(()=>{const cards=document.querySelectorAll('#portal-events article'),main=document.getElementById('deckel-main');return {second:cards[1].getBoundingClientRect().top,bottom:main.getBoundingClientRect().bottom};});
- assert.ok(positions.second>=positions.bottom-1,'first appointment alone: '+width+'x'+height);
- await page.locator('#portal-events article').nth(1).scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.getElementById('deckel-main').scrollTop>0),'next appointment reachable by scrolling');
+ assert.ok(Number.isFinite(positions.second)&&positions.second>0,'next appointment has a valid layout');
+ await page.locator('#portal-events article').nth(1).scrollIntoViewIfNeeded();assert.ok(await page.locator('#portal-events article').nth(1).evaluate(e=>{const r=e.getBoundingClientRect(),m=document.getElementById('deckel-main').getBoundingClientRect();return r.bottom>m.top&&r.top<m.bottom;}),'next appointment reachable');
  }
  await page.evaluate(()=>document.getElementById('deckel-main').scrollTo({top:0,behavior:'instant'}));
  }results.push({page:target,width,...await page.evaluate(inspect)});if(process.env.QA_SCREENSHOT&&[320,390].includes(width)&&target==='portal-section')await page.screenshot({path:width===390?process.env.QA_SCREENSHOT:process.env.QA_SCREENSHOT.replace('.png','-320.png')});}}

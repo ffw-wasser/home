@@ -67,3 +67,16 @@ jobs:
         run: node tests/home-operation-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: node tests/navigation-settings-browser.cjs
+      - name: Test auxiliary navigation, portal access, touch and event flows
+        run: |
+          node scripts/check-browser.cjs
+          node scripts/check-portal-qr.cjs
+          node scripts/check-portal-gestures.cjs
+          node scripts/check-theater.cjs
+          node scripts/check-theater-controls.cjs
+      - name: Test readability at normal and doubled text size
+        env:
+          QA_STRICT: "1"
+        run: |
+          node scripts/check-readability.cjs
+          QA_TEXT_SCALE=200 node scripts/check-readability.cjs

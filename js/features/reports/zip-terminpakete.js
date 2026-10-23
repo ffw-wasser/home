@@ -17,79 +17,24 @@ async function buildTerminPackage({baseName,csvName,csvContent,pdfName,pdfBlob,d
   const zipBlob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6},mimeType:"application/zip"});
   return {zipBlob,finalPdf};
 }
-let pendingTerminPackageSave=null;
-function ensureIpadTerminPackageDialog(){
-  let dialog=byId("ipadTerminPackageDialog");if(dialog)return dialog;
-  dialog=document.createElement("dialog");dialog.id="ipadTerminPackageDialog";dialog.className="ipad-termin-package-dialog";
-  dialog.innerHTML=`<div class="ipad-package-shell"><header><div><small>Terminabschluss</small><h2>Terminpaket ist fertig</h2></div></header><div class="ipad-package-body"><p>Das ZIP-Terminpaket wurde erstellt. Bitte jetzt auf <b>Teilen und speichern</b> tippen und anschließend <b>In Dateien sichern</b> sowie den gewünschten OneDrive-Ordner auswählen.</p><p class="ipad-package-name" id="ipadTerminPackageName"></p><p class="ipad-package-error" id="ipadTerminPackageError" hidden></p></div><footer><button type="button" class="outline-button" id="ipadTerminPackageCancel">Abbrechen</button><button type="button" class="primary-button" id="ipadTerminPackageShare">Teilen und speichern</button></footer></div>`;
-  document.body.appendChild(dialog);
-  byId("ipadTerminPackageCancel").onclick=()=>finishIpadTerminPackageSave("cancelled");
-  byId("ipadTerminPackageShare").onclick=sharePendingTerminPackage;
-  dialog.oncancel=event=>{event.preventDefault();finishIpadTerminPackageSave("cancelled");};
-  return dialog;
-}
-function finishIpadTerminPackageSave(result){
-  const pending=pendingTerminPackageSave;if(!pending)return;
-  pendingTerminPackageSave=null;try{pending.dialog.close();}catch{pending.dialog.removeAttribute("open");}
-  pending.resolve(result);
-}
-async function sharePendingTerminPackage(){
-  const pending=pendingTerminPackageSave;if(!pending)return;
-  const button=byId("ipadTerminPackageShare"),errorBox=byId("ipadTerminPackageError");button.disabled=true;errorBox.hidden=true;
-  try{
-    const file=new File([pending.blob],pending.fileName,{type:"application/zip",lastModified:Date.now()});
-    if(!(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})))throw new Error("Dateifreigabe wird von diesem Browser nicht unterstützt.");
-    // Direkter Aufruf aus dem Button-Klick: notwendige Benutzeraktivierung bleibt erhalten.
-    // Nur die ZIP-Datei an den iOS-Teilen-Dialog übergeben. Ein zusätzlicher
-    // title-Wert wurde von "In Dateien sichern" teilweise als Text.txt gespeichert.
-    await navigator.share({files:[file]});
-    finishIpadTerminPackageSave("shared");
-  }catch(error){
-    if(error?.name==="AbortError"){finishIpadTerminPackageSave("cancelled");return;}
-    console.error("Terminpaket konnte nicht geteilt werden",error);
-    errorBox.textContent=`Teilen war nicht möglich: ${error?.message||"unbekannter Fehler"}. Bitte erneut versuchen.`;errorBox.hidden=false;button.disabled=false;
-  }
-}
-function promptIpadTerminPackageSave(fileName,blob){
-  if(pendingTerminPackageSave)return Promise.resolve("failed");
-  const dialog=ensureIpadTerminPackageDialog();byId("ipadTerminPackageName").textContent=fileName;byId("ipadTerminPackageError").hidden=true;byId("ipadTerminPackageShare").disabled=false;
-  return new Promise(resolve=>{
-    pendingTerminPackageSave={fileName,blob,resolve,dialog};
-    // Der Dokumenteditor aus Schritt 4 ist selbst ein modaler Dialog. Safari/iPad
-    // erlaubt keinen zweiten modalen Dialog darueber. Deshalb zuerst sauber schliessen.
-    document.querySelectorAll("dialog[open]").forEach(openDialog=>{
-      if(openDialog===dialog)return;
-      try{openDialog.close();}catch{openDialog.removeAttribute("open");}
-    });
-    document.documentElement.classList.remove("document-editor-open");
-    requestAnimationFrame(()=>{
-      try{dialog.showModal();}
-      catch(error){
-        console.error("Speicherdialog konnte nicht modal geoeffnet werden",error);
-        dialog.setAttribute("open","");
-        dialog.scrollIntoView({block:"center"});
-      }
-    });
-  });
-}
 async function saveTerminPackage(fileName,blob,overwriteRequired=false){
   document.querySelectorAll("#operationPdfPreviewDialog,.operation-pdf-preview-dialog").forEach(node=>{try{node.close?.();}catch{}node.remove();});
-  const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&("ontouchend" in document));
-  if(isiOS){
-    if(overwriteRequired)showToast("Korrektur: Im Dateien-Dialog die vorhandene ZIP mit gleichem Namen ersetzen.","warning");
-    return promptIpadTerminPackageSave(fileName,blob);
-  }
-  // Desktop/Windows: immer als echten Browser-Download ausgeben. Ein alter oder
-  // abgelaufener Verzeichnis-Handle darf den ZIP-Download nicht mehr verhindern.
+  let progress=null;
   try{
-    if(!(blob instanceof Blob)||!blob.size)throw new Error("Das ZIP-Paket ist leer.");
-    downloadBlob(fileName,blob);
-    return "downloaded";
+    if(overwriteRequired)throw new Error("Bitte die Korrektur über die OneDrive-Historie öffnen, damit das Original sicher zugeordnet wird.");
+    progress=document.createElement("dialog");progress.id="terminPackageSaving";progress.className="ipad-termin-package-dialog";
+    progress.setAttribute("aria-label","Terminpaket in OneDrive speichern");progress.setAttribute("aria-busy","true");
+    const body=document.createElement("div");body.className="ipad-package-body";const title=document.createElement("h2"),note=document.createElement("p");title.textContent="Wird in OneDrive gespeichert …";note.textContent="Bitte kurz warten. Der Termin wird nach der Speicherbestätigung abgeschlossen.";body.append(title,note);progress.append(body);
+    progress.oncancel=event=>event.preventDefault();
+    document.querySelectorAll("dialog[open]").forEach(dialog=>dialog.close());document.documentElement.classList.remove("document-editor-open");
+    document.body.append(progress);progress.showModal();
+    await oneDriveUploadTerminPackage(blob,fileName);
+    return "saved";
   }catch(error){
-    console.error("ZIP-Download fehlgeschlagen",error);
-    showToast(`ZIP konnte nicht heruntergeladen werden: ${error?.message||"unbekannter Fehler"}`,"error");
+    console.error("Terminpaket konnte nicht in OneDrive bestätigt werden",error);
+    showToast(error?.message||"OneDrive konnte die Speicherung nicht bestätigen.","error");
     return "failed";
-  }
+  }finally{progress?.remove();}
 }
 
 async function packageFilesFromZip(file){const zip=await JSZip.loadAsync(file),files=[];for(const entry of Object.values(zip.files)){if(entry.dir||!/\.(csv|pdf)$/i.test(entry.name))continue;const blob=await entry.async("blob"),name=entry.name.split("/").pop();files.push(new File([blob],name,{type:/\.csv$/i.test(name)?"text/csv":"application/pdf",lastModified:file.lastModified||Date.now()}));}return files;}
@@ -104,6 +49,10 @@ window.closeDay=async function(topic=currentClosingTopic){
   const allCurrent=[...todayEntries()];
   const committeeExport=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
   const exportMembers=committeeExport?members.filter(member=>member.committeeMember):members;
+  const audience=window.PortalAdmin?.attendanceAudience?.();
+  if(audience?.pending)return showToast("Bitte die eingeladenen Personen des Kalendertermins erneut laden. Der Termin bleibt geöffnet.","error");
+  const invited=Array.isArray(audience?.recipientIds)?new Set(audience.recipientIds.map(String)):null;
+  const concerns=member=>!invited||invited.has(String(member.id));
   const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
   const current=committeeExport?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   if(!current.length)return showToast("Es sind noch keine Anmeldungen vorhanden.","error");
@@ -114,16 +63,16 @@ window.closeDay=async function(topic=currentClosingTopic){
   for(const entry of current){const name=String(entry.storedName||entry.displayName||"").trim();if(!name)return showToast("Ein Teilnehmer hat keinen Namen. Bitte die Auswahl korrigieren.","error");if(seenNames.has(name))duplicateNames.add(name);seenNames.add(name);}
   if(duplicateNames.size)return showToast("Teilnehmer mehrfach erfasst: "+[...duplicateNames].join(", ")+". Bitte vor Abschluss korrigieren.","error");
   const organizers=current.filter(e=>e.status==="Anwesend"&&e.role==="Orga").length,present=current.filter(e=>e.status==="Anwesend"&&e.role!=="Orga").length,excused=current.filter(e=>e.status==="Entschuldigt").length;
-  const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missingMembers=exportMembers.filter(m=>!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))),missing=missingMembers.length;
+  const recordedPreview=new Set(current.flatMap(e=>[e.storedName,e.displayName].filter(Boolean))),missingMembers=exportMembers.filter(m=>concerns(m)&&!recordedPreview.has(nameForStorage(m))&&!recordedPreview.has(nameForTile(m))),missing=missingMembers.length+current.filter(entry=>entry.status==="Fehlt").length;
   if(window.SmartWorkflow?.confirm){const approved=await window.SmartWorkflow.confirm("Termin abschließen",[["Terminart",sessionType||"Termin"],["Datum",today()],["Thema",topic],["Dokumentseiten",String(typeof pendingDocumentReport!=="undefined"?pendingDocumentReport?.pageCount||0:0)],["Anwesend",String(present+organizers)],["Entschuldigt",String(excused)],["Als Fehlt exportiert",String(missing)]],[],{people:missingMembers.map(nameForTile),actions:[{label:"Datum bearbeiten",run:()=>{setHomeFlowStage(2);showView("attendanceView");byId("probeDateInput")?.focus();}},{label:"Thema bearbeiten",run:()=>openProbeTopicDialog()},{label:"Anwesenheit bearbeiten",run:()=>{setHomeFlowStage(2);showView("attendanceView");byId("members")?.focus();}}]});if(!approved){setHomeFlowStage(2);showView("attendanceView");return;}}
   if(!exportMembers.length)return showToast(committeeExport?"Es sind keine Ausschussmitglieder eingerichtet.":"Es gibt keine Mitglieder für den Export.","error");
   const exportType=current[0]?.sessionType||sessionType,entryByName=new Map(current.map(e=>[e.storedName||e.displayName,e]));
-  const rows=exportMembers.map(member=>{const name=nameForStorage(member),entry=entryByName.get(name)||entryByName.get(nameForTile(member));if(!entry)return[today(),"",name,exportType,"Fehlt",""];if(entry.status==="Entschuldigt")return[entry.date,entry.time,name,exportType,"Entschuldigt",""];if(entry.status==="Betrifft nicht")return[entry.date,entry.time,name,exportType,"Betrifft nicht",""];if(entry.role==="Orga")return[entry.date,entry.time,name,exportType,"Anwesend","Orga"];if(exportType==="Sonderprobe")return[entry.date,entry.time,name,exportType,"Anwesend","Anwesend"];if(exportType==="Unterricht")return[entry.date,entry.time,name,exportType,"Anwesend","Unterricht"];if(exportType==="Ausschuss Sitzung")return[entry.date,entry.time,name,exportType,"Anwesend","Ausschuss Sitzung"];return[entry.date,entry.time,name,exportType,"Anwesend",csvRoleForEntry(entry,member)];});
+  const rows=exportMembers.map(member=>{const name=nameForStorage(member),entry=entryByName.get(name)||entryByName.get(nameForTile(member));if(!entry)return[today(),"",name,exportType,concerns(member)?"Fehlt":"Betrifft nicht",""];if(entry.status==="Fehlt")return[entry.date,entry.time,name,exportType,"Fehlt",""];if(entry.status==="Entschuldigt")return[entry.date,entry.time,name,exportType,"Entschuldigt",""];if(entry.status==="Betrifft nicht")return[entry.date,entry.time,name,exportType,"Betrifft nicht",""];if(entry.role==="Orga")return[entry.date,entry.time,name,exportType,"Anwesend","Orga"];if(exportType==="Sonderprobe")return[entry.date,entry.time,name,exportType,"Anwesend","Anwesend"];if(exportType==="Unterricht")return[entry.date,entry.time,name,exportType,"Anwesend","Unterricht"];if(exportType==="Ausschuss Sitzung")return[entry.date,entry.time,name,exportType,"Anwesend","Ausschuss Sitzung"];return[entry.date,entry.time,name,exportType,"Anwesend",csvRoleForEntry(entry,member)];});
   const includeFunction=exportType==="Allgemeine Probe"||exportType==="Einsatz";
   const csvHeader=includeFunction?"Datum;Uhrzeit;Name;Terminart;Status;Funktion / Status;Thema":"Datum;Uhrzeit;Name;Terminart;Status;Thema";
   const csv="\ufeff"+[csvHeader,...rows.map(row=>(includeFunction?[...row,topic]:[...row.slice(0,5),topic]).map(csvCell).join(";"))].join("\r\n"),safeType=exportType.replace(/ /g,"-"),base=`FFW-Wasser_${today()}_${safeType}`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,pdfRows=rows.map(r=>({time:r[1],name:r[2],status:r[4],role:includeFunction?r[5]:""})),notApplicable=rows.filter(r=>r[4]==="Betrifft nicht").length,pdf=probePdfBlob(pdfRows,exportType,{present:present+organizers,excused,missing,notApplicable},topic);
   const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Probe"}),result=await saveTerminPackage(`${base}.zip`,packageResult.zipBlob);
-  if(result==="failed"||result==="cancelled")return showToast("Das Terminpaket konnte nicht gespeichert werden. Die Tagesdaten bleiben erhalten.","error");
+  if(result!=="saved")return showToast("Das Terminpaket konnte nicht gespeichert werden. Die Tagesdaten bleiben erhalten.","error");
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
   window.PortalAdmin?.discard();const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");window.WorkflowUX?.terminCompleted(result);
   }finally{closingDay=false;}
@@ -184,7 +133,7 @@ window.finishOperationZip=async function(){
       // bleibt der ursprüngliche Paketname erhalten, damit die Datei im
       // ausgewählten Ordner ersetzt statt als CSV/PDF-Doppel ausgegeben wird.
       const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Einsatz",operationData:d}),result=await saveTerminPackage(zipName,packageResult.zipBlob,Boolean(previous));
-      if(result==="failed"||result==="cancelled"){showToast("Das Einsatz-Terminpaket konnte nicht gespeichert werden. Daten bleiben erhalten.","error");return false;}
+      if(result!=="saved"){showToast("Das Einsatz-Terminpaket konnte nicht gespeichert werden. Daten bleiben erhalten.","error");return false;}
       const item={id:previous?.id||makeId(),packageFileName:zipName,fileName:csvName,pdfFileName:pdfName,content:csv,sessionType:"Einsatz",topic:`${d.type} · ${d.location}`,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),presentCount:(Array.isArray(d.members)?d.members.length:0),excusedCount:0,missingCount:0,operationData:d,hasImportedPdf:true,revisions:[...(previous?.revisions||[]),...(previous?[{correctedAt:new Date().toISOString(),reason:"Einsatzbericht korrigiert",previousOperationData:previous.operationData}]:[])]};
       try{await saveImportedReportPdf(item.id,new File([packageResult.finalPdf],pdfName,{type:"application/pdf"}));await commitPendingDocumentReport?.(item.id);csvArchive=previous?csvArchive.map(entry=>entry.id===item.id?item:entry):[item,...csvArchive];saveArchive();}catch(error){console.error("Lokales Einsatzarchiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
       entries=entries.filter(e=>e.operationId!==currentOperationId);saveEntries();resetDocumentReportState();resetOperationState();renderEntries();renderMembers();renderStatistics();renderHistory();setHomeFlowStage(1);showView("attendanceView");window.WorkflowUX?.terminCompleted(result);return true;
