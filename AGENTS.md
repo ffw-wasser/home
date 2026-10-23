@@ -20,6 +20,17 @@ werden in ihren zuständigen Modulen weiterentwickelt.
   Datenmigrationen nicht allein wegen ihres Alters entfernen.
 - Persönliche Daten, PINs, Zugangstoken und produktive Konten gehören nicht in
   das Repository oder die Tests. Nur künstliche Testdaten verwenden.
+- Bei Änderungen an Bedienabläufen, sichtbaren Schaltflächen, Navigation,
+  Datenschutz oder Schutzmaßnahmen die betroffenen Anleitungen und Bilder im
+  selben Pull Request aktualisieren. Das gilt für Hauptanwendung und H₂O Portal.
+  Die gemeinsame Hilfe wird in `scripts/build-help-guide.cjs` gepflegt und mit
+  `node scripts/build-help-guide.cjs` unter den vorhandenen Kontakten erzeugt.
+  Die H₂O-Infokachel enthält ausschließlich portalrelevanten Datenschutz und
+  Bedienungsanleitungen; Anleitungen zur Hauptanwendung dort nicht einfügen.
+  Betroffene Originalbilder mit `scripts/capture-help-screens.cjs` erneuern;
+  ausschließlich künstliche Beispieldaten und gesperrte produktive Dienste nutzen.
+  Bilder und Texte anschließend visuell sowie mit `tests/help-guide-browser.cjs`
+  prüfen. Bestehende Bilder bei bloßen Textkorrekturen nicht unnötig neu erzeugen.
 - `app-release.json` ist die Quelle für die Version. Anschließend
   `node scripts/update-release.cjs` ausführen und neue oder entfernte Dateien
   in `service-worker.js` berücksichtigen.
