@@ -38,7 +38,13 @@ jobs:
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
       - name: Install browser for passkey integration test
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
+        run: |
+          # The Azure HTTP mirror repeatedly stalls while downloading font packages.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+          npx playwright install --with-deps chromium
       - name: Test passkey browser flow with synthetic credentials
         run: node tests/passkey-browser.cjs
       - name: Test FFW update notice and safe reload
