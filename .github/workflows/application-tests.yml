@@ -25,6 +25,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.cjs
+      - name: Check illustrated guide matches its shared content
+        run: node scripts/build-help-guide.cjs --check
       - name: Check bundled Cloudflare worker matches sources
         run: |
           node cloudflare/push/build.cjs
@@ -73,6 +75,8 @@ jobs:
         run: node tests/home-operation-browser.cjs
       - name: Test local drafts, resume and administration tasks
         run: node tests/workflow-drafts-browser.cjs
+      - name: Test privacy-first illustrated instructions on tablet and phone
+        run: node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: node tests/navigation-settings-browser.cjs
       - name: Test auxiliary navigation, portal access, touch and event flows

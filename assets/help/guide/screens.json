@@ -1,0 +1,46 @@
+{
+  "geraetehaus-start": {
+    "width": 1366,
+    "height": 900
+  },
+  "geraetehaus-anwesenheit": {
+    "width": 964,
+    "height": 473
+  },
+  "geraetehaus-uebernehmen": {
+    "width": 340,
+    "height": 213
+  },
+  "geraetehaus-abschluss": {
+    "width": 1366,
+    "height": 960
+  },
+  "geraetehaus-verwaltung": {
+    "width": 1366,
+    "height": 900
+  },
+  "geraetehaus-getraenke": {
+    "width": 1366,
+    "height": 900
+  },
+  "h2o-termine": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-nachweise": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-deckel": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-mehr": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-jahresplan": {
+    "width": 390,
+    "height": 780
+  }
+}

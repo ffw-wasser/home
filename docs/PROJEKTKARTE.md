@@ -9,6 +9,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Anliegen | Zuerst ansehen | Häufige Abhängigkeiten |
 | --- | --- | --- |
 | Start, Navigation, Oberflächen-Zustände | `index.html`, `js/app/app.js` | `js/core/ui.js`, `css/layout/mobile.css` |
+| Datenschutz und bebilderte Hilfe unter den Kontakten | `scripts/build-help-guide.cjs`, `css/features/help-guide.css` | `scripts/capture-help-screens.cjs`, `assets/help/guide/`, `tests/help-guide-browser.cjs`; beide Ansichten gemeinsam erzeugen |
 | Gerätehaus-Erfassung, Teilnehmer, Schritte | `js/features/attendance/attendance-controller.js` | `action-dock.js`, `js/core/keyboard.js`, `js/features/tactics/` |
 | Einsatz und Fahrzeugbesetzung | `js/features/operations/operations.js`, `js/features/tactics/` | Anwesenheit, Berichte, Qualitätsprüfungen |
 | Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, Cloudflare `portal.js`, ICS-Bibliothek |
