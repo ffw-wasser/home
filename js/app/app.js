@@ -28,7 +28,7 @@ function removeTacticsMenuEntry(){
 function moveProbeStatusToHeader(){
   const brand=document.querySelector(".top-brand span");if(brand)brand.textContent="Feuerwehr Wasser";
   document.title="Feuerwehr Wasser";
-  const homeButton=byId("attendanceTab");if(homeButton)homeButton.textContent="Termin";
+  const homeButton=byId("attendanceTab");if(homeButton){homeButton.setAttribute("aria-label","Startseite");homeButton.title="Startseite";}
   const menuButton=byId("menuToggleButton");if(menuButton)menuButton.textContent="Menü";
 
   const original=byId("homeCurrentProbeStatus"),menu=byId("compactMenu");if(!original||!menu)return;
@@ -135,7 +135,7 @@ function buildSettingsSubpages(){
   const members=byId("admin-members"),goals=byId("admin-settings"),pinArticle=byId("changePinButton")?.closest("article");
   if(pinArticle)pinArticle.remove();
   const membersPage=makePage("settingsMembersView","Mitglieder","Mitglieder, Funktionen und Berechtigungen verwalten.",members);
-  if(membersPage&&!byId('portal-admin-open')){const button=document.createElement('button');button.id='portal-admin-open';button.type='button';button.className='outline-button';button.textContent='Portalzugänge';membersPage.prepend(button);}
+  if(membersPage&&!byId('portal-admin-open')){const button=document.createElement('button');button.id='portal-admin-open';button.type='button';button.className='outline-button';button.textContent='Portalzugänge';const heading=membersPage.querySelector('.screen-heading'),actions=document.createElement('div');actions.className='settings-member-actions';actions.append(button);heading.append(actions);}
   if(membersPage&&!byId('memberEvidenceSync')){
     const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Nachweise · Handy-Abgleich</h3><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
     byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync');button.disabled=true;try{await window.PortalAdmin.syncRoster(true);}catch{/* The status card shows the confirmed sync result. */}finally{window.PortalAdmin.renderSyncStatus();}};

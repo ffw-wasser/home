@@ -3,7 +3,7 @@
  'use strict';
  const host=()=>document.getElementById('calendar-sidebar'),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;},wide=()=>g.matchMedia('(min-width:1000px)').matches;
  let generation=0,source='',loadedAt=0,pending=false;
- const day=ms=>g.YearPlan.dayKey(ms),active=()=>wide()&&!document.getElementById('attendanceView')?.hidden&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady();
+ const day=ms=>g.YearPlan.dayKey(ms),active=()=>wide()&&!document.getElementById('attendanceView')?.hidden&&document.getElementById('attendanceView').classList.contains('workflow-stage-1')&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady();
  function clear(){generation++;source='';loadedAt=0;pending=false;host()?.replaceChildren();if(host())host().hidden=true;}
  async function refresh(){
   if(!host())return;if(!active()){clear();return;}const key=g.DrinksStore.sourceKey();if(source&&key!==source)clear();if(pending||Date.now()-loadedAt<300000)return;
