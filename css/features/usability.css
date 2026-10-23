@@ -8,8 +8,7 @@ body .danger-button{background:#fff;border-color:var(--ux-red);color:var(--ux-re
 body .help-text,body .storage-location-heading p,body .settings-subheading p,body .storage-card small{color:var(--ux-muted);font-size:1rem;line-height:1.5}
 body :is(button,a,input,select,textarea,summary,[role=button]):focus-visible{outline:3px solid #155c96;outline-offset:3px}
 body [hidden]{display:none!important}
-body .home-flow-indicator{min-height:48px}
-body .cloud-sync-button,body .cloud-sync-close{min-height:48px;min-width:48px}
+body .home-flow-indicator{min-height:48px}body .cloud-sync-close{min-height:48px;min-width:48px}
 body .member-status-action{min-width:48px;min-height:54px}
 .ux-search{margin:16px 0 22px;max-width:640px}.ux-search label{display:block;font-weight:700;margin-bottom:8px}.ux-search input{width:100%}.ux-search p{font-size:1rem;color:var(--ux-muted);margin:8px 0}
 .ux-save-status{padding:12px 16px;background:#eef5f0;color:#234d32;border-radius:10px;font-size:1rem}.ux-save-status.is-pending{background:#fff5d9;color:#705116}
@@ -60,7 +59,7 @@ body .crew-position{min-height:76px;cursor:pointer}body .crew-position small{fon
 @media(max-width:700px){.ux-history-status{align-items:stretch;flex-direction:column}.ux-reminder-row{grid-template-columns:minmax(0,1fr) auto}.ux-reminder-row button{grid-column:1/-1}.ux-member-open:not(.is-pending){display:none}.ux-dialog-actions>*{width:100%}}
 /* Vorrang vor früheren, ausdrücklich ausgeblendeten Menüeinträgen. */
 html body #compactMenu #historyTab,html body #compactMenu #statisticsTab{display:flex!important}
-html body .top-nav #attendanceTab,html body .top-nav #menuToggleButton,html body .top-nav #cloudSyncButton{height:auto!important;min-height:48px!important;max-height:none!important}
+html body .top-nav #attendanceTab,html body .top-nav #menuToggleButton{height:auto!important;min-height:48px!important;max-height:none!important}
 html body .view-home-button,html body .outline-button{border-color:#aebbc2!important;background:#fff!important;color:#23333c!important}
 html body .home-flow-indicator{min-height:48px!important}
 html body .storage-location-heading p,html body .settings-subheading p{color:#4b5e69!important;font-size:1rem!important}

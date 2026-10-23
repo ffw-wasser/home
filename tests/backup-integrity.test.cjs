@@ -13,7 +13,7 @@ test('WhatsApp-Kontaktdaten bleiben beim Backup und Wiederherstellen erhalten', 
   const input={...member,whatsappPhone:'+4915112345678',whatsappAllowed:true};
   const backup=BackupEngine.create({members:[input],entries:[],csvArchive:[],roleTargets:{}});
   const normalized=BackupEngine.normalize(JSON.parse(JSON.stringify(backup)));
-  const context=vm.createContext({window:{},document:{addEventListener(){}},AVAILABLE_ROLES:['ATM'],console});
+  const context=vm.createContext({BackupEngine,window:{},document:{addEventListener(){}},AVAILABLE_ROLES:['ATM'],console});
   vm.runInContext(source('js/features/history/archive.js'),context);
   const restored=context.normalizeCompleteBackupData(normalized).members[0];
   assert.equal(restored.whatsappPhone,input.whatsappPhone);
@@ -24,7 +24,7 @@ test('Komplettbackup erhält alle drei Atemschutztermine bis zur tatsächlichen 
   const original = JSON.stringify(member);
   const backup = BackupEngine.create({members:[member],entries:[],csvArchive:[],roleTargets:{}});
   const read = BackupEngine.normalize(JSON.parse(JSON.stringify(backup)));
-  const context = vm.createContext({window:{},document:{addEventListener(){}},AVAILABLE_ROLES:['ATM'],console});
+  const context = vm.createContext({BackupEngine,window:{},document:{addEventListener(){}},AVAILABLE_ROLES:['ATM'],console});
   vm.runInContext(source('js/features/history/archive.js'), context);
   const restored = context.normalizeCompleteBackupData(read).members[0];
   for (const key of ['g262ValidUntil','g263ValidUntil','agtInstructionValidUntil','ffiValidUntil','driverLicenseCheckedOn','breathingQualified','driverLicenseIntervalMonths'])
@@ -104,4 +104,81 @@ test('Komplettbackup enthält auch PDFs aus der geladenen OneDrive-Historie',asy
     {reportId:'live',fileName:'live.pdf',dataUrl:'data:application/pdf;base64,onedrive-pdf'},
     {reportId:'local',fileName:'local.pdf',dataUrl:'data:application/pdf;base64,local-pdf'}
   ]);
+});
+
+
+test('Laufender Einsatz wird mit Entwurf wiederhergestellt, ohne Tokens oder Passwörter zu übernehmen',()=>{
+  const local=storage({'fw_v1_current_operation_id':'op-test','fw_v1_operation_draft_op-test':JSON.stringify({id:'op-test',location:'Teststelle'}),
+    fw_v1_attendance_draft:JSON.stringify({version:1,id:'op-test',source:'test-source',topic:'Testthema',pending:[['test','Anwesend']]}),
+    fw_onedrive_tokens:'PRIVATE-TEST-TOKEN',fw_v6_password:'PRIVATE-TEST-PASSWORD'});
+  const context=vm.createContext({BackupEngine,safeStorage:local,window:{},document:{addEventListener(){}},console,
+    members:[member],entries:[],csvArchive:[],getMemberRoles:m=>m.roles,getRoleTargets:()=>({}),isFunctionEntryEnabled:()=>true,
+    KEYS:{members:'members',entries:'entries',archive:'archive',functionEntry:'functions',roleTargets:'targets'},AVAILABLE_ROLES:['ATM']});
+  vm.runInContext(source('js/features/history/archive.js'),context);
+  const payload=context.completeBackupPayload(),serialized=JSON.stringify(payload);
+  assert.ok(!serialized.includes('PRIVATE-TEST-'));
+  assert.equal(payload.version,'1.2');
+  local.setItem('fw_v1_current_operation_id','op-replaced');local.setItem('fw_v1_operation_draft_op-replaced','{}');
+  context.saveCompleteBackupData(context.normalizeCompleteBackupData(BackupEngine.normalize(JSON.parse(serialized))));
+  assert.equal(local.getItem('fw_v1_current_operation_id'),'op-test');
+  assert.equal(JSON.parse(local.getItem('fw_v1_operation_draft_op-test')).location,'Teststelle');
+  assert.equal(JSON.parse(local.getItem('fw_v1_attendance_draft')).source,'test-source');
+  assert.equal(local.getItem('fw_v1_operation_draft_op-replaced'),null);
+  assert.equal(local.getItem('fw_onedrive_tokens'),'PRIVATE-TEST-TOKEN');
+  assert.equal(local.getItem('fw_v6_password'),'PRIVATE-TEST-PASSWORD');
+  assert.equal(BackupEngine.normalize(BackupEngine.create({members:[member]})).runningState,null);
+});
+
+test('Fehlende PDF-Dateien verhindern eine unvollständige App-Sicherung',async()=>{
+  const context=vm.createContext({window:{},csvArchive:[{id:'missing',hasImportedPdf:true,fileName:'test.csv'}]});
+  vm.runInContext(source('js/core/database.js'),context);
+  context.loadImportedReportPdf=async()=>null;
+  await assert.rejects(context.exportImportedReportPdfs(),/PDF-Datei fehlt/);
+});
+
+test('Unvollständige Online-Historie verhindert Ausgabe und Erfolgsmeldung',async()=>{
+  const messages=[];let outputs=0;
+  const context=vm.createContext({window:{loadOneDriveHistory:async()=>false},document:{addEventListener(){}},
+    requireAdmin:()=>true,showToast:(...args)=>messages.push(args),console});
+  vm.runInContext(source('js/features/history/archive.js'),context);
+  context.shareOrDownloadJson=async()=>outputs++;
+  await context.exportCompleteBackup();
+  assert.equal(outputs,0);assert.match(messages[0][0],/Sicherung nicht erstellt/);
+});
+
+
+test('Auch gespeicherte Dokumentberichte dürfen ohne PDF nicht als gesichert gelten',async()=>{
+  const context=vm.createContext({window:{}});
+  vm.runInContext(source('js/features/reports/document-report.js'),context);
+  context.allDocumentReports=async()=>[{id:'test-document'}];
+  await assert.rejects(context.exportDocumentReports(),/keine PDF-Datei/);
+});
+
+test('Öffentliche Wordvorlage und eingebettete Kopie haben keine persönlichen Dateieigenschaften',async()=>{
+  const JSZip=require('../js/vendor/jszip.min.js');
+  const context=vm.createContext({window:{}});
+  vm.runInContext(source('js/features/reports/operation-docx-template.js'),context);
+  const bytes=Buffer.from(context.window.OPERATION_DOCX_TEMPLATE_BASE64,'base64');
+  assert.deepEqual(bytes,fs.readFileSync(path.join(__dirname,'../assets/templates/Einsatzbericht-Wordvorlage-Kreuze-FINAL.docx')));
+  const zip=await JSZip.loadAsync(bytes),core=await zip.file('docProps/core.xml').async('string');
+  for(const tag of ['dc:creator','cp:lastModifiedBy','dc:title','dc:description'])
+    assert.ok(!new RegExp('<'+tag+'(?:\\s[^>]*)?>[^<]+</'+tag+'>').test(core),tag);
+  const xml=await zip.file('word/document.xml').async('string');
+  assert.equal((xml.match(/KBM \/ Vertretung/g)||[]).length,4);
+  assert.ok(xml.includes('{{LEADER}}'));assert.ok(xml.includes('{{AGENCY_12}}'));
+});
+
+test('Erfolgreiche App-Sicherung benennt zusätzlich notwendige Sicherungen und enthält Entwürfe',async()=>{
+  let output;
+  const local=storage({'fw_v1_current_session_id':'session-test','fw_v1_attendance_draft':JSON.stringify({id:'session-test',topic:'Testthema',source:'original-source'})});
+  const context=vm.createContext({BackupEngine,safeStorage:local,window:{loadOneDriveHistory:async()=>true},document:{addEventListener(){}},
+    members:[member],entries:[],csvArchive:[],getMemberRoles:m=>m.roles,getRoleTargets:()=>({}),isFunctionEntryEnabled:()=>true,
+    requireAdmin:()=>true,today:()=> '2026-10-23',exportImportedReportPdfs:async()=>[],exportDocumentReports:async()=>[],
+    showToast:message=>{throw Error(message);},console});
+  vm.runInContext(source('js/features/history/archive.js'),context);
+  context.shareOrDownloadJson=async(name,payload)=>{output=payload;return 'downloaded';};
+  await context.exportCompleteBackup();
+  assert.equal(output.data.runningState.attendanceDraft.topic,'Testthema');
+  assert.equal(output.data.backupInfo.encrypted,false);
+  assert.ok(output.data.backupInfo.excludes.some(x=>x.includes('Cloudflare/D1')));
 });

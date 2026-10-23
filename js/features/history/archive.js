@@ -75,20 +75,36 @@ async function shareOrDownloadJson(fileName, data, successMessage) {
     showToast("Backup konnte nicht ausgegeben werden.", "error");
   }
 }
+function backupRunningState(){
+  const read=key=>{const raw=safeStorage.getItem(key);return raw?JSON.parse(raw):null;};
+  const operationId=safeStorage.getItem('fw_v1_current_operation_id')||'';
+  return {currentOperationId:operationId,currentSessionId:safeStorage.getItem('fw_v1_current_session_id')||'',
+    attendanceDraft:read('fw_v1_attendance_draft'),operationDraft:operationId?read('fw_v1_operation_draft_'+operationId):null};
+}
 function completeBackupPayload() {
   return BackupEngine.create({
     members: members.map(member=>({...member,roles:getMemberRoles(member)})),
     entries, csvArchive, roleTargets:getRoleTargets(),
-    functionEntryEnabled:isFunctionEntryEnabled()
+    functionEntryEnabled:isFunctionEntryEnabled(),runningState:backupRunningState()
   });
 }
 async function exportCompleteBackup() { if(!requireAdmin("settingsFilesView"))return;
-  const fileName = `FFW-Wasser_App-Daten_${today()}.json`;
-  const payload=completeBackupPayload();
-  payload.data.importedPdfs=await exportImportedReportPdfs();
-  payload.data.documentReports=await exportDocumentReports?.()||[];
-  payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true};
-  const result=await shareOrDownloadJson(fileName, payload, `App-Datensicherung wurde mit ${payload.data.importedPdfs.length} importierten PDF-Datei(en) ausgegeben.`);if(["saved","shared","downloaded"].includes(result))window.WorkflowUX?.backupResult(fileName,payload,result);
+  try{
+    const source=typeof attendanceDraftSource==='function'?attendanceDraftSource():'';
+    if(typeof flushAttendanceDraft==='function')flushAttendanceDraft();
+    if(window.loadOneDriveHistory&&await window.loadOneDriveHistory({manual:true})!==true)throw new Error('Die OneDrive-Historie konnte nicht vollständig geladen werden.');
+    if(!requireAdmin("settingsFilesView"))return;
+    const fileName = `FFW-Wasser_App-Daten_${today()}.json`;
+    const payload=completeBackupPayload();
+    payload.data.importedPdfs=await exportImportedReportPdfs();
+    payload.data.documentReports=await exportDocumentReports();
+    if(!requireAdmin("settingsFilesView"))return;
+    if(source!==(typeof attendanceDraftSource==='function'?attendanceDraftSource():''))throw new Error('Der Datenordner wurde während der Sicherung geändert.');
+    payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true,includesRunningState:true,
+      excludes:['Getränkekonten und Handyzugänge (separate OneDrive-Sicherung)','Cloudflare/D1: Portal, Rückmeldungen, Challenge, Theater und Zugänge','Zusätzliche OneDrive-Dateien: Kontakte, Hydrantenplan, Originalpakete und Verwaltungsverbindungen','Dienstschlüssel und Microsoft-Anmeldungen'],encrypted:false};
+    const result=await shareOrDownloadJson(fileName,payload,`App-Datensicherung wurde mit ${payload.data.importedPdfs.length} PDF-Datei(en) ausgegeben.`);
+    if(["saved","shared","downloaded"].includes(result))window.WorkflowUX?.backupResult(fileName,payload,result);
+  }catch(error){showToast(`Sicherung nicht erstellt: ${error.message||'Daten konnten nicht vollständig gelesen werden.'}`,"error");}
 }
 function validBackupMember(member) {
   return member && typeof member.id === "string" && typeof member.lastName === "string" && typeof member.firstName === "string";
@@ -125,6 +141,7 @@ function normalizeCompleteBackupData(data) {
     members:importedMembers,
     entries:Array.isArray(data.entries)?data.entries.filter(entry=>entry&&entry.id&&entry.date&&entry.storedName):[],
     csvArchive:Array.isArray(data.csvArchive)?data.csvArchive.filter(item=>item&&item.id&&item.fileName&&typeof item.content==="string"):[],
+    runningState:BackupEngine.runningState(data.runningState),
     functionEntryEnabled:data.functionEntryEnabled,
     roleTargets:data.roleTargets&&typeof data.roleTargets==="object"?data.roleTargets:{}
   };
@@ -142,6 +159,16 @@ function saveCompleteBackupData(data) {
     safeStorage.setItem(KEYS.archive,serialized.archive);
     safeStorage.setItem(KEYS.functionEntry,data.functionEntryEnabled===false?"false":"true");
     safeStorage.setItem(KEYS.roleTargets,serialized.targets);
+    if(data.runningState){
+      const state=data.runningState;
+      const oldOperation=safeStorage.getItem('fw_v1_current_operation_id');
+      if(oldOperation)safeStorage.removeItem('fw_v1_operation_draft_'+oldOperation);
+      safeStorage.setItem('fw_v1_current_operation_id',state.currentOperationId);
+      safeStorage.setItem('fw_v1_current_session_id',state.currentSessionId);
+      if(state.attendanceDraft)safeStorage.setItem('fw_v1_attendance_draft',JSON.stringify(state.attendanceDraft));
+      else safeStorage.removeItem('fw_v1_attendance_draft');
+      if(state.currentOperationId&&state.operationDraft)safeStorage.setItem('fw_v1_operation_draft_'+state.currentOperationId,JSON.stringify(state.operationDraft));
+    }
     // Das lokale Passwort wird bei einer Wiederherstellung bewusst nicht ersetzt.
   }catch(error){
     if(error?.name==="QuotaExceededError")throw new Error("storage");
@@ -183,6 +210,10 @@ async function importCompleteBackup(file) { if(!requireAdmin("settingsFilesView"
     chosenMemberId="";
     chosenMemberIds.clear();
     chosenRole="";
+    if(normalized.runningState){
+      showToast("Backup einschließlich Entwürfen gespeichert. Die App wird neu geladen; den Datenordner und den Entwurf anschließend prüfen.","success");
+      location.reload();return;
+    }
     const displayFailures=refreshAfterCompleteBackupImport();
     if(displayFailures.length){
       showToast("Backup wurde gespeichert. Bitte die App einmal neu öffnen, damit alle Ansichten aktualisiert werden.","success");
