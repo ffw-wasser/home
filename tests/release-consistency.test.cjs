@@ -27,3 +27,8 @@ test('Dynamisch geladenes Handy-Manifest verwendet denselben Release wie HTML un
  links.length=0;vm.runInNewContext(source,{navigator:{userAgent:'Android'},document:{createElement:()=>({}),head:{appendChild:n=>links.push(n)}}});
  assert.equal(links.length,0,'Android-Verknüpfung bleibt ohne WebAPK-Manifest');
 });
+
+test('WhatsApp-Terminseite lädt die Korrektur mit der aktuellen Buildkennung',()=>{
+ const release=JSON.parse(read('app-release.json')),html=read('termin.html');
+ for(const file of ['js/features/portal/portal-whatsapp.js','css/features/portal-whatsapp.css'])assert.ok(html.includes(file+'?v='+release.build),file);
+});

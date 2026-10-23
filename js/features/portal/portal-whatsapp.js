@@ -121,15 +121,20 @@
    status(note);
   }
  }
- // Never launch an external WhatsApp URL: iOS may show a failed link verification.
+ // Only launch from this explicit tap. whatsapp://app opens WhatsApp itself;
+ // it does not compose a message or pass the event/member/session to WhatsApp.
  el('back-to-whatsapp').addEventListener('click',()=>{
   const feedback=el('back-to-h2o-status');
-  feedback.textContent='Wechsle über „Zurück“ oder den App-Umschalter wieder zu WhatsApp.';
+  if(working){feedback.textContent='Bitte warte, bis die laufende Prüfung oder Speicherung abgeschlossen ist.';return;}
+  if(pending){feedback.textContent='Deine Rückmeldung ist noch nicht bestätigt. Bitte zuerst „Speicherung prüfen“ wählen.';return;}
   // Only use history when the referrer really belongs to WhatsApp Web.
   try{
    const previous=new URL(document.referrer);
-   if(/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
+   if(previous.protocol==='https:'&&/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
   }catch{}
+  const mobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||'')||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
+  feedback.textContent=mobile?'Falls WhatsApp nicht geöffnet wird, wechsle über den App-Umschalter zu WhatsApp.':'Falls WhatsApp Web nicht geöffnet wird, wechsle zum bisherigen WhatsApp-Fenster.';
+  try{location.assign(mobile?'whatsapp://app':'https://web.whatsapp.com/');}catch{/* Keep the manual return hint visible when an app launch is blocked. */}
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
   const focus=wanted();
