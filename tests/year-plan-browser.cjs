@@ -36,12 +36,14 @@ const root=path.resolve(__dirname,'..');
   await page.evaluate(()=>{lockAdministration();});assert.equal(await page.locator('.year-plan-event').count(),0);assert.doesNotMatch(await page.locator('#yearPlanView').textContent(),/Testperson/);
   await page.evaluate(()=>{showView('settingsView');});assert.equal(await page.locator('#settingsView').isVisible(),false);
   await page.evaluate(()=>{
-   adminUnlocked=true;resetAdminTimeout();window.qaBirthday={id:'birthday-test',seriesId:'series-test',title:'Geburtstag Testperson',start:Date.now()+86400000,end:Date.now()+90000000,kind:'birthday',memberId:null};window.qaBirthdayVersion=0;
+   adminUnlocked=true;resetAdminTimeout();window.qaBirthday={id:'birthday-test',seriesId:'series-test',title:'Geburtstag Testperson',start:Date.now()+86400000,end:Date.now()+90000000,kind:'birthday',memberId:null};window.qaBirthday2={...qaBirthday,id:'birthday-second',seriesId:'series-second',title:'Geburtstag Zweite Testperson'};window.qaBirthdayVersion=0;
    window.oneDriveReadState=async()=>({members:[{id:'test-person',lastName:'Testperson',firstName:'Anna'}]});
-   DrinksPush.request=async(c,p,data)=>{if(p.endsWith('/classify')){if(data.expectedVersion!==qaBirthdayVersion)throw Error('Version conflict');qaBirthdayVersion++;qaBirthday.memberId=data.memberId;return {version:qaBirthdayVersion};}return {rulesVersion:qaBirthdayVersion,events:[qaBirthday],stale:false};};showView('settingsRewardsView');
+   DrinksPush.request=async(c,p,data)=>{if(p.endsWith('/classify')){if(data.expectedVersion!==qaBirthdayVersion)throw Error('Version conflict');qaBirthdayVersion++;[qaBirthday,qaBirthday2].find(e=>e.id===data.eventId).memberId=data.memberId;return {version:qaBirthdayVersion};}return {rulesVersion:qaBirthdayVersion,events:[qaBirthday,qaBirthday2],stale:false};};showView('settingsRewardsView');
   });
-  await page.locator('#birthday-assignments-load').click();await page.locator('#birthday-assignments-list select').selectOption('test-person');await page.getByRole('button',{name:'Zuordnung speichern',exact:true}).click();
+  await page.locator('#birthday-assignments-load').click();await page.locator('#birthday-assignments-list select').nth(0).selectOption('test-person');await page.locator('#birthday-assignments-list select').nth(1).selectOption('test-person');await page.getByRole('button',{name:'Zuordnung speichern',exact:true}).nth(0).click();
   await page.locator('#birthday-assignments-status').filter({hasText:'Zuordnung gespeichert.'}).waitFor();assert.equal(await page.evaluate(()=>qaBirthday.memberId),'test-person');
+  assert.equal(await page.locator('#birthday-assignments-list select').nth(1).inputValue(),'test-person','saving one birthday retains the other unsaved assignment');assert.equal(await page.evaluate(()=>qaBirthday2.memberId),null);
+  await page.getByRole('button',{name:'Zuordnung speichern',exact:true}).nth(1).click();await page.locator('#birthday-assignments-status').filter({hasText:'Zuordnung gespeichert.'}).waitFor();assert.equal(await page.evaluate(()=>qaBirthday2.memberId),'test-person');
   await page.evaluate(()=>lockAdministration());assert.equal(await page.locator('#birthday-assignments-list').textContent(),'');
   assert.deepEqual(errors,[]);console.log('PASS navigation, protected overview, cancellation, 12 months, past dates, Berlin time, all-day birthday, independent filters, holidays, 320–1024 px, private-content removal');
  }finally{await browser.close();}
