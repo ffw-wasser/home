@@ -243,6 +243,10 @@
 #settingsCalendarView .portal-group-keywords{font-size:.9375rem;line-height:1.6;margin:8px 0 18px}
 #settingsCalendarView .portal-group-people{border-top:1px solid var(--line);padding-top:16px;margin-top:14px;margin-bottom:14px}
 #settingsCalendarView .portal-group-editor{border-top:1px solid var(--line);padding-top:10px;margin-top:18px}
+#settingsCalendarView .portal-keyword-card>summary{cursor:pointer;min-height:44px;align-content:center;color:var(--text)}
+#settingsCalendarView .portal-keyword-card>summary h4{display:inline;margin:0;font-size:1.05rem}
+#settingsCalendarView .portal-group-count{display:inline-block;margin-left:12px;color:var(--muted);font-size:.875rem}
+#settingsCalendarView .portal-keyword-card[open]>summary{margin-bottom:14px}
 #settingsCalendarView .portal-keyword-card .portal-delete-group{color:var(--red-dark);border-color:var(--line);margin-top:16px}
 #settingsCalendarView .portal-group-tester{margin:26px 0 0;padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--white)}
 #settingsCalendarView .portal-group-tester>p{font-size:.9375rem;color:var(--muted)}
