@@ -379,7 +379,7 @@
 .portal-reminders textarea,.portal-reminders input[type=tel]{display:block;box-sizing:border-box;width:100%;max-width:100%;font:inherit;font-size:16px;line-height:1.45;margin:8px 0;padding:12px;border:1px solid #b9cadb;border-radius:11px;background:#fff;color:#172d4d}
 .portal-reminders label{display:block;margin:12px 0;overflow-wrap:anywhere}
 .portal-reminders input[type=checkbox]{width:22px;height:22px;flex:none;vertical-align:middle;margin-right:8px}
-.portal-reminder-person{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:6px;padding:12px 0;border-bottom:1px solid #dce2e8}
+.portal-reminder-person{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:8px;padding:14px;margin:10px 0;border:1px solid #dce2e8;border-radius:14px;background:#fff}
 .portal-reminder-person button{grid-column:1;justify-self:start;width:auto;min-height:44px;padding:8px 12px;border:1px solid #b9d2e8;border-radius:10px;background:#edf5fc;color:#075baf;font-size:.875rem;box-shadow:none}
 .portal-reminder-person span{overflow-wrap:anywhere}
 .portal-reminders[aria-busy=true]{opacity:.75;pointer-events:none}
