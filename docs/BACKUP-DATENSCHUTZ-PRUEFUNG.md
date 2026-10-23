@@ -15,8 +15,12 @@ Die Wordvorlage enthielt persönliche Autorenmetadaten und fest eingetragene Nam
 bei Behördenfunktionen. Diese wurden in der Vorlagendatei und ihrer eingebetteten
 Kopie entfernt beziehungsweise durch Funktionsbezeichnungen ersetzt. Historische
 Git-Versionen sind dadurch nicht gelöscht. Die Prüfung umfasst den aktuellen
-Dateibestand und den Code der Zugriffswege, keine vollständige Prüfung aller
-historischen Commits oder der Microsoft-/Cloudflare-Kontoberechtigungen.
+Dateibestand und den Code der Zugriffswege sowie eine lesende Prüfung der
+OneDrive-Sicherungsbestände und ihrer Freigaben. Sie umfasst keine vollständige
+Prüfung aller historischen Commits oder der Cloudflare-Kontoberechtigungen.
+Vorhandene Sicherungsdateien allein bestätigen weder einen aktuellen vollständigen
+Datenstand noch hinreichend eingeschränkte Freigaben. Die Bestandsprüfung hat
+keine Freigaben geändert und keine neue produktive Datensicherung angelegt.
 
 Die App-Sicherung enthält jetzt auch gespeicherte laufende Termin- und
 Einsatzentwürfe. Vor der Ausgabe wird die OneDrive-Historie geladen. Schlägt das
@@ -31,8 +35,8 @@ den ursprünglichen Datenordner und werden nach dem Wiederherstellen neu geladen
 | --- | --- | --- |
 | Mitglieder, Nachweise der Hauptanwendung, Ziele, Tagesdaten, Historie, gespeicherte Bericht-PDFs und Dokumentberichte, gespeicherte laufende Entwürfe | App-Datensicherung | JSON ist unverschlüsselt; nur geschützt ablegen. Nicht übernommene Dokumentfotos im Arbeitsspeicher sind kein gespeicherter Dokumentbericht. |
 | Zentrale Getränkekonten, Buchungen, Punkte-Einstellungen und private Handyzugänge | Getränkeverwaltung: Jetzt in OneDrive sichern | Separater Export; Sicherung bei Übernahme und vor Zurücksetzen, keine automatische Sicherung bei geschlossenem iPad. Administrativer Wiederherstellungsimport ist nicht implementiert. |
-| Portal, Rückmeldungen, Portalnachweise, Challenge, Theater, Passkeys und Dienstzustände | Gesonderte Sicherung der vollständigen Cloudflare-D1-Datenbank | Weder App- noch Getränkesicherung ist ein vollständiger D1-Export. Tatsächliche Sicherungen und Wiederherstellbarkeit wurden ohne Kontozugriff nicht verifiziert. |
-| Kontaktverzeichnis, Hydrantenplan, Original-Terminpakete und private Verwaltungsverbindungen | Gesonderte geschützte Sicherung der betreffenden OneDrive-Ordner | Synchronisierung und Versionshistorie allein belegen keine unabhängige vollständige Sicherung. Ordnerfreigaben wurden nicht live geprüft. |
+| Portal, Rückmeldungen, Portalnachweise, Challenge, Theater, Passkeys und Dienstzustände | Gesonderte Sicherung der vollständigen Cloudflare-D1-Datenbank | Weder App- noch Getränkesicherung ist ein vollständiger D1-Export. Tatsächliche Sicherungen und Wiederherstellbarkeit wurden ohne Cloudflare-Kontozugriff nicht verifiziert. |
+| Kontaktverzeichnis, Hydrantenplan, Original-Terminpakete und private Verwaltungsverbindungen | Gesonderte geschützte Sicherung der betreffenden OneDrive-Ordner | Synchronisierung und Versionshistorie allein belegen keine unabhängige vollständige Sicherung. Eine lesende Freigabeprüfung ist erfolgt; Änderungen der Freigaben und der App-Verbindung sind gesondert abzustimmen. |
 | Cloudflare-Dienstschlüssel, insbesondere der bestehende Verschlüsselungsschlüssel INVITE_SECRET, sowie weitere Anbieter-Konfiguration | Getrennte geschützte Schlüssel- und Konfigurationssicherung | Keine Veröffentlichung und kein Export in App-Dateien. Verschlüsselte D1-Inhalte sind ohne ursprünglichen Schlüssel nicht wiederherstellbar. |
 
 Eine vollständige Betriebssicherung ist erst bestätigt, wenn alle genannten
