@@ -73,6 +73,8 @@ jobs:
         run: node tests/calendar-display-browser.cjs
       - name: Test separate incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
+      - name: Test authenticated direct OneDrive folder conversion
+        run: node tests/onedrive-direct-browser.cjs
       - name: Test local drafts, resume and administration tasks
         run: node tests/workflow-drafts-browser.cjs
       - name: Test privacy-first illustrated instructions on tablet and phone
