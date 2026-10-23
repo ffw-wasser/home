@@ -38,6 +38,7 @@ test('Persönlicher Jahresplan wahrt Empfängergrenzen und zeigt ausschließlich
   const cal=(await f.call('list',{},null,true)).value,e=cal.events.find(e=>e.title===title);
   assert.equal((await f.call('classify',{eventId:e.id,kind,approved:kind==='probe',memberId,expectedVersion:cal.rulesVersion,...(kind==='probe'?{recipientIds}:{})},null,true)).status,200);
  }
+ const full=await f.call('year',{year:2026},null,true);assert.equal(full.status,200);assert.deepEqual(full.value.events.map(e=>e.title),['Probe Allgemein','Probe Vertraulich','Probe Noch nicht freigegeben','Geburtstag Eigene Testperson','Geburtstag Andere Testperson'],'Gerätehaus projection contains all appointments and birthdays');
  const response=await f.call('year',{year:2026});assert.equal(response.status,200);assert.deepEqual(response.value.events.map(e=>e.title),['Probe Allgemein','Dein Geburtstag']);
  for(const e of response.value.events)for(const key of ['memberId','seriesId','recipientIds','automaticRecipientIds','recipientMode','groupIds'])assert.equal(e[key],undefined);
  const other=await f.call('year',{year:2026},f.people[1]);assert.deepEqual(other.value.events.map(e=>e.title),['Probe Allgemein','Probe Vertraulich','Dein Geburtstag']);
