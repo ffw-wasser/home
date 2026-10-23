@@ -20,6 +20,7 @@ const root=path.resolve(__dirname,'..');
    window.oneDriveReadState=async()=>({members});DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev',source:'test-source',token});DrinksStore.sourceKey=()=> 'test-source';showView('settingsCalendarView');
   },{members,token:f.env.ADMIN_TOKEN});
 await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).catch(async e=>{console.error(await page.locator('#settingsCalendarView').textContent(),errors);throw e;});
+  await page.locator('.calendar-google-help summary').click();assert.match(await page.locator('.calendar-google-help').innerText(),/nicht allein aus dem Titel gesetzt/);assert.match(await page.locator('#calendar-help-groups').innerText(),/Atemschutz/);assert.match(await page.locator('#calendar-help-groups').innerText(),/AGT/);for(const width of [320,390,768,1024]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'keyword help overflow '+width);if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.locator('.calendar-google-help').screenshot({path:path.join(process.env.QA_OUTPUT,'kalender-hilfe-'+width+'.png')});}}await page.setViewportSize({width:390,height:844});await page.locator('.calendar-google-help summary').click();
   const card=page.locator('#portal-admin-review-events .portal-event').first();
   assert.equal(await card.locator('h4').textContent(),'Sonderprobe Atemschutz');
   await card.locator('.portal-event-people summary').click();assert.equal(await card.locator('.portal-name-list li').count(),2);
@@ -44,7 +45,7 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
   const maschinisten=groupCard('Maschinisten');
   await Promise.all([page.waitForResponse(r=>r.url().endsWith('/admin/portal/groups')&&!!r.request().postDataJSON()?.groups),maschinisten.getByRole('button',{name:'Gruppe speichern',exact:true}).click()]);
   await maschinisten.getByRole('button',{name:'Gruppe bearbeiten'}).waitFor();
-  assert.equal((await f.call('groups',{},null,true)).value.groups.at(-1).name,'Maschinisten');assert.equal((await f.call('list',{},null,true)).value.events[0].recipientMode,'manual');
+  assert.equal((await f.call('groups',{},null,true)).value.groups.at(-1).name,'Maschinisten');assert.match(await page.locator('#calendar-help-groups').textContent(),/MA-Probe/,'help follows saved custom group keywords');assert.equal((await f.call('list',{},null,true)).value.events[0].recipientMode,'manual');
   const tester=groups.locator('.portal-group-tester');await tester.getByLabel('Termintitel').fill('Atemschutz Maschinisten');await tester.getByRole('button',{name:'Zuordnung anzeigen'}).click();assert.equal(await tester.locator('.portal-name-list li').count(),2,'Overlapping members shown once');
   for(const width of [320,390,412,768,1024]){
    await page.setViewportSize({width,height:900});
