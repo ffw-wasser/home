@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 function fixture(){
  const nodes=new Map(),events={},timers=new Map();let now=0,next=0;
- const ctx=vm.createContext({DrinksModel:{pointText:u=>String(u/150)},byId:id=>nodes.get(id),setTimeout:(fn,delay)=>{timers.set(++next,{fn,at:now+delay});return next;},clearTimeout:id=>timers.delete(id),document:{hidden:false,readyState:'loading',addEventListener:(name,fn)=>events[name]=fn,body:{append:node=>nodes.set(node.id,node)},createElement:()=>({open:false,children:{button:{},'[data-thanks-bonus]':{}},handlers:{},querySelector(selector){return this.children[selector];},addEventListener(name,fn){this.handlers[name]=fn;},showModal(){this.open=true;},close(){this.open=false;},remove(){nodes.delete(this.id);}})}});ctx.window=ctx;
+ const ctx=vm.createContext({DrinksModel:{pointText:u=>String(u/150)},byId:id=>nodes.get(id),setTimeout:(fn,delay)=>{timers.set(++next,{fn,at:now+delay});return next;},clearTimeout:id=>timers.delete(id),document:{hidden:false,readyState:'loading',addEventListener:(name,fn)=>events[name]=fn,body:{append:node=>nodes.set(node.id,node)},createElement:()=>({open:false,children:{button:{},'[data-thanks-bonus]':{},'[data-thanks-title]':{},'[data-thanks-message]':{},'[data-thanks-status]':{}},handlers:{},querySelector(selector){return this.children[selector];},addEventListener(name,fn){this.handlers[name]=fn;},showModal(){this.open=true;},close(){this.open=false;},remove(){nodes.delete(this.id);}})}});ctx.window=ctx;
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/drinks-extras.js'),'utf8'),ctx);
  return {ctx,events,timers,dialog:()=>nodes.get('drinksThanksDialog'),advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }
@@ -21,3 +21,5 @@ test('Explizites Beenden entfernt Animation und Timer ohne den alten Abschluss e
  const f=fixture();let returned=0;f.ctx.DrinksExtras.celebrate(0,()=>returned++);f.ctx.DrinksExtras.dismiss();
  assert.equal(f.dialog(),undefined);assert.equal(returned,0);f.advance(10000);assert.equal(returned,0);
 });
+
+test('Termin-Dank verwendet vorhandene Animation, schließt ohne Button und bestätigt keine ungeprüfte OneDrive-Ablage',()=>{const f=fixture();f.ctx.DrinksExtras.celebrate(0,null,{kind:'termin',result:'shared'});const d=f.dialog();assert.equal(d.children.button.hidden,true);assert.equal(d.children['[data-thanks-title]'].textContent,'Danke für deinen Einsatz!');assert.match(d.children['[data-thanks-status]'].textContent,/übergeben/);f.advance(3000);assert.equal(f.dialog(),undefined);f.ctx.DrinksExtras.celebrate();assert.equal(f.dialog().children.button.hidden,false);assert.equal(f.dialog().children['[data-thanks-title]'].textContent,'Danke!');});

@@ -5,13 +5,14 @@
   function finishThanks(){clearTimeout(timer);const dialog=byId('drinksThanksDialog');if(dialog?.open)dialog.close();dialog?.remove();const fn=onDone;onDone=null;fn?.();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden)finishThanks();});
   const euro=c=>(c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  function celebrate(bonus=0,done=null){
+  function celebrate(bonus=0,done=null,options={}){
     let dialog=byId('drinksThanksDialog');
     if(!dialog){
       dialog=document.createElement('dialog');dialog.id='drinksThanksDialog';dialog.className='dr-thanks';
-      dialog.innerHTML='<button type="button" class="outline-button" aria-label="Dankesnachricht schließen und weiter">Zurück zu Getränken</button><div class="dr-burst" aria-hidden="true"><img src="assets/drinks/bierfass.webp" alt=""><span class="dr-burst-pop"><svg viewBox="0 0 120 120" aria-hidden="true"><path fill="#e85c28" d="M60 3 70 30 93 12 88 41 117 40 97 61 116 84 87 83 91 113 68 93 57 118 48 91 22 110 29 82 2 78 24 60 5 38 34 38 28 10 51 30Z"/><path fill="#ffd65c" d="m60 25 9 24 23-8-15 20 19 18-27-4-9 23-8-24-25 9 15-22-18-15 26 2Z"/></svg></span>'+Array.from({length:16},(_,i)=>`<i style="--angle:${i*22.5}deg;--delay:${i%3*35}ms"></i>`).join('')+'</div><h2>Danke!</h2><p>Dein Deckel ist bezahlt. 🍻</p><p data-thanks-bonus class="dr-credit" hidden></p><p class="dr-muted">Zahlung gespeichert.</p>';
+      dialog.innerHTML='<button type="button" class="outline-button" aria-label="Dankesnachricht schließen und weiter">Zurück zu Getränken</button><div class="dr-burst" aria-hidden="true"><img src="assets/drinks/bierfass.webp" alt=""><span class="dr-burst-pop"><svg viewBox="0 0 120 120" aria-hidden="true"><path fill="#e85c28" d="M60 3 70 30 93 12 88 41 117 40 97 61 116 84 87 83 91 113 68 93 57 118 48 91 22 110 29 82 2 78 24 60 5 38 34 38 28 10 51 30Z"/><path fill="#ffd65c" d="m60 25 9 24 23-8-15 20 19 18-27-4-9 23-8-24-25 9 15-22-18-15 26 2Z"/></svg></span>'+Array.from({length:16},(_,i)=>`<i style="--angle:${i*22.5}deg;--delay:${i%3*35}ms"></i>`).join('')+'</div><h2 data-thanks-title>Danke!</h2><p data-thanks-message>Dein Deckel ist bezahlt. 🍻</p><p data-thanks-bonus class="dr-credit" hidden></p><p class="dr-muted" data-thanks-status>Zahlung gespeichert.</p>';
       document.body.append(dialog);dialog.querySelector('button').onclick=finishThanks;dialog.addEventListener('cancel',event=>{event.preventDefault();finishThanks();});
     }
+    const termin=options.kind==='termin';dialog.querySelector('button').hidden=termin;dialog.querySelector('[data-thanks-title]').textContent=termin?'Danke für deinen Einsatz!':'Danke!';dialog.querySelector('[data-thanks-message]').textContent=termin?'Termin abgeschlossen.':'Dein Deckel ist bezahlt. 🍻';dialog.querySelector('[data-thanks-status]').textContent=termin?(options.result==='saved'?'In OneDrive gespeichert.':options.result==='shared'?'Terminpaket an „In Dateien sichern“ übergeben.':'Terminpaket zum Download übergeben.'):'Zahlung gespeichert.';
     const message=dialog.querySelector('[data-thanks-bonus]');message.hidden=!bonus;message.textContent=bonus?'⭐ '+DrinksModel.pointText(bonus)+' neue Treuepunkte für deine nächsten Getränke!':'';
     onDone=done;clearTimeout(timer);dialog.showModal();timer=setTimeout(finishThanks,bonus?4500:3000);
   }
