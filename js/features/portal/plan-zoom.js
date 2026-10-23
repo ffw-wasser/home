@@ -2,12 +2,12 @@
 (function(g){
 'use strict';
 let library;
-function create(host,bytes){
+function create(host,bytes,{pageNumber=1,label:documentLabel='Hydrantenplan'}={}){
  let disposed=false,task=null,pdf=null,page=null,render=null,timer=0,drawId=0;
  let width=0,height=0,fit=1,scale=1,x=0,y=0,gesture=null;
  const points=new Map(),surface=document.createElement('div'),label=document.createElement('output');
  surface.className='plan-zoom-surface';label.className='plan-zoom-label';host.replaceChildren(surface,label);host.hidden=false;host.dataset.noSwipe='';host.tabIndex=0;
- host.setAttribute('role','region');host.setAttribute('aria-label','Hydrantenplan. Mit zwei Fingern zoomen, mit einem Finger verschieben. Tastatur: Plus, Minus und Pfeiltasten.');
+ host.setAttribute('role','region');host.setAttribute('aria-label',documentLabel+'. Mit zwei Fingern zoomen, mit einem Finger verschieben. Tastatur: Plus, Minus und Pfeiltasten.');
  const point=e=>{const r=host.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
  const clamp=()=>{const v=page.getViewport({scale});x=v.width<=width?(width-v.width)/2:Math.min(0,Math.max(width-v.width,x));y=v.height<=height?(height-v.height)/2:Math.min(0,Math.max(height-v.height,y));label.value=Math.round(scale/fit*100)+' %';host.dataset.zoom=String(scale/fit);};
  function draw(){
@@ -42,7 +42,7 @@ function create(host,bytes){
   library??=import(new URL('js/vendor/pdfjs/pdf-5.4.624.min.mjs',document.baseURI).href);const lib=await library;if(disposed)return;
   lib.GlobalWorkerOptions.workerSrc=new URL('js/vendor/pdfjs/pdf.worker-5.4.624.min.mjs',document.baseURI).href;
   task=lib.getDocument({data:bytes.slice(),isEvalSupported:false,enableXfa:false,useWasm:false});pdf=await task.promise;if(disposed)return;
-  page=await pdf.getPage(1);if(disposed)return;resize();
+  page=await pdf.getPage(pageNumber);if(disposed)return;resize();
  })();
  function destroy(){
   if(disposed)return;disposed=true;drawId++;clearTimeout(timer);points.clear();observer.disconnect();render?.cancel();task?.destroy().catch(()=>{});
