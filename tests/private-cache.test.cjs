@@ -13,10 +13,10 @@ test('Originalbilder der Anleitung sind nach Abruf offline verfügbar, autorisie
 });
 
 function worker({offline = false, responseOk = true, cached = undefined} = {}) {
-  const events = {}, writes = [], reads = [], deleted = [];
+  const events = {}, writes = [], reads = [], deleted = [], precached = [];
   const context = vm.createContext({URL, Promise, importScripts:()=>{},
     self: {registration: {scope: root}, clients: {claim: async () => {}}, skipWaiting: async () => {}, addEventListener: (name, fn) => events[name] = fn},
-    caches: {keys: async () => ['ffw-wasser-final-v8-1-pending-lock-20261006', 'other-app-cache', 'ffw-wasser-topics-private-cache-20261008', 'ffw-wasser-age-statistics-20261008', 'ffw-wasser-report-dates-statistics-20261008', 'ffw-wasser-plausibility-cleanup-20261008', 'ffw-wasser-onedrive-resilience-20261008'], delete: async key => deleted.push(key), open: async () => ({addAll: async () => {}, put: async (key, response) => writes.push(key), match: async key => {reads.push(key); return cached;}})},
+    caches: {keys: async () => ['ffw-wasser-final-v8-1-pending-lock-20261006', 'other-app-cache', 'ffw-wasser-topics-private-cache-20261008', 'ffw-wasser-age-statistics-20261008', 'ffw-wasser-report-dates-statistics-20261008', 'ffw-wasser-plausibility-cleanup-20261008', 'ffw-wasser-onedrive-resilience-20261008'], delete: async key => deleted.push(key), open: async () => ({addAll: async urls => precached.push(...urls), put: async (key, response) => writes.push(key), match: async key => {reads.push(key); return cached;}})},
     fetch: async request => {if (offline) throw new Error('offline'); return {ok: responseOk, type: 'basic', url: request.url, clone(){return this;}};}
   });
   vm.runInContext(source, context);
@@ -25,7 +25,7 @@ function worker({offline = false, responseOk = true, cached = undefined} = {}) {
     events.fetch({request: {url, method: options.method || 'GET', mode: options.mode || 'cors', headers: {has: name => options.auth && name === 'Authorization'}}, respondWith: p => result = p});
     return result;
   };
-  return {events, request, writes, reads, deleted};
+  return {events, request, writes, reads, deleted, precached};
 }
 
 test('OneDrive, OAuth und persönliche Dateien gelangen nicht in den Cache', () => {
@@ -73,4 +73,13 @@ test('Startseite öffnet ohne Passwort und verändert keine Nutzdaten', () => {
   assert.doesNotMatch(html, /pageAccessGate|pageAccessForm|page-access-pending/);
   assert.doesNotMatch(app, /setupInitialPageAccess|fw_page_unlocked/);
   assert.match(app, /members = loadArray\(KEYS.members, DEFAULT_MEMBERS\)/);
+});
+
+
+test('Offline-Installation lädt aktuelle Symbole und spart historische Grafiken sowie Einrichtungsdateien aus',async()=>{
+ const w=worker();let installation;
+ w.events.install({waitUntil:task=>installation=task});await installation;
+ for(const size of [96,180,192,512])assert.ok(w.precached.some(url=>url.includes('h2o-symbol-white-'+size+'.png')));
+ assert.ok(w.precached.some(url=>url.startsWith('./index.html')));assert.ok(w.precached.includes('./deckel.html'));
+ for(const old of ['deckel-home-v2-','deckel-icon-','ffw-header.svg','docs/google-calendar-colors/'])assert.equal(w.precached.some(url=>url.includes(old)),false,old);
 });
