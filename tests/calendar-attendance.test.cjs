@@ -73,8 +73,10 @@ test('Kalenderkarten öffnen ihre Bearbeitung erst auf Wunsch; Kleiderwechsel fo
  kind.value='special';kind.onchange();
  assert.equal(clothing.value,'Tagesdienst');
  assert.equal(card.dataset.state,'edited');
- edit.onclick();assert.equal(kind.hidden,true);
- assert.equal(card.dataset.state,'edited','Zusammenklappen verwirft keine Änderungen');
+ const cancel=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Abbrechen');
+ f.c.confirm=()=>false;cancel.onclick();assert.equal(kind.hidden,false);assert.equal(card.dataset.state,'edited');
+ f.c.confirm=()=>true;cancel.onclick();assert.equal(kind.hidden,true);assert.equal(kind.value,'special');
+ assert.notEqual(card.dataset.state,'edited','Bestätigtes Abbrechen stellt den gespeicherten Stand wieder her');
 });
 
 test('Identische automatische Kalender-Aktualisierung ersetzt keine angezeigten Karten',async()=>{
@@ -87,17 +89,19 @@ test('Identische automatische Kalender-Aktualisierung ersetzt keine angezeigten 
 });
 
 test('Sammelfreigabe darf nach Abbrechen der Vorschau keine Kalenderregeln schreiben',async()=>{
- const f=fixture();f.privateCal.events[0].automatic=true;f.init();await f.login();
+ const f=fixture();Object.assign(f.privateCal.events[0],{automatic:true,approved:false});f.init();await f.login();
  f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
  let requested=false;f.c.confirm=()=>{requested=true;return false;};
+ f.get('portal-admin-review-select').onclick();
+ const selection=f.get('portal-admin-review-events').children[0].children.find(n=>n.className==='portal-release-selection').children[0];selection.checked=true;selection.onchange();
  const prior=f.requests.length;
  await f.get('portal-admin-review-auto').onclick();
  assert.equal(requested,true);assert.equal(f.requests.length,prior);
 });
 
-test('Kalenderverwaltung besitzt Suche, Statusübersicht und faltbare technische Einrichtung',()=>{
+test('Kalenderverwaltung besitzt getrennte Bereiche, Suche und faltbare Verbindung',()=>{
  const html=fs.readFileSync('index.html','utf8'),section=html.slice(html.indexOf('id="settingsCalendarView"'),html.indexOf('id="adminLoginView"'));
- for(const id of ['portal-admin-review-search','portal-admin-review-summary','portal-admin-review-filter','portal-admin-review-events'])assert.ok(section.includes('id="'+id+'"'),id);
+ for(const id of ['portal-admin-review-search','portal-calendar-nav-events','portal-calendar-nav-groups','portal-calendar-nav-connection','portal-admin-review-filter','portal-admin-review-events'])assert.ok(section.includes('id="'+id+'"'),id);
  assert.match(section,/class="portal-calendar-technical"/);
  assert.ok(section.indexOf('portal-calendar-workspace')<section.indexOf('portal-calendar-technical'));
 });
@@ -114,10 +118,11 @@ test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche ko
  const cards=f.get('portal-admin-review-events').children,card=cards[0];
  assert.ok(!card.hidden,'Gespeicherte Proben sollen standardmäßig sichtbar sein');
  assert.equal(f.get('portal-admin-member').children.length,4,'Kalender lädt die Mitglieder unabhängig vom QR-Menü');
- const shortcut=card.children.find(n=>n.className==='portal-review-audience-action');
+ const shortcut=card.children.find(n=>n.className==='portal-review-edit-toggle');
  assert.ok(shortcut,'Mitglieder ändern auf der normalen Probe');
  const summary=card.children.find(n=>n.className==='portal-review-audience');
- assert.match(summary.textContent,/Nur 1 von 3 Mitgliedern/);
+ assert.match(summary.textContent,/Bisherige Auswahl/);
+ assert.match(card.children.find(n=>n.className==='portal-event-people').children[0].textContent,/Personen \(1\)/);
  shortcut.onclick();
  const recipients=card.children.find(n=>n.className==='portal-recipient-choices');
  assert.ok(recipients);assert.equal(recipients.hidden,false);
@@ -151,11 +156,11 @@ test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und b
  };
  f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;
  await f.c.PortalAdmin.loadCalendar();
- const card=f.get('portal-admin-review-events').children[0],shortcut=card.children.find(n=>n.className==='portal-review-audience-action');
+ const card=f.get('portal-admin-review-events').children[0],shortcut=card.children.find(n=>n.className==='portal-review-edit-toggle');
  shortcut.onclick();
  const recipients=card.children.find(n=>n.className==='portal-recipient-choices'),list=recipients.children[5];
  list.children[1].children[0].checked=true;list.children[1].children[0].onchange();
- const save=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Einordnung speichern');
+ const save=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');
  assert.ok(save);
  await save.onclick();
  assert.equal(payload.kind,'probe');assert.equal(payload.sessionType,'Probe');assert.equal(payload.attendanceType,'Allgemeine Probe');
@@ -165,28 +170,66 @@ test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und b
 
 
 
-test('Herbstfest Sonderschule vom Vortag bleibt in Kalender-Einstellungen korrigierbar',async()=>{
+test('Vergangene Termine fehlen in Verwaltung, Zählern und Sammelfreigabe; Quelldaten bleiben erhalten',async()=>{
  const f=fixture(),now=Date.now();
  Object.assign(f.privateCal,{recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,rulesVersion:2});
  Object.assign(f.privateCal.events[0],{
   id:'herbstfest-17-10-2026',title:'Herbstfest Sonderschule',
-  start:Date.parse('2026-10-17T16:00:00Z'),end:Date.parse('2026-10-17T19:00:00Z'),
+  start:now-86400000,end:now-82800000,
   kind:'probe',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',
   approved:false,automatic:true,location:'GH Wasser'
  });
  f.init();await f.login();
  f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;
  await f.c.PortalAdmin.loadCalendar();
- const card=f.get('portal-admin-review-events').children[0];
- assert.ok(card,'Der gestrige Termin bleibt in der Verwaltungsliste.');
- assert.match(card.children.find(n=>n.className==='portal-review-badge').textContent,/Vergangen/);
- assert.equal(card.dataset.past,'true');
- const edit=card.children.find(n=>n.className==='portal-review-edit-toggle');
- assert.ok(edit);edit.onclick();
- const kind=card.children.find(n=>n.tagName==='SELECT');
- assert.equal(kind.hidden,false,'Auch ein bereits beendeter Termin kann einzeln korrigiert werden.');
+ assert.equal(f.get('portal-admin-review-events').children.length,0);
+ assert.equal(f.get('portal-admin-review-all').textContent,'Alle (0)');
+ assert.equal(f.get('portal-admin-review-toggle').textContent,'Zu prüfen (0)');
  assert.equal(f.get('portal-admin-review-auto').disabled,true,'Abgelaufene Termine dürfen keine Sammelfreigabe mehr auslösen.');
- assert.ok(now>Date.parse('2026-10-17T19:00:00Z'));
+ assert.equal(f.privateCal.events.length,1,'Die Kalenderquelle wurde nicht gelöscht');
+});
+
+test('Laufende Termine bleiben bis zum exakten Ende sichtbar, auch ganztägig über den Zeitwechsel',async()=>{
+ const f=fixture(),Base=Date;
+ const now=Date.parse('2026-10-25T22:59:59Z');f.c.Date=class extends Base{static now(){return now;}};
+ const template=f.privateCal.events[0];f.privateCal.events=[
+  {...template,id:'ended',start:now-10000,end:now},
+  {...template,id:'all-day',allDay:true,start:Date.parse('2026-10-24T22:00:00Z'),end:Date.parse('2026-10-25T23:00:00Z')},
+  {...template,id:'ongoing',start:now-3600000,end:now+500},
+  {...template,id:'future',start:now+3600000,end:now+7200000}
+ ];
+ f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ assert.deepEqual(Array.from(f.get('portal-admin-review-events').children,n=>n.dataset.eventId),['all-day','ongoing','future']);
+ f.c.Date=class extends Base{static now(){return now+1000;}};f.intervals[0]();await new Promise(setImmediate);
+ assert.deepEqual(Array.from(f.get('portal-admin-review-events').children).filter(n=>!n.hidden).map(n=>n.dataset.eventId),['future']);
+ assert.equal(f.get('portal-admin-review-all').textContent,'Alle (1)');
+});
+
+test('Ablauf während Bearbeitung behält den Entwurf, sperrt Speichern und blendet nach Abbrechen aus',async()=>{
+ const f=fixture(),Base=Date;f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ const card=f.get('portal-admin-review-events').children[0];card.children.find(n=>n.className==='portal-review-edit-toggle').onclick();
+ const kind=card.children.find(n=>n.tagName==='SELECT');kind.value='probe';kind.onchange();
+ f.c.Date=class extends Base{static now(){return f.privateCal.events[0].end;}};f.intervals[0]();await new Promise(setImmediate);
+ assert.equal(card.hidden,false);assert.equal(kind.value,'probe');assert.match(card.children.find(n=>n.className==='portal-event-feedback').textContent,/beendet/);
+ const save=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');assert.equal(save.disabled,true);
+ const prior=f.requests.length;await save.onclick();assert.equal(f.requests.length,prior,'Auch direkter Aufruf schreibt keinen beendeten Termin');
+ f.c.confirm=()=>true;card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Abbrechen').onclick();assert.equal(card.hidden,true);
+});
+
+test('Gespeicherte Termine ohne Freigabe bleiben zu prüfen; Suchfilter begrenzt die Sammelfreigabe',async()=>{
+ const f=fixture();Object.assign(f.privateCal.events[0],{automatic:false,approved:false,recipientIds:['one']});
+ f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ f.get('portal-admin-review-toggle').onclick();const card=f.get('portal-admin-review-events').children[0];assert.equal(card.hidden,false);assert.equal(f.get('portal-admin-review-toggle').textContent,'Zu prüfen (1)');
+ f.get('portal-admin-review-select').onclick();const check=card.children.find(n=>n.className==='portal-release-selection').children[0];check.checked=true;check.onchange();assert.equal(f.get('portal-admin-review-auto').disabled,false);
+ f.get('portal-admin-review-search').value='Kein Treffer';f.get('portal-admin-review-search').oninput();assert.equal(f.get('portal-admin-review-auto').disabled,true);
+ let confirmed=false;f.c.confirm=()=>{confirmed=true;return true;};const prior=f.requests.length;await f.get('portal-admin-review-auto').onclick();assert.equal(confirmed,false);assert.equal(f.requests.length,prior);
+});
+
+test('Seitenwechsel fragt vor dem Verwerfen und Abbruch erhält den Kalenderentwurf',async()=>{
+ const f=fixture();f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ const card=f.get('portal-admin-review-events').children[0];card.children.find(n=>n.className==='portal-review-edit-toggle').onclick();const kind=card.children.find(n=>n.tagName==='SELECT');kind.value='probe';kind.onchange();
+ f.c.confirm=()=>false;assert.equal(f.c.PortalAdmin.beforeView('settingsView'),false);assert.equal(kind.value,'probe');assert.equal(kind.hidden,false);
+ f.c.confirm=()=>true;assert.equal(f.c.PortalAdmin.beforeView('settingsView'),true);assert.equal(kind.value,'special');assert.equal(kind.hidden,true);
 });
 
 test('Abbrechen zeigt den geladenen Kalendertermin sofort und lädt ohne Minutensperre nach',async()=>{
@@ -211,4 +254,17 @@ test('Ohne kommenden Termin bleibt der Kalender leer; Terminartwechsel behält d
  const f=fixture();await f.login();f.c.PortalAdmin.discard(true);assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');assert.equal(f.microtasks.length,0);
  const Base=Date;f.c.Date=class extends Base{static now(){return f.privateCal.events[0].end+1;}};
  f.c.PortalAdmin.discard();assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.equal(f.get('portal-calendar-pick').value,'');
+});
+
+for(const reason of ['Sperren','Quellenwechsel'])test('Wartendes Speichern der Kalenderverbindung nach '+reason+' sendet keinen Auftrag',async()=>{
+ const f=fixture();f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
+ f.get('portal-admin-show-qr').classList={toggle(){}};
+ let release,started;const pending=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
+ f.c.DrinksCentral.connection=async()=>{started();await pending;return {origin:'https://test.account.workers.dev/',source:f.c.DrinksStore.sourceKey()};};
+ f.get('portal-admin-calendar').value='https://example.invalid/new.ics';f.get('portal-admin-hours').value='24';
+ const saving=f.get('portal-admin-form').onsubmit({preventDefault(){}});await waiting;
+ if(reason==='Sperren')f.c.PortalAdmin.lock();else f.c.DrinksStore.sourceKey=()=> 'different-source';
+ release();await saving;
+ assert.equal(f.requests.filter(p=>p.endsWith('/configure')).length,0);
+ assert.equal(f.get('portal-calendar-administration').hidden,true);
 });
