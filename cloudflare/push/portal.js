@@ -36,7 +36,7 @@
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}return new TextDecoder().decode(bytes);
  }
  async function projection(url,range=null){const raw=await download(url),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[],series=new Map();for(const item of items){const {key,seriesKey,...rest}=item;if(!series.has(seriesKey))series.set(seriesKey,await hash('h2o-series/v1:'+url+':'+seriesKey));events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:series.get(seriesKey),...rest});}return events;}
- async function yearCalendar(env,year){
+ async function yearCalendar(env,year,ctx,background=false){
   if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
   const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
   const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
@@ -46,13 +46,14 @@
   for(const [key,value] of years)if(value.url!==c.calendarUrl)years.delete(key);
   let entry=years.get(year);
   if(!entry||!entry.pending&&entry.fetchedAt<=Date.now()-300000){
-   const previous=entry;entry={url:c.calendarUrl,fetchedAt:0,pending:null};years.set(year,entry);
+   const previous=entry;entry={url:c.calendarUrl,fetchedAt:0,pending:null,fallback:null};let snapshotReady;entry.snapshotReady=new Promise(resolve=>snapshotReady=resolve);years.set(year,entry);
    while(years.size>3)years.delete(years.keys().next().value);
-   entry.pending=(async()=>{let fallback=previous?.events?previous:null;
+   entry.pending=(async()=>{let fallback=previous?.events?{events:previous.events,fetchedAt:previous.fetchedAt}:null;
     try{
      // Encrypted snapshots also serve cold isolates without recalculating every
      // historical series. They never contain recipient decisions or reply data.
      const row=await env.DB.prepare('SELECT * FROM portal_calendar_year WHERE year=?').bind(year).first(),saved=await open(env,row,'portal-calendar-year:'+year);if(saved?.calendarUrl===c.calendarUrl&&Array.isArray(saved.events)&&(!fallback||row.fetched_at>fallback.fetchedAt))fallback={events:saved.events,fetchedAt:row.fetched_at};
+     entry.fallback=fallback;snapshotReady();
      if(fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
      const events=await projection(c.calendarUrl,range),fetchedAt=Date.now();
      if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
@@ -61,11 +62,18 @@
      entry.events=events;entry.fetchedAt=fetchedAt;return {events,fetchedAt,stale:false};
     }
     catch(error){if(fallback){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:true};}if(years.get(year)===entry)years.delete(year);throw error;}
-    finally{entry.pending=null;}})();
+    finally{snapshotReady();entry.pending=null;entry.fallback=null;}})();
   }
-  const cal=entry.pending?await entry.pending:{events:entry.events,fetchedAt:entry.fetchedAt,stale:false};
+  let cal;
+  if(background&&ctx?.waitUntil&&entry.pending){
+   const pending=entry.pending;await entry.snapshotReady;
+   if(entry.pending&&entry.fallback&&entry.fallback.fetchedAt<=Date.now()-300000){
+    // Return the encrypted snapshot before Google; apply current rules below.
+    ctx.waitUntil(pending.catch(()=>{}));cal={events:entry.fallback.events,fetchedAt:entry.fallback.fetchedAt,stale:true,refreshing:true};
+   }else cal=await pending;
+  }else cal=entry.pending?await entry.pending:{events:entry.events,fetchedAt:entry.fetchedAt,stale:false};
   if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
-  return {year,...await decorate(env,{configured:true,...cal},c)};
+  return {year,...await decorate(env,{configured:true,...cal},c,ctx)};
  }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
@@ -407,7 +415,7 @@
    return {configured:!!c.googleColorBridge,endpoint:c.googleColorBridge?.endpoint||'',version:row.version+1};
   }
   if(path==='/admin/portal/colors')return calendarColors(env,data);
-  if(path==='/admin/portal/year')return yearCalendar(env,data.year);
+  if(path==='/admin/portal/year')return yearCalendar(env,data.year,ctx,data.background===true);
   if(path==='/portal/year'){
    const cal=await yearCalendar(env,data.year);
    // Preserve the same audience as the personal appointment list. Other people's

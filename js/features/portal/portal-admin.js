@@ -449,7 +449,7 @@
    const next=list.find(e=>e.id===nextId),changed=next&&(previous?.start!==next.start||previous?.sessionType!==next.sessionType||previous?.attendanceType!==next.attendanceType);
    if(!running&&(nextId!==current||changed))select(true);
    document.getElementById('portal-calendar-status').textContent=cal.configured?(cal.stale?'Kalender zuletzt nicht aktualisiert.':'Kalenderstand: '+new Date(cal.fetchedAt).toLocaleString('de-DE')):'Kalender unter Einstellungen → Kalender verbinden.';
-   if(privateAccess)await replies();else{replyData=null;paintReplies();}g.syncAttendanceStart?.();
+   g.syncAttendanceStart?.();if(privateAccess)await replies();else{replyData=null;paintReplies();}
   }catch(e){const status=document.getElementById('portal-calendar-status');if(epoch===attendanceEpoch&&status)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
   finally{loading=false;g.syncAttendanceStart?.();const again=attendanceRefreshPending;attendanceRefreshPending=false;if(again)await refreshAttendance(true);}
  }

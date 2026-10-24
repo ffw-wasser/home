@@ -30,7 +30,7 @@
  }
  function hide(){expanded=false;host()?.classList.remove('is-expanded');host()?.replaceChildren();if(host())host().hidden=true;}
  function clear(){generation++;pending=false;hide();source='';loadedAt=0;cached=null;refreshRequested=false;latestTiming={};timings=[];}
- function paint(cal,year){const renderStarted=now();host().hidden=false;const header=node('div'),todayButton=node('button','Heute');header.className='calendar-sidebar-heading';todayButton.type='button';todayButton.className='outline-button';todayButton.setAttribute('aria-label','Heute · heutigen Tag anzeigen');const expandButton=node('button'),expandIcon=node('span'),expandLabel=node('span','Zuklappen');expandButton.type='button';expandButton.className='calendar-expand';expandIcon.className='calendar-expand-icon';expandIcon.setAttribute('aria-hidden','true');expandButton.append(expandIcon,expandLabel);expandButton.setAttribute('aria-expanded',String(expanded));expandButton.setAttribute('aria-label',expanded?'Kalender zuklappen':'Kalender auf volle Breite erweitern');header.append(node('h2','Kalender '+year),todayButton,expandButton);host().replaceChildren(header);if(cal.stale)host().append(node('p','Veralteter Kalenderstand.'));const scroll=node('div');scroll.className='calendar-sidebar-scroll';scroll.id='calendar-sidebar-months';expandButton.setAttribute('aria-controls',scroll.id);host().append(scroll);const today=day(Date.now()),firstMonth=Number(today.slice(5,7))-1,lastYear=new Date(Date.UTC(year,firstMonth+2,1)).getUTCFullYear(),fromMonth=Date.UTC(year,firstMonth,1,12),toMonth=Date.UTC(year,firstMonth+3,0,12);header.querySelector('h2').textContent='Kalender '+year+(lastYear!==year?' / '+lastYear:'');
+ function paint(cal,year){const renderStarted=now();host().hidden=false;const header=node('div'),todayButton=node('button','Heute');header.className='calendar-sidebar-heading';todayButton.type='button';todayButton.className='outline-button';todayButton.setAttribute('aria-label','Heute · heutigen Tag anzeigen');const expandButton=node('button'),expandIcon=node('span'),expandLabel=node('span','Zuklappen');expandButton.type='button';expandButton.className='calendar-expand';expandIcon.className='calendar-expand-icon';expandIcon.setAttribute('aria-hidden','true');expandButton.append(expandIcon,expandLabel);expandButton.setAttribute('aria-expanded',String(expanded));expandButton.setAttribute('aria-label',expanded?'Kalender zuklappen':'Kalender auf volle Breite erweitern');header.append(node('h2','Kalender '+year),todayButton,expandButton);host().replaceChildren(header);if(cal.stale&&!cal.refreshing)host().append(node('p','Veralteter Kalenderstand.'));const scroll=node('div');scroll.className='calendar-sidebar-scroll';scroll.id='calendar-sidebar-months';expandButton.setAttribute('aria-controls',scroll.id);host().append(scroll);const today=day(Date.now()),firstMonth=Number(today.slice(5,7))-1,lastYear=new Date(Date.UTC(year,firstMonth+2,1)).getUTCFullYear(),fromMonth=Date.UTC(year,firstMonth,1,12),toMonth=Date.UTC(year,firstMonth+3,0,12);header.querySelector('h2').textContent='Kalender '+year+(lastYear!==year?' / '+lastYear:'');
    const indexed=new Map();for(const e of cal.events){if(!Number.isFinite(e.start)||!Number.isFinite(e.end))continue;const from=day(e.start),to=day(Math.max(e.start,e.end-1));for(let t=Math.max(Date.parse(from+'T12:00Z'),fromMonth);t<=Math.min(Date.parse(to+'T12:00Z'),toMonth);t+=86400000){const key=new Date(t).toISOString().slice(0,10);if(!indexed.has(key))indexed.set(key,[]);indexed.get(key).push(e);}}
    const indexedAt=now();for(let offset=0;offset<3;offset++){const stamp=new Date(Date.UTC(year,firstMonth+offset,15)),month=stamp.getUTCMonth(),monthYear=stamp.getUTCFullYear(),section=node('section'),heading=node('h3',monthLabel.format(stamp)+(monthYear!==year?' '+monthYear:''));section.setAttribute('aria-label',monthLabel.format(stamp)+' '+monthYear);section.append(heading);scroll.append(section);
     for(let d=1;d<=new Date(Date.UTC(monthYear,month+1,0)).getUTCDate();d++){const key=monthYear+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),stamp=Date.parse(key+'T12:00Z'),row=node('div');row.className='calendar-sidebar-day';if(new Date(stamp).getUTCDay()===0)row.classList.add('is-sunday');if(key===today)row.classList.add('is-today');row.append(node('strong',d+' '+weekdayLabel.format(stamp)));
@@ -38,7 +38,7 @@
    }const months=[...scroll.querySelectorAll('section')];
    function layout(){host().classList.toggle('is-expanded',expanded);fitExpanded();expandIcon.textContent=expanded?'←':'→';expandLabel.hidden=!expanded;expandButton.setAttribute('aria-expanded',String(expanded));expandButton.setAttribute('aria-label',expanded?'Kalender zuklappen':'Kalender auf volle Breite erweitern');expandButton.title=expanded?'Kalender zuklappen':'Kalender aufklappen';months.forEach(section=>{section.tabIndex=expanded?0:-1;section.scrollTop=0;});scroll.scrollTop=0;}
    function focusToday(){const row=scroll.querySelector('.is-today');if(!row)return;const container=expanded&&g.matchMedia('(min-width:761px)').matches?row.parentElement:scroll,heading=row.parentElement.querySelector('h3');container.scrollTop+=row.getBoundingClientRect().top-container.getBoundingClientRect().top-(heading?.getBoundingClientRect().height||0);}
-   expandButton.onclick=()=>{expanded=!expanded;layout();focusToday();};todayButton.onclick=focusToday;layout();focusToday();syncSelection();recordTiming({indexMs:Math.round(indexedAt-renderStarted),renderMs:Math.round(now()-indexedAt)});status(stand()+(cal.stale?' · Aktualisierung nicht bestätigt':''));}
+   expandButton.onclick=()=>{expanded=!expanded;layout();focusToday();};todayButton.onclick=focusToday;layout();focusToday();syncSelection();recordTiming({indexMs:Math.round(indexedAt-renderStarted),renderMs:Math.round(now()-indexedAt)});status(cal.loading?'Termine werden geladen …':stand()+(cal.refreshing?' · Wird aktualisiert …':cal.stale?' · Aktualisierung nicht bestätigt':''));}
  function syncSelection(){
   const selected=g.PortalAdmin?.selectedEvent?.()?.id;
   host()?.querySelectorAll('[data-calendar-event]').forEach(button=>{const active=button.dataset.calendarEvent===selected;button.classList.toggle('is-selected',active);button.setAttribute('aria-pressed',String(active));});
@@ -53,22 +53,28 @@
   // Retain authorized data only in memory across navigation, never on disk.
   // A known calendar appears immediately while an expired snapshot refreshes.
   if(cached&&host().hidden)paint(cached,year);
-  if(pending){if(host().hidden){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p','Kalender wird geladen …'));}if(cached)status(stand()+' · Wird aktualisiert …');return;}if(cached&&!refreshRequested&&Date.now()-loadedAt<300000){status(stand());return;}
+  if(pending){if(host().hidden)paint({year,events:[],loading:true},year);if(cached)status(stand()+' · Wird aktualisiert …');return;}if(cached&&!refreshRequested&&Date.now()-loadedAt<300000){status(stand()+(cached.refreshing?' · Wird aktualisiert …':cached.stale?' · Aktualisierung nicht bestätigt':''),cached.stale&&!cached.refreshing);return;}
   const epoch=++generation;pending=true;refreshRequested=false;host().hidden=false;
-  if(!cached)host().replaceChildren(node('h2','Kalender'),node('p','Kalender wird geladen …'));
+  if(!cached)paint({year,events:[],loading:true},year);
   else status(stand()+' · Wird aktualisiert …');
   const requestStarted=now();latestTiming={};
   const current=()=>epoch===generation&&authorized()&&source===g.DrinksStore.sourceKey()&&day(Date.now()).slice(0,7)===monthKey;
   try{
    const c=await g.DrinksCentral.connection();if(!current())return;if(!c||c.source!==source)throw Object.assign(Error('Bitte Gerätehaus-Verbindung prüfen.'),{status:403});
-   const years=lastYear===year?[year]:[year,lastYear],snapshots=await Promise.all(years.map(year=>g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year},35000)));if(!current())return;
-   if(snapshots.some((cal,i)=>cal.year!==years[i]||!Array.isArray(cal.events)))throw Error('Kalender bitte aktualisieren.');
-   const unique=new Map();for(const cal of snapshots)for(const event of cal.events)unique.set(JSON.stringify([event.id||event.title,event.start,event.end]),event);
-   const cal={...snapshots[0],monthKey,events:[...unique.values()],stale:snapshots.some(cal=>cal.stale)};
-   latestTiming.fetchMs=Math.round(now()-requestStarted);
-   if(cal.year!==year||!Array.isArray(cal.events))throw Error('Kalender bitte aktualisieren.');
-   cached=cal;loadedAt=Date.now();if(active())paint(cal,year);
-  }catch(e){if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(!cached)host().replaceChildren(node('h2','Kalender'));status((cached?stand()+' · ':'')+message.textContent,true);}}
+   const years=lastYear===year?[year]:[year,lastYear],read=background=>Promise.all(years.map(year=>g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year,background},35000)));
+   let snapshots=await read(true);
+   for(let pass=0;pass<2;pass++){
+    if(!current())return;
+    if(snapshots.some((cal,i)=>cal.year!==years[i]||!Array.isArray(cal.events)))throw Error('Kalender bitte aktualisieren.');
+    const unique=new Map();for(const cal of snapshots)for(const event of cal.events)unique.set(JSON.stringify([event.id||event.title,event.start,event.end]),event);
+    const cal={...snapshots[0],monthKey,events:[...unique.values()],stale:snapshots.some(cal=>cal.stale),refreshing:snapshots.some(cal=>cal.refreshing)};
+    latestTiming.fetchMs=Math.round(now()-requestStarted);
+    cached=cal;loadedAt=Date.now();if(active())paint(cal,year);
+    if(!cal.refreshing||pass===1)break;
+    // One joined refresh, not repeated polling; the shown snapshot remains visible.
+    snapshots=await read(false);
+   }
+  }catch(e){if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){if(cached)cached.refreshing=false;const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(!cached)host().replaceChildren(node('h2','Kalender'));status((cached?stand()+' · ':'')+message.textContent,true);}}
   finally{if(epoch===generation){pending=false;if(active()&&cached&&!host().querySelector('.calendar-sidebar-load-status'))status(stand());}}
  }
  g.CalendarSidebar={refresh,hide,clear,syncSelection,diagnostics:()=>timings.map(t=>({...t}))};g.addEventListener('resize',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(cached&&active())paint(cached,cached.year);refresh();}});setInterval(refresh,60000);setInterval(()=>{if(source&&(!authorized()||source!==g.DrinksStore.sourceKey()))clear();else if(source&&!active()&&!host()?.hidden)hide();},1000);document.addEventListener('DOMContentLoaded',()=>{mountDiagnostics();const nav=document.querySelector('.top-nav');if(nav&&g.ResizeObserver)new ResizeObserver(fitExpanded).observe(nav);g.visualViewport?.addEventListener('resize',fitExpanded);refresh();},{once:true});
