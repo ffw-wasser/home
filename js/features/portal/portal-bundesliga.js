@@ -65,8 +65,10 @@
   const key=JSON.stringify([favorite,today,today.map(m=>score(m)),fixtures,selectedGroup]);if(key!==paintKey){paintKey=key;const fragment=document.createDocumentFragment();if(!today.length)fragment.append(node('p','Heute sind keine Spiele gemeldet. Unter „Spieltag“ findest du die Bundesliga-Begegnungen.'));for(const match of today)fragment.append(matchCard(match));$('matches').replaceChildren(fragment);paintGroups();const round=document.createDocumentFragment(),matches=fixtures.filter(m=>String(m.group?.groupOrderID)===selectedGroup);if(!matches.length)round.append(node('p','Spieltag noch nicht verfügbar.'));for(const match of matches)round.append(matchCard({...match,competition:'Bundesliga'}));$('round').replaceChildren(round);}paintFavorite();
  }
  function visible(){return active&&!document.hidden;}
- function stopTicker(){clearTimeout(timer);controller?.abort('hidden');}
- function scheduleTicker(){clearTimeout(timer);if(visible())timer=setTimeout(()=>refreshAll(),todays(allMatches()).some(m=>(m.competition==='Bundesliga'||isFavorite(m))&&!m.matchIsFinished&&Date.parse(m.matchDateTimeUTC)<=Date.now())?60000:300000);}
+ function stopTicker(){clearTimeout(timer);controller?.abort('hidden');paintAutoStatus();}
+ function refreshInterval(){return todays(allMatches()).some(m=>(m.competition==='Bundesliga'||isFavorite(m))&&!m.matchIsFinished&&Date.parse(m.matchDateTimeUTC)<=Date.now())?60000:300000;}
+ function paintAutoStatus(){$('auto-status').textContent=(visible()?(refreshInterval()===60000?'Spiele automatisch · jede Minute':'Automatisch · alle 5 Minuten'):'Automatik pausiert')+(refreshedAt?' · Stand '+new Date(refreshedAt).toLocaleTimeString('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}):'');}
+ function scheduleTicker(){clearTimeout(timer);paintAutoStatus();if(visible())timer=setTimeout(()=>refreshAll(),refreshInterval());}
  async function publicJSON(path,signal){const response=await fetch(api+path,{credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',signal});if(!response.ok)throw Error('Daten nicht erreichbar');return response.json();}
  async function loadCups(year,signal,force){
   if(!favorite)return;
@@ -85,7 +87,7 @@
   finally{$('table').setAttribute('aria-busy','false');}
  }
  async function refreshAll(force=false){
-  if(!visible()||busy)return;if(!force&&Date.now()-refreshedAt<60000&&(!favorite||cups.size)){paintMatches();scheduleTicker();return;}busy=true;controller=new AbortController();const request=controller,timeout=setTimeout(()=>request.abort(),25000),year=season();$('refresh').disabled=true;
+  if(!visible()||busy)return;if(!force&&Date.now()-refreshedAt<60000&&(!favorite||cups.size)){paintMatches();scheduleTicker();return;}busy=true;controller=new AbortController();const request=controller,timeout=setTimeout(()=>request.abort(),25000),year=season();$('refresh').disabled=true;paintAutoStatus();
   if(yearLoaded!==year){fixtures=[];teams=[];cups.clear();catalog=null;catalogAt=0;fixturesAt=0;tableAt=0;yearLoaded=year;selectedGroup='';paintKey='';$('body').replaceChildren(document.createDocumentFragment());$('table').hidden=true;paintMatches();}
   $('season').textContent='Saison '+year+'/'+String(year+1).slice(-2);$('ticker-status').textContent='Spielstände werden aktualisiert …';
   const tableTask=loadTable(year,request.signal,force);
