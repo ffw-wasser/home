@@ -28,8 +28,8 @@
   const recorded=todayEntries().length;
   const hasProgress=recorded>0||count>0||Boolean(currentClosingTopic)||Boolean(typeof currentOperationDraft!=='undefined'&&currentOperationDraft)||Boolean(typeof pendingDocumentReport!=='undefined'&&pendingDocumentReport?.pageCount);
   const hero=byId('attendanceStartCard'),cancel=byId('cancelCurrentTermButton');
-  const options=byId('attendanceOptionsBody'),view=byId('attendanceView');if(summary&&options&&view){const host=homeFlowStage===2?options:view;if(summary.parentElement!==host){if(homeFlowStage===2)host.append(summary);else host.prepend(summary);}}
-  if(hero&&cancel){const host=homeFlowStage===1?byId('attendanceStartSecondary'):summary?.querySelector('.workflow-actions');if(host&&cancel.parentElement!==host)host.appendChild(cancel);cancel.hidden=!running;}
+  const view=byId('attendanceView');if(summary&&view){const progress=byId('homeFlowProgress');if(progress&&progress.nextElementSibling!==summary)progress.after(summary);else if(!progress&&summary.parentElement!==view)view.prepend(summary);}
+  if(hero&&cancel){const host=homeFlowStage===1?byId('attendanceStartActions'):summary?.querySelector('.workflow-actions');if(host&&cancel.parentElement!==host)host.appendChild(cancel);cancel.hidden=!running;}
   if(summary){summary.hidden=!running||Boolean(hero)&&homeFlowStage===1;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
  }
  function beforeSelection(){selectionKey=(currentSessionId||currentOperationId||'')+'|'+sessionType;selectionUndo=new Map(pendingMemberStatuses);}
@@ -50,7 +50,7 @@
  }
  function init(){
   initialized=true;
-  const view=byId('attendanceView'),summary=document.createElement('aside');summary.id='workflowSessionSummary';summary.className='workflow-session';summary.innerHTML='<p role="status"></p><div class="workflow-actions"><button type="button" class="primary-button">Termin fortsetzen</button><button type="button" class="outline-button" id="cancelCurrentTermButton">Termin abbrechen</button></div>';view.prepend(summary);
+  const view=byId('attendanceView'),summary=document.createElement('aside');summary.id='workflowSessionSummary';summary.className='workflow-session';summary.innerHTML='<p role="status"></p><div class="workflow-actions"><button type="button" class="primary-button">Termin fortsetzen</button><button type="button" class="term-cancel-button" id="cancelCurrentTermButton"><span aria-hidden="true">×</span><span>Termin abbrechen</span></button></div>';view.prepend(summary);
   summary.querySelector('button').onclick=()=>{setHomeFlowStage(2);showView('attendanceView');};
   byId('cancelCurrentTermButton').onclick=()=>{if(discardCurrentAttendanceSession()){showView('attendanceView');attendance();}};
   const hint=byId('attendanceDraftStatus');if(hint){const actions=document.createElement('div');actions.className='workflow-actions';actions.innerHTML='<button id="attendanceUndo" type="button" class="outline-button" hidden>Letzte Markierung zurücknehmen</button><button id="attendanceSyncAction" type="button" class="outline-button">OneDrive verbinden</button>';hint.after(actions);byId('attendanceUndo').onclick=undoSelection;byId('attendanceSyncAction').onclick=()=>{if(!oneDriveSignedIn()||navigator.onLine===false)byId('cloudSyncButton')?.click();else syncOneDrive({manual:true,refreshHistory:false});};}

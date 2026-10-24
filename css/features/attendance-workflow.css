@@ -1225,14 +1225,15 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
 .home-start-layout .attendance-start-card h2{font-size:clamp(24px,2.2vw,30px);line-height:1.25}.home-start-layout .attendance-start-card{padding:0 0 12px}.home-start-layout .attendance-start-card .eyebrow{color:#196e39}.home-start-layout .attendance-start-card #continueToAttendanceButton{max-width:none}.home-start-layout .attendance-start-card #attendanceStartMeta{background:#edf6ef;border-left-color:#196e39;color:#18344c}.home-start-layout .attendance-start-card #attendanceStartMeta{font-size:1.05rem;padding:8px 12px;margin:8px 0}.home-start-layout .attendance-start-card #attendanceStartSummary{font-size:.95rem;padding:0;margin:8px 0 12px}.home-start-layout .home-operation-icon{width:64px;height:64px}.home-start-layout .home-operation-icon svg{width:48px;height:48px}
 @media(max-width:760px){.home-start-layout .home-operation-icon{width:56px;height:56px}.home-start-layout .home-operation-icon svg{width:42px;height:42px}}
 .home-start-side{display:flex;flex-direction:column;gap:20px;min-width:0}
+.home-start-layout .attendance-start-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px}.home-start-layout .attendance-start-actions>.session-continue-actions{flex:1 1 240px;min-width:0}.home-start-layout #attendanceStartActions>#cancelCurrentTermButton{flex:1 1 200px;min-height:56px}
 .home-start-layout .attendance-start-card .eyebrow{margin:0 0 8px}.home-start-layout .attendance-start-card h2{margin:8px 0}.home-start-layout .attendance-start-actions .session-continue-actions{border:0}.home-start-layout #attendanceStartSummary[hidden]{display:none!important}
 @media(min-width:761px){
- .home-start-layout:has(#calendar-sidebar:not([hidden])){align-items:stretch}
- .home-start-layout:has(#calendar-sidebar:not([hidden]))>.home-session-type-panel{display:flex!important;flex-direction:column}
- .home-start-layout:has(#calendar-sidebar:not([hidden])) .attendance-start-card{flex:0 0 auto}
- .home-start-layout:has(#calendar-sidebar:not([hidden]))>.home-start-side>.home-operation-tile,.home-start-layout:has(#calendar-sidebar:not([hidden]))>.home-start-side>.home-spontaneous-tile{flex:1}
- .home-start-layout:has(#calendar-sidebar:not([hidden])) .home-operation-action,.home-start-layout:has(#calendar-sidebar:not([hidden])) .home-spontaneous-action{margin-top:auto}
- .home-start-layout:has(#calendar-sidebar:not([hidden])) .home-spontaneous-tile:not([open])>summary{height:100%;box-sizing:border-box}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])){align-items:stretch}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden]))>.home-session-type-panel{display:flex!important;flex-direction:column}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .attendance-start-card{flex:0 0 auto}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden]))>.home-start-side>.home-operation-tile,.home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden]))>.home-start-side>.home-spontaneous-tile{flex:1}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .home-operation-action,.home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .home-spontaneous-action{margin-top:auto}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .home-spontaneous-tile:not([open])>summary{height:100%;box-sizing:border-box}
 }
 
 .home-spontaneous-tile{margin:0;border:1px solid #cbddee;border-top:4px solid #176cba;border-radius:18px;background:linear-gradient(145deg,#fff 25%,#f1f7fd);color:#18344c;box-shadow:0 6px 20px #1025340d;min-width:0;overflow-wrap:anywhere}

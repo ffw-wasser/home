@@ -5010,14 +5010,14 @@ body {
   justify-content: flex-end!important;
   position: relative!important;
   z-index: 10!important;
-  margin-top: 16px!important;
-  padding-top: 14px!important;
-  border-top: 1px solid #e0e5e7!important}
+  margin: 0!important;
+  padding: 0!important;
+  border: 0!important}
 
 .session-continue-actions #continueToAttendanceButton {
   display: inline-flex!important;
   min-width: 220px!important;
-  min-height: 46px!important;
+  min-height: 56px!important;
   pointer-events: auto!important;
   cursor: pointer!important}
 
