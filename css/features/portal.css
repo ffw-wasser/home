@@ -5,12 +5,12 @@
 /* Both icon classes follow their current container when tiles are moved. */
 .deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;font-size:24px;line-height:1}
 .deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img){display:block;width:24px;height:24px;max-width:100%;max-height:100%;object-fit:contain}
-#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;grid-column:1;grid-row:1;align-self:start;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;color:#176eb1;font-size:26px;line-height:1}
+#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;grid-column:1;grid-row:1;align-self:start;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;color:#12639d;font-size:26px;line-height:1}
 #portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img){display:block;width:26px;height:26px;max-width:100%;max-height:100%;object-fit:contain}
 #portal-more-grid [data-portal-tile="more-year-plan"] strong{overflow-wrap:anywhere}
 #portal-more-grid [data-portal-tile="more-breathing"] strong{word-break:normal;overflow-wrap:normal;hyphens:none}
 @media(pointer:coarse) and (max-height:500px) and (orientation:landscape){.deckel-nav button{justify-content:center}}
-.deckel-nav button>strong{font-size:inherit;max-width:100%;overflow-wrap:anywhere}
+.deckel-nav button>strong{font-size:inherit;max-width:100%;white-space:nowrap;overflow-wrap:normal;word-break:normal}
 [data-portal-tile],[data-portal-pinned]{--portal-symbol:#176eb1;--portal-symbol-active:#8bcfff}
 [data-portal-tile="portal-evidence"]{--portal-symbol:#187449;--portal-symbol-active:#92e4b6}
 [data-portal-tile="account"]{--portal-symbol:#9a5d08;--portal-symbol-active:#ffd17d}
