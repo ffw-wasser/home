@@ -177,7 +177,7 @@
 
 /* Short screens use one reply row; labels wrap without shrinking touch targets. */
 @media(max-width:600px) and (max-height:699px){
- #portal-events .portal-event{padding:8px 10px}
+ #portal-events .portal-event{padding:4px 10px}
  #portal-events .portal-event-content{gap:3px}
  #portal-events .portal-event h3{font-size:1.25rem}
  #portal-events .portal-answer{margin:6px 0}
