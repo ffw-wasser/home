@@ -79,7 +79,8 @@ test('Startseite öffnet ohne Passwort und verändert keine Nutzdaten', () => {
 test('Offline-Installation lädt aktuelle Symbole und spart historische Grafiken sowie Einrichtungsdateien aus',async()=>{
  const w=worker();let installation;
  w.events.install({waitUntil:task=>installation=task});await installation;
- for(const size of [96,180,192,512])assert.ok(w.precached.some(url=>url.includes('h2o-symbol-white-'+size+'.png')));
+ assert.ok(w.precached.some(url=>url.includes('h2o-symbol-white-96.png')));
+ for(const size of [180,192,512])assert.ok(w.precached.some(url=>url.includes('h2o-symbol-blue-'+size+'.png')));
  assert.ok(w.precached.some(url=>url.startsWith('./index.html')));assert.ok(w.precached.includes('./deckel.html'));
  for(const old of ['deckel-home-v2-','deckel-icon-','ffw-header.svg','docs/google-calendar-colors/'])assert.equal(w.precached.some(url=>url.includes(old)),false,old);
 });
