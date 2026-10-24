@@ -7572,3 +7572,5 @@ html body .participant-command-header .compact-menu {
 .app-update-banner:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px auto;padding:14px 18px;width:calc(100% - 24px);max-width:1200px;box-sizing:border-box;border:1px solid #a8c9df;border-radius:14px;background:#edf6fc;color:#163c58}
 .app-update-banner p{margin:0;flex:1 1 220px;font-size:1rem;line-height:1.5;overflow-wrap:anywhere}
 .app-update-banner button{min-height:46px;max-width:100%;white-space:normal}
+
+.checkin-dialog{width:min(94vw,560px);max-height:90dvh;overflow:auto;padding:24px;border:0;border-radius:20px;background:#fff;color:#152d40}.checkin-dialog::backdrop{background:#071927b3}.checkin-dialog button{min-height:48px;margin:6px;padding:10px 18px}.checkin-dialog [role=status]{font-size:1.2rem;font-weight:700}.checkin-dialog [data-success=true]{color:#146b36}

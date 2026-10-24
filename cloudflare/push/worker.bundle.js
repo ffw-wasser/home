@@ -21941,6 +21941,20 @@ g.PortalHydrants={schema,route};
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster');
+  if(path==='/portal/checkin-code'){
+   await assertMember(env,record);
+   const expiresAt=Date.now()+90000;
+   const sealed=await L.seal(env,{alias:record.alias,revision:record.revision,source:m.source,expiresAt},'attendance-checkin-v1');
+   return {code:'FFW-CHECKIN:1:'+btoa(sealed),expiresAt};
+  }
+  if(path==='/admin/portal/checkin-resolve'){
+   if(typeof data.code!=='string'||data.code.length>4096||!data.code.startsWith('FFW-CHECKIN:1:'))fail('Kein gültiger Anwesenheitscode.',400);
+   let ticket;try{ticket=await L.open(env,atob(data.code.slice(14)),'attendance-checkin-v1');}catch{fail('Anwesenheitscode ungültig. Bitte neu öffnen.',400);}
+   if(!Number.isFinite(ticket.expiresAt)||ticket.expiresAt<=Date.now()||ticket.expiresAt>Date.now()+90000||ticket.source!==m.source)fail('Code abgelaufen. Bitte im Portal neu öffnen.',400);
+   const active=await assertAlias(env,ticket.alias);
+   if(!active||active.revision!==ticket.revision||!roster?.members.some(person=>person.id===active.memberId))fail('Mitgliedszugang nicht mehr freigegeben.',403);
+   return {memberId:active.memberId};
+  }
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
   if(path==='/admin/portal/groups'){
    const current=await audienceGroups(env);
@@ -22196,7 +22210,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"86843b0a4ac4678650fa97b5d48861ac303ad13b6b60cbde48a2ee185a197d05",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"f336dea3a050454b16a7658bf7989c609aa6adec2cc678172f21f5f91f2d09bc",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

@@ -284,6 +284,20 @@
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster');
+  if(path==='/portal/checkin-code'){
+   await assertMember(env,record);
+   const expiresAt=Date.now()+90000;
+   const sealed=await L.seal(env,{alias:record.alias,revision:record.revision,source:m.source,expiresAt},'attendance-checkin-v1');
+   return {code:'FFW-CHECKIN:1:'+btoa(sealed),expiresAt};
+  }
+  if(path==='/admin/portal/checkin-resolve'){
+   if(typeof data.code!=='string'||data.code.length>4096||!data.code.startsWith('FFW-CHECKIN:1:'))fail('Kein gültiger Anwesenheitscode.',400);
+   let ticket;try{ticket=await L.open(env,atob(data.code.slice(14)),'attendance-checkin-v1');}catch{fail('Anwesenheitscode ungültig. Bitte neu öffnen.',400);}
+   if(!Number.isFinite(ticket.expiresAt)||ticket.expiresAt<=Date.now()||ticket.expiresAt>Date.now()+90000||ticket.source!==m.source)fail('Code abgelaufen. Bitte im Portal neu öffnen.',400);
+   const active=await assertAlias(env,ticket.alias);
+   if(!active||active.revision!==ticket.revision||!roster?.members.some(person=>person.id===active.memberId))fail('Mitgliedszugang nicht mehr freigegeben.',403);
+   return {memberId:active.memberId};
+  }
   if(path.startsWith('/portal/theater/')||path.startsWith('/admin/portal/theater/'))return g.TheaterService.route(path,data,env,admin,record,roster);
   if(path==='/admin/portal/groups'){
    const current=await audienceGroups(env);

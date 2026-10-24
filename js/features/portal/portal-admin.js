@@ -498,5 +498,5 @@
   queueMicrotask(()=>refreshAttendance(true));
   setInterval(()=>{if(document.hidden)return;if(!byId('attendanceView').hidden)refreshAttendance();if(!document.getElementById(CALENDAR).hidden&&!document.getElementById('portal-calendar-administration').hidden)reviewCalendar({automatic:true});},60000);
  }
- g.PortalAdmin={load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={resolveCheckin:code=>request('checkin-resolve',{code}),checkinContext:()=>({eventId:chosen(),replies:replyData,source:g.DrinksStore.sourceKey()}),load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
