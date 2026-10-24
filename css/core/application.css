@@ -7608,3 +7608,6 @@ html body .participant-command-header .compact-menu {
 .checkin-success[hidden]{display:none}
 
 .checkin-camera[data-state=error] .checkin-tracking polygon{stroke:#ff8b8b;fill:#ff000010}.checkin-camera[data-state=checking] .checkin-tracking polygon,.checkin-camera[data-state=readable] .checkin-tracking polygon{stroke:#ffd45b;fill:#ffd45b10}
+
+.checkin-scanner-dialog{box-sizing:border-box}
+@media(min-width:768px){.checkin-scanner-dialog{margin-left:auto;margin-right:max(16px,env(safe-area-inset-right,0px))}}

@@ -46,7 +46,7 @@
  }
  async function scan(){
   if(!oneDriveAdministrationReady()||homeFlowStage!==2||!(currentSessionId||currentOperationId))return showToast('Bitte zuerst einen Termin starten und OneDrive verbinden.','error');
-  prepareAudio();const d=panel('Anwesenheit scannen');scope=context();
+  prepareAudio();const d=panel('Anwesenheit scannen');d.classList.add('checkin-scanner-dialog');scope=context();
   const event=g.PortalAdmin.selectedEvent?.(),term=node('p',(event?.title||(typeof currentClosingTopic==='string'?currentClosingTopic:'')||sessionType)+' · '+today());d.insertBefore(term,status);
   const tools=node('div');tools.className='checkin-tools';const soundButton=node('button',sound?'Ton an':'Ton aus');soundButton.type='button';soundButton.setAttribute('aria-pressed',String(sound));soundButton.onclick=()=>{sound=!sound;soundButton.textContent=sound?'Ton an':'Ton aus';soundButton.setAttribute('aria-pressed',String(sound));if(sound)beep();};tools.append(soundButton);
   video=node('video');video.autoplay=true;video.muted=true;video.playsInline=true;canvas=node('canvas');guideFrame=node('div');guideFrame.className='checkin-camera';
