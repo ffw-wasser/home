@@ -21693,7 +21693,7 @@ g.PortalHydrants={schema,route};
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}return new TextDecoder().decode(bytes);
  }
  async function projection(url,range=null){const raw=await download(url),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[],series=new Map();for(const item of items){const {key,seriesKey,...rest}=item;if(!series.has(seriesKey))series.set(seriesKey,await hash('h2o-series/v1:'+url+':'+seriesKey));events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:series.get(seriesKey),...rest});}return events;}
- async function yearCalendar(env,year){
+ async function yearCalendar(env,year,ctx,background=false){
   if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
   const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
   const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
@@ -21703,13 +21703,14 @@ g.PortalHydrants={schema,route};
   for(const [key,value] of years)if(value.url!==c.calendarUrl)years.delete(key);
   let entry=years.get(year);
   if(!entry||!entry.pending&&entry.fetchedAt<=Date.now()-300000){
-   const previous=entry;entry={url:c.calendarUrl,fetchedAt:0,pending:null};years.set(year,entry);
+   const previous=entry;entry={url:c.calendarUrl,fetchedAt:0,pending:null,fallback:null};let snapshotReady;entry.snapshotReady=new Promise(resolve=>snapshotReady=resolve);years.set(year,entry);
    while(years.size>3)years.delete(years.keys().next().value);
-   entry.pending=(async()=>{let fallback=previous?.events?previous:null;
+   entry.pending=(async()=>{let fallback=previous?.events?{events:previous.events,fetchedAt:previous.fetchedAt}:null;
     try{
      // Encrypted snapshots also serve cold isolates without recalculating every
      // historical series. They never contain recipient decisions or reply data.
      const row=await env.DB.prepare('SELECT * FROM portal_calendar_year WHERE year=?').bind(year).first(),saved=await open(env,row,'portal-calendar-year:'+year);if(saved?.calendarUrl===c.calendarUrl&&Array.isArray(saved.events)&&(!fallback||row.fetched_at>fallback.fetchedAt))fallback={events:saved.events,fetchedAt:row.fetched_at};
+     entry.fallback=fallback;snapshotReady();
      if(fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
      const events=await projection(c.calendarUrl,range),fetchedAt=Date.now();
      if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
@@ -21718,11 +21719,18 @@ g.PortalHydrants={schema,route};
      entry.events=events;entry.fetchedAt=fetchedAt;return {events,fetchedAt,stale:false};
     }
     catch(error){if(fallback){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:true};}if(years.get(year)===entry)years.delete(year);throw error;}
-    finally{entry.pending=null;}})();
+    finally{snapshotReady();entry.pending=null;entry.fallback=null;}})();
   }
-  const cal=entry.pending?await entry.pending:{events:entry.events,fetchedAt:entry.fetchedAt,stale:false};
+  let cal;
+  if(background&&ctx?.waitUntil&&entry.pending){
+   const pending=entry.pending;await entry.snapshotReady;
+   if(entry.pending&&entry.fallback&&entry.fallback.fetchedAt<=Date.now()-300000){
+    // Return the encrypted snapshot before Google; apply current rules below.
+    ctx.waitUntil(pending.catch(()=>{}));cal={events:entry.fallback.events,fetchedAt:entry.fallback.fetchedAt,stale:true,refreshing:true};
+   }else cal=await pending;
+  }else cal=entry.pending?await entry.pending:{events:entry.events,fetchedAt:entry.fetchedAt,stale:false};
   if((await config(env))?.calendarUrl!==c.calendarUrl)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
-  return {year,...await decorate(env,{configured:true,...cal},c)};
+  return {year,...await decorate(env,{configured:true,...cal},c,ctx)};
  }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
@@ -22064,7 +22072,7 @@ g.PortalHydrants={schema,route};
    return {configured:!!c.googleColorBridge,endpoint:c.googleColorBridge?.endpoint||'',version:row.version+1};
   }
   if(path==='/admin/portal/colors')return calendarColors(env,data);
-  if(path==='/admin/portal/year')return yearCalendar(env,data.year);
+  if(path==='/admin/portal/year')return yearCalendar(env,data.year,ctx,data.background===true);
   if(path==='/portal/year'){
    const cal=await yearCalendar(env,data.year);
    // Preserve the same audience as the personal appointment list. Other people's
@@ -22210,7 +22218,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"f336dea3a050454b16a7658bf7989c609aa6adec2cc678172f21f5f91f2d09bc",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"b2a09867314ef3dca69253f31a97ed034783eebc59005c2c83d295e3aca237c4",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

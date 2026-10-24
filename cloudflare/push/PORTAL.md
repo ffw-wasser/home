@@ -282,3 +282,23 @@ in den Mitgliederdaten gezielt, hat diese neue Basis Vorrang; alte Eigenangaben
 werden nicht erneut aktiv, wenn das frühere Datum später wieder eingetragen wird.
 Portalbestätigungen werden nicht automatisch in die lokalen Gerätehaus-Nachweise
 zurückgeschrieben. Die konkrete Einsatzfreigabe ist gesondert zu prüfen.
+
+
+## Hauptkalender: schnelle Anzeige und Aktualisierung
+
+Der private Abruf `/admin/portal/year` unterstützt `background: true`.
+Bei einem abgelaufenen Jahresstand wird die vorhandene verschlüsselte Rohprojektion
+bereits nach dem Lesen aus D1 zurückgegeben (`stale: true`, `refreshing: true`).
+Google wird mit `ctx.waitUntil` weiter abgerufen. Freigaben, Empfängerregeln,
+Mitglieder und Darstellung werden weiterhin für jede Antwort neu angewendet;
+es werden keine alten dekorierten oder quellenfremden Antworten wiederverwendet.
+Optionale Google-Farben verzögern diesen Abruf nicht. Ohne gespeicherten Stand
+oder ohne Worker-Kontext bleibt der vollständige Abruf erhalten.
+
+Die Hauptansicht zeigt die lokal berechnete Monatsstruktur vor dem Verbindungsabruf.
+Bei `refreshing` hält sie den gekennzeichneten Stand sichtbar und schließt sich mit
+genau einem weiteren Abruf ohne Hintergrundoption an dieselbe laufende Aktualisierung
+an. Es gibt kein schnelles Polling und keinen zusätzlichen Google-Import.
+Zugriffsentzug und Quellenwechsel verwerfen auch verspätete Antworten. Der Kalender
+bleibt im Browser nur im Arbeitsspeicher. Jahreswechsel laden weiterhin beide Jahre.
+Die obere Terminkarte wartet beim Aktualisieren nicht auf die privaten Rückmeldungen.

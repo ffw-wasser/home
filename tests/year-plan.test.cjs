@@ -84,4 +84,27 @@ test('Auch mit Jahrescache werden geänderte Empfänger sofort angewendet; ander
  assert.equal((await f.call('year',{year:2026})).value.events.length,0);assert.equal((await f.call('year',{year:2026},f.people[1])).value.events.length,1);assert.equal(f.calendarFetches(),before);
  const configRow=f.sql.prepare('SELECT * FROM portal_config WHERE id=1').get(),config=await f.L.open(f.env,configRow.payload,'portal-config');config.calendarUrl='https://calendar.google.com/calendar/ical/other-test-calendar/public/basic.ics';f.sql.prepare('UPDATE portal_config SET payload=? WHERE id=1').run(await f.L.seal(f.env,config,'portal-config'));f.offline(true);
  assert.equal((await f.call('year',{year:2026},null,true)).status,503,'a snapshot from a different Google source must never be returned');
+ const jobs=[];assert.equal((await f.call('year',{year:2026,background:true},null,true,{waitUntil:job=>jobs.push(job)})).status,503,'fast loading must not return a different source either');await Promise.all(jobs);
+});
+
+async function withoutGoogleWait(promise){
+ let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Kalender wartet auf den absichtlich angehaltenen Google-Abruf.')),2000);})]);}finally{clearTimeout(timer);}
+}
+test('Hauptkalender zeigt abgelaufenen verschlüsselten Jahresstand auch nach Neustart vor Google und übernimmt aktuelle Regeln',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')}),warm=(await f.call('year',{year:2026},null,true)).value,id=warm.events[0].id;
+ const rulesRow=f.sql.prepare('SELECT * FROM portal_rules WHERE id=1').get(),rules=await f.L.open(f.env,rulesRow.payload,'portal-rules');rules[id].approved=false;f.sql.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1').run(await f.L.seal(f.env,rules,'portal-rules'));
+ f.clock.now+=301000;f.raw(ics([event('new','20260616','Probe Neu')]));
+ let release,googleCalls=0;const gate=new Promise(resolve=>release=resolve),fetch=f.c.fetch,jobs=[],ctx={waitUntil:job=>jobs.push(job)},env={...f.env,DB:{...f.DB}};
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/')){googleCalls++;await gate;}return fetch(url,options);};
+ const read=async background=>{const response=await f.c.worker.fetch(new Request('https://test.example/admin/portal/year',{method:'POST',headers:{Authorization:'Bearer '+f.env.ADMIN_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({source:'test-source',year:2026,background})}),env,ctx);return {status:response.status,value:await response.json()};};
+ try{
+  const quick=await withoutGoogleWait(read(true));assert.equal(quick.status,200);assert.equal(quick.value.stale,true);assert.equal(quick.value.refreshing,true);assert.equal(quick.value.fetchedAt,warm.fetchedAt);assert.equal(quick.value.events[0].title,warm.events[0].title);assert.equal(quick.value.events[0].approved,false,'revoked approval applies to the cached raw snapshot immediately');assert.equal(jobs.length,1);assert.equal(googleCalls,1);
+  let completed=false;const current=read(false).then(result=>{completed=true;return result;});await new Promise(setImmediate);assert.equal(completed,false,'the joined refresh waits without blocking the initial snapshot');release();const fresh=await current;assert.equal(fresh.status,200);assert.equal(fresh.value.stale,false);assert.equal(fresh.value.events[0].title,'Probe Neu');assert.equal(googleCalls,1,'the foreground refresh joins the existing import');
+ }finally{release();await Promise.all(jobs);}
+});
+test('Optionale Google-Farben halten den Hauptkalender auch bei kaltem Farbcache nicht auf',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});await f.call('year',{year:2026},null,true);
+ const row=f.sql.prepare('SELECT * FROM portal_config WHERE id=1').get(),config=await f.L.open(f.env,row.payload,'portal-config');config.googleColorBridge={endpoint:'https://script.google.com/macros/s/'+'a'.repeat(25)+'/exec',secret:'s'.repeat(32)};f.sql.prepare('UPDATE portal_config SET payload=? WHERE id=1').run(await f.L.seal(f.env,config,'portal-config'));
+ let release,bridgeCalls=0;const gate=new Promise(resolve=>release=resolve),fetch=f.c.fetch,jobs=[];f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://script.google.com/')){bridgeCalls++;await gate;throw Error('Synthetischer Farbfehler');}return fetch(url,options);};
+ try{const result=await withoutGoogleWait(f.call('year',{year:2026,background:true},null,true,{waitUntil:job=>jobs.push(job)}));assert.equal(result.status,200);assert(result.value.events.length>0);assert.equal(result.value.googleColorStatus,'fallback');assert.equal(bridgeCalls,1);assert.equal(jobs.length,1);}finally{release();await Promise.all(jobs);}
 });
