@@ -15,22 +15,28 @@ test('WhatsApp-Einstellungen haben keine separate Verbindung oder Registrierung 
  for(const id of ['portal-browser-start','portal-browser-copy','portal-browser-revoke','portal-browser-legacy'])assert.ok(!html.includes('id="'+id+'"'));
  assert.ok(html.includes('id="identity-login"'));
 });
-function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search='',userAgent='',platform='',maxTouchPoints=0,blocked=false}={}){
- const dom=elements(read('termin.html')),assigned=[],back=[];
+function responseContext({standalone=false,from='',historyLength=1,savedURL=null,search='',userAgent='',platform='',maxTouchPoints=0,blocked=false,connected=false,replyFails=false,closeBlocked=false,initialStatus='open'}={}){
+ const dom=elements(read('termin.html')),assigned=[],back=[],closes=[],listeners=new Set(),timers=new Map();let timerId=0;
+ const event={id:'a'.repeat(43),start:Date.now()+86400000,title:'Synthetische Probe',status:initialStatus,version:0};
+ const replies=['yes','excused','maybe'].map(value=>{const n=new Node();n.dataset={reply:value};return n;});dom.chosen.querySelectorAll=()=>replies;
+ const document={hidden:false,referrer:from,getElementById:id=>dom[id],createElement:()=>new Node(),addEventListener:(type,fn)=>{if(type==='visibilitychange')listeners.add(fn);},removeEventListener:(type,fn)=>listeners.delete(fn)};
  const location={href:'https://ffw-wasser.github.io/home/termin.html',origin:'https://ffw-wasser.github.io',pathname:'/home/termin.html',search,hash:'',assign:url=>{assigned.push(url);if(blocked)throw Error('blocked');}};
  const history={length:historyLength,replaceState(){},back:()=>back.push(true)};
  const c=vm.createContext({
   console,URL,URLSearchParams,Intl,Date,location,history,
   navigator:{standalone,userAgent,platform,maxTouchPoints},
-  document:{referrer:from,getElementById:id=>dom[id],createElement:()=>new Node()},
+  document,AbortController,
+  H2OIdentity:{session:()=>connected?{scope:'portal',expiresAt:Date.now()+86400000,alias:'synthetic',revision:'test',token:'synthetic'}:null},
+  fetch:async(url,options)=>{if(url.endsWith('/reply')){if(replyFails)throw Error('offline');const body=JSON.parse(options.body);event.status=body.status;event.version++;return {ok:true,json:async()=>({ok:true,status:event.status,version:event.version})};}return {ok:true,json:async()=>({events:[event],stale:false})};},
+  close:()=>{closes.push(true);if(closeBlocked)throw Error('browser blocked closing');},
   matchMedia:()=>({matches:standalone}),localStorage:{getItem:()=>null,removeItem(){}},
   DeckelDevice:{read:async()=>savedURL?{url:savedURL}:null,readLink:async()=>null},
   confirm:()=>true,
   crypto:{randomUUID:()=> 'request-test-id'},
-  setTimeout:()=>1,clearTimeout(){}
+  setTimeout:(fn)=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id)
  });
  vm.runInContext(read('js/features/portal/portal-whatsapp.js'),c);
- return {dom,assigned,back};
+ return {dom,assigned,back,closes,replies,listeners,hidePage(){document.hidden=true;for(const fn of [...listeners])fn();},showPage(){document.hidden=false;for(const fn of [...listeners])fn();},expire(){for(const fn of [...timers.values()])fn();}};
 }
 test('WhatsApp öffnet auf Handys und iPad erst beim Tippen ohne Termindaten',()=>{
  for(const device of [{userAgent:'iPhone'},{userAgent:'Android'},{userAgent:'iPad'},{userAgent:'Macintosh',platform:'MacIntel',maxTouchPoints:5}]){
@@ -54,6 +60,26 @@ test('Blockierter App-Aufruf behält einen verständlichen manuellen Rückweg',(
  const run=responseContext({userAgent:'iPhone',blocked:true});
  assert.doesNotThrow(()=>run.dom['back-to-whatsapp'].events.click());
  assert.match(run.dom['back-to-h2o-status'].textContent,/App-Umschalter/);
+});
+const settle=()=>new Promise(resolve=>setImmediate(resolve));
+test('Nur der bestätigte Rückmelde-Tab erhält nach dem expliziten App-Wechsel einen Schließversuch',async()=>{
+ const run=responseContext({connected:true,userAgent:'iPhone',search:'?event='+'a'.repeat(43)});await settle();
+ run.dom['back-to-whatsapp'].events.click();run.hidePage();assert.equal(run.closes.length,0,'not saved yet');run.showPage();
+ run.replies[0].events.click();await settle();assert.equal(run.dom.status.textContent,'✓ Gespeichert!');assert.equal(run.closes.length,0,'saving alone never closes');
+ run.dom['back-to-whatsapp'].events.click();assert.equal(run.closes.length,0,'leave time for the app-opening prompt');assert.match(run.dom['back-to-h2o-status'].textContent,/Rückmeldung gespeichert. Du kannst diese Seite schließen./);
+ run.showPage();assert.equal(run.closes.length,0);run.hidePage();assert.equal(run.closes.length,1);assert.equal(run.listeners.size,0);run.hidePage();assert.equal(run.closes.length,1,'attempt only once');
+});
+test('Geladene Antwort, unbestätigte Speicherung und abgelaufener App-Wechsel schließen keinen Tab',async()=>{
+ const loaded=responseContext({connected:true,initialStatus:'yes',userAgent:'Android',search:'?event='+'a'.repeat(43)});await settle();loaded.dom['back-to-whatsapp'].events.click();loaded.hidePage();assert.equal(loaded.closes.length,0);
+ const pending=responseContext({connected:true,replyFails:true,userAgent:'iPhone',search:'?event='+'a'.repeat(43)});await settle();pending.replies[0].events.click();await settle();pending.dom['back-to-whatsapp'].events.click();pending.hidePage();assert.deepEqual(pending.assigned,[]);assert.equal(pending.closes.length,0);assert.match(pending.dom['back-to-h2o-status'].textContent,/noch nicht bestätigt/);
+ const expired=responseContext({connected:true,userAgent:'Android',search:'?event='+'a'.repeat(43)});await settle();expired.replies[0].events.click();await settle();expired.dom['back-to-whatsapp'].events.click();expired.expire();expired.hidePage();assert.equal(expired.closes.length,0);
+});
+test('Neue Speicherung oder blockierter WhatsApp-Aufruf verwirft den vorherigen Schließversuch',async()=>{
+ const run=responseContext({connected:true,userAgent:'iPhone',search:'?event='+'a'.repeat(43)});await settle();run.replies[0].events.click();await settle();run.dom['back-to-whatsapp'].events.click();run.replies[1].events.click();run.hidePage();await settle();assert.equal(run.closes.length,0);assert.equal(run.listeners.size,0);
+ const blocked=responseContext({connected:true,blocked:true,userAgent:'Android',search:'?event='+'a'.repeat(43)});await settle();blocked.replies[0].events.click();await settle();blocked.dom['back-to-whatsapp'].events.click();blocked.hidePage();assert.equal(blocked.closes.length,0);assert.equal(blocked.listeners.size,0);assert.match(blocked.dom['back-to-h2o-status'].textContent,/Du kannst diese Seite schließen/);
+});
+test('Blockiertes Schließen lässt die bestätigte Rückmeldung und den Hinweis stehen',async()=>{
+ const run=responseContext({connected:true,closeBlocked:true,userAgent:'iPhone',search:'?event='+'a'.repeat(43)});await settle();run.replies[0].events.click();await settle();run.dom['back-to-whatsapp'].events.click();assert.doesNotThrow(()=>run.hidePage());assert.equal(run.closes.length,1);assert.equal(run.dom.status.textContent,'✓ Gespeichert!');assert.match(run.dom['back-to-h2o-status'].textContent,/Du kannst diese Seite schließen/);
 });
 test('Terminseite enthält keine überflüssigen Zugangs- und H2O-Buttons',()=>{
  const html=read('termin.html');
