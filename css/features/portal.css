@@ -59,7 +59,7 @@
 .portal-evidence-date{font-size:0.9375rem;font-weight:700;line-height:1.5;margin:12px 0 0}.portal-evidence-meta{font-size: .875rem;line-height:1.6;color:#385270;margin:8px 0 0}
 .portal-nav-icon{display:block;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
-/* On phones, actionable evidence stays short; full records follow the calendar. */
+/* Actionable warnings and full records belong to the evidence page. */
 .portal-priority{margin:18px 0;padding:16px;border:1px solid #d8b975;border-left:5px solid #a67316;border-radius:14px;background:#fff7e5}
 .portal-priority[data-state=expired]{background:#fff0f1;border-color:#ad3543}
 .portal-priority h3{font-size:1.125rem;margin:0 0 10px}.portal-priority p{font-size:0.875rem;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}.portal-priority button{min-height:48px;margin-top:8px}
