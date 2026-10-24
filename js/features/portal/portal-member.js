@@ -78,6 +78,7 @@
     const section=node('section');section.className='portal-evidence-group';section.dataset.group=group.title;section.dataset.state=group.status;
     const heading=node('header'),title=node('h3',group.title),badge=node('p',group.title==='Führerscheinkontrolle'&&group.status==='valid'?'✓ Kontrolle dokumentiert':evidenceLabel[group.status]);badge.className='portal-evidence-group-status';heading.append(title);if(group.items.length>1)heading.append(badge);section.append(heading);
     for(const item of [...group.items].sort((a,b)=>evidenceOrder[a.status]-evidenceOrder[b.status])){
+     if(item.status==='covered'){const note=node('p','✓ G26.2 durch gültige G26.3 abgedeckt.');note.className='portal-evidence-covered';section.append(note);continue;}
      const card=node('article');card.className='portal-evidence-item';card.dataset.state=item.status;
      const row=node('div');row.className='portal-evidence-item-heading';const state=node('span',evidenceItemLabel[item.status]);state.className='portal-evidence-item-status';if(group.items.length>1||item.label!==group.title)row.append(node('h4',item.label));row.append(state);card.append(row);
      if(item.description){const description=node('p',item.description);description.className='portal-evidence-meta';card.append(description);}const until=node('p',evidenceText(item));until.className='portal-evidence-date';card.append(until);

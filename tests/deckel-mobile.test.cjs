@@ -171,8 +171,8 @@ test('Portal-Kacheln lassen sich verschieben, sortieren, kompakt anzeigen und zu
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-water'));
  dom['portal-layout-item'].value='account';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
  assert.equal(dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').find(tile=>tile.dataset.portalTile==='account').dataset.portalCompact,'true','kompakte Menükacheln bleiben auch unter Mehr kompakt');
- dom['portal-layout-reset-main'].click();
- assert.deepEqual(dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','portal-evidence','account','portal-points'],'der Schnellzugriff stellt die Standardnavigation wieder her');
+ dom['portal-layout-reset'].click();
+ assert.deepEqual(dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','portal-evidence','account','portal-points'],'die Menüverwaltung stellt die Standardnavigation wieder her');
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-water'));
  const restored=layoutFixture(storage),restoredNav=restored.dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
  assert.deepEqual(restoredNav,['portal-section','portal-evidence','account','portal-points']);
@@ -265,7 +265,7 @@ test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellun
  restored.ctx.DeckelMobile.jump('more-security');assert.equal(savedBack.hidden,true,'gespeicherte Position gilt beim nächsten Öffnen');
  dom['portal-layout-transfer'].click();assert.equal(back.hidden,false,'zurück in Mehr wird der Rückweg wieder eingeblendet');
  dom['portal-layout-transfer'].click();assert.equal(back.hidden,true);
- dom['portal-layout-reset-main'].click();assert.equal(back.hidden,false,'Standardanordnung stellt den Rückweg wieder her');
+ dom['portal-layout-reset'].click();assert.equal(back.hidden,false,'Standardanordnung stellt den Rückweg wieder her');
 });
 
 test('Ursprüngliche Hauptkacheln erhalten unter Mehr ebenfalls einen Rückweg',()=>{
@@ -283,5 +283,5 @@ test('Neue Standardreihenfolge: Feuerwehr zuerst, gespeicherter alter Standard w
  assert.deepEqual(order(layoutFixture()),expected);
  const storage=new Map([[key,JSON.stringify({main,more:old})]]),migrated=layoutFixture(storage);assert.deepEqual(order(migrated),expected);assert.deepEqual(JSON.parse(storage.get(key)),{main,more:expected});
  const custom={main,more:[old[3],...old.filter(id=>id!==old[3])]},customStorage=new Map([[key,JSON.stringify(custom)]]),personal=layoutFixture(customStorage);assert.deepEqual(order(personal),custom.more);assert.deepEqual(JSON.parse(customStorage.get(key)),custom);
- personal.dom['portal-layout-reset-main'].click();assert.deepEqual(order(personal),expected);assert.deepEqual(JSON.parse(customStorage.get(key)),{main,more:expected});
+ personal.dom['portal-layout-reset'].click();assert.deepEqual(order(personal),expected);assert.deepEqual(JSON.parse(customStorage.get(key)),{main,more:expected});
 });
