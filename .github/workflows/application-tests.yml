@@ -82,7 +82,15 @@ jobs:
       - name: Test QR attendance and refresh affected help images
         run: |
           node tests/qr-checkin-browser.cjs
-          node scripts/capture-help-screens.cjs --only=geraetehaus-anwesenheit,h2o-termine
+          node scripts/capture-help-screens.cjs --only=geraetehaus-anwesenheit,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+      - name: Keep refreshed portal help screens for visual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-help-screens
+          path: |
+            assets/help/guide/h2o-*.jpg
+            assets/help/guide/screens.json
+          retention-days: 7
       - name: Test privacy-first illustrated instructions on tablet and phone
         run: node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation
@@ -100,3 +108,4 @@ jobs:
         run: |
           node scripts/check-readability.cjs
           QA_TEXT_SCALE=200 node scripts/check-readability.cjs
+
