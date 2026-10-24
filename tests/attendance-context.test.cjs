@@ -14,10 +14,10 @@ test('Fortsetzen erhält Termin und unübernommene Markierungen',()=>{
  const pending=new Map([['test-member','Anwesend']]),f=fixture({currentSessionId:'test-session',pendingMemberStatuses:pending,todayEntries:()=>[{status:'Anwesend'},{status:'Entschuldigt'}]});
  assert.equal(f.c.attendanceStartState().action,'Erfassung fortsetzen');assert.match(f.c.attendanceStartState().summary,/1 anwesend · 1 entschuldigt · 1 noch/);
  f.c.beginAttendanceFromContext();assert.deepEqual(f.calls,[2]);assert.equal(f.c.currentSessionId,'test-session');assert.equal(f.c.pendingMemberStatuses,pending);
- f.c.syncAttendanceStart();assert.equal(f.get('attendanceAlternatives').hidden,true);
+ f.c.syncAttendanceStart();assert.equal(f.get('attendanceSpontaneous').hidden,true);
 });
 test('Ohne Kalender und Terminart wird nur die spontane Auswahl geöffnet',()=>{
- const f=fixture();f.c.beginAttendanceFromContext();assert.equal(f.get('attendanceAlternatives').open,true);assert.equal(f.get('attendanceSpontaneous').open,true);assert.deepEqual(f.calls,['focus']);assert.equal(f.c.currentSessionId,'');
+ const f=fixture();f.c.beginAttendanceFromContext();assert.equal(f.get('attendanceSpontaneous').open,true);assert.deepEqual(f.calls,['focus']);assert.equal(f.c.currentSessionId,'');
 });
 test('Erst Markierungen übernehmen, dann zum passenden Abschluss wechseln',()=>{
  for(const [type,label] of [['Allgemeine Probe','Weiter zu Schritt 3'],['Einsatz','Fahrzeuge zuordnen'],['Unterricht','Termin prüfen und abschließen']]){

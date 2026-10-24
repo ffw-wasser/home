@@ -128,9 +128,10 @@ function syncAttendanceStart(){
   byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;
   const eyebrow=byId('attendanceStartEyebrow');eyebrow.textContent=state.running?'Laufender Termin':state.event?(window.PortalAdmin?.isNextEvent?.()?(state.event.start<=Date.now()?'Aktueller Termin':'Nächster Termin'):'Ausgewählter Termin'):'';eyebrow.hidden=!eyebrow.textContent;
   const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
+  const spontaneousStart=byId('spontaneousStartButton');if(spontaneousStart)spontaneousStart.disabled=state.running||Boolean(state.event)||!state.type;
   const calendarStatus=byId('attendanceStartCalendarStatus');if(calendarStatus){calendarStatus.textContent=byId('portal-calendar-status')?.textContent||'';calendarStatus.hidden=state.running||Boolean(state.type)||!calendarStatus.textContent;}
-  const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Erfassung starten“ zu den Personen wechseln.':'Terminart wählen und die Erfassung starten.';
-  const choices=byId('attendanceAlternatives');if(choices)choices.hidden=state.running;
+  const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Spontanen Termin starten“ zu den Personen wechseln.':'Terminart wählen und die Erfassung starten.';
+  const choices=byId('attendanceSpontaneous');if(choices){choices.hidden=state.running;if(state.running)choices.open=false;}
   window.CalendarSidebar?.syncSelection?.();
 }
 function beginAttendanceFromContext(){
@@ -138,7 +139,7 @@ function beginAttendanceFromContext(){
   const event=window.PortalAdmin?.selectedEvent?.();
   if(event){const type=event.attendanceType||(event.sessionType==='Probe'?'Allgemeine Probe':event.sessionType);chooseSessionType(type,{calendar:true});}
   if(pendingSessionType)return continueToAttendance();
-  byId('attendanceAlternatives').open=true;byId('attendanceSpontaneous').open=true;
+  byId('attendanceSpontaneous').open=true;
   byId('sessionTypes')?.querySelector('button')?.focus();
 }
 function beginOperationFromHome(){
@@ -724,10 +725,11 @@ function ensureStagedHomeFlow(){
   sessionPanel.querySelector(".panel-heading")?.remove();
   if(!byId('attendanceStartCard')){
     const card=document.createElement('section');card.id='attendanceStartCard';card.className='attendance-start-card';card.innerHTML='<p id="attendanceStartEyebrow" class="eyebrow"></p><h2 id="attendanceStartTitle"></h2><p id="attendanceStartMeta"></p><p id="attendanceStartSummary" role="status"></p><p id="attendanceStartCalendarStatus" class="help-text" role="status" hidden></p><div id="attendanceStartActions" class="attendance-start-actions"></div><div id="attendanceStartSecondary"></div>';
-    const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen oder spontanen Termin erfassen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontane Terminart wählen</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
-    sessionPanel.prepend(card);sessionPanel.append(choices);
-    const manual=byId('attendanceSpontaneous');manual.append(byId('sessionTypes'),byId('sessionHint'));
-    const picker=sessionPanel.querySelector('.portal-calendar-picker');if(picker)byId('attendanceCalendarChoice').append(picker);
+    sessionPanel.prepend(card);
+    const manual=document.createElement('details');manual.id='attendanceSpontaneous';manual.className='home-spontaneous-tile';manual.innerHTML='<summary><span class="home-spontaneous-icon" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="10" width="34" height="31" rx="5"/><path d="M15 6v8m18-8v8M7 20h34M24 26v10m-5-5h10"/></svg></span><strong>Spontanen Termin wählen</strong><span class="home-spontaneous-description">Probe, Unterricht oder Sitzung</span><span class="home-spontaneous-action"><span class="home-spontaneous-closed">Auswählen</span><span class="home-spontaneous-open">Zuklappen</span><span aria-hidden="true">⌄</span></span></summary><div class="home-spontaneous-body"><p>Terminart wählen und die Erfassung starten. Das Datum lässt sich anschließend anpassen.</p></div>';
+    attendance.querySelector('.home-start-side').append(manual);
+    manual.querySelector('.home-spontaneous-body').append(byId('sessionTypes'),byId('sessionHint'));
+    const spontaneousStart=document.createElement('button');spontaneousStart.id='spontaneousStartButton';spontaneousStart.type='button';spontaneousStart.className='primary-button';spontaneousStart.textContent='Spontanen Termin starten';spontaneousStart.disabled=true;spontaneousStart.addEventListener('click',beginAttendanceFromContext);manual.querySelector('.home-spontaneous-body').append(spontaneousStart);
     manual.ontoggle=()=>{if(manual.open&&!currentSessionId&&!currentOperationId){window.PortalAdmin?.useSpontaneous?.();pendingSessionType='';delete byId('sessionTypes').dataset.selectedSessionType;byId('sessionTypes').querySelectorAll('[data-session-type]').forEach(button=>{button.classList.remove('selected');button.setAttribute('aria-pressed','false');});syncAttendanceStart();}};
   }
   const hint=byId("sessionHint");if(hint)hint.textContent="Terminart wählen und die Erfassung starten.";
