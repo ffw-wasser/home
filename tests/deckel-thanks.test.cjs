@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 async function fixture(){
  const nodes=new Map(),events={},timers=new Map();let now=0,next=0;
- const element=()=>({hidden:false,disabled:false,textContent:'',parentElement:{style:{setProperty(){}}},style:{setProperty(){}},children:[],classList:{toggle(){}},replaceChildren(){this.children=[];},removeAttribute(){},append(n){this.children.push(n);}});
+ const element=()=>({hidden:false,disabled:false,textContent:'',addEventListener(name,fn){this['on'+name]=fn;},parentElement:{style:{setProperty(){}}},style:{setProperty(){}},children:[],classList:{toggle(){}},replaceChildren(){this.children=[];},removeAttribute(){},append(n){this.children.push(n);}});
  const url=new URL('https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/deckel-daten&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64));
  const data={balance:0,credit:0,needed:300,bonusCents:300,bookings:[],updatedAt:'2026-10-09T16:00:00Z'},ctx=vm.createContext({URL,URLSearchParams,Date,AbortController,Promise,
   setTimeout:(fn,delay)=>{timers.set(++next,{fn,at:now+delay});return next;},clearTimeout:id=>timers.delete(id),location:{href:url.href,hash:url.hash},
@@ -47,4 +47,8 @@ test('Deckel selbst reagiert auf Enter und Leertaste, mit vielen unterschiedlich
 test('Erneutes Antippen verlängert die Spruchanzeige, Betrag bleibt immer sichtbar',async()=>{
  const f=await fixture();f.data.balance=750;await f.reload();f.nodes.get('coaster').onclick();f.advance(3000);f.nodes.get('coaster').onclick();f.advance(1000);assert.equal(f.nodes.get('balance').hidden,false);f.advance(3000);assert.equal(f.nodes.get('balance').hidden,false);
  f.nodes.get('coaster').onclick();f.data.balance=900;await f.reload();assert.equal(f.nodes.get('deckel-quote').hidden,true);assert.equal(f.nodes.get('balance').hidden,false);assert.match(f.nodes.get('balance').textContent,/9,00/);f.advance(4000);assert.match(f.nodes.get('balance').textContent,/9,00/);
+});
+
+test('Direkter Ladeversuch erscheint nach Netzfehler und verschwindet nach erfolgreicher Wiederholung',async()=>{
+ const f=await fixture();assert.equal(f.nodes.get('deckel-load-retry').hidden,true);f.ctx.failedLoad=true;await f.reload();assert.equal(f.nodes.get('deckel-load-retry').hidden,false);f.ctx.failedLoad=false;await f.nodes.get('deckel-load-retry').onclick();await flush();assert.equal(f.nodes.get('deckel-load-retry').hidden,true);assert.equal(f.nodes.get('account').hidden,false);
 });
