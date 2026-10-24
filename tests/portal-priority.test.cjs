@@ -160,6 +160,7 @@ test('Terminkarten kürzen nur eine wiederholte Terminart vor dem Thema',()=>{
   ['Probe','Allgemeine Probe · Technische Hilfe','Technische Hilfe'],
   ['Sonderprobe','Sonderprobe – Sonderprobe: Atemschutz','Atemschutz'],
   ['Probe','Probe','Probe'],
+  ['Probe','Allgemeine Probe','Probe'],
   ['Probe','Probebetrieb der Pumpe','Probebetrieb der Pumpe'],
   ['Probe','Funkprobe und Nachbesprechung','Funkprobe und Nachbesprechung'],
   ['Unterricht','Unterricht: Funk','Funk'],

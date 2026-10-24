@@ -433,3 +433,5 @@
 .portal-reminder-finish p{margin-top:0}
 .portal-overview-actions .portal-overview-back{background:#edf5fc;color:#075baf;border-color:#b9d2e8}
 
+
+@media(max-width:360px){.deckel-nav{width:calc(100% - 8px);padding-inline:2px;gap:2px}}

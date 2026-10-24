@@ -13,7 +13,7 @@
  function eventTopic(event){
   const raw=String(event.title||event.sessionType||'Termin').trim(),type=String(event.sessionType||'').trim();
   const prefix={Probe:/^(?:Allgemeine\s+)?Probe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Sonderprobe:/^Sonderprobe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Unterricht:/^Unterricht(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Veranstaltung:/^Veranstaltung(?=$|[\s:·|–—-])[\s:·|–—-]*/i}[type];
-  let title=raw;if(prefix)while(prefix.test(title)){const next=title.replace(prefix,'').trim();if(!next)break;title=next;}
+  let title=raw;if(prefix)while(prefix.test(title)){const next=title.replace(prefix,'').trim();if(!next){title=type;break;}title=next;}
   return title;
  }
  async function api(path,data={}){if(!access)throw Error('Bitte den persönlichen Portalzugang öffnen.');const c=access,response=await fetch(c.origin+'/portal/'+path,{method:'POST',headers:{Authorization:'Bearer '+c.capability,'Content-Type':'application/json'},body:JSON.stringify({alias:c.alias,revision:c.revision,...data}),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(path==='reply'?12000:path==='year'?35000:25000)});const value=await response.json();if(!response.ok)throw Object.assign(Error(response.status===404&&value.error==='Nicht gefunden.'?'Das H₂O Portal wird noch eingerichtet. Bitte die Verwaltung informieren.':value.error||'Portal nicht erreichbar.'),{status:response.status});return value;}
