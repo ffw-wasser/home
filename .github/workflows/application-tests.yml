@@ -69,9 +69,9 @@ jobs:
           node tests/portal-year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
         run: node tests/calendar-groups-browser.cjs
-      - name: Test calendar information, colors and read-only iPad sidebar
+      - name: Test calendar information, colors and combined start card
         run: node tests/calendar-display-browser.cjs
-      - name: Test separate incident tile and responsive home layout
+      - name: Test calendar selection, incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
       - name: Test authenticated direct OneDrive folder conversion
         run: node tests/onedrive-direct-browser.cjs
