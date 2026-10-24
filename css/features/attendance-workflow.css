@@ -1231,6 +1231,11 @@ html body #rolesPanel,html body #attendanceStatusToolbar,html body #floatingAtte
  .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])){align-items:stretch;min-height:max(0px,calc(100dvh - 268px))}
  .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden]))>.home-session-type-panel{display:flex!important;flex-direction:column}
  .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .attendance-start-card{flex:0 0 auto}
+ .home-start-layout .attendance-start-card{padding-bottom:8px}
+ .home-start-layout:has(#calendar-sidebar:not([hidden])) .attendance-start-card .eyebrow{display:none}
+ .home-start-layout .attendance-start-card h2{margin:4px 0}
+ .home-start-layout .attendance-start-card #attendanceStartMeta{padding:6px 12px;margin:6px 0}
+ .home-start-layout .attendance-start-card #attendanceStartSummary{margin:6px 0 8px}
  .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden]))>.home-start-side>.home-operation-tile,.home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden]))>.home-start-side>.home-spontaneous-tile{flex:1}
  .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .home-operation-action,.home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .home-spontaneous-action{margin-top:auto}
  .home-start-layout:has(#calendar-sidebar:not([hidden])):has(#attendanceSpontaneous:not([hidden])) .home-spontaneous-tile:not([open])>summary{height:100%;box-sizing:border-box}
