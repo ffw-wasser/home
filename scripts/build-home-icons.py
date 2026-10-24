@@ -64,6 +64,15 @@ def build_ffw_icon(crest, size):
 def build_h2o_icon(image, size):
     return image.resize((size, size), Image.Resampling.LANCZOS).convert("RGB")
 
+def build_blue_h2o_icons():
+    """Composite the approved transparent shield onto the portal blue canvas."""
+    source = Image.open(DRINKS / "h2o-symbol-white-512.png").convert("RGBA")
+    canvas = Image.new("RGBA", source.size, "#075baf")
+    canvas.alpha_composite(source)
+    for size in (180, 192, 512):
+        canvas.convert("RGB").resize((size, size), Image.Resampling.LANCZOS).save(
+            DRINKS / f"h2o-symbol-blue-{size}.png", optimize=True)
+
 def main():
     crest = unframe_crest()
     source = Image.open(BRANDING / "h2o-symbol-white-source.webp").convert("RGB")
@@ -76,4 +85,8 @@ def main():
     print("Created three FFW and four H2O home/portal PNG icons.")
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if "--h2o-blue" in sys.argv:
+        build_blue_h2o_icons()
+    else:
+        main()

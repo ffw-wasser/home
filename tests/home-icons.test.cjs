@@ -12,8 +12,8 @@ test('FFW und H2O haben getrennte Startbildschirm-Icons: FFW schwarz, H2O weiß'
  assert.match(ffw.icons[0].src,/ffw-home-192\.png/);
  assert.match(ffw.icons[1].src,/ffw-home-512\.png/);
  for(const manifest of [h2o,android]){
-  assert.match(manifest.icons[0].src,/h2o-symbol-white-192\.png/);
-  assert.match(manifest.icons[1].src,/h2o-symbol-white-512\.png/);
+  assert.match(manifest.icons[0].src,/h2o-symbol-blue-192\.png/);
+  assert.match(manifest.icons[1].src,/h2o-symbol-blue-512\.png/);
   assert.equal(manifest.id,'./deckel.html','Persönliches Portal-ID bleibt gleich');
  }
 });
@@ -21,9 +21,9 @@ test('iOS Homebildschirm-Icons sind getrennt; innerhalb der Apps stimmen die Log
  assert.match(main,/rel="apple-touch-icon"/);
  assert.match(main,/assets\/branding\/ffw-home-180\.png\?v=/);
  assert.match(main,/class="top-brand"><img[^>]+src="icon-192\.png\?v=[^"]+"/);
- assert.match(portal,/rel="apple-touch-icon"[^>]+h2o-symbol-white-180\.png/);
+ assert.match(portal,/rel="apple-touch-icon"[^>]+h2o-symbol-blue-180\.png/);
  assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-white-96\.png\?v=[^"]+"/);
- assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-white-192\.png\?v=[^']+'/);
+ assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-blue-192\.png\?v=[^']+'/);
 });
 test('Alle generierten Icons haben die deklarierten Abmessungen',()=>{
  const png=(filename,size)=>{
@@ -33,7 +33,8 @@ test('Alle generierten Icons haben die deklarierten Abmessungen',()=>{
   assert.equal(b.readUInt32BE(20),size,filename+' Höhe');
  };
  for(const size of [180,192,512])png('assets/branding/ffw-home-'+size+'.png',size);
- for(const size of [96,180,192,512])png('assets/drinks/h2o-symbol-white-'+size+'.png',size);
+ png('assets/drinks/h2o-symbol-white-96.png',96);
+ for(const size of [180,192,512])png('assets/drinks/h2o-symbol-blue-'+size+'.png',size);
 });
 test('Cache- und HTML-Build stimmen überein, Schutzdaten unverändert',()=>{
  for(const manifest of [ffw,h2o,android])for(const icon of manifest.icons)assert.ok(icon.src.endsWith('?v='+release.build));
