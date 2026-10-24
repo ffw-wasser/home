@@ -47,6 +47,25 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium
+      - name: Capture and review all H2O portal screens
+        env:
+          PORTAL_REVIEW_OUTPUT: qa/portal-review
+        run: node scripts/capture-help-screens.cjs --only=h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+      - name: Keep refreshed portal help screens for visual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-help-screens
+          path: |
+            assets/help/guide/h2o-*.jpg
+            assets/help/guide/screens.json
+          retention-days: 7
+      - name: Keep whole-portal visual review
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-design-review
+          path: qa/portal-review
+          retention-days: 7
       - name: Test passkey browser flow with synthetic credentials
         run: node tests/passkey-browser.cjs
       - name: Test FFW update notice and safe reload
@@ -79,18 +98,8 @@ jobs:
         run: node tests/onedrive-direct-browser.cjs
       - name: Test local drafts, resume and administration tasks
         run: node tests/workflow-drafts-browser.cjs
-      - name: Test QR attendance and refresh affected help images
-        run: |
-          node tests/qr-checkin-browser.cjs
-          node scripts/capture-help-screens.cjs --only=geraetehaus-anwesenheit,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
-      - name: Keep refreshed portal help screens for visual review
-        uses: actions/upload-artifact@v4
-        with:
-          name: h2o-help-screens
-          path: |
-            assets/help/guide/h2o-*.jpg
-            assets/help/guide/screens.json
-          retention-days: 7
+      - name: Test QR attendance and full appointment layout
+        run: node tests/qr-checkin-browser.cjs
       - name: Test privacy-first illustrated instructions on tablet and phone
         run: node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation

@@ -11,6 +11,7 @@ const root=path.resolve(__dirname,'..');
    await page.waitForFunction(()=>globalThis.DeckelMobile);
    await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('deckel-more');document.querySelector('[data-portal-tile="more-breathing"]').hidden=false;});
    assert.deepEqual(await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['more-year-plan','more-breathing','more-hydrants','more-water','more-help','theater-phone-section','more-bundesliga','more-security'],'fire brigade topics precede leisure and account');
+   const compactLabels=await page.locator('#deckel-nav button>strong').evaluateAll(ns=>ns.map(n=>({text:n.textContent,height:n.getBoundingClientRect().height,line:parseFloat(getComputedStyle(n).lineHeight),scroll:n.scrollWidth,width:n.clientWidth})));assert.ok(compactLabels.every(n=>n.height<=n.line+1&&n.scroll<=n.width+1),'default labels remain complete on one line: '+JSON.stringify(compactLabels));
    // Reproduce the original drag-and-drop of the hydrant tile into the bottom menu.
    const from=await page.locator('[data-portal-tile="more-hydrants"]').boundingBox(),nav=await page.locator('#deckel-nav').boundingBox();
    await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();await page.waitForTimeout(600);await page.mouse.move(nav.x+nav.width*.65,nav.y+nav.height/2,{steps:8});await page.mouse.up();
@@ -34,9 +35,20 @@ const root=path.resolve(__dirname,'..');
     await page.locator('#portal-layout-transfer').click();
    }
    await page.locator('#portal-layout-close').click();
+   // Raised selection stays outside the rail and above its reserved content gap.
+   for(const target of ['portal-section','portal-evidence','account','portal-points','deckel-more']){
+    await page.evaluate(id=>DeckelMobile.jump(id),target);
+    const geometry=await page.evaluate(()=>{const nav=document.getElementById('deckel-nav'),active=nav.querySelector('[aria-current=page]'),main=document.getElementById('deckel-main'),n=nav.getBoundingClientRect(),a=active.getBoundingClientRect(),m=main.getBoundingClientRect();return {rail:n.top,active:a.top,content:m.bottom,left:a.left,right:a.right,width:innerWidth,overflow:getComputedStyle(nav).overflowY};});
+    assert.ok(geometry.active<geometry.rail&&geometry.active>=geometry.content-1,'raised selection has its own space: '+JSON.stringify(geometry));
+    assert.equal(geometry.overflow,'visible','raised card is not clipped');
+    const defaultLabels=await page.locator('#deckel-nav button>strong').evaluateAll(ns=>ns.filter(n=>['Termine','Status','Deckel','Punkte','Mehr'].includes(n.textContent)).map(n=>({text:n.textContent,height:n.getBoundingClientRect().height,line:parseFloat(getComputedStyle(n).lineHeight)})));assert.ok(defaultLabels.every(n=>n.height<=n.line+1),'default navigation labels fit one line: '+JSON.stringify(defaultLabels));
+    const tops=await page.locator('#deckel-nav button').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().top-(n.hasAttribute('aria-current')?-12:0)));assert.ok(Math.max(...tops)-Math.min(...tops)<1,'all navigation tiles share one row');
+    assert.ok(geometry.left>=0&&geometry.right<=geometry.width,'raised selection stays inside the screen');
+   }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    await page.close();
   }
   console.log('Portal icon sizing passed at 320/390/768px, including drag and every tile transfer.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+

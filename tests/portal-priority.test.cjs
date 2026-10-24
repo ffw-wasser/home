@@ -150,3 +150,22 @@ test('Nach Tageswechsel zeigt derselbe Termin wieder sein Datum',()=>{
  f.c.Date=class extends Base{static now(){return Base.parse('2026-10-19T20:00:00Z');}};assert.equal(f.c.eventDayLabel(termin),'Heute');
  f.c.Date=class extends Base{static now(){return Base.parse('2026-10-19T22:01:00Z');}};assert.match(f.c.eventDayLabel(termin),/19.10.2026/);
 });
+
+
+// Card text must not change the actual event, shared links or calendar export.
+test('Terminkarten kürzen nur eine wiederholte Terminart vor dem Thema',()=>{
+ const f=fixture();
+ for(const [type,title,expected] of [
+  ['Sonderprobe','Sonderprobe GF + Ausschuss','GF + Ausschuss'],
+  ['Probe','Allgemeine Probe · Technische Hilfe','Technische Hilfe'],
+  ['Sonderprobe','Sonderprobe – Sonderprobe: Atemschutz','Atemschutz'],
+  ['Probe','Probe','Probe'],
+  ['Probe','Allgemeine Probe','Probe'],
+  ['Probe','Probebetrieb der Pumpe','Probebetrieb der Pumpe'],
+  ['Probe','Funkprobe und Nachbesprechung','Funkprobe und Nachbesprechung'],
+  ['Unterricht','Unterricht: Funk','Funk'],
+  ['Anderes','Probe: Funk','Probe: Funk']
+ ]){const e={...event('topic',Date.now()+60000),sessionType:type,title};f.c.paint({events:[e]});assert.equal(f.events.querySelector('article').querySelector('h3').textContent,expected);assert.equal(e.title,title);}
+ f.c.paint({events:[{...event('simple',Date.now()+60000),sessionType:'Probe',title:'Probe'}]});
+ assert.equal(f.events.querySelectorAll('div').filter(n=>n.className==='portal-event-badges').length,0);
+});

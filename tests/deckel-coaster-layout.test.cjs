@@ -26,7 +26,7 @@ test('Portalnavigation bleibt erreichbar und passt ohne horizontales Scrollen au
  assert.match(nav,/data-deckel-target="account" aria-label="Mein Deckel"/);
  assert.match(nav,/aria-label="Mein Deckel"><span class="portal-nav-symbol" aria-hidden="true"><svg\b[^>]*>[\s\S]*?<\/svg><\/span><strong>Deckel<\/strong>/);
  assert.match(nav,/data-portal-pinned="more"/);
- assert.match(portalCss,/\.deckel-nav\{[^}]*overflow-x:hidden/);
+ assert.match(portalCss,/\.deckel-nav\{[^}]*overflow:visible/);
  const match=portalCss.match(/\.deckel-nav button\{([^}]+)\}/);
  assert.ok(match,'Kachelformatierung');
  assert.match(match[1],/white-space:normal/);
@@ -39,3 +39,4 @@ test('Navigations-IDs bleiben eindeutig und JS syntaktisch gültig',()=>{
  assert.equal(ids.length,new Set(ids).size);
  assert.doesNotThrow(()=>new (require('node:vm').Script)(view));
 });
+

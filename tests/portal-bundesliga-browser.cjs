@@ -2,7 +2,8 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright'),root=path.resolve(__dirname,'..');
 (async()=>{const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[],requests=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
- const now=Date.now(),year=new Date(now).getUTCFullYear()-(new Date(now).getUTCMonth()<6?1:0),team=(id,name)=>({teamId:id,teamName:name}),home=team(1,'FC Beispielstadt'),away=team(2,'Sportfreunde Musterhausen'),match=(id,offset,group=1,finished=false)=>({matchID:id,matchDateTimeUTC:new Date(now+offset*3600000).toISOString(),team1:home,team2:away,matchIsFinished:finished,group:{groupOrderID:group,groupName:group+'. Spieltag'},matchResults:finished?[{resultTypeID:2,pointsTeam1:2,pointsTeam2:1}]:[],goals:[]});
+ const now=Date.parse('2026-10-24T12:00Z'),year=new Date(now).getUTCFullYear()-(new Date(now).getUTCMonth()<6?1:0),team=(id,name)=>({teamId:id,teamName:name}),home=team(1,'FC Beispielstadt'),away=team(2,'Sportfreunde Musterhausen'),match=(id,offset,group=1,finished=false)=>({matchID:id,matchDateTimeUTC:new Date(now+offset*3600000).toISOString(),team1:home,team2:away,matchIsFinished:finished,group:{groupOrderID:group,groupName:group+'. Spieltag'},matchResults:finished?[{resultTypeID:2,pointsTeam1:2,pointsTeam2:1}]:[],goals:[]});
+ await page.clock.setFixedTime(now);
  const league=[match(101,-48,1,true),match(102,48,2),match(103,216,3)],cup=match(201,24),champion=match(301,72),table=Array.from({length:18},(_,i)=>({teamInfoId:i+1,teamName:i===0?home.teamName:i===1?away.teamName:'Testverein '+(i+1),points:40-i,matches:8,goalDiff:18-i}));let offline=false,delayCups=false;const pending=[];
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});
   if(u.origin==='https://api.openligadb.de'){requests.push({url:req.url(),headers:req.headers()});if(offline)return route.fulfill({status:503,body:'offline'});let data;
@@ -32,3 +33,4 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.locator('#bundesliga-favorite').selectOption('');assert.equal(await club.isVisible(),false);assert.equal(await page.evaluate(()=>localStorage.getItem('portal-bundesliga-favorite')),'');
  assert.ok(requests.every(r=>!r.headers.authorization&&!r.headers.cookie),'no personal credentials sent');assert.deepEqual(errors,[]);console.log('PASS league and cup overview, honest coverage, favorite changes, matchdays, cache/error states and 320–1180 px at 100/200%');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
+
