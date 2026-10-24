@@ -127,7 +127,7 @@
 #portal-page-deckel .drink-tile{min-height:44px}
 #portal-page-deckel .drink-choice{padding-top:6px;padding-bottom:6px}
 #portal-page-deckel #phone-status:empty{display:none}
-#portal-page-deckel .phone-order-actions{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:stretch;gap:8px}
+#portal-page-deckel .phone-order-actions{display:grid;grid-template-columns:minmax(0,2fr) minmax(90px,1fr);align-items:stretch;gap:8px}
 #portal-page-deckel .phone-order-actions .phone-edit{margin:0;display:block}
 #portal-page-deckel .phone-order-actions button{height:100%;font-size:.875rem}
 #portal-page-deckel .phone-rewards{margin-top:6px}
