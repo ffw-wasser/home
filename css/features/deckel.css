@@ -89,14 +89,14 @@
 .bundesliga-panel table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.875rem;font-variant-numeric:tabular-nums}.bundesliga-panel th,.bundesliga-panel td{padding:10px 3px;border-bottom:1px solid var(--line);text-align:right;overflow-wrap:anywhere}.bundesliga-panel th:nth-child(2){width:48%;text-align:left}.bundesliga-panel th:first-child{width:9%}.bundesliga-panel tbody th{font-weight:600}.bundesliga-panel tbody tr:nth-child(even){background:#eaf2f9}.bundesliga-panel td:last-child{font-weight:850}.bundesliga-caption{text-align:left;font-weight:800;padding:8px 0}.bundesliga-panel abbr{text-decoration:none}#bundesliga-status{font-size:.875rem;color:var(--muted)}
 
 /* More is a menu of equal-sized destinations, each with an explicit return. */
-.portal-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.portal-more-grid .portal-more-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;min-height:136px;padding:14px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:none;margin:0;border-radius:18px}
-.portal-more-tile strong{font-size:1.0625rem;line-height:1.25}
+.portal-more-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(9rem,calc(50% - 6px))),1fr));gap:12px}
+.portal-more-grid .portal-more-tile{display:grid;grid-template-columns:28px minmax(0,1fr);grid-template-rows:minmax(44px,auto) auto;align-items:start;align-content:start;gap:8px;min-height:124px;padding:14px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:none;margin:0;border-radius:18px}
+.portal-more-tile strong{grid-column:2;grid-row:1;min-width:0;padding-top:3px;font-size:1rem;line-height:1.25}
 [data-portal-tile="more-hydrants"] strong{hyphens:none;-webkit-hyphens:none}
-.portal-more-tile>span:last-child{font-size:.875rem;line-height:1.35;font-weight:500;color:var(--muted)}
+.portal-more-tile>.portal-tile-description{grid-column:1/-1;grid-row:2;font-size:.875rem;line-height:1.35;font-weight:500;color:var(--muted)}
 .portal-more-detail .portal-more-back{width:auto;min-height:48px;margin-bottom:18px;padding:10px 16px}
 .portal-more-detail .portal-notifications{margin-top:0;border-top:0}
-@media(max-width:340px){.portal-more-grid{gap:8px}.portal-more-grid .portal-more-tile{padding:12px;min-height:146px}}
+@media(max-width:360px){.portal-more-grid{grid-template-columns:1fr;gap:8px}.portal-more-grid .portal-more-tile{padding:12px;min-height:92px;grid-template-rows:minmax(28px,auto) auto}}
 .portal-more-grid #deckel-update-reload{margin:0}
 
 .bundesliga-favorite-label{display:block;font-weight:700}.bundesliga-favorite-label select{display:block;width:100%;min-height:48px;margin:8px 0 20px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}.bundesliga-ticker{margin-bottom:24px}.bundesliga-match{padding:14px;margin:10px 0;border:1px solid var(--line);border-radius:16px;background:#fff}.bundesliga-match h4{margin:6px 0;font-size:1rem;overflow-wrap:anywhere}.bundesliga-match-time,#bundesliga-ticker-status{font-size:.875rem;color:var(--muted);margin:6px 0}.bundesliga-score{font-size:1.6rem;font-variant-numeric:tabular-nums}.bundesliga-panel .bundesliga-favorite{background:#fff5d8;border-color:#c59b32;box-shadow:inset 3px 0 #c59b32}.bundesliga-match ol{padding-left:22px;font-size:.875rem}.bundesliga-match li{margin:6px 0}
@@ -141,7 +141,6 @@
 #portal-page-points .loyalty-card summary{font-size:1.0625rem;line-height:1.5}.loyalty-heading>div{min-width:0}.loyalty-heading{flex-wrap:wrap}
 
 /* Wasserentnahme Elz: gut lesbare Grenzwertinfo, keine irreführende Live-Ampel. */
-.portal-more-grid .portal-more-help-tile{grid-column:auto;aspect-ratio:1;min-height:0;align-self:start}
 /* Light reading surfaces on the navy portal canvas. */
 #portal-page-deckel>#account,#portal-page-challenge,#deckel-main>.portal-more-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
 #portal-page-deckel>#account{margin-bottom:12px}
