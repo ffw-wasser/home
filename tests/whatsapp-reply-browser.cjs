@@ -9,17 +9,23 @@ for(const width of [320,390,412,768]){
  if(u.pathname.endsWith('/portal-identity.js'))return route.fulfill({contentType:'application/javascript',body:"window.H2OIdentity={session:()=>({scope:'portal',expiresAt:Date.now()+86400000,alias:'test',revision:'test',token:'synthetic'})};"});
  if(u.pathname.endsWith('/push-device.js')||u.pathname.endsWith('/passkeys-browser.js'))return route.fulfill({contentType:'application/javascript',body:''});
  const file=path.resolve(u.pathname.replace(/^\/home\//,''));return fs.existsSync(file)?route.fulfill({path:file}):route.abort();});
+ await page.addInitScript(()=>{globalThis.__tabCloseAttempts=0;globalThis.close=()=>{globalThis.__tabCloseAttempts++;};});
  await page.goto('https://example.test/home/termin.html?event='+id);await page.locator('#chosen').waitFor({state:'visible'});
  assert.match(await page.locator('#event-when').innerText(),/ganztägig/);assert.match(await page.locator('#event-clothing').innerText(),/Uniform/);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
  await page.getByRole('button',{name:'Zurück zu WhatsApp',exact:true}).click();assert.match(await page.locator('#back-to-h2o-status').innerText(),/App-Umschalter/);
  await page.getByRole('button',{name:'Bin dabei',exact:true}).click();await page.getByRole('button',{name:'Speicherung prüfen',exact:true}).waitFor();
- await page.getByRole('button',{name:'Zurück zu WhatsApp',exact:true}).click();assert.match(await page.locator('#back-to-h2o-status').innerText(),/noch nicht bestätigt/);assert.ok(page.url().includes('termin.html'));
+ await page.getByRole('button',{name:'Zurück zu WhatsApp',exact:true}).click();assert.match(await page.locator('#back-to-h2o-status').innerText(),/noch nicht bestätigt/);assert.ok(page.url().includes('termin.html'));assert.equal(await page.evaluate(()=>__tabCloseAttempts),0);
  mode='success';await page.getByRole('button',{name:'Speicherung prüfen',exact:true}).click();await page.getByText('✓ Gespeichert!',{exact:true}).waitFor();assert.equal(jobs[0].requestId,jobs[1].requestId);
  // A second tap still withdraws the selected answer.
  await page.getByRole('button',{name:'✓ Bin dabei',exact:true}).click();await page.getByText('Deine Rückmeldung fehlt noch',{exact:false}).waitFor();assert.equal(jobs.at(-1).status,'open');
  mode='conflict';await page.getByRole('button',{name:'Noch unsicher',exact:true}).click();await page.getByRole('button',{name:'Termin neu laden',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Bin dabei',exact:true}).isDisabled(),true);
  event={...event,status:'excused',version:9};await page.getByRole('button',{name:'Termin neu laden',exact:true}).click();await page.getByRole('button',{name:'✓ Entschuldigt',exact:true}).waitFor();
  mode='success';await page.getByRole('button',{name:'Bin dabei',exact:true}).click();await page.getByText('✓ Gespeichert!',{exact:true}).waitFor();assert.equal(jobs.at(-1).expectedVersion,9);
- await page.screenshot({path:path.join(require('node:os').tmpdir(),'whatsapp-reply-'+width+'.png'),fullPage:true});await page.close();console.log('WhatsApp reply recovery and compact card: '+width+'px');
+ assert.equal(await page.evaluate(()=>__tabCloseAttempts),0,'saving alone does not close the tab');
+ await page.getByRole('button',{name:'Zurück zu WhatsApp',exact:true}).click();assert.match(await page.locator('#back-to-h2o-status').innerText(),/Rückmeldung gespeichert. Du kannst diese Seite schließen./);
+ assert.equal(await page.evaluate(()=>__tabCloseAttempts),0,'app-opening prompt stays available');
+ await page.screenshot({path:path.join(require('node:os').tmpdir(),'whatsapp-reply-'+width+'.png'),fullPage:true});
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));document.dispatchEvent(new Event('visibilitychange'));});assert.equal(await page.evaluate(()=>__tabCloseAttempts),1,'only one close attempt after the app handoff');
+ await page.close();console.log('WhatsApp reply recovery and compact card: '+width+'px');
 }}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

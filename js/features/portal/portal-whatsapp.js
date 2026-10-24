@@ -14,7 +14,7 @@
   history.replaceState(null,'',location.pathname+location.search);
   return match[1].toLowerCase();
  })();
- let session=null,items=[],stale=false,working=false,pending=null,memberName='',eventLinkStatus=null;
+ let session=null,items=[],stale=false,working=false,pending=null,memberName='',eventLinkStatus=null,confirmedEventId=null,cancelReturnClose=null;
  const status=message=>{el('status').textContent=message;};
  const dayFmt=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
  const when=event=>event.allDay?dayFmt.format(new Date(event.start))+' · ganztägig':fmt.format(new Date(event.start))+' Uhr';
@@ -66,6 +66,7 @@
  async function refresh(){
   if(working)return;
   if(pending){status('Bitte zuerst die offene Speicherung prüfen.');return;}
+  cancelReturnClose?.();confirmedEventId=null;
   el('reload-event').hidden=true;
   if(!session)return showPair();
   working=true;hide();status('Deine Termine werden geladen …');
@@ -101,6 +102,7 @@
   if(working||stale||event.start<=Date.now()||!session)return;
   el('back-to-h2o-status').textContent='';
   if(pending&&pending.eventId!==event.id)return;
+  cancelReturnClose?.();confirmedEventId=null;
   const newStatus=event.status===choice?'open':choice;
   if(!pending)pending={eventId:event.id,status:newStatus,expectedVersion:event.version,requestId:crypto.randomUUID()};
   else if(pending.status!==newStatus){status('Bitte zuerst die unbestätigte Speicherung erneut prüfen.');return;}
@@ -108,7 +110,7 @@
   try{
    const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
    if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
-   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Gespeichert!');
+   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;confirmedEventId=event.id;status('✓ Gespeichert!');
   }catch(e){
    if([400,401,403,404,409].includes(e.status)){pending=null;stale=true;el('reload-event').hidden=false;}
    if(e.status===401||e.status===403)session=null;
@@ -121,9 +123,24 @@
    status(note);
   }
  }
+ // A switch to another app may hide this page. Try closing only after that
+ // handoff, never while the app-opening prompt or a save is still on screen.
+ function armReturnClose(){
+  const eventId=confirmedEventId;
+  function cleanup(){document.removeEventListener('visibilitychange',onHidden);clearTimeout(timer);if(cancelReturnClose===cleanup)cancelReturnClose=null;}
+  function onHidden(){
+   if(!document.hidden)return;
+   cleanup();
+   if(!working&&!pending&&confirmedEventId===eventId&&wanted()===eventId){try{globalThis.close?.();}catch{/* The saved confirmation remains visible if closing is blocked. */}}
+  }
+  const timer=setTimeout(cleanup,15000);
+  document.addEventListener('visibilitychange',onHidden);
+  cancelReturnClose=cleanup;
+ }
  // Only launch from this explicit tap. whatsapp://app opens WhatsApp itself;
  // it does not compose a message or pass the event/member/session to WhatsApp.
  el('back-to-whatsapp').addEventListener('click',()=>{
+  cancelReturnClose?.();
   const feedback=el('back-to-h2o-status');
   if(working){feedback.textContent='Bitte warte, bis die laufende Prüfung oder Speicherung abgeschlossen ist.';return;}
   if(pending){feedback.textContent='Deine Rückmeldung ist noch nicht bestätigt. Bitte zuerst „Speicherung prüfen“ wählen.';return;}
@@ -133,8 +150,10 @@
    if(previous.protocol==='https:'&&/(^|\.)whatsapp\.com$/.test(previous.hostname)&&history.length>1){history.back();return;}
   }catch{}
   const mobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||'')||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
-  feedback.textContent=mobile?'Falls WhatsApp nicht geöffnet wird, wechsle über den App-Umschalter zu WhatsApp.':'Falls WhatsApp Web nicht geöffnet wird, wechsle zum bisherigen WhatsApp-Fenster.';
-  try{location.assign(mobile?'whatsapp://app':'https://web.whatsapp.com/');}catch{/* Keep the manual return hint visible when an app launch is blocked. */}
+  const confirmed=confirmedEventId!==null&&confirmedEventId===wanted();
+  feedback.textContent=(confirmed?'Rückmeldung gespeichert. Du kannst diese Seite schließen. ':'')+(mobile?'Falls WhatsApp nicht geöffnet wird, wechsle über den App-Umschalter zu WhatsApp.':'Falls WhatsApp Web nicht geöffnet wird, wechsle zum bisherigen WhatsApp-Fenster.');
+  if(mobile&&confirmed)armReturnClose();
+  try{location.assign(mobile?'whatsapp://app':'https://web.whatsapp.com/');}catch{cancelReturnClose?.();/* Keep the manual return hint visible when an app launch is blocked. */}
  });
  for(const button of el('chosen').querySelectorAll('[data-reply]'))button.addEventListener('click',()=>{
   const focus=wanted();
