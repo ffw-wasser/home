@@ -128,6 +128,7 @@ function syncAttendanceStart(){
   byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;byId('attendanceStartSummary').hidden=!state.summary;
   const eyebrow=byId('attendanceStartEyebrow');eyebrow.textContent=state.running?'Laufender Termin':state.event?(window.PortalAdmin?.isNextEvent?.()?(state.event.start<=Date.now()?'Aktueller Termin':'Nächster Termin'):'Ausgewählter Termin'):'';eyebrow.hidden=!eyebrow.textContent;
   const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
+  const runningOperation=Boolean(currentOperationId)&&sessionType==='Einsatz',operationTitle=byId('homeOperationTitle'),operationAction=byId('homeOperationActionLabel');if(operationTitle)operationTitle.textContent=runningOperation?'Einsatz fortsetzen':'Einsatz erfassen';if(operationAction)operationAction.textContent=runningOperation?'Fortsetzen':state.running?'Neuen Einsatz starten':'Starten';
   const spontaneousStart=byId('spontaneousStartButton');if(spontaneousStart)spontaneousStart.disabled=state.running||Boolean(state.event)||!state.type;
   const calendarStatus=byId('attendanceStartCalendarStatus');if(calendarStatus){calendarStatus.textContent=byId('portal-calendar-status')?.textContent||'';calendarStatus.hidden=state.running||Boolean(state.type)||!calendarStatus.textContent;}
   const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Spontanen Termin starten“ zu den Personen wechseln.':'Terminart wählen und die Erfassung starten.';
@@ -135,7 +136,7 @@ function syncAttendanceStart(){
   window.CalendarSidebar?.syncSelection?.();
 }
 function beginAttendanceFromContext(){
-  if(currentSessionId||currentOperationId){setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();return;}
+  if(currentSessionId||currentOperationId){setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();window.scrollTo?.({top:0,left:0,behavior:"instant"});return;}
   const event=window.PortalAdmin?.selectedEvent?.();
   if(event){const type=event.attendanceType||(event.sessionType==='Probe'?'Allgemeine Probe':event.sessionType);chooseSessionType(type,{calendar:true});}
   if(pendingSessionType)return continueToAttendance();
@@ -674,7 +675,6 @@ function continueToAttendance(){
     workspace.style.removeProperty("display");
     workspace.style.display="grid";
     workspace.removeAttribute("aria-hidden");
-    requestAnimationFrame(()=>workspace.scrollIntoView({behavior:"smooth",block:"start"}));
   }
   if(renderErrors.length)showToast(`Schritt 2 geöffnet. Nicht geladen: ${renderErrors.join(", ")}.`,"error");
   window.__sessionTypeTransitionRunning=false;
