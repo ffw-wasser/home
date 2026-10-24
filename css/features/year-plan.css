@@ -14,7 +14,7 @@
 .year-plan-event{margin:2px 0;overflow-wrap:anywhere}.year-plan-event summary{padding:7px 2px;min-height:36px;cursor:pointer;line-height:1.4}.year-plan-event p{font-size:.8rem;margin:2px 0 8px}.year-plan-event.is-probe{color:#0062a3}.year-plan-event.is-other{color:#7030a0}.year-plan-event.is-birthday{background:#ffd9d9;color:#7e2535}.year-plan-event.is-next{font-weight:700;border-left:3px solid #0062a3;padding-left:4px}.year-plan-event summary small{display:block;font-size:.72rem}
 .year-plan-source,.year-plan-legend{font-size:.85rem;color:#465766}.year-plan-source{padding:16px 0}
 .year-plan-date{white-space:nowrap}
-[data-portal-tile="more-year-plan"] strong{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.15;word-break:normal;overflow-wrap:normal}
+#portal-more-grid [data-portal-tile="more-year-plan"] strong{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.15;word-break:normal;overflow-wrap:normal}
 /* Both applications use the same annual-plan controls and responsive month grid. */
 #deckel-main:has(#portal-page-more-year-plan:not([hidden])){max-width:1440px}
 #more-year-plan>.year-plan-controls{top:0}
@@ -103,3 +103,4 @@
 @media(min-width:761px) and (max-height:820px){.home-session-type-panel .calendar-sidebar:not(.is-expanded) .calendar-sidebar-scroll{height:136px;min-height:136px}}
 
 @media(min-width:761px) and (max-height:740px){.home-session-type-panel .calendar-sidebar:not(.is-expanded) .calendar-sidebar-scroll{height:120px;min-height:120px}}
+

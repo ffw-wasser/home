@@ -5,12 +5,12 @@
 /* Both icon classes follow their current container when tiles are moved. */
 .deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;font-size:24px;line-height:1}
 .deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img){display:block;width:24px;height:24px;max-width:100%;max-height:100%;object-fit:contain}
-#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;grid-column:1;grid-row:1;align-self:start;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;color:#176eb1;font-size:26px;line-height:1}
+#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;grid-column:1;grid-row:1;align-self:center;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;color:#12639d;font-size:26px;line-height:1}
 #portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img){display:block;width:26px;height:26px;max-width:100%;max-height:100%;object-fit:contain}
 #portal-more-grid [data-portal-tile="more-year-plan"] strong{overflow-wrap:anywhere}
 #portal-more-grid [data-portal-tile="more-breathing"] strong{word-break:normal;overflow-wrap:normal;hyphens:none}
 @media(pointer:coarse) and (max-height:500px) and (orientation:landscape){.deckel-nav button{justify-content:center}}
-.deckel-nav button>strong{font-size:inherit;max-width:100%;overflow-wrap:anywhere}
+.deckel-nav button>strong{font-size:inherit;max-width:100%;white-space:nowrap;overflow-wrap:normal;word-break:normal}
 [data-portal-tile],[data-portal-pinned]{--portal-symbol:#176eb1;--portal-symbol-active:#8bcfff}
 [data-portal-tile="portal-evidence"]{--portal-symbol:#187449;--portal-symbol-active:#92e4b6}
 [data-portal-tile="account"]{--portal-symbol:#9a5d08;--portal-symbol-active:#ffd17d}
@@ -340,9 +340,9 @@
 .contacts-pane{margin:8px 0 18px;padding:16px;border:1px solid #cad9e7;border-radius:18px;background:#fff;box-shadow:0 3px 14px #1028430b}
 .contacts-head h3{font-size:1.18rem;line-height:1.3;margin:0 0 5px;color:#15365a}.contacts-head p{font-size:.875rem;line-height:1.5;margin:0;color:#435d76}.contacts-status{font-size:.875rem;color:#435d76;margin:12px 0}
 .contacts-list{display:grid;gap:12px;margin-top:14px}.contacts-group{min-width:0;padding:12px;border:1px solid #d4e1ed;border-radius:14px;background:#f7fafd}.contacts-group h4{font-size:1rem;margin:0 0 8px}
-.contacts-person{padding:10px 0;border-top:1px solid #dbe6ef;min-width:0}.contacts-person:first-of-type{border-top:0}.contacts-person strong{display:block;font-size:1rem}.contacts-role{font-size:.875rem;color:#51657b;margin:2px 0 8px}
+.contacts-person{padding:10px 0;border-top:1px solid #dbe6ef;min-width:0}.contacts-person:first-of-type{border-top:0}.contacts-person strong{display:block;font-size:1rem}.contacts-role{font-size:.875rem;color:#425d77;margin:2px 0 8px}
 .contacts-actions{display:flex;gap:8px;flex-wrap:wrap}.contacts-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:10px;padding:9px 11px;font-size:.875rem;font-weight:700;text-decoration:none;color:#104e85;background:#e4f0fa;border:1px solid #b9d2e9;max-width:100%;overflow-wrap:anywhere}
-.contacts-group-mail{display:inline-block;margin:4px 0 9px;color:#125481;overflow-wrap:anywhere}.contacts-refresh{min-height:44px;margin-top:14px}.contacts-source{font-size:.875rem;color:#51657b;margin:10px 0 0}
+.contacts-group-mail{display:inline-block;margin:4px 0 9px;color:#125481;overflow-wrap:anywhere}.contacts-refresh{min-height:44px;margin-top:14px}.contacts-source{font-size:.875rem;color:#425d77;margin:10px 0 0}
 #portal-page-more-help .portal-help{margin:14px 0;padding:14px;border-radius:16px}#portal-page-more-help .portal-help h3{font-size:1.05rem;margin:0 0 6px}#portal-page-more-help .portal-help>details{padding:0 4px}#portal-page-more-help .portal-help summary{font-size:.94rem}
 @media(min-width:680px){#helpView>.contacts-pane{max-width:900px;margin:16px auto 22px}.contacts-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
@@ -413,14 +413,14 @@
 .portal-overview-actions button{flex:1 1 140px;width:auto;min-width:0;min-height:44px;margin:0;padding:10px 12px;border:1px solid #b9d2e8;border-radius:11px;background:#edf5fc;color:#075baf;font-size:.9375rem;line-height:1.3;box-shadow:none}
 .portal-overview-actions .portal-overview-remind{background:#075baf;color:#fff;border-color:#075baf}
 .portal-overview-dialog p[role=status]:empty{display:none}
-.portal-reminders>p{font-size:.875rem;line-height:1.5;color:#52677c}
+.portal-reminders>p{font-size:.875rem;line-height:1.5;color:#425d77}
 .portal-reminders .portal-reminder-actions button{margin:0}
 
 /* Show the next task rather than all reply and reminder information at once. */
 .portal-reminders .portal-reminder-identity{display:flex;gap:10px;align-items:flex-start;margin:0}
 .portal-reminder-identity span,.portal-reminder-event span{display:block;min-width:0}
 .portal-reminder-identity strong,.portal-reminder-event strong{display:block;font-size:.9375rem;line-height:1.4}
-.portal-reminder-identity small,.portal-reminder-event small{display:block;color:#52677c;font-size:.875rem;line-height:1.5}
+.portal-reminder-identity small,.portal-reminder-event small{display:block;color:#425d77;font-size:.875rem;line-height:1.5}
 .portal-reminders .portal-reminder-identity input{margin:2px 0 0}
 .portal-reminders .portal-reminder-secondary{background:#edf5fc;color:#075baf;border:1px solid #b9d2e8;border-radius:10px;padding:9px 12px;font-size:.875rem;line-height:1.4;box-shadow:none}
 .portal-reminders .portal-reminder-primary{background:#075baf;color:#fff;border:1px solid #075baf;border-radius:11px;padding:11px 12px;font-size:.9375rem;line-height:1.4;box-shadow:none}
@@ -428,7 +428,7 @@
 .portal-reminder-tools button{flex:1 1 140px;width:auto}
 .portal-reminder-folder{border-top:1px solid #d7e1eb;margin-top:16px;padding-top:12px}
 .portal-reminder-folder summary{cursor:pointer;font-size:.9375rem;font-weight:700;color:#36516c}
-.portal-reminder-folder p,.portal-reminder-finish p,.portal-reminders>div>p{font-size:.875rem;line-height:1.5;color:#52677c}
+.portal-reminder-folder p,.portal-reminder-finish p,.portal-reminders>div>p{font-size:.875rem;line-height:1.5;color:#425d77}
 .portal-reminders .portal-reminder-event{display:flex;align-items:flex-start;gap:10px;margin:8px 0;padding:10px;border:1px solid #d7e1eb;border-radius:10px}
 .portal-reminders .portal-reminder-event input{margin:2px 0 0}
 .portal-reminder-finish{margin:18px 0;padding:12px;border:1px solid #d7e1eb;border-radius:12px;background:#f7f9fc}

@@ -61,6 +61,10 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'assets/help/guide');
   page.once('dialog',dialog=>dialog.accept());await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).first().click();await page.locator('.portal-overview-dialog').getByText('Anna Beispiel',{exact:false}).waitFor();await capture('rueckmeldungen');await page.locator('.portal-overview-close').click();
   empty=true;await page.evaluate(()=>H2OPortal.render({actions:{central:true,origin:'https://help.example.workers.dev',capability:'a'.repeat(43),revision:'help'}}));await capture('termine-leer');
   for(const width of [320,768]){await page.setViewportSize({width,height:900});for(const target of ['portal-evidence','account','portal-points','deckel-more','more-security']){await page.evaluate(id=>DeckelMobile.jump(id),target);await capture(target+'-'+width);}}
+  await page.evaluate(()=>DeckelMobile.jump('deckel-more'));await page.locator('#portal-layout-open').click();
+  for(const id of ['portal-section','portal-evidence','account','portal-points','more-year-plan','more-breathing','more-hydrants','more-security']){await page.locator('#portal-layout-item').selectOption(id);await page.locator('#portal-layout-transfer').click();}
+  await page.locator('#portal-layout-close').click();await page.evaluate(()=>DeckelMobile.jump('more-breathing'));
+  for(const width of [320,390]){await page.setViewportSize({width,height:900});await capture('navigation-kurznamen-'+width);}
  }
  fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');if(errors.length)throw Error(errors.join('\n'));
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
