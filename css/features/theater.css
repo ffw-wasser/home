@@ -7,7 +7,7 @@
 #theater-manage-status{margin-top:18px;font-weight:650}
 .theater-item-actions{display:flex;flex-direction:column;gap:8px;min-width:0}.theater-item-actions button{white-space:normal} @media(max-width:700px){.theater-item-actions{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.theater-item-actions button{flex:1 1 110px}}
 .theater-entry{margin:0 0 20px;background:#075baf;color:white;min-height:60px}
-.theater-mode #deckel-main>.deckel-header,.theater-mode #deckel-main>#status,.theater-mode #deckel-main>#portal-priority,.theater-mode #deckel-main>#deckel-update-banner,.theater-mode #deckel-main>#installSection,.theater-mode #deckel-main>.privacy-note{display:none!important}
+.theater-mode>.deckel-header,.theater-mode #deckel-main>#status,.theater-mode #deckel-main>#portal-priority,.theater-mode #deckel-main>#deckel-update-banner,.theater-mode #deckel-main>#installSection,.theater-mode #deckel-main>.privacy-note{display:none!important}
 .theater-mode{background:#f1f5f9;color:#10263f}
 .theater-mode #deckel-main{padding:env(safe-area-inset-top) 12px 180px;scroll-behavior:auto;background:#f1f5f9;box-shadow:none;min-height:100dvh;box-sizing:border-box}
 #portal-page-theater{padding-top:6px}

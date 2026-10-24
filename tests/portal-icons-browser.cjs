@@ -10,6 +10,7 @@ const root=path.resolve(__dirname,'..');
    await page.goto('https://ffw-wasser.github.io/home/deckel.html');
    await page.waitForFunction(()=>globalThis.DeckelMobile);
    await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('deckel-more');document.querySelector('[data-portal-tile="more-breathing"]').hidden=false;});
+   assert.deepEqual(await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['more-year-plan','more-breathing','more-hydrants','more-water','more-help','theater-phone-section','more-bundesliga','more-security'],'fire brigade topics precede leisure and account');
    // Reproduce the original drag-and-drop of the hydrant tile into the bottom menu.
    const from=await page.locator('[data-portal-tile="more-hydrants"]').boundingBox(),nav=await page.locator('#deckel-nav').boundingBox();
    await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();await page.waitForTimeout(600);await page.mouse.move(nav.x+nav.width*.65,nav.y+nav.height/2,{steps:8});await page.mouse.up();
