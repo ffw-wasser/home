@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..');
  async function ready(){await page.locator('#appStartup').waitFor({state:'detached'});await page.evaluate(()=>{PortalAdmin.refreshAttendance=async()=>{};});}
  await page.goto('https://ffw-wasser.github.io/home/index.html');await ready();
  await page.evaluate(()=>{members=[{id:'draft-a',firstName:'Anna',lastName:'Muster',roles:['GF'],committeeMember:true},{id:'draft-b',firstName:'Ben',lastName:'Beispiel',roles:[]}];safeStorage.setItem(KEYS.members,JSON.stringify(members));chooseSessionType('Unterricht');continueToAttendance();saveQuickMemberStatus('draft-a','Anwesend');commitPendingMemberStatuses();saveQuickMemberStatus('draft-b','Entschuldigt');});
- await page.locator('#probeDateInput').fill('2026-12-10');await page.locator('#probeDateInput').dispatchEvent('change');
+ await page.locator('#attendanceOptions>summary').click();await page.locator('#probeDateInput').fill('2026-12-10');await page.locator('#probeDateInput').dispatchEvent('change');
  await page.evaluate(()=>openProbeTopicDialog());await page.locator('#probeTopicInput').fill('Funk und Gerätekunde');await page.keyboard.press('Escape');
  const id=await page.evaluate(()=>currentSessionId);await page.reload();await ready();
  assert.deepEqual(await page.evaluate(()=>({id:currentSessionId,type:sessionType,date:today(),topic:currentClosingTopic,pending:[...pendingMemberStatuses],entries:todayEntries().length})),{id,type:'Unterricht',date:'2026-12-10',topic:'Funk und Gerätekunde',pending:[['draft-b','Entschuldigt']],entries:1});

@@ -16,7 +16,10 @@
     hint.textContent=count?`${count} Änderung${count===1?'':'en'} noch nicht übernommen`:`${todayEntries().length} Anmeldung${todayEntries().length===1?'':'en'} für diesen Termin übernommen`;
     const cloud=document.createElement('small');cloud.id='attendanceCloudStatus';cloud.textContent=(count?'Letzter übernommener Stand: ':'')+getAppStorageState().text;hint.append(cloud);
     if(typeof attendanceDraftOutcome!=='undefined'&&attendanceDraftOutcome){const draft=document.createElement('small');draft.textContent=attendanceDraftOutcome;hint.append(draft);}
-    hint.classList.toggle('is-pending',count>0);window.WorkflowUX?.attendance();
+    hint.classList.toggle('is-pending',count>0);
+    const options=byId('attendanceOptions'),warning=getAppStorageState().kind==='error'||typeof attendanceDraftOutcome!=='undefined'&&/konnte nicht|nur für diese Browsersitzung/.test(attendanceDraftOutcome);
+    if(options){options.querySelector('summary').textContent=warning?'Details & Aktionen · Speicherung prüfen':'Details & Aktionen';if(warning)options.open=true;}
+    window.WorkflowUX?.attendance();
   }
   function filterMembers(){
     const query=memberQuery.trim().toLocaleLowerCase('de');let count=0;
@@ -154,7 +157,7 @@
   }
   function initialize(){
     ready=true;
-    const hint=document.createElement('p');hint.id='attendanceDraftStatus';hint.className='ux-save-status';hint.setAttribute('role','status');byId('members')?.before(hint);attendanceState();
+    const hint=document.createElement('p');hint.id='attendanceDraftStatus';hint.className='ux-save-status';hint.setAttribute('role','status');if(byId('attendanceOptionsBody'))byId('attendanceOptionsBody').append(hint);else byId('members')?.before(hint);attendanceState();
     const actions=document.createElement('details');actions.className='ux-other-actions';actions.innerHTML='<summary>Weitere Aktionen</summary><button class="danger-button" type="button" id="discardCurrentSessionButton">Termin verwerfen</button>';
     const reset=byId('resetTodayParticipantsButton');if(reset){const explanation=reset.closest('.today-reset-area')?.querySelector('small');reset.before(actions);actions.append(reset);if(explanation)actions.append(explanation);}else byId('attendanceView').append(actions);
     byId('discardCurrentSessionButton').onclick=()=>{if(discardCurrentAttendanceSession())showView('attendanceView');};

@@ -218,30 +218,12 @@ body.ios-input-keyboard-open.ios-keyboard-visible main.app-shell{padding-bottom:
  #iphoneAttendanceActionDock.iphone-attendance-action-dock:has(#saveButton[hidden]),#iphoneAttendanceActionDock.iphone-attendance-action-dock:has(#exportResetButton[hidden]){grid-template-columns:minmax(0,1fr)!important}
 }
 
-/* Keep the QR action from squeezing the attendance title on narrow screens. */
+/* Compact attendance actions on phones. */
 @media(max-width:760px){
- #attendanceSelectionWorkspace .members-panel>.panel-heading{
-  display:grid;
-  grid-template-columns:auto minmax(0,1fr);
-  align-items:center;
-  gap:10px 12px;
- }
- #attendanceSelectionWorkspace .members-panel>.panel-heading>.step{grid-column:1;grid-row:1}
- #attendanceSelectionWorkspace #memberStepTitle{
-  grid-column:2;grid-row:1;
-  min-width:0;
-  overflow-wrap:normal;
-  word-break:normal;
- }
- #attendanceSelectionWorkspace #memberCount{
-  grid-column:1/-1;grid-row:2;
-  justify-self:start;
-  max-width:100%;
- }
- #attendanceSelectionWorkspace #attendanceScanButton{
-  grid-column:1/-1;grid-row:3;
-  width:100%;min-width:0;
-  min-height:48px;
-  white-space:normal;
- }
+ #attendanceSelectionWorkspace .members-panel>.panel-heading{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+ #attendanceSelectionWorkspace #memberStepTitle{grid-column:1/-1;grid-row:1}
+ #attendanceSelectionWorkspace #memberCount{grid-column:1;grid-row:2;justify-self:start;white-space:normal}
+ #attendanceSelectionWorkspace #attendanceScanButton{grid-column:2;grid-row:2;min-width:0;white-space:normal}
+ #attendanceView.workflow-stage-2 #homeFlowProgress button{padding:4px 6px}
+ #attendanceView.workflow-stage-2 #homeFlowProgress button b{width:22px;height:22px;min-width:22px;font-size:.8rem}
 }
