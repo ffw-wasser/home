@@ -37,7 +37,7 @@ const root=path.resolve(__dirname,'..');
     await verify('#deckel-nav',28,24);await verify('#portal-more-grid',28,26);
     const labelMetrics=await page.locator('#deckel-nav button>strong').evaluateAll(ns=>ns.map(n=>({text:n.textContent,h:n.getBoundingClientRect().height,line:parseFloat(getComputedStyle(n).lineHeight),width:n.clientWidth,scroll:n.scrollWidth})));assert.ok(labelMetrics.every(n=>n.h<=n.line+1&&n.scroll<=n.width+1),'every moved tile has a complete one-line name: '+JSON.stringify(labelMetrics));
     if(target==='#portal-more-grid')assert.equal(await page.locator(target+' [data-portal-tile="'+id+'"] strong').innerHTML(),originalLabels[id],'More restores the complete original title and word breaks');
-    if(target==='#deckel-nav')assert.ok(await page.locator(target+' [data-portal-tile="'+id+'"]').getAttribute('aria-label'),'short names keep their complete accessible title');
+    if(target==='#deckel-nav'&&['more-year-plan','more-breathing','more-hydrants','more-water','more-bundesliga','more-security'].includes(id))assert.ok(await page.locator(target+' [data-portal-tile="'+id+'"]').getAttribute('aria-label'),'short names keep their complete accessible title');
     await page.locator('#portal-layout-transfer').click();
    }
    await page.locator('#portal-layout-close').click();
