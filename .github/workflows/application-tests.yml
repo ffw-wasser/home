@@ -73,6 +73,8 @@ jobs:
         run: node tests/calendar-display-browser.cjs
       - name: Test calendar selection, incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
+      - name: Test football favorites, cups and responsive views
+        run: node tests/portal-bundesliga-browser.cjs
       - name: Test authenticated direct OneDrive folder conversion
         run: node tests/onedrive-direct-browser.cjs
       - name: Test local drafts, resume and administration tasks
