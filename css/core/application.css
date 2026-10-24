@@ -7580,7 +7580,10 @@ html body .participant-command-header .compact-menu {
 #attendanceSelectionWorkspace #memberStepNumber{display:none}
 #attendanceSelectionWorkspace #memberStepTitle{grid-column:1;grid-row:1;min-width:0;margin:0;overflow-wrap:normal;word-break:normal}
 #attendanceSelectionWorkspace #memberCount{grid-column:2;grid-row:1;margin:0;max-width:100%;font-size:.875rem;line-height:1.4}
-#attendanceSelectionWorkspace #attendanceScanButton{grid-column:3;grid-row:1;width:auto;min-height:44px;padding:9px 14px;max-width:100%}
+#attendanceSelectionWorkspace #attendanceScanButton{grid-column:3;grid-row:1;display:flex;align-items:center;justify-content:center;gap:12px;width:auto;min-height:60px;padding:14px 20px;max-width:100%;background:#e9f5ed;border:2px solid #19733c;color:#135b30;font-size:1.05rem;font-weight:750;line-height:1.25;border-radius:12px;box-shadow:0 2px 6px #176b3320}
+#attendanceSelectionWorkspace #attendanceScanButton:hover{background:#d8eddf;border-color:#135b30}
+#attendanceSelectionWorkspace #attendanceScanButton:focus-visible{outline:3px solid #19733c;outline-offset:3px}
+.attendance-qr-icon{width:30px;height:30px;flex:0 0 30px}
 .attendance-options{margin:0 0 12px;border-bottom:1px solid #d9e2e5;padding:0 0 8px}
 .attendance-options>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:.9rem;color:#485e69;font-weight:650;list-style:none}
 .attendance-options>summary::after{content:'⌄';margin-left:8px}.attendance-options[open]>summary::after{content:'⌃'}

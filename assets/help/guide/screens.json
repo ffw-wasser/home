@@ -5,7 +5,7 @@
   },
   "geraetehaus-anwesenheit": {
     "width": 964,
-    "height": 363
+    "height": 381
   },
   "geraetehaus-uebernehmen": {
     "width": 340,
@@ -50,5 +50,9 @@
   "geraetehaus-datenstatus": {
     "width": 390,
     "height": 68
+  },
+  "geraetehaus-kalender": {
+    "width": 1366,
+    "height": 900
   }
 }
