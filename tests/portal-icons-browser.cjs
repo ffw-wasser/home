@@ -40,6 +40,7 @@ const root=path.resolve(__dirname,'..');
     const geometry=await page.evaluate(()=>{const nav=document.getElementById('deckel-nav'),active=nav.querySelector('[aria-current=page]'),main=document.getElementById('deckel-main'),n=nav.getBoundingClientRect(),a=active.getBoundingClientRect(),m=main.getBoundingClientRect();return {rail:n.top,active:a.top,content:m.bottom,left:a.left,right:a.right,width:innerWidth,overflow:getComputedStyle(nav).overflowY};});
     assert.ok(geometry.active<geometry.rail&&geometry.active>=geometry.content-1,'raised selection has its own space: '+JSON.stringify(geometry));
     assert.equal(geometry.overflow,'visible','raised card is not clipped');
+    const tops=await page.locator('#deckel-nav button').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().top-(n.hasAttribute('aria-current')?-12:0)));assert.ok(Math.max(...tops)-Math.min(...tops)<1,'all navigation tiles share one row');
     assert.ok(geometry.left>=0&&geometry.right<=geometry.width,'raised selection stays inside the screen');
    }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

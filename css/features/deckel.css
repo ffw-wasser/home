@@ -153,6 +153,9 @@ body.h2o-portal .help-guide :is(.guide-privacy,.guide-manual){background:var(--c
 body.h2o-portal .help-guide :is(details,.guide-privacy-grid>section){background:var(--surface)}
 body.h2o-portal :is(input:not([type=checkbox]),select){background:var(--surface);color:var(--ink)}
 body.h2o-portal .portal-setting-help{color:var(--muted)}
+@media screen{body.h2o-portal .year-plan :is(.year-plan-heading,.year-plan-controls){background:var(--card);box-shadow:none}body.h2o-portal .year-plan :is(.year-plan-month,.year-plan-tools button:not(#year-plan-today)){background:var(--surface)}}
+body.h2o-portal .gf-breathing-person{background:var(--surface)}
+@media(max-width:360px){#portal-page-deckel #phone-cash-open{gap:4px;font-size:.875rem}#portal-page-deckel #phone-cash-open .cash-icon{width:22px;height:18px}}
 /* Personal layout controls for the portal tiles. */
 .portal-layout-hint{margin:4px 0 10px;color:var(--muted);font-size:.875rem;line-height:1.4}
 .portal-layout-open{width:auto;min-height:42px;margin:0 0 14px;padding:8px 14px}
