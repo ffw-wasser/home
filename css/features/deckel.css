@@ -141,7 +141,6 @@
 #portal-page-points .loyalty-card summary{font-size:1.0625rem;line-height:1.5}.loyalty-heading>div{min-width:0}.loyalty-heading{flex-wrap:wrap}
 
 /* Wasserentnahme Elz: gut lesbare Grenzwertinfo, keine irreführende Live-Ampel. */
-.portal-more-grid .portal-more-help-tile{grid-column:auto;aspect-ratio:1;min-height:0;align-self:start}
 /* Light reading surfaces on the navy portal canvas. */
 #portal-page-deckel>#account,#portal-page-challenge,#deckel-main>.portal-more-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
 #portal-page-deckel>#account{margin-bottom:12px}
