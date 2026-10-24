@@ -19,7 +19,7 @@
 [data-portal-tile="more-breathing"]{--portal-symbol:#187449;--portal-symbol-active:#92e4b6}
 .deckel-nav button>.portal-nav-symbol,.deckel-nav button>.portal-more-icon{color:#f4dde2}
 .deckel-nav button[aria-current="page"]>.portal-nav-symbol,.deckel-nav button[aria-current="page"]>.portal-more-icon{color:#176eb1}
-.deckel-nav button>span:first-child{flex-shrink:0}.deckel-nav button:not([aria-current=page]){background:transparent;color:#fff3f5}.deckel-nav button[aria-current=page]{position:relative;z-index:1;transform:translateY(-8px);box-shadow:0 2px 8px #06152626}#portal-status{font-size: .875rem;color:#385270;line-height:1.5}.deckel-title img{border-radius:10px}
+.deckel-nav button>span:first-child{flex-shrink:0}.deckel-nav button:not([aria-current=page]){background:transparent;color:#fff3f5}.deckel-nav button[aria-current=page]{position:relative;z-index:1;transform:translateY(-12px);box-shadow:0 2px 8px #06152626}#portal-status{font-size: .875rem;color:#385270;line-height:1.5}.deckel-title img{border-radius:10px}
 
 .portal-empty-state{padding:20px;border:1px solid #d2e1ef;border-radius:18px;background:var(--card);color:#425d77;line-height:1.5}
 .portal-birthday{padding:18px;border:1px solid #e5c983;border-radius:16px;background:#fff3d6;color:#69471b;font-weight:700}#portal-admin-review-events{max-height:70vh;overflow:auto;overscroll-behavior:contain}#portal-admin-review-events label{line-height:1.6}

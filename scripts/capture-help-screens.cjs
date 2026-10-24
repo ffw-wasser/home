@@ -58,7 +58,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'assets/help/guide');
    if(target==='theater-phone-section')await page.locator('#theater-phone-items button').first().waitFor();
    await capture(name);
   }
-  await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).first().click();await page.locator('.portal-overview-dialog').getByText('Anna Beispiel',{exact:false}).waitFor();await capture('rueckmeldungen');await page.locator('.portal-overview-close').click();
+  page.once('dialog',dialog=>dialog.accept());await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).first().click();await page.locator('.portal-overview-dialog').getByText('Anna Beispiel',{exact:false}).waitFor();await capture('rueckmeldungen');await page.locator('.portal-overview-close').click();
   empty=true;await page.evaluate(()=>H2OPortal.render({actions:{central:true,origin:'https://help.example.workers.dev',capability:'a'.repeat(43),revision:'help'}}));await capture('termine-leer');
   for(const width of [320,768]){await page.setViewportSize({width,height:900});for(const target of ['portal-evidence','account','portal-points','deckel-more','more-security']){await page.evaluate(id=>DeckelMobile.jump(id),target);await capture(target+'-'+width);}}
  }

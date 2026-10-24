@@ -45,7 +45,7 @@
 
 .loyalty-card{padding:18px;margin:20px 0;border:1px solid #b5d9ec;border-radius:var(--card-radius);background:#e9f6fc}.loyalty-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}.loyalty-label{font-size:1.125rem;font-weight:800;margin:0}.loyalty-label::before{content:"★";margin-right:7px;color:var(--gold)}.loyalty-slogan{font-size:1.0625rem;color:#3e6582;margin:4px 0}.loyalty-heading strong{font-size:2.5rem;font-weight:850;color:#123b65;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.loyalty-card progress{display:block;width:100%;height:9px;accent-color:var(--red);margin:14px 0 8px}.loyalty-card #bonus{font-size:1.0625rem;color:#385b78;margin:0;line-height:1.6}.loyalty-card details{border-top:1px solid #bfdceb;margin-top:10px}.loyalty-card summary{font-size: .875rem;color:#385b78}.loyalty-card #points-use{font-size:1.0625rem;line-height:1.65;margin:0 0 8px}.deckel-more{margin:20px 0;background:var(--card);border:1px solid var(--line);border-radius:var(--card-radius);padding:0 18px}.deckel-more>summary{padding:17px 0;font-size:1rem}.deckel-more details{border-top:1px solid var(--line);margin:0}.deckel-more details summary{font-size:0.875rem;padding:14px 0}.deckel-more p{font-size: .875rem}.notification-settings button{margin:10px 0;font-size:0.875rem}.deckel-stack-note{font-size: .875rem}.install-card{padding:0 18px;margin:20px 0;border:1px dashed #a8c9e3;border-radius:18px;background:#f7fbff}.install-card>summary{font-size:0.875rem;padding:15px 0}.install-card p,.install-card li{font-size: .875rem;line-height:1.6;color:var(--muted)}.install-card ol{padding-left:20px;margin:8px 0 14px}.install-card li{margin:8px 0}.install-card button{font-size:0.875rem;margin-bottom:14px}.install-card #installStatus:empty{display:none}
 /* Bottom navigation uses buttons: a personal access hash must never be replaced. */
-.deckel-nav{position:relative;z-index:20;margin:8px auto max(6px,env(safe-area-inset-bottom));width:min(544px,calc(100% - 16px));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:3px 4px;border:1px solid #954655;border-top:2px solid #954655;border-radius:18px;background:#762c3a;box-shadow:none}.deckel-nav button{min-width:0;overflow-wrap:anywhere;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;min-height:58px;border-radius:12px;background:transparent;color:#4e6983;font-size: .875rem}.deckel-nav button>span{font-size:1.375rem;line-height:1.1}.deckel-nav button[aria-current=page]{background:var(--card);color:#153b60;box-shadow:none}.keyboard-open .deckel-nav{display:none}
+.deckel-nav{position:relative;z-index:20;margin:12px auto max(6px,env(safe-area-inset-bottom));width:min(544px,calc(100% - 16px));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:3px 4px;border:1px solid #954655;border-top:2px solid #954655;border-radius:18px;background:#762c3a;box-shadow:none}.deckel-nav button{min-width:0;overflow-wrap:anywhere;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;min-height:58px;border-radius:12px;background:transparent;color:#4e6983;font-size: .875rem}.deckel-nav button>span{font-size:1.375rem;line-height:1.1}.deckel-nav button[aria-current=page]{background:var(--card);color:#153b60;box-shadow:none}.keyboard-open .deckel-nav{display:none}
 .deckel-card.is-nudged{animation:deckel-wiggle .6s ease-in-out}@keyframes deckel-wiggle{0%,100%{transform:none}20%{transform:translateY(-5px) rotate(-3deg)}45%{transform:translateY(-3px) rotate(3deg)}70%{transform:rotate(-1deg)}}
 @media(max-width:360px){main{padding-left:12px;padding-right:12px}.deckel-title h1{font-size:1.3125rem}.deckel-title p{font-size: .875rem}#refresh{padding:8px;font-size: .875rem}.phone-menu{padding:16px}.deckel-overview{gap:12px}.deckel-balance-info #balance{font-size:clamp(24px,7.5vw,28px)}.deckel-nav{padding-left:2px;padding-right:2px}.phone-menu h2{font-size:1.25rem}}
 @media(prefers-reduced-motion:reduce){html,main{scroll-behavior:auto}.deckel-card.is-nudged,#refresh[aria-busy=true]>span:first-child{animation:none}button:not(:disabled):active,.button:active{transform:none}}
@@ -79,7 +79,7 @@
 }
 @media(pointer:coarse) and (max-height:500px) and (orientation:landscape){
  body .deckel-nav button{min-height:48px;flex-direction:row;gap:6px;padding:6px;font-size:.875rem}
- body .deckel-nav{padding-block:4px;margin-top:8px;margin-bottom:max(4px,env(safe-area-inset-bottom))}
+ body .deckel-nav{padding-block:4px;margin-top:12px;margin-bottom:max(4px,env(safe-area-inset-bottom))}
  .deckel-header{padding:8px 12px}
  main{padding-top:max(8px,env(safe-area-inset-top))}
  #portal-page-deckel .phone-order{position:static}
@@ -146,8 +146,11 @@
 #portal-page-deckel>#account,#portal-page-challenge,#deckel-main>.portal-more-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
 #portal-page-deckel>#account{margin-bottom:12px}
 /* Calm shared reading surfaces; retain the meaning of status colours. */
-body.h2o-portal :is(.portal-more-detail,.portal-evidence,.portal-calendar-dialog,.cash-dialog,.portal-layout-dialog,.contacts-pane,#identity-account,.portal-setting){background:var(--card)}
+body.h2o-portal :is(.portal-more-detail,.portal-evidence,.portal-calendar-dialog,.cash-dialog,.portal-layout-dialog,.contacts-pane,#identity-account){background:var(--card)}
 body.h2o-portal :is(.portal-evidence-item,.portal-evidence-editor,.portal-evidence-history,.contacts-group,.bundesliga-match,.deckel-challenge){background:var(--surface)}
+body.h2o-portal .portal-notification-settings>.portal-setting{background:var(--card)}
+body.h2o-portal .help-guide :is(.guide-privacy,.guide-manual){background:var(--card);box-shadow:none}
+body.h2o-portal .help-guide :is(details,.guide-privacy-grid>section){background:var(--surface)}
 body.h2o-portal :is(input:not([type=checkbox]),select){background:var(--surface);color:var(--ink)}
 body.h2o-portal .portal-setting-help{color:var(--muted)}
 /* Personal layout controls for the portal tiles. */
