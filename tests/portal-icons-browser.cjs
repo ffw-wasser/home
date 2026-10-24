@@ -34,9 +34,18 @@ const root=path.resolve(__dirname,'..');
     await page.locator('#portal-layout-transfer').click();
    }
    await page.locator('#portal-layout-close').click();
+   // Raised selection stays outside the rail and above its reserved content gap.
+   for(const target of ['portal-section','portal-evidence','account','portal-points','deckel-more']){
+    await page.evaluate(id=>DeckelMobile.jump(id),target);
+    const geometry=await page.evaluate(()=>{const nav=document.getElementById('deckel-nav'),active=nav.querySelector('[aria-current=page]'),main=document.getElementById('deckel-main'),n=nav.getBoundingClientRect(),a=active.getBoundingClientRect(),m=main.getBoundingClientRect();return {rail:n.top,active:a.top,content:m.bottom,left:a.left,right:a.right,width:innerWidth,overflow:getComputedStyle(nav).overflowY};});
+    assert.ok(geometry.active<geometry.rail&&geometry.active>=geometry.content-1,'raised selection has its own space: '+JSON.stringify(geometry));
+    assert.equal(geometry.overflow,'visible','raised card is not clipped');
+    assert.ok(geometry.left>=0&&geometry.right<=geometry.width,'raised selection stays inside the screen');
+   }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    await page.close();
   }
   console.log('Portal icon sizing passed at 320/390/768px, including drag and every tile transfer.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
