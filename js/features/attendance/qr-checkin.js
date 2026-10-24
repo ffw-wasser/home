@@ -1,6 +1,7 @@
 /* Camera frames stay on device. QR tokens grant attendance identification only. */
 (function(g){
  'use strict';let stream=null,frame=0,epoch=0,refresh=0,busy=false,last='',dialog,video,canvas,status,scope;
+ let personalCleanup=()=>{};
  let sound=true,audio,guideFrame,guideLabel,tracking,outline,candidate='',candidateFrames=0,guideStarted=0,guideHoldUntil=0,checkmark,checkmarkTimer=0;
  function guide(state,message){
   if(!guideFrame||!guideLabel)return;
@@ -19,7 +20,7 @@
  function prepareAudio(){if(!sound)return;try{audio=audio||new (g.AudioContext||g.webkitAudioContext)();audio.resume().catch(()=>{});}catch{}}
  function beep(){if(!sound)return;try{audio=audio||new (g.AudioContext||g.webkitAudioContext)();audio.resume();const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.frequency.value=880;gain.gain.value=.08;oscillator.connect(gain);gain.connect(audio.destination);oscillator.start();oscillator.stop(audio.currentTime+.12);}catch{}}
  const node=(tag,text)=>{const n=document.createElement(tag);if(text)n.textContent=text;return n;};
- function stop(){clearTimeout(checkmarkTimer);if(checkmark)checkmark.hidden=true;epoch++;cancelAnimationFrame(frame);clearTimeout(refresh);stream?.getTracks().forEach(t=>t.stop());stream=null;if(video)video.srcObject=null;busy=false;last='';candidate='';candidateFrames=0;guideStarted=Date.now();guideHoldUntil=0;}
+ function stop(){personalCleanup();personalCleanup=()=>{};clearTimeout(checkmarkTimer);if(checkmark)checkmark.hidden=true;epoch++;cancelAnimationFrame(frame);clearTimeout(refresh);stream?.getTracks().forEach(t=>t.stop());stream=null;if(video)video.srcObject=null;busy=false;last='';candidate='';candidateFrames=0;guideStarted=Date.now();guideHoldUntil=0;}
  function panel(title){stop();dialog?.remove();dialog=node('dialog');dialog.className='checkin-dialog';const h=node('h2',title),close=node('button','Fertig');close.type='button';close.onclick=()=>dialog.close();status=node('p');status.className='checkin-result';status.setAttribute('role','status');status.setAttribute('aria-live','polite');dialog.append(h,status,close);dialog.addEventListener('close',stop);document.body.append(dialog);dialog.showModal();return dialog;}
  function context(){return JSON.stringify({id:currentOperationId||currentSessionId,date:today(),type:sessionType,source:g.PortalAdmin.checkinContext().source,event:g.PortalAdmin.checkinContext().eventId});}
  function valid(){return dialog?.open&&context()===scope&&oneDriveAdministrationReady()&&document.getElementById('attendanceView')?.hidden===false&&homeFlowStage===2;}
@@ -86,8 +87,26 @@
   }
   switcher.onclick=()=>{facing=facing==='user'?'environment':'user';start();};await start();
  }
+ // Only the personal code compensates phone rotation; no app-wide orientation lock.
+ function portraitCode(d){
+  d.classList.add('checkin-personal-dialog');
+  const orientation=g.screen?.orientation,viewport=g.visualViewport;
+  function fit(){
+   if(!d.open)return;
+   const width=viewport?.width||g.innerWidth,height=viewport?.height||g.innerHeight;
+   const phone=g.matchMedia('(pointer:coarse)').matches&&Math.min(width,height)<=600;
+   const angle=Number.isFinite(orientation?.angle)?orientation.angle:Number(g.orientation)||0;
+   const sideways=phone&&width>height;
+   const rotation=sideways?(((angle%360)+360)%360===270?90:-90):0;
+   d.style.setProperty('--checkin-code-turn',rotation+'deg');
+   d.style.setProperty('--checkin-code-width',(sideways?height:width)+'px');
+   d.style.setProperty('--checkin-code-height',(sideways?width:height)+'px');
+  }
+  g.addEventListener('resize',fit);g.addEventListener('orientationchange',fit);orientation?.addEventListener?.('change',fit);viewport?.addEventListener('resize',fit);
+  personalCleanup=()=>{g.removeEventListener('resize',fit);g.removeEventListener('orientationchange',fit);orientation?.removeEventListener?.('change',fit);viewport?.removeEventListener('resize',fit);};fit();
+ }
  async function personal(){
-  const d=panel('Mein Anwesenheitscode'),image=node('canvas');image.style.cssText='width:min(100%,320px);height:auto;display:block;margin:16px auto';d.insertBefore(image,status);const version=epoch;const name=document.getElementById('identity-member')?.textContent;if(name)d.insertBefore(node('p',name),image);
+  const d=panel('Mein Anwesenheitscode'),image=node('canvas');portraitCode(d);image.className='checkin-personal-code';d.insertBefore(image,status);const version=epoch;const name=document.getElementById('identity-member')?.textContent;if(name)d.insertBefore(node('p',name),image);
   async function renew(){try{const identity=g.H2OIdentity.session();if(!identity)throw Error('Bitte zuerst im Portal anmelden.');const response=await fetch('https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/portal/checkin-code',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+identity.token},body:JSON.stringify({alias:identity.alias,revision:identity.revision}),cache:'no-store',credentials:'omit',redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(15000)});const result=await response.json();if(!response.ok)throw Error(result.error||'Code konnte nicht geladen werden.');if(version!==epoch||!d.open)return;const qr=qrcode(0,'M');qr.addData(result.code);qr.make();const count=qr.getModuleCount(),unit=5,quiet=4;image.width=image.height=(count+quiet*2)*unit;const ctx=image.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,image.width,image.height);ctx.fillStyle='#000';for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c))ctx.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);status.textContent='Am Gerätehaus vor die iPad-Kamera halten. Der Code erneuert sich automatisch.';refresh=setTimeout(renew,60000);}catch(e){if(version===epoch){image.width=image.height=0;status.textContent=e.message;}}}await renew();
  }
  document.getElementById('attendanceScanButton')?.addEventListener('click',scan);document.getElementById('memberCheckinButton')?.addEventListener('click',personal);
