@@ -28,6 +28,7 @@
   const recorded=todayEntries().length;
   const hasProgress=recorded>0||count>0||Boolean(currentClosingTopic)||Boolean(typeof currentOperationDraft!=='undefined'&&currentOperationDraft)||Boolean(typeof pendingDocumentReport!=='undefined'&&pendingDocumentReport?.pageCount);
   const hero=byId('attendanceStartCard'),cancel=byId('cancelCurrentTermButton');
+  const options=byId('attendanceOptionsBody'),view=byId('attendanceView');if(summary&&options&&view){const host=homeFlowStage===2?options:view;if(summary.parentElement!==host){if(homeFlowStage===2)host.append(summary);else host.prepend(summary);}}
   if(hero&&cancel){const host=homeFlowStage===1?byId('attendanceStartSecondary'):summary?.querySelector('.workflow-actions');if(host&&cancel.parentElement!==host)host.appendChild(cancel);cancel.hidden=!running;}
   if(summary){summary.hidden=!running||Boolean(hero)&&homeFlowStage===1;text(summary.querySelector('p'),`${sessionType} · ${new Date(today()+'T12:00:00').toLocaleDateString('de-DE')} · ${recorded} Personen übernommen${count?' · '+count+' noch nicht übernommen':''}`);summary.querySelector('button').hidden=homeFlowStage!==1;}
  }

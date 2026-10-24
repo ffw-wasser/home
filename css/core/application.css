@@ -7575,7 +7575,33 @@ html body .participant-command-header .compact-menu {
 
 .checkin-dialog{width:min(94vw,560px);max-height:90dvh;overflow:auto;padding:24px;border:0;border-radius:20px;background:#fff;color:#152d40}.checkin-dialog::backdrop{background:#071927b3}.checkin-dialog button{min-height:48px;margin:6px;padding:10px 18px}.checkin-dialog [role=status]{font-size:1.2rem;font-weight:700}.checkin-dialog [data-success=true]{color:#146b36}
 
-/* Attendance heading actions wrap before the title loses its readable width. */
-.members-panel>.panel-heading{flex-wrap:wrap}
-.members-panel #memberStepTitle{flex:1 1 220px;min-width:min(100%,220px);overflow-wrap:normal;word-break:normal}
-.members-panel #attendanceScanButton{max-width:100%}
+/* Compact attendance header: primary action stays visible, details are disclosed. */
+#attendanceSelectionWorkspace .members-panel>.panel-heading{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;margin-bottom:10px}
+#attendanceSelectionWorkspace #memberStepNumber{display:none}
+#attendanceSelectionWorkspace #memberStepTitle{grid-column:1;grid-row:1;min-width:0;margin:0;overflow-wrap:normal;word-break:normal}
+#attendanceSelectionWorkspace #memberCount{grid-column:2;grid-row:1;margin:0;max-width:100%;font-size:.875rem;line-height:1.4}
+#attendanceSelectionWorkspace #attendanceScanButton{grid-column:3;grid-row:1;width:auto;min-height:44px;padding:9px 14px;max-width:100%}
+.attendance-options{margin:0 0 12px;border-bottom:1px solid #d9e2e5;padding:0 0 8px}
+.attendance-options>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:.9rem;color:#485e69;font-weight:650;list-style:none}
+.attendance-options>summary::after{content:'⌄';margin-left:8px}.attendance-options[open]>summary::after{content:'⌃'}
+#attendanceOptionsBody{padding:4px 0 8px}#attendanceOptions #stage2Heading{display:flex!important;gap:12px;flex-wrap:wrap;align-items:center;border:0;background:none;padding:0;margin:0}
+#attendanceOptions .member-status-legend{display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0;border:0;background:none;box-shadow:none}
+#attendanceOptions .member-status-legend>strong{display:none!important}#attendanceOptions .member-status-legend>span{display:inline-flex;align-items:center;gap:5px;padding:4px 6px;border:0;font-size:.875rem}
+#attendanceOptions .ux-save-status{margin:10px 0;padding:10px;font-size:.9rem}#attendanceOptions .workflow-session{border:0;padding:0;background:none;box-shadow:none;margin:8px 0;flex-wrap:wrap;font-size:.9rem}
+#attendanceOptions .workflow-actions{margin:8px 0;gap:8px}#attendanceOptions .workflow-actions button{min-height:40px;padding:8px 10px;font-size:.875rem}
+#attendanceView.workflow-stage-2 #homeFlowProgress{margin:8px 0;padding:6px;gap:4px;box-shadow:none}
+#attendanceView.workflow-stage-2 #homeFlowProgress button{padding:5px 8px;min-height:36px;font-size:.875rem}
+.checkin-camera{position:relative;overflow:hidden;border-radius:16px;background:#102331;margin:12px 0}.checkin-camera video{display:block;width:100%;max-height:45vh;object-fit:contain}
+.checkin-target{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(65%,240px);aspect-ratio:1;border:3px solid #edf6ff;border-radius:18px;box-shadow:0 0 0 100vmax #06121d35;pointer-events:none;transition:border-color .2s}
+.checkin-camera[data-state=readable] .checkin-target,.checkin-camera[data-state=checking] .checkin-target{border-color:#ffd45b}
+.checkin-camera[data-state=success] .checkin-target{border-color:#62eb9a}.checkin-camera[data-state=error] .checkin-target{border-color:#ff8b8b}
+.checkin-tracking{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.checkin-tracking polygon{fill:#36df7a20;stroke:#62eb9a;stroke-width:3;vector-effect:non-scaling-stroke}
+.checkin-guide{font-size:1rem!important;font-weight:700;padding:10px 12px;border-radius:10px;background:#eef3f7;color:#243f53;margin:8px 0}
+.checkin-guide[data-state=readable],.checkin-guide[data-state=checking]{background:#fff2ce;color:#704e03}.checkin-guide[data-state=success]{background:#dff7e8;color:#155f32}.checkin-guide[data-state=error]{background:#ffeded;color:#8b2430}
+
+#attendanceView.workflow-stage-2>.participant-command-header{display:none}
+#attendanceView.workflow-stage-2 #attendanceSelectionWorkspace{border:0!important;box-shadow:none!important;background:transparent!important}
+.checkin-success{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:clamp(110px,32%,180px);aspect-ratio:1;border-radius:50%;background:#f0fff5;color:#138440;font-size:clamp(76px,12vw,126px);font-weight:900;line-height:1;box-shadow:0 0 0 10px #ffffffcc,0 8px 30px #0005;pointer-events:none}
+.checkin-success[hidden]{display:none}
+
+.checkin-camera[data-state=error] .checkin-tracking polygon{stroke:#ff8b8b;fill:#ff000010}.checkin-camera[data-state=checking] .checkin-tracking polygon,.checkin-camera[data-state=readable] .checkin-tracking polygon{stroke:#ffd45b;fill:#ffd45b10}

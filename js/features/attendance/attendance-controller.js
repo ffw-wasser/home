@@ -510,7 +510,7 @@ function updateProbeWorkflow(){
   if(byId("batchSelectionHint"))byId("batchSelectionHint").hidden=true;
   if(byId("participantOverview"))byId("participantOverview").hidden=chosenMemberIds.size===0;
   if(byId("roleSaveButton"))byId("roleSaveButton").hidden=true;
-  if(byId("memberStepTitle"))byId("memberStepTitle").textContent=committee?"Mitglieder des Ausschusses markieren":operation?"Anwesende Einsatzkräfte markieren":standard?"Personen markieren":training?"Teilnehmende markieren":"Personen markieren";
+  if(byId("memberStepTitle"))byId("memberStepTitle").textContent="Anwesenheit erfassen";
   if(byId("memberStepNumber"))byId("memberStepNumber").textContent="2";
   if(byId("roleStepNumber"))byId("roleStepNumber").textContent="1";
   if(byId("roleStepEyebrow"))byId("roleStepEyebrow").textContent="Status direkt auswählen";
@@ -738,8 +738,8 @@ function ensureStagedHomeFlow(){
   }
   sessionPanel.querySelector(".step")?.remove();
   workspace.classList.add("home-flow-card","home-flow-stage-2");
-  if(!byId("stage2Heading")){const h=document.createElement("div");h.id="stage2Heading";h.className="flow-stage-heading";workspace.prepend(h);}
-  const stage2Heading=byId("stage2Heading");if(stage2Heading)stage2Heading.innerHTML=`<span>2</span><div><strong>Anwesenheit erfassen</strong><small>${escapeHtml(sessionType)}</small></div>`;
+  if(!byId("stage2Heading")){const h=document.createElement("div");h.id="stage2Heading";h.className="attendance-term-options";(byId("attendanceOptionsBody")||workspace).prepend(h);}
+  const stage2Heading=byId("stage2Heading");
   if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Termindatum</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{const linkedDate=window.PortalAdmin?.selectedDate();if(linkedDate&&event.target.value!==linkedDate){event.target.value=linkedDate;showToast("Das Datum kommt aus dem verknüpften Kalendertermin.","error");return;}currentProbeDate=event.target.value||systemToday();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
 
   const step3ActionButton=byId("exportResetButton");
