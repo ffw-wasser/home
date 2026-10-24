@@ -120,17 +120,18 @@ function renderMembers() {
 function attendanceStartState(){
   const running=Boolean(currentSessionId||currentOperationId),event=window.PortalAdmin?.selectedEvent?.(),type=running?sessionType:pendingSessionType||event?.attendanceType||(event?.sessionType==="Probe"?"Allgemeine Probe":event?.sessionType)||"";
   const rows=todayEntries(),pending=pendingMemberStatuses.size;
-  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?"Terminart und Datum sind aus dem Kalender übernommen.":type?"Bereit für die Personenerfassung.":"Kein Kalendertermin ausgewählt. Wähle einen Kalendertermin oder eine Terminart für eine spontane Erfassung."};
+  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · ")||"Terminart und Datum sind aus dem Kalender übernommen.":type?"Bereit für die Personenerfassung.":"Kein Kalendertermin ausgewählt. Wähle einen Kalendertermin oder eine Terminart für eine spontane Erfassung."};
 }
 function syncAttendanceStart(){
   const card=byId('attendanceStartCard');if(!card)return;
   const state=attendanceStartState();
   byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;
-  const eyebrow=byId('attendanceStartEyebrow');eyebrow.textContent=state.running?'Laufender Termin':state.event?'Aus deinem Kalender':'';eyebrow.hidden=!eyebrow.textContent;
+  const eyebrow=byId('attendanceStartEyebrow');eyebrow.textContent=state.running?'Laufender Termin':state.event?(window.PortalAdmin?.isNextEvent?.()?(state.event.start<=Date.now()?'Aktueller Termin':'Nächster Termin'):'Ausgewählter Termin'):'';eyebrow.hidden=!eyebrow.textContent;
   const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
   const calendarStatus=byId('attendanceStartCalendarStatus');if(calendarStatus){calendarStatus.textContent=byId('portal-calendar-status')?.textContent||'';calendarStatus.hidden=state.running||Boolean(state.type)||!calendarStatus.textContent;}
   const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Erfassung starten“ zu den Personen wechseln.':'Terminart wählen und die Erfassung starten.';
   const choices=byId('attendanceAlternatives');if(choices)choices.hidden=state.running;
+  window.CalendarSidebar?.syncSelection?.();
 }
 function beginAttendanceFromContext(){
   if(currentSessionId||currentOperationId){setHomeFlowStage(2);renderSessionType();renderMembers();renderEntries();updateSelection();return;}
@@ -723,8 +724,8 @@ function ensureStagedHomeFlow(){
   sessionPanel.querySelector(".panel-heading")?.remove();
   if(!byId('attendanceStartCard')){
     const card=document.createElement('section');card.id='attendanceStartCard';card.className='attendance-start-card';card.innerHTML='<p id="attendanceStartEyebrow" class="eyebrow"></p><h2 id="attendanceStartTitle"></h2><p id="attendanceStartMeta"></p><p id="attendanceStartSummary" role="status"></p><p id="attendanceStartCalendarStatus" class="help-text" role="status" hidden></p><div id="attendanceStartActions" class="attendance-start-actions"></div><div id="attendanceStartSecondary"></div>';
-    const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen Termin wählen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontane Terminart wählen</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
-    sessionPanel.append(card,choices);
+    const choices=document.createElement('details');choices.id='attendanceAlternatives';choices.className='attendance-alternatives';choices.innerHTML='<summary>Anderen oder spontanen Termin erfassen</summary><div id="attendanceCalendarChoice"></div><details id="attendanceSpontaneous"><summary>Spontane Terminart wählen</summary><p>Terminart wählen. Das Datum kannst du anschließend in der Erfassung anpassen.</p></details>';
+    sessionPanel.prepend(card);sessionPanel.append(choices);
     const manual=byId('attendanceSpontaneous');manual.append(byId('sessionTypes'),byId('sessionHint'));
     const picker=sessionPanel.querySelector('.portal-calendar-picker');if(picker)byId('attendanceCalendarChoice').append(picker);
     manual.ontoggle=()=>{if(manual.open&&!currentSessionId&&!currentOperationId){window.PortalAdmin?.useSpontaneous?.();pendingSessionType='';delete byId('sessionTypes').dataset.selectedSessionType;byId('sessionTypes').querySelectorAll('[data-session-type]').forEach(button=>{button.classList.remove('selected');button.setAttribute('aria-pressed','false');});syncAttendanceStart();}};

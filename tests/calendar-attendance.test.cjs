@@ -268,3 +268,19 @@ for(const reason of ['Sperren','Quellenwechsel'])test('Wartendes Speichern der K
  assert.equal(f.requests.filter(p=>p.endsWith('/configure')).length,0);
  assert.equal(f.get('portal-calendar-administration').hidden,true);
 });
+
+
+test('Kalenderauswahl übernimmt Datum und Terminart, startet aber keine Erfassung',async()=>{
+ const f=fixture();const original=f.privateCal.events[0],next={...original,id:'next-event',title:'Unterricht',attendanceType:'Unterricht',start:original.start+86400000,end:original.end+86400000};f.privateCal.events.push(next);await f.login();
+ assert.equal(f.c.PortalAdmin.selectCalendarEvent(next.id),true);assert.equal(f.c.PortalAdmin.selectedEvent().id,next.id);assert.equal(f.c.PortalAdmin.isNextEvent(),false);assert.equal(f.typeClicks.at(-1),'Unterricht');assert.equal(f.c.currentProbeDate,new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(next.start));assert.equal(f.c.currentSessionId,'');assert.equal(f.c.currentOperationId,'');assert.equal(f.c.pendingMemberStatuses.size,0);
+ assert.equal(f.c.PortalAdmin.selectCalendarEvent(original.id),true);assert.equal(f.c.PortalAdmin.isNextEvent(),true);
+});
+test('Kalenderwechsel schützt auch eine gerade gestartete Erfassung ohne Anwesenheiten',async()=>{
+ const f=fixture(),original=f.privateCal.events[0];f.privateCal.events.push({...original,id:'next-event',start:original.start+86400000,end:original.end+86400000});f.init();await f.login();f.c.currentSessionId='just-started';f.c.PortalAdmin.sessionStarted();const date=f.c.currentProbeDate;
+ assert.equal(f.c.PortalAdmin.selectCalendarEvent('next-event'),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,original.id);assert.equal(f.get('portal-calendar-pick').value,original.id);assert.equal(f.c.currentProbeDate,date);assert.equal(f.c.currentSessionId,'just-started');
+});
+test('Nicht freigegebene, unbekannte und inzwischen beendete Termine bleiben ohne Auswahlwirkung',async()=>{
+ const f=fixture(),original=f.privateCal.events[0];f.privateCal.events.push({...original,id:'not-approved',approved:false});await f.login();
+ for(const id of ['not-approved','unknown']){assert.equal(f.c.PortalAdmin.selectCalendarEvent(id),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,original.id);}
+ const Base=Date;f.c.Date=class extends Base{static now(){return original.end;}};assert.equal(f.c.PortalAdmin.selectCalendarEvent(original.id),false);assert.equal(f.c.currentSessionId,'');
+});
