@@ -1,5 +1,5 @@
 /* Portal styles shared by the personal phone view and the administration. */
-.portal-section{margin:28px 0;padding:20px 0;border-top:2px solid #c4d0df}.portal-section h2{font-size:1.5625rem;margin:0 0 10px}.portal-event{background:#fff;border:1px solid #d7dfe8;border-radius:18px;padding:18px;margin:16px 0;box-shadow:0 4px 16px #10223c08}.portal-event .portal-event-date{display:block;margin:0 0 14px;padding:12px;border-radius:11px;border-left:4px solid #075baf;background:#e7f0fa;color:#102f56;font-size:1.125rem;font-weight:850;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.portal-event h3{margin:0 0 12px;font-size:1.5rem;font-weight:850;line-height:1.25}.portal-event p{overflow-wrap:anywhere}.portal-answer{display:block;margin:16px 0 12px;font-size:1rem;line-height:1.5}.portal-answer-yes{color:#276543}.portal-answer-excused{color:#76531c}.portal-answer-open{color:#9c2835}.portal-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 0}.portal-choices button{width:100%;min-width:0;min-height:64px;padding:12px 8px;border:2px solid transparent;border-radius:14px;font-size:1.0625rem;font-weight:850;line-height:1.2;overflow-wrap:anywhere;hyphens:auto;box-shadow:0 3px 10px #10284318}.portal-choices button[aria-pressed=true]{box-shadow:0 0 0 3px #1028431c,inset 0 -3px #ffffff3b}.portal-event details{border-top:1px solid #d7dfe8;margin-top:16px}.portal-event h4{font-size:0.9375rem;margin:16px 0 5px}.portal-notifications{margin-top:22px;border-top:1px solid #c4d0df}.portal-notifications button{margin:5px 0}.portal-admin-qr{display:block;width:min(100%,360px);height:auto;margin:20px auto;image-rendering:pixelated}.portal-admin-qr[hidden]{display:none}.portal-calendar-picker{padding:16px 0;margin-bottom:18px;border-bottom:1px solid #d7dfe8}.portal-calendar-picker button{margin-top:12px}.portal-attendance-replies{grid-column:1/-1}.portal-attendance-replies details{padding:10px 0;border-bottom:1px solid #ddd}.portal-attendance-replies summary{cursor:pointer;font-weight:700}.portal-attendance-replies p{line-height:1.6}.portal-attendance-replies button{margin:10px 10px 0 0}#settingsPortalView .panel,#settingsCalendarView .panel{margin-bottom:20px}#settingsPortalView label,#settingsCalendarView label{display:block;margin:16px 0 8px}#settingsPortalView input[type=checkbox],#settingsCalendarView input[type=checkbox]{appearance:auto;-webkit-appearance:checkbox;display:inline-block;position:static;width:24px;height:24px;min-width:24px;min-height:24px;padding:0;margin:0 10px 0 0;opacity:1;visibility:visible;vertical-align:middle;accent-color:#176b36}#settingsPortalView .primary-button,#settingsCalendarView .primary-button{margin-top:14px}/* Five equal-width phone menu tiles; long German labels wrap inside their own tiles. */
+.portal-section{margin:28px 0;padding:20px 0;border-top:2px solid #c4d0df}.portal-section h2{font-size:1.5625rem;margin:0 0 10px}.portal-event{background:#fafbfd;border:1px solid #d7dfe8;border-radius:18px;padding:18px;margin:16px 0;box-shadow:0 4px 16px #10223c08}.portal-event .portal-event-date{display:block;margin:0 0 14px;padding:12px;border-radius:11px;border-left:4px solid #075baf;background:#e7f0fa;color:#102f56;font-size:1.125rem;font-weight:850;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.portal-event h3{margin:0 0 12px;font-size:1.5rem;font-weight:850;line-height:1.25}.portal-event p{overflow-wrap:anywhere}.portal-answer{display:block;margin:16px 0 12px;font-size:1rem;line-height:1.5}.portal-answer-yes{color:#276543}.portal-answer-excused{color:#76531c}.portal-answer-open{color:#9c2835}.portal-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 0}.portal-choices button{width:100%;min-width:0;min-height:64px;padding:12px 8px;border:2px solid transparent;border-radius:14px;font-size:1.0625rem;font-weight:850;line-height:1.2;overflow-wrap:anywhere;hyphens:auto;box-shadow:0 3px 10px #10284318}.portal-choices button[aria-pressed=true]{box-shadow:0 0 0 3px #1028431c,inset 0 -3px #ffffff3b}.portal-event details{border-top:1px solid #d7dfe8;margin-top:16px}.portal-event h4{font-size:0.9375rem;margin:16px 0 5px}.portal-notifications{margin-top:22px;border-top:1px solid #c4d0df}.portal-notifications button{margin:5px 0}.portal-admin-qr{display:block;width:min(100%,360px);height:auto;margin:20px auto;image-rendering:pixelated}.portal-admin-qr[hidden]{display:none}.portal-calendar-picker{padding:16px 0;margin-bottom:18px;border-bottom:1px solid #d7dfe8}.portal-calendar-picker button{margin-top:12px}.portal-attendance-replies{grid-column:1/-1}.portal-attendance-replies details{padding:10px 0;border-bottom:1px solid #ddd}.portal-attendance-replies summary{cursor:pointer;font-weight:700}.portal-attendance-replies p{line-height:1.6}.portal-attendance-replies button{margin:10px 10px 0 0}#settingsPortalView .panel,#settingsCalendarView .panel{margin-bottom:20px}#settingsPortalView label,#settingsCalendarView label{display:block;margin:16px 0 8px}#settingsPortalView input[type=checkbox],#settingsCalendarView input[type=checkbox]{appearance:auto;-webkit-appearance:checkbox;display:inline-block;position:static;width:24px;height:24px;min-width:24px;min-height:24px;padding:0;margin:0 10px 0 0;opacity:1;visibility:visible;vertical-align:middle;accent-color:#176b36}#settingsPortalView .primary-button,#settingsCalendarView .primary-button{margin-top:14px}/* Five equal-width phone menu tiles; long German labels wrap inside their own tiles. */
 .deckel-nav{display:flex;flex-wrap:wrap;gap:3px;padding-inline:max(5px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-left));box-sizing:border-box;overflow-x:hidden;overscroll-behavior-x:none}
 .deckel-nav::-webkit-scrollbar{display:none}.deckel-nav button{flex:1 1 4em;width:auto;max-width:100%;min-width:min-content;min-height:58px;padding:5px 2px;font-size:.875rem;font-weight:800;line-height:1.16;text-align:center;white-space:normal;overflow-wrap:anywhere;hyphens:auto;overflow:hidden;justify-content:flex-start}
 /* Both icon classes follow their current container when tiles are moved. */
@@ -17,9 +17,9 @@
 [data-portal-tile="theater-phone-section"]{--portal-symbol:#7850ac;--portal-symbol-active:#cdb8ff}
 [data-portal-tile="more-security"]{--portal-symbol:#14716d;--portal-symbol-active:#91e4dc}
 [data-portal-tile="more-breathing"]{--portal-symbol:#187449;--portal-symbol-active:#92e4b6}
-.deckel-nav button>.portal-nav-symbol,.deckel-nav button>.portal-more-icon{color:var(--portal-symbol)}
-.deckel-nav button[aria-current="page"]>.portal-nav-symbol,.deckel-nav button[aria-current="page"]>.portal-more-icon{color:#8e303d}
-.deckel-nav button>span:first-child{flex-shrink:0}.deckel-nav button:not([aria-current=page]){background:transparent;color:#425d77}.deckel-nav button[aria-current=page]{box-shadow:none}#portal-status{font-size: .875rem;color:#385270;line-height:1.5}.deckel-title img{border-radius:10px}
+.deckel-nav button>.portal-nav-symbol,.deckel-nav button>.portal-more-icon{color:#f4dde2}
+.deckel-nav button[aria-current="page"]>.portal-nav-symbol,.deckel-nav button[aria-current="page"]>.portal-more-icon{color:#176eb1}
+.deckel-nav button>span:first-child{flex-shrink:0}.deckel-nav button:not([aria-current=page]){background:transparent;color:#fff3f5}.deckel-nav button[aria-current=page]{box-shadow:none}#portal-status{font-size: .875rem;color:#385270;line-height:1.5}.deckel-title img{border-radius:10px}
 
 .portal-birthday{padding:18px;border:1px solid #e5c983;border-radius:16px;background:#fff3d6;color:#69471b;font-weight:700}#portal-admin-review-events{max-height:70vh;overflow:auto;overscroll-behavior:contain}#portal-admin-review-events label{line-height:1.6}
 
@@ -67,11 +67,11 @@
 .portal-priority h3{font-size:1.125rem;margin:0 0 10px}.portal-priority p{font-size:0.875rem;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}.portal-priority button{min-height:48px;margin-top:8px}
 /* First appointment has its own reading area; subsequent cards follow by scrolling. */
 #portal-events .portal-first-event{padding-bottom:24px}
-#portal-events .portal-event{border:2px solid #8299af;box-shadow:0 5px 16px #10284312;margin:0 0 28px;padding:20px}
+#portal-events .portal-event{border:2px solid #ccd6e0;box-shadow:0 5px 16px #10284312;margin:0 0 28px;padding:20px}
 #portal-events .portal-first-event>.portal-event{margin:0}
-#portal-events .portal-event[data-status="yes"]{border-color:#518462}
-#portal-events .portal-event[data-status="excused"]{border-color:#a7793f}
-.portal-page>#portal-evidence{margin:0;padding:0;border:0;border-radius:0;background:transparent}
+#portal-events .portal-event[data-status="yes"]{border-color:#a7c8b1}
+#portal-events .portal-event[data-status="excused"]{border-color:#dbc19b}
+.portal-page>#portal-evidence{margin:0;padding:14px;border:1px solid #d2e1ef;border-radius:18px;background:#fafbfd}
 #portal-priority[hidden],#portal-evidence[hidden]{display:none!important}
 
 /* Evidence alerts remain discoverable from every personal screen. */
@@ -103,7 +103,7 @@
 .portal-install-note{font-size:0.875rem;color:#385270}
 
 #portal-page-terms{padding-top:16px}
-.portal-data-status{margin-top:20px;border-top:1px solid #c4d0df;padding-top:12px;color:#385270;font-size:.875rem;line-height:1.6;overflow-wrap:anywhere}
+.portal-data-status{margin-top:20px;border:1px solid #c4d0df;border-radius:14px;padding:12px;background:#fafbfd;color:#385270;font-size:.875rem;line-height:1.6;overflow-wrap:anywhere}
 .portal-data-status p{margin:0 0 12px}
 #portal-page-terms #portal-status:empty{display:none}
 .portal-event p{font-size:1rem;line-height:1.55}
@@ -111,7 +111,7 @@
 .portal-evidence-meta,.portal-evidence>p{font-size:1rem}
 
 /* Uncertain replies remain eligible for reminders. */
-#portal-events .portal-event[data-status="maybe"]{background:#f3ecfb;border-color:#8965ac}
+#portal-events .portal-event[data-status="maybe"]{background:#f3ecfb;border-color:#c5b1d9}
 .portal-answer-maybe{color:#593376}
 .portal-choices button[data-reply=yes]{background:#e6f4e9;color:#1c603c;border-color:#8bc5a0}
 .portal-choices button[data-reply=excused]{background:#fff0dc;color:#78501b;border-color:#ddb16d}
@@ -121,7 +121,7 @@
 .portal-choices button[data-reply=maybe][aria-pressed=true]{background:#68418b;color:#fff;border-color:#55306f}
 .portal-choices button:focus-visible{outline:3px solid #075baf;outline-offset:3px}
 .portal-choice-hint{margin:10px 0 0!important;color:#425d77;font-size:.875rem!important;font-weight:650}
-.portal-next-heading{text-align:center;color:#172d4d;font-size:1.375rem;font-weight:800;line-height:1.3;margin:0 0 12px}
+.portal-next-heading{text-align:center;color:#f5f8fc;font-size:1.375rem;font-weight:800;line-height:1.3;margin:0 0 12px}
 #deckel-main{touch-action:pan-y pinch-zoom}
 
 .portal-event button.portal-event-date{text-align:left;width:100%;cursor:pointer;min-height:48px}
@@ -426,3 +426,4 @@
 .portal-reminder-finish{margin:18px 0;padding:12px;border:1px solid #d7e1eb;border-radius:12px;background:#f7f9fc}
 .portal-reminder-finish p{margin-top:0}
 .portal-overview-actions .portal-overview-back{background:#edf5fc;color:#075baf;border-color:#b9d2e8}
+
