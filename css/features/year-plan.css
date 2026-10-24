@@ -81,4 +81,12 @@
 
 /* Expanded home calendar covers the appointment and operation cards. */
 .calendar-sidebar-heading h2{flex:1}.calendar-expand{font-size:1.4rem}.calendar-month-navigation{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.calendar-month-navigation[hidden]{display:none}.calendar-month-navigation button{min-width:44px;min-height:44px;margin:0}.calendar-sidebar section[hidden]{display:none!important}
-@media(min-width:1000px){#attendanceView>#calendar-sidebar.is-expanded:not([hidden]){grid-column:1/-1;z-index:3}#attendanceView:has(#calendar-sidebar.is-expanded:not([hidden]))>#homeStartLayout{visibility:hidden;pointer-events:none} .calendar-sidebar.is-expanded .calendar-sidebar-scroll{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;overflow:hidden;height:auto;min-height:0}.calendar-sidebar.is-expanded .calendar-sidebar-scroll>section{height:calc(100dvh - 430px);min-height:300px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid #d9d9d9;border-radius:8px}.calendar-sidebar.is-expanded h3{margin-top:0}.calendar-sidebar.is-expanded .calendar-sidebar-day{grid-template-columns:49px minmax(0,1fr)}}
+@media(min-width:1000px){
+ #attendanceView>#calendar-sidebar.is-expanded:not([hidden]){position:fixed;top:var(--calendar-expanded-top,114px);bottom:max(12px,env(safe-area-inset-bottom,0px));left:var(--calendar-expanded-left,20px);right:var(--calendar-expanded-right,20px);display:flex;flex-direction:column;gap:8px;min-height:0;padding:16px;z-index:40;overflow:hidden}
+ #attendanceView:has(#calendar-sidebar.is-expanded:not([hidden]))>#homeStartLayout{visibility:hidden;pointer-events:none}
+ .calendar-sidebar.is-expanded>.calendar-sidebar-heading,.calendar-sidebar.is-expanded>.calendar-sidebar-load-status,.calendar-sidebar.is-expanded>.calendar-month-navigation{flex:0 0 auto;margin:0}
+ .calendar-sidebar.is-expanded>small{display:none}
+ .calendar-sidebar.is-expanded .calendar-sidebar-scroll{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:16px;flex:1 1 0;overflow:hidden;height:auto;min-height:0}
+ .calendar-sidebar.is-expanded .calendar-sidebar-scroll>section{height:100%;box-sizing:border-box;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid #d9d9d9;border-radius:8px}
+ .calendar-sidebar.is-expanded h3{margin-top:0}.calendar-sidebar.is-expanded .calendar-sidebar-day{grid-template-columns:49px minmax(0,1fr)}
+}
