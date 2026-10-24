@@ -120,12 +120,12 @@ function renderMembers() {
 function attendanceStartState(){
   const running=Boolean(currentSessionId||currentOperationId),event=window.PortalAdmin?.selectedEvent?.(),type=running?sessionType:pendingSessionType||event?.attendanceType||(event?.sessionType==="Probe"?"Allgemeine Probe":event?.sessionType)||"";
   const rows=todayEntries(),pending=pendingMemberStatuses.size;
-  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · ")||"Terminart und Datum sind aus dem Kalender übernommen.":type?"Bereit für die Personenerfassung.":"Kein Kalendertermin ausgewählt. Wähle einen Kalendertermin oder eine Terminart für eine spontane Erfassung."};
+  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · "):""};
 }
 function syncAttendanceStart(){
   const card=byId('attendanceStartCard');if(!card)return;
   const state=attendanceStartState();
-  byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;
+  byId('attendanceStartTitle').textContent=state.title;byId('attendanceStartMeta').textContent=state.date+(state.type?' · '+state.type:'');byId('attendanceStartMeta').hidden=!state.date;byId('attendanceStartSummary').textContent=state.summary;byId('attendanceStartSummary').hidden=!state.summary;
   const eyebrow=byId('attendanceStartEyebrow');eyebrow.textContent=state.running?'Laufender Termin':state.event?(window.PortalAdmin?.isNextEvent?.()?(state.event.start<=Date.now()?'Aktueller Termin':'Nächster Termin'):'Ausgewählter Termin'):'';eyebrow.hidden=!eyebrow.textContent;
   const next=byId('continueToAttendanceButton');if(next){next.disabled=false;next.textContent=state.action;}
   const spontaneousStart=byId('spontaneousStartButton');if(spontaneousStart)spontaneousStart.disabled=state.running||Boolean(state.event)||!state.type;
@@ -707,7 +707,7 @@ function ensureStagedHomeFlow(){
   sessionPanel.classList.add("home-flow-card","home-flow-stage-1");
   // Abstand unter der gruenen Kartenlinie direkt setzen. setProperty mit important
   // verhindert, dass spaetere Wartungs-CSS-Regeln die Position wieder hochziehen.
-  sessionPanel.style.setProperty("padding-top","34px","important");
+  sessionPanel.style.setProperty("padding-top","24px","important");
   const sessionHeading=sessionPanel.querySelector(":scope > .panel-heading");
   if(sessionHeading){
     sessionHeading.style.setProperty("position","static","important");

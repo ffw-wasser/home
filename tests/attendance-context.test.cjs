@@ -67,7 +67,7 @@ test('Probenabschluss übernimmt das Kalender-Thema, ohne das Textfeld zu sperre
 });
 
 test('Leerer Start zeigt keinen erfundenen nächsten Termin und benennt die Auswahl korrekt',()=>{
- const f=fixture(),state=f.c.attendanceStartState();assert.equal(state.title,'Termin beginnen');assert.equal(state.date,'');assert.equal(state.action,'Terminart wählen');assert.match(state.summary,/Kein Kalendertermin ausgewählt/);
+ const f=fixture(),state=f.c.attendanceStartState();assert.equal(state.title,'Termin beginnen');assert.equal(state.date,'');assert.equal(state.action,'Terminart wählen');assert.equal(state.summary,'');f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartSummary').hidden,true);
  f.get('portal-calendar-status').textContent='Kalender nicht verbunden';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,true);assert.equal(f.get('attendanceStartCalendarStatus').textContent,'Kalender nicht verbunden');assert.equal(f.get('attendanceStartCalendarStatus').hidden,false);
  f.c.pendingSessionType='Unterricht';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,false);assert.equal(f.get('continueToAttendanceButton').textContent,'Erfassung starten');
 });
