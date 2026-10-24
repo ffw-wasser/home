@@ -9,7 +9,7 @@
 .challenge-topbar{margin-bottom:14px}
 .challenge-topbar button{min-height:46px;max-width:100%;padding:10px 14px;font-size:.9375rem}
 .challenge-hero{padding:23px 20px;border-radius:18px;background:#102843;color:#fff;margin:0 0 15px;box-shadow:none}
-.challenge-hero>p:first-child{font-size:.8125rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#b8d8f1;margin:0 0 8px}
+.challenge-hero>p:first-child{font-size:.875rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#b8d8f1;margin:0 0 8px}
 .challenge-hero h2{font-size:clamp(1.5rem,5vw,2rem);line-height:1.17;letter-spacing:-.025em;margin:0 0 9px;color:#fff}
 .challenge-hero>p:last-child{margin:0;color:#d5e7f8;line-height:1.5;font-size:.9375rem}
 .deckel-challenge{margin:0;padding:18px;border:1px solid #bfdaee;border-radius:18px;background:#fff;text-align:left;overflow-wrap:anywhere}
