@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const root=path.resolve(__dirname,'..');
 (async()=>{const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:1024,height:900},serviceWorkers:'block'}),errors=[];
- page.on('pageerror',error=>errors.push(error.message));
+ page.on('pageerror',error=>{errors.push(error.message);console.error(error.stack);});
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();});
  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.locator('#appStartup').waitFor({state:'detached'});
  const year=await page.evaluate(()=>{
@@ -33,10 +33,23 @@ const root=path.resolve(__dirname,'..');
  }
  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
  await page.locator('#statisticsFurtherDetails>summary').click();assert.equal(await page.locator('.drinks-consumption-panel').isVisible(),true);
+ assert.equal(await page.locator('[data-chart-months],[data-chart-types],[data-chart-operations],#statisticsOperationSummary').count(),0,'old overview duplicates removed');
+ for(const selector of ['#statisticsVisualDashboard','.individual-statistics-panel','.age-statistics-section','.drinks-consumption-panel'])assert.equal(await page.locator(selector+' > .statistics-collapsible').getAttribute('open'),null,'details start closed '+selector);
+ assert.equal(await page.locator('#statisticsVisualDashboard [data-chart-roles]').count(),1,'actual function usage retained');
+ assert.equal(await page.locator('#drinksStatisticsYear').textContent(),String(year),'consumption year survives compact heading');
+ assert.equal(await page.locator('#ageStatisticsTitle').count(),1,'age section keeps its accessible heading');
+ await page.evaluate(()=>document.querySelectorAll('#statisticsFurtherDetails .statistics-collapsible').forEach(details=>details.open=true));
+ for(const width of [320,390,768])for(const scale of [100,200]){await page.setViewportSize({width,height:900});await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'expanded details fit '+width+'/'+scale);}
+ await page.evaluate(()=>{document.documentElement.style.fontSize='100%';document.querySelectorAll('#statisticsFurtherDetails .statistics-collapsible').forEach(details=>details.open=false);});
+
+ if(process.env.QA_OUTPUT){await page.setViewportSize({width:1024,height:900});await page.locator('#statisticsFurtherDetails').screenshot({path:path.join(process.env.QA_OUTPUT,'weitere-auswertungen.png')});}
+
  await page.evaluate(()=>{window.qaPrint=0;window.print=()=>{qaPrint++;};});await page.locator('#statisticsPdfButton').click();await page.waitForFunction(()=>qaPrint===1);
  await page.emulateMedia({media:'print'});assert.equal(await page.locator('#statisticsCommanderDashboard').isVisible(),true,'dashboard prints');
  if(process.env.QA_OUTPUT)await page.pdf({path:path.join(process.env.QA_OUTPUT,'statistik.pdf'),format:'A4',printBackground:true});
  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));await page.emulateMedia({media:'screen'});assert.equal(await page.evaluate(()=>document.body.classList.contains('printing-statistics')),false);
+ assert.equal(await page.locator('.individual-statistics-panel > .statistics-collapsible').getAttribute('open'),null,'annual PDF restores individual disclosure');
+ await page.locator('.individual-statistics-panel > .statistics-collapsible > summary').click();
  await page.locator('#individualMemberSelect').selectOption('Anna');await page.locator('#individualStatisticsPdfButton').click();await page.waitForFunction(()=>qaPrint===2);
  await page.emulateMedia({media:'print'});assert.equal(await page.locator('.individual-statistics-panel').isVisible(),true,'individual report prints through further-details ancestor');assert.equal(await page.locator('#statisticsCommanderDashboard').isVisible(),false,'individual report excludes dashboard');
  if(process.env.QA_OUTPUT)await page.pdf({path:path.join(process.env.QA_OUTPUT,'teilnehmer.pdf'),format:'A4',printBackground:true});
