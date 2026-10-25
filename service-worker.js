@@ -144,6 +144,7 @@ const CORE=[
   "./js/features/portal/calendar-model.js?v=20261025.14", "./js/features/portal/portal-admin.js?v=20261025.14", "./js/features/portal/portal-evidence-admin.js?v=20261025.14", "./js/features/contacts.js?v=20261025.14",
   "./css/features/portal.css?v=20261025.14",
   "./assets/drinks/h2o-symbol-white-96.png?v=20261025.14",
+  "./assets/drinks/h2o-symbol-white-512.png?v=20261025.14",
   "./assets/drinks/h2o-symbol-blue-180.png?v=20261025.14",
   "./assets/drinks/h2o-symbol-blue-192.png?v=20261025.14",
   "./assets/drinks/h2o-symbol-blue-512.png?v=20261025.14"
