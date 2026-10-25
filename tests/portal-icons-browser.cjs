@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..');
   for(const width of [320,390,768]){
    const page=await browser.newPage({viewport:{width,height:844},serviceWorkers:'block'});
    await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});return route.abort();});
-   await page.goto('https://ffw-wasser.github.io/home/deckel.html');
+   await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
    await page.waitForFunction(()=>globalThis.DeckelMobile);
    await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('deckel-more');document.querySelector('[data-portal-tile="more-breathing"]').hidden=false;});
    assert.deepEqual(await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['more-year-plan','more-breathing','more-hydrants','more-water','more-help','theater-phone-section','more-bundesliga','more-security'],'fire brigade topics precede leisure and account');

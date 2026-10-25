@@ -15,7 +15,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    else if(u.pathname.includes('/uel2026/'))return route.fulfill({status:503,body:'unavailable'});
    else data=[];
    return route.fulfill({json:data});}return route.abort();});
- await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.waitForFunction(()=>globalThis.DeckelMobile);assert.equal(requests.length,0,'football data loaded only on opening');
+ await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.waitForFunction(()=>globalThis.DeckelMobile);assert.equal(requests.length,0,'football data loaded only on opening');
  await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('more-bundesliga');});await page.locator('#bundesliga-refresh:enabled').waitFor();await page.locator('#bundesliga-favorite option[value="1"]').waitFor({state:'attached'});
  assert.match(await page.locator('#bundesliga-auto-status').innerText(),/Automatisch · alle 5 Minuten · Stand \d{2}:\d{2}/);assert.equal(await page.locator('#bundesliga-view-matchday').isVisible(),true,'without matches today defaults to matchday');await page.locator('#bundesliga-favorite').selectOption('1');await page.locator('#bundesliga-club').getByText(/DFB-Pokal: 1 Spiele gemeldet/).waitFor({state:'attached'});await page.locator('#bundesliga-refresh:enabled').waitFor();
  const club=page.locator('#bundesliga-club');assert.match(await club.innerText(),/FC Beispielstadt/);assert.match(await club.innerText(),/Nächstes gemeldetes Spiel/);assert.match(await club.innerText(),/DFB-Pokal/);assert.equal(requests.filter(r=>r.url.includes('ucl-copy')).length,0,'duplicate source never queried');
