@@ -12,11 +12,11 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(await page.locator(file==='index.html'?'#helpView .help-document':'#more-help .portal-help').count(),0,'old help texts are replaced');
   assert.match(await guide.locator('.guide-privacy').innerText(),/Passkey/);assert.match(await guide.locator('.guide-privacy').innerText(),file==='index.html'?/dadurch nicht gelöscht/:/löscht keine bestätigten/);assert.match(await guide.locator('.guide-privacy').innerText(),/keine ärztlichen Befunde/);
   assert.equal(await guide.locator('a[href^="#"]').count(),0,'help links cannot replace the portal access fragment');
-  assert.equal(await guide.locator('.guide-lesson').count(),file==='index.html'?11:6);if(file==='deckel.html'){assert.equal(await guide.locator('#guide-main').count(),0);assert.doesNotMatch(await guide.locator('.guide-manual').innerText(),/Hauptanwendung|Anwesenheit erfassen|Termin abschließen/);}const before=await page.evaluate(()=>location.hash);
+  assert.equal(await guide.locator('.guide-lesson').count(),file==='index.html'?12:7);if(file==='deckel.html'){assert.equal(await guide.locator('#guide-main').count(),0);assert.doesNotMatch(await guide.locator('.guide-manual').innerText(),/Hauptanwendung|Anwesenheit erfassen|Termin abschließen/);}const before=await page.evaluate(()=>location.hash);
   for(const width of [320,390,768,1280])for(const scale of [100,200]){
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
-   assert.equal(await guide.locator('img').count(),file==='index.html'?21:9);
+   assert.equal(await guide.locator('img').count(),file==='index.html'?22:10);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' page overflow '+width+'/'+scale);
    assert.deepEqual(await guide.locator('.guide-lesson-body,.guide-privacy-grid').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[],file+' guide overflow '+width+'/'+scale);
    assert.equal(await guide.locator('img').evaluateAll(ns=>ns.every(n=>n.naturalWidth>0&&n.getAttribute('width')&&n.getAttribute('height'))),true);
@@ -25,5 +25,5 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(await guide.locator('a[target="_blank"]').evaluateAll(ns=>ns.every(n=>n.rel.includes('noopener'))),true);
   if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.setViewportSize({width:file==='index.html'?1180:390,height:900});await page.evaluate(()=>{document.documentElement.style.fontSize='100%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=false);});await guide.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.QA_OUTPUT,file+'-privacy.png')});await page.locator(file==='index.html'?'#guide-main>summary':'#guide-portal>summary').click();await page.locator(file==='index.html'?'#guide-main .guide-lesson>summary':'#guide-portal .guide-lesson>summary').first().click();await guide.locator('.guide-manual').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.QA_OUTPUT,file+'-manual.png')});}
  }
- assert.deepEqual(errors,[]);console.log('PASS privacy first, 11 main-guide lessons, 6 portal-only lessons, 21 main-guide images, safe image links, tablet/phone 320–1280 px at 100%/200%, portal fragment preserved');
+ assert.deepEqual(errors,[]);console.log('PASS privacy first, 12 main-guide lessons, 7 portal-only lessons, safe image links, tablet/phone 320–1280 px at 100%/200%, portal fragment preserved');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

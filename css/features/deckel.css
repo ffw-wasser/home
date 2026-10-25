@@ -168,7 +168,7 @@ body.h2o-portal :is(input:not([type=checkbox]),select){background:var(--surface)
 body.h2o-portal .portal-setting-help{color:var(--muted)}
 /* The same raised surface for content cards and More tiles throughout H2O. */
 @media screen{
- body.h2o-portal #deckel-main :is(.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.gf-breathing-person,.challenge-entry,.challenge-hero,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow)}
+ body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.gf-breathing-person,.challenge-entry,.challenge-hero,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow)}
 }
 /* Disabled actions stay distinguishable without fading their labels. */
 #deckel-main button:disabled{background:#c4cfd9;color:var(--muted);border:1px solid #9aabbc;opacity:1;box-shadow:none;cursor:default}
@@ -259,3 +259,11 @@ body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
 
 .deckel-header:has(.portal-checkin-launch:not([hidden])) .deckel-title{flex-basis:8rem}
 
+
+/* Dienstvorschriften share the portal's card surface and accessible text sizes. */
+.regulation-card{min-width:0;margin:0 0 20px;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--card)}
+.regulation-card h3{font-size:1.25rem;line-height:1.35;margin:8px 0;overflow-wrap:anywhere}.regulation-card .eyebrow{margin:0}.regulation-card .note{margin:10px 0}
+#regulations-frame{display:block;width:100%;height:65dvh;min-height:280px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:14px 0}#regulations-original{margin-bottom:18px}
+.portal-regulations-symbol{font-family:Georgia,serif;font-weight:700}
+
+#regulations-search-area{margin:18px 0}#regulations-search-area label{display:block;font-weight:750;margin-bottom:8px}#regulations-search{display:block;width:100%;min-width:0;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;color:var(--ink);background:var(--surface)}
