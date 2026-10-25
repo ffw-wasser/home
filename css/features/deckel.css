@@ -1,4 +1,4 @@
-:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#102843;background:#101c2c;--ink:#102843;--muted:#30465c;--portal-muted:var(--muted);--red:#075baf;--line:#b8c6d3;--gold:#d76615;--green:#31634c;--card:#d3dce5;--surface:#e2e8ee;--card-radius:18px;--control-radius:12px;color-scheme:light}
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#102843;background:#101c2c;--ink:#102843;--muted:#30465c;--portal-muted:var(--muted);--portal-canvas:#a6b6c5;--red:#075baf;--line:#b8c6d3;--gold:#d76615;--green:#31634c;--card:#d3dce5;--surface:#e2e8ee;--card-radius:18px;--control-radius:12px;color-scheme:light}
 *{box-sizing:border-box}html{height:100%;overflow:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}body{font-size:1.0625rem;line-height:1.5;margin:0;min-width:0;height:100vh;height:var(--portal-viewport-height,100dvh);display:grid;grid-template-rows:minmax(0,1fr) auto;overflow:hidden;background:#101c2c}main{width:100%;max-width:560px;min-height:0;margin:0 auto;overflow-y:auto;overscroll-behavior-y:contain;scroll-behavior:smooth;padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 24px max(18px,env(safe-area-inset-left));overflow-wrap:anywhere}main>*{min-width:0}[hidden]{display:none!important}button,input,select{font:inherit}button,.button{display:block;width:100%;min-height:48px;border:0;border-radius:14px;padding:13px 16px;background:var(--red);color:#fff;font-size:1rem;font-weight:750;line-height:1.4;text-align:center;text-decoration:none;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.48;cursor:default}button:not(:disabled):active,.button:active{transform:translateY(1px)}:focus-visible{outline:3px solid #26739a;outline-offset:3px}.note,small{font-size: .875rem;line-height:1.6;color:var(--muted)}p{line-height:1.5}h1,h2,h3{color:var(--ink)}summary{cursor:pointer;min-height:48px;padding:13px 0;font-size:0.9375rem;font-weight:700;line-height:1.5}summary::marker{color:var(--red)}section[id],details[id]{scroll-margin-top:16px}.secondary{background:#e4eef8;color:var(--ink)}
 /* Calm startup uses the portal background and covers all intermediate layouts. */
 .h2o-starting>.deckel-header,.h2o-starting>#deckel-main,.h2o-starting>#deckel-nav{visibility:hidden;pointer-events:none}
@@ -155,7 +155,7 @@
 #portal-page-points .loyalty-card summary{font-size:1.0625rem;line-height:1.5}.loyalty-heading>div{min-width:0}.loyalty-heading{flex-wrap:wrap}
 
 /* Wasserentnahme Elz: gut lesbare Grenzwertinfo, keine irreführende Live-Ampel. */
-/* Light reading surfaces on the navy portal canvas. */
+/* Reading surfaces remain distinct from the lighter canvas inside the navy frame. */
 #portal-page-deckel>#account,#portal-page-challenge,#deckel-main>.portal-more-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
 #portal-page-deckel>#account{margin-bottom:12px}
 /* Calm shared reading surfaces; retain the meaning of status colours. */
@@ -238,6 +238,7 @@ body.portal-drag-active{overscroll-behavior:none}
 body{grid-template-rows:auto minmax(0,1fr) auto}
 body>.deckel-header{width:calc(100% - 36px);max-width:524px;margin:max(18px,env(safe-area-inset-top)) auto 0;flex-wrap:wrap}
 #deckel-main{padding-top:14px}
+body.h2o-portal:not(.theater-mode)>#deckel-main{background:var(--portal-canvas);border-radius:20px 20px 0 0}
 body>.deckel-header .deckel-title{flex:1 1 9rem}
 .portal-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;max-width:100%;min-width:0;margin-left:auto}
 body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
