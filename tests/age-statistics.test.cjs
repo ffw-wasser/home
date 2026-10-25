@@ -31,7 +31,7 @@ function app(archive = []) {
     document: {body: {classList: {add() {}, remove() {}}}},
   });
   vm.runInContext(source, context);
-  for (const fn of ['renderSeparatedOperationStatistics', 'renderStatisticsCharts', 'renderDriverLicenseStatistics', 'arrangeStatisticsPage', 'ensureCollapsedStatisticsPanels', 'renderIndividualBreathingClearance', 'renderIndividualOperationStatistics', 'renderIndividualStatisticsCharts']) context[fn] = () => {};
+  for (const fn of ['renderFellowshipStatistics', 'renderStatisticsCharts', 'renderDriverLicenseStatistics', 'arrangeStatisticsPage', 'ensureCollapsedStatisticsPanels', 'renderIndividualBreathingClearance', 'renderIndividualOperationStatistics']) context[fn] = () => {};
   vm.runInContext('selectedStatisticsYear="2026"', context);
   return {context, byId};
 }

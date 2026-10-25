@@ -74,5 +74,9 @@
   "geraetehaus-statistik": {
     "width": 1280,
     "height": 1100
+  },
+  "geraetehaus-auswertungen": {
+    "width": 1240,
+    "height": 2170
   }
 }

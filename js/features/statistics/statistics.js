@@ -79,6 +79,19 @@ function statisticsIsOperation(data){
   const rowType=data?.rows?.[0]?.sessionType||"";
   return data?.operation===true||Boolean(item.operationData)||String(item.sessionType||"").trim()==="Einsatz"||String(rowType).trim()==="Einsatz";
 }
+function statisticsIsFellowship(data){
+  if(statisticsIsOperation(data))return false;
+  const type=String(data?.rows?.[0]?.sessionType||data?.item?.sessionType||"").trim().toLocaleLowerCase("de-DE");
+  return type==="veranstaltung"||type==="kameradschaftspflege";
+}
+function renderFellowshipStatistics(yearData){
+  const root=byId("statisticsFellowshipEvents");if(!root)return;
+  const events=yearData.filter(statisticsIsFellowship),grouped=new Map();
+  events.forEach(data=>{const label=String(data.item.topic||data.rows[0]?.topic||"Veranstaltung").normalize("NFC").trim().replace(/\s+/g," ")||"Veranstaltung",key=label.toLocaleLowerCase("de-DE"),entry=grouped.get(key)||{label,count:0};entry.count++;grouped.set(key,entry);});
+  const participations=events.reduce((sum,data)=>sum+new Set(data.rows.filter(row=>row.status==="Anwesend").map(row=>statisticsMemberNameKey(row.name))).size,0);
+  root.querySelector("[data-fellowship-summary]").textContent=`${events.length} Veranstaltung${events.length===1?"":"en"} · ${participations} Teilnahmen`;
+  root.querySelector("[data-fellowship-chart]").innerHTML=events.length?renderBarChart([...grouped.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,"de")).map(item=>[item.label,item.count]),"Veranstaltungen nach Thema","#65439b"):'<p class="empty-state">Keine abgeschlossenen Veranstaltungsberichte im gewählten Jahr geladen.</p>';
+}
 function statisticsArchiveData() {
   return csvArchive.map(item => {
     const operationRows=statisticsOperationRows(item);
@@ -100,7 +113,7 @@ function statisticsRowMatchesMember(row,member){
   return key!==""&&statisticsMemberNames(member).has(key)&&members.filter(item=>statisticsMemberNames(item).has(key)).length===1;
 }
 function statisticsAgeEvents(yearData){
-  return yearData.filter(data=>!statisticsIsOperation(data)&&(data.rows[0]?.sessionType||data.item.sessionType||"")!=="Ausschuss Sitzung");
+  return yearData.filter(data=>!statisticsIsOperation(data)&&!statisticsIsFellowship(data)&&(data.rows[0]?.sessionType||data.item.sessionType||"")!=="Ausschuss Sitzung");
 }
 function statisticsAgeRows(yearData,ageMembers=members.filter(member=>member.ageDepartment)){
   return statisticsAgeEvents(yearData).flatMap(data=>ageMembers.flatMap(member=>{
@@ -176,8 +189,9 @@ function statisticsPersonnelBars(items,total,goals=false){
 function statisticsActivityChart(yearData){
   const months=Array.from({length:12},()=>({drills:0,operations:0})),labels=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
   yearData.forEach(data=>{const month=Number(data.date.slice(5,7))-1;if(month<0||month>11)return;if(statisticsIsOperation(data))months[month].operations++;else if(statisticsIsDrill(data))months[month].drills++;});
+  if(!months.some(month=>month.drills||month.operations))return '<p class="empty-state">Keine Übungen oder Einsätze im gewählten Jahr.</p>';
   const max=Math.max(1,...months.flatMap(month=>[month.drills,month.operations]));
-  return `<div class="commander-months">${months.map((month,index)=>`<div class="commander-month" aria-label="${labels[index]}: ${month.drills} Übungen, ${month.operations} Einsätze"><div class="commander-month-bars" aria-hidden="true"><i style="height:${month.drills/max*100}%"></i><i style="height:${month.operations/max*100}%"></i></div><span>${labels[index]}</span><small>${month.drills} · ${month.operations}</small></div>`).join("")}</div><p class="commander-month-legend"><span><i aria-hidden="true"></i>Übungen</span><span><i aria-hidden="true"></i>Einsätze</span></p>`;
+  return `<div class="commander-months">${months.map((month,index)=>`<div class="commander-month" aria-label="${labels[index]}: ${month.drills} Übungen, ${month.operations} Einsätze"><div class="commander-month-bars" aria-hidden="true"><i style="height:${month.drills/max*100}%"></i><i style="height:${month.operations/max*100}%"></i></div><span>${labels[index]}</span><small>${month.drills||month.operations?`${month.drills} · ${month.operations}`:""}</small></div>`).join("")}</div><p class="commander-month-legend"><span><i aria-hidden="true"></i>Übungen</span><span><i aria-hidden="true"></i>Einsätze</span></p>`;
 }
 function renderCommanderStatistics(yearData,participation,targetRows){
   // Lightweight unit fixtures can render existing fields without constructing the UI.
@@ -186,7 +200,7 @@ function renderCommanderStatistics(yearData,participation,targetRows){
   let dashboard=byId("statisticsCommanderDashboard");
   if(!dashboard){
     dashboard=document.createElement("div");dashboard.id="statisticsCommanderDashboard";dashboard.className="commander-dashboard";
-    dashboard.innerHTML=`<article class="panel commander-readiness"><h3>Tauglichkeit · Nachweisstand heute</h3><p class="commander-asof"></p><div class="commander-readiness-grid" data-command-readiness></div><details><summary>Prüfkriterien &amp; offene Nachweise</summary><p>AT: G26.3, FFI und Unterweisung. Maschinisten: zugeordnete Fahrzeuge und gültige Führerscheinkontrolle. Bald fällige Nachweise zählen bis zum Ablauf als gültig. Die dokumentierten Nachweise ersetzen keine persönliche Einsatzfreigabe.</p><div data-command-evidence></div></details></article><div class="commander-chart-pair"><article class="panel"><h3>Aktivitäten je Monat</h3><div data-command-months></div></article><article class="panel"><h3>Übungsbeteiligung</h3><div data-command-attendance></div><p class="help-text">Nur jeweils betreffende Mitglieder der Einsatzabteilung</p></article></div><article class="panel commander-operation-types"><h3>Einsätze nach Art</h3><div data-command-operation-types></div></article><article class="panel commander-crew"><h3>Mögliche Funktionsbesetzung · heute</h3><p class="help-text" data-command-roster></p><div data-command-crew></div><details><summary>Wie wird gezählt?</summary><p>Es zählen die hinterlegten Funktionen der aktiven Mitglieder. Angriffstrupp und Wassertrupp werden hier mit gültigen Atemschutznachweisen gezählt, Maschinisten mit gültiger Führerscheinkontrolle. Pro Trupp wird jede Person nur einmal gezählt. Mehrfachqualifikationen können in mehreren Balken erscheinen. Die Werte zeigen Personen aus der gesamten Mannschaft, keine gleichzeitige Fahrzeugbesetzung oder aktuelle Anwesenheit.</p></details></article><div data-command-ranking></div><article class="panel commander-goals"><h3>Persönliche Funktionsziele erreicht</h3><div data-command-goals></div><p class="help-text">Personen mit allen eingestellten Jahreszielen der jeweiligen Funktionsgruppe</p></article>`;
+    dashboard.innerHTML=`<article class="panel commander-readiness"><h3>Tauglichkeit · Nachweisstand heute</h3><p class="commander-asof"></p><div class="commander-readiness-grid" data-command-readiness></div><details><summary>Prüfkriterien &amp; offene Nachweise</summary><p>AT: G26.3, FFI und Unterweisung. Maschinisten: zugeordnete Fahrzeuge und gültige Führerscheinkontrolle. Bald fällige Nachweise zählen bis zum Ablauf als gültig. Die dokumentierten Nachweise ersetzen keine persönliche Einsatzfreigabe.</p><div data-command-evidence></div></details></article><div class="commander-chart-pair"><article class="panel"><h3>Aktivitäten je Monat</h3><div data-command-months></div></article><article class="panel"><h3>Übungsbeteiligung</h3><div data-command-attendance></div><p class="help-text">Nur jeweils betreffende Mitglieder der Einsatzabteilung</p></article></div><article class="panel commander-operation-types"><h3>Einsätze nach Art</h3><div data-command-operation-types></div><p class="help-text" data-command-operation-average></p></article><article class="panel commander-crew"><h3>Mögliche Funktionsbesetzung · heute</h3><p class="help-text" data-command-roster></p><div data-command-crew></div><details><summary>Wie wird gezählt?</summary><p>Es zählen die hinterlegten Funktionen der aktiven Mitglieder. Angriffstrupp und Wassertrupp werden hier mit gültigen Atemschutznachweisen gezählt, Maschinisten mit gültiger Führerscheinkontrolle. Pro Trupp wird jede Person nur einmal gezählt. Mehrfachqualifikationen können in mehreren Balken erscheinen. Die Werte zeigen Personen aus der gesamten Mannschaft, keine gleichzeitige Fahrzeugbesetzung oder aktuelle Anwesenheit.</p></details></article><div data-command-ranking></div><article class="panel commander-goals"><h3>Persönliche Funktionsziele erreicht</h3><div data-command-goals></div><p class="help-text">Personen mit allen eingestellten Jahreszielen der jeweiligen Funktionsgruppe</p></article>`;
     view.querySelector(":scope > .statistics-kpis").after(dashboard);
   }
   const readiness=statisticsCurrentReadiness();
@@ -197,6 +211,8 @@ function renderCommanderStatistics(yearData,participation,targetRows){
   dashboard.querySelector("[data-command-months]").innerHTML=statisticsActivityChart(yearData);
   const operationTypes=statisticsOperationTypeEntries(yearData),operationCount=operationTypes.reduce((sum,[,count])=>sum+count,0);
   dashboard.querySelector("[data-command-operation-types]").innerHTML=operationCount?statisticsPersonnelBars(operationTypes.map(([label,count])=>({label,count})),operationCount):'<p class="empty-state">Keine Einsätze im gewählten Jahr.</p>';
+  const operations=yearData.filter(statisticsIsOperation),participations=operations.reduce((sum,data)=>sum+new Set(data.rows.filter(row=>row.status==="Anwesend").map(row=>statisticsMemberNameKey(row.name))).size,0);
+  dashboard.querySelector("[data-command-operation-average]").textContent=operations.length?`Ø ${(participations/operations.length).toLocaleString("de-DE",{maximumFractionDigits:1})} Teilnehmende je Einsatz`:"";
   const status={total:participation.rows.length,eligible:participation.present,valid:participation.present,soon:participation.excused,expired:participation.missing,missing:0};
   dashboard.querySelector("[data-command-attendance]").innerHTML=statisticsStatusRing(status,"Teilnahme",{attendance:true});
   dashboard.querySelector("[data-command-roster]").textContent=`Personen aus ${readiness.active} Aktiven · AT/WT mit Atemschutz`;
@@ -236,53 +252,23 @@ function renderBarChart(entries,label,color="#2477bd"){
   if(!data.length)return `<p class="empty-state">Keine Daten vorhanden.</p>`;
   return `<div class="statistics-bars" role="img" aria-label="${escapeHtml(label)}">${data.map(([name,value])=>`<div class="statistics-bar-row"><span>${escapeHtml(name)}</span><div><i style="width:${Math.max(3,Number(value)/max*100)}%;background:${color}"></i></div><strong>${value}</strong></div>`).join("")}</div>`;
 }
-function renderMonthlyColumns(rows,label){
-  const types=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Einsatz"],monthly=Object.fromEntries(types.map(type=>[type,Array(12).fill(0)])),seen=new Set();
-  rows.forEach(data=>{const date=data.date,month=Number(date.slice(5,7))-1;if(month<0||month>11)return;const key=data.item.id||`${date}|${data.item.topic||""}`;if(seen.has(key))return;seen.add(key);const type=data.rows[0]?.sessionType||data.item.sessionType||"Unbekannt";if(!monthly[type])monthly[type]=Array(12).fill(0);monthly[type][month]++;});
-  const totals=Array.from({length:12},(_,month)=>Object.values(monthly).reduce((sum,values)=>sum+(values[month]||0),0)),max=Math.max(1,...totals),months=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
-  const activeTypes=Object.keys(monthly).filter(type=>monthly[type].some(Boolean));
-  return `<div class="statistics-monthly-chart" role="img" aria-label="${escapeHtml(label)}"><div class="monthly-columns monthly-stacked-columns">${months.map((month,index)=>`<div class="monthly-group"><div class="monthly-stack" title="${month}: ${totals[index]} Aktivitäten">${activeTypes.map((type,typeIndex)=>monthly[type][index]?`<i style="height:${monthly[type][index]/max*100}%;background:${statisticsTypeColor(type,typeIndex)}"><span class="sr-only">${escapeHtml(type)}: ${monthly[type][index]}</span></i>`:"").join("")}</div><span>${month}</span></div>`).join("")}</div><div class="statistics-inline-legend">${activeTypes.map((type,index)=>`<span><i style="background:${statisticsTypeColor(type,index)}"></i>${escapeHtml(type)}</span>`).join("")}</div></div>`;
-}
 function ensureStatisticsCharts(){
   const view=byId("settingsStatisticsView")||byId("statisticsView"),grid=view?.querySelector(".statistics-grid");
-  if(grid&&!byId("statisticsVisualDashboard")){const panel=document.createElement("article");panel.id="statisticsVisualDashboard";panel.className="panel statistics-panel statistics-visual-dashboard";panel.innerHTML=`<div class="panel-heading"><span class="step blue">D</span><h3>Grafische Jahresübersicht</h3></div><div class="statistics-chart-grid"><section><h4>Übungen und Sitzungen</h4><div data-chart-types></div></section><section class="statistics-operation-chart"><h4>Einsätze</h4><div data-chart-operations></div></section><section class="chart-wide"><h4>Proben je Monat</h4><div data-chart-months></div></section><section class="chart-wide"><h4>Funktionsverteilung</h4><div data-chart-roles></div></section></div>`;grid.prepend(panel);}
-  const preview=byId("individualStatisticsPreview");
-  if(preview&&!byId("individualVisualDashboard")){const panel=document.createElement("section");panel.id="individualVisualDashboard";panel.className="individual-statistics-section individual-visual-dashboard";panel.innerHTML=`<h4>Grafische Übersicht</h4><div class="statistics-chart-grid"><section><h5>Aktivitäten und Einsätze</h5><div data-individual-chart-types></div></section><section><h5>Funktionen</h5><div data-individual-chart-roles></div></section></div>`;preview.prepend(panel);}
+  if(grid&&!byId("statisticsVisualDashboard")){const panel=document.createElement("article");panel.id="statisticsVisualDashboard";panel.className="panel statistics-panel statistics-visual-dashboard";panel.innerHTML=`<div class="panel-heading"><h3>Ausgeübte Funktionen</h3></div><p class="help-text">Tatsächliche Einteilungen bei allgemeinen Proben und Einsätzen</p><div data-chart-roles></div>`;grid.prepend(panel);}
 }
 function renderStatisticsCharts(yearData,presentRows){
   ensureStatisticsCharts();
-  const types=new Map(),operationTypes=new Map(statisticsOperationTypeEntries(yearData)),roles=new Map();yearData.filter(data=>!statisticsIsOperation(data)).forEach(data=>{const type=data.rows[0]?.sessionType||data.item.sessionType||"Unbekannt";types.set(type,(types.get(type)||0)+1);});presentRows.filter(statisticsRoleRelevant).forEach(row=>statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1)));
-  const panel=byId("statisticsVisualDashboard");if(!panel)return;panel.querySelector("[data-chart-types]").innerHTML=renderDonutChart(statisticsChartEntries(types),"Verteilung der Übungen und Sitzungen");panel.querySelector("[data-chart-operations]").innerHTML=renderDonutChart(statisticsChartEntries(operationTypes),"Verteilung der Einsätze");panel.querySelector("[data-chart-months]").innerHTML=renderMonthlyColumns(yearData.filter(data=>!statisticsIsOperation(data)),"Proben und Sitzungen je Monat");panel.querySelector("[data-chart-roles]").innerHTML=renderBarChart(statisticsChartEntries(roles),"Verteilung der Funktionen aus Proben und Einsätzen","#176b36");
-}
-function renderIndividualStatisticsCharts(rows){
-  ensureStatisticsCharts();const types=new Map(),roles=new Map();rows.forEach(row=>{types.set(row.sessionType||"Unbekannt",(types.get(row.sessionType||"Unbekannt")||0)+1);if(statisticsRoleRelevant(row))statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1));});const panel=byId("individualVisualDashboard");if(!panel)return;panel.querySelector("[data-individual-chart-types]").innerHTML=renderDonutChart(statisticsChartEntries(types),"Persönliche Aktivitäten und Einsätze");panel.querySelector("[data-individual-chart-roles]").innerHTML=renderBarChart(statisticsChartEntries(roles),"Persönliche Funktionsverteilung","#65439b");
+  const roles=new Map();presentRows.filter(statisticsRoleRelevant).forEach(row=>statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1)));
+  const panel=byId("statisticsVisualDashboard");if(panel)panel.querySelector("[data-chart-roles]").innerHTML=renderBarChart(statisticsChartEntries(roles),"Tatsächliche Funktionsausübungen bei Proben und Einsätzen","#176b36");
 }
 function ensureOperationStatisticsSections(){
-  const view=byId("settingsStatisticsView")||byId("statisticsView");
-  const grid=view?.querySelector(".statistics-grid");
-  if(grid&&!byId("statisticsOperationSummary")){
-    const panel=document.createElement("article");panel.id="statisticsOperationSummary";panel.className="panel statistics-panel operation-statistics-summary";
-    panel.innerHTML=`<div class="panel-heading"><span class="step operation-step">E</span><h3>Einsatzstatistik</h3></div><div class="statistics-kpis operation-statistics-kpis"><div><span>Einsätze</span><strong data-operation-count>0</strong></div><div><span>Ø Teilnehmer</span><strong data-operation-participations>0</strong></div></div><h4>Einsatzarten</h4><div class="metric-list" data-operation-types></div><p class="empty-state" data-operation-empty>Keine Einsätze im gewählten Jahr.</p>`;
-    grid.prepend(panel);
-  }
   const individual=byId("individualStatisticsPreview");
   if(individual&&!byId("individualOperationStatistics")){
     const panel=document.createElement("section");panel.id="individualOperationStatistics";panel.className="individual-statistics-section individual-operation-statistics";
-    panel.innerHTML=`<h4>Persönliche Einsatzstatistik</h4><div class="statistics-kpis"><div><span>Einsätze</span><strong data-individual-operation-count>0</strong></div><div><span>Funktionen</span><strong data-individual-operation-roles>0</strong></div></div><div class="metric-list" data-individual-operation-functions></div><p class="empty-state" data-individual-operation-empty>Keine Einsatzteilnahme im gewählten Jahr.</p>`;
+    panel.innerHTML=`<h4>Persönliche Einsatzstatistik</h4><div class="statistics-kpis"><div class="stat-kpi"><span>Einsätze</span><strong data-individual-operation-count>0</strong></div><div class="stat-kpi"><span>Funktionen</span><strong data-individual-operation-roles>0</strong></div></div><div class="metric-list" data-individual-operation-functions></div><p class="empty-state" data-individual-operation-empty>Keine Einsatzteilnahme im gewählten Jahr.</p>`;
     const recent=byId("individualRecentVisits")?.closest(".individual-statistics-section,section");
     if(recent)recent.insertAdjacentElement("beforebegin",panel);else individual.appendChild(panel);
   }
-}
-function renderSeparatedOperationStatistics(yearData){
-  ensureOperationStatisticsSections();
-  const operations=yearData.filter(statisticsIsOperation);
-  const rows=operations.flatMap(data=>data.rows).filter(row=>row.status==="Anwesend");
-  const types=new Map(statisticsOperationTypeEntries(operations));
-  const panel=byId("statisticsOperationSummary");if(!panel)return;
-  panel.querySelector("[data-operation-count]").textContent=operations.length;
-  panel.querySelector("[data-operation-participations]").textContent=operations.length?(rows.length/operations.length).toFixed(1).replace(".",","):"–";
-  panel.querySelector("[data-operation-types]").innerHTML=[...types.entries()].sort((a,b)=>b[1]-a[1]).map(([name,count])=>renderMetric("",name,count,"red")).join("");
-  panel.querySelector("[data-operation-empty]").hidden=operations.length>0;
 }
 function renderIndividualOperationStatistics(rows){
   ensureOperationStatisticsSections();
@@ -302,7 +288,11 @@ function makeStatisticsPanelCollapsible(panel,title){
   const details=document.createElement("details");
   details.className="statistics-collapsible";
   const summary=document.createElement("summary");
-  summary.innerHTML=`<span>${escapeHtml(title)}</span><small>Antippen zum Öffnen</small><i aria-hidden="true"></i>`;
+  summary.innerHTML=`<span>${escapeHtml(title)}</span><i aria-hidden="true"></i>`;
+  const titleId=heading?.querySelector("h3[id]")?.id;
+  if(titleId)summary.querySelector("span").id=titleId;
+  const consumptionYear=heading?.querySelector("#drinksStatisticsYear");
+  if(consumptionYear)summary.querySelector("span").append(" · ",consumptionYear);
   const body=document.createElement("div");
   body.className="statistics-collapsible-body";
   [...panel.children].forEach(child=>{if(child!==heading)body.appendChild(child);});
@@ -314,9 +304,11 @@ function ensureCollapsedStatisticsPanels(){
   const breathingPanel=document.querySelector(".breathing-statistics-panel");
   const driverPanel=byId("driverLicenseStatisticsPanel");
   const openFunctionsPanel=byId("openFunctions")?.closest("article");
-  makeStatisticsPanelCollapsible(breathingPanel,"Atemschutzkontrollen");
-  makeStatisticsPanelCollapsible(driverPanel,"Führerscheinkontrollen");
+  makeStatisticsPanelCollapsible(breathingPanel,"Atemschutz je Mitglied");
+  makeStatisticsPanelCollapsible(driverPanel,"Führerschein je Maschinist");
   makeStatisticsPanelCollapsible(openFunctionsPanel,"Offene Funktionsziele");
+  const view=byId("settingsStatisticsView")||byId("statisticsView");
+  for(const [panel,title] of [[byId("statisticsVisualDashboard"),"Ausgeübte Funktionen"],[byId("probeTypes")?.closest("article"),"Terminarten"],[byId("probeTopics")?.closest("article"),"Ausbildungsthemen"],[view?.querySelector(".individual-statistics-panel"),"Teilnehmerstatistik"],[view?.querySelector(".age-statistics-section"),"Altersabteilung"]])makeStatisticsPanelCollapsible(panel,title);
   if(driverPanel&&openFunctionsPanel&&driverPanel.parentElement&&!openFunctionsPanel.closest(".commander-goals")){
     driverPanel.insertAdjacentElement("afterend",openFunctionsPanel);
   }
@@ -328,17 +320,22 @@ function arrangeStatisticsPage(){
   const ordered=[
     byId("statisticsVisualDashboard"),
     byId("probeTypes")?.closest("article"),
-    byId("probeTopics")?.closest("article"),
-    byId("statisticsOperationSummary")
+    byId("probeTopics")?.closest("article")
   ].filter(Boolean);
   ordered.forEach(node=>grid.appendChild(node));
   const dashboard=byId("statisticsCommanderDashboard");if(!dashboard)return;
   const targets=byId("openFunctions")?.closest("article");
   if(targets)dashboard.querySelector(".commander-goals").append(targets);
+  let additional=byId("statisticsAdditionalTopics");
+  if(!additional){additional=document.createElement("div");additional.id="statisticsAdditionalTopics";additional.className="statistics-additional-topics";dashboard.after(additional);}
   let further=byId("statisticsFurtherDetails");
-  if(!further){further=document.createElement("details");further.id="statisticsFurtherDetails";further.className="panel commander-further";further.innerHTML='<summary>Weitere Auswertungen</summary><div class="commander-further-content"></div>';dashboard.after(further);}
+  if(!further){further=document.createElement("details");further.id="statisticsFurtherDetails";further.className="panel commander-further";further.innerHTML='<summary>Weitere Feuerwehr-Auswertungen</summary><div class="commander-further-content"></div>';additional.append(further);}
   const content=further.querySelector(".commander-further-content");
-  for(const node of [grid,view.querySelector(".breathing-statistics-panel"),byId("driverLicenseStatisticsPanel"),view.querySelector(".individual-statistics-panel"),view.querySelector(".age-statistics-section"),view.querySelector(".drinks-consumption-panel"),view.querySelector(".statistics-note")])if(node)content.append(node);
+  for(const node of [view.querySelector(".individual-statistics-panel"),grid,view.querySelector(".breathing-statistics-panel"),byId("driverLicenseStatisticsPanel"),view.querySelector(".age-statistics-section"),view.querySelector(".statistics-note")])if(node)content.append(node);
+  let fellowship=byId("statisticsFellowshipDetails");
+  if(!fellowship){fellowship=document.createElement("details");fellowship.id="statisticsFellowshipDetails";fellowship.className="panel commander-further";fellowship.innerHTML='<summary>Kameradschaftspflege</summary><div class="commander-fellowship-content"></div>';additional.append(fellowship);}
+  let events=byId("statisticsFellowshipEvents");if(!events){events=document.createElement("section");events.id="statisticsFellowshipEvents";events.innerHTML='<h3>Veranstaltungen</h3><p data-fellowship-summary></p><div data-fellowship-chart></div><button class="outline-button" type="button">Veranstaltungen öffnen</button>';events.querySelector("button").addEventListener("click",()=>showView("eventsView"));fellowship.querySelector(".commander-fellowship-content").prepend(events);}
+  const drinks=view.querySelector(".drinks-consumption-panel");if(drinks)fellowship.querySelector(".commander-fellowship-content").append(drinks);
 }
 function renderStatistics() {
   renderStatisticsYearSelect();
@@ -349,7 +346,6 @@ function renderStatistics() {
   const yearData = all.filter(data => data.date.startsWith(year));
   const participation=statisticsParticipation(yearData);
   const probeYearData=yearData.filter(data=>!statisticsIsOperation(data)),allYearRows=probeYearData.flatMap(data=>data.rows),presentYearRows=allYearRows.filter(row=>row.status==="Anwesend"),assignmentTotal=statisticsAssignmentCount(presentYearRows),changedRows=presentYearRows.filter(row=>/2\. Füllung:/.test(row.role||""));
-  renderSeparatedOperationStatistics(yearData);
   renderStatisticsCharts(yearData,yearData.flatMap(data=>data.rows).filter(row=>row.status==="Anwesend"));
   const activeMembers = participation.active;
   const ageMembers = members.filter(member => member.ageDepartment);
@@ -357,8 +353,6 @@ function renderStatistics() {
   // tatsächlich hinterlegt beziehungsweise vorgesehen ist. Nicht eingesetzte
   // Personen ohne Atemschutzbezug werden nicht als "nicht dokumentiert" geführt.
   const breathingStates=members.filter(member=>!member.ageDepartment&&isAtmOrAtgQualified(member)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
-  const bcCounts=Object.fromEntries(["valid","soon","expired","none"].map(state=>[state,breathingStates.filter(item=>item.state===state).length]));
-  byId("breathingValidCount").textContent=bcCounts.valid;byId("breathingSoonCount").textContent=bcCounts.soon;byId("breathingExpiredCount").textContent=bcCounts.expired;byId("breathingNoneCount").textContent=bcCounts.none;
   const clearanceLabel={valid:"Gültig bis",soon:"Fällig bis",expired:"Überfällig seit",none:"Nicht dokumentiert"};
   const clearanceTone={valid:"green",soon:"gold",expired:"red",none:"gray"},clearanceOrder={expired:0,none:1,soon:2,valid:3};
   byId("breathingClearanceList").innerHTML=breathingStates.sort((a,b)=>clearanceOrder[a.state]-clearanceOrder[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>renderMetric("",nameForTile(item.member),item.state==="none"?clearanceLabel[item.state]:`${clearanceLabel[item.state]} ${breathingClearanceDates(item.member).filter(Boolean).sort()[0]||""}`,clearanceTone[item.state])).join("");
@@ -387,14 +381,13 @@ function renderStatistics() {
   byId("ageAttendanceRate").textContent = ageRate === null ? "–" : `${ageRate.toFixed(1).replace(".", ",")} %`;
   byId("ageAttendanceDetail").textContent = ageRows.length ? `${agePresentRows.length} anwesend von ${ageRows.length} möglichen Teilnahmen` : "Noch keine Teilnahmen";
   byId("ageAverageAttendance").textContent = ageEligibleEvents.length ? (agePresentRows.length / ageEligibleEvents.length).toFixed(1).replace(".", ",") : "–";
-  byId("agePresentCount").textContent = ageEligibleEvents.length ? (agePresentRows.length / ageEligibleEvents.length).toFixed(1).replace(".", ",") : "–";
   byId("ageStatusDetail").textContent = `${ageExcusedRows.length} entschuldigt · ${ageMissingRows.length} fehlt`;
   const ageVisits = new Map(ageMembers.map(member => [nameForStorage(member), 0]));
   agePresentRows.forEach(row => { if (ageVisits.has(row.name)) ageVisits.set(row.name, ageVisits.get(row.name) + 1); });
   byId("ageAttendanceRanking").innerHTML = [...ageVisits.entries()].sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0],"de")).map(([name,count],index)=>renderMetric("", `${index+1}. ${name}`, `${count} Teilnahme${count===1?"":"n"}`, count>0?"good":"neutral")).join("");
   byId("ageAttendanceEmpty").hidden = ageMembers.length > 0;
   const dates = yearData.map(data => data.date).filter(Boolean).sort();
-  byId("statisticsPeriod").textContent = yearData.length ? `Auswertung ${year}${dates.length ? ` · ${dates[0]} bis ${dates[dates.length - 1]}` : ""}` : `Noch keine abgeschlossenen Berichte für ${year} geladen.`;
+  byId("statisticsPeriod").textContent = yearData.length ? `Auswertung ${year}${dates.length ? ` · ${formatDisplayDate(dates[0])}${dates[0]===dates[dates.length-1]?"":` bis ${formatDisplayDate(dates[dates.length-1])}`}` : ""}` : `Noch keine abgeschlossenen Berichte für ${year} geladen.`;
 
   const memberStats=participation.people;
   const ranked=memberStats.filter(item=>item.count>0).sort((a,b)=>b.percent-a.percent||b.count-a.count||a.name.localeCompare(b.name,"de")).slice(0,5);
@@ -419,7 +412,7 @@ function renderStatistics() {
   }).join("");
   byId("openFunctionsEmpty").hidden = groupedTargets.size > 0;
 
-  const nonOperationYearData=probeYearData;
+  const nonOperationYearData=probeYearData.filter(data=>!statisticsIsFellowship(data));
   const types = new Map(); nonOperationYearData.forEach(data => { const type=data.rows[0]?.sessionType || data.item.sessionType || "Unbekannt"; types.set(type,(types.get(type)||0)+1); });
   byId("probeTypes").innerHTML = [...types.entries()].sort((a,b)=>b[1]-a[1]).map(([type,count]) => renderMetric("",type,count,"blue")).join("");
   byId("probeTypesEmpty").hidden = types.size > 0;
@@ -434,6 +427,7 @@ function renderStatistics() {
   renderDriverLicenseStatistics();
   renderCommanderStatistics(yearData,participation,targetRows);
   arrangeStatisticsPage();
+  renderFellowshipStatistics(yearData);
   ensureCollapsedStatisticsPanels();
   window.SmartWorkflow?.statistics?.();
   if(byId("individualMemberSelect").value)renderIndividualStatistics(byId("individualMemberSelect").value);
@@ -448,18 +442,13 @@ function ensureDriverLicenseStatisticsPanel(){
   panel=document.createElement("article");
   panel.id="driverLicenseStatisticsPanel";
   panel.className="panel statistics-panel driver-license-statistics-panel";
-  panel.innerHTML=`<div class="panel-heading"><span class="step yellow">FS</span><h3>Führerscheinkontrollen</h3></div><div class="statistics-kpis"><div><span>Gültig</span><strong data-driver-valid>0</strong></div><div><span>Bald fällig</span><strong data-driver-soon>0</strong></div><div><span>Überfällig</span><strong data-driver-overdue>0</strong></div><div><span>Nicht dokumentiert</span><strong data-driver-missing>0</strong></div></div><div class="metric-list" data-driver-list></div>`;
+  panel.innerHTML=`<div class="panel-heading"><span class="step yellow">FS</span><h3>Führerscheinkontrollen</h3></div><div class="metric-list" data-driver-list></div>`;
   breathing.insertAdjacentElement("afterend",panel);
   return panel;
 }
 function renderDriverLicenseStatistics(){
   const panel=ensureDriverLicenseStatisticsPanel();if(!panel)return;
   const items=members.filter(member=>!member.ageDepartment&&Array.isArray(member.machinistVehicles)&&member.machinistVehicles.length).map(member=>({member,state:driverLicenseControlDue(member,systemToday())}));
-  const count=state=>items.filter(item=>item.state===state).length;
-  panel.querySelector("[data-driver-valid]").textContent=count("valid");
-  panel.querySelector("[data-driver-soon]").textContent=count("soon");
-  panel.querySelector("[data-driver-overdue]").textContent=count("overdue");
-  panel.querySelector("[data-driver-missing]").textContent=count("missing");
   const order={overdue:0,missing:1,soon:2,valid:3},tone={overdue:"red",missing:"gray",soon:"gold",valid:"green"};
   panel.querySelector("[data-driver-list]").innerHTML=items.sort((a,b)=>order[a.state]-order[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>{const date=driverLicenseDueDate(item.member);const label=item.state==="missing"?"Nicht dokumentiert":item.state==="overdue"?`Überfällig seit ${date}`:item.state==="soon"?`Fällig bis ${date}`:`Gültig bis ${date}`;return renderMetric("",nameForTile(item.member),label,tone[item.state]);}).join("");
 }
@@ -470,10 +459,12 @@ async function exportStatisticsPdf() {
   await globalThis.DrinksConsumption?.load(year);
   if(year!==selectedStatisticsYear){showToast("Kalenderjahr geändert. Bitte die PDF erneut öffnen.","error");return;}
   const originalTitle = document.title;
-  const consumptionDetails=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"),element=>({element,wasOpen:element.open}));for(const {element} of consumptionDetails)element.open=true;
+  const consumptionDetails=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#statisticsFellowshipDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"),element=>({element,wasOpen:element.open}));for(const {element} of consumptionDetails)element.open=true;
   document.title = `Feuerwehr-Wasser_Statistik_${year}`;
   document.body.classList.add("printing-statistics");
+  let cleaned=false;
   const cleanup = () => {
+    if(cleaned)return;cleaned=true;
     document.body.classList.remove("printing-statistics");
     for(const {element,wasOpen} of consumptionDetails)element.open=wasOpen;
     document.title = originalTitle;
@@ -550,7 +541,7 @@ function renderIndividualStatistics(memberId) {
   const usage = new Map();
   if(!member.ageDepartment)present.forEach(row => statisticsRolesFromValue(row.role).forEach(role => usage.set(role,(usage.get(role)||0)+1)));
   const usageRows = [...usage.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0],"de"));
-  byId("individualRoleUsage").innerHTML = usageRows.map(([role,count]) => renderMetric("",role,count,"blue")).join("");
+  byId("individualRoleUsage").innerHTML = usageRows.length?renderBarChart(usageRows,"Persönliche Funktionsausübungen","#65439b"):"";
   byId("individualRoleUsageEmpty").hidden = usageRows.length > 0;
 
   const targets = getRoleTargets();
@@ -563,14 +554,12 @@ function renderIndividualStatistics(memberId) {
   byId("individualRoleTargetsEmpty").hidden = targetRows.length > 0;
 
   renderIndividualOperationStatistics(rows);
-  renderIndividualStatisticsCharts(rows);
   ["individualRoleTargets","individualRoleUsage"].forEach(id=>{const section=byId(id)?.closest("section");if(section)section.hidden=Boolean(member.ageDepartment);});
   const operationPanel=byId("individualOperationStatistics");if(operationPanel)operationPanel.hidden=Boolean(member.ageDepartment);
-  const roleChart=byId("individualVisualDashboard")?.querySelector("[data-individual-chart-roles]")?.closest("section");if(roleChart)roleChart.hidden=Boolean(member.ageDepartment);
 
   const types = new Map();
   rows.forEach(row => types.set(row.sessionType || "Unbekannt", (types.get(row.sessionType || "Unbekannt") || 0) + 1));
-  byId("individualProbeTypes").innerHTML = [...types.entries()].sort((a,b)=>b[1]-a[1]).map(([type,count]) => renderMetric("",type,count,"blue")).join("");
+  byId("individualProbeTypes").innerHTML = types.size?renderDonutChart(statisticsChartEntries(types),"Persönliche Termine nach Art"):"";
   byId("individualProbeTypesEmpty").hidden = types.size > 0;
 
   const recent = rows
@@ -589,9 +578,10 @@ function exportIndividualStatisticsPdf() {
   renderIndividualStatistics(memberId);
   const originalTitle = document.title;
   document.title = `Feuerwehr-Wasser_${nameForTile(member).replace(/[^a-zA-Z0-9ÄÖÜäöüß]+/g,"-")}_Statistik_${selectedStatisticsYear}`;
-  const further=byId("statisticsFurtherDetails"),wasOpen=further?.open;if(further)further.open=true;
+  const disclosures=[byId("statisticsFurtherDetails"),byId("individualStatisticsPreview")?.closest(".individual-statistics-panel")?.querySelector?.(":scope > .statistics-collapsible")].filter(Boolean).map(element=>({element,open:element.open}));for(const {element} of disclosures)element.open=true;
   document.body.classList.add("printing-individual-statistics");
-  const cleanup = () => { if(further)further.open=wasOpen;document.body.classList.remove("printing-individual-statistics"); document.title = originalTitle; window.removeEventListener("afterprint", cleanup); };
+  let cleaned=false;
+  const cleanup = () => { if(cleaned)return;cleaned=true;for(const {element,open} of disclosures)element.open=open;document.body.classList.remove("printing-individual-statistics"); document.title = originalTitle; window.removeEventListener("afterprint", cleanup); };
   window.addEventListener("afterprint", cleanup);
   setTimeout(() => { window.print(); setTimeout(cleanup,1500); },100);
 }

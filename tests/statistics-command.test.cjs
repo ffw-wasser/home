@@ -36,3 +36,11 @@ test('Funktionsziele zählen Probe und Einsatz, aber keine Sonderprobe; Truppzie
  const unmet=c.statisticsGoalGroups(c.statisticsFunctionTargets([data('Allgemeine Probe','ATF')],[a],{ATF:1,ATM:1}))[0];assert.equal(unmet.complete,0);
  assert.equal(c.statisticsGoalGroups(c.statisticsFunctionTargets([],[a,b],{})).length,0);
 });
+
+test('Veranstaltungen gehören zur Kameradschaftspflege; Einsatz hat Vorrang, Übungen bleiben getrennt',()=>{
+ const c=fixture([]),event=type=>({item:{sessionType:type},rows:[]});
+ for(const type of ['Veranstaltung',' veranstaltung ','Kameradschaftspflege'])assert.equal(c.statisticsIsFellowship(event(type)),true);
+ for(const type of ['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'])assert.equal(c.statisticsIsFellowship(event(type)),false);
+ assert.equal(c.statisticsIsFellowship({item:{sessionType:'Veranstaltung',operationData:{}}}),false);
+ assert.equal(c.statisticsAgeEvents([event('Veranstaltung'),event('Kameradschaftspflege'),event('Unterricht')]).length,1);
+});
