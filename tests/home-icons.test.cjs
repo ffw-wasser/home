@@ -8,9 +8,9 @@ const main=read('index.html'),portal=read('deckel.html'),service=read('service-w
 test('FFW und H2O behalten getrennte Icons und passende Startflächen',()=>{
  assert.equal(ffw.background_color,'#000000');
  assert.equal(h2o.background_color,'#101c2c');
- assert.equal(h2o.theme_color,'#101c2c');
+ assert.equal(h2o.theme_color,'#e7edf2');
  assert.equal(android.background_color,'#101c2c');
- assert.equal(android.theme_color,'#101c2c');
+ assert.equal(android.theme_color,'#e7edf2');
  assert.match(ffw.icons[0].src,/ffw-home-192\.png/);
  assert.match(ffw.icons[1].src,/ffw-home-512\.png/);
  for(const manifest of [h2o,android]){
