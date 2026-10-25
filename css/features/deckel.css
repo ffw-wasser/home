@@ -104,13 +104,13 @@
 
 /* More is a menu of equal-sized destinations, each with an explicit return. */
 .portal-more-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(9rem,calc(50% - 6px))),1fr));gap:12px}
-.portal-more-grid .portal-more-tile{display:grid;grid-template-columns:28px minmax(0,1fr);grid-template-rows:minmax(44px,auto) auto;align-items:center;align-content:start;gap:8px;min-height:124px;padding:14px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:none;margin:0;border-radius:18px}
+.portal-more-grid .portal-more-tile{display:grid;grid-template-columns:28px minmax(0,1fr);grid-template-rows:minmax(44px,auto) auto;align-items:center;align-content:start;gap:8px 6px;min-height:124px;padding:12px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:none;margin:0;border-radius:18px}
 .portal-more-tile strong{grid-column:2;grid-row:1;min-width:0;padding-top:0;font-size:1rem;line-height:1.25}
 [data-portal-tile="more-hydrants"] strong{hyphens:none;-webkit-hyphens:none}
 .portal-more-tile>.portal-tile-description{grid-column:1/-1;grid-row:2;font-size:.875rem;line-height:1.35;font-weight:500;color:var(--muted)}
 .portal-more-detail .portal-more-back{width:auto;min-height:48px;margin-bottom:18px;padding:10px 16px}
 .portal-more-detail .portal-notifications{margin-top:0;border-top:0}
-@media(max-width:360px){.portal-more-grid{grid-template-columns:1fr;gap:8px}.portal-more-grid .portal-more-tile{padding:12px;min-height:92px;grid-template-rows:minmax(28px,auto) auto}}
+@media(max-width:380px){.portal-more-grid{grid-template-columns:1fr;gap:8px}.portal-more-grid .portal-more-tile{padding:12px;min-height:92px;grid-template-rows:minmax(28px,auto) auto}}
 .portal-more-grid #deckel-update-reload{margin:0}
 
 .bundesliga-favorite-label{display:block;font-weight:700}.bundesliga-favorite-label select{display:block;width:100%;min-height:48px;margin:8px 0 20px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}.bundesliga-ticker{margin-bottom:24px}.bundesliga-match{padding:14px;margin:10px 0;border:1px solid var(--line);border-radius:16px;background:#fff}.bundesliga-match h4{margin:6px 0;font-size:1rem;overflow-wrap:anywhere}.bundesliga-match-time,#bundesliga-ticker-status{font-size:.875rem;color:var(--muted);margin:6px 0}.bundesliga-score{font-size:1.6rem;font-variant-numeric:tabular-nums}.bundesliga-panel .bundesliga-favorite{background:#fff5d8;border-color:#c59b32;box-shadow:inset 3px 0 #c59b32}.bundesliga-match ol{padding-left:22px;font-size:.875rem}.bundesliga-match li{margin:6px 0}
