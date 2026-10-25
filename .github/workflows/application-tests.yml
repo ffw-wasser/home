@@ -50,7 +50,7 @@ jobs:
       - name: Capture and review all H2O portal screens
         env:
           PORTAL_REVIEW_OUTPUT: qa/portal-review
-        run: node scripts/capture-help-screens.cjs --only=h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+        run: node scripts/capture-help-screens.cjs --only=h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
       - name: Keep refreshed portal help screens for visual review
         uses: actions/upload-artifact@v4
         with:

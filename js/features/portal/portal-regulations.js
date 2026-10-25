@@ -2,15 +2,32 @@
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id),M=g.RegulationsModel;
-let generation=0,adminGeneration=0,version=0,draft=[],saving=false,catalogue=[];
+let generation=0,adminGeneration=0,version=0,draft=[],saving=false,catalogue=[],book=null,currentItem=null,pdfRequest=null;
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
-function closePdf(){generation++;const frame=$('regulations-frame');frame?.removeAttribute('src');if($('regulations-reader'))$('regulations-reader').hidden=true;if($('regulations-list'))$('regulations-list').hidden=false;if($('regulations-search-area'))$('regulations-search-area').hidden=false;}
-function openPdf(item){
- const url=M.pdfUrl(item.url);if(!url)return;
- $('regulations-reader-title').textContent=item.label+' · '+item.title;
- $('regulations-original').href=url;$('regulations-frame').src=url+'#view=FitH';
- $('regulations-list').hidden=true;$('regulations-search-area').hidden=true;$('regulations-reader').hidden=false;$('regulations-reader-title').focus({preventScroll:true});
- $('deckel-main').scrollTo({top:0,behavior:'instant'});
+function closePdf(){
+ generation++;pdfRequest?.abort();pdfRequest=null;book?.destroy();book=null;currentItem=null;const reader=$('regulations-reader');if(reader?.open)reader.close();if(reader)reader.hidden=true;
+ if($('regulations-list'))$('regulations-list').hidden=false;if($('regulations-search-area'))$('regulations-search-area').hidden=false;
+}
+function bookState(state){
+ $('regulations-page').value=state.pageNumber;$('regulations-page').max=state.pageCount;$('regulations-pages').textContent='von '+state.pageCount;
+ $('regulations-prev').disabled=state.pageNumber<=1;$('regulations-next').disabled=state.pageNumber>=state.pageCount;
+ $('regulations-zoom-out').disabled=state.zoom<=1.01;$('regulations-zoom-in').disabled=state.zoom>=32;
+}
+async function turn(number){
+ if(!book)return;const epoch=generation;
+ try{await book.goToPage(number);}catch(e){if(epoch===generation)$('regulations-book-status').textContent='Seite konnte nicht geöffnet werden. Bitte erneut versuchen.';}
+}
+async function openPdf(item){
+ const url=M.pdfUrl(item.url);if(!url)return;closePdf();currentItem=item;const epoch=generation;
+ $('regulations-reader-title').textContent=item.label+' · '+item.title;$('regulations-original').href=url;
+ $('regulations-list').hidden=true;$('regulations-search-area').hidden=true;$('regulations-reader').hidden=false;$('regulations-reader').showModal();
+ $('regulations-book-status').textContent='Buch wird geladen …';$('regulations-book-tools').hidden=true;$('regulations-book-map').hidden=true;$('regulations-retry').hidden=true;
+ try{
+  const controller=new AbortController();pdfRequest=controller;const timeout=setTimeout(()=>controller.abort(),65000);let bytes;try{bytes=await g.H2OPortal.api('regulations/pdf',{url},{signal:controller.signal});}finally{clearTimeout(timeout);if(pdfRequest===controller)pdfRequest=null;}if(epoch!==generation)return;
+  book=g.PlanZoom.create($('regulations-book-map'),bytes,{label:item.label+' · '+item.title,onChange:bookState,onSwipe:direction=>turn(book.pageNumber+direction)});
+  await book.ready;if(epoch!==generation)return;
+  $('regulations-book-tools').hidden=false;$('regulations-book-status').textContent='Wischen zum Blättern · Mit zwei Fingern zoomen';$('regulations-book-map').focus({preventScroll:true});
+ }catch(e){if(epoch!==generation)return;book?.destroy();book=null;$('regulations-book-map').hidden=true;$('regulations-book-status').textContent='Das Buch konnte nicht geladen werden. '+(g.ConnectionStatus?.message(e)||e.message);$('regulations-retry').hidden=false;}
 }
 function render(items){
  catalogue=items;filter();
@@ -20,7 +37,7 @@ function filter(){
  $('regulations-search-status').textContent=query.length?items.length+' von '+catalogue.length+' Vorschriften gefunden.':'';
  const list=$('regulations-list');list.replaceChildren();
  if(!items.length){list.append(node('p',catalogue.length?'Keine passende Dienstvorschrift gefunden. Suchbegriff ändern oder das Suchfeld leeren.':'Noch keine Dienstvorschriften hinterlegt.'));return;}
- for(const item of items){const card=node('article'),label=node('p',item.label),title=node('h3',item.title),date=node('p','Quelle aktualisiert: '+item.sourceUpdated.split('-').reverse().join('.')),button=node('button','PDF öffnen');
+ for(const item of items){const card=node('article'),label=node('p',item.label),title=node('h3',item.title),date=node('p','Quelle aktualisiert: '+item.sourceUpdated.split('-').reverse().join('.')),button=node('button','Als Buch öffnen');
   card.className='regulation-card';label.className='eyebrow';date.className='note';button.type='button';button.setAttribute('aria-label',item.label+' – '+item.title+' öffnen');button.addEventListener('click',()=>openPdf(item));card.append(label,title,date,button);list.append(card);
  }
 }
@@ -60,6 +77,12 @@ async function adminSave(event){
 }
 function init(){
  $('regulations-search')?.addEventListener('input',filter);
+ $('regulations-reader')?.addEventListener('close',()=>{if(!$('regulations-reader').open&&!$('regulations-reader').hidden)closePdf();});
+ $('regulations-prev')?.addEventListener('click',()=>turn(book.pageNumber-1));$('regulations-next')?.addEventListener('click',()=>turn(book.pageNumber+1));
+ $('regulations-page')?.addEventListener('change',()=>turn($('regulations-page').value));
+ $('regulations-zoom-in')?.addEventListener('click',()=>book?.zoomIn());$('regulations-zoom-out')?.addEventListener('click',()=>book?.zoomOut());$('regulations-zoom-fit')?.addEventListener('click',()=>book?.reset());
+ $('regulations-retry')?.addEventListener('click',()=>{if(currentItem)openPdf(currentItem);});
+ $('regulations-reader')?.addEventListener('keydown',event=>{if(!book||event.target.tagName==='INPUT')return;if(event.key==='PageDown'||event.key==='PageUp'){event.preventDefault();turn(book.pageNumber+(event.key==='PageDown'?1:-1));}});
  $('regulations-back')?.addEventListener('click',()=>{closePdf();$('regulations-list').querySelector('button')?.focus();});
  $('regulations-admin-load')?.addEventListener('click',adminLoad);$('regulations-admin-editor')?.addEventListener('submit',adminSave);
  $('regulations-admin-add')?.addEventListener('click',()=>{if(draft.length>=20)return;draft.push({id:crypto.randomUUID(),label:'',title:'',sourceUpdated:new Date().toISOString().slice(0,10),url:''});editor();});

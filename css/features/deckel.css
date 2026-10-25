@@ -263,7 +263,18 @@ body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
 /* Dienstvorschriften share the portal's card surface and accessible text sizes. */
 .regulation-card{min-width:0;margin:0 0 20px;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--card)}
 .regulation-card h3{font-size:1.25rem;line-height:1.35;margin:8px 0;overflow-wrap:anywhere}.regulation-card .eyebrow{margin:0}.regulation-card .note{margin:10px 0}
-#regulations-frame{display:block;width:100%;height:65dvh;min-height:280px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:14px 0}#regulations-original{margin-bottom:18px}
+/* A single large paper page stays readable on phones; the book fills tablets too. */
+.regulations-book{position:fixed;inset:0;margin:auto;width:min(1100px,calc(100vw - 16px));max-width:none;height:calc(100dvh - 16px);max-height:none;padding:14px;border:1px solid #b4c7bc;border-radius:20px;background:#edf3ef;color:var(--ink);box-shadow:0 18px 60px #10284355;overflow:auto}
+.regulations-book[open]{display:grid;grid-template-areas:"heading" "status" "page" "retry" "controls" "original";grid-template-rows:auto auto minmax(120px,1fr) auto auto auto;gap:8px}.regulations-book::backdrop{background:#101c2ccc}
+.regulations-book-header{display:flex;align-items:center;gap:12px}.regulations-book-header h3{min-width:0;flex:1;margin:0;font-size:1.0625rem;line-height:1.35;overflow-wrap:anywhere}.regulations-book-header button{flex:0 0 auto;width:auto;min-height:44px;padding:8px 12px}
+#regulations-book-status{margin:0;font-size:1rem;line-height:1.3}
+#regulations-book-map{width:100%;height:auto;min-height:120px;max-height:none;margin:0;border:1px solid #b4c7bc;border-radius:8px;background:#fffdf7;box-shadow:inset 8px 0 12px -10px #10284366,0 3px 0 #cbd2ca,0 6px 15px #10284326}
+.regulations-page-controls{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;gap:8px}.regulations-page-controls label{display:flex;align-items:center;justify-content:center;gap:6px;font-size:1rem;flex-wrap:wrap}.regulations-page-controls input{width:62px;min-width:0;min-height:44px;padding:6px;border:1px solid #b4c7bc;border-radius:8px;color:var(--ink);font:inherit;background:var(--surface)}
+.regulations-zoom-controls{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:8px;margin-top:8px}.regulations-book button{min-height:44px}.regulations-book button:disabled{opacity:.45;cursor:default}.regulations-book #regulations-original{justify-self:center;min-height:32px;padding:4px;font-size:1rem;color:#075baf;text-align:center}
+@media(max-height:500px){.regulations-book{padding:8px;gap:4px}.regulations-book[open]{grid-template-rows:auto auto minmax(100px,1fr) auto auto auto}.regulations-book-header h3{font-size:1rem}.regulations-book #regulations-original{min-height:24px;padding:0}}
+
 .portal-regulations-symbol{font-family:Georgia,serif;font-weight:700}
 
 #regulations-search-area{margin:18px 0}#regulations-search-area label{display:block;font-weight:750;margin-bottom:8px}#regulations-search{display:block;width:100%;min-width:0;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;color:var(--ink);background:var(--surface)}
+
+.regulations-book-header{grid-area:heading}#regulations-book-status{grid-area:status}#regulations-book-map{grid-area:page}#regulations-retry{grid-area:retry}#regulations-book-tools{grid-area:controls}#regulations-original{grid-area:original}

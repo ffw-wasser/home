@@ -13,7 +13,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Gerätehaus-Erfassung, Teilnehmer, Schritte | `js/features/attendance/attendance-controller.js` | `action-dock.js`, `js/core/keyboard.js`, `js/features/tactics/` |
 | Einsatz und Fahrzeugbesetzung | `js/features/operations/operations.js`, `js/features/tactics/` | Anwesenheit, Berichte, Qualitätsprüfungen |
 | Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, Cloudflare `portal.js`, ICS-Bibliothek |
-| Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links |
+| Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links, Buchansicht mit `plan-zoom.js` und authentifiziertem PDF-Transport |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js` | `js/core/database.js`, Cloudflare `portal.js` |
 | Historie, Korrektur, Löschen | `js/features/history/archive.js`, `onedrive-history-live.js` | `js/core/onedrive-sync.js`, Berichtsdateien |
 | Statistik | `js/features/statistics/statistics.js`, PDF-Datei: `js/features/statistics/statistics-pdf.js` | Historie, Anwesenheit, Nachweise, Getränke, lokale PDF-Bibliothek |

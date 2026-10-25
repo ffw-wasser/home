@@ -31,7 +31,7 @@ export default {
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
     const value=await body(request,path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
-    try{return reply(await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx));}
+    try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(path==='/portal/regulations/pdf'&&result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline'}});return reply(result);}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
    }
    if(globalThis.DeckelChallengeService&&(path.startsWith('/challenge/')||path.startsWith('/admin/challenge/'))){
