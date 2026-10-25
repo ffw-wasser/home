@@ -24,7 +24,7 @@ test('iOS Homebildschirm-Icons sind getrennt; innerhalb der Apps stimmen die Log
  assert.match(main,/assets\/branding\/ffw-home-180\.png\?v=/);
  assert.match(main,/class="top-brand"><img[^>]+src="icon-192\.png\?v=[^"]+"/);
  assert.match(portal,/rel="apple-touch-icon"[^>]+h2o-symbol-blue-180\.png/);
- assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-blue-192\.png\?v=[^"]+"/);
+ assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-white-512\.png\?v=[^"]+"/);
  assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-blue-192\.png\?v=[^']+'/);
 });
 test('Alle generierten Icons haben die deklarierten Abmessungen',()=>{
