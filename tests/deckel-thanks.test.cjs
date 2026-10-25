@@ -52,3 +52,8 @@ test('Erneutes Antippen verlängert die Spruchanzeige, Betrag bleibt immer sicht
 test('Direkter Ladeversuch erscheint nach Netzfehler und verschwindet nach erfolgreicher Wiederholung',async()=>{
  const f=await fixture();assert.equal(f.nodes.get('deckel-load-retry').hidden,true);f.ctx.failedLoad=true;await f.reload();assert.equal(f.nodes.get('deckel-load-retry').hidden,false);f.ctx.failedLoad=false;await f.nodes.get('deckel-load-retry').onclick();await flush();assert.equal(f.nodes.get('deckel-load-retry').hidden,true);assert.equal(f.nodes.get('account').hidden,false);
 });
+
+test('Wiederaufnahme löst eine aktive alte Ladeansicht auch bei schon geladenem Kontostand neu auf',async()=>{
+ const f=await fixture(),finished=[];let starts=0;f.ctx.DeckelStartup={isActive:()=>true,begin:()=>{starts++;return 55;},stage(){},finish:token=>finished.push(token)};
+ await f.reload();assert.equal(starts,1);assert.ok(finished.includes(55));assert.equal(f.nodes.get('account').hidden,false);
+});
