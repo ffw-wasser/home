@@ -8,9 +8,9 @@ const main=read('index.html'),portal=read('deckel.html'),service=read('service-w
 test('FFW und H2O behalten getrennte Icons und passende Startflächen',()=>{
  assert.equal(ffw.background_color,'#000000');
  assert.equal(h2o.background_color,'#101c2c');
- assert.equal(h2o.theme_color,'#101c2c');
+ assert.equal(h2o.theme_color,'#e7edf2');
  assert.equal(android.background_color,'#101c2c');
- assert.equal(android.theme_color,'#101c2c');
+ assert.equal(android.theme_color,'#e7edf2');
  assert.match(ffw.icons[0].src,/ffw-home-192\.png/);
  assert.match(ffw.icons[1].src,/ffw-home-512\.png/);
  for(const manifest of [h2o,android]){
@@ -24,7 +24,7 @@ test('iOS Homebildschirm-Icons sind getrennt; innerhalb der Apps stimmen die Log
  assert.match(main,/assets\/branding\/ffw-home-180\.png\?v=/);
  assert.match(main,/class="top-brand"><img[^>]+src="icon-192\.png\?v=[^"]+"/);
  assert.match(portal,/rel="apple-touch-icon"[^>]+h2o-symbol-blue-180\.png/);
- assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-white-96\.png\?v=[^"]+"/);
+ assert.match(portal,/class="deckel-title"><img src="assets\/drinks\/h2o-symbol-blue-192\.png\?v=[^"]+"/);
  assert.match(service,/new URL\('assets\/drinks\/h2o-symbol-blue-192\.png\?v=[^']+'/);
 });
 test('Alle generierten Icons haben die deklarierten Abmessungen',()=>{
