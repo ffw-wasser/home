@@ -18,7 +18,7 @@ const root=path.resolve(__dirname,'..');
      return route.fulfill({json:{events:[],configured:true,leader:false,fetchedAt:Date.now(),stale:false}});
     }return route.abort();
    });
-   await page.goto('https://ffw-wasser.github.io/home/deckel.html');
+   await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
    await page.evaluate(async()=>{history.replaceState(null,'','#a='+'1'.repeat(32));await H2OPortal.render({actions:{central:true,origin:'https://test.example.workers.dev',capability:'synthetic-session',revision:'revision-test'}});DeckelMobile.show(true);DeckelMobile.jump('deckel-more');});
    const tile=page.locator('[data-portal-tile="more-year-plan"]');assert.equal(await tile.isVisible(),true);assert.equal(await tile.locator('strong').textContent(),'Jahresplan');
    assert.deepEqual((await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile))).slice(0,3),['more-water','more-hydrants','more-help'],'existing custom order is preserved');

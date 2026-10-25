@@ -68,6 +68,8 @@ jobs:
           retention-days: 7
       - name: Test passkey browser flow with synthetic credentials
         run: node tests/passkey-browser.cjs
+      - name: Test H2O startup and resume transitions
+        run: node tests/deckel-startup-browser.cjs
       - name: Test FFW update notice and safe reload
         run: node tests/app-update-browser.cjs
       - name: Test movable portal icon sizes

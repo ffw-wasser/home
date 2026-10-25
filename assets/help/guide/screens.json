@@ -82,5 +82,9 @@
   "geraetehaus-statistik-pdf": {
     "width": 366,
     "height": 356
+  },
+  "h2o-start": {
+    "width": 390,
+    "height": 780
   }
 }

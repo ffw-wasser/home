@@ -22,7 +22,7 @@ const root=path.resolve(__dirname,'..');
     if(u.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});}
     return route.abort();
    });
-   await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.waitForFunction(()=>!document.querySelector('#portal-section').hidden);
+   await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.waitForFunction(()=>!document.querySelector('#portal-section').hidden);
    await page.evaluate(()=>DeckelMobile.jump('deckel-more'));await page.locator('[data-more-target="more-hydrants"]').click();
    await page.waitForFunction(()=>!document.querySelector('#hydrants-open').hidden);
    assert.match(await page.locator('#hydrants-open').getAttribute('href'),/^blob:/);

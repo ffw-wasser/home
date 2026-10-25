@@ -14,7 +14,7 @@
   current=read();record=null;
   if(!current)return null;
   try{const value=await post('session');if(value.alias!==current.alias||value.revision!==current.revision||!/^[a-f0-9]{64}$/.test(value.key))throw Error('Mitgliederzuordnung nicht bestätigt.');record={version:1,alias:value.alias,key:value.key};paint();return record;}
-  catch(e){if(e.status===401||e.status===403){save(null);paint();}throw e;}
+  catch(e){if(e.status===401||e.status===403)save(null);paint();throw e;}
  }
  function supported(){if(!g.H2OPasskeys?.browserSupportsWebAuthn())throw Error('Bitte in Safari oder Chrome öffnen. Im WhatsApp-Menü „Im Browser öffnen“ wählen.');}
  async function login(code){
