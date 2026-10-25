@@ -168,6 +168,8 @@
     opacity:1!important;
   }
   body.printing-individual-statistics #settingsStatisticsView>*{display:none!important}
+  body.printing-individual-statistics #settingsStatisticsView #statisticsFurtherDetails{display:block!important;border:0!important;padding:0!important}
+  body.printing-individual-statistics #statisticsFurtherDetails>summary,body.printing-individual-statistics .commander-further-content>*{display:none!important}
   body.printing-individual-statistics #settingsStatisticsView .individual-statistics-panel{display:block!important}
 }
 

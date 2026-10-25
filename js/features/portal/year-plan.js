@@ -131,8 +131,7 @@
   g.addEventListener('afterprint',()=>{for(const detail of printClosed)detail.open=false;printClosed=[];});
   if(portal){render();return;}
   // Existing pages remain the owners of their editing and unsaved-change checks.
-  const nav=(pages)=>{for(const [id] of pages){const page=document.getElementById(id);if(!page)continue;const tabs=node('nav');tabs.className='administration-tabs';tabs.setAttribute('aria-label','Verwaltungsbereiche');for(const [target,label] of pages){const button=node('button',label);button.type='button';button.className='outline-button';button.setAttribute('aria-pressed',String(target===id));button.onclick=()=>{if(showView(target)&&target==='settingsStatisticsView')renderStatistics();if(target==='settingsHistoryView'){renderHistory();g.loadOneDriveHistory?.();}};tabs.append(button);}page.prepend(tabs);}};
-  nav([['settingsHistoryView','Berichte'],['settingsStatisticsView','Statistik']]);
+  const nav=(pages)=>{for(const [id] of pages){const page=document.getElementById(id);if(!page)continue;const tabs=node('nav');tabs.className='administration-tabs';tabs.setAttribute('aria-label','Verwaltungsbereiche');for(const [target,label] of pages){const button=node('button',label);button.type='button';button.className='outline-button';button.setAttribute('aria-pressed',String(target===id));button.onclick=()=>showView(target);tabs.append(button);}page.prepend(tabs);}};
   nav([['settingsOptionsView','Einstellungen'],['settingsSecurityView','Sicherheit'],['settingsFilesView','Datensicherung']]);
   const help=document.getElementById('helpView');if(help){const back=node('button','← Zum Termin');back.type='button';back.className='outline-button';back.onclick=()=>showView('attendanceView');help.prepend(back);}
   render();

@@ -83,8 +83,6 @@ function ensureSettingsNavigation(){
       if(pageButton.hasAttribute("data-protected")&&!adminUnlocked)return showView("adminLoginView");
       if(pageButton.hasAttribute("data-archive-protected")&&!adminUnlocked)return showView("archiveLoginView");
       showView(target);
-      if(target==="settingsStatisticsView")renderStatistics();
-      if(target==="settingsHistoryView"){renderHistory();window.loadOneDriveHistory?.();}
       if(target==="settingsFilesView"){ensurePdfFolderControls();ensureArchiveStorageCenter();renderArchive();}
       pendingSettingsTarget="";
     });
@@ -121,7 +119,7 @@ function restructureMainViews(){
     admin.querySelectorAll(".admin-card-number").forEach(badge=>badge.remove());
   }
   const sub=admin?.querySelector(".screen-heading .eyebrow");if(sub)sub.textContent="Mitglieder, Ziele und Sicherheit";
-  ["adminView","statisticsView","archiveView"].forEach(id=>{const b=byId(id)?.querySelector("[data-home-button]");if(b)b.textContent="← Zur Verwaltung";});
+  ["adminView","archiveView"].forEach(id=>{const b=byId(id)?.querySelector("[data-home-button]");if(b)b.textContent="← Zur Verwaltung";});
 }
 
 function buildSettingsSubpages(){
@@ -156,7 +154,9 @@ function buildSettingsSubpages(){
   const statistics=byId("statisticsView");if(statistics){statistics.id="settingsStatisticsView";statistics.classList.add("settings-subpage");}
   const history=byId("settingsHistoryView")||byId("historyView");if(history){history.id="settingsHistoryView";history.classList.add("settings-subpage");}
   const files=byId("settingsFilesView")||byId("archiveView");if(files){files.id="settingsFilesView";files.classList.add("settings-subpage");}
-  [statistics,history,files].forEach(page=>{if(!page)return;const back=page.querySelector(".view-home-button,[data-home-button],[data-history-home]");if(back){back.textContent="← Zur Verwaltung";back.onclick=()=>showView("settingsView");}});
+  for(const page of [statistics,history]){const back=page?.querySelector(".view-home-button");if(back)back.textContent="← Zum Termin";}
+  const statisticsHome=statistics?.querySelector("[data-statistics-home]");if(statisticsHome)statisticsHome.onclick=()=>showView("attendanceView");
+  const filesBack=files?.querySelector(".view-home-button,[data-home-button]");if(filesBack){filesBack.textContent="← Zur Verwaltung";filesBack.onclick=()=>showView("settingsView");}
   legacyAdmin?.remove();
   document.querySelectorAll(".admin-section-nav,.admin-card-number").forEach(node=>node.remove());
   ensureArchiveStorageCenter();
@@ -196,7 +196,8 @@ byId("finalizeProbeButton").addEventListener("click", finalizeProbeFromTactics);
 // Der zusätzliche Abbruchknopf ist redundant: Home und „Zurück zu Schritt 1“ übernehmen den Rückweg.
 const cancelTacticsCloseButton=byId("cancelTacticsCloseButton");
 if(cancelTacticsCloseButton)cancelTacticsCloseButton.remove();
-byId("statisticsTab")?.addEventListener("click", () => { renderStatistics(); showView("settingsStatisticsView"); });
+byId("statisticsTab")?.addEventListener("click", () => showView("settingsStatisticsView"));
+byId("historyTab")?.addEventListener("click", () => showView("settingsHistoryView"));
 byId("statisticsPdfButton").addEventListener("click", exportStatisticsPdf);
 byId("statisticsYearSelect").addEventListener("change",event=>{selectedStatisticsYear=event.target.value;renderStatistics();const selected=byId("individualMemberSelect").value;if(selected)renderIndividualStatistics(selected);});
 byId("individualMemberSelect").addEventListener("change", event => renderIndividualStatistics(event.target.value));
@@ -314,7 +315,7 @@ function renderSafetyInfoHub(){
  const breathingRows=breathing.map(m=>{const state=breathingClearanceState(m,systemToday());return row(nameForTile(m),breathingClearanceSummary(m),state==="none"?"missing":state);}).join("");
  const driverRows=drivers.map(m=>{const state=driverLicenseControlDue(m,systemToday());return row(nameForTile(m),state==="missing"?"Kontrolle fehlt":state==="overdue"?`fällig seit ${driverLicenseDueDate(m)}`:`fällig bis ${driverLicenseDueDate(m)}`,state);}).join("");
  byId("safetyInfoContent").innerHTML=`<section><h3>Atemschutz</h3>${breathingRows?`<ul>${breathingRows}</ul>`:"<p>Keine offenen Hinweise.</p>"}<button type="button" class="outline-button" data-safety-statistics>Details in der Statistik</button></section><section><h3>Führerscheinkontrolle</h3>${driverRows?`<ul>${driverRows}</ul>`:"<p>Keine offenen Hinweise.</p>"}<button type="button" class="outline-button" data-safety-members>Mitglieder verwalten</button></section>`;
- byId("safetyInfoContent").querySelector("[data-safety-statistics]").onclick=()=>{hub.dialog.close();renderStatistics();showView("settingsStatisticsView");};byId("safetyInfoContent").querySelector("[data-safety-members]").onclick=()=>{hub.dialog.close();showView("settingsMembersView");};
+ byId("safetyInfoContent").querySelector("[data-safety-statistics]").onclick=()=>{hub.dialog.close();showView("settingsStatisticsView");};byId("safetyInfoContent").querySelector("[data-safety-members]").onclick=()=>{hub.dialog.close();showView("settingsMembersView");};
 }
 function showBreathingClearanceWarnings(){renderSafetyInfoHub();}
 function showDriverLicenseControlWarnings(){renderSafetyInfoHub();}
