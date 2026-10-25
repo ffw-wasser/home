@@ -278,3 +278,5 @@ body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
 #regulations-search-area{margin:18px 0}#regulations-search-area label{display:block;font-weight:750;margin-bottom:8px}#regulations-search{display:block;width:100%;min-width:0;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;color:var(--ink);background:var(--surface)}
 
 .regulations-book-header{grid-area:heading}#regulations-book-status{grid-area:status}#regulations-book-map{grid-area:page}#regulations-retry{grid-area:retry}#regulations-book-tools{grid-area:controls}#regulations-original{grid-area:original}
+
+.regulations-book-header form{margin:0;flex:0 0 auto}

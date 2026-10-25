@@ -33,3 +33,9 @@ test('Buchansicht: HTML und übergroße PDFs werden abgefangen',async()=>{
   const f=await fixture({fetchPdf:async()=>upstream()}),url=(await f.call('regulations')).value.items[0].url,res=await f.call('regulations/pdf',{url});assert.ok([413,502].includes(res.status));
  }
 });
+
+test('Grundauswahl: vollständige PDFs aus derselben App-Adresse ohne Kalenderabhängigkeit',()=>{
+ for(const item of M.defaults()){const file=M.bundledPdf(item.url);assert.match(file,/^assets\/regulations\/fwdv-\d{3}\.pdf$/);const bytes=Buffer.concat(M.bundledParts(item.url).map(part=>fs.readFileSync(require('node:path').join(__dirname,'..',part))));assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert.ok(bytes.length<30*1024*1024);}
+ assert.equal(M.bundledPdf('https://evil.example/FwDV_003.pdf'),null);
+ assert.equal(M.bundledPdf(M.defaults()[0].url.replace('003','999')),null);
+});

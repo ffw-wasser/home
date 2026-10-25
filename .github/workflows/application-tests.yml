@@ -73,7 +73,9 @@ jobs:
       - name: Test FFW update notice and safe reload
         run: node tests/app-update-browser.cjs
       - name: Test official regulations, PDF lifecycle and administration
-        run: node tests/portal-regulations-browser.cjs
+        run: |
+          node tests/portal-regulations-browser.cjs
+          node tests/portal-regulations-integration-browser.cjs
       - name: Test movable portal icon sizes
         run: node tests/portal-icons-browser.cjs
       - name: Test protected hydrant plan view
