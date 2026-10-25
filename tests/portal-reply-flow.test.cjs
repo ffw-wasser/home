@@ -34,8 +34,8 @@ test('Bei unbestätigter Antwort bleiben Kalender und Wiederholung bedienbar',()
 test('Langsame Nachweise sperren fertige Kalendertermine nicht weiter',async()=>{
  let finishEvidence;const evidence=new Promise(resolve=>finishEvidence=resolve),status={};
  const c=vm.createContext({access:{},busy:false,pending:null,document:{hidden:false},generation:1,loaded:false,controls(){},refreshEvidence:()=>evidence,$:()=>status,api:async()=>({configured:true,fetchedAt:Date.now()}),paint(){},schedule(){},Date,g:{}});
- vm.runInContext(source.slice(source.indexOf(' async function refresh(){'),source.indexOf(' function paint(')),c);
- const refresh=c.refresh();await new Promise(resolve=>setImmediate(resolve));
+ vm.runInContext(source.slice(source.indexOf(' async function refresh('),source.indexOf(' function paint(')),c);
+ let ready=0;const refresh=c.refresh(()=>ready++);await new Promise(resolve=>setImmediate(resolve));assert.equal(ready,1,'startup readiness does not wait for evidence');
  assert.equal(c.loaded,true);assert.equal(c.busy,false);
  finishEvidence();await refresh;
 });

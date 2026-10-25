@@ -59,13 +59,13 @@ test('Laufende Termine zeigen keine wirkungslosen Rückmeldeaktionen mehr',()=>{
 test('Fehlender Abgleich und Abruffehler werden im Überblick sichtbar, alte Nachweise bleiben beim Fehler erhalten',async()=>{
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());
  f.c.generation=1;f.c.navigator={onLine:true};f.c.api=async()=>({evidence:null});
- vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);
+ vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(')),f.c);
  await f.c.refreshEvidence(1);assert.equal(f.nodes.get('portal-priority').hidden,false);assert.match(f.nodes.get('portal-priority-text').children[0].textContent,/Mitgliederabgleich/);
  const previous=new Node('details');f.nodes.get('portal-evidence-details').append(previous);f.c.api=async()=>{throw Error('Offline');};await f.c.refreshEvidence(1);assert.equal(f.nodes.get('portal-evidence-details').children[0],previous);assert.equal(f.nodes.get('portal-priority').dataset.state,'unknown');assert.match(f.nodes.get('portal-evidence-status').textContent,/zuletzt geladene/);
 });
 test('Verspätete Nachweise eines alten Zugangs erscheinen nicht im neuen Überblick',async()=>{
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());let release;f.c.generation=1;f.c.api=()=>new Promise(r=>release=r);
- vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);
+ vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(')),f.c);
  const waiting=f.c.refreshEvidence(1);f.c.generation=2;f.c.evidencePriority([]);release({evidence:null});await waiting;assert.equal(f.nodes.get('portal-priority').hidden,true);assert.equal(f.nodes.get('portal-evidence-details').children.length,0);
 });
 
@@ -91,7 +91,7 @@ test('Nachweise erscheinen vollständig als sichtbare Karten; fällige Gruppen s
  const f=fixture();for(const id of ['portal-evidence','portal-evidence-status','portal-evidence-details'])f.nodes.set(id,new Node());
 
  const E=require('../js/features/portal/member-evidence.js');f.c.generation=1;f.c.g={MemberEvidence:E};f.c.api=async()=>({evidence:E.project({g263ValidUntil:'2035-12-31',machinistVehicles:['LF','TSF'],driverLicenseCheckedOn:'2019-01-01',driverLicenseIntervalMonths:12}),syncedAt:1792148400000});f.c.navigator={onLine:true};
- vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(){')),f.c);await f.c.refreshEvidence(1);
+ vm.runInContext(source.slice(source.indexOf(' async function refreshEvidence'),source.indexOf(' async function refresh(')),f.c);await f.c.refreshEvidence(1);
  assert.match(f.nodes.get('portal-evidence-status').textContent,/Datenstand: [^\n]+\nVorwarnung: 60 Tage\./);
  const area=f.nodes.get('portal-evidence-details'),sections=area.children.filter(n=>n.tagName==='section');assert.equal(sections.length,2);assert.equal(sections[0].dataset.group,'Führerscheinkontrolle');assert.equal(area.querySelectorAll('details').length,0);assert.equal(area.querySelectorAll('article').length,2);assert.ok(area.querySelectorAll('p').some(n=>n.textContent==='✓ G26.2 durch gültige G26.3 abgedeckt.'));
  const paragraphs=area.querySelectorAll('p').map(n=>n.textContent);assert.ok(paragraphs.some(t=>/Abgelaufen am 01.01.2020/.test(t)));assert.ok(paragraphs.some(t=>/Letzte Kontrolle: 01.01.2019/.test(t)));assert.ok(paragraphs.some(t=>/Kontrollintervall: 12 Monate/.test(t)));assert.ok(paragraphs.some(t=>/LF · TSF/.test(t)));assert.ok(paragraphs.some(t=>t.includes('keine zusätzliche G26.2 erforderlich.')));
