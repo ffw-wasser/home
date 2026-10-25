@@ -7347,6 +7347,57 @@ html body .participant-command-header .compact-menu {
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @media(max-width:560px){.monthly-stack{width:min(25px,88%)}}
 
+/* Commander's overview: annual activity and current documented capabilities. */
+#settingsStatisticsView .commander-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+#settingsStatisticsView .commander-kpis .stat-kpi{border-top-color:#176b36;box-shadow:none}
+#settingsStatisticsView .commander-kpis small{font-size:.875rem;line-height:1.45}
+.commander-dashboard{display:grid;gap:18px;min-width:0;margin-bottom:18px}
+.commander-dashboard .panel{min-width:0;margin:0;border:1px solid #ccd7d1;border-radius:14px;background:#fff;padding:20px;box-shadow:none}
+.commander-dashboard h3{margin:0 0 14px;font-size:1.125rem;color:#18382b}
+.commander-dashboard h4{margin:0 0 8px;font-size:1rem}
+.commander-dashboard p{font-size:.9375rem;line-height:1.55}
+.commander-asof{margin:-5px 0 16px;color:#40594b}
+.commander-readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.commander-readiness-item{text-align:center;min-width:0}
+.commander-readiness-item p{margin:5px 0 10px}
+.commander-ring{display:block;width:156px;max-width:100%;height:auto;margin:8px auto}
+.commander-ring-value{font:700 19px system-ui;fill:#173b28}
+.commander-status-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;font-size:.875rem;color:#304c3d}
+.commander-status-legend span{display:flex;align-items:center;gap:6px}
+.commander-status-legend i{display:inline-block;flex:0 0 9px;width:9px;height:9px;border-radius:50%}
+.commander-dashboard details{margin-top:16px;border-top:1px solid #ccd7d1;padding-top:6px}
+.commander-dashboard summary,.commander-further>summary{min-height:44px;padding:10px 0;font-size:1rem;font-weight:700;cursor:pointer;line-height:1.5}
+.commander-chart-pair{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+.commander-personnel-bars{display:grid;gap:14px;margin:16px 0 6px}
+.commander-personnel-row{display:grid;grid-template-columns:minmax(140px,170px) minmax(30px,1fr) 58px;gap:10px;align-items:center;font-size:.9375rem}
+.commander-personnel-row>span{overflow-wrap:anywhere}
+.commander-personnel-row strong{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.commander-track,.commander-ranking-track{display:block;overflow:hidden;background:#e4ece7;border-radius:10px;height:14px}
+.commander-track i,.commander-ranking-track i{display:block;height:100%;border-radius:10px;background:#176b36}
+.commander-ranking-track{height:9px;margin-top:8px}
+.commander-rank-row{display:grid;grid-template-columns:28px minmax(0,1fr) 76px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #e0e7e2}
+.commander-rank-row:last-child{border-bottom:0}
+.commander-rank-place{font-variant-numeric:tabular-nums;color:#40594b}
+.commander-rank-name{min-width:0;font-weight:700;overflow-wrap:anywhere}
+.commander-rank-row>strong{text-align:right;font-variant-numeric:tabular-nums}
+.commander-rank-row small{display:block;font-size:.875rem;color:#40594b}
+.commander-months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:7px;margin-top:18px}
+.commander-month{min-width:0;text-align:center;display:grid;gap:4px;font-size:.875rem}
+.commander-month small{font-size:.875rem;white-space:nowrap;color:#40594b}
+.commander-month-bars{height:128px;display:flex;align-items:end;justify-content:center;gap:3px}
+.commander-month-bars i{display:block;width:40%;max-width:18px;background:#176b36;border-radius:3px 3px 0 0}
+.commander-month-bars i+i{background:#256da3}
+.commander-month-legend{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin:16px 0 0;color:#304c3d}
+.commander-month-legend i{display:inline-block;width:10px;height:10px;background:#176b36;margin-right:6px;border-radius:2px}
+.commander-month-legend span+span i{background:#256da3}
+.commander-goals>article.panel{border:0;padding:0;background:transparent}
+.commander-further-content{display:grid;gap:18px;min-width:0;padding-top:16px}
+.commander-further-content>.panel{margin:0}
+@media(max-width:1000px){.commander-chart-pair{grid-template-columns:1fr}}
+@media(max-width:620px){#settingsStatisticsView .commander-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.commander-dashboard .panel{padding:16px}.commander-personnel-row{grid-template-columns:minmax(0,140px) minmax(24px,1fr) 54px;gap:8px}.commander-readiness-grid{gap:12px}.commander-status-legend{justify-content:start;text-align:left}.commander-rank-row{grid-template-columns:22px minmax(0,1fr) 65px;gap:8px}.commander-months{grid-template-columns:repeat(6,minmax(0,1fr));row-gap:18px}.commander-month-bars{height:96px}}
+@media(max-width:380px){.commander-readiness-grid{grid-template-columns:1fr}.commander-status-legend{justify-content:center}.commander-personnel-row{grid-template-columns:minmax(0,1fr) 58px}.commander-personnel-row>.commander-track{grid-column:1/-1;grid-row:2}.commander-personnel-row>strong{grid-column:2;grid-row:1}}
+@media print{.commander-dashboard .panel{break-inside:avoid;box-shadow:none}.commander-chart-pair{grid-template-columns:1fr 1fr}.commander-months{grid-template-columns:repeat(12,minmax(0,1fr))}.commander-month-bars{height:100px}.commander-track,.commander-ranking-track,.commander-month-bars i{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
 /* Produktiv: Schritt 3 als orange hervorgehobene Hauptaktion */
 #step3ActionArea #exportResetButton.step-3-action-button:not(:disabled),
 #attendanceView #exportResetButton.step-3-action-button:not(:disabled){
