@@ -11,6 +11,7 @@
   'CREATE TABLE IF NOT EXISTS portal_birthdays (member TEXT NOT NULL,year INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(member,year))',
   'CREATE TABLE IF NOT EXISTS portal_devices (id TEXT PRIMARY KEY)',
   'CREATE TABLE IF NOT EXISTS portal_roster (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS portal_regulations (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_contacts (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,updated_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_config (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_calendar (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
@@ -318,6 +319,18 @@
    const result=current.version?await env.DB.prepare('UPDATE portal_groups SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,current.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_groups(id,payload) VALUES(1,?)').bind(payload).run();
    if(!result.meta.changes)fail('Gruppen wurden gleichzeitig geändert. Bitte neu laden.');
    return {ok:true,version:current.version+1};
+  }
+  if(path==='/portal/regulations'||path==='/admin/portal/regulations'){
+   const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first();
+   if(admin&&Object.prototype.hasOwnProperty.call(data,'items')){
+    let items;try{items=g.RegulationsModel.validate(data.items);}catch(e){fail(e.message,400);}
+    if(!Number.isInteger(data.expectedVersion)||data.expectedVersion!==(row?.version||0))fail('Die Auswahl wurde zwischenzeitlich geändert. Bitte erneut laden.',409);
+    const payload=await L.seal(env,{items},'portal-regulations'),version=data.expectedVersion+1;
+    const saved=await env.DB.prepare('INSERT INTO portal_regulations(id,payload,version) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=excluded.version WHERE portal_regulations.version=?').bind(payload,version,data.expectedVersion).run();
+    if(!saved.meta.changes)fail('Die Auswahl wurde zwischenzeitlich geändert. Bitte erneut laden.',409);
+    return {items,version};
+   }
+   return {items:row?(await open(env,row,'portal-regulations')).items:g.RegulationsModel.defaults(),version:row?.version||0};
   }
   if(path==='/admin/portal/contacts'){
    const contacts=data.contacts;
