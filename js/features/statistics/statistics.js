@@ -337,11 +337,11 @@ function arrangeStatisticsPage(){
   let events=byId("statisticsFellowshipEvents");if(!events){events=document.createElement("section");events.id="statisticsFellowshipEvents";events.innerHTML='<h3>Veranstaltungen</h3><p data-fellowship-summary></p><div data-fellowship-chart></div><button class="outline-button" type="button">Veranstaltungen öffnen</button>';events.querySelector("button").addEventListener("click",()=>showView("eventsView"));fellowship.querySelector(".commander-fellowship-content").prepend(events);}
   const drinks=view.querySelector(".drinks-consumption-panel");if(drinks)fellowship.querySelector(".commander-fellowship-content").append(drinks);
 }
-function renderStatistics() {
+function renderStatistics({refreshDrinks=true}={}) {
   renderStatisticsYearSelect();
   populateIndividualMemberSelect();
   const year = selectedStatisticsYear || String(new Date().getFullYear());
-  globalThis.DrinksConsumption?.load(year);
+  if(refreshDrinks)globalThis.DrinksConsumption?.load(year);
   const all = statisticsArchiveData();
   const yearData = all.filter(data => data.date.startsWith(year));
   const participation=statisticsParticipation(yearData);
@@ -453,28 +453,31 @@ function renderDriverLicenseStatistics(){
   panel.querySelector("[data-driver-list]").innerHTML=items.sort((a,b)=>order[a.state]-order[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>{const date=driverLicenseDueDate(item.member);const label=item.state==="missing"?"Nicht dokumentiert":item.state==="overdue"?`Überfällig seit ${date}`:item.state==="soon"?`Fällig bis ${date}`:`Gültig bis ${date}`;return renderMetric("",nameForTile(item.member),label,tone[item.state]);}).join("");
 }
 
-async function exportStatisticsPdf() {
-  renderStatistics();
-  const year = selectedStatisticsYear;
-  await globalThis.DrinksConsumption?.load(year);
-  if(year!==selectedStatisticsYear){showToast("Kalenderjahr geändert. Bitte die PDF erneut öffnen.","error");return;}
-  const originalTitle = document.title;
-  const consumptionDetails=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#statisticsFellowshipDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"),element=>({element,wasOpen:element.open}));for(const {element} of consumptionDetails)element.open=true;
-  document.title = `Feuerwehr-Wasser_Statistik_${year}`;
-  document.body.classList.add("printing-statistics");
+function exportStatisticsPdf() {
+  // Keep the print call in the button's synchronous user action. A cloud refresh
+  // may never finish offline and must not delay opening the native dialog.
+  renderStatistics({refreshDrinks:false});
+  const details=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#statisticsFellowshipDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"));
+  return printStatisticsReport("printing-statistics",`Feuerwehr-Wasser_Statistik_${selectedStatisticsYear}`,details);
+}
+let statisticsPrintCleanup=null;
+function printStatisticsReport(printClass,title,details){
+  statisticsPrintCleanup?.();
+  const originalTitle=document.title,disclosures=details.map(element=>({element,open:element.open}));
   let cleaned=false;
-  const cleanup = () => {
+  const cleanup=()=>{
     if(cleaned)return;cleaned=true;
-    document.body.classList.remove("printing-statistics");
-    for(const {element,wasOpen} of consumptionDetails)element.open=wasOpen;
-    document.title = originalTitle;
-    window.removeEventListener("afterprint", cleanup);
+    disclosures.forEach(({element,open})=>element.open=open);
+    document.body.classList.remove(printClass);document.title=originalTitle;
+    window.removeEventListener("afterprint",cleanup);
+    if(statisticsPrintCleanup===cleanup)statisticsPrintCleanup=null;
   };
-  window.addEventListener("afterprint", cleanup);
-  setTimeout(() => {
-    window.print();
-    setTimeout(cleanup, 1500);
-  }, 100);
+  statisticsPrintCleanup=cleanup;
+  disclosures.forEach(({element})=>element.open=true);
+  document.title=title;document.body.classList.add(printClass);
+  window.addEventListener("afterprint",cleanup);
+  try{window.print();return true;}
+  catch(error){cleanup();showToast("Druckdialog konnte nicht geöffnet werden. Bitte die Anwendung im Browser öffnen und erneut versuchen.","error");return false;}
 }
 
 function normalizeStatisticsRole(role) {
@@ -576,12 +579,7 @@ function exportIndividualStatisticsPdf() {
   const member = members.find(item => item.id === memberId);
   if (!member) return;
   renderIndividualStatistics(memberId);
-  const originalTitle = document.title;
-  document.title = `Feuerwehr-Wasser_${nameForTile(member).replace(/[^a-zA-Z0-9ÄÖÜäöüß]+/g,"-")}_Statistik_${selectedStatisticsYear}`;
-  const disclosures=[byId("statisticsFurtherDetails"),byId("individualStatisticsPreview")?.closest(".individual-statistics-panel")?.querySelector?.(":scope > .statistics-collapsible")].filter(Boolean).map(element=>({element,open:element.open}));for(const {element} of disclosures)element.open=true;
-  document.body.classList.add("printing-individual-statistics");
-  let cleaned=false;
-  const cleanup = () => { if(cleaned)return;cleaned=true;for(const {element,open} of disclosures)element.open=open;document.body.classList.remove("printing-individual-statistics"); document.title = originalTitle; window.removeEventListener("afterprint", cleanup); };
-  window.addEventListener("afterprint", cleanup);
-  setTimeout(() => { window.print(); setTimeout(cleanup,1500); },100);
+  const title=`Feuerwehr-Wasser_${nameForTile(member).replace(/[^a-zA-Z0-9ÄÖÜäöüß]+/g,"-")}_Statistik_${selectedStatisticsYear}`;
+  const details=[byId("statisticsFurtherDetails"),byId("individualStatisticsPreview")?.closest(".individual-statistics-panel")?.querySelector?.(":scope > .statistics-collapsible")].filter(Boolean);
+  return printStatisticsReport("printing-individual-statistics",title,details);
 }

@@ -20,4 +20,21 @@ test('Anonyme Statistik zeigt Bier und Wein in Euro und trennt Jahresreste von a
 
 test('Treuepunkte werden ohne Euro und Namen angezeigt; Abmelden leert auch die Monatsübersicht',async()=>{const f=fixture(),load=f.c.DrinksConsumption.load('2026');f.pending[0].resolve(f.data('2026',0));await load;for(const [id,value] of [['PaymentPoints','2'],['ChallengePoints','4'],['EarnedPoints','6'],['RedeemedPoints','1'],['CurrentPoints','-1']])assert.equal(f.nodes.get('drinksStatistics'+id).textContent,value);assert.equal(f.nodes.get('drinksStatisticsPointMonths').children[0].children[2].textContent,'4');f.c.DrinksConsumption.reset();assert.equal(f.nodes.get('drinksStatisticsCurrentPoints').textContent,'–');assert.equal(f.nodes.get('drinksStatisticsPointMonths').children.length,0);});
 
-test('Statistik-PDF öffnet Getränke- und Punktemonate und stellt danach beide Zustände wieder her',async()=>{const details=[{open:false},{open:true}],events={},timers=[];let prints=0;const source=fs.readFileSync(require.resolve('../js/features/statistics/statistics.js'),'utf8'),fn=source.slice(source.indexOf('async function exportStatisticsPdf()'),source.indexOf('function normalizeStatisticsRole'));const c=vm.createContext({renderStatistics(){},selectedStatisticsYear:'2026',DrinksConsumption:{load:async()=>{}},document:{title:'Original',querySelectorAll:()=>details,body:{classList:{add(){},remove(){}}}},window:{addEventListener:(id,fn)=>events[id]=fn,removeEventListener(){},print(){prints++;assert.ok(details.every(d=>d.open));}},setTimeout:fn=>timers.push(fn)});vm.runInContext(fn,c);await c.exportStatisticsPdf();timers.shift()();assert.equal(prints,1);events.afterprint();assert.equal(details[0].open,false);assert.equal(details[1].open,true);assert.equal(c.document.title,'Original');});
+function printFixture(){
+ const details=[{open:false},{open:true}],events={},classes=new Set(),options=[];let prints=0,loads=0;
+ const source=fs.readFileSync(require.resolve('../js/features/statistics/statistics.js'),'utf8'),fn=source.slice(source.indexOf('function exportStatisticsPdf()'),source.indexOf('function normalizeStatisticsRole'));
+ const c=vm.createContext({renderStatistics:value=>options.push(value),selectedStatisticsYear:'2026',DrinksConsumption:{load(){loads++;return new Promise(()=>{});}},showToast(message){c.error=message;},document:{title:'Original',querySelectorAll:()=>details,body:{classList:{add:value=>classes.add(value),remove:value=>classes.delete(value)}}},window:{addEventListener:(id,fn)=>events[id]=fn,removeEventListener:(id,fn)=>{if(events[id]===fn)delete events[id];},print(){prints++;assert.ok(details.every(d=>d.open));}},setTimeout(){throw Error('Print must not use a timer');}});
+ vm.runInContext(fn,c);return {c,details,events,classes,options,prints:()=>prints,loads:()=>loads};
+}
+test('Statistik-PDF öffnet synchron ohne Cloud-Abruf und stellt Aufklappzustände erst nach Druckende wieder her',()=>{
+ const f=printFixture();assert.equal(f.c.exportStatisticsPdf(),true);assert.equal(f.prints(),1);assert.equal(f.loads(),0);assert.equal(f.options[0].refreshDrinks,false);assert.ok(f.classes.has('printing-statistics'));
+ assert.equal(f.c.document.title,'Feuerwehr-Wasser_Statistik_2026');const cleanup=f.events.afterprint;cleanup();assert.equal(f.details[0].open,false);assert.equal(f.details[1].open,true);assert.equal(f.c.document.title,'Original');assert.equal(f.classes.size,0);
+ f.details[0].open=true;cleanup();assert.equal(f.details[0].open,true,'duplicate cleanup cannot close subsequently opened details');
+});
+test('Statistik-PDF räumt fehlgeschlagenen Druck auf und kann danach erneut gestartet werden',()=>{
+ const f=printFixture(),print=f.c.window.print;f.c.window.print=()=>{throw Error('Print unavailable');};assert.equal(f.c.exportStatisticsPdf(),false);assert.match(f.c.error,/Druckdialog/);assert.equal(f.c.document.title,'Original');assert.equal(f.details[0].open,false);assert.equal(f.classes.size,0);assert.equal(f.events.afterprint,undefined);
+ f.c.window.print=print;assert.equal(f.c.exportStatisticsPdf(),true);assert.equal(f.prints(),1);f.events.afterprint();
+});
+test('Ein erneuter PDF-Aufruf übernimmt keine Drucktitel oder offenen Zustände des vorherigen Aufrufs',()=>{
+ const f=printFixture();f.c.exportStatisticsPdf();f.c.exportStatisticsPdf();assert.equal(f.prints(),2);f.events.afterprint();assert.equal(f.c.document.title,'Original');assert.equal(f.details[0].open,false);assert.equal(f.details[1].open,true);
+});

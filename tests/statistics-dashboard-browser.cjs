@@ -55,10 +55,10 @@ const root=path.resolve(__dirname,'..');
 
  if(process.env.QA_OUTPUT){await page.setViewportSize({width:1024,height:900});await page.locator('#statisticsAdditionalTopics').screenshot({path:path.join(process.env.QA_OUTPUT,'weitere-auswertungen.png')});}
 
- await page.evaluate(()=>{window.qaPrint=0;window.print=()=>{qaPrint++;};});await page.locator('#statisticsPdfButton').click();await page.waitForFunction(()=>qaPrint===1);
+ await page.evaluate(()=>{window.qaPrint=0;window.qaPrintActivations=[];window.print=()=>{qaPrintActivations.push(Boolean(window.event?.type==='click'&&window.event.target.closest('#statisticsPdfButton,#individualStatisticsPdfButton')));qaPrint++;};window.qaDrinksLoad=DrinksConsumption.load;window.qaPrintCloudCalls=0;DrinksConsumption.load=()=>{qaPrintCloudCalls++;return new Promise(()=>{});};});await page.locator('#statisticsPdfButton').click();await page.waitForFunction(()=>qaPrint===1);assert.deepEqual(await page.evaluate(()=>qaPrintActivations),[true],'annual print stays in click action');assert.equal(await page.evaluate(()=>qaPrintCloudCalls),0,'stalled cloud cannot block print');await page.waitForTimeout(1600);assert.equal(await page.evaluate(()=>document.body.classList.contains('printing-statistics')),true,'print layout remains until afterprint');
  await page.emulateMedia({media:'print'});assert.equal(await page.locator('#statisticsCommanderDashboard').isVisible(),true,'dashboard prints');assert.equal(await page.locator('.drinks-consumption-panel').isVisible(),true,'annual PDF opens fellowship');
  if(process.env.QA_OUTPUT)await page.pdf({path:path.join(process.env.QA_OUTPUT,'statistik.pdf'),format:'A4',printBackground:true});
- await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));await page.emulateMedia({media:'screen'});assert.equal(await page.evaluate(()=>document.body.classList.contains('printing-statistics')),false);
+ await page.evaluate(()=>{window.dispatchEvent(new Event('afterprint'));DrinksConsumption.load=qaDrinksLoad;});await page.emulateMedia({media:'screen'});assert.equal(await page.evaluate(()=>document.body.classList.contains('printing-statistics')),false);
  assert.equal(await page.locator('.individual-statistics-panel > .statistics-collapsible').getAttribute('open'),null,'annual PDF restores individual disclosure');
  await page.locator('.individual-statistics-panel > .statistics-collapsible > summary').click();
  await page.waitForTimeout(1600);assert.equal(await page.locator('.individual-statistics-panel > .statistics-collapsible').getAttribute('open'),'','late print cleanup does not close newly opened details');
@@ -70,7 +70,7 @@ const root=path.resolve(__dirname,'..');
  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
  if(process.env.QA_OUTPUT){await page.setViewportSize({width:1024,height:900});await page.locator('.individual-statistics-panel').screenshot({path:path.join(process.env.QA_OUTPUT,'teilnehmer.png')});}
  await page.locator('#statisticsFellowshipDetails>summary').click();
- await page.locator('#individualStatisticsPdfButton').click();await page.waitForFunction(()=>qaPrint===2);
+ await page.locator('#individualStatisticsPdfButton').click();await page.waitForFunction(()=>qaPrint===2);assert.deepEqual(await page.evaluate(()=>qaPrintActivations),[true,true],'personal print stays in click action');
  await page.emulateMedia({media:'print'});assert.equal(await page.locator('.individual-statistics-panel').isVisible(),true,'individual report prints through further-details ancestor');assert.equal(await page.locator('#statisticsCommanderDashboard').isVisible(),false,'individual report excludes dashboard');assert.equal(await page.locator('#statisticsFellowshipDetails').isVisible(),false,'individual PDF excludes fellowship');
  if(process.env.QA_OUTPUT)await page.pdf({path:path.join(process.env.QA_OUTPUT,'teilnehmer.pdf'),format:'A4',printBackground:true});
  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));await page.emulateMedia({media:'screen'});
