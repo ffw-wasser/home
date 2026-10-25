@@ -15,7 +15,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, Cloudflare `portal.js`, ICS-Bibliothek |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js` | `js/core/database.js`, Cloudflare `portal.js` |
 | Historie, Korrektur, Löschen | `js/features/history/archive.js`, `onedrive-history-live.js` | `js/core/onedrive-sync.js`, Berichtsdateien |
-| Statistik | `js/features/statistics/statistics.js` | Historie, Anwesenheit, Nachweise, Getränke |
+| Statistik | `js/features/statistics/statistics.js`, PDF-Datei: `js/features/statistics/statistics-pdf.js` | Historie, Anwesenheit, Nachweise, Getränke, lokale PDF-Bibliothek |
 | PDF, DOCX, CSV und ZIP | `js/features/reports/` | Einsatz, Korrektur- und Speicherabläufe |
 | Mein Deckel, Zahlungen, Punkte, Challenge | `js/features/drinks/`, `deckel.html` | Cloudflare `central.js`, `challenge.js`, `js/core/privacy.js` |
 | Theater / Veranstaltungen | `js/features/theater/` | Cloudflare `theater.js`, `css/features/` |

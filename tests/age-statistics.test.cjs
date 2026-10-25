@@ -136,7 +136,7 @@ test('PDF-Ausgabe lässt sich für einen Alterskameraden auslösen', () => {
   context.setTimeout = fn => fn();
   context.window.addEventListener = () => {};
   context.window.removeEventListener = () => {};
-  context.window.print = () => {printed = true;};
+  context.StatisticsPdf = {individual:()=>({}),open:()=>{printed=true;}};
   byId('individualMemberSelect').value = age.id;
   context.exportIndividualStatisticsPdf();
   assert.equal(printed, true);

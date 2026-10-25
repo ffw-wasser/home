@@ -454,30 +454,10 @@ function renderDriverLicenseStatistics(){
 }
 
 function exportStatisticsPdf() {
-  // Keep the print call in the button's synchronous user action. A cloud refresh
-  // may never finish offline and must not delay opening the native dialog.
+  if(!globalThis.StatisticsPdf){showToast("PDF-Modul ist nicht geladen. Bitte die App aktualisieren.","error");return;}
   renderStatistics({refreshDrinks:false});
-  const details=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#statisticsFellowshipDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"));
-  return printStatisticsReport("printing-statistics",`Feuerwehr-Wasser_Statistik_${selectedStatisticsYear}`,details);
-}
-let statisticsPrintCleanup=null;
-function printStatisticsReport(printClass,title,details){
-  statisticsPrintCleanup?.();
-  const originalTitle=document.title,disclosures=details.map(element=>({element,open:element.open}));
-  let cleaned=false;
-  const cleanup=()=>{
-    if(cleaned)return;cleaned=true;
-    disclosures.forEach(({element,open})=>element.open=open);
-    document.body.classList.remove(printClass);document.title=originalTitle;
-    window.removeEventListener("afterprint",cleanup);
-    if(statisticsPrintCleanup===cleanup)statisticsPrintCleanup=null;
-  };
-  statisticsPrintCleanup=cleanup;
-  disclosures.forEach(({element})=>element.open=true);
-  document.title=title;document.body.classList.add(printClass);
-  window.addEventListener("afterprint",cleanup);
-  try{window.print();return true;}
-  catch(error){cleanup();showToast("Druckdialog konnte nicht geöffnet werden. Bitte die Anwendung im Browser öffnen und erneut versuchen.","error");return false;}
+  const view=byId("settingsStatisticsView")||byId("statisticsView");
+  return StatisticsPdf.open(StatisticsPdf.annual(view,selectedStatisticsYear),`Feuerwehr-Wasser_Statistik_${selectedStatisticsYear}.pdf`);
 }
 
 function normalizeStatisticsRole(role) {
@@ -579,7 +559,6 @@ function exportIndividualStatisticsPdf() {
   const member = members.find(item => item.id === memberId);
   if (!member) return;
   renderIndividualStatistics(memberId);
-  const title=`Feuerwehr-Wasser_${nameForTile(member).replace(/[^a-zA-Z0-9ÄÖÜäöüß]+/g,"-")}_Statistik_${selectedStatisticsYear}`;
-  const details=[byId("statisticsFurtherDetails"),byId("individualStatisticsPreview")?.closest(".individual-statistics-panel")?.querySelector?.(":scope > .statistics-collapsible")].filter(Boolean);
-  return printStatisticsReport("printing-individual-statistics",title,details);
+  if(!globalThis.StatisticsPdf){showToast("PDF-Modul ist nicht geladen. Bitte die App aktualisieren.","error");return;}
+  return StatisticsPdf.open(StatisticsPdf.individual(byId("individualStatisticsPreview"),selectedStatisticsYear,nameForTile(member)),`Feuerwehr-Wasser_${nameForTile(member).replace(/[^a-zA-Z0-9ÄÖÜäöüß]+/g,"-")}_Statistik_${selectedStatisticsYear}.pdf`);
 }
