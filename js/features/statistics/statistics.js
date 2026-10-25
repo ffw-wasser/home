@@ -79,6 +79,19 @@ function statisticsIsOperation(data){
   const rowType=data?.rows?.[0]?.sessionType||"";
   return data?.operation===true||Boolean(item.operationData)||String(item.sessionType||"").trim()==="Einsatz"||String(rowType).trim()==="Einsatz";
 }
+function statisticsIsFellowship(data){
+  if(statisticsIsOperation(data))return false;
+  const type=String(data?.rows?.[0]?.sessionType||data?.item?.sessionType||"").trim().toLocaleLowerCase("de-DE");
+  return type==="veranstaltung"||type==="kameradschaftspflege";
+}
+function renderFellowshipStatistics(yearData){
+  const root=byId("statisticsFellowshipEvents");if(!root)return;
+  const events=yearData.filter(statisticsIsFellowship),grouped=new Map();
+  events.forEach(data=>{const label=String(data.item.topic||data.rows[0]?.topic||"Veranstaltung").normalize("NFC").trim().replace(/\s+/g," ")||"Veranstaltung",key=label.toLocaleLowerCase("de-DE"),entry=grouped.get(key)||{label,count:0};entry.count++;grouped.set(key,entry);});
+  const participations=events.reduce((sum,data)=>sum+new Set(data.rows.filter(row=>row.status==="Anwesend").map(row=>statisticsMemberNameKey(row.name))).size,0);
+  root.querySelector("[data-fellowship-summary]").textContent=`${events.length} Veranstaltung${events.length===1?"":"en"} · ${participations} Teilnahmen`;
+  root.querySelector("[data-fellowship-chart]").innerHTML=events.length?renderBarChart([...grouped.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,"de")).map(item=>[item.label,item.count]),"Veranstaltungen nach Thema","#65439b"):'<p class="empty-state">Keine abgeschlossenen Veranstaltungsberichte im gewählten Jahr geladen.</p>';
+}
 function statisticsArchiveData() {
   return csvArchive.map(item => {
     const operationRows=statisticsOperationRows(item);
@@ -100,7 +113,7 @@ function statisticsRowMatchesMember(row,member){
   return key!==""&&statisticsMemberNames(member).has(key)&&members.filter(item=>statisticsMemberNames(item).has(key)).length===1;
 }
 function statisticsAgeEvents(yearData){
-  return yearData.filter(data=>!statisticsIsOperation(data)&&(data.rows[0]?.sessionType||data.item.sessionType||"")!=="Ausschuss Sitzung");
+  return yearData.filter(data=>!statisticsIsOperation(data)&&!statisticsIsFellowship(data)&&(data.rows[0]?.sessionType||data.item.sessionType||"")!=="Ausschuss Sitzung");
 }
 function statisticsAgeRows(yearData,ageMembers=members.filter(member=>member.ageDepartment)){
   return statisticsAgeEvents(yearData).flatMap(data=>ageMembers.flatMap(member=>{
@@ -176,8 +189,9 @@ function statisticsPersonnelBars(items,total,goals=false){
 function statisticsActivityChart(yearData){
   const months=Array.from({length:12},()=>({drills:0,operations:0})),labels=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
   yearData.forEach(data=>{const month=Number(data.date.slice(5,7))-1;if(month<0||month>11)return;if(statisticsIsOperation(data))months[month].operations++;else if(statisticsIsDrill(data))months[month].drills++;});
+  if(!months.some(month=>month.drills||month.operations))return '<p class="empty-state">Keine Übungen oder Einsätze im gewählten Jahr.</p>';
   const max=Math.max(1,...months.flatMap(month=>[month.drills,month.operations]));
-  return `<div class="commander-months">${months.map((month,index)=>`<div class="commander-month" aria-label="${labels[index]}: ${month.drills} Übungen, ${month.operations} Einsätze"><div class="commander-month-bars" aria-hidden="true"><i style="height:${month.drills/max*100}%"></i><i style="height:${month.operations/max*100}%"></i></div><span>${labels[index]}</span><small>${month.drills} · ${month.operations}</small></div>`).join("")}</div><p class="commander-month-legend"><span><i aria-hidden="true"></i>Übungen</span><span><i aria-hidden="true"></i>Einsätze</span></p>`;
+  return `<div class="commander-months">${months.map((month,index)=>`<div class="commander-month" aria-label="${labels[index]}: ${month.drills} Übungen, ${month.operations} Einsätze"><div class="commander-month-bars" aria-hidden="true"><i style="height:${month.drills/max*100}%"></i><i style="height:${month.operations/max*100}%"></i></div><span>${labels[index]}</span><small>${month.drills||month.operations?`${month.drills} · ${month.operations}`:""}</small></div>`).join("")}</div><p class="commander-month-legend"><span><i aria-hidden="true"></i>Übungen</span><span><i aria-hidden="true"></i>Einsätze</span></p>`;
 }
 function renderCommanderStatistics(yearData,participation,targetRows){
   // Lightweight unit fixtures can render existing fields without constructing the UI.
@@ -241,22 +255,17 @@ function renderBarChart(entries,label,color="#2477bd"){
 function ensureStatisticsCharts(){
   const view=byId("settingsStatisticsView")||byId("statisticsView"),grid=view?.querySelector(".statistics-grid");
   if(grid&&!byId("statisticsVisualDashboard")){const panel=document.createElement("article");panel.id="statisticsVisualDashboard";panel.className="panel statistics-panel statistics-visual-dashboard";panel.innerHTML=`<div class="panel-heading"><h3>Ausgeübte Funktionen</h3></div><p class="help-text">Tatsächliche Einteilungen bei allgemeinen Proben und Einsätzen</p><div data-chart-roles></div>`;grid.prepend(panel);}
-  const preview=byId("individualStatisticsPreview");
-  if(preview&&!byId("individualVisualDashboard")){const panel=document.createElement("section");panel.id="individualVisualDashboard";panel.className="individual-statistics-section individual-visual-dashboard";panel.innerHTML=`<h4>Grafische Übersicht</h4><div class="statistics-chart-grid"><section><h5>Aktivitäten und Einsätze</h5><div data-individual-chart-types></div></section><section><h5>Funktionen</h5><div data-individual-chart-roles></div></section></div>`;preview.prepend(panel);}
 }
 function renderStatisticsCharts(yearData,presentRows){
   ensureStatisticsCharts();
   const roles=new Map();presentRows.filter(statisticsRoleRelevant).forEach(row=>statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1)));
   const panel=byId("statisticsVisualDashboard");if(panel)panel.querySelector("[data-chart-roles]").innerHTML=renderBarChart(statisticsChartEntries(roles),"Tatsächliche Funktionsausübungen bei Proben und Einsätzen","#176b36");
 }
-function renderIndividualStatisticsCharts(rows){
-  ensureStatisticsCharts();const types=new Map(),roles=new Map();rows.forEach(row=>{types.set(row.sessionType||"Unbekannt",(types.get(row.sessionType||"Unbekannt")||0)+1);if(statisticsRoleRelevant(row))statisticsRolesFromValue(row.role).forEach(role=>roles.set(role,(roles.get(role)||0)+1));});const panel=byId("individualVisualDashboard");if(!panel)return;panel.querySelector("[data-individual-chart-types]").innerHTML=renderDonutChart(statisticsChartEntries(types),"Persönliche Aktivitäten und Einsätze");panel.querySelector("[data-individual-chart-roles]").innerHTML=renderBarChart(statisticsChartEntries(roles),"Persönliche Funktionsverteilung","#65439b");
-}
 function ensureOperationStatisticsSections(){
   const individual=byId("individualStatisticsPreview");
   if(individual&&!byId("individualOperationStatistics")){
     const panel=document.createElement("section");panel.id="individualOperationStatistics";panel.className="individual-statistics-section individual-operation-statistics";
-    panel.innerHTML=`<h4>Persönliche Einsatzstatistik</h4><div class="statistics-kpis"><div><span>Einsätze</span><strong data-individual-operation-count>0</strong></div><div><span>Funktionen</span><strong data-individual-operation-roles>0</strong></div></div><div class="metric-list" data-individual-operation-functions></div><p class="empty-state" data-individual-operation-empty>Keine Einsatzteilnahme im gewählten Jahr.</p>`;
+    panel.innerHTML=`<h4>Persönliche Einsatzstatistik</h4><div class="statistics-kpis"><div class="stat-kpi"><span>Einsätze</span><strong data-individual-operation-count>0</strong></div><div class="stat-kpi"><span>Funktionen</span><strong data-individual-operation-roles>0</strong></div></div><div class="metric-list" data-individual-operation-functions></div><p class="empty-state" data-individual-operation-empty>Keine Einsatzteilnahme im gewählten Jahr.</p>`;
     const recent=byId("individualRecentVisits")?.closest(".individual-statistics-section,section");
     if(recent)recent.insertAdjacentElement("beforebegin",panel);else individual.appendChild(panel);
   }
@@ -299,7 +308,7 @@ function ensureCollapsedStatisticsPanels(){
   makeStatisticsPanelCollapsible(driverPanel,"Führerschein je Maschinist");
   makeStatisticsPanelCollapsible(openFunctionsPanel,"Offene Funktionsziele");
   const view=byId("settingsStatisticsView")||byId("statisticsView");
-  for(const [panel,title] of [[byId("statisticsVisualDashboard"),"Ausgeübte Funktionen"],[byId("probeTypes")?.closest("article"),"Terminarten"],[byId("probeTopics")?.closest("article"),"Ausbildungsthemen"],[view?.querySelector(".individual-statistics-panel"),"Teilnehmerstatistik"],[view?.querySelector(".age-statistics-section"),"Altersabteilung"],[view?.querySelector(".drinks-consumption-panel"),"Getränke & Treuepunkte"]])makeStatisticsPanelCollapsible(panel,title);
+  for(const [panel,title] of [[byId("statisticsVisualDashboard"),"Ausgeübte Funktionen"],[byId("probeTypes")?.closest("article"),"Terminarten"],[byId("probeTopics")?.closest("article"),"Ausbildungsthemen"],[view?.querySelector(".individual-statistics-panel"),"Teilnehmerstatistik"],[view?.querySelector(".age-statistics-section"),"Altersabteilung"]])makeStatisticsPanelCollapsible(panel,title);
   if(driverPanel&&openFunctionsPanel&&driverPanel.parentElement&&!openFunctionsPanel.closest(".commander-goals")){
     driverPanel.insertAdjacentElement("afterend",openFunctionsPanel);
   }
@@ -317,10 +326,16 @@ function arrangeStatisticsPage(){
   const dashboard=byId("statisticsCommanderDashboard");if(!dashboard)return;
   const targets=byId("openFunctions")?.closest("article");
   if(targets)dashboard.querySelector(".commander-goals").append(targets);
+  let additional=byId("statisticsAdditionalTopics");
+  if(!additional){additional=document.createElement("div");additional.id="statisticsAdditionalTopics";additional.className="statistics-additional-topics";dashboard.after(additional);}
   let further=byId("statisticsFurtherDetails");
-  if(!further){further=document.createElement("details");further.id="statisticsFurtherDetails";further.className="panel commander-further";further.innerHTML='<summary>Weitere Auswertungen</summary><div class="commander-further-content"></div>';dashboard.after(further);}
+  if(!further){further=document.createElement("details");further.id="statisticsFurtherDetails";further.className="panel commander-further";further.innerHTML='<summary>Weitere Feuerwehr-Auswertungen</summary><div class="commander-further-content"></div>';additional.append(further);}
   const content=further.querySelector(".commander-further-content");
-  for(const node of [view.querySelector(".individual-statistics-panel"),grid,view.querySelector(".breathing-statistics-panel"),byId("driverLicenseStatisticsPanel"),view.querySelector(".age-statistics-section"),view.querySelector(".drinks-consumption-panel"),view.querySelector(".statistics-note")])if(node)content.append(node);
+  for(const node of [view.querySelector(".individual-statistics-panel"),grid,view.querySelector(".breathing-statistics-panel"),byId("driverLicenseStatisticsPanel"),view.querySelector(".age-statistics-section"),view.querySelector(".statistics-note")])if(node)content.append(node);
+  let fellowship=byId("statisticsFellowshipDetails");
+  if(!fellowship){fellowship=document.createElement("details");fellowship.id="statisticsFellowshipDetails";fellowship.className="panel commander-further";fellowship.innerHTML='<summary>Kameradschaftspflege</summary><div class="commander-fellowship-content"></div>';additional.append(fellowship);}
+  let events=byId("statisticsFellowshipEvents");if(!events){events=document.createElement("section");events.id="statisticsFellowshipEvents";events.innerHTML='<h3>Veranstaltungen</h3><p data-fellowship-summary></p><div data-fellowship-chart></div><button class="outline-button" type="button">Veranstaltungen öffnen</button>';events.querySelector("button").addEventListener("click",()=>showView("eventsView"));fellowship.querySelector(".commander-fellowship-content").prepend(events);}
+  const drinks=view.querySelector(".drinks-consumption-panel");if(drinks)fellowship.querySelector(".commander-fellowship-content").append(drinks);
 }
 function renderStatistics() {
   renderStatisticsYearSelect();
@@ -366,14 +381,13 @@ function renderStatistics() {
   byId("ageAttendanceRate").textContent = ageRate === null ? "–" : `${ageRate.toFixed(1).replace(".", ",")} %`;
   byId("ageAttendanceDetail").textContent = ageRows.length ? `${agePresentRows.length} anwesend von ${ageRows.length} möglichen Teilnahmen` : "Noch keine Teilnahmen";
   byId("ageAverageAttendance").textContent = ageEligibleEvents.length ? (agePresentRows.length / ageEligibleEvents.length).toFixed(1).replace(".", ",") : "–";
-  byId("agePresentCount").textContent = ageEligibleEvents.length ? (agePresentRows.length / ageEligibleEvents.length).toFixed(1).replace(".", ",") : "–";
   byId("ageStatusDetail").textContent = `${ageExcusedRows.length} entschuldigt · ${ageMissingRows.length} fehlt`;
   const ageVisits = new Map(ageMembers.map(member => [nameForStorage(member), 0]));
   agePresentRows.forEach(row => { if (ageVisits.has(row.name)) ageVisits.set(row.name, ageVisits.get(row.name) + 1); });
   byId("ageAttendanceRanking").innerHTML = [...ageVisits.entries()].sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0],"de")).map(([name,count],index)=>renderMetric("", `${index+1}. ${name}`, `${count} Teilnahme${count===1?"":"n"}`, count>0?"good":"neutral")).join("");
   byId("ageAttendanceEmpty").hidden = ageMembers.length > 0;
   const dates = yearData.map(data => data.date).filter(Boolean).sort();
-  byId("statisticsPeriod").textContent = yearData.length ? `Auswertung ${year}${dates.length ? ` · ${dates[0]} bis ${dates[dates.length - 1]}` : ""}` : `Noch keine abgeschlossenen Berichte für ${year} geladen.`;
+  byId("statisticsPeriod").textContent = yearData.length ? `Auswertung ${year}${dates.length ? ` · ${formatDisplayDate(dates[0])}${dates[0]===dates[dates.length-1]?"":` bis ${formatDisplayDate(dates[dates.length-1])}`}` : ""}` : `Noch keine abgeschlossenen Berichte für ${year} geladen.`;
 
   const memberStats=participation.people;
   const ranked=memberStats.filter(item=>item.count>0).sort((a,b)=>b.percent-a.percent||b.count-a.count||a.name.localeCompare(b.name,"de")).slice(0,5);
@@ -398,7 +412,7 @@ function renderStatistics() {
   }).join("");
   byId("openFunctionsEmpty").hidden = groupedTargets.size > 0;
 
-  const nonOperationYearData=probeYearData;
+  const nonOperationYearData=probeYearData.filter(data=>!statisticsIsFellowship(data));
   const types = new Map(); nonOperationYearData.forEach(data => { const type=data.rows[0]?.sessionType || data.item.sessionType || "Unbekannt"; types.set(type,(types.get(type)||0)+1); });
   byId("probeTypes").innerHTML = [...types.entries()].sort((a,b)=>b[1]-a[1]).map(([type,count]) => renderMetric("",type,count,"blue")).join("");
   byId("probeTypesEmpty").hidden = types.size > 0;
@@ -413,6 +427,7 @@ function renderStatistics() {
   renderDriverLicenseStatistics();
   renderCommanderStatistics(yearData,participation,targetRows);
   arrangeStatisticsPage();
+  renderFellowshipStatistics(yearData);
   ensureCollapsedStatisticsPanels();
   window.SmartWorkflow?.statistics?.();
   if(byId("individualMemberSelect").value)renderIndividualStatistics(byId("individualMemberSelect").value);
@@ -444,10 +459,12 @@ async function exportStatisticsPdf() {
   await globalThis.DrinksConsumption?.load(year);
   if(year!==selectedStatisticsYear){showToast("Kalenderjahr geändert. Bitte die PDF erneut öffnen.","error");return;}
   const originalTitle = document.title;
-  const consumptionDetails=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"),element=>({element,wasOpen:element.open}));for(const {element} of consumptionDetails)element.open=true;
+  const consumptionDetails=Array.from(document.querySelectorAll("#statisticsFurtherDetails,#statisticsFellowshipDetails,#settingsStatisticsView .statistics-collapsible,.dr-consumption-months"),element=>({element,wasOpen:element.open}));for(const {element} of consumptionDetails)element.open=true;
   document.title = `Feuerwehr-Wasser_Statistik_${year}`;
   document.body.classList.add("printing-statistics");
+  let cleaned=false;
   const cleanup = () => {
+    if(cleaned)return;cleaned=true;
     document.body.classList.remove("printing-statistics");
     for(const {element,wasOpen} of consumptionDetails)element.open=wasOpen;
     document.title = originalTitle;
@@ -524,7 +541,7 @@ function renderIndividualStatistics(memberId) {
   const usage = new Map();
   if(!member.ageDepartment)present.forEach(row => statisticsRolesFromValue(row.role).forEach(role => usage.set(role,(usage.get(role)||0)+1)));
   const usageRows = [...usage.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0],"de"));
-  byId("individualRoleUsage").innerHTML = usageRows.map(([role,count]) => renderMetric("",role,count,"blue")).join("");
+  byId("individualRoleUsage").innerHTML = usageRows.length?renderBarChart(usageRows,"Persönliche Funktionsausübungen","#65439b"):"";
   byId("individualRoleUsageEmpty").hidden = usageRows.length > 0;
 
   const targets = getRoleTargets();
@@ -537,14 +554,12 @@ function renderIndividualStatistics(memberId) {
   byId("individualRoleTargetsEmpty").hidden = targetRows.length > 0;
 
   renderIndividualOperationStatistics(rows);
-  renderIndividualStatisticsCharts(rows);
   ["individualRoleTargets","individualRoleUsage"].forEach(id=>{const section=byId(id)?.closest("section");if(section)section.hidden=Boolean(member.ageDepartment);});
   const operationPanel=byId("individualOperationStatistics");if(operationPanel)operationPanel.hidden=Boolean(member.ageDepartment);
-  const roleChart=byId("individualVisualDashboard")?.querySelector("[data-individual-chart-roles]")?.closest("section");if(roleChart)roleChart.hidden=Boolean(member.ageDepartment);
 
   const types = new Map();
   rows.forEach(row => types.set(row.sessionType || "Unbekannt", (types.get(row.sessionType || "Unbekannt") || 0) + 1));
-  byId("individualProbeTypes").innerHTML = [...types.entries()].sort((a,b)=>b[1]-a[1]).map(([type,count]) => renderMetric("",type,count,"blue")).join("");
+  byId("individualProbeTypes").innerHTML = types.size?renderDonutChart(statisticsChartEntries(types),"Persönliche Termine nach Art"):"";
   byId("individualProbeTypesEmpty").hidden = types.size > 0;
 
   const recent = rows
@@ -565,7 +580,8 @@ function exportIndividualStatisticsPdf() {
   document.title = `Feuerwehr-Wasser_${nameForTile(member).replace(/[^a-zA-Z0-9ÄÖÜäöüß]+/g,"-")}_Statistik_${selectedStatisticsYear}`;
   const disclosures=[byId("statisticsFurtherDetails"),byId("individualStatisticsPreview")?.closest(".individual-statistics-panel")?.querySelector?.(":scope > .statistics-collapsible")].filter(Boolean).map(element=>({element,open:element.open}));for(const {element} of disclosures)element.open=true;
   document.body.classList.add("printing-individual-statistics");
-  const cleanup = () => { for(const {element,open} of disclosures)element.open=open;document.body.classList.remove("printing-individual-statistics"); document.title = originalTitle; window.removeEventListener("afterprint", cleanup); };
+  let cleaned=false;
+  const cleanup = () => { if(cleaned)return;cleaned=true;for(const {element,open} of disclosures)element.open=open;document.body.classList.remove("printing-individual-statistics"); document.title = originalTitle; window.removeEventListener("afterprint", cleanup); };
   window.addEventListener("afterprint", cleanup);
   setTimeout(() => { window.print(); setTimeout(cleanup,1500); },100);
 }
