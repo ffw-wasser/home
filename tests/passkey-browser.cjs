@@ -29,7 +29,7 @@ const {chromium}=require('playwright');
  const person=f.people[0];
  const ticket=(await f.call('identity-ticket',{alias:person.alias,revision:person.revision},null,true)).value;
  await page.goto('https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/test&a='+person.alias+'&k='+person.key);await page.locator('#h2oStartup').waitFor({state:'hidden'});
- await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Passkey anmelden'));
+ await page.locator('#status').filter({hasText:'Passkey anmelden'}).waitFor({state:'visible'});
  assert.equal(await page.locator('#identity-panel').evaluate(e=>e.parentElement.id),'identity-entry');
  assert.equal(await page.locator('#deckel-nav').isVisible(),false);
  assert.equal(await page.locator('#account').isVisible(),false);

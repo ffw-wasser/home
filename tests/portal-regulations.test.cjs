@@ -20,3 +20,16 @@ test('Dienstvorschriften: nur berechtigte Zugriffe, verschlüsselte Auswahl und 
  const denied=await f.c.worker.fetch(new Request('https://test.example/portal/regulations',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer invalid','Content-Type':'application/json'},body:JSON.stringify({alias:f.people[0].alias,revision:f.people[0].revision})}),f.env);assert.equal(denied.status,401);
  assert.equal((await f.call('regulations',{items:[],expectedVersion:1},null,true)).status,200);assert.deepEqual((await f.call('regulations')).value.items,[]);
 });
+
+test('Buchansicht: authentifizierter PDF-Transport nur für freigegebene offizielle URLs',async()=>{
+ let calls=0;const pdf=new TextEncoder().encode('%PDF-1.7\nsynthetic test bytes');
+ const f=await fixture({fetchPdf:async(url,options)=>{calls++;assert.equal(options.redirect,'error');assert.deepEqual(Object.keys(options.headers),['Accept']);return new Response(pdf,{headers:{'Content-Type':'application/pdf'}});}});
+ const url=(await f.call('regulations')).value.items[0].url,res=await f.call('regulations/pdf',{url});assert.equal(res.status,200);assert.deepEqual(res.value,pdf);assert.equal(calls,1);
+ assert.equal((await f.call('regulations/pdf',{url:'https://evil.example/file.pdf'})).status,400);
+ assert.equal((await f.call('regulations/pdf',{url:url.replace('003','999')})).status,404);assert.equal(calls,1);
+});
+test('Buchansicht: HTML und übergroße PDFs werden abgefangen',async()=>{
+ for(const upstream of [()=>new Response('<html>kein PDF</html>'),()=>new Response('%PDF-1.7',{headers:{'Content-Length':String(31*1024*1024)}})]){
+  const f=await fixture({fetchPdf:async()=>upstream()}),url=(await f.call('regulations')).value.items[0].url,res=await f.call('regulations/pdf',{url});assert.ok([413,502].includes(res.status));
+ }
+});

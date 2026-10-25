@@ -320,6 +320,21 @@
    if(!result.meta.changes)fail('Gruppen wurden gleichzeitig geändert. Bitte neu laden.');
    return {ok:true,version:current.version+1};
   }
+  if(path==='/portal/regulations/pdf'){
+   const url=g.RegulationsModel.pdfUrl(data.url);if(!url)fail('Kein gültiger offizieller PDF-Link.',400);
+   const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first(),items=row?(await open(env,row,'portal-regulations')).items:g.RegulationsModel.defaults();
+   if(!items.some(item=>item.url===url))fail('Diese Vorschrift ist nicht in der freigegebenen Auswahl.',404);
+   const upstream=await fetch(url,{redirect:'error',headers:{Accept:'application/pdf'},signal:AbortSignal.timeout(60000),cf:{cacheTtl:86400,cacheEverything:true}});
+   if(!upstream.ok||!upstream.body)fail('Die Original-PDF ist derzeit nicht erreichbar.',502);
+   const max=30*1024*1024;if(Number(upstream.headers.get('Content-Length'))>max){await upstream.body.cancel();fail('Die PDF ist zu groß für die Buchansicht. Bitte das Original öffnen.',413);}
+   const reader=upstream.body.getReader();let prefix=new Uint8Array(0),size=0;
+   try{while(prefix.length<5){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>max)fail('Die PDF ist zu groß.',413);const next=new Uint8Array(prefix.length+part.value.length);next.set(prefix);next.set(part.value,prefix.length);prefix=next;}
+    if(new TextDecoder().decode(prefix.slice(0,5))!=='%PDF-')fail('Die Quelle hat keine gültige PDF geliefert.',502);
+   }catch(error){await reader.cancel().catch(()=>{});throw error;}
+   let first=true;
+   const stream=new ReadableStream({async pull(controller){try{if(first){first=false;controller.enqueue(prefix);return;}const part=await reader.read();if(part.done){controller.close();return;}size+=part.value.length;if(size>max){await reader.cancel();controller.error(Error('PDF überschreitet die maximale Größe.'));return;}controller.enqueue(part.value);}catch(error){await reader.cancel().catch(()=>{});controller.error(error);}},cancel(reason){return reader.cancel(reason);}});
+   return new Response(stream,{headers:{'Content-Type':'application/pdf'}});
+  }
   if(path==='/portal/regulations'||path==='/admin/portal/regulations'){
    const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first();
    if(admin&&Object.prototype.hasOwnProperty.call(data,'items')){

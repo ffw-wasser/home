@@ -90,5 +90,9 @@
   "h2o-dienstvorschriften": {
     "width": 390,
     "height": 780
+  },
+  "h2o-dienstvorschriften-buch": {
+    "width": 390,
+    "height": 780
   }
 }
