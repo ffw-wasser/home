@@ -545,7 +545,7 @@ function ensureHistoryView(){
   if(!section||section.dataset.bound)return;
   section.dataset.bound="true";
   const home=section.querySelector("[data-history-home]");
-  if(home)home.addEventListener("click",()=>showView("settingsView"));
+  if(home)home.addEventListener("click",()=>showView("attendanceView"));
   section.addEventListener("click",e=>{
     const pdf=e.target.closest("[data-history-pdf]");
     const csv=e.target.closest("[data-history-csv]");
@@ -557,7 +557,7 @@ function ensureHistoryView(){
     else if(remove)deleteArchiveItem(remove.dataset.historyDelete);
   });
 }
-// History is reached through Verwaltung → Berichte & Statistik.
+// History has its own entry in the main menu.
 function ensureHistoryMenu(){}
 function historyMonthKey(item){return historyDateFromItem(item).slice(0,7)||"Unbekannt";}
 function historyMonthLabel(key){

@@ -6,7 +6,7 @@
  const link=document.createElement('link');
  link.id='deckelManifest';
  link.rel='manifest';
- link.href='deckel.webmanifest?v=20261025.4';
+ link.href='deckel.webmanifest?v=20261025.5';
  document.head.appendChild(link);
 })();
 
