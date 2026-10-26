@@ -252,7 +252,7 @@ test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit alte
  assert.deepEqual(navIds(),['portal-section','account','more-water','portal-evidence']);
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-help'));
  const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
- assert.equal(all.length,13);assert.equal(new Set(all).size,13);
+ assert.equal(all.length,14);assert.equal(new Set(all).size,14);
 });
 
 test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellung',()=>{
