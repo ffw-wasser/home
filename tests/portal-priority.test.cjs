@@ -42,7 +42,7 @@ test('Benachrichtigungslink scrollt weiterhin direkt zum beantworteten Termin',(
 test('Nur der erste Termin erhält eine Überschrift, unsichere Antwort bleibt als eigene Karte sichtbar',()=>{
  const f=fixture(),now=Date.now();f.c.paint({uncertainReplies:true,events:[event('next',now+10000,'maybe'),event('later',now+20000)]});
  assert.equal(f.events.querySelectorAll('h2').filter(n=>n.textContent==='Nächster Termin').length,1);assert.equal(f.events.children[0].children[0].className,'portal-next-heading');assert.equal(f.events.querySelector('article').querySelectorAll('span').some(n=>n.textContent==='Nächster Termin'),false);
- const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelectorAll('strong').find(n=>n.className.startsWith('portal-answer')).textContent,'');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'✓ Noch unsicher');
+ const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelectorAll('strong').find(n=>n.className.startsWith('portal-answer')).textContent,'');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'Unsicher');
 });
 test('Kurze Beschriftung der Rückmeldeübersicht behält die Gruppenführer-Berechtigung',()=>{
  const f=fixture(),events=[event('next',Date.now()+10000)];f.c.paint({events,leader:false});assert.equal(f.events.querySelectorAll('details').length,0);
