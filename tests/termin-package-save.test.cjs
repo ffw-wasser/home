@@ -15,3 +15,20 @@ test('Ein eingeschränkter öffentlicher Kalender wird ohne private Empfängerli
  const source=fs.readFileSync(require.resolve('../js/features/portal/portal-admin.js'),'utf8'),start=source.indexOf('function selectedEvent(){'),end=source.indexOf(' function useSpontaneous()',start);
  const c=vm.createContext({list:[{id:'event',audienceRestricted:true}],replyData:null,chosen:()=> 'event'});vm.runInContext(source.slice(start,end),c);assert.equal(c.attendanceAudience().pending,true);c.replyData={event:{id:'event',recipientIds:['a']},stale:false};assert.deepEqual(Array.from(c.attendanceAudience().recipientIds),['a']);c.chosen=()=>null;assert.equal(c.attendanceAudience(),null);
 });
+
+test('Uploadvorbereitung verwendet den Dateinamen aus der URL und minimale Metadaten',async()=>{
+ const f=fixture();f.c.odFetch=async(u,o)=>{
+  const body=JSON.parse(o.body);
+  assert.deepEqual(Object.keys(body.item),['@microsoft.graph.conflictBehavior']);
+  assert.equal(body.item['@microsoft.graph.conflictBehavior'],'fail');assert.match(decodeURIComponent(u),/\/FFW-Wasser_2026-10-23_Unterricht\.zip:\/createUploadSession$/);
+  return {json:async()=>({uploadUrl:'https://upload.example.invalid/session'})};
+ };assert.equal((await f.save()).id,'item');
+});
+test('Graph-Fehler nennt den Speicherschritt und bestätigt keinen Abschluss',async()=>{
+ for(const stage of ['Berichtsordner prüfen','Terminordner prüfen','Dateiübertragung vorbereiten']){
+  const f=fixture();f.c.odEnsureFolder=async(p,name)=>{if((name==='Berichte'&&stage==='Berichtsordner prüfen')||(name==='Terminpakete'&&stage==='Terminordner prüfen'))throw Object.assign(Error('OneDrive-Fehler 400'),{status:400});return name;};
+  f.c.odFetch=async()=>{throw Object.assign(Error('OneDrive-Fehler 400'),{status:400});};
+  await assert.rejects(f.save(),e=>e.status===400&&e.message.includes(stage)&&e.message.includes('400'));
+  assert.equal(f.calls.filter(c=>c[0]==='upload').length,0);
+ }
+});

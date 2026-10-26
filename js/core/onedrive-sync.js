@@ -370,13 +370,18 @@ async function oneDriveUploadTerminPackage(blob,fileName){
  if(!(blob instanceof Blob)||!blob.size||!/^FFW-Wasser_[^\\/:*?"<>|]+\.zip$/i.test(fileName))throw new Error("Ungültiges Terminpaket.");
  const epoch=oneDriveSessionEpoch,share=localStorage.getItem(OD_SHARE_KEY)||'',clientId=odConfig().clientId;
  const current=()=>{assertOneDriveSession(epoch);if(share!==(localStorage.getItem(OD_SHARE_KEY)||'')||clientId!==odConfig().clientId||!oneDriveAdministrationReady())throw new Error("OneDrive-Verbindung wurde geändert. Die Eingaben bleiben erhalten.");};
+ let stage="Datenordner prüfen";
+ try{
  const root=await oneDriveResolveSharedRoot();current();
- const reportsId=await odEnsureFolder(root.id,"Berichte");current();
- const folderId=await odEnsureFolder(reportsId,"Terminpakete");current();
- // A new package must never replace an existing report with the same name.
- const response=await odFetch(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(folderId)}:/${encodeURIComponent(fileName)}:/createUploadSession`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item:{name:fileName,"@microsoft.graph.conflictBehavior":"fail"}})});
+ stage="Berichtsordner prüfen";const reportsId=await odEnsureFolder(root.id,"Berichte");current();
+ stage="Terminordner prüfen";const folderId=await odEnsureFolder(reportsId,"Terminpakete");current();
+ // The documented minimal upload-session body needs only the conflict rule;
+ // the URL already supplies the name. Never replace an existing report.
+ stage="Dateiübertragung vorbereiten";
+ const response=await odFetch(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(folderId)}:/${encodeURIComponent(fileName)}:/createUploadSession`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item:{"@microsoft.graph.conflictBehavior":"fail"}})});
  const session=await response.json();current();
  const upload=new URL(session.uploadUrl);if(upload.protocol!=="https:"||upload.username||upload.password)throw new Error("Ungültige OneDrive-Uploadadresse.");
+ stage="Terminpaket übertragen";
  const chunkSize=10*1024*1024;let item=null;
  for(let start=0;start<blob.size;start+=chunkSize){
   current();const end=Math.min(start+chunkSize,blob.size),controller=new AbortController();oneDriveRequests.add(controller);
@@ -390,6 +395,10 @@ async function oneDriveUploadTerminPackage(blob,fileName){
  }
  current();if(!item?.id||!item.file||item.name!==fileName||item.size!==blob.size)throw new Error("Die gespeicherte OneDrive-Datei konnte nicht bestätigt werden. Bitte die Historie prüfen.");
  return item;
+ }catch(error){
+  if(Number.isInteger(error?.status))throw Object.assign(new Error(stage+": "+error.message),{status:error.status,code:error.code||"",stage});
+  throw error;
+ }
 }
 async function oneDriveUploadReport(blob,fileName){const root=await oneDriveResolveSharedRoot(),reportsId=await odEnsureFolder(root.id,"Berichte"),folderName=String(fileName||"").toLowerCase().endsWith(".pdf")?"PDF":"CSV",folderId=await odEnsureFolder(reportsId,folderName),safe=String(fileName||`Bericht-${Date.now()}`).replace(/[\\/:*?"<>|]/g,"-");await odFetch(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(folderId)}:/${encodeURIComponent(safe)}:/content`,{method:"PUT",headers:{"Content-Type":blob.type||"application/octet-stream"},body:blob});showToast(`${safe} wurde im gemeinsamen OneDrive-Ordner gespeichert.`);}
 function ensureOneDriveUi(){if(byId("cloudSyncButton"))return;const button=document.createElement("button");button.id="cloudSyncButton";button.className="cloud-sync-button";button.type="button";button.innerHTML='<span class="cloud-sync-icon" aria-hidden="true">☁</span><span class="cloud-sync-copy" role="status" aria-live="polite" aria-atomic="true"><b id="cloudSyncLabel">OneDrive</b><small id="cloudSyncState">Einrichten</small></span>';(byId("appConnectionStatus")||document.querySelector(".top-nav")||document.body).appendChild(button);const dialog=document.createElement("dialog");dialog.id="cloudSyncDialog";dialog.className="cloud-sync-dialog";dialog.innerHTML='<div class="cloud-sync-shell"><header><div><small>Gemeinsame Datenablage</small><h2>OneDrive-Synchronisierung</h2></div><button type="button" id="cloudSyncClose" aria-label="OneDrive-Status schließen" class="cloud-sync-close">×</button></header><div class="cloud-sync-body"><p id="oneDriveDetail" role="status"></p><button type="button" class="outline-button" id="oneDriveManage">Verbindung verwalten</button><label>Microsoft Entra Client-ID<input id="oneDriveClientId" class="text-input" autocomplete="off"></label><label>Adresse des gemeinsamen OneDrive-Ordners<input id="oneDriveShareUrl" class="text-input" type="url" inputmode="url" autocomplete="off" placeholder="Ordneradresse oder Freigabelink hier einfügen"></label><p class="cloud-sync-help">Die Ordneradresse bleibt auf diesem Gerät. Das angemeldete Microsoft-Konto benötigt Bearbeitungszugriff. Eine öffentliche Freigabe ist nicht erforderlich.</p><button type="button" class="outline-button" id="oneDriveDirect">Direkten Ordnerzugriff einrichten</button><p id="oneDriveDirectStatus" class="cloud-sync-help" role="status"></p><div class="cloud-sync-actions"><button type="button" class="primary-button" id="oneDriveLogin">Einstellungen speichern und mit Microsoft anmelden</button><button type="button" class="primary-button" id="oneDriveNow">Erneut laden</button><button type="button" class="danger-button" id="oneDriveLogout">Abmelden</button></div></div></div>';document.body.appendChild(dialog);button.onclick=()=>{renderOneDriveDialog();dialog.showModal();};byId("cloudSyncClose").onclick=()=>dialog.close();byId("oneDriveManage").onclick=()=>{if(requireAdmin("settingsView",{allowDisconnected:true})){renderOneDriveDialog();}};byId("oneDriveDirect").onclick=oneDriveUseDirectFolder;byId("oneDriveLogin").onclick=oneDriveLogin;byId("oneDriveNow").onclick=()=>syncOneDrive({manual:true,refreshHistory:true});byId("oneDriveLogout").onclick=()=>{if(!requireAdmin("settingsView",{allowDisconnected:true}))return;window.AppPrivacy.logout();};}
