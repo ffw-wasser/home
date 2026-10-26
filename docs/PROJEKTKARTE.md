@@ -13,6 +13,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Gerätehaus-Erfassung, Teilnehmer, Schritte | `js/features/attendance/attendance-controller.js` | `action-dock.js`, `js/core/keyboard.js`, `js/features/tactics/` |
 | Einsatz und Fahrzeugbesetzung | `js/features/operations/operations.js`, `js/features/tactics/` | Anwesenheit, Berichte, Qualitätsprüfungen |
 | Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, Cloudflare `portal.js`, ICS-Bibliothek |
+| Ausbildung / Funk | `deckel.html`, `js/features/portal/portal-training.js`, `assets/training/` | Lokale Motorola-Taschenkarte, gemeinsame `plan-zoom.js`-Ansicht, kompakte BW-Status und Übungsdialoge |
 | Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links, Buchansicht mit `plan-zoom.js` und authentifiziertem PDF-Transport |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js` | `js/core/database.js`, Cloudflare `portal.js` |
 | Historie, Korrektur, Löschen | `js/features/history/archive.js`, `onedrive-history-live.js` | `js/core/onedrive-sync.js`, Berichtsdateien |
@@ -21,7 +22,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Mein Deckel, Zahlungen, Punkte, Challenge | `js/features/drinks/`, `deckel.html` | Cloudflare `central.js`, `challenge.js`, `js/core/privacy.js` |
 | Theater / Veranstaltungen | `js/features/theater/` | Cloudflare `theater.js`, `css/features/` |
 | Synchronisierung, Microsoft-Zugriff | `js/core/onedrive-sync.js`, `database.js` | Cloudflare-Schnittstellen, geschützte Zustände |
-| PWA, Offline/Cache, Installationsicons | `service-worker.js`, `manifest.webmanifest`, `deckel*.webmanifest` | `scripts/update-release.cjs`, `app-release.json` |
+| PWA, Offline/Cache, Installationsicons | `service-worker.js`, `js/core/connection-status.js`, `manifest.webmanifest`, `deckel*.webmanifest` | `scripts/update-release.cjs`, `app-release.json`; öffentliche Unterlagen in separatem Cache, private Serverantworten bleiben ausgeschlossen; `tests/portal-offline-browser.cjs` prüft echten Offline-Neustart |
 | Cloudflare Worker, Push, D1 | `cloudflare/push/worker.js` und die Fachmodule im gleichen Ordner | `build.cjs`, `wrangler.jsonc`, `*.sql` |
 | Standardisierte Prüfungen | `tests/`, `scripts/check-syntax.cjs` | `.github/workflows/application-tests.yml` |
 

@@ -94,5 +94,13 @@
   "h2o-dienstvorschriften-buch": {
     "width": 390,
     "height": 780
+  },
+  "h2o-ausbildung": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-funkgeraet": {
+    "width": 390,
+    "height": 780
   }
 }
