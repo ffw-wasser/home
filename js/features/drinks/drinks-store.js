@@ -11,7 +11,11 @@
   async function context(create=false,expectedSource=null,localOnly=false){
     if(!oneDriveSignedIn())throw new Error('Bitte OneDrive verbinden. Getränke werden nur dort gespeichert.');
     if(navigator.onLine===false)throw new Error('Offline. Bitte vor dem Buchen die Internetverbindung herstellen.');
-    const root=await oneDriveResolveSharedRoot(),key=root.driveId+':'+root.id;
+    const root=await oneDriveResolveSharedRoot();
+    // Personal OneDrive drive IDs are hexadecimal and Graph now also returns
+    // them uppercase. Preserve the existing lowercase service source identity;
+    // SharePoint drive IDs and all item IDs remain opaque and case-sensitive.
+    const driveId=/^[a-f0-9]{16}$/i.test(root.driveId)?root.driveId.toLowerCase():root.driveId,key=driveId+':'+root.id;
     assertSource({key},expectedSource);
     if(contextKey!==key){reset();contextKey=key;}
     const gen=generation;

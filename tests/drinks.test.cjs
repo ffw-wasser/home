@@ -537,3 +537,20 @@ test('Punktestatistik trennt Einzahlungen, Challenge und Einlösungen; Stornos b
  a=M.append(a,{...adminRemoval('points-stats-two','points-stats-undo'),createdAt:'2027-01-01T10:00:00Z'});a=M.append(a,{...reversal('points-stats-reverse','points-stats-payment',1000),createdAt:'2027-01-01T10:01:00Z'});stats=M.consumption([a],'2026');assert.equal(stats.paymentPointUnits,0);assert.equal(stats.challengePointUnits,450);assert.equal(stats.redeemedPointUnits,150);assert.equal(stats.currentPointUnits,300);assert.equal(M.consumption([a],'2027').earnedPointUnits,0);assert.equal(M.consumption([a],'2027').redeemedPointUnits,0);
 });
 test('Historische Bonusbruchteile und Jahre mit ausschließlich Punkten bleiben in der Statistik sichtbar',()=>{const {M}=app(),p=rewardPolicy(1,1);let a=M.appendWithReward(M.append(M.empty('a'),drink('stats-legacy-drink',1)),pay('stats-legacy-payment',150),p);const result=M.consumption([a],'2026');assert.equal(result.paymentPointUnits,1);assert.equal(result.currentPointUnits,1);const id=webcrypto.randomUUID(),b=M.appendChallengeReward(M.empty('b'),{id:'challenge-reward-'+id,gameId:id,type:'challenge-reward',confirmation:'challenge',month:'2025-12',score:7,cents:300,createdAt:'2025-12-30T10:00:00Z'});assert.equal(M.consumption([b],'2025').total,0);assert.equal(M.consumption([b],'2025').earnedPointUnits,300);assert.deepEqual(copy(M.consumption([b],'2026').years),['2025']);});
+
+test('Persönliche OneDrive-Laufwerkskennung bleibt trotz Microsoft-Großschreibung dieselbe Quelle',async()=>{
+ const {ctx,S,files}=app();const personalDrive='A1B2C3D4E5F60718';
+ ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:personalDrive});
+ files.set('konten-zentrale.json',{data:{version:1,source:personalDrive.toLowerCase()+':root',state:'active'},eTag:'"marker-1"'});
+ ctx.DrinksPush={config:async()=>({origin:'https://test.account.workers.dev',token:'a'.repeat(64)})};
+ vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/drinks-central.js'),'utf8'),ctx);
+ const connection=await ctx.DrinksCentral.connection();assert.equal(connection.source,personalDrive.toLowerCase()+':root');assert.equal(S.sourceKey(),connection.source);
+ ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:personalDrive.toLowerCase()});
+ await S.readMobileFile('konten-zentrale.json');assert.equal(S.sourceKey(),connection.source);
+ ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:'B1B2C3D4E5F60718'});
+ await S.readMobileFile('konten-zentrale.json');await assert.rejects(ctx.DrinksCentral.connection(),/Datenordner/);
+});
+test('SharePoint-Laufwerkskennungen behalten ihre exakte Groß-/Kleinschreibung',async()=>{
+ const {ctx,S}=app();ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:'b!SharePointCaseSensitive'});await S.readMobileFile('konten-zentrale.json');assert.equal(S.sourceKey(),'b!SharePointCaseSensitive:root');
+ ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:'b!sharepointcasesensitive'});await S.readMobileFile('konten-zentrale.json');assert.equal(S.sourceKey(),'b!sharepointcasesensitive:root');
+});

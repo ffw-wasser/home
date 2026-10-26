@@ -87,3 +87,26 @@ test('Handyansicht enthält Admin-Storno und korrekte Salden, aber keinen privat
 test('Handy-Snapshot enthält getrennte Punkte und Vorauszahlung sowie Geldfortschritt; private Einlösedaten bleiben geschützt',async()=>{
  const {ctx}=app(),M=ctx.DrinksModel,p={schemaVersion:2,id:'mobile-point-program',revision:'mobile-point-revision',startedAt:'2026-10-01T00:00:00Z',thresholdCents:1000,awardUnits:150,beerUnits:150,wineUnits:300};let a=M.appendWithReward(M.empty('secret-member'),{id:'private-point-deposit',type:'payment',method:'cash',confirmation:'member',prepay:true,cents:1500,createdAt:'2026-10-09T10:00:00Z'},p);a=M.appendMany(a,[{id:'private-point-beer',type:'drinks',count:1,drink:'beer',loyaltyVersion:2,pointUnits:150,cents:150,createdAt:'2026-10-09T11:00:00Z'}]);const data=ctx.DrinksMobile.snapshot(a,p);assert.equal(data.credit,1500);assert.equal(data.pointUnits,0);assert.equal(data.progressCents,500);assert.equal(data.thresholdCents,1000);assert.equal(data.bookings[0].pointUnits,150);assert.ok(!JSON.stringify(data).includes('secret-member'));assert.ok(!JSON.stringify(data).includes('private-point-'));const record=ctx.DeckelCrypto.create(),sealed=await ctx.DeckelCrypto.seal(data,record);assert.equal((await ctx.DeckelCrypto.open(sealed,record)).credit,1500);assert.throws(()=>ctx.DeckelCrypto.validate({...data,pointUnits:1.5}),/Treuepunkte/);assert.throws(()=>ctx.DeckelCrypto.validate({...data,credit:-1}),/Kontostand/);
 });
+
+function portalApp(){
+ const f=app(),registrations=[];f.ctx.requireAdmin=()=>true;f.ctx.DrinksStore.sourceKey=()=> 'test-source';
+ f.ctx.DrinksCentral={connection:async()=>({source:'test-source'}),register:async(c,r)=>registrations.push(structuredClone(r))};
+ return {...f,registrations};
+}
+test('Passkey-Einladung legt zentralen Zugang ohne alte GitHub-Verbindung an',async()=>{
+ const f=portalApp(),record=await f.ctx.DrinksMobile.preparePortalAccess('member-test');
+ assert.equal(record.memberId,'member-test');assert.equal(f.registrations.length,1);
+ assert.equal(f.files.get('handy-member-test.json').data.alias,record.alias);
+ assert.equal(f.calls.length,0);assert.equal(f.files.has('handy-verbindung.json'),false);
+ const again=await f.ctx.DrinksMobile.preparePortalAccess('member-test');assert.equal(again.key,record.key);assert.equal(again.revision,record.revision);
+});
+for(const reason of ['Sperre','Auswahl','Quelle'])test('Passkey-Einladung stoppt nach '+reason+' während der Verbindung',async()=>{
+ const f=portalApp();let current=true;
+ f.ctx.DrinksCentral.connection=async()=>{if(reason==='Sperre')f.ctx.adminUnlocked=false;if(reason==='Auswahl')current=false;if(reason==='Quelle')f.ctx.DrinksStore.sourceKey=()=> 'changed-source';return {source:'test-source'};};
+ await assert.rejects(f.ctx.DrinksMobile.preparePortalAccess('member-test',()=>current));assert.equal(f.files.size,0);assert.equal(f.registrations.length,0);
+});
+test('Passkey-Einladung verweigert fremde Zugänge und unbestätigte Registrierung',async()=>{
+ const f=portalApp(),record={...f.ctx.DeckelCrypto.create(),memberId:'someone-else',revision:'test-revision'};
+ f.files.set('handy-member-test.json',{data:record});await assert.rejects(f.ctx.DrinksMobile.preparePortalAccess('member-test'),/anderen Konto/);assert.equal(f.registrations.length,0);
+ f.files.clear();f.ctx.DrinksCentral.register=async()=>{throw Error('Dienst nicht erreichbar');};await assert.rejects(f.ctx.DrinksMobile.preparePortalAccess('member-test'),/Dienst nicht erreichbar/);
+});
