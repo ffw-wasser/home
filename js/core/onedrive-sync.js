@@ -1,6 +1,6 @@
 "use strict";
 const OD_CLIENT_KEY="fw_onedrive_client_id",OD_SHARE_KEY="fw_onedrive_shared_folder_url",OD_TOKEN_KEY="fw_onedrive_tokens",OD_PKCE_KEY="fw_onedrive_pkce",OD_STATE_FILE="feuerwehr-wasser-daten.json";
-let oneDriveBusy=false,oneDriveTimer=null,oneDriveApplying=false,oneDriveSharedRoot=null,oneDriveLastError="",oneDriveRetryUntil=0;
+let oneDriveBusy=false,oneDriveTimer=null,oneDriveApplying=false,oneDriveSharedRoot=null,oneDriveLastError="",oneDriveRetryUntil=0,oneDriveLastFailure=null;
 let oneDriveAccessConfirmed=false,oneDriveSessionEpoch=0;
 const OD_ADMIN_RETURN_KEY='fw_onedrive_admin_return';
 const OD_VERIFIED_ROOT_KEY='fw_onedrive_verified_root';
@@ -68,13 +68,13 @@ async function oneDriveLogin(){
  if(!settings.clientId)return showToast("Bitte zuerst die Client-ID eintragen.","error");if(!settings.share)return showToast("Bitte den Link zum gemeinsamen OneDrive-Ordner eintragen.","error");
  try{await odStartAuthorization(false,settings);}catch(error){oneDriveAuthorizing=false;showToast(error.message||"OneDrive-Anmeldung konnte nicht gestartet werden.","error");}
 }
-async function odStartAuthorization(silent,settings){
+async function odStartAuthorization(silent,settings,canNavigate=()=>true){
  if(oneDriveAuthorizing)return false;oneDriveAuthorizing=true;
  try{
   const epoch=oneDriveSessionEpoch,token=oneDriveTokens(),identity=await odAccountKey(token),hint=odLoginHint(token);
   if(silent&&!identity){oneDriveAuthorizing=false;return false;}
   const verifier=odB64Url(crypto.getRandomValues(new Uint8Array(48))),state=odB64Url(crypto.getRandomValues(new Uint8Array(18))),challenge=await odChallenge(verifier),resume=await odAdminReturnPlan(state);
-  assertOneDriveSession(epoch);const c=odConfig();if(settings.clientId!==c.clientId||settings.share!==(localStorage.getItem(OD_SHARE_KEY)||''))throw new Error('OneDrive-Konfiguration wurde geändert. Bitte erneut versuchen.');
+  assertOneDriveSession(epoch);if(silent&&!canNavigate()){oneDriveAuthorizing=false;return false;}const c=odConfig();if(settings.clientId!==c.clientId||settings.share!==(localStorage.getItem(OD_SHARE_KEY)||''))throw new Error('OneDrive-Konfiguration wurde geändert. Bitte erneut versuchen.');
   if(!token)endOneDriveSession();
   oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;oneDriveSharedRoot=null;
   sessionStorage.setItem(OD_PKCE_KEY,JSON.stringify({verifier,state,clientId:c.clientId,share:settings.share,identity,createdAt:Date.now(),silent}));
@@ -351,11 +351,11 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
       if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
     }
     if(stateError)throw stateError;
-    assertOneDriveSession(epoch);oneDriveLastError="";oneDriveStatus(oneDriveStateConfirmed?"Aktuell":"Änderungen ausstehend",oneDriveStateConfirmed?"online":"syncing");
+    assertOneDriveSession(epoch);oneDriveLastError="";oneDriveLastFailure=null;oneDriveStatus(oneDriveStateConfirmed?"Aktuell":"Änderungen ausstehend",oneDriveStateConfirmed?"online":"syncing");
     if(manual)showToast(oneDriveStateConfirmed?"Daten und Historie im gemeinsamen OneDrive-Ordner wurden synchronisiert.":"Neue Änderungen werden noch mit OneDrive synchronisiert.");
   }catch(error){
     if(epoch!==oneDriveSessionEpoch)return;
-    console.error(error);oneDriveLastError=String(error.message||error);oneDriveStatus(oneDriveNeedsLogin?"Anmeldung bestätigen":"Fehler","error");
+    console.error(error);oneDriveLastFailure=error;oneDriveLastError=String(error.message||error);oneDriveStatus(oneDriveNeedsLogin?"Anmeldung bestätigen":"Fehler","error");
     const detail=byId("oneDriveDetail");if(detail)detail.textContent=`Fehler: ${oneDriveLastError}`;
     if(manual)showToast("OneDrive-Synchronisierung fehlgeschlagen. Details stehen im OneDrive-Fenster.","error");
   }finally{
@@ -395,26 +395,39 @@ async function oneDriveUploadReport(blob,fileName){const root=await oneDriveReso
 function ensureOneDriveUi(){if(byId("cloudSyncButton"))return;const button=document.createElement("button");button.id="cloudSyncButton";button.className="cloud-sync-button";button.type="button";button.innerHTML='<span class="cloud-sync-icon" aria-hidden="true">☁</span><span class="cloud-sync-copy" role="status" aria-live="polite" aria-atomic="true"><b id="cloudSyncLabel">OneDrive</b><small id="cloudSyncState">Einrichten</small></span>';(byId("appConnectionStatus")||document.querySelector(".top-nav")||document.body).appendChild(button);const dialog=document.createElement("dialog");dialog.id="cloudSyncDialog";dialog.className="cloud-sync-dialog";dialog.innerHTML='<div class="cloud-sync-shell"><header><div><small>Gemeinsame Datenablage</small><h2>OneDrive-Synchronisierung</h2></div><button type="button" id="cloudSyncClose" aria-label="OneDrive-Status schließen" class="cloud-sync-close">×</button></header><div class="cloud-sync-body"><p id="oneDriveDetail" role="status"></p><button type="button" class="outline-button" id="oneDriveManage">Verbindung verwalten</button><label>Microsoft Entra Client-ID<input id="oneDriveClientId" class="text-input" autocomplete="off"></label><label>Adresse des gemeinsamen OneDrive-Ordners<input id="oneDriveShareUrl" class="text-input" type="url" inputmode="url" autocomplete="off" placeholder="Ordneradresse oder Freigabelink hier einfügen"></label><p class="cloud-sync-help">Die Ordneradresse bleibt auf diesem Gerät. Das angemeldete Microsoft-Konto benötigt Bearbeitungszugriff. Eine öffentliche Freigabe ist nicht erforderlich.</p><button type="button" class="outline-button" id="oneDriveDirect">Direkten Ordnerzugriff einrichten</button><p id="oneDriveDirectStatus" class="cloud-sync-help" role="status"></p><div class="cloud-sync-actions"><button type="button" class="primary-button" id="oneDriveLogin">Einstellungen speichern und mit Microsoft anmelden</button><button type="button" class="primary-button" id="oneDriveNow">Erneut laden</button><button type="button" class="danger-button" id="oneDriveLogout">Abmelden</button></div></div></div>';document.body.appendChild(dialog);button.onclick=()=>{renderOneDriveDialog();dialog.showModal();};byId("cloudSyncClose").onclick=()=>dialog.close();byId("oneDriveManage").onclick=()=>{if(requireAdmin("settingsView",{allowDisconnected:true})){renderOneDriveDialog();}};byId("oneDriveDirect").onclick=oneDriveUseDirectFolder;byId("oneDriveLogin").onclick=oneDriveLogin;byId("oneDriveNow").onclick=()=>syncOneDrive({manual:true,refreshHistory:true});byId("oneDriveLogout").onclick=()=>{if(!requireAdmin("settingsView",{allowDisconnected:true}))return;window.AppPrivacy.logout();};}
 function renderOneDriveDialog(){const signed=oneDriveSignedIn(),client=byId("oneDriveClientId"),share=byId("oneDriveShareUrl"),detail=byId("oneDriveDetail");if(client){client.closest("label").hidden=!adminUnlocked;client.readOnly=!adminUnlocked;client.value=localStorage.getItem(OD_CLIENT_KEY)||"";}if(share){share.closest("label").hidden=!adminUnlocked;share.readOnly=!adminUnlocked;share.value=localStorage.getItem(OD_SHARE_KEY)||"";}if(detail)detail.textContent=oneDriveNeedsLogin?"Microsoft benötigt eine Bestätigung. Anmeldung erneuern verbindet das bisherige Konto; dafür ist kein zusätzliches Admin-Passwort nötig.":oneDriveLastError?`Fehler: ${oneDriveLastError}`:(signed?"Auf diesem Gerät angemeldet. Die Verbindung wird automatisch erneuert. App-Daten werden mit OneDrive synchronisiert und zusätzlich auf diesem Gerät gespeichert. Getränkekonten werden ausschließlich in OneDrive geführt.":"Nicht verbunden. Die Verwaltung kann OneDrive hier einrichten.");for(const id of ["oneDriveNow","oneDriveLogout"])if(byId(id))byId(id).hidden=!signed;if(byId("oneDriveLogin"))byId("oneDriveLogin").hidden=signed&&!oneDriveNeedsLogin&&!adminUnlocked;if(byId("oneDriveLogin"))byId("oneDriveLogin").textContent=signed&&!adminUnlocked?"OneDrive-Anmeldung erneuern":"Einstellungen speichern und mit Microsoft anmelden";if(byId("oneDriveLogout"))byId("oneDriveLogout").hidden=!signed||!adminUnlocked;if(byId("oneDriveManage"))byId("oneDriveManage").hidden=adminUnlocked;const direct=Boolean(odDirectFolderReference(localStorage.getItem(OD_SHARE_KEY)||'')),directButton=byId('oneDriveDirect'),directStatus=byId('oneDriveDirectStatus');if(directButton){directButton.hidden=!signed||!adminUnlocked;directButton.disabled=oneDriveDirectBusy;directButton.textContent=direct?'Direkten Ordnerzugriff prüfen':'Direkten Ordnerzugriff einrichten';}if(directStatus){directStatus.hidden=!adminUnlocked;directStatus.textContent=direct?'Dieses Gerät verwendet die private Ordneradresse. Zugriff erhält nur ein entsprechend berechtigtes Microsoft-Konto. Bestehende Freigabelinks werden dadurch nicht gelöscht.':'Nach der Prüfung kann dieses Gerät ohne Freigabelink auf denselben Ordner zugreifen. Auf allen Verwaltungsgeräten einrichten und mit allen berechtigten Konten testen, bevor der bisherige Link in OneDrive entfernt wird.';}const help=document.querySelector(".cloud-sync-help");if(help)help.hidden=!adminUnlocked;const last=localStorage.getItem("fw_onedrive_last_sync");if(detail&&last)detail.textContent+=" · Letzte App-Synchronisierung: "+new Date(last).toLocaleString("de-DE");}
 async function initCloudSync(){
- ensureOneDriveUi();const callback=new URLSearchParams(location.search).has('code')||new URLSearchParams(location.search).has('error');
- try{await oneDriveHandleCallback();}catch(error){console.error(error);oneDriveLastError=String(error.message||error);showToast(oneDriveLastError,"error");}
- renderOneDriveDialog();
- if(oneDriveSignedIn()){
-  oneDriveStatus("Verbindet","syncing");
-  // At startup only: a top-level Microsoft visit also works when Safari blocks
-  // third-party cookies. Never redirect while a booking or correction is in progress.
-  if(!callback&&navigator.onLine!==false){
-   try{await oneDriveAccessToken();}catch(error){
-    const last=Number(sessionStorage.getItem(OD_SILENT_RETRY_KEY)||0);
-    if(oneDriveNeedsLogin&&Date.now()-last>10*60000){
-     try{if(await odStartAuthorization(true,{clientId:odConfig().clientId,share:localStorage.getItem(OD_SHARE_KEY)||''}))return;}catch(startError){console.warn('Automatische OneDrive-Verbindung nicht möglich',startError);}
-    }
-   }
-  }
-  if(!oneDriveNeedsLogin){await syncOneDrive({refreshHistory:true});restoreOneDriveAdminReturn();}
-  else {oneDriveAccessConfirmed=false;oneDriveStatus("Anmeldung bestätigen","error");}
-  renderOneDriveDialog();
- }else oneDriveStatus("Einrichten","offline");
+ ensureOneDriveUi();const callback=new URLSearchParams(location.search).has('code')||new URLSearchParams(location.search).has('error'),startupEpoch=oneDriveSessionEpoch;
+ let untouched=true;const touched=()=>{untouched=false;};
+ addEventListener('pointerdown',touched,{capture:true,once:true});addEventListener('keydown',touched,{capture:true,once:true});
+ // Reconnection events are available even if the first authorization redirects.
  addEventListener("online",()=>syncOneDrive({refreshHistory:true}));document.addEventListener("visibilitychange",()=>{if(!document.hidden)return syncOneDrive({refreshHistory:true});});
+ const canNavigate=()=>untouched&&!document.hidden&&navigator.onLine!==false&&startupEpoch===oneDriveSessionEpoch;
+ const recover=async()=>{
+  const last=Number(sessionStorage.getItem(OD_SILENT_RETRY_KEY)||0);
+  if(callback||!oneDriveNeedsLogin||!canNavigate()||Date.now()-last<=10*60000)return false;
+  try{return await odStartAuthorization(true,{clientId:odConfig().clientId,share:localStorage.getItem(OD_SHARE_KEY)||''},canNavigate);}catch(error){console.warn('Automatische OneDrive-Verbindung nicht möglich',error);return false;}
+ };
+ try{
+  try{await oneDriveHandleCallback();}catch(error){console.error(error);oneDriveLastError=String(error.message||error);showToast(oneDriveLastError,"error");}
+  renderOneDriveDialog();
+  if(!oneDriveSignedIn()){oneDriveStatus("Einrichten","offline");return;}
+  if(navigator.onLine===false){oneDriveStatus("Offline","offline");return;}
+  oneDriveStatus("Verbindet","syncing");
+  if(!callback){try{await oneDriveAccessToken();}catch(error){if(oneDriveNeedsLogin&&await recover())return;}}
+  if(!oneDriveNeedsLogin){
+   await syncOneDrive({refreshHistory:true});
+   // A cached token may only be rejected by Graph during the actual sync.
+   // Retry a temporary startup failure once, reading remote versions before any write.
+   const failure=oneDriveLastFailure,temporary=failure&&(failure.name==='TypeError'||['TimeoutError','AbortError'].includes(failure.name)||[429,502,503,504].includes(failure.status));
+   if(temporary&&!oneDriveNeedsLogin&&canNavigate()){
+    await new Promise(resolve=>setTimeout(resolve,1200));
+    if(canNavigate()&&oneDriveSignedIn())await syncOneDrive({refreshHistory:true});
+   }
+   if(oneDriveNeedsLogin&&await recover())return;
+   restoreOneDriveAdminReturn();
+  }
+  if(oneDriveNeedsLogin){oneDriveAccessConfirmed=false;oneDriveStatus("Anmeldung bestätigen","error");}
+  renderOneDriveDialog();
+ }finally{untouched=false;}
 }
 
 

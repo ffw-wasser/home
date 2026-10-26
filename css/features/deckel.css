@@ -157,7 +157,7 @@
 /* Wasserentnahme Elz: gut lesbare Grenzwertinfo, keine irreführende Live-Ampel. */
 /* Shared soft-green cards match the valid evidence surface; status colours stay meaningful. */
 #portal-page-deckel>#account,#portal-page-challenge,#deckel-main>.portal-more-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
-#portal-page-deckel>#account{margin-bottom:12px}
+#portal-page-deckel>#account{margin-bottom:12px;border-top:6px solid #762c3a;border-top-left-radius:10px;border-top-right-radius:10px}
 /* Calm shared reading surfaces; retain the meaning of status colours. */
 body.h2o-portal :is(.portal-more-detail,.portal-calendar-dialog,.cash-dialog,.portal-layout-dialog,.contacts-pane,#identity-account,.loyalty-card,.challenge-entry,.deckel-challenge,.bundesliga-club){background:var(--card)}
 body.h2o-portal :is(.portal-evidence-editor,.portal-evidence-history,.contacts-group,.bundesliga-match){background:var(--surface)}
@@ -168,7 +168,7 @@ body.h2o-portal :is(input:not([type=checkbox]),select){background:var(--surface)
 body.h2o-portal .portal-setting-help{color:var(--muted)}
 /* The same raised surface for content cards and More tiles throughout H2O. */
 @media screen{
- body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.gf-breathing-person,.challenge-entry,.challenge-hero,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow)}
+ body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.gf-breathing-person,.challenge-entry,.challenge-hero,.deckel-challenge,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow);border-top:6px solid #762c3a;border-top-left-radius:10px;border-top-right-radius:10px}
 }
 /* Disabled actions stay distinguishable without fading their labels. */
 #deckel-main button:disabled{background:#c4cfd9;color:var(--muted);border:1px solid #9aabbc;opacity:1;box-shadow:none;cursor:default}
@@ -327,8 +327,20 @@ body.h2o-portal #deckel-main>.portal-training-page{background:transparent;border
 #portal-resource-menu>summary{padding:8px 115px 8px 0}
 #portal-resource-close{position:absolute;right:8px;top:8px;width:auto;min-height:44px;padding:8px 12px}
 
-.training-photo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.training-photo-grid figure{margin:0;min-width:0}
-.training-photo-grid img{display:block;width:100%;height:auto;border-radius:10px}
-.training-photo-grid figcaption{font-size:1rem;line-height:1.4;padding-top:6px}
-@media(max-width:340px){.training-photo-grid{grid-template-columns:1fr}}
+/* Schematic training graphics: exact display labels, no device photographs. */
+.radio-illustrations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.radio-illustration{margin:0;min-width:0;text-align:center}
+.radio-illustration h3{font-size:1.125rem;line-height:1.4;margin:0 0 32px}
+.radio-body{position:relative;box-sizing:border-box;width:220px;max-width:100%;margin:0 auto 16px;padding:14px 14px 12px;border:4px solid #17252f;border-radius:22px 22px 30px 30px;background:linear-gradient(115deg,#36434c,#18232b);box-shadow:3px 5px 0 #142a3820;color:white}
+.radio-handset{width:204px;border-radius:38px 38px 38px 38px}
+.radio-hand::before{content:'';position:absolute;top:-35px;right:15px;width:9px;height:34px;border-radius:6px 6px 0 0;background:#202c35}
+.radio-knob{position:absolute;top:-17px;left:22px;width:26px;height:18px;background:repeating-linear-gradient(90deg,#111c24 0 3px,#48535a 3px 5px);border:2px solid #15242d;border-radius:8px 8px 0 0}
+.radio-ptt{position:absolute;top:92px;left:-10px;padding:13px 2px;border-radius:5px;background:#762c3a;font-size:.75rem;font-weight:800;writing-mode:vertical-rl}
+#radio-device .radio-brand{margin:0 0 10px;font-size:.875rem;letter-spacing:.06em;color:white}
+.radio-screen{display:flex;flex-direction:column;gap:8px;padding:8px 6px 0;border:3px solid #070e13;border-radius:5px;background:linear-gradient(135deg,#f4f6dd,#d5e5d8);color:#172d3c;font-family:Arial,Helvetica,sans-serif;font-size:1rem;line-height:1.3}
+.radio-screen-symbols{text-align:left;font-size:.875rem}
+.radio-screen strong{margin:0 0 6px;color:#102843;font-size:1.25rem}
+.radio-screen-menu{margin:0 -6px;padding:7px 0;background:#b8d7de;font-size:.875rem}
+.radio-controls{display:block;padding-top:10px;font-size:1rem;line-height:1.6;letter-spacing:.18em;color:#f4f1dd}
+.radio-illustration figcaption{font-size:1rem;line-height:1.5}
+@media(max-width:600px){.radio-illustrations{grid-template-columns:1fr;gap:24px}}
