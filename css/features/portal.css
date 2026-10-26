@@ -202,7 +202,7 @@
 @media(max-width:600px) and (max-height:699px){
  #portal-events .portal-event{padding:16px 10px 4px}
  #portal-events .portal-event::after{top:12px}
- #portal-events .portal-event-content{gap:3px}
+ #portal-events .portal-event-content{gap:1px}
  #portal-events .portal-event-day.portal-calendar-week{display:contents}
  #portal-events .portal-event-date time{display:grid;grid-template-columns:minmax(0,1fr)}
  #portal-events .portal-calendar-week-heading{grid-column:1;grid-row:1;text-align:left}
