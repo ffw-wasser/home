@@ -50,7 +50,7 @@ function filter(){
  }
 }
 async function load(){
- closePdf();const epoch=generation;render(M.defaults());$('regulations-status').textContent='Gespeicherte Auswahl wird geprüft …';
+ closePdf();const epoch=generation;render(M.defaults());$('regulations-status').textContent='Grundauswahl · lokal verfügbare FwDV';if(g.navigator?.onLine===false)return;
  try{const data=await g.H2OPortal.api('regulations');if(epoch!==generation)return;render(M.validate(data.items));$('regulations-status').textContent='Quelle: Landesfeuerwehrschule Baden-Württemberg. Die Datumsangabe bezeichnet die Aktualisierung der Quelle.';}
  catch(e){if(epoch===generation)$('regulations-status').textContent='Die gespeicherte Auswahl konnte nicht geladen werden. Angezeigt wird die Grundauswahl. '+(g.ConnectionStatus?.message(e)||e.message);}
 }

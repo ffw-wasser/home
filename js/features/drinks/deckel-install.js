@@ -8,12 +8,12 @@
  function personal(){if(globalThis.H2OIdentity?.session())return true;try{const p=new URLSearchParams(location.hash.slice(1)),repo=p.get('r');return /^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo||'')&&repo!=='ffw-wasser/home'&&/^[a-f0-9]{32}$/.test(p.get('a')||'')&&/^[a-f0-9]{64}$/.test(p.get('k')||'');}catch{return false;}}
  function steps(values){const list=by('installSteps');list.replaceChildren();for(const value of values){const li=document.createElement('li');li.textContent=value;list.append(li);}}
  function refresh(){
+  if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
   const show=personal()&&!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
   by('installButton').hidden=ios;by('installButton').disabled=busy;
   by('installButton').textContent=android?'Zugang auf diesem Handy sichern':pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
   steps(ios?['Auf „Teilen“ tippen.','„Zum Home-Bildschirm“ auswählen und „Hinzufügen“ bestätigen.','Das H₂O Portal auf dem Home-Bildschirm öffnen. Dort findest du Termine, Rückmeldungen und deinen Deckel.']:
    ['Auf die Schaltfläche unten tippen, damit der persönliche Zugang auf diesem Handy gesichert wird.','In Chrome das Menü ⋮ öffnen und „Zum Startbildschirm hinzufügen“ wählen. Eine Verknüpfung erstellen, keine APK aus anderen Quellen installieren.','Falls Google Play Protect warnt: Installation abbrechen, Schutz nicht ausschalten und das Portal im Browser nutzen.']);
-  if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
  }
  async function install(){
   if(busy||!personal())return;busy=true;by('installButton').disabled=true;by('installStatus').textContent='';

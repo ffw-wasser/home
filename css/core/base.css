@@ -26,3 +26,5 @@ button { touch-action: manipulation; }
 .eyebrow { margin: 0; color: var(--red); font-size: .875rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
 .today-counter { padding: 10px 15px; border-radius: 9px; color: #fff; background: var(--green); font-weight: 700; }
 
+
+.app-offline-status{padding:8px 12px;margin:0 0 12px;border:1px solid #d8bc78;border-radius:10px;background:#fff4da;color:#6c4817;font-size:1rem;line-height:1.4}

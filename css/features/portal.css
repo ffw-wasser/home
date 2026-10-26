@@ -69,12 +69,12 @@
 /* First appointment has its own reading area; subsequent cards follow by scrolling. */
 #portal-events .portal-first-event{padding-bottom:24px}
 /* Layered edge and soft shadow lift appointment cards without moving their content. */
-#portal-events .portal-event{--portal-calendar-binding-height:12px;background:var(--card);background-image:linear-gradient(#762c3a 0 var(--portal-calendar-binding-height),var(--card) var(--portal-calendar-binding-height) 100%);background-origin:border-box;border:2px solid #ccd6e0;border-top-color:#762c3a;box-shadow:var(--portal-card-shadow);margin:0 0 28px;padding:20px}
+#portal-events .portal-event,.training-card{--portal-calendar-binding-height:12px;background:var(--card);background-image:linear-gradient(#762c3a 0 var(--portal-calendar-binding-height),var(--card) var(--portal-calendar-binding-height) 100%);background-origin:border-box;border:2px solid #ccd6e0;border-top-color:#762c3a;box-shadow:var(--portal-card-shadow);margin:0 0 28px;padding:20px}
 /* Calendar sheets: decorative binding and tear line, without changing content order
    or the existing response colours. Decorations never intercept taps. */
-#portal-events .portal-event{position:relative;border-radius:10px 10px 16px 16px;padding-top:30px}
-#portal-events .portal-event::before{content:"";position:absolute;top:0;left:12px;right:12px;height:8px;background:radial-gradient(circle at 50% 50%,#fffdf8 1.6px,transparent 1.8px) 0 0/18px 8px repeat-x;pointer-events:none}
-#portal-events .portal-event::after{content:"";position:absolute;top:18px;left:12px;right:12px;border-top:1px dashed #83998e80;pointer-events:none}
+#portal-events .portal-event,.training-card{position:relative;border-radius:10px 10px 16px 16px;padding-top:30px}
+#portal-events .portal-event::before,.training-card::before{content:"";position:absolute;top:0;left:12px;right:12px;height:8px;background:radial-gradient(circle at 50% 50%,#fffdf8 1.6px,transparent 1.8px) 0 0/18px 8px repeat-x;pointer-events:none}
+#portal-events .portal-event::after,.training-card::after{content:"";position:absolute;top:18px;left:12px;right:12px;border-top:1px dashed #83998e80;pointer-events:none}
 #portal-events .portal-first-event>.portal-event{margin:0}
 #portal-events .portal-event[data-status="yes"]{--portal-date-bg:#247542;--portal-date-ink:#fff}
 #portal-events .portal-event[data-status="excused"]{--portal-date-bg:#865416;--portal-date-ink:#fff}

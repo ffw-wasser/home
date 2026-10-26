@@ -76,6 +76,9 @@ jobs:
         run: |
           node tests/portal-regulations-browser.cjs
           node tests/portal-regulations-integration-browser.cjs
+      - name: Test public learning and documents after a real offline restart
+        run: node tests/portal-offline-browser.cjs
+
       - name: Test movable portal icon sizes
         run: node tests/portal-icons-browser.cjs
       - name: Test protected hydrant plan view
