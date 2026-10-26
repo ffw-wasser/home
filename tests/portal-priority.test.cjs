@@ -160,6 +160,8 @@ test('Terminkarten kürzen nur eine wiederholte Terminart vor dem Thema',()=>{
   ['Probe','Allgemeine Probe · Technische Hilfe','Technische Hilfe'],
   ['Sonderprobe','Sonderprobe – Sonderprobe: Atemschutz','Atemschutz'],
   ['Probe','Probe','Probe'],
+  ['Probe','   ','Probe'],
+  ['','   ','Termin'],
   ['Probe','Allgemeine Probe','Probe'],
   ['Probe','Probebetrieb der Pumpe','Probebetrieb der Pumpe'],
   ['Probe','Funkprobe und Nachbesprechung','Funkprobe und Nachbesprechung'],
@@ -167,7 +169,7 @@ test('Terminkarten kürzen nur eine wiederholte Terminart vor dem Thema',()=>{
   ['Anderes','Probe: Funk','Probe: Funk']
  ]){const e={...event('topic',Date.now()+60000),sessionType:type,title};f.c.paint({events:[e]});assert.equal(f.events.querySelector('article').querySelector('h3').textContent,expected);assert.equal(e.title,title);}
  f.c.paint({events:[{...event('simple',Date.now()+60000),sessionType:'Probe',title:'Probe'}]});
- assert.equal(f.events.querySelectorAll('div').filter(n=>n.className==='portal-event-badges').length,0);
+ assert.equal(f.events.querySelectorAll('div').filter(n=>n.className==='portal-event-badges').length,1);
 });
 
 
