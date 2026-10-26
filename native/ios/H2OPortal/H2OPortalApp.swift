@@ -35,13 +35,10 @@ struct PortalScreen: View {
     @State private var time = Date()
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button("QR", systemImage: "qrcode.viewfinder") { scan = true }
-                Spacer()
-                Button("Erinnerung", systemImage: "bell") { reminder = true }
-                Spacer()
-                Button("Hilfe", systemImage: "questionmark.circle") { help = true }
-            }.buttonStyle(.borderless).padding().tint(Color(red: 0.54, green: 0.14, blue: 0.24))
+            ViewThatFits(in: .horizontal) {
+                toolButtons
+                toolButtons.labelStyle(.iconOnly)
+            }.buttonStyle(.borderless).padding(.horizontal).tint(Color(red: 0.54, green: 0.14, blue: 0.24))
             if !model.message.isEmpty { Text(model.message).font(.callout).padding().frame(maxWidth: .infinity, alignment: .leading).background(Color.yellow.opacity(0.15)) }
             PortalWebView(model: model)
         }
@@ -78,6 +75,15 @@ struct PortalScreen: View {
                     Button("Erinnerung ausschalten", role: .destructive) { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["h2o-reminder"]); model.message = "App-Erinnerung ausgeschaltet."; reminder = false }
                 }.navigationTitle("App-Erinnerung").toolbar { Button("Schließen") { reminder = false } }
             }
+        }
+    }
+    private var toolButtons: some View {
+        HStack {
+            Button("Einladung scannen", systemImage: "qrcode.viewfinder") { scan = true }.frame(minWidth: 44, minHeight: 44)
+            Spacer()
+            Button("Erinnerung", systemImage: "bell") { reminder = true }.frame(minWidth: 44, minHeight: 44)
+            Spacer()
+            Button("Hilfe", systemImage: "questionmark.circle") { help = true }.frame(minWidth: 44, minHeight: 44)
         }
     }
     @MainActor private func enableReminder() async {

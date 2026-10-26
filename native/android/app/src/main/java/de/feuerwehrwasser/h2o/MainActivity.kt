@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val tools = LinearLayout(this)
-        fun action(label: String, click: () -> Unit) { tools.addView(Button(this).apply { text = label; setOnClickListener { click() } }, LinearLayout.LayoutParams(0, 56.dp, 1f)) }
+        fun action(label: String, click: () -> Unit) { tools.addView(Button(this).apply { text = label; minHeight = 56.dp; setPadding(4.dp, 8.dp, 4.dp, 8.dp); setOnClickListener { click() } }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
         action("QR scannen") { scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Persönliche H₂O-Einladung scannen").setBeepEnabled(false)) }
         action("Erinnerung") { reminders() }
         action("Hilfe") { help() }
@@ -117,7 +117,7 @@ class MainActivity : ComponentActivity() {
             val now = ZonedDateTime.now(); var first = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
             if (!first.isAfter(now)) first = first.plusDays(1)
             val job = PeriodicWorkRequestBuilder<PortalReminderWorker>(1, TimeUnit.DAYS).setInitialDelay(Duration.between(now, first)).build()
-            WorkManager.getInstance(this).enqueueUniquePeriodicWork("h2o-reminder", ExistingPeriodicWorkPolicy.UPDATE, job)
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork("h2o-reminder", ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, job)
             notice("Tägliche App-Erinnerung eingerichtet. Die Uhrzeit ist ungefähr.")
         }, 18, 0, true).show()
     }
