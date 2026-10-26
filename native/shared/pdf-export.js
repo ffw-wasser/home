@@ -42,6 +42,8 @@
     if (!event.isTrusted || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     const anchor = event.target?.closest?.('a[href]');
     if (!anchor) return;
+    if (anchor.type && anchor.type.split(';')[0].trim().toLowerCase() !== 'application/pdf') return;
+    if (/\.[A-Za-z0-9]{1,8}$/.test(anchor.download || '') && !/\.pdf$/i.test(anchor.download)) return;
     let url; try { url = new URL(anchor.href); } catch { return; }
     if (url.protocol !== 'blob:' || url.origin !== location.origin) return;
     event.preventDefault(); event.stopImmediatePropagation();

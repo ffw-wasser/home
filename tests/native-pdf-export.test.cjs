@@ -17,7 +17,7 @@ test('PDF wird nur nach Benutzerklick als begrenzte Nutzlast an Android/iOS übe
 });
 test('Andere Ursprünge, Frames und programmatische Klicks bekommen keine Exportfreigabe',async()=>{
  for(const options of [{url:'https://evil.example/home/deckel.html'},{url:'https://ffw-wasser.github.io/home/index.html'},{frame:true},{bridge:false}])assert.equal(fixture(options).installed(),false);
- const f=fixture();await f.send({trusted:false});await f.send({href:'blob:https://evil.example/id'});await f.send({href:'https://ffw-wasser.github.io/private.pdf'});assert.equal(f.messages.length,0);assert.equal(f.fetches.length,0);
+ const f=fixture();await f.send({trusted:false});await f.send({href:'blob:https://evil.example/id'});await f.send({href:'https://ffw-wasser.github.io/private.pdf'});assert.equal((await f.send({name:'Feuerwehr-Termin.ics'})).prevented,undefined);assert.equal(f.messages.length,0);assert.equal(f.fetches.length,0);
 });
 test('HTML, ungültige PDF-Bytes, große Dateien und Lesefehler gelangen nicht in die native Freigabe',async()=>{
  for(const options of [{type:'text/html'},{data:'<html>not a PDF'},{data:new Uint8Array(10*1024*1024+1)},{failed:true}]){const f=fixture(options);await f.send();assert.equal(f.messages.length,0);assert.equal(f.alerts.length,1);}
