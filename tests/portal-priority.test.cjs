@@ -185,16 +185,16 @@ test('Zusage wird allein durch Auswahl angezeigt; die Uhrzeit bleibt die Startze
 });
 
 
-test('Termintag bleibt durch Datum und Termin-Markierung eindeutig neben weiteren Wochenterminen',()=>{
+test('Wochenblatt zeigt wieder den Wochenzeitraum und hebt genau einen Termintag ohne Zusatzbeschriftung hervor',()=>{
  const {c}=fixture(),current=event('current',Date.parse('2026-11-24T15:30:00Z'));
  const others=[current,event('monday',Date.parse('2026-11-23T18:00:00Z')),event('saturday',Date.parse('2026-11-28T18:00:00Z'))];
  for(const status of ['open','yes','excused','maybe']){
   current.status=status;const {day}=c.weekView(current,others),heading=day.children[0],cells=day.children[1].children;
-  assert.equal(heading.textContent,'Dienstag, 24. November 2026');
-  assert.match(heading.dataset.compact,/Di.*24\.11\.2026/);
+  assert.equal(heading.textContent,c.calendarWeek(current,others).heading);
+  assert.equal(heading.dataset.compact,c.calendarWeek(current,others).compact);
   assert.equal(cells.filter(cell=>cell.className.includes('is-event-day')).length,1);
   assert.equal(cells[1].querySelector('strong').textContent,'24');
-  assert.equal(cells[1].children.at(-1).textContent,'Termin');
+  assert.equal(cells[1].children.length,2);assert.equal(day.querySelectorAll('span').some(n=>n.className==='portal-calendar-event-marker'),false);
   assert.equal(cells[0].children.length,2);assert.equal(cells[5].children.length,2);
  }
 });
