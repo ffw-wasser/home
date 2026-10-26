@@ -2,6 +2,11 @@
 
 Stand: Entwicklungsvorbereitung, App-Version 1.0.0 (Build 2).
 
+Die vom Auftraggeber übermittelte öffentliche Apple-Team-ID `VKL57X3H6F` ist im
+iOS-Projekt vorbelegt. Eine Prüfung im Apple-Konto, gültige Zertifikate und
+Provisioning-Profile sowie die Freigabe der App-ID stehen weiterhin aus. Die
+Team-ID allein signiert und veröffentlicht keine App.
+
 Die beiden nativen Projekte übernehmen das bestehende Mitgliederportal über seine
 HTTPS-Adresse. Die Mitglieder müssen die Webseite nicht mehr auf den Home-Bildschirm
 legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
