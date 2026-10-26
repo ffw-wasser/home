@@ -60,7 +60,12 @@
   const requestStarted=now();latestTiming={};
   const current=()=>epoch===generation&&authorized()&&source===g.DrinksStore.sourceKey()&&day(Date.now()).slice(0,7)===monthKey;
   try{
-   const c=await g.DrinksCentral.connection();if(!current())return;if(!c||c.source!==source)throw Object.assign(Error('Bitte Gerätehaus-Verbindung prüfen.'),{status:403});
+   const c=await g.DrinksCentral.connection();
+   // Resolving the device connection initializes DrinksStore on a cold start.
+   // Adopt only that first source; a known source change or cleared generation
+   // must still discard the response, including after logout.
+   if(!key&&!source&&epoch===generation&&authorized()&&c?.source&&c.source===g.DrinksStore.sourceKey())source=c.source;
+   if(!current())return;if(!c||c.source!==source)throw Object.assign(Error('Bitte Gerätehaus-Verbindung prüfen.'),{status:403});
    const years=lastYear===year?[year]:[year,lastYear],read=background=>Promise.all(years.map(year=>g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year,background},35000)));
    let snapshots=await read(true);
    for(let pass=0;pass<2;pass++){

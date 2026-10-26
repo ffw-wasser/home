@@ -48,6 +48,25 @@ const root=path.resolve(__dirname,'..');
 
  await page.evaluate(()=>{sidebarSource='other-source';CalendarSidebar.refresh();});await page.waitForFunction(()=>!document.getElementById('calendar-sidebar').textContent.includes('Information ohne Aktion'));
   await page.evaluate(async()=>{window.sidebarRealNow=Date.now;Date.now=()=>Date.parse('2026-11-24T10:00Z');CalendarSidebar.clear();sidebarSource='test-source';window.sidebarRequestedYears=[];DrinksPush.request=async(c,p,data)=>{sidebarRequestedYears.push(data.year);return {year:data.year,events:[{id:'january',title:'Januartermin',start:Date.parse(data.year+'-01-15T18:00Z'),end:Date.parse(data.year+'-01-15T20:00Z')},{id:'shared-year-boundary',title:'Jahreswechsel',start:Date.parse('2026-12-31T00:00+01:00'),end:Date.parse('2027-01-02T00:00+01:00'),allDay:true}]};};await CalendarSidebar.refresh();});assert.deepEqual(await page.locator('#calendar-sidebar section h3').allTextContents(),['November','Dezember','Januar 2027']);assert.deepEqual(await page.evaluate(()=>sidebarRequestedYears),[2026,2027]);assert.equal(await page.locator('.calendar-sidebar-event').filter({hasText:'Januartermin'}).count(),1,'future year appointments are loaded');assert.equal(await page.locator('.calendar-sidebar-event').filter({hasText:'Jahreswechsel'}).count(),2,'shared annual events are not duplicated');await page.getByRole('button',{name:'Kalender vergrößern',exact:true}).click();assert.equal(await page.locator('#calendar-sidebar section:visible').count(),3);assert.equal(await page.getByRole('button',{name:/Vorherige Monate|Nächste Monate/}).count(),0);await page.evaluate(async()=>{Date.now=()=>Date.parse('2026-12-24T10:00Z');await CalendarSidebar.refresh();});assert.deepEqual(await page.locator('#calendar-sidebar section h3').allTextContents(),['Dezember','Januar 2027','Februar 2027']);await page.evaluate(async()=>{Date.now=()=>Date.parse('2027-01-24T10:00Z');await CalendarSidebar.refresh();});assert.deepEqual(await page.locator('#calendar-sidebar section h3').allTextContents(),['Januar','Februar','März']);assert.deepEqual(await page.evaluate(()=>sidebarRequestedYears),[2026,2027,2026,2027,2027]);await page.evaluate(()=>{Date.now=sidebarRealNow;CalendarSidebar.clear();});
+  // On a cold start, resolving the saved device connection initializes the
+  // store source. This is the first source assignment, not a folder change.
+  await page.evaluate(async()=>{
+   CalendarSidebar.clear();sidebarSource='';window.sidebarStartupCalls=0;
+   DrinksCentral.connection=async()=>{sidebarSource='test-source';return {source:sidebarSource,origin:'https://test.account.workers.dev'};};
+   DrinksPush.request=async(c,p,data)=>{sidebarStartupCalls++;return {year:data.year,events:[{id:'startup-event',title:'Termin nach Neustart',start:Date.now()+3600000,end:Date.now()+7200000}]};};
+   await CalendarSidebar.refresh();
+  });
+  assert.ok(await page.evaluate(()=>sidebarStartupCalls>0),'cold start requests appointments after the source is initialized');
+  assert.match(await page.locator('#calendar-sidebar').innerText(),/Termin nach Neustart/);
+  await page.evaluate(()=>{
+   CalendarSidebar.clear();window.sidebarSwitchCalls=0;
+   DrinksCentral.connection=()=>new Promise(resolve=>window.sidebarSwitchResolve=()=>resolve({source:'other-source'}));
+   DrinksPush.request=async()=>{sidebarSwitchCalls++;return {};};
+   window.sidebarSwitchLoading=CalendarSidebar.refresh();
+  });
+  await page.evaluate(()=>{sidebarSource='other-source';sidebarSwitchResolve();return sidebarSwitchLoading;});
+  assert.equal(await page.evaluate(()=>sidebarSwitchCalls),0,'an already known source change is never adopted by a pending load');
+  await page.evaluate(()=>{CalendarSidebar.clear();sidebarSource='test-source';});
   // The calendar structure does not wait for connection or Google; an old authorized
   // snapshot is shown before one joined refresh, and a lock clears late results.
   await page.evaluate(()=>{CalendarSidebar.clear();window.sidebarFastCalls=0;DrinksCentral.connection=()=>new Promise(resolve=>window.sidebarConnectionResolve=()=>resolve({source:'test-source',origin:'https://test.account.workers.dev'}));window.sidebarCachedEvent={id:'quick-event',title:'Gespeicherter Termin',kind:'probe',approved:true,start:Date.parse(new Date(Date.now()+86400000).toISOString().slice(0,10)+'T12:00Z'),end:Date.parse(new Date(Date.now()+86400000).toISOString().slice(0,10)+'T13:00Z')};DrinksPush.request=async(c,p,data)=>{sidebarFastCalls++;if(data.background)return {year:data.year,events:[sidebarCachedEvent],stale:true,refreshing:true,fetchedAt:Date.now()-600000};return new Promise(resolve=>window.sidebarFreshResolve=()=>resolve({year:data.year,events:[{...sidebarCachedEvent,title:'Aktualisierter Termin'}],stale:false,fetchedAt:Date.now()}));};window.sidebarFastLoading=CalendarSidebar.refresh();});
