@@ -1,6 +1,5 @@
 package de.feuerwehrwasser.h2o
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.Intent
@@ -58,7 +57,8 @@ class NativePdfExport(private val activity: ComponentActivity, private val curre
             activity.runOnUiThread {
                 if (closed || !active() || uri == null) { busy = false; if (!closed) notice("Die PDF konnte nicht zum Teilen vorbereitet werden."); return@runOnUiThread }
                 val intent = Intent(Intent.ACTION_SEND).setType("application/pdf").putExtra(Intent.EXTRA_STREAM, uri)
-                    .setClipData(ClipData.newRawUri("PDF", uri)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                intent.clipData = ClipData.newRawUri("PDF", uri)
                 runCatching { share.launch(Intent.createChooser(intent, "PDF teilen")) }.onFailure { busy = false; notice("Keine Anwendung zum Teilen verfügbar.") }
             }
         }
