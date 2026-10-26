@@ -1,1 +1,14 @@
 node_modules/
+
+# Native build products and signing material
+native/android/.gradle/
+native/android/local.properties
+native/android/**/build/
+native/ios/*.xcodeproj/
+native/ios/build/
+native/ios/DerivedData/
+native/association/generated/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

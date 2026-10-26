@@ -3,6 +3,14 @@
  'use strict';
  const RP='ffw-wasser.github.io',ORIGIN='https://ffw-wasser.github.io',TTL=300000;
  const fail=(message='Passkey konnte nicht bestätigt werden. Bitte erneut versuchen.',status=401)=>{throw Object.assign(Error(message),{status});};
+ // Android WebView uses a certificate-bound app origin. Accept only the
+ // explicitly configured signing certificates; website authentication stays valid.
+ function expectedOrigins(env){
+  if(!env.H2O_ANDROID_APP_ORIGINS)return ORIGIN;
+  let values;try{values=JSON.parse(env.H2O_ANDROID_APP_ORIGINS);}catch{fail('App-Zuordnung fehlerhaft konfiguriert.',503);}
+  if(!Array.isArray(values)||values.length>3||values.some(value=>typeof value!=='string'||!/^android:apk-key-hash:[A-Za-z0-9_-]{43}$/.test(value)))fail('App-Zuordnung fehlerhaft konfiguriert.',503);
+  return [ORIGIN,...new Set(values)];
+ }
  const random=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
  const bytes=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  const schema=[
@@ -118,7 +126,7 @@
   }
   if(path==='register/verify'){
    const pending=await consume(env,data.id,enrollment?'enroll:'+(enrollment.approval?.id||enrollment.active.row.token_hash):'register',record);let result;
-   try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
+   try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:expectedOrigins(env),expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
    if(!result.verified||!result.registrationInfo)fail();
    const c=result.registrationInfo.credential;await owner(env,record.alias,record.revision);
    const guard=enrollment?.approval?' AND EXISTS(SELECT 1 FROM portal_identity_tickets WHERE id=? AND expires_at>?)':enrollment?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':'';
@@ -139,7 +147,7 @@
    const row=await env.DB.prepare('SELECT * FROM portal_passkeys WHERE id=?').bind(data.response.id).first();if(!row)fail();
    if(data.response.response?.userHandle!==row.user_id)fail();
    await owner(env,row.alias,row.revision);let result;
-   try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
+   try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:expectedOrigins(env),expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
    if(!result.verified)fail();
    if(portal)return issuePortal(env,row,result.authenticationInfo.newCounter,data,replaceAuth);
    const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join(''),expiresAt=Date.now()+90*86400000;

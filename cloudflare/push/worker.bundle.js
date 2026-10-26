@@ -21287,6 +21287,14 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  'use strict';
  const RP='ffw-wasser.github.io',ORIGIN='https://ffw-wasser.github.io',TTL=300000;
  const fail=(message='Passkey konnte nicht bestätigt werden. Bitte erneut versuchen.',status=401)=>{throw Object.assign(Error(message),{status});};
+ // Android WebView uses a certificate-bound app origin. Accept only the
+ // explicitly configured signing certificates; website authentication stays valid.
+ function expectedOrigins(env){
+  if(!env.H2O_ANDROID_APP_ORIGINS)return ORIGIN;
+  let values;try{values=JSON.parse(env.H2O_ANDROID_APP_ORIGINS);}catch{fail('App-Zuordnung fehlerhaft konfiguriert.',503);}
+  if(!Array.isArray(values)||values.length>3||values.some(value=>typeof value!=='string'||!/^android:apk-key-hash:[A-Za-z0-9_-]{43}$/.test(value)))fail('App-Zuordnung fehlerhaft konfiguriert.',503);
+  return [ORIGIN,...new Set(values)];
+ }
  const random=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
  const bytes=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  const schema=[
@@ -21402,7 +21410,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   }
   if(path==='register/verify'){
    const pending=await consume(env,data.id,enrollment?'enroll:'+(enrollment.approval?.id||enrollment.active.row.token_hash):'register',record);let result;
-   try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
+   try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:expectedOrigins(env),expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
    if(!result.verified||!result.registrationInfo)fail();
    const c=result.registrationInfo.credential;await owner(env,record.alias,record.revision);
    const guard=enrollment?.approval?' AND EXISTS(SELECT 1 FROM portal_identity_tickets WHERE id=? AND expires_at>?)':enrollment?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':'';
@@ -21423,7 +21431,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
    const row=await env.DB.prepare('SELECT * FROM portal_passkeys WHERE id=?').bind(data.response.id).first();if(!row)fail();
    if(data.response.response?.userHandle!==row.user_id)fail();
    await owner(env,row.alias,row.revision);let result;
-   try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
+   try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:expectedOrigins(env),expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
    if(!result.verified)fail();
    if(portal)return issuePortal(env,row,result.authenticationInfo.newCounter,data,replaceAuth);
    const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join(''),expiresAt=Date.now()+90*86400000;
@@ -22274,7 +22282,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"81746995424cafa8e5c652866e313a6eb5321613736dc2e504a23e59c02f182e",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4619ea8e3ad71a8a5bfb932252c226a3967184423e724a5c4e7575e9151bcca1",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}
