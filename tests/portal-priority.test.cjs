@@ -135,7 +135,7 @@ test('G26.2 reicht weiterhin nicht für Atemschutz; optionale G26.3 erzeugt bei 
 test('Heutige Termine zeigen Heute und behalten Uhrzeit beziehungsweise ganztägig',()=>{
  const f=fixture(),Base=Date;f.c.Date=class extends Base{static now(){return Base.parse('2026-10-19T08:00:00Z');}};
  const today={...event('today',Date.parse('2026-10-19T17:00:00Z'))};f.c.paint({events:[today]});
- const when=f.events.querySelector('article').children[0].children[2];assert.equal(when.children[0].children[0].textContent,'Heute');assert.equal(when.children[0].children[1].textContent,'19:00 Uhr');
+ const when=f.events.querySelector('article').children[0].children[2];assert.match(when.children[0].children[0].children[0].textContent,/^Heute · /);assert.equal(f.events.querySelectorAll('strong').find(n=>n.className==='portal-event-clock').textContent,'19:00 Uhr');
  f.c.testEvent={...today,allDay:true};assert.equal(vm.runInContext('date(testEvent)',f.c),'Heute · ganztägig');
 });
 test('Heute richtet sich nach dem Berliner Kalendertag, auch über die UTC-Tagesgrenze',()=>{
@@ -168,4 +168,18 @@ test('Terminkarten kürzen nur eine wiederholte Terminart vor dem Thema',()=>{
  ]){const e={...event('topic',Date.now()+60000),sessionType:type,title};f.c.paint({events:[e]});assert.equal(f.events.querySelector('article').querySelector('h3').textContent,expected);assert.equal(e.title,title);}
  f.c.paint({events:[{...event('simple',Date.now()+60000),sessionType:'Probe',title:'Probe'}]});
  assert.equal(f.events.querySelectorAll('div').filter(n=>n.className==='portal-event-badges').length,0);
+});
+
+
+test('Wochenblatt markiert nur weitere persönliche Termine derselben Berliner Woche, auch am selben Tag',()=>{
+ const {c}=fixture(),current=event('current',Date.parse('2026-10-25T09:00:00Z')),others=[current,event('same',Date.parse('2026-10-25T10:00:00Z')),event('monday',Date.parse('2026-10-18T22:30:00Z')),event('outside',Date.parse('2026-10-25T23:30:00Z'))],week=c.calendarWeek(current,others);
+ assert.deepEqual(Array.from(week.days,d=>d.iso),['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23','2026-10-24','2026-10-25']);assert.equal(week.days[6].selected,true);assert.equal(week.days[6].otherCount,1);assert.equal(week.days[0].otherCount,1);assert.equal(week.otherCount,2);assert.equal(c.calendarWeek(current,[current]).otherCount,0);
+});
+test('Wochenblatt bleibt am Jahreswechsel und beim Beginn der Sommerzeit korrekt',()=>{
+ const {c}=fixture();for(const [stamp,first,last] of [['2027-01-01T09:00Z','2026-12-28','2027-01-03'],['2026-03-29T09:00Z','2026-03-23','2026-03-29']]){const e=event('test',Date.parse(stamp)),w=c.calendarWeek(e,[e]);assert.equal(w.days[0].iso,first);assert.equal(w.days[6].iso,last);assert.equal(w.days.filter(d=>d.selected).length,1);}
+});
+
+
+test('Zusage wird allein durch Auswahl angezeigt; die Uhrzeit bleibt die Startzeit der jeweiligen Karte',()=>{
+ const f=fixture(),start=Date.now()+86400000,events=[event('one',start,'yes'),event('two',start+3*3600000,'excused')];f.c.paint({events});const cards=f.events.querySelectorAll('article');const rows=cards[0].children[0].children.filter(n=>n.className==='portal-event-meta'||n.className==='portal-event-meta portal-event-time');assert.equal(rows[0].children[1].textContent,'GH Wasser');assert.equal(rows[1].className,'portal-event-meta portal-event-time');assert.equal(cards[0].querySelectorAll('strong').find(n=>n.className==='portal-answer portal-answer-yes').textContent,'');for(let i=0;i<events.length;i++){const expected=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(events[i].start))+' Uhr';assert.equal(cards[i].querySelectorAll('strong').find(n=>n.className==='portal-event-clock').textContent,expected);}
 });

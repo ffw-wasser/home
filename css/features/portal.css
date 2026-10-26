@@ -31,9 +31,7 @@
 
 /* Saved rules remain available for correction; colour is paired with a text label. */
 
-/* Sanfte Terminkartenfarben nur im persönlichen H₂O-Portal */
-#portal-events .portal-event[data-status="yes"]{background:#e1eee6;border-color:#a7c8b1}
-#portal-events .portal-event[data-status="excused"]{background:#f4eadc;border-color:#dbc19b}
+/* Reply colours belong to the selected date and reply button, not the sheet. */
 
 /* Empfängerauswahl nur für Sonderproben im geschützten H₂O-Portal */
 #portal-admin-review-events .portal-recipient-choices{padding:10px 12px;border:1px solid #d7dfe8;border-radius:12px;margin:8px 0 14px}
@@ -72,9 +70,14 @@
 #portal-events .portal-first-event{padding-bottom:24px}
 /* Layered edge and soft shadow lift appointment cards without moving their content. */
 #portal-events .portal-event{background:var(--card);border:2px solid #ccd6e0;box-shadow:var(--portal-card-shadow);margin:0 0 28px;padding:20px}
+/* Calendar sheets: decorative binding and tear line, without changing content order
+   or the existing response colours. Decorations never intercept taps. */
+#portal-events .portal-event{position:relative;border-radius:10px 10px 16px 16px;padding-top:30px}
+#portal-events .portal-event::before{content:"";position:absolute;top:5px;left:12px;right:12px;height:8px;background:radial-gradient(circle at 50% 50%,var(--portal-canvas,#e7edf2) 2px,#83998e99 2.5px,transparent 3.5px) 0 0/18px 8px repeat-x;pointer-events:none}
+#portal-events .portal-event::after{content:"";position:absolute;top:18px;left:12px;right:12px;border-top:1px dashed #83998e80;pointer-events:none}
 #portal-events .portal-first-event>.portal-event{margin:0}
-#portal-events .portal-event[data-status="yes"]{border-color:#a7c8b1}
-#portal-events .portal-event[data-status="excused"]{border-color:#dbc19b}
+#portal-events .portal-event[data-status="yes"]{--portal-date-bg:#247542;--portal-date-border:#1b6035;--portal-date-ink:#fff}
+#portal-events .portal-event[data-status="excused"]{--portal-date-bg:#865416;--portal-date-border:#70440f;--portal-date-ink:#fff}
 .portal-page>#portal-evidence{margin:0;padding:0;border:0;border-radius:0;background:transparent}
 #portal-evidence>.portal-data-status{margin-top:18px;padding:12px 0 0;border:0;border-top:1px solid var(--line);border-radius:0;background:transparent}
 #portal-priority[hidden],#portal-evidence[hidden]{display:none!important}
@@ -116,12 +119,12 @@
 .portal-evidence-meta,.portal-evidence>p{font-size:var(--portal-body-size,1rem)}
 
 /* Uncertain replies remain eligible for reminders. */
-#portal-events .portal-event[data-status="maybe"]{background:#ece5f3;border-color:#c5b1d9}
+#portal-events .portal-event[data-status="maybe"]{--portal-date-bg:#68418b;--portal-date-border:#55306f;--portal-date-ink:#fff}
 .portal-answer-maybe{color:#593376}
 .portal-choices button[data-reply=yes]{background:#e6f4e9;color:#1c603c;border-color:#8bc5a0}
 .portal-choices button[data-reply=excused]{background:#fff0dc;color:#78501b;border-color:#ddb16d}
 .portal-choices button[data-reply=maybe]{grid-column:1/-1;min-height:56px;background:#f5f1f9;color:#593376;border-color:#d1c1df;font-size:1rem}
-.portal-choices button[data-reply=yes][aria-pressed=true]{background:#186339;color:#fff;border-color:#12502e}
+.portal-choices button[data-reply=yes][aria-pressed=true]{background:#247542;color:#fff;border-color:#1b6035}
 .portal-choices button[data-reply=excused][aria-pressed=true]{background:#865416;color:#fff;border-color:#70440f}
 .portal-choices button[data-reply=maybe][aria-pressed=true]{background:#68418b;color:#fff;border-color:#55306f}
 .portal-choices button:focus-visible{outline:3px solid #075baf;outline-offset:3px}
@@ -152,12 +155,23 @@
 .portal-event-badges span:first-child{background:var(--card,#dceafa);color:#164778}
 .portal-event-date time{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .portal-event-day{font-size:clamp(1rem,4.4vw,1.375rem);font-weight:850;line-height:1.3;white-space:normal}
-.portal-event-clock{margin-left:auto;padding:3px 7px;border-radius:8px;background:var(--surface,#fff1cf);color:var(--ink,#754600);font-size:clamp(.875rem,4.1vw,1.25rem);font-weight:800;line-height:1.3;white-space:nowrap}
+/* Weekly calendar sheet: seven days, with the event date highlighted. */
+.portal-event-day.portal-calendar-week{display:grid;gap:6px;width:100%;min-width:0;text-align:center}
+.portal-calendar-week-heading{font-size:1rem;font-weight:800;line-height:1.3}
+.portal-calendar-week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.portal-calendar-week-cell{position:relative;display:grid;justify-items:center;gap:3px;padding:5px 0 9px;border:1px solid transparent;border-radius:8px;color:var(--muted);font-size:.875rem;font-weight:650;line-height:1.2}
+.portal-calendar-week-cell strong{font-size:1.25rem;font-weight:800;line-height:1.2}
+.portal-calendar-week-cell.is-event-day{background:var(--portal-date-bg,#e1eee6);border-color:var(--portal-date-border,#a7c8b1);color:var(--portal-date-ink,#102f56);box-shadow:0 2px 3px #10284318}
+.portal-calendar-week-cell.has-more-events:not(.is-event-day){border-color:#075baf;background:#e7f1fa}
+.portal-calendar-week-cell.has-more-events::after{content:"+" attr(data-other-count);position:absolute;bottom:-5px;right:-3px;min-width:16px;height:14px;padding:0 2px;border-radius:4px;background:#075baf;color:#fff;font-size:.625rem;font-weight:800;line-height:14px;text-align:center}
+.portal-event-time .portal-event-clock{margin:0;padding:0;background:none;color:var(--ink);font-size:inherit;font-weight:800;line-height:inherit;white-space:normal}
 #portal-events .portal-event-meta{display:flex;align-items:flex-start;gap:12px;padding:4px 0;margin:0;font-size:var(--portal-body-size,1rem);line-height:1.4}
+#portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:8px}
 .portal-event-meta>span:first-child{flex:none;width:26px;text-align:center}.portal-event-meta>span:last-child{min-width:0}
 #portal-events .portal-overview-open{display:flex;align-items:center;gap:8px;background:#edf3f9;color:#254e71;border:1px solid #c4d3e2;border-radius:12px;box-shadow:none;text-align:left;padding:8px 10px;min-height:44px;font-size:var(--portal-support-size,.9375rem);font-weight:700;text-decoration:none}
 #portal-events .portal-overview-open::after{content:"›";margin-left:auto;flex:none;font-size:1.5rem;line-height:1}
 .portal-overview-symbol{order:-1;flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#portal-events .portal-answer:empty{display:none}
 #portal-events .portal-answer{border-top:1px solid #b7c5d5;padding-top:10px;font-size:1rem;overflow-wrap:anywhere}
 .portal-overview-dialog h3{font-size:1.125rem;margin:20px 0 6px}.portal-overview-dialog p{overflow-wrap:anywhere}
 
@@ -166,7 +180,7 @@
    Long content and enlarged text remain reachable through the page scroll. */
 @media(max-width:600px){
  body:has(#portal-page-terms:not([hidden])) #deckel-main{padding-top:8px}
- #portal-events .portal-event{display:flex;flex-direction:column;min-height:0;padding:12px;margin-bottom:20px}
+ #portal-events .portal-event{display:flex;flex-direction:column;min-height:0;padding:26px 12px 12px;margin-bottom:20px}
  #portal-events .portal-event-content{display:flex;flex-direction:column;gap:6px;padding:0;overflow-wrap:anywhere}
  #portal-events .portal-event-content .portal-event-badges{margin:0}
  #portal-events .portal-event-badges span{padding:3px 10px;font-size:1rem}
@@ -184,8 +198,21 @@
 
 /* Short screens use one reply row; labels wrap without shrinking touch targets. */
 @media(max-width:600px) and (max-height:699px){
- #portal-events .portal-event{padding:4px 10px}
+ #portal-events .portal-event{padding:16px 10px 4px}
+ #portal-events .portal-event::after{top:12px}
  #portal-events .portal-event-content{gap:3px}
+ #portal-events .portal-event-day.portal-calendar-week{display:contents}
+ #portal-events .portal-event-date time{display:grid;grid-template-columns:minmax(0,1fr)}
+ #portal-events .portal-calendar-week-heading{grid-column:1;grid-row:1;text-align:left}
+ #portal-events .portal-calendar-week-grid{grid-column:1/-1;grid-row:2}
+ #portal-events .portal-event-date time{gap:3px}
+ #portal-events .portal-calendar-week-cell{padding:2px 0 7px;gap:1px}
+ #portal-events .portal-calendar-week-cell strong{font-size:1.125rem}
+ #portal-events .portal-calendar-week-heading{font-size:0;line-height:1.2}
+ #portal-events .portal-calendar-week-heading::after{content:attr(data-compact);font-size:.875rem}
+ #portal-events .portal-event-date{padding:6px}
+ #portal-events .portal-calendar-week-cell{line-height:1;padding:1px 0 6px}
+ #portal-events .portal-calendar-week-cell strong{font-size:1.0625rem;line-height:1}
  #portal-events .portal-event h3{font-size:1.25rem}
  #portal-events .portal-answer{margin:6px 0}
  #portal-events .portal-next-heading{margin-bottom:6px}
@@ -197,6 +224,13 @@
 /* The header already names this screen; retain the extra heading for assistive
    technology while giving very short phones the full card area. */
 @media(max-width:600px) and (max-height:599px){
+ #portal-events .portal-event{padding-top:12px}
+ #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:4px}
+ #portal-events .portal-answer{font-size:.9375rem}
+ #portal-events .portal-event::before{top:2px;height:6px;background-size:18px 6px}
+ #portal-events .portal-event::after{top:9px}
+ #portal-events .portal-event-date{padding:4px}
+ #portal-events .portal-choice-hint{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
  #portal-events .portal-next-heading{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 }
 
