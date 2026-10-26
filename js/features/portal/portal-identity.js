@@ -5,7 +5,7 @@
  let current=null,record=null,busy=false;
  const setupCode=(()=>{const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(m||/(?:^#|&)[rak]=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);return m?.[1]||'';})();
  function read(){try{const s=JSON.parse(localStorage.getItem(STORAGE));return s?.scope==='portal'&&/^[\w-]{43}$/.test(s.token)&&/^[a-f0-9]{32}$/.test(s.alias)&&s.expiresAt>Date.now()?s:null;}catch{return null;}}
- function save(s){for(const id of ['login-password','new-password','repeat-password','confirm-password'])if(el(id))el(id).value='';if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else localStorage.removeItem(STORAGE);current=s;record=null;el('list')?.replaceChildren();setMemberName('');}
+ function save(s){for(const id of ['login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else localStorage.removeItem(STORAGE);current=s;record=null;el('list')?.replaceChildren();setMemberName('');}
  async function post(path,data={},token=current?.token||read()?.token){
   const response=await fetch(ORIGIN+'/portal/passkey/'+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(20000)});
   const value=await response.json();if(!response.ok)throw Object.assign(Error(value.error||'Anmeldung nicht bestätigt.'),{status:response.status});return value;
@@ -17,9 +17,9 @@
   catch(e){if(e.status===401||e.status===403)save(null);paint();throw e;}
  }
  function supported(){if(!g.H2OPasskeys?.browserSupportsWebAuthn())throw Error('Bitte in Safari oder Chrome öffnen. Im WhatsApp-Menü „Im Browser öffnen“ wählen.');}
- async function login(code){
+ async function login(code,confirmation){
   const expected=current||read();
-  if(!code&&expected?.method==='password'){const input=el('confirm-password'),password=input?.value||'';if(input)input.value='';if(!password)throw Error('Bitte unter Konto dein aktuelles Passwort zur Bestätigung eingeben.');return accept(await post('password/confirm',{password}));}
+  if(!code&&expected?.method==='password'){const input=el('confirm-password'),password=confirmation??input?.value??'';if(input)input.value='';if(!password)throw Error('Bitte unter Konto dein aktuelles Passwort zur Bestätigung eingeben.');return accept(await post('password/confirm',{password}));}
   supported();const request=await post('portal/login/options',{},null),response=await g.H2OPasskeys.startAuthentication({optionsJSON:request.options});
   const value=await post('portal/login/verify',{id:request.id,response,...(code?{code}:{})});
   if(value.scope!=='portal'||!/^[\w-]{43}$/.test(value.token)||!/^[a-f0-9]{32}$/.test(value.alias)||value.expiresAt<=Date.now())throw Error('Anmeldung nicht bestätigt.');
@@ -47,7 +47,7 @@
   el('state').dataset.active=String(signedIn);
   for(const id of ['login','intro','setup','password-login-form'])el(id).hidden=signedIn;
   for(const id of ['logout','devices','revoke-sessions','session-actions','passkeys-heading'])el(id).hidden=!signedIn;
-  el('password-confirmation').hidden=!(signedIn&&current.method==='password');
+  el('password-confirmation').hidden=el('password-change-confirmation').hidden=!(signedIn&&current.method==='password');
   el('password-settings-title').textContent=signedIn?'Passwort einrichten oder ändern':'Zugang mit Passwort einrichten';
   el('register').textContent=signedIn?'Weiteren Passkey hinzufügen':'Passkey einrichten';
   if(signedIn){el('setup').open=false;el('code').value='';}
@@ -76,7 +76,7 @@
  }
  function init(){if(!el('login'))return;paint();if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}
   el('password-login-form').onsubmit=event=>{event.preventDefault();const name=el('username').value,password=el('login-password').value;el('login-password').value='';void run(async()=>{await loginPassword(name,password);el('message').textContent='';el('account').open=false;await g.DeckelReload?.();});};
-  el('password-set-form').onsubmit=event=>{event.preventDefault();const username=el('new-username').value,password=el('new-password').value,repeat=el('repeat-password').value,code=el('code').value.trim();el('new-password').value=el('repeat-password').value='';void run(async()=>{if(password!==repeat)throw Error('Die beiden neuen Passwörter stimmen nicht überein.');const wasPassword=current?.method==='password';if(current&&!code)await login();await post('password/set',{username,password,...(code?{code}:{})});el('code').value='';el('password-settings').open=false;if(wasPassword){save(null);await g.DeckelReload?.();}el('message').textContent='Passwort gespeichert. Jetzt mit Benutzername und Passwort anmelden.';});};
+  el('password-set-form').onsubmit=event=>{event.preventDefault();const username=el('new-username').value,password=el('new-password').value,repeat=el('repeat-password').value,confirmation=el('change-password').value,code=el('code').value.trim();el('new-password').value=el('repeat-password').value=el('change-password').value='';void run(async()=>{if(password!==repeat)throw Error('Die beiden neuen Passwörter stimmen nicht überein.');const wasPassword=current?.method==='password';if(current&&!code)await login(undefined,confirmation);await post('password/set',{username,password,...(code?{code}:{})});el('code').value='';el('password-settings').open=false;if(wasPassword){save(null);await g.DeckelReload?.();}el('message').textContent='Passwort gespeichert. Jetzt mit Benutzername und Passwort anmelden.';});};
   el('login').onclick=()=>run(async()=>{await login(el('code').value.trim());el('code').value='';el('message').textContent='';el('account').open=false;await g.DeckelReload?.();});
   el('register').onclick=()=>run(async()=>{const code=el('code').value.trim();if(!code&&current)await login();await register(code);el('code').value='';el('message').textContent=current?'Weiterer Passkey gespeichert. Du bleibst angemeldet.':'Passkey gespeichert. Jetzt „Mit Passkey anmelden“ wählen, um das Portal zu öffnen.';if(current)await g.DeckelReload?.();});
   el('devices').onclick=()=>run(async()=>{await devices();el('message').textContent='Ein synchronisierter Passkey kann auf mehreren eigenen Geräten liegen. Bei Geräteverlust auch das Apple-/Google-Konto absichern.';});
