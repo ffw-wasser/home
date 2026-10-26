@@ -17,7 +17,7 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | Anmeldung | Bestehende Passkeys; explizite Android-Zertifikatsbindung im Worker vorbereitet |
 | Erinnerung | Freiwillige, allgemeine tägliche App-Erinnerung, lokal auf dem Gerät |
 | Ohne Internet | Native Einstiegshilfe und erneutes Laden; private Serverdaten brauchen Internet |
-| Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build mit ausgeführten Link-Sicherheitstests |
+| Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build, dieselben Link-Sicherheitstests separat mit Apple Foundation |
 | Datenschutz | HTTPS, keine Geheimnisse im Projekt, keine privaten URLs in Logs/Analytics, Android-Backup aus |
 
 Die lokale Erinnerung heißt bewusst **App-Erinnerung**. Sie ist keine Synchronisierung
@@ -81,8 +81,11 @@ xcodegen generate --spec native/ios/project.yml
 xcodebuild build-for-testing -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 ```
 
-Der Build-Workflow führt die iOS-Link-Tests auf einem verfügbaren iPhone-Simulator aus.
-Der XCTest-Start lädt dabei das Produktivportal nicht automatisch.
+Der Build-Workflow kompiliert die iOS-App und die XCTest-Bundles für den Simulator.
+Die Link-Sicherheitstests laufen anschließend mit `swift test --package-path native`
+unter macOS gegen dieselbe Swift-Implementierung und Apple Foundation. Dafür wird
+keine WebView und kein Produktivportal gestartet. Ein erfolgreicher Simulator-Build
+ist kein Nachweis eines bestandenen Kamera-, Passkey- oder Gerätetests.
 
 Der Build-Workflow erzeugt ein **Entwicklungs-APK** und eine **Simulator-App**.
 Das sind keine fertigen App-Store-Pakete. Ein Simulator-Build kann weder auf einem

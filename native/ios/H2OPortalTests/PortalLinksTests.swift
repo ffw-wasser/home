@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(PortalLinkPolicy)
+@testable import PortalLinkPolicy
+#else
 @testable import H2OPortal
+#endif
 final class PortalLinksTests: XCTestCase {
     func testOnlyExactPortalEndpointsAreAccepted() {
         XCTAssertTrue(PortalLinks.trusted(PortalLinks.home))

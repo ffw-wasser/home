@@ -12,3 +12,5 @@ native/association/generated/
 *.keystore
 *.p12
 *.mobileprovision
+native/.build/
+native/.swiftpm/

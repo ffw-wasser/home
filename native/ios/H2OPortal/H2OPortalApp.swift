@@ -42,7 +42,7 @@ struct PortalScreen: View {
             if !model.message.isEmpty { Text(model.message).font(.callout).padding().frame(maxWidth: .infinity, alignment: .leading).background(Color.yellow.opacity(0.15)) }
             PortalWebView(model: model)
         }
-        .onAppear { if !model.hasOpened && ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil { model.open(PortalLinks.home) } }
+        .onAppear { if !model.hasOpened { model.open(PortalLinks.home) } }
         .onOpenURL { model.open($0) }
         .onChange(of: scenePhase) { _, phase in if phase == .background { scan = false } }
         .sheet(isPresented: $scan) {
