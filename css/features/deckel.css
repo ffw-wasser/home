@@ -157,7 +157,7 @@
 /* Wasserentnahme Elz: gut lesbare Grenzwertinfo, keine irreführende Live-Ampel. */
 /* Shared soft-green cards match the valid evidence surface; status colours stay meaningful. */
 #portal-page-deckel>#account,#portal-page-challenge,#deckel-main>.portal-more-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
-#portal-page-deckel>#account{margin-bottom:12px;border-top:6px solid #762c3a;border-top-left-radius:10px;border-top-right-radius:10px}
+#portal-page-deckel>#account{margin-bottom:12px}
 /* Calm shared reading surfaces; retain the meaning of status colours. */
 body.h2o-portal :is(.portal-more-detail,.portal-calendar-dialog,.cash-dialog,.portal-layout-dialog,.contacts-pane,#identity-account,.loyalty-card,.challenge-entry,.deckel-challenge,.bundesliga-club){background:var(--card)}
 body.h2o-portal :is(.portal-evidence-editor,.portal-evidence-history,.contacts-group,.bundesliga-match){background:var(--surface)}
@@ -170,6 +170,8 @@ body.h2o-portal .portal-setting-help{color:var(--muted)}
 @media screen{
  body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.gf-breathing-person,.challenge-entry,.challenge-hero,.deckel-challenge,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow);border-top:6px solid #762c3a;border-top-left-radius:10px;border-top-right-radius:10px}
 }
+/* Status and Deckel retain their quiet surfaces and meaningful side borders. */
+body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-empty-state,#account):where(#portal-page-evidence *,#portal-page-deckel *){border-top-width:1px;border-top-color:var(--line);border-top-left-radius:var(--card-radius,18px);border-top-right-radius:var(--card-radius,18px)}
 /* Disabled actions stay distinguishable without fading their labels. */
 #deckel-main button:disabled{background:#c4cfd9;color:var(--muted);border:1px solid #9aabbc;opacity:1;box-shadow:none;cursor:default}
 /* Keep hints readable on the stronger grey cards, including browser placeholders. */
@@ -285,8 +287,9 @@ body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
 /* Learning content uses the same raised calendar sheets as appointments. */
 body.h2o-portal #deckel-main>.portal-training-page{background:transparent;border:0;padding:0;box-shadow:none}
 .portal-training-page h2{margin:18px 0}
-.portal-training-page .portal-more-grid .training-card{padding:28px 12px 14px;border:2px solid var(--line);border-top-color:#762c3a;background:linear-gradient(#762c3a 0 12px,var(--card) 12px);background-origin:border-box;box-shadow:var(--portal-card-shadow)}
-.training-card{overflow-wrap:anywhere}
+.portal-training-page .portal-more-grid .training-card{padding:28px 12px 14px;border:2px solid var(--line);border-top-color:#762c3a;background:var(--card);box-shadow:var(--portal-card-shadow)}
+.training-card{overflow-wrap:anywhere;background-image:none}
+body.h2o-portal .portal-training-page .training-card{background-image:none;border-top:6px solid #762c3a;padding-top:18px}
 .training-card>h3{margin:4px 0 12px;font-size:1.2rem}
 .training-card .note{margin:10px 0}
 .training-radio-steps{padding-left:1.4em;margin:0}

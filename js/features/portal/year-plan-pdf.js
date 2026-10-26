@@ -44,9 +44,10 @@
    text(page,'DIN A4 quer · Alle Tage · Zusatzangaben und umfangreiche Tage: vollständige Angaben im Kalender.',M,18,6.8);text(page,'Seite '+(i+1)+' / 2',W-78,18,7);
   });pdf.setTitle('Jahresprobenplan '+year);pdf.setAuthor('Feuerwehr Wasser');return {bytes:await pdf.save(),pageCount:2,condensed};
  }
- let dialog,host,status,previous,next,counter,link,download,viewer,url='',bytes=null,pageCount=0,current=1,generation=0,notice='',valid=()=>false;
+ let dialog,host,status,previous,next,counter,link,download,viewer,url='',bytes=null,pageCount=0,current=1,generation=0,notice='',valid=()=>false,onClose=null;
  const node=(tag,label)=>{const n=document.createElement(tag);if(label)n.textContent=label;return n;};
- function clear(){notice='';generation++;viewer?.destroy();viewer=null;bytes=null;if(url)URL.revokeObjectURL(url);url='';link?.removeAttribute('href');download?.removeAttribute('href');if(dialog?.open)dialog.close();}
+ function clear(){onClose=null;notice='';generation++;viewer?.destroy();viewer=null;bytes=null;if(url)URL.revokeObjectURL(url);url='';link?.removeAttribute('href');download?.removeAttribute('href');if(dialog?.open)dialog.close();}
+ function dismiss(){const callback=onClose;clear();callback?.();}
  async function showPage(pageNumber){
   if(!valid()){clear();return;}
   const epoch=generation;current=pageNumber;viewer?.destroy();counter.textContent='Seite '+current+' / '+pageCount;previous.disabled=current===1;next.disabled=current===pageCount;
@@ -56,13 +57,13 @@
  function init(){
   if(dialog)return;
   dialog=node('dialog');dialog.className='year-plan-pdf-dialog';dialog.id='year-plan-pdf-dialog';dialog.setAttribute('aria-label','Jahresplan als PDF');
-  const header=node('div'),title=node('h2','Jahresplan als PDF'),close=node('button','Schließen');header.className='year-plan-pdf-actions';close.type='button';close.onclick=clear;header.append(title,close);
+  const header=node('div'),title=node('h2','Jahresplan als PDF'),close=node('button','Schließen');header.className='year-plan-pdf-actions';close.type='button';close.onclick=dismiss;header.append(title,close);
   const actions=node('div');actions.className='year-plan-pdf-actions';previous=node('button','←');previous.type='button';previous.setAttribute('aria-label','Vorherige PDF-Seite');next=node('button','→');next.type='button';next.setAttribute('aria-label','Nächste PDF-Seite');counter=node('span');counter.setAttribute('aria-live','polite');link=node('a','PDF öffnen ↗');link.target='_blank';link.rel='noopener noreferrer';download=node('a','Speichern');actions.append(previous,counter,next,link,download);
   previous.onclick=()=>showPage(current-1);next.onclick=()=>showPage(current+1);status=node('p');status.setAttribute('role','status');host=node('div');host.className='plan-zoom year-plan-pdf-map';
-  dialog.append(header,actions,status,host);document.body.append(dialog);dialog.addEventListener('close',()=>{if(url||bytes)clear();});dialog.addEventListener('cancel',clear);g.addEventListener('pagehide',clear);
+  dialog.append(header,actions,status,host);document.body.append(dialog);dialog.addEventListener('close',()=>{if(!dialog.open&&(url||bytes||onClose))dismiss();});dialog.addEventListener('cancel',event=>{event.preventDefault();dismiss();});g.addEventListener('pagehide',clear);
  }
  async function open(model){
-  clear();init();valid=model.isCurrent;if(!valid())return;const epoch=generation;
+  clear();init();valid=model.isCurrent;if(!valid())return;onClose=model.onClose||null;const epoch=generation;
   link.hidden=download.hidden=true;previous.disabled=next.disabled=true;counter.textContent='';status.textContent='PDF wird erstellt …';dialog.showModal();
   try{const result=await build(model);if(epoch!==generation)return;if(!valid()){clear();return;}
    notice=result.condensed?'Zwei-Seiten-Übersicht: Zusatzangaben teilweise gekürzt. Vollständig in der Kalenderansicht. ':'';bytes=result.bytes;pageCount=result.pageCount;url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));link.href=download.href=url;download.download='Jahresprobenplan-'+model.year+'.pdf';link.hidden=download.hidden=false;await showPage(1);
