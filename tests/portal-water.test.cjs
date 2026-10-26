@@ -2,8 +2,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const html=fs.readFileSync('deckel.html','utf8'),mobile=fs.readFileSync('js/features/drinks/deckel-mobile.js','utf8'),css=fs.readFileSync('css/features/deckel.css','utf8');
 test('Mehr ordnet Feuerwehrthemen vor Freizeit und Konto ein',()=>{
- const more=html.split('<div id="portal-page-more"')[1].split('<div id="portal-page-more-water"')[0];
- const expected=['more-year-plan','portal-more-breathing-tile','more-hydrants','more-regulations','more-water','more-help','theater-phone-open','more-bundesliga','more-security'];
+ const more=html.split('<div id="portal-page-more"')[1].split('<div id="portal-page-more-training"')[0];
+ const expected=['more-training','more-year-plan','portal-more-breathing-tile','more-hydrants','more-regulations','more-water','more-help','theater-phone-open','more-bundesliga','more-security'];
  const actual=[...more.matchAll(/<button\b([^>]*)class="portal-more-tile[^"]*"([^>]*)>/g)].map(m=>((m[1]+' '+m[2]).match(/(?:data-more-target|id)="([^"]+)"/)||[])[1]);
  assert.deepEqual(actual,expected);
  assert.match(mobile,/'more-water':'more-water'/);

@@ -281,3 +281,15 @@ body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
 .regulations-book-header form{margin:0;flex:0 0 auto}
 
 .portal-checkin-launch .portal-icon-art{width:28px;height:28px}
+
+/* Training: short, readable steps on the shared portal surface. */
+.training-radio-guide{padding:16px;border:1px solid #cbd9d0;border-radius:16px;background:#eef7f1;overflow-wrap:anywhere}
+.training-radio-kicker{color:#762c3a;font-weight:800;letter-spacing:.08em}
+.training-radio-guide h3{margin-top:0}
+.training-radio-steps{padding-left:1.5em}
+.training-radio-steps li{padding-left:4px;margin-bottom:18px}
+.training-radio-steps li::marker{color:#762c3a;font-weight:800}
+.training-radio-steps p{margin:4px 0}
+.training-radio-guide details{margin:16px 0;padding:12px;border:1px solid #cbd9d0;border-radius:10px}
+.training-radio-guide summary{font-weight:700;cursor:pointer}
+.training-radio-source{display:block;margin:18px 0 12px;white-space:normal;text-align:center}
