@@ -63,10 +63,11 @@
   updateToolsOffset();const epoch=generation,selected=year;
   requestAnimationFrame(()=>{if(epoch!==generation||selected!==year||document.getElementById(portal?'portal-page-more-year-plan':'yearPlanView')?.hidden)return;if($('month'))$('month').value=month;const card=document.getElementById('year-plan-month-'+month);if(card){const tools=document.querySelector(portal?'#more-year-plan>.year-plan-controls':'#yearPlanView>.year-plan-controls'),offset=portal?0:parseFloat(getComputedStyle(tools).top)||0;card.style.scrollMarginTop=(tools.getBoundingClientRect().height+offset+(portal?32:16))+'px';}card?.scrollIntoView({block:'start',behavior:'auto'});});
  }
- async function load(scroll=false){
+ async function load(scroll=false,{openPdfOnLoad=false}={}){
   if(scroll){const today=dayKey(Date.now());year=Number(today.slice(0,4));if($('month'))$('month').value=Number(today.slice(5,7))-1;}
   const epoch=++generation,selected=year;events=[];privateData=false;loaded=false;message='Jahresplan wird geladen …';render();
-  jump();
+  const directPdf=portal&&openPdfOnLoad;const section=document.getElementById('more-year-plan');if(directPdf)section.classList.add('year-plan-opening');
+  if(!directPdf)jump();
   try{
    const privateAccess=authorized();let result;
    if(portal){
@@ -91,10 +92,10 @@
    if(result.year!==selected||!Array.isArray(result.events))throw Error('Für den Jahresplan bitte den aktualisierten Kalenderdienst bereitstellen.');
    colors=result.colors||g.CalendarPresentation.defaults();events=result.events.filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;
    message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben, Kalenderinformationen und dein Geburtstag. ':'Vollständiger Jahresplan für das Gerätehaus. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
-   render();jump();
-  }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();jump();}
+   render();if(directPdf)await openPdf();jump();
+  }catch(e){if(epoch!==generation)return;events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();jump();}finally{if(epoch===generation)section?.classList.remove('year-plan-opening');}
  }
- function lock(){generation++;events=[];privateData=false;loaded=false;source='';message=portal?'Bitte den persönlichen Portalzugang erneut öffnen.':'Bitte den Jahresplan über die Gerätehaus-Verbindung erneut laden.';render();}
+ function lock(){document.getElementById('more-year-plan')?.classList.remove('year-plan-opening');generation++;events=[];privateData=false;loaded=false;source='';message=portal?'Bitte den persönlichen Portalzugang erneut öffnen.':'Bitte den Jahresplan über die Gerätehaus-Verbindung erneut laden.';render();}
  function afterView(view){
   const settings=document.getElementById('settingsView'),tab=document.getElementById('settingsTab');
   if(tab){const active=view.startsWith('settings')||view==='adminLoginView';tab.classList.toggle('active',active);if(active)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');}
@@ -102,18 +103,20 @@
   if(view==='yearPlanView')load(true);
   else if(privateData||message==='Jahresplan wird geladen …')lock();
  }
+ async function openPdf(){
+   if(privateData&&!accessCurrent())return lock();
+   if(!loaded||!privateData)return;
+   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),compactHolidays:[...row.querySelectorAll('.year-plan-public-holiday,.year-plan-holiday[data-holiday-start="true"]')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,googleColor:event.dataset.googleColor,birthday:event.classList.contains('is-birthday')}))}))}));
+   return g.YearPlanPdf.open({year,months,colors,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
+
+ }
  function init(){
   if(!$('months'))return;
   if(!portal){const nav=document.querySelector('.top-nav');if(nav&&typeof ResizeObserver==='function')new ResizeObserver(updateToolsOffset).observe(nav);g.addEventListener('resize',updateToolsOffset);updateToolsOffset();document.getElementById('yearPlanTab').onclick=()=>showView('yearPlanView');document.getElementById('plansTab').onclick=()=>showView('plansView');}
   const change=next=>{if(!Number.isInteger(next)||next<2000||next>2100){$('year').value=year;return;}year=next;load();};
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
   $('today').onclick=()=>{const today=dayKey(Date.now()),currentYear=Number(today.slice(0,4)),month=Number(today.slice(5,7))-1;if(year!==currentYear){load(true);return;}jump(month);};$('reload').onclick=()=>load();
-  $('print').textContent='Als PDF ansehen';$('print').onclick=()=>{
-   if(privateData&&!accessCurrent())return lock();
-   if(!loaded||!privateData)return;
-   const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),compactHolidays:[...row.querySelectorAll('.year-plan-public-holiday,.year-plan-holiday[data-holiday-start="true"]')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,googleColor:event.dataset.googleColor,birthday:event.classList.contains('is-birthday')}))}))}));
-   g.YearPlanPdf.open({year,months,colors,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
-  };
+  $('print').textContent='Als PDF ansehen';$('print').onclick=openPdf;
   for(const id of ['filter','birthdays','holidays'])$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
   const monthLabel=node('label','Monat '),monthSelect=node('select');monthLabel.className='year-plan-month-jump';monthSelect.id='year-plan-month';monthSelect.setAttribute('aria-label','Zum Monat springen');
   for(let month=0;month<12;month++){const option=node('option',format(Date.UTC(2026,month,15),{month:'long'}));option.value=month;monthSelect.append(option);}monthSelect.value=Number(dayKey(Date.now()).slice(5,7))-1;monthLabel.append(monthSelect);$('today').before(monthLabel);
@@ -121,7 +124,7 @@
   if(portal){
    $('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Als PDF ansehen';
    // The personal portal has its own authentication and scrolling lifecycle.
-   g.addEventListener('portal-pagechange',e=>{if(e.detail?.page==='more-year-plan')load(true);else if(privateData||message==='Jahresplan wird geladen …')lock();});
+   g.addEventListener('portal-pagechange',e=>{if(e.detail?.page==='more-year-plan')load(true,{openPdfOnLoad:true});else if(privateData||message==='Jahresplan wird geladen …')lock();});
    const other=$('filter').querySelector('option[value="other"]');if(other)other.remove();
   }
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&privateData&&!accessCurrent())lock();});

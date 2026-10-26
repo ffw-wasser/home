@@ -1,11 +1,9 @@
-# Motorola-Kurzanleitung Baden-Württemberg
+# Motorola-Taschenkarte Baden-Württemberg
 
-Original: Landesfeuerwehrschule Baden-Württemberg, Taschenkarte Digitalfunk BOS – Motorola, März 2025.
+Die unveränderte allgemeine Taschenkarte ist eine optionale Ergänzung; ihre Gerätevarianten müssen nicht mit der Ausstattung in Wasser übereinstimmen.
 
 Quelle: https://www.lfs-bw.de/fileadmin/LFS-BW/themen/technik/funk/digitalfunk/bedienhinweise/dokumente/Taschenkarte_Digitalfunk_Motorola_A6_2025_editierbar.pdf
 
-Die PDF ist unverändert; die drei WebP-Abbildungen zeigen die Gerätespalten der zweiten Seite. Bildnachweise bleiben in der PDF enthalten. Die Abbildungen ersetzen keine örtliche Geräteeinweisung.
+SHA-256: `30d1b99bb1c48f58b73ea7fee71b9203c72a5b4e0560cdd3b65b925097b57d36`.
 
-SHA-256 der Original-PDF: `30d1b99bb1c48f58b73ea7fee71b9203c72a5b4e0560cdd3b65b925097b57d36`.
-
-Die vier wasser-*.webp sind verkleinerte, vom Anwender bereitgestellte Gerätefotos. EXIF-Metadaten werden nicht übernommen. Die im Foto sichtbare Rufgruppe ist eine Momentaufnahme und keine allgemeine Gruppenanweisung. PMWN4025A bezeichnet laut Hersteller ein Telephone Style Control Head; es wird aus dem Zubehörschild keine Transceiver-Modellnummer abgeleitet.
+Die Geräteansichten werden als HTML/CSS-Schemata in deckel.html dargestellt. Die vom Anwender bereitgestellten Fotos dienen ausschließlich als Referenz. Sichtbare Displayzeilen: Handfunkgerät „BWFW EM EMM 5 / HRT 1 / DMO FW / 309_F*“; Fahrzeug-Bedienhörer „BWFW EM EMM 5 / LF10 1 / EM LKr / FW EM BG“. Keine Transceiver-Modellnummer wird aus dem Bedienhörer abgeleitet. Die Beispielgruppen sind keine Einsatzanweisung.

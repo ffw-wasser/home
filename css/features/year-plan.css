@@ -104,3 +104,7 @@
 
 @media(min-width:761px) and (max-height:740px){.home-session-type-panel .calendar-sidebar:not(.is-expanded) .calendar-sidebar-scroll{height:120px;min-height:120px}}
 
+
+/* No intermediate calendar flash while the personal PDF is prepared. */
+#more-year-plan.year-plan-opening>:not(#year-plan-status){visibility:hidden}
+#more-year-plan.year-plan-opening>#year-plan-status{visibility:visible}

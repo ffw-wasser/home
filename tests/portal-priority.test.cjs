@@ -42,7 +42,7 @@ test('Benachrichtigungslink scrollt weiterhin direkt zum beantworteten Termin',(
 test('Nur der erste Termin erhält eine Überschrift, unsichere Antwort bleibt als eigene Karte sichtbar',()=>{
  const f=fixture(),now=Date.now();f.c.paint({uncertainReplies:true,events:[event('next',now+10000,'maybe'),event('later',now+20000)]});
  assert.equal(f.events.querySelectorAll('h2').filter(n=>n.textContent==='Nächster Termin').length,1);assert.equal(f.events.children[0].children[0].className,'portal-next-heading');assert.equal(f.events.querySelector('article').querySelectorAll('span').some(n=>n.textContent==='Nächster Termin'),false);
- const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelectorAll('strong').find(n=>n.className.startsWith('portal-answer')).textContent,'Gesehen · noch unsicher');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'✓ Noch unsicher');
+ const card=f.events.querySelector('article');assert.equal(card.dataset.status,'maybe');assert.equal(card.querySelectorAll('strong').find(n=>n.className.startsWith('portal-answer')).textContent,'');assert.equal(card.querySelectorAll('button').find(b=>b.dataset.reply==='maybe').textContent,'✓ Noch unsicher');
 });
 test('Kurze Beschriftung der Rückmeldeübersicht behält die Gruppenführer-Berechtigung',()=>{
  const f=fixture(),events=[event('next',Date.now()+10000)];f.c.paint({events,leader:false});assert.equal(f.events.querySelectorAll('details').length,0);
@@ -102,7 +102,7 @@ test('Terminkarte ordnet Thema vor Datum an und zeigt Ort und Kleidung kompakt',
  const f=fixture();f.c.paint({events:[{...event('test',Date.now()+60000),title:'Technische Hilfe',location:'GH Wasser',clothing:'Einsatz'}]});
  const info=f.events.querySelector('article').children[0];
  assert.equal(info.children[0].className,'portal-event-badges');assert.equal(info.children[1].tagName,'h3');assert.equal(info.children[1].textContent,'Technische Hilfe');assert.equal(info.children[2].className,'portal-event-date');
- const rows=info.children.filter(n=>n.className==='portal-event-meta');assert.deepEqual(rows.map(n=>n.children[1].textContent),['GH Wasser','Einsatzkleidung']);
+ const rows=info.querySelectorAll('p').filter(n=>n.className==='portal-event-meta');assert.deepEqual(rows.map(n=>n.children[1].textContent),['GH Wasser','Einsatzkleidung']);
 });
 test('Rückmeldungsdialog bleibt getrennt und verwirft verspätete Antworten nach Schließen',async()=>{
  const body=new Node(),make=(tag,text)=>{const n=new Node(tag,text);n.addEventListener=()=>{};n.showModal=()=>{n.open=true;};n.close=()=>{n.open=false;};return n;};
@@ -183,7 +183,7 @@ test('Wochenblatt bleibt am Jahreswechsel und beim Beginn der Sommerzeit korrekt
 
 
 test('Zusage wird allein durch Auswahl angezeigt; die Uhrzeit bleibt die Startzeit der jeweiligen Karte',()=>{
- const f=fixture(),start=Date.now()+86400000,events=[event('one',start,'yes'),event('two',start+3*3600000,'excused')];f.c.paint({events});const cards=f.events.querySelectorAll('article');const rows=cards[0].children[0].children.filter(n=>n.className==='portal-event-meta'||n.className==='portal-event-meta portal-event-time');assert.equal(rows[0].children[1].textContent,'GH Wasser');assert.equal(rows[1].className,'portal-event-meta portal-event-time');assert.equal(cards[0].querySelectorAll('strong').find(n=>n.className==='portal-answer portal-answer-yes').textContent,'');for(let i=0;i<events.length;i++){const expected=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(events[i].start))+' Uhr';assert.equal(cards[i].querySelectorAll('strong').find(n=>n.className==='portal-event-clock').textContent,expected);}
+ const f=fixture(),start=Date.now()+86400000,events=[event('one',start,'yes'),event('two',start+3*3600000,'excused')];f.c.paint({events});const cards=f.events.querySelectorAll('article');const rows=cards[0].querySelectorAll('p').filter(n=>n.className==='portal-event-meta'||n.className==='portal-event-meta portal-event-time');assert.equal(rows[0].children[1].textContent,'GH Wasser');assert.equal(rows[1].className,'portal-event-meta portal-event-time');assert.equal(cards[0].querySelectorAll('strong').find(n=>n.className==='portal-answer portal-answer-yes').textContent,'');for(let i=0;i<events.length;i++){const expected=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(events[i].start))+' Uhr';assert.equal(cards[i].querySelectorAll('strong').find(n=>n.className==='portal-event-clock').textContent,expected);}
 });
 
 
