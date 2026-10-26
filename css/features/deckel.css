@@ -303,3 +303,5 @@ body:has(#portal-section[hidden]) .portal-checkin-launch{display:none}
 .training-dialogue ol{padding-left:1.4em}
 .training-dialogue li{margin:12px 0}
 .training-dialogue li p{margin:4px 0}
+
+#training-radio .portal-more-tile:last-child{grid-column:1/-1}
