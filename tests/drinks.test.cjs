@@ -322,8 +322,9 @@ test('Korrektur in OneDrive übersteht verlorene Antwort, Konflikte und parallel
   const corrected=await a.S.book('a',c,'null');assert.equal(a.M.totals(corrected).count,0);
   await a.S.book('a',c,'null');assert.equal((await a.S.read('a')).bookings.length,2);
   await assert.rejects(a.S.book('a',correction(d.id,'correct-other',1,now),'null'),/korrigiert/);
-  const yesterday=new Date(Date.now()-86400000).toISOString();await a.S.book('b',{...d,createdAt:yesterday},'null');
-  await assert.rejects(a.S.book('b',correction(d.id,'correct-old',1,yesterday),'null'),/Nur heute/);
+  // A Berlin calendar day can have 25 hours when daylight saving ends.
+  const earlierDay=new Date(Date.now()-2*86400000).toISOString();await a.S.book('b',{...d,createdAt:earlierDay},'null');
+  await assert.rejects(a.S.book('b',correction(d.id,'correct-old',1,earlierDay),'null'),/Nur heute/);
 });
 test('Gleichzeitige Korrekturen können denselben Strich nicht doppelt zurückgeben',async()=>{
   const a=app(),now=new Date().toISOString();await a.S.book('a',{...drink('drink-today',1),createdAt:now},'null');

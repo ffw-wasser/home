@@ -21,5 +21,7 @@ function validate(items){
   seen.add(item.id);return {id:item.id,label:item.label.trim(),title:item.title.trim(),sourceUpdated:item.sourceUpdated,url:pdfUrl(item.url)};
  });
 }
-g.RegulationsModel={source,defaults,validate,pdfUrl};
+function bundledPdf(value){const url=pdfUrl(value),entry=entries.find(([id])=>url===base+'FwDV_'+id+'.pdf');return entry?'assets/regulations/fwdv-'+entry[0]+'.pdf':null;}
+function bundledParts(value){const file=bundledPdf(value);return file?file.endsWith('fwdv-001.pdf')?['assets/regulations/fwdv-001-1.bin','assets/regulations/fwdv-001-2.bin']:[file]:null;}
+g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
 })(globalThis);

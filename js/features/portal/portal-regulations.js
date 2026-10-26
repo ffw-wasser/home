@@ -5,8 +5,16 @@ const $=id=>document.getElementById(id),M=g.RegulationsModel;
 let generation=0,adminGeneration=0,version=0,draft=[],saving=false,catalogue=[],book=null,currentItem=null,pdfRequest=null;
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
 function closePdf(){
- generation++;pdfRequest?.abort();pdfRequest=null;book?.destroy();book=null;currentItem=null;const reader=$('regulations-reader');if(reader?.open)reader.close();if(reader)reader.hidden=true;
+ generation++;const active=book;book=null;currentItem=null;const reader=$('regulations-reader');if(reader?.open)reader.close();if(reader)reader.hidden=true;
  if($('regulations-list'))$('regulations-list').hidden=false;if($('regulations-search-area'))$('regulations-search-area').hidden=false;
+ pdfRequest?.abort();pdfRequest=null;try{active?.destroy();}catch{}
+}
+async function readPdf(item,signal){
+ const files=M.bundledParts(item.url);if(!files)return g.H2OPortal.api('regulations/pdf',{url:item.url},{signal});
+ const chunks=[];let size=0;
+ for(const file of files){const response=await fetch(new URL(file,document.baseURI),{credentials:'omit',referrerPolicy:'no-referrer',signal});if(!response.ok)throw Error('Die Vorschrift konnte nicht geladen werden. Bitte erneut versuchen oder das Original öffnen.');const chunk=new Uint8Array(await response.arrayBuffer());size+=chunk.length;if(size>30*1024*1024)throw Error('Die PDF ist zu groß. Bitte das Original öffnen.');chunks.push(chunk);}
+ const bytes=chunks.length===1?chunks[0]:new Uint8Array(size);if(chunks.length>1){let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}}
+ if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Die PDF ist unvollständig. Bitte erneut laden.');return bytes;
 }
 function bookState(state){
  $('regulations-page').value=state.pageNumber;$('regulations-page').max=state.pageCount;$('regulations-pages').textContent='von '+state.pageCount;
@@ -23,11 +31,11 @@ async function openPdf(item){
  $('regulations-list').hidden=true;$('regulations-search-area').hidden=true;$('regulations-reader').hidden=false;$('regulations-reader').showModal();
  $('regulations-book-status').textContent='Buch wird geladen …';$('regulations-book-tools').hidden=true;$('regulations-book-map').hidden=true;$('regulations-retry').hidden=true;
  try{
-  const controller=new AbortController();pdfRequest=controller;const timeout=setTimeout(()=>controller.abort(),65000);let bytes;try{bytes=await g.H2OPortal.api('regulations/pdf',{url},{signal:controller.signal});}finally{clearTimeout(timeout);if(pdfRequest===controller)pdfRequest=null;}if(epoch!==generation)return;
+  const controller=new AbortController();pdfRequest=controller;const timeout=setTimeout(()=>controller.abort(),20000);let bytes;try{bytes=await readPdf(item,controller.signal);}finally{clearTimeout(timeout);if(pdfRequest===controller)pdfRequest=null;}if(epoch!==generation)return;
   book=g.PlanZoom.create($('regulations-book-map'),bytes,{label:item.label+' · '+item.title,onChange:bookState,onSwipe:direction=>turn(book.pageNumber+direction)});
-  await book.ready;if(epoch!==generation)return;
+  let renderTimer;try{await Promise.race([book.ready,new Promise((_,reject)=>{renderTimer=setTimeout(()=>reject(Error('Die Buchansicht braucht zu lange. Bitte erneut laden oder das Original öffnen.')),12000);})]);}finally{clearTimeout(renderTimer);}if(epoch!==generation)return;
   $('regulations-book-tools').hidden=false;$('regulations-book-status').textContent='Wischen zum Blättern · Mit zwei Fingern zoomen';$('regulations-book-map').focus({preventScroll:true});
- }catch(e){if(epoch!==generation)return;book?.destroy();book=null;$('regulations-book-map').hidden=true;$('regulations-book-status').textContent='Das Buch konnte nicht geladen werden. '+(g.ConnectionStatus?.message(e)||e.message);$('regulations-retry').hidden=false;}
+ }catch(e){if(epoch!==generation)return;try{book?.destroy();}catch{}book=null;$('regulations-book-map').hidden=true;$('regulations-book-status').textContent='Das Buch konnte nicht geladen werden. '+(g.ConnectionStatus?.message(e)||e.message);$('regulations-retry').hidden=false;}
 }
 function render(items){
  catalogue=items;filter();
@@ -77,6 +85,8 @@ async function adminSave(event){
 }
 function init(){
  $('regulations-search')?.addEventListener('input',filter);
+ $('regulations-original')?.addEventListener('click',closePdf);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&$('regulations-reader')?.open)closePdf();});
  $('regulations-reader')?.addEventListener('close',()=>{if(!$('regulations-reader').open&&!$('regulations-reader').hidden)closePdf();});
  $('regulations-prev')?.addEventListener('click',()=>turn(book.pageNumber-1));$('regulations-next')?.addEventListener('click',()=>turn(book.pageNumber+1));
  $('regulations-page')?.addEventListener('change',()=>turn($('regulations-page').value));

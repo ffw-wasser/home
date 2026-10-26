@@ -20390,7 +20390,9 @@ function validate(items){
   seen.add(item.id);return {id:item.id,label:item.label.trim(),title:item.title.trim(),sourceUpdated:item.sourceUpdated,url:pdfUrl(item.url)};
  });
 }
-g.RegulationsModel={source,defaults,validate,pdfUrl};
+function bundledPdf(value){const url=pdfUrl(value),entry=entries.find(([id])=>url===base+'FwDV_'+id+'.pdf');return entry?'assets/regulations/fwdv-'+entry[0]+'.pdf':null;}
+function bundledParts(value){const file=bundledPdf(value);return file?file.endsWith('fwdv-001.pdf')?['assets/regulations/fwdv-001-1.bin','assets/regulations/fwdv-001-2.bin']:[file]:null;}
+g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
 })(globalThis);
 
 /* Shared display metadata only. Never used for attendance, bonuses or audiences. */
@@ -22272,7 +22274,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"b18cc8ec9f19549c4339f1072e19aeb1475eefe1ce1b5bddc4b222343e1922d8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"81746995424cafa8e5c652866e313a6eb5321613736dc2e504a23e59c02f182e",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

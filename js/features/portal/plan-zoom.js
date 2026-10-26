@@ -23,6 +23,7 @@ function create(host,bytes,{pageNumber=1,label:documentLabel='Hydrantenplan',onC
  }
  function resize(){
   if(disposed||!page||host.clientWidth<1||host.clientHeight<1)return;
+  if(width===host.clientWidth&&height===host.clientHeight)return;
   const oldFit=fit,oldW=width,oldH=height,oldScale=scale;const base=page.getViewport({scale:1});
   width=host.clientWidth;height=host.clientHeight;fit=Math.min(width/base.width,height/base.height);scale=fit*(oldW?oldScale/oldFit:1);
   x=oldW?width/2-(oldW/2-x)*scale/oldScale:0;y=oldH?height/2-(oldH/2-y)*scale/oldScale:0;clamp();draw();
