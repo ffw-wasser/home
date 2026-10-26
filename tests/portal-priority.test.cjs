@@ -178,3 +178,8 @@ test('Wochenblatt markiert nur weitere persönliche Termine derselben Berliner W
 test('Wochenblatt bleibt am Jahreswechsel und beim Beginn der Sommerzeit korrekt',()=>{
  const {c}=fixture();for(const [stamp,first,last] of [['2027-01-01T09:00Z','2026-12-28','2027-01-03'],['2026-03-29T09:00Z','2026-03-23','2026-03-29']]){const e=event('test',Date.parse(stamp)),w=c.calendarWeek(e,[e]);assert.equal(w.days[0].iso,first);assert.equal(w.days[6].iso,last);assert.equal(w.days.filter(d=>d.selected).length,1);}
 });
+
+
+test('Zusage wird allein durch Auswahl angezeigt; die Uhrzeit bleibt die Startzeit der jeweiligen Karte',()=>{
+ const f=fixture(),start=Date.now()+86400000,events=[event('one',start,'yes'),event('two',start+3*3600000,'excused')];f.c.paint({events});const cards=f.events.querySelectorAll('article');assert.equal(cards[0].querySelectorAll('strong').find(n=>n.className==='portal-answer portal-answer-yes').textContent,'');for(let i=0;i<events.length;i++){const expected=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(events[i].start))+' Uhr';assert.equal(cards[i].querySelectorAll('strong').find(n=>n.className==='portal-event-clock').textContent,expected);}
+});
