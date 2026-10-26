@@ -23,6 +23,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
@@ -42,6 +44,11 @@ jobs:
       - run: xcodegen generate --spec native/ios/project.yml
       - name: Compile iPhone app and tests without distribution credentials
         run: xcodebuild build-for-testing -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath native/ios/build CODE_SIGNING_ALLOWED=NO
+      - name: Run native link security tests on an available iPhone simulator
+        run: |
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/h2o-simulators.json"
+          H2O_SIMULATOR_ID=$(python3 -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"h2o-simulators.json"))); print(next(x["udid"] for runtime,items in d["devices"].items() if "iOS" in runtime for x in items if x.get("isAvailable") and "iPhone" in x["name"]))')
+          xcodebuild test-without-building -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal -destination "id=$H2O_SIMULATOR_ID" -derivedDataPath native/ios/build -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
       - uses: actions/upload-artifact@v4
         with:
           name: h2o-ios-simulator-only

@@ -30,6 +30,8 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
     private lateinit var web: WebView
     private lateinit var status: TextView
+    private var pageFailed = false
+    private var passkeysSupported = false
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         if (allowed) reminderTime() else notice("Mitteilungen sind nicht freigegeben. Die App bleibt nutzbar.")
     }
@@ -62,22 +64,24 @@ class MainActivity : ComponentActivity() {
             userAgentString += " H2ONative/1 Android"
             setSupportMultipleWindows(true)
         }
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)) {
+        passkeysSupported = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)
+        if (passkeysSupported) {
             WebSettingsCompat.setWebAuthenticationSupport(web.settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
         } else notice("Diese Android-WebView-Version unterstützt keine Passkeys. Bitte Android System WebView aktualisieren oder das Portal im Browser öffnen.")
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false)
         web.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageFailed = false }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 if (!request.isForMainFrame) return false
                 val value = request.url.toString()
                 if (PortalLinks.trusted(value)) return false
-                external(request.url); return true
+                if (request.hasGesture()) external(request.url); return true
             }
-            override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) { handler.cancel(); notice("Die sichere Verbindung ist fehlgeschlagen. Bitte später erneut versuchen.") }
+            override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) { handler.cancel(); pageFailed = true; notice("Die sichere Verbindung ist fehlgeschlagen. Bitte später erneut versuchen.") }
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) notice("Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen.")
+                if (request.isForMainFrame) { pageFailed = true; notice("Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen.") }
             }
-            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url)) status.visibility = View.GONE }
+            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {

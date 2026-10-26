@@ -17,7 +17,7 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | Anmeldung | Bestehende Passkeys; explizite Android-Zertifikatsbindung im Worker vorbereitet |
 | Erinnerung | Freiwillige, allgemeine tägliche App-Erinnerung, lokal auf dem Gerät |
 | Ohne Internet | Native Einstiegshilfe und erneutes Laden; private Serverdaten brauchen Internet |
-| Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build mit kompilierten Tests |
+| Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build mit ausgeführten Link-Sicherheitstests |
 | Datenschutz | HTTPS, keine Geheimnisse im Projekt, keine privaten URLs in Logs/Analytics, Android-Backup aus |
 
 Die lokale Erinnerung heißt bewusst **App-Erinnerung**. Sie ist keine Synchronisierung
@@ -27,6 +27,14 @@ Browser-Push-Aktivierung und den Home-Bildschirm-Installationshinweis aus. Es wi
 keine funktionsfähige Serverbenachrichtigung vorgetäuscht.
 
 ## Was vor der ersten Anmeldung nötig ist
+
+Entwicklerkonten können Gebühren verursachen. Für eine berechtigte gemeinnützige
+Organisation oder Behörde kann bei Apple ein Gebührenerlass beantragt werden;
+die Feuerwehr sollte den rechtlich passenden Anbieter vor der Anmeldung klären.
+Google nennt eine einmalige Registrierungsgebühr von 25 USD. Es wurden keine Konten
+registriert und keine Zahlungen ausgelöst. Offizielle Hinweise:
+https://developer.apple.com/de/help/account/membership/fee-waivers und
+https://support.google.com/googleplay/android-developer/answer/6112435 .
 
 1. Finale App-Kennung bestätigen: derzeit `de.feuerwehrwasser.h2o` auf beiden Plattformen.
 2. Apple-Team-ID und Android-App-Signaturzertifikat festlegen. Google Play App Signing
@@ -73,7 +81,10 @@ xcodegen generate --spec native/ios/project.yml
 xcodebuild build-for-testing -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 ```
 
-Das Build-Workflow erzeugt ein **Entwicklungs-APK** und eine **Simulator-App**.
+Der Build-Workflow führt die iOS-Link-Tests auf einem verfügbaren iPhone-Simulator aus.
+Der XCTest-Start lädt dabei das Produktivportal nicht automatisch.
+
+Der Build-Workflow erzeugt ein **Entwicklungs-APK** und eine **Simulator-App**.
 Das sind keine fertigen App-Store-Pakete. Ein Simulator-Build kann weder auf einem
 iPhone installiert noch bei Apple eingereicht werden. Android-Debug-Keys niemals
 in der produktiven Origin-Liste freischalten; dafür einen getrennten Testdienst nutzen.
