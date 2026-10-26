@@ -200,3 +200,8 @@ test('Wochenblatt zeigt wieder den Wochenzeitraum und hebt genau einen Termintag
   assert.equal(cells[0].children.length,2);assert.equal(cells[5].children.length,2);
  }
 });
+
+
+test('Monatsmarke zeigt den Berliner Monat des Termins, auch an Monatsgrenzen',()=>{
+ const {c}=fixture();for(const [start,label] of [['2026-10-26T18:00:00Z','Okt'],['2026-10-31T23:30:00Z','Nov'],['2026-12-31T23:30:00Z','Jan']])assert.equal(c.eventMonthLabel(event('month',Date.parse(start))),label);
+});
