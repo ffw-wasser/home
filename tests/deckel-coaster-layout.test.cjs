@@ -24,7 +24,7 @@ test('Portalnavigation bleibt erreichbar und passt ohne horizontales Scrollen au
  const nav=html.slice(html.indexOf('<nav id="deckel-nav"'),html.indexOf('</nav>',html.indexOf('<nav id="deckel-nav"')));
  assert.equal((nav.match(/data-deckel-target=/g)||[]).length,5);
  assert.match(nav,/data-deckel-target="account" aria-label="Mein Deckel"/);
- assert.match(nav,/aria-label="Mein Deckel"><span class="portal-nav-symbol" aria-hidden="true"><svg\b[^>]*>[\s\S]*?<\/svg><\/span><strong>Deckel<\/strong>/);
+ assert.match(nav,/aria-label="Mein Deckel"><span class="portal-nav-symbol" aria-hidden="true"><span class="portal-icon-art portal-icon-coaster"><\/span><\/span><strong>Deckel<\/strong>/);
  assert.match(nav,/data-portal-pinned="more"/);
  assert.match(portalCss,/\.deckel-nav\{[^}]*overflow:visible/);
  const match=portalCss.match(/\.deckel-nav button\{([^}]+)\}/);

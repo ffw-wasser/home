@@ -1,16 +1,16 @@
 /* Portal styles shared by the personal phone view and the administration. */
 .portal-section{margin:28px 0;padding:20px 0;border-top:2px solid #c4d0df}.portal-section h2{font-size:1.5625rem;margin:0 0 10px}.portal-event{background:#fafbfd;border:1px solid #d7dfe8;border-radius:18px;padding:18px;margin:16px 0;box-shadow:0 4px 16px #10223c08}.portal-event .portal-event-date{display:block;margin:0 0 14px;padding:12px;border-radius:11px;border-left:4px solid #075baf;background:var(--surface,#e7f0fa);color:#102f56;font-size:1.125rem;font-weight:850;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.portal-event h3{margin:0 0 12px;font-size:1.5rem;font-weight:850;line-height:1.25}.portal-event p{overflow-wrap:anywhere}.portal-answer{display:block;margin:16px 0 12px;font-size:1rem;line-height:1.5}.portal-answer-yes{color:#276543}.portal-answer-excused{color:#76531c}.portal-answer-open{color:#9c2835}.portal-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 0}.portal-choices button{width:100%;min-width:0;min-height:64px;padding:12px 8px;border:2px solid transparent;border-radius:14px;font-size:1.0625rem;font-weight:850;line-height:1.2;overflow-wrap:anywhere;hyphens:auto;box-shadow:none}.portal-choices button[aria-pressed=true]{box-shadow:inset 0 0 0 1px #ffffff66}.portal-event details{border-top:1px solid #d7dfe8;margin-top:16px}.portal-event h4{font-size:var(--portal-support-size,0.9375rem);margin:16px 0 5px}.portal-notifications{margin-top:22px;border-top:1px solid #c4d0df}.portal-notifications button{margin:5px 0}.portal-admin-qr{display:block;width:min(100%,360px);height:auto;margin:20px auto;image-rendering:pixelated}.portal-admin-qr[hidden]{display:none}.portal-calendar-picker{padding:16px 0;margin-bottom:18px;border-bottom:1px solid #d7dfe8}.portal-calendar-picker button{margin-top:12px}.portal-attendance-replies{grid-column:1/-1}.portal-attendance-replies details{padding:10px 0;border-bottom:1px solid #ddd}.portal-attendance-replies summary{cursor:pointer;font-weight:700}.portal-attendance-replies p{line-height:1.6}.portal-attendance-replies button{margin:10px 10px 0 0}#settingsPortalView .panel,#settingsCalendarView .panel{margin-bottom:20px}#settingsPortalView label,#settingsCalendarView label{display:block;margin:16px 0 8px}#settingsPortalView input[type=checkbox],#settingsCalendarView input[type=checkbox]{appearance:auto;-webkit-appearance:checkbox;display:inline-block;position:static;width:24px;height:24px;min-width:24px;min-height:24px;padding:0;margin:0 10px 0 0;opacity:1;visibility:visible;vertical-align:middle;accent-color:#176b36}#settingsPortalView .primary-button,#settingsCalendarView .primary-button{margin-top:14px}/* Five equal-width phone menu tiles; long German labels wrap inside their own tiles. */
 .deckel-nav{display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;padding-inline:max(5px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-left));box-sizing:border-box;overflow:visible;overscroll-behavior-x:none}
-.deckel-nav::-webkit-scrollbar{display:none}.deckel-nav button{width:auto;max-width:100%;min-width:0;min-height:58px;padding:5px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;letter-spacing:-.02em;line-height:1.16;text-align:center;white-space:normal;overflow-wrap:anywhere;hyphens:auto;overflow:hidden;justify-content:flex-start}
+.deckel-nav::-webkit-scrollbar{display:none}.deckel-nav button{width:auto;max-width:100%;min-width:0;min-height:58px;padding:5px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;letter-spacing:-.02em;line-height:1.16;text-align:center;white-space:normal;overflow-wrap:anywhere;hyphens:auto;overflow:hidden;justify-content:center}
 /* Both icon classes follow their current container when tiles are moved. */
-.deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;font-size:24px;line-height:1}
-.deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img){display:block;width:24px;height:24px;max-width:100%;max-height:100%;object-fit:contain}
-#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;grid-column:1;grid-row:1;align-self:center;width:28px;height:28px;margin:0;padding:0;border-radius:0;background:transparent;color:#12639d;font-size:26px;line-height:1}
-#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img){display:block;width:26px;height:26px;max-width:100%;max-height:100%;object-fit:contain}
+.deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;margin:0;padding:0;border-radius:0;background:transparent;font-size:24px;line-height:1}
+.deckel-nav button>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img,.portal-icon-art){display:block;width:30px;height:30px;max-width:100%;max-height:100%;object-fit:contain}
+#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon){display:grid;place-items:center;grid-column:1;grid-row:1;align-self:center;width:32px;height:32px;margin:0;padding:0;border-radius:0;background:transparent;color:#12639d;font-size:26px;line-height:1}
+#portal-more-grid .portal-more-tile>:is(.portal-nav-symbol,.portal-more-icon)>:is(svg,img,.portal-icon-art){display:block;width:30px;height:30px;max-width:100%;max-height:100%;object-fit:contain}
 #portal-more-grid [data-portal-tile="more-year-plan"] strong{overflow-wrap:anywhere}
 #portal-more-grid [data-portal-tile="more-breathing"] strong{word-break:normal;overflow-wrap:normal;hyphens:none}
 @media(pointer:coarse) and (max-height:500px) and (orientation:landscape){.deckel-nav button{justify-content:center}}
-.deckel-nav button>strong{font-size:inherit;max-width:100%;white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.deckel-nav button>strong{display:none}
 [data-portal-tile],[data-portal-pinned]{--portal-symbol:#176eb1;--portal-symbol-active:#8bcfff}
 [data-portal-tile="portal-evidence"]{--portal-symbol:#187449;--portal-symbol-active:#92e4b6}
 [data-portal-tile="account"]{--portal-symbol:#9a5d08;--portal-symbol-active:#ffd17d}
@@ -155,6 +155,24 @@
 .portal-event-badges span:first-child{background:var(--card,#dceafa);color:#164778}
 .portal-event-date time{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .portal-event-day{font-size:clamp(1rem,4.4vw,1.375rem);font-weight:850;line-height:1.3;white-space:normal}
+/* Shared artwork; source rectangles allow equal, unclipped icon sizes. */
+.portal-icon-art{display:block;flex:none;background-image:url("../../assets/portal/portal-symbols.webp");background-repeat:no-repeat;pointer-events:none}
+@media(forced-colors:active){.portal-icon-art{forced-color-adjust:none}}
+.portal-icon-calendar{background-size:419.39799% 419.39799%;background-position:2.40838% 4.29319%;}
+.portal-icon-status{background-size:409.80392% 409.80392%;background-position:33.86076% 4.21941%;}
+.portal-icon-coaster{background-size:413.86139% 413.86139%;background-position:66.14090% 4.94217%;}
+.portal-icon-points{background-size:433.91003% 433.91003%;background-position:97.40933% 4.04145%;}
+.portal-icon-hydrants{background-size:429.45205% 429.45205%;background-position:2.49480% 35.44699%;}
+.portal-icon-regulations{background-size:456.00000% 456.00000%;background-position:34.32074% 36.36364%;}
+.portal-icon-water{background-size:430.92784% 430.92784%;background-position:65.73209% 36.24091%;}
+.portal-icon-info{background-size:464.44444% 464.44444%;background-position:96.54472% 36.89024%;}
+.portal-icon-theater{background-size:411.14754% 411.14754%;background-position:2.73973% 66.06955%;}
+.portal-icon-football{background-size:462.73063% 462.73063%;background-position:34.99491% 65.92065%;}
+.portal-icon-security{background-size:452.70758% 452.70758%;background-position:65.40430% 64.89253%;}
+.portal-icon-breathing{background-size:413.86139% 413.86139%;background-position:98.42271% 65.72029%;}
+.portal-icon-more{background-size:486.04651% 486.04651%;background-position:4.31727% 93.87550%;}
+.portal-icon-checkin{background-size:451.07914% 451.07914%;background-position:34.63115% 94.77459%;}
+.portal-month-tab{position:absolute;top:-1px;right:10px;z-index:3;min-width:36px;padding:2px 6px;border-radius:0 0 4px 4px;background:#762c3a;color:#fff;font-size:.875rem;font-weight:800;line-height:1.2;text-align:center;box-shadow:0 2px 3px #10284326;pointer-events:none}
 /* Weekly calendar sheet: seven days, with the event date highlighted. */
 .portal-event-day.portal-calendar-week{display:grid;gap:6px;width:100%;min-width:0;text-align:center}
 .portal-calendar-week-heading{font-size:1rem;font-weight:800;line-height:1.3}
@@ -168,7 +186,7 @@
 .portal-calendar-week-cell:not(.is-event-day)>strong{filter:blur(.25px)}
 .portal-calendar-week-cell.is-event-day>span{position:relative;z-index:3;color:#762c3a}
 .portal-calendar-week-cell.is-event-day>strong{position:relative;z-index:3;background:var(--portal-date-bg,#f6faf7);outline:3px solid #762c3a;border-radius:1px;color:var(--portal-date-ink,#762c3a);transform:scale(1.22);box-shadow:inset 0 0 0 1px #ffffff66,0 1px 0 #ffffff99,0 3px 6px #762c3a30}
-.portal-calendar-week-cell.has-more-events::after{content:"";position:absolute;z-index:4;bottom:1px;left:calc(50% - 3px);width:6px;height:6px;border-radius:50%;background:#075baf}
+.portal-calendar-week-cell.has-more-events::after{content:"";position:absolute;z-index:4;bottom:-6px;left:calc(50% - 5px);width:10px;height:10px;border-radius:50%;background:#b52f43}
 .portal-event-time .portal-event-clock{margin:0;padding:0;background:none;color:var(--ink);font-size:inherit;font-weight:800;line-height:inherit;white-space:normal}
 #portal-events .portal-event-meta{display:flex;align-items:flex-start;gap:12px;padding:4px 0;margin:0;font-size:var(--portal-body-size,1rem);line-height:1.4}
 #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:8px}
