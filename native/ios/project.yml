@@ -7,14 +7,17 @@ settings:
   base:
     SWIFT_VERSION: '5.0'
     MARKETING_VERSION: '1.0.0'
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: '$(H2O_APPLE_TEAM_ID)'
 targets:
   H2OPortal:
     type: application
     platform: iOS
-    sources: [H2OPortal]
+    sources:
+      - H2OPortal
+      - path: ../shared/pdf-export.js
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.feuerwehrwasser.h2o

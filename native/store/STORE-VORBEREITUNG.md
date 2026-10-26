@@ -13,7 +13,7 @@ Einladungs-QR-Scanner, eine Offline-Einstiegshilfe und eine freiwillige täglich
 Erinnerung, das Portal zu prüfen.
 
 Vor Einreichung nur tatsächlich verfügbare Funktionen nennen. Keine Server-Push-
-Mitteilungen oder native PDF-Exporte versprechen, bevor sie implementiert und getestet sind.
+Mitteilungen oder native PDF-Exporte versprechen, bevor sie auf den Zielgeräten vollständig geprüft sind. Die PDF-Übergabe ist inzwischen implementiert; reale Dateien-Apps sind noch zu testen.
 
 ## Noch auszufüllen
 
@@ -27,7 +27,8 @@ Datenschutzangaben nicht pauschal mit „keine Datenerhebung“ beantworten. Das
 verarbeitet je nach Freigabe Mitgliedskennungen, Rückmeldungen, Getränkekontodaten
 und Nachweisgültigkeiten. Die native Kamera wird nur für den QR-Scan genutzt;
 Kamerabilder werden nicht gespeichert oder an einen Dienst übertragen. Die lokale
-App-Erinnerung enthält keine Mitgliedernamen und keine Kontostände. In der
+App-Erinnerung enthält keine Mitgliedernamen und keine Kontostände. Beim expliziten Teilen von PDFs werden vorübergehend private Cache-Dateien angelegt;
+außerhalb der App gespeicherte Kopien bleiben am vom Nutzer gewählten Ort. In der
 Vorbereitung sind keine Werbe- oder Analyse-SDKs eingebaut. Die Angaben zu den
 bestehenden Portal- und Microsoft-/Cloudflare-Diensten sind gesondert zu prüfen.
 

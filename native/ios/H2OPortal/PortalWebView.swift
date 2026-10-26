@@ -7,12 +7,31 @@ struct PortalWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         model.web.navigationDelegate = context.coordinator
         model.web.uiDelegate = context.coordinator
+        let controller = model.web.configuration.userContentController
+        controller.removeScriptMessageHandler(forName: "h2oPdf")
+        controller.add(WeakPdfHandler(context.coordinator), name: "h2oPdf")
+        if let url = Bundle.main.url(forResource: "pdf-export", withExtension: "js"), let script = try? String(contentsOf: url, encoding: .utf8) {
+            controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        }
+        NativePdfPresenter.clean()
         return model.web
     }
     func updateUIView(_ view: WKWebView, context: Context) {}
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    final class WeakPdfHandler: NSObject, WKScriptMessageHandler {
+        weak var target: Coordinator?
+        init(_ target: Coordinator) { self.target = target }
+        func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) { target?.userContentController(controller, didReceive: message) }
+    }
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         private let model: PortalModel
         init(_ model: PortalModel) { self.model = model }
+        func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+            let origin = message.frameInfo.securityOrigin
+            guard message.name == "h2oPdf", message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == "ffw-wasser.github.io", [0,443].contains(origin.port),
+                  let frameURL = message.frameInfo.request.url, PortalLinks.trusted(frameURL),
+                  let webView = message.webView, let url = webView.url, PortalLinks.trusted(url) else { return }
+            NativePdfPresenter.show(body: message.body, webView: webView) { self.model.message = $0 }
+        }
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard action.targetFrame?.isMainFrame != false else { decisionHandler(.allow); return }
             guard let url = action.request.url else { decisionHandler(.cancel); return }

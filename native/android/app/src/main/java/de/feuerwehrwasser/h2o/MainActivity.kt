@@ -18,6 +18,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.webkit.WebMessageCompat
+import androidx.webkit.WebViewCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import androidx.work.*
@@ -32,6 +34,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var status: TextView
     private var pageFailed = false
     private var passkeysSupported = false
+    private var navigationEpoch = 0
+    private lateinit var pdfExport: NativePdfExport
+    private var pdfScript = ""
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         if (allowed) reminderTime() else notice("Mitteilungen sind nicht freigegeben. Die App bleibt nutzbar.")
     }
@@ -51,6 +56,13 @@ class MainActivity : ComponentActivity() {
         action("Hilfe") { help() }
         status = TextView(this).apply { setPadding(12.dp, 8.dp, 12.dp, 8.dp); visibility = View.GONE }
         web = WebView(this)
+        pdfExport = NativePdfExport(this, { !isDestroyed && PortalLinks.trusted(web.url ?: "") }, { navigationEpoch }, ::notice)
+        pdfScript = assets.open("pdf-export.js").bufferedReader().use { it.readText() }
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+            WebViewCompat.addWebMessageListener(web, "H2OPdf", setOf("https://ffw-wasser.github.io")) { view, message, origin, mainFrame, _ ->
+                if (mainFrame && message.type == WebMessageCompat.TYPE_STRING && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1,443) && PortalLinks.trusted(view.url ?: "")) message.data?.let(pdfExport::receive)
+            }
+        }
         column.addView(tools); column.addView(status); column.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(column)
         ViewCompat.setOnApplyWindowInsetsListener(column) { view, insets ->
@@ -70,7 +82,7 @@ class MainActivity : ComponentActivity() {
         } else notice("Diese Android-WebView-Version unterstützt keine Passkeys. Bitte Android System WebView aktualisieren oder das Portal im Browser öffnen.")
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false)
         web.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageFailed = false }
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageFailed = false; navigationEpoch++ }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 if (!request.isForMainFrame) return false
                 val value = request.url.toString()
@@ -81,7 +93,7 @@ class MainActivity : ComponentActivity() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) { pageFailed = true; notice("Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen.") }
             }
-            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
+            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
@@ -126,6 +138,6 @@ class MainActivity : ComponentActivity() {
             .setPositiveButton("Erneut laden") { _, _ -> web.reload() }.setNeutralButton("Im Browser") { _, _ -> external(Uri.parse(PortalLinks.HOME)) }.setNegativeButton("Schließen", null).show()
     }
     private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE } }
-    override fun onDestroy() { web.destroy(); super.onDestroy() }
+    override fun onDestroy() { pdfExport.close(); web.destroy(); super.onDestroy() }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 }

@@ -1,6 +1,6 @@
 # H₂O Portal als iPhone- und Android-App
 
-Stand: Entwicklungsvorbereitung, App-Version 1.0.0 (Build 1).
+Stand: Entwicklungsvorbereitung, App-Version 1.0.0 (Build 2).
 
 Die beiden nativen Projekte übernehmen das bestehende Mitgliederportal über seine
 HTTPS-Adresse. Die Mitglieder müssen die Webseite nicht mehr auf den Home-Bildschirm
@@ -16,6 +16,7 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | Links aus WhatsApp | Universal Links/App Links für deckel.html und termin.html vorbereitet |
 | Anmeldung | Bestehende Passkeys; explizite Android-Zertifikatsbindung im Worker vorbereitet |
 | Erinnerung | Freiwillige, allgemeine tägliche App-Erinnerung, lokal auf dem Gerät |
+| PDF-Export | Native Speichern-/Teilen-Dialoge für bestätigte Portal-PDFs bis 10 MB; Gerätetest noch offen |
 | Ohne Internet | Native Einstiegshilfe und erneutes Laden; private Serverdaten brauchen Internet |
 | Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build, dieselben Link-Sicherheitstests separat mit Apple Foundation |
 | Datenschutz | HTTPS, keine Geheimnisse im Projekt, keine privaten URLs in Logs/Analytics, Android-Backup aus |
@@ -88,6 +89,8 @@ keine WebView und kein Produktivportal gestartet. Ein erfolgreicher Simulator-Bu
 ist kein Nachweis eines bestandenen Kamera-, Passkey- oder Gerätetests.
 
 Der Build-Workflow erzeugt ein **Entwicklungs-APK** und eine **Simulator-App**.
+Zusätzlich entstehen ein **unsigniertes Android-AAB** und ein **unsigniertes iPhone-Gerätearchiv**.
+Diese Pakete sind für die anschließende Signierung vorbereitet.
 Das sind keine fertigen App-Store-Pakete. Ein Simulator-Build kann weder auf einem
 iPhone installiert noch bei Apple eingereicht werden. Android-Debug-Keys niemals
 in der produktiven Origin-Liste freischalten; dafür einen getrennten Testdienst nutzen.
@@ -97,6 +100,50 @@ Automatische Projekt-/Zuordnungsprüfungen:
 ```sh
 node --test tests/native-association.test.cjs tests/portal-identity.test.cjs
 ```
+
+## PDFs in der nativen App
+
+Der mitgelieferte Adapter übernimmt echte Klicks auf PDF-Blob-Links im Mitgliederportal.
+Er lädt keine beliebigen Netzwerkadressen und überträgt keine Sitzungstoken. Nur die
+Hauptseite der exakt erlaubten Portaladresse darf die native Datei-Übergabe ansprechen.
+Dateiname, PDF-Signatur, Inhaltstyp und maximal 10 MB werden auf beiden Seiten geprüft.
+
+Auf Android erscheint die Auswahl zum Speichern in Dateien oder zum Teilen. Beim
+Speichern wird der vom Nutzer gewählte System-Dateidialog verwendet. Beim Teilen
+bekommt nur die ausgewählte Anwendung einen Lesezugriff auf die private Cache-Datei.
+Die FileProvider-Freigabe umfasst nur den PDF-Exportordner, keine Zugangsdateien.
+Nach einer Navigation werden noch nicht bestätigte Exportübergaben verworfen.
+
+Auf iPhone/iPad öffnet sich das systemeigene Teilen-Menü mit „In Dateien sichern“.
+Die temporäre App-Datei wird nach Schließen dieses Menüs entfernt. Abgebrochene
+App-Sitzungen können temporäre Dateien hinterlassen; bei erneutem Öffnen beziehungsweise
+Export werden Dateien, die älter als 24 Stunden sind, aufgeräumt. Auf Android gilt
+entsprechend die Bereinigung beim nächsten Appstart/Export. Eine vom Nutzer bewusst
+außerhalb der App gespeicherte Kopie bleibt am gewählten Speicherort.
+
+## Signierung der Store-Pakete
+
+Android liest Signaturangaben ausschließlich aus der Build-Umgebung:
+`H2O_ANDROID_KEYSTORE`, `H2O_ANDROID_STORE_PASSWORD`, `H2O_ANDROID_KEY_ALIAS`,
+`H2O_ANDROID_KEY_PASSWORD`. Alle vier Werte müssen vollständig vorhanden sein und die
+Keystore-Datei muss existieren. Signaturdateien und Passwörter niemals ins Repository
+oder in öffentliche Workflow-Ausgaben aufnehmen.
+
+Für einen tatsächlichen Release-Build die bereits sicher eingerichtete Umgebung nutzen:
+
+```sh
+H2O_REQUIRE_RELEASE_SIGNING=true gradle -p native/android :app:bundleRelease
+```
+
+Dieser Aufruf bricht ohne Signaturangaben ab. Die normale Build-Prüfung erstellt
+absichtlich ein unsigniertes AAB, damit keine Kontozugangsdaten für PR-Prüfungen nötig
+sind. Das Upload-Zertifikat und der endgültige Google-Play-App-Signaturschlüssel können
+unterschiedlich sein; die Domain-Zuordnung muss zum ausgelieferten App-Zertifikat passen.
+
+Für iOS in Xcode das tatsächliche Team wählen und die zugehörigen Associated Domains
+freischalten. Danach mit gültigem Distributionsprofil archivieren und über Organizer
+verteilen. Das in CI erzeugte unsignierte Gerätearchiv ist ein Build-Nachweis, keine
+auf einem iPhone installierbare oder einreichbare Fassung.
 
 ## Verbindliche Freigabepunkte
 
@@ -110,8 +157,8 @@ Vor einer Store-Einreichung sind noch offen:
   neuer Zugang nach Gerätewechsel, Abmelden, QR-Kamera bei Ablehnung/Abbruch/Hintergrund,
   Termine/Rückmeldungen, Zahlungen, PDF-Buch und PDF-Export, Offline-/Wiederanlauf,
   lokale Erinnerung mit gesperrtem Bildschirm, große Schrift und Screenreader.
-- Speziell prüfen: Dateien-Export und Downloads aus WebViews können zusätzliche
-  native Übergaben benötigen; hierfür wird keine ungeprüfte Funktion zugesichert.
+- Speziell prüfen: Die neue PDF-Übergabe ist automatisiert geprüft und nativ kompiliert;
+  Speichern/Teilen mit den tatsächlichen iPhone-/Android-Datei-Apps bleibt ein Gerätetest.
 - Aktuelle Datenschutzangaben, Support- und Datenschutz-URL, Screenshots,
   Prüfungskonto oder geeigneter Testmodus ohne echte Mitgliederdaten.
 - Entscheidung zum Ablauf eines Löschwunsches und zu den Store-Anforderungen an
