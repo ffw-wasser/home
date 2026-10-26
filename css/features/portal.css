@@ -172,9 +172,9 @@
 .portal-icon-breathing{background-size:413.86139% 413.86139%;background-position:98.42271% 65.72029%;}
 .portal-icon-more{background-size:486.04651% 486.04651%;background-position:4.31727% 93.87550%;}
 .portal-icon-checkin{background-size:451.07914% 451.07914%;background-position:34.63115% 94.77459%;}
-.portal-month-tab{position:absolute;top:-1px;right:10px;z-index:3;min-width:42px;padding:15px 6px 9px;border:1px solid #c8bdb3;border-radius:0 0 4px 4px;background:linear-gradient(#762c3a 0 9px,#fffdf8 9px 100%);color:#762c3a;font-size:.875rem;font-weight:800;line-height:1.2;text-align:center;box-shadow:0 3px 4px #10284335;pointer-events:none}
-.portal-month-tab::before{content:"";position:absolute;top:3px;left:9px;width:3px;height:3px;border-radius:50%;background:#fffdf8;box-shadow:22px 0 0 #fffdf8}
-.portal-month-tab::after{content:"";position:absolute;right:-1px;bottom:-1px;border-top:6px solid #dfd4c6;border-right:6px solid var(--card,#eef7f1)}
+.portal-month-tab{position:absolute;top:-1px;right:10px;z-index:3;min-width:56px;padding:18px 8px 11px;border:1px solid #c8bdb3;border-radius:0 0 4px 4px;background:linear-gradient(#762c3a 0 12px,#fffdf8 12px 100%);color:#762c3a;font-size:1.125rem;font-weight:800;line-height:1.2;text-align:center;box-shadow:0 3px 4px #10284335;pointer-events:none}
+.portal-month-tab::before{content:"";position:absolute;top:4px;left:11px;right:11px;height:4px;background:radial-gradient(circle,#fffdf8 1.6px,transparent 1.8px) left center/4px 4px no-repeat,radial-gradient(circle,#fffdf8 1.6px,transparent 1.8px) right center/4px 4px no-repeat}
+.portal-month-tab::after{content:"";position:absolute;right:-1px;bottom:-1px;border-top:8px solid #dfd4c6;border-right:8px solid var(--card,#eef7f1)}
 #portal-events .portal-event-badges{padding-inline:3rem}
 /* Weekly calendar sheet: seven days, with the event date highlighted. */
 .portal-event-day.portal-calendar-week{display:grid;gap:6px;width:100%;min-width:0;text-align:center}
@@ -225,6 +225,7 @@
 /* Short screens use one reply row; labels wrap without shrinking touch targets. */
 @media(max-width:600px) and (max-height:699px){
  #portal-events .portal-event{padding:16px 10px 4px}
+ #portal-events .portal-month-tab{padding-top:14px;padding-bottom:5px;font-size:1rem}
  #portal-events .portal-event::after{top:12px}
  #portal-events .portal-event-content{gap:1px}
  #portal-events .portal-event-day.portal-calendar-week{display:contents}
@@ -249,7 +250,7 @@
    technology while giving very short phones the full card area. */
 @media(max-width:600px) and (max-height:599px){
  #portal-events .portal-event{padding-top:12px}
- #portal-events .portal-month-tab{padding-top:11px;padding-bottom:4px}
+ #portal-events .portal-month-tab{padding-top:12px;padding-bottom:4px;font-size:1rem}
  #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:4px}
  #portal-events .portal-answer{font-size:.9375rem;margin:5px 0}
  #portal-events .portal-event::before{top:2px;height:6px;background-size:18px 6px}
