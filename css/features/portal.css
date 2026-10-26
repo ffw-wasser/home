@@ -166,6 +166,7 @@
 .portal-calendar-week-cell.has-more-events::after{content:"+" attr(data-other-count);position:absolute;bottom:-5px;right:-3px;min-width:16px;height:14px;padding:0 2px;border-radius:4px;background:#075baf;color:#fff;font-size:.625rem;font-weight:800;line-height:14px;text-align:center}
 .portal-event-time .portal-event-clock{margin:0;padding:0;background:none;color:var(--ink);font-size:inherit;font-weight:800;line-height:inherit;white-space:normal}
 #portal-events .portal-event-meta{display:flex;align-items:flex-start;gap:12px;padding:4px 0;margin:0;font-size:var(--portal-body-size,1rem);line-height:1.4}
+#portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:8px}
 .portal-event-meta>span:first-child{flex:none;width:26px;text-align:center}.portal-event-meta>span:last-child{min-width:0}
 #portal-events .portal-overview-open{display:flex;align-items:center;gap:8px;background:#edf3f9;color:#254e71;border:1px solid #c4d3e2;border-radius:12px;box-shadow:none;text-align:left;padding:8px 10px;min-height:44px;font-size:var(--portal-support-size,.9375rem);font-weight:700;text-decoration:none}
 #portal-events .portal-overview-open::after{content:"›";margin-left:auto;flex:none;font-size:1.5rem;line-height:1}
@@ -224,6 +225,7 @@
    technology while giving very short phones the full card area. */
 @media(max-width:600px) and (max-height:599px){
  #portal-events .portal-event{padding-top:12px}
+ #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:4px}
  #portal-events .portal-answer{font-size:.9375rem}
  #portal-events .portal-event::before{top:2px;height:6px;background-size:18px 6px}
  #portal-events .portal-event::after{top:9px}
