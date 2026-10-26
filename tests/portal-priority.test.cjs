@@ -10,7 +10,7 @@ class Node{
 function fixture(search=''){
  const nodes=new Map(),events=new Node(),find=id=>[events,...events.querySelectorAll('details'),...events.querySelectorAll('article')].find(n=>n.id===id)||nodes.get(id);
  for(const id of ['portal-events','portal-birthday','portal-priority','portal-priority-text'])nodes.set(id,id==='portal-events'?events:new Node());
- const c=vm.createContext({Date,Intl,URLSearchParams,location:{search},deepLinkDone:false,$:id=>find('portal-'+id),node:(tag,text)=>new Node(tag,text),document:{getElementById:find}});
+ const c=vm.createContext({Date,Intl,URLSearchParams,location:{search},deepLinkDone:false,busy:false,pending:null,$:id=>find('portal-'+id),node:(tag,text)=>new Node(tag,text),document:{getElementById:find}});
  vm.runInContext(source.slice(source.indexOf(' const evidenceDate'),source.indexOf(' async function refreshEvidence')),c);
  vm.runInContext(source.slice(source.indexOf(' const date='),source.indexOf(' async function api')),c);
  vm.runInContext(source.slice(source.indexOf(' function paint('),source.indexOf(' async function reply')),c);
