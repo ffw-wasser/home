@@ -183,3 +183,18 @@ test('Wochenblatt bleibt am Jahreswechsel und beim Beginn der Sommerzeit korrekt
 test('Zusage wird allein durch Auswahl angezeigt; die Uhrzeit bleibt die Startzeit der jeweiligen Karte',()=>{
  const f=fixture(),start=Date.now()+86400000,events=[event('one',start,'yes'),event('two',start+3*3600000,'excused')];f.c.paint({events});const cards=f.events.querySelectorAll('article');const rows=cards[0].children[0].children.filter(n=>n.className==='portal-event-meta'||n.className==='portal-event-meta portal-event-time');assert.equal(rows[0].children[1].textContent,'GH Wasser');assert.equal(rows[1].className,'portal-event-meta portal-event-time');assert.equal(cards[0].querySelectorAll('strong').find(n=>n.className==='portal-answer portal-answer-yes').textContent,'');for(let i=0;i<events.length;i++){const expected=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(events[i].start))+' Uhr';assert.equal(cards[i].querySelectorAll('strong').find(n=>n.className==='portal-event-clock').textContent,expected);}
 });
+
+
+test('Termintag bleibt durch Datum und Termin-Markierung eindeutig neben weiteren Wochenterminen',()=>{
+ const {c}=fixture(),current=event('current',Date.parse('2026-11-24T15:30:00Z'));
+ const others=[current,event('monday',Date.parse('2026-11-23T18:00:00Z')),event('saturday',Date.parse('2026-11-28T18:00:00Z'))];
+ for(const status of ['open','yes','excused','maybe']){
+  current.status=status;const {day}=c.weekView(current,others),heading=day.children[0],cells=day.children[1].children;
+  assert.equal(heading.textContent,'Dienstag, 24. November 2026');
+  assert.match(heading.dataset.compact,/Di.*24\.11\.2026/);
+  assert.equal(cells.filter(cell=>cell.className.includes('is-event-day')).length,1);
+  assert.equal(cells[1].querySelector('strong').textContent,'24');
+  assert.equal(cells[1].children.at(-1).textContent,'Termin');
+  assert.equal(cells[0].children.length,2);assert.equal(cells[5].children.length,2);
+ }
+});
