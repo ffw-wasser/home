@@ -121,8 +121,10 @@ const {chromium}=require('playwright');
  }
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:'/tmp/h2o-security-settings.png',fullPage:true});
+ const priorLogout=await page.evaluate(()=>H2OIdentity.session());
  await page.locator('#identity-logout').click();
- await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Passkey oder Passwort anmelden'));
+ await page.waitForFunction(()=>!H2OIdentity.session()&&!document.querySelector('#identity-login').hidden);
+ assert.equal(await f.c.WhatsAppPasskeys.session(f.env,priorLogout.token),null,'logout invalidates this session on the server');
  assert.equal(await page.locator('#identity-panel').evaluate(e=>e.parentElement.id),'identity-entry');
  assert.equal(await page.locator('#deckel-nav').isVisible(),false);
  assert.equal(await page.locator('#account').isVisible(),false);
