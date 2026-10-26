@@ -17,11 +17,11 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
  await page.waitForFunction(()=>document.querySelector('#portal-admin-member').options.length===3);
  await page.locator('#portal-admin-member').selectOption('qa-1');
  await page.evaluate(()=>{
-  window.qaCalls=0;DrinksMobile.adminLink=async()=>{qaCalls++;};DrinksStore.mobileFileName=async id=>id;DrinksStore.readMobileFile=async id=>({data:{memberId:id,alias:'synthetic',revision:'r1'}});
+  window.qaCalls=0;DrinksMobile.preparePortalAccess=async id=>{qaCalls++;return {memberId:id,alias:'synthetic',revision:'r1'};};
   DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?new Promise((resolve,reject)=>{window.qaResolve=()=>resolve({code:'SYNTHETIC-CODE',expiresAt:Date.now()+300000});window.qaReject=()=>reject(Error('Test: keine Verbindung'));}):({evidenceVersion:1});
  });
  page.on('dialog',d=>d.accept());
- const button=page.locator('#portal-admin-show-qr'),status=page.locator('#portal-admin-status'),result=page.locator('#portal-admin-identity-result');
+ const button=page.locator('#portal-admin-show-qr'),status=page.locator('#portal-admin-qr-status'),result=page.locator('#portal-admin-identity-result');
  await button.click();await page.waitForFunction(()=>window.qaResolve);assert.equal(await button.isDisabled(),true);assert.equal(await result.isVisible(),false);
  await page.evaluate(()=>document.querySelector('#portal-admin-show-qr').click());assert.equal(await page.evaluate(()=>qaCalls),1);
  await page.evaluate(()=>qaResolve());await page.waitForFunction(()=>!document.querySelector('#portal-admin-show-qr').disabled);
