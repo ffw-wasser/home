@@ -358,20 +358,19 @@
   admin();const id=$('member').value,version=generation;
   if(!id)throw Error('Bitte zuerst ein Mitglied auswählen.');
   const name=$('member').selectedOptions[0].textContent;
-  if(!confirm((reset?'Alle Passkeys und Sitzungen von '+name+' jetzt sperren und Zugang neu freigeben?':'Passkey-Einrichtung für '+name+' freigeben?')+' Nur fortfahren, wenn du die Identität persönlich geprüft hast.'))return;
-  clearQR();
+  if(!confirm((reset?'Alle Passkeys und Sitzungen von '+name+' jetzt sperren und Zugang neu freigeben?':'Passkey-Einrichtung für '+name+' freigeben?')+' Nur fortfahren, wenn du die Identität persönlich geprüft hast.')){$('qr-status').textContent='';return;}
+  clearQR();qrLoading(true);$('qr-status').textContent='Persönlicher Zugang wird vorbereitet …';
   await syncRoster();admin();if(version!==generation)return;
-  await g.DrinksMobile.adminLink(id);admin();
-  const store=g.DrinksStore,saved=await store.readMobileFile(await store.mobileFileName(id));
-  if(!saved||saved.data.memberId!==id)throw Error('Persönlicher Zugang nicht bestätigt.');
+  const record=await g.DrinksMobile.preparePortalAccess(id,()=>version===generation);admin();
   if(version!==generation)return;admin();
-  const result=await request('identity-ticket',{alias:saved.data.alias,revision:saved.data.revision,reset});
+  const result=await request('identity-ticket',{alias:record.alias,revision:record.revision,reset});
   if(version!==generation)return;admin();
+  $('qr-status').textContent='';
   $('identity-code').value=result.code;$('identity-result').hidden=false;
   const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+result.code;const code=qrcode(0,'M');code.addData(url.href);code.make();const canvas=$('qr'),count=code.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#111';for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(code.isDark(r,c))ctx.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);canvas.hidden=false;$('link').href=url.href;$('link').hidden=false;
   $('identity-status').textContent='Nur '+name+' zeigen. In H₂O unter Konto → Sicherheit eingeben. '+(reset?'Bisherige Passkeys und Sitzungen sind gesperrt.':'Der persönliche Zugang benötigt die zentrale Passkey-Anmeldung.');
   setTimeout(()=>{if($('identity-code').value===result.code){clearQR();}},Math.max(0,result.expiresAt-Date.now()));
- });}
+ },$('qr-status')).finally(()=>qrLoading(false));}
  function qrLoading(active){const button=$('show-qr');button.disabled=active||busy;button.classList.toggle('is-loading',active);button.setAttribute('aria-busy',String(active));button.textContent=active?'Portal-Code wird vorbereitet …':'Passkey-Einrichtung freigeben';}
  function clearQR(){if($('identity-code')){$('identity-code').value='';$('identity-result').hidden=true;$('identity-status').textContent='';}qrLoading(false);$('qr-status').textContent='';$('install-guide').hidden=true;const canvas=$('qr');canvas.hidden=true;canvas.width=canvas.height=0;$('link').hidden=true;$('link').removeAttribute('href');}
  async function load(){return run(async()=>{const version=generation;clearQR();const state=await g.oneDriveReadState();if(version!==generation)return;admin();$('member').replaceChildren(node('option','Bitte Mitglied auswählen'));$('member').firstChild.value='';for(const member of state.members){const opt=node('option',[member.lastName,member.firstName].filter(Boolean).join(' '));opt.value=String(member.id);$('member').append(opt);}$('status').textContent='Mitglied auswählen und Passkey-Einrichtung freigeben.';});}

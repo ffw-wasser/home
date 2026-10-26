@@ -59,6 +59,23 @@
     linkCache.set(String(id),{revision:record.revision,key:record.key,sourceKey,url:url.href,until:Date.now()+300000});
     if(!created)queue(id);return url.href;
   }
+  async function preparePortalAccess(id,isCurrent=()=>true){
+    id=String(id);
+    const guard=()=>{if(!isCurrent()||!requireAdmin('settingsPortalView')||!adminUnlocked)throw Error('Freigabe wurde geändert. Bitte das Mitglied erneut auswählen.');};
+    guard();const connection=await global.DrinksCentral.connection();guard();
+    if(!connection)throw Error('Bitte den zentralen Kontodienst verbinden.');
+    const source=connection.source,current=()=>{guard();if(S.sourceKey()!==source)throw Error('Der Datenordner wurde geändert. Bitte erneut öffnen.');};
+    current();const filename=await S.mobileFileName(id),saved=await S.readMobileFile(filename);current();
+    const record=saved?.data||{...C.create(),memberId:id,revision:crypto.randomUUID()};
+    C.access(record);if(record.memberId!==id)throw Error('Handyzugang gehört zu einem anderen Konto.');
+    if(!saved){await S.writeMobileFile(filename,record);current();}
+    // Passkey enrollment uses the central service, without publishing a legacy
+    // GitHub snapshot or creating a permanent link containing the member key.
+    await global.DrinksCentral.register(connection,record);current();
+    const confirmed=await S.readMobileFile(filename);current();
+    if(confirmed?.data.alias!==record.alias||confirmed.data.revision!==record.revision||confirmed.data.key!==record.key||confirmed.data.memberId!==id)throw Error('Der Zugang wurde gerade geändert. Bitte erneut öffnen.');
+    return record;
+  }
   async function adminLink(id){
     if(!requireAdmin('settingsPortalView'))throw Error('Bitte die Administration entsperren.');
     const account=await S.read(String(id));if(!adminUnlocked)throw Error('Administration wurde gesperrt.');
@@ -85,6 +102,6 @@
     byId('deckel-connect').onsubmit=async event=>{event.preventDefault();if(!adminUnlocked)return;const button=event.submitter||byId('deckel-connect').querySelector('button'),token=byId('deckel-token').value;byId('deckel-token').value='';button.disabled=true;byId('deckel-setup-status').textContent='Verbindung wird geprüft …';try{const repo=await connect(byId('deckel-repo').value,token);byId('deckel-setup-status').textContent='Verbunden: '+repo+'. Mitglieder können jetzt ihren QR-Code öffnen.';}catch(e){byId('deckel-setup-status').textContent=e.message;}finally{button.disabled=false;}};
     byId('deckel-sync-all').onclick=async()=>{if(!adminUnlocked)return;try{const count=await refreshAll();byId('deckel-setup-status').textContent=count+' Handyansichten zur Veröffentlichung vorgemerkt.';}catch{byId('deckel-setup-status').textContent='OneDrive-Verbindung prüfen und erneut versuchen.';}};
   }
-  global.DrinksMobile={link,adminLink,queue,refreshAll,publish,connect,status:id=>lastStatus.get(id)||'',snapshot};
+  global.DrinksMobile={link,adminLink,preparePortalAccess,queue,refreshAll,publish,connect,status:id=>lastStatus.get(id)||'',snapshot};
   if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 })(typeof window==='undefined'?globalThis:window);
