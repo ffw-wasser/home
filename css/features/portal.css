@@ -69,11 +69,11 @@
 /* First appointment has its own reading area; subsequent cards follow by scrolling. */
 #portal-events .portal-first-event{padding-bottom:24px}
 /* Layered edge and soft shadow lift appointment cards without moving their content. */
-#portal-events .portal-event{background:var(--card);border:2px solid #ccd6e0;box-shadow:var(--portal-card-shadow);margin:0 0 28px;padding:20px}
+#portal-events .portal-event{--portal-calendar-binding-height:12px;background:var(--card);background-image:linear-gradient(#762c3a 0 var(--portal-calendar-binding-height),var(--card) var(--portal-calendar-binding-height) 100%);background-origin:border-box;border:2px solid #ccd6e0;border-top-color:#762c3a;box-shadow:var(--portal-card-shadow);margin:0 0 28px;padding:20px}
 /* Calendar sheets: decorative binding and tear line, without changing content order
    or the existing response colours. Decorations never intercept taps. */
 #portal-events .portal-event{position:relative;border-radius:10px 10px 16px 16px;padding-top:30px}
-#portal-events .portal-event::before{content:"";position:absolute;top:5px;left:12px;right:12px;height:8px;background:radial-gradient(circle at 50% 50%,var(--portal-canvas,#e7edf2) 2px,#83998e99 2.5px,transparent 3.5px) 0 0/18px 8px repeat-x;pointer-events:none}
+#portal-events .portal-event::before{content:"";position:absolute;top:0;left:12px;right:12px;height:8px;background:radial-gradient(circle at 50% 50%,#fffdf8 1.6px,transparent 1.8px) 0 0/18px 8px repeat-x;pointer-events:none}
 #portal-events .portal-event::after{content:"";position:absolute;top:18px;left:12px;right:12px;border-top:1px dashed #83998e80;pointer-events:none}
 #portal-events .portal-first-event>.portal-event{margin:0}
 #portal-events .portal-event[data-status="yes"]{--portal-date-bg:#247542;--portal-date-ink:#fff}
@@ -172,7 +172,7 @@
 .portal-icon-breathing{background-size:413.86139% 413.86139%;background-position:98.42271% 65.72029%;}
 .portal-icon-more{background-size:486.04651% 486.04651%;background-position:4.31727% 93.87550%;}
 .portal-icon-checkin{background-size:451.07914% 451.07914%;background-position:34.63115% 94.77459%;}
-.portal-month-tab{position:absolute;top:-1px;right:10px;z-index:3;min-width:56px;padding:18px 8px 11px;border:1px solid #c8bdb3;border-radius:0 0 4px 4px;background:linear-gradient(#762c3a 0 12px,#fffdf8 12px 100%);color:#762c3a;font-size:1.125rem;font-weight:800;line-height:1.2;text-align:center;box-shadow:0 3px 4px #10284335;pointer-events:none}
+.portal-month-tab{position:absolute;top:-2px;right:10px;z-index:3;min-width:56px;padding:18px 8px 11px;border:1px solid #c8bdb3;border-top:0;border-radius:0 0 4px 4px;background:linear-gradient(#762c3a 0 var(--portal-calendar-binding-height,12px),#fffdf8 var(--portal-calendar-binding-height,12px) 100%);color:#762c3a;font-size:1.125rem;font-weight:800;line-height:1.2;text-align:center;box-shadow:0 3px 4px #10284335;pointer-events:none}
 .portal-month-tab::before{content:"";position:absolute;top:4px;left:11px;right:11px;height:4px;background:radial-gradient(circle,#fffdf8 1.6px,transparent 1.8px) left center/4px 4px no-repeat,radial-gradient(circle,#fffdf8 1.6px,transparent 1.8px) right center/4px 4px no-repeat}
 .portal-month-tab::after{content:"";position:absolute;right:-1px;bottom:-1px;border-top:8px solid #dfd4c6;border-right:8px solid var(--card,#eef7f1)}
 #portal-events .portal-event-badges{padding-inline:3rem}
