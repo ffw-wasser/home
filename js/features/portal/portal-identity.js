@@ -19,12 +19,19 @@
  function supported(){if(!g.H2OPasskeys?.browserSupportsWebAuthn())throw Error('Bitte in Safari oder Chrome öffnen. Im WhatsApp-Menü „Im Browser öffnen“ wählen.');}
  async function login(code){
   const expected=current||read();
+  if(!code&&expected?.method==='password'){const input=el('confirm-password'),password=input?.value||'';if(input)input.value='';if(!password)throw Error('Bitte unter Konto dein aktuelles Passwort zur Bestätigung eingeben.');return accept(await post('password/confirm',{password}));}
   supported();const request=await post('portal/login/options',{},null),response=await g.H2OPasskeys.startAuthentication({optionsJSON:request.options});
   const value=await post('portal/login/verify',{id:request.id,response,...(code?{code}:{})});
   if(value.scope!=='portal'||!/^[\w-]{43}$/.test(value.token)||!/^[a-f0-9]{32}$/.test(value.alias)||value.expiresAt<=Date.now())throw Error('Anmeldung nicht bestätigt.');
   if(expected&&expected.alias!==value.alias)throw Error('Ein anderer Passkey wurde ausgewählt. Bitte den Passkey des angemeldeten Mitglieds wählen oder zuerst abmelden.');
+  return accept(value);
+ }
+ async function accept(value){
+  if(value.scope!=='portal'||!/^[\w-]{43}$/.test(value.token)||!/^[a-f0-9]{32}$/.test(value.alias)||value.expiresAt<=Date.now())throw Error('Anmeldung nicht bestätigt.');
+  const expected=current||read();if(expected&&expected.alias!==value.alias)throw Error('Bitte vor einem Mitgliederwechsel zuerst abmelden.');
   save(value);await prepare();if(location.pathname.endsWith('/deckel.html'))history.replaceState(null,'',location.pathname+location.search);return value;
  }
+ async function loginPassword(username,password){return accept(await post('password/login',{username,password}));}
  async function register(code){
   supported();const data=code?{code}:{};
   const request=await post('enroll/options',data),response=await g.H2OPasskeys.startRegistration({optionsJSON:request.options});
@@ -36,13 +43,16 @@
  function paint(){
   if(!el('state'))return;
   const signedIn=!!(current&&record);
-  el('state').textContent=signedIn?'Mit Passkey angemeldet':'Persönlich anmelden';
+  el('state').textContent=signedIn?(current.method==='password'?'Mit Passwort angemeldet':'Mit Passkey angemeldet'):'Persönlich anmelden';
   el('state').dataset.active=String(signedIn);
-  for(const id of ['login','intro','setup'])el(id).hidden=signedIn;
+  for(const id of ['login','intro','setup','password-login-form'])el(id).hidden=signedIn;
   for(const id of ['logout','devices','revoke-sessions','session-actions','passkeys-heading'])el(id).hidden=!signedIn;
+  el('password-confirmation').hidden=!(signedIn&&current.method==='password');
+  el('password-settings-title').textContent=signedIn?'Passwort einrichten oder ändern':'Zugang mit Passwort einrichten';
   el('register').textContent=signedIn?'Weiteren Passkey hinzufügen':'Passkey einrichten';
   if(signedIn){el('setup').open=false;el('code').value='';}
   else{setMemberName('');el('list').replaceChildren();}
+  for(const id of ['login-password','new-password','repeat-password','confirm-password'])if(el(id))el(id).value='';
   whatsappSettings();document.getElementById('identity-whatsapp-settings')?.load?.();
  }
  async function run(action){if(busy)return;if(g.PortalEvidenceEditor?.hasUnsaved?.())return void(el('message').textContent='Bitte die Nachweiseingabe zuerst speichern oder abbrechen.');if(g.DeckelActions?.hasUnsaved?.())return void(el('message').textContent='Bitte zuerst offene Getränkeeingaben abschließen.');busy=true;try{el('message').textContent='Bitte am Gerät bestätigen …';await action();paint();}catch(e){el('message').textContent=e.name==='NotAllowedError'?'Abgebrochen oder kein passender Passkey verfügbar. Bitte erneut versuchen oder die Verwaltung um eine Freigabe bitten.':e.message;}finally{busy=false;}}
@@ -59,20 +69,22 @@
   const info=document.createElement('p');info.textContent='Nur für passende Termine ohne verbindliche Rückmeldung. Du kannst die Freigabe jederzeit widerrufen und deine Nummer entfernen.';
   const status=document.createElement('p');status.setAttribute('role','status');
   const save=document.createElement('button');save.type='button';save.textContent='WhatsApp-Einstellungen speichern';save.className='primary-button';
-  async function request(data){const session=g.H2OIdentity?.session(),c=g.H2OIdentity?.credentials();if(!session||!c)throw Error('Bitte zuerst mit Passkey anmelden.');const response=await fetch(ORIGIN+'/portal/whatsapp-preference',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit'});const value=await response.json();if(!response.ok)throw Error(value.error||'Speichern fehlgeschlagen.');return value;}
+  async function request(data){const session=g.H2OIdentity?.session(),c=g.H2OIdentity?.credentials();if(!session||!c)throw Error('Bitte zuerst anmelden.');const response=await fetch(ORIGIN+'/portal/whatsapp-preference',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit'});const value=await response.json();if(!response.ok)throw Error(value.error||'Speichern fehlgeschlagen.');return value;}
   save.onclick=async()=>{save.disabled=true;status.textContent='Speichert …';try{const value=await request({phone:phone.value,allowed:check.checked});phone.value=value.phone;check.checked=value.allowed;status.textContent='WhatsApp-Einstellungen gespeichert.';}catch(e){status.textContent=e.message;}finally{save.disabled=false;}};
   section.append(heading,phoneLabel,consent,info,save,status);slot.append(section);
   section.load=async()=>{section.hidden=!(current&&record);if(section.hidden)return;status.textContent='Lädt …';try{const value=await request({});phone.value=value.phone||'';check.checked=value.allowed===true;status.textContent='';}catch(e){status.textContent=e.message;}};
   section.load();
  }
  function init(){if(!el('login'))return;paint();if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}
+  el('password-login-form').onsubmit=event=>{event.preventDefault();const name=el('username').value,password=el('login-password').value;el('login-password').value='';void run(async()=>{await loginPassword(name,password);el('message').textContent='';el('account').open=false;await g.DeckelReload?.();});};
+  el('password-set-form').onsubmit=event=>{event.preventDefault();const username=el('new-username').value,password=el('new-password').value,repeat=el('repeat-password').value,code=el('code').value.trim();el('new-password').value=el('repeat-password').value='';void run(async()=>{if(password!==repeat)throw Error('Die beiden neuen Passwörter stimmen nicht überein.');const wasPassword=current?.method==='password';if(current&&!code)await login();await post('password/set',{username,password,...(code?{code}:{})});el('code').value='';el('password-settings').open=false;if(wasPassword){save(null);await g.DeckelReload?.();}el('message').textContent='Passwort gespeichert. Jetzt mit Benutzername und Passwort anmelden.';});};
   el('login').onclick=()=>run(async()=>{await login(el('code').value.trim());el('code').value='';el('message').textContent='';el('account').open=false;await g.DeckelReload?.();});
   el('register').onclick=()=>run(async()=>{const code=el('code').value.trim();if(!code&&current)await login();await register(code);el('code').value='';el('message').textContent=current?'Weiterer Passkey gespeichert. Du bleibst angemeldet.':'Passkey gespeichert. Jetzt „Mit Passkey anmelden“ wählen, um das Portal zu öffnen.';if(current)await g.DeckelReload?.();});
   el('devices').onclick=()=>run(async()=>{await devices();el('message').textContent='Ein synchronisierter Passkey kann auf mehreren eigenen Geräten liegen. Bei Geräteverlust auch das Apple-/Google-Konto absichern.';});
   el('revoke-sessions').onclick=()=>run(async()=>{await login();await post('sessions/revoke');el('message').textContent='Alle anderen Portal- und Termin-Sitzungen wurden abgemeldet.';await g.DeckelReload?.();});
   el('logout').onclick=()=>run(async()=>{await post('logout');save(null);history.replaceState(null,'',location.pathname+location.search);await g.DeckelDevice?.clearLink?.();location.reload();});
  }
- g.H2OIdentity={setMemberName,setPortalVisible,onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,session:()=>current||read(),credentials:()=>record,post};
+ g.H2OIdentity={setMemberName,setPortalVisible,onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,loginPassword,session:()=>current||read(),credentials:()=>record,post};
  g.addEventListener('storage',event=>{if(event.key===STORAGE)location.reload();});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

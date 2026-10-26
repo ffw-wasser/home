@@ -287,7 +287,7 @@
  async function route(path,data,env,auth,clientIP='unknown',ctx){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
    if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
-   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
+   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path)||path.includes('/password/'))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||action.startsWith('password/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
@@ -382,7 +382,7 @@
     // One JSON parameter keeps even bulk removals within D1 bind/query limits.
     const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
     for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE '+scope).bind(aliases,payload));
-    for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
     statements.push(env.DB.prepare("UPDATE commands SET status='rejected',result='accessChanged',envelope='' WHERE status='pending' AND "+scope).bind(aliases,payload));
    }
    statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));

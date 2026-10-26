@@ -33,7 +33,7 @@
  function hide(){el('pairing').hidden=true;el('chosen').hidden=true;el('events').hidden=true;el('back-to-whatsapp').hidden=!wanted();}
  function showPair(message){
   hide();el('pairing').hidden=false;el('heading').textContent='Zum Termin anmelden';
-  status(message||'Bitte mit Passkey anmelden.');
+  status(message||'Bitte mit Passkey oder Passwort anmelden.');
  }
  function element(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function paintEvents(){
@@ -162,6 +162,7 @@
  });
  el('retry-reply').addEventListener('click',()=>{const event=items.find(e=>e.id===pending?.eventId);if(event)void reply(event,pending.status==='open'?event.status:pending.status);});
  el('reload-event').addEventListener('click',()=>void refresh());
+ el('password-login-form').onsubmit=async event=>{event.preventDefault();if(working)return;working=true;const button=el('password-login-form').querySelector('button'),password=el('password-value').value;button.disabled=true;el('password-value').value='';status('Passwort wird geprüft …');try{session=await globalThis.H2OIdentity.loginPassword(el('password-username').value,password);persist(session);working=false;await refresh();}catch(error){showPair(error.message||'Anmeldung fehlgeschlagen.');}finally{working=false;button.disabled=false;}};
  el('passkey-login').addEventListener('click',loginPasskey);
  session=restore();persist();if(initialPair)showPair('Die bisherige Browser-Verbindung wurde ersetzt. Bitte mit deinem zentralen H₂O-Passkey anmelden.');else if(session)void refresh();else showPair();
 })();

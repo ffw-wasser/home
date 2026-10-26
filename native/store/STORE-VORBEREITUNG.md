@@ -8,7 +8,7 @@ Beschreibung:
 Das H₂O Portal begleitet die Mitglieder der Feuerwehr Abteilung Wasser. Es bündelt
 Termine und Rückmeldungen, persönliche Nachweise, den eigenen Deckel sowie die
 freigegebenen Feuerwehrinformationen. Die zuständige Verwaltung gibt den
-persönlichen Zugang frei. Die Anmeldung erfolgt per Passkey. Die App bietet einen
+persönlichen Zugang frei. Die Anmeldung erfolgt wahlweise per Passkey oder persönlichem Benutzername und Passwort. Die App bietet einen
 Einladungs-QR-Scanner, eine Offline-Einstiegshilfe und eine freiwillige tägliche
 Erinnerung, das Portal zu prüfen.
 

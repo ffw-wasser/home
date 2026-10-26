@@ -14,7 +14,7 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | Android | Kotlin, Android WebView mit expliziter Credential-Manager-Unterstützung |
 | Einladung | Nativer QR-Scanner, nur exakte H₂O-Einladungsadresse mit Einmalcode |
 | Links aus WhatsApp | Universal Links/App Links für deckel.html und termin.html vorbereitet |
-| Anmeldung | Bestehende Passkeys; explizite Android-Zertifikatsbindung im Worker vorbereitet |
+| Anmeldung | Passkey oder Benutzername/Passwort; explizite Android-Zertifikatsbindung für Passkeys im Worker vorbereitet |
 | Erinnerung | Freiwillige, allgemeine tägliche App-Erinnerung, lokal auf dem Gerät |
 | PDF-Export | Native Speichern-/Teilen-Dialoge für bestätigte Portal-PDFs bis 10 MB; Gerätetest noch offen |
 | Ohne Internet | Native Einstiegshilfe und erneutes Laden; private Serverdaten brauchen Internet |
@@ -64,8 +64,8 @@ https://support.google.com/googleplay/android-developer/answer/6112435 .
 
 Die App hat einen eigenen Anmeldespeicher. Eine Anmeldung in Safari/Chrome wird
 nicht automatisch in den App-Container übernommen. Die Geräte-PIN bestätigt einen
-Passkey; sie ist keine Ersatzanmeldung mit der Getränke-PIN. Ein zusätzlicher
-Passwortzugang wurde durch diese Vorbereitung nicht eingeführt.
+Passkey; sie ist keine Ersatzanmeldung mit der Getränke-PIN. Alternativ ist ein persönlicher Passwortzugang vorbereitet. Dafür muss der Dienst mit
+einem eigenen H2O_PASSWORD_PEPPER eingerichtet und geprüft werden (siehe cloudflare/push/PORTAL.md).
 
 ## Bauen und prüfen
 

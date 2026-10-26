@@ -43,16 +43,16 @@ function nudgeDeckel(){
  ];
  resetNudge();void $('coaster').offsetWidth;$('coaster').classList.toggle('is-nudged',true);$('coaster').classList.toggle('is-laughing',true);$('deckel-laugh').hidden=false;$('deckel-quote').hidden=false;$('deckel-quote').textContent=sayings[quoteIndex++%sayings.length];$('coaster').setAttribute?.('aria-describedby','updated deckel-tap-hint deckel-quote');funTimer=setTimeout(resetNudge,4000);
 }
-function credentials(){const identity=globalThis.H2OIdentity?.credentials();if(!identity)throw Object.assign(Error('Bitte mit deinem H₂O-Passkey anmelden.'),{status:401});return {repo:'portal',record:identity};}
+function credentials(){const identity=globalThis.H2OIdentity?.credentials();if(!identity)throw Object.assign(Error('Bitte mit deinem H₂O-Passkey oder Passwort anmelden.'),{status:401});return {repo:'portal',record:identity};}
 function clear({preserveResources=false}={}){globalThis.H2OPortal?.clear();if(!preserveResources)globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();resetNudge();enableNudge(false);hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
 async function load(options={}){
  if(options.checkUpdate!==false)globalThis.DeckelUpdate?.check();
  const number=++generation,startupToken=(!hasData||globalThis.DeckelStartup?.isActive?.())?globalThis.DeckelStartup?.begin():undefined;let startupPending=false;currentRequest?.abort();resetNudge();if($('deckel-load-retry'))$('deckel-load-retry').hidden=true;$('refresh').disabled=true;$('refresh').setAttribute?.('aria-busy','true');$('status').setAttribute?.('data-state','loading');enableNudge(false);hideThanks();$('status').textContent=hasData?'Kontostand wird geprüft …':'Kontostand wird geladen …';
  try{
-  if(globalThis.H2OIdentity?.onboarding())throw Error('Bitte den freigegebenen Passkey unter Konto → Sicherheit einrichten oder anmelden.');
+  if(globalThis.H2OIdentity?.onboarding())throw Error('Bitte unter Konto einen Passkey oder ein Passwort einrichten oder anmelden.');
   await globalThis.H2OIdentity?.prepare();globalThis.DeckelInstall?.refresh();
-  if(!globalThis.H2OIdentity?.credentials())throw Object.assign(Error('Bitte mit deinem H₂O-Passkey anmelden.'),{status:401});
+  if(!globalThis.H2OIdentity?.credentials())throw Object.assign(Error('Bitte mit deinem H₂O-Passkey oder Passwort anmelden.'),{status:401});
   globalThis.DeckelStartup?.stage(startupToken,'Dein Portal wird vorbereitet …');
   const {repo,record}=credentials(),access=repo+':'+record.alias+':'+record.key;
   if(access!==currentAccess){clear();lastUpdated='';currentAccess=access;}
