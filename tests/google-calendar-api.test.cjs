@@ -16,13 +16,13 @@ test('Google API: H2O admin authentication is required before any Google access'
 });
 test('Google API: client audience, expiration, scope and calendar rights are independently checked',async()=>{
  for(const options of [{aud:'other'},{expires:0},{granted:'openid'},{role:'reader'},{role:'freeBusyReader'}]){
-  const f=setup(options);await assert.rejects(f.call('create',{event,requestId:'a'.repeat(32)}));assert.equal(f.requests.some(r=>r.options.method==='POST'),false);
+  const f=setup(options);await assert.rejects(f.call('update',{event,googleEventId:'event123',etag:'"v1"'}));assert.equal(f.requests.some(r=>r.options.method==='PATCH'),false);
  }
  const f=setup();assert.equal((await f.call('status')).accessRole,'writer');assert.match(f.requests[1].url,/test%40example.invalid/);
  const read=setup({role:'reader',granted:'https://www.googleapis.com/auth/calendar.events.readonly'});assert.equal((await read.call('status')).accessRole,'reader');
 });
-test('Google API: allowlisted data, stable creation id, ETag updates, and no guest changes',async()=>{
- const f=setup();await f.call('create',{event,requestId:'a'.repeat(32)});const create=f.requests.find(r=>r.options.method==='POST');assert.equal(JSON.parse(create.options.body).id,'a'.repeat(32));
+test('Google API: allowlisted updates, ETags and no guest changes',async()=>{
+ const f=setup();
  for(const bad of [{...event,attendees:[]},{...event,end:event.start},{...event,summary:''},{...event,start:{dateTime:'invalid'}},{...event,start:{date:'2026-02-30'},end:{date:'2026-03-04'}}])assert.throws(()=>f.api.eventData(bad));
  await assert.rejects(f.call('update',{googleEventId:'event123',event}),/neu laden/);
  await assert.rejects(setup({precondition:true}).call('update',{googleEventId:'event123',etag:'"v1"',event}),/inzwischen/);
@@ -62,3 +62,5 @@ test('Google API: neither access verification nor calendar requests follow crede
   assert.equal(result.status,503);assert.match(result.value.error,step==='verification'?/Weiterleitung.*G02/:/Weiterleitung.*G03/);assert.equal(calls,step==='verification'?1:2);assert.equal(JSON.stringify(result).includes(token),false);
  }
 });
+
+test('Google API creates no new calendar entries from H2O',async()=>{const f=setup();await assert.rejects(f.call('create',{event,requestId:'a'.repeat(32)}),e=>e.status===404);assert.equal(f.requests.length,0);});

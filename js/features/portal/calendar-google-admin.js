@@ -11,7 +11,7 @@
  function paint(message){if(!host)return;host.replaceChildren();const heading=node('h3','Google Kalender gemeinsam bearbeiten'),info=node('p','Jede Verwaltungsperson verbindet ihr eigenes Google-Konto. Martin bleibt Eigentümer und muss dem zweiten Konto „Änderungen an Terminen vornehmen“ erlauben. Normale Mitglieder brauchen keine Google-Anmeldung.');host.append(heading,info);
   const status=node('p',message||(access?'Google Kalender verbunden. Die Verbindung gilt bis zum Schließen oder Ablauf der Sitzung.':config?.configured?'Verbinde dein berechtigtes Google-Konto.':'Die Verwaltung muss die Google-Anbindung noch einrichten. Der bestehende Kalender funktioniert weiter.'));status.setAttribute('role','status');host.append(status);
   const connect=node('button',access?'Google-Konto wechseln':'Google Kalender verbinden');connect.type='button';connect.className='primary-button';connect.disabled=connecting||!config?.configured;connect.onclick=()=>connectGoogle(status);host.append(connect);
-  if(access){const create=node('button','Neuen Google-Termin anlegen');create.type='button';create.disabled=!['writer','owner'].includes(role);create.className='outline-button';create.onclick=()=>openEditor(null);host.append(create);const end=node('button','Google-Verbindung auf diesem Gerät beenden');end.type='button';end.className='outline-button';end.onclick=()=>{if(!cancel())return;epoch++;access=null;paint('Google-Verbindung auf diesem Gerät beendet. Die Freigabe in deinem Google-Konto kannst du dort separat widerrufen.');};host.append(end);}
+  if(access){const end=node('button','Google-Verbindung auf diesem Gerät beenden');end.type='button';end.className='outline-button';end.onclick=()=>{if(!cancel())return;epoch++;access=null;paint('Google-Verbindung auf diesem Gerät beendet. Die Freigabe in deinem Google-Konto kannst du dort separat widerrufen.');};host.append(end);}
  }
  async function connectGoogle(status){
   if(connecting||!cancel())return;
@@ -41,19 +41,20 @@
   return {dateTime:new Date(matches[0]).toISOString(),timeZone:'Europe/Berlin'};
  }
  function cancel(){if(saving)return false;if(editing&&!g.confirm('Ungespeicherte Google-Terminänderungen verwerfen?'))return false;editor?.remove();editor=null;editing=false;return true;}
- function button(event,reload){
+ function button(event,reload,beforeOpen){
   const b=node('button','Google-Termin bearbeiten');b.type='button';b.className='outline-button';
-  b.onclick=()=>openEditor(event,reload);return b;
+  b.onclick=()=>{if(beforeOpen&&beforeOpen()===false)return;return openEditor(event,reload);};return b;
  }
  async function openEditor(event,reload){
+  if(!event?.id)return;
   if(!cancel())return;
   const version=epoch,dialog=node('dialog');editor=dialog;dialog.className='google-event-dialog';dialog.setAttribute('aria-labelledby','google-editor-title');
-  const heading=node('h2',event?'Google-Termin bearbeiten':'Google-Termin anlegen');heading.id='google-editor-title';
+  const heading=node('h2','Google-Termin bearbeiten');heading.id='google-editor-title';
   const status=node('p','Google-Termin wird geladen …');status.setAttribute('role','status');
   const close=node('button','Schließen');close.type='button';close.onclick=cancel;dialog.append(heading,status,close);document.body.append(dialog);dialog.showModal();
   dialog.addEventListener('cancel',e=>{e.preventDefault();cancel();});
   if(!access||access.expiresAt<=Date.now()){status.textContent='Bitte zuerst unter Kalender → Verbindung dein Google-Konto verbinden. Danach diesen Termin erneut öffnen.';return;}
-  let source=null,operationId=Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('');
+  let source=null;
   try{
    if(event)source=(await api('resolve',{eventId:event.id})).event;
    if(version!==epoch||editor!==dialog)return;
@@ -70,7 +71,7 @@
    allDay.onchange=()=>{editing=true;const a=start.value,b=end.value;dates();start.value=allDay.checked?a.slice(0,10):a+'T18:00';end.value=allDay.checked?b.slice(0,10):b+'T20:00';};
    const locationInput=field('Ort','text',source?.location,300),description=field('Beschreibung · öffentlich im Kalender','textarea',source?.description,4000);description.rows=5;
    let link=null;if(event){link=field('H₂O-Bearbeitungslink in Beschreibung aufnehmen','checkbox','');link.checked=true;}
-   const save=node('button',event?'In Google Kalender speichern':'Google-Termin anlegen');save.type='submit';save.className='primary-button';
+   const save=node('button','In Google Kalender speichern');save.type='submit';save.className='primary-button';
    const discard=node('button','Abbrechen');discard.type='button';discard.onclick=cancel;
    const again=node('button','Aktuellen Google-Stand neu laden');again.type='button';again.onclick=()=>openEditor(event,reload);
    const controls=node('div');controls.className='portal-calendar-actions';controls.append(save,discard,again);form.append(controls);
@@ -84,7 +85,7 @@
      if(!deleting&&body.length>4000)throw Error('Beschreibung einschließlich Bearbeitungslink ist zu lang (höchstens 4000 Zeichen).');
      const time=(input,previous)=>previous?.dateTime&&input.value===localTime(previous.dateTime)?{dateTime:previous.dateTime,timeZone:'Europe/Berlin'}:instant(input.value);
      const value=deleting?null:{summary:title.value,location:locationInput.value,description:body,start:allDay.checked?{date:start.value}:time(start,source?.start),end:allDay.checked?{date:end.value}:time(end,source?.end)};
-     await api(deleting?'delete':source?'update':'create',{...(source?{googleEventId:source.id,etag:source.etag}:{requestId:operationId}),...(!deleting?{event:value}:{})});
+     await api(deleting?'delete':'update',{googleEventId:source.id,etag:source.etag,...(!deleting?{event:value}:{})});
      if(version!==epoch||editor!==dialog)return;
      editing=false;form.remove();close.disabled=false;status.textContent=deleting?'Termin in Google Kalender gelöscht.':'In Google Kalender gespeichert.';
      try{const synced=await request('list',{force:true});g.CalendarSidebar?.clear();await reload?.();if(synced.stale)throw Error('Import noch nicht bestätigt');status.textContent+=' H₂O wurde neu geladen; Änderungen aus Google können beim Import verzögert erscheinen.';}catch{status.textContent+=' Die H₂O-Anzeige konnte noch nicht aktualisiert werden. Bitte den Kalender erneut laden; die Google-Änderung ist gespeichert.';}

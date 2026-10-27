@@ -104,7 +104,7 @@ const {chromium}=require('playwright');
  assert.equal(await page.locator('#identity-intro').isVisible(),false);
  assert.equal(await page.locator('#identity-member').textContent(),'Angemeldet als Testperson 1');
  assert.equal(await page.locator('#identity-state').getAttribute('data-active'),'true');
- await page.locator('#identity-devices').click();
+ assert.equal(await page.locator('#identity-account').evaluate(e=>e.open),false,'account tools stay collapsed until requested');await page.locator('#identity-account > summary').click();await page.locator('#identity-devices').click();
  await page.waitForFunction(()=>document.querySelector('#identity-list').textContent.includes('aktuell verwendet'));
  assert.equal(await page.locator('#identity-list button').count(),0,'current passkey cannot be removed');
  addPasskey=true; // Confirm with the existing key, then enroll a different authenticator.
@@ -113,7 +113,7 @@ const {chromium}=require('playwright');
  await page.waitForFunction(()=>!document.querySelector('#refresh').disabled);
  assert.equal(await page.locator('#identity-login').isVisible(),false);
  assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passkeys').get().n,2);
- await page.locator('#identity-devices').click();
+ if(!await page.locator('#identity-account').evaluate(e=>e.open))await page.locator('#identity-account > summary').click();await page.locator('#identity-devices').click();
  await page.waitForFunction(()=>document.querySelector('#identity-list').children.length===2);
  assert.equal(await page.locator('#identity-list button').count(),1);
  for(const width of [320,390,768]){

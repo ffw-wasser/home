@@ -8,7 +8,7 @@ function fixture({failure=false,saved=null,permission='default'}={}){
   document:{readyState:'complete',hidden:false,getElementById:node,addEventListener(){}},location:{href:'https://ffw-wasser.github.io/home/deckel.html'},
   navigator:{userAgent:'test',serviceWorker:{getRegistration:async()=>reg}},PushManager:function(){},Notification:{get permission(){return state.permission;},requestPermission(){throw Error('must not precede subscribe');}},
   DeckelDevice:{read:async()=>state.saved,write:async value=>{calls.push('write');state.saved=value;},clear:async()=>{state.saved=null;},saveLink:async url=>{assert.ok(new URL(url).hash,'passkey URL is not an old personal link');}},
-  H2OIdentity:{session:()=>({})},H2OPortal:{api:async()=>{calls.push('api');return {ok:true};}},
+  H2OIdentity:{session:()=>({})},H2OPortal:{api:async path=>{if(path==='push-devices')return {ok:true,count:state.saved?1:0,limit:5,registered:!!state.saved};calls.push('api');return {ok:true};}},
   fetch:async()=>{calls.push('health');if(state.failure)throw Error('offline');return {ok:true,json:async()=>({portalVersion:1,publicKey:Buffer.from(Uint8Array.from({length:65},(_,i)=>i?1:4)).toString('base64url')})};}
  });vm.runInContext(source,c);
  const access={alias:'a'.repeat(32),revision:'revision-test',origin:'https://test.example.workers.dev',capability:'b'.repeat(43)};

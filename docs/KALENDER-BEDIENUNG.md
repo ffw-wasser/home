@@ -1,8 +1,9 @@
 # Kalender und Jahresplan
 
 Der bestehende Feuerwehr-Google-Kalender bleibt die gemeinsame Terminquelle.
-Berechtigte Verwaltungspersonen können Termine direkt in Google oder nach
-persönlicher Google-Anmeldung in H₂O pflegen. Der Kalendereigentümer bleibt
+Neue Termine werden ausschließlich direkt in Google Kalender angelegt.
+Berechtigte Verwaltungspersonen können bestehende Termine auch nach
+persönlicher Google-Anmeldung in der Feuerwehr-Anwendung bearbeiten. Der Kalendereigentümer bleibt
 unverändert. Datum, Uhrzeit, ganztägige und mehrtägige Zeiträume werden übernommen.
 Die Beschreibung wird als Klartext angezeigt; HTML und Skripte werden nicht ausgeführt.
 
@@ -11,7 +12,7 @@ Die Beschreibung wird als Klartext angezeigt; HTML und Skripte werden nicht ausg
 1. Einstellungen → Kalender → Verbindung → „Google Kalender verbinden“ öffnen und
    mit dem eigenen freigegebenen Google-Konto anmelden. „Google Kalender verbunden ·
    Bearbeitung erlaubt“ bestätigt die Kalenderberechtigung. Bei Ablauf erneut verbinden.
-2. Unter Verbindung „Neuen Google-Termin anlegen“ oder am vorhandenen Termin
+2. Unter Termine beim vorhandenen Termin „Bearbeiten“ und dann
    „Google-Termin bearbeiten“ wählen. Titel, Beginn/Ende, Ort und öffentliche Beschreibung
    pflegen. Zeiten gelten für Europe/Berlin. Bei Ganztag ist das Enddatum der erste Tag
    nach dem Termin. Ganze Serien und Termine mit Gästen direkt in Google ändern.
@@ -24,8 +25,18 @@ Die Beschreibung wird als Klartext angezeigt; HTML und Skripte werden nicht ausg
    Der H₂O-Import wird neu geladen; Änderungen aus Google können verzögert erscheinen.
    Bei Konflikten den aktuellen Google-Stand neu laden, statt fremde Änderungen zu überschreiben.
 
-„Google-Kalender pflegen“ erklärt diesen Ablauf direkt in der Kalenderverwaltung.
-Das direkte Google-Beispiel und die Schlagwort-/Gruppenreferenz bleiben aufklappbar.
+Die Kalenderverwaltung startet mit den drei Bereichen Termine, Gruppen und
+Verbindung. „Kalender kurz erklärt“ steht aufklappbar unter Verbindung. Lange
+Google-Beispiele und die manuelle App-Farbpalette sind aus der Arbeitsansicht
+entfernt. Gruppen zeigen ihre gespeicherten Schlagwörter im eigenen Bereich.
+
+Am Termin öffnet „Bearbeiten“ eine gemeinsame Terminart-Auswahl, Ort, Kleidung,
+Gruppen und Freigabe. Einzelpersonen-Ausnahmen und weitere Aktionen sind
+aufklappbar. Importierte Werte sind vorbelegt und können korrigiert werden.
+Lokale Änderungen bleiben bei späteren Importen erhalten. Unter „Weitere Aktionen“
+kann man ausdrücklich wieder die Google-Angaben übernehmen; dabei lokale
+Ausnahmen vorher prüfen. Titel, Zeiten und Originalbeschreibung werden über den
+Google-Editor in derselben Anwendung geändert; Zusatzinfos lokal separat speichern.
 Persönliche Kalendereinladungen und automatischer Antwortabgleich sind noch nicht
 verfügbar; die Personenauswahl steuert die H₂O-Sichtbarkeit und Rückmeldungen.
 
@@ -44,12 +55,12 @@ einige Minuten benötigen; geöffnete Ansichten anschließend aktualisieren.
 
 Die bestehende Google-Farbanbindung bleibt getrennt von der persönlichen Google-Anmeldung zum Bearbeiten. Terminfarben weiterhin direkt in Google setzen; bei eingeschalteter Farbanbindung werden sie übernommen. Ohne erfolgreichen Farbabruf gelten die gespeicherten App-Farben.
 
-Unter „Farben der Terminarten“ werden Farben zentral gespeichert. Sie gelten
-im Jahresplan, in der iPad-Übersicht und in beiden PDF-Ansichten. Die Lesefarbe
-wird bei sehr hellen Farben abgedunkelt. Farben verändern keine funktionalen
-Regeln. Ferien sind hellgelb, Sonntage apricot, Feiertage werden namentlich
-gekennzeichnet. Einsatz ist keine auswählbare Art für geplante Kalendertermine;
-die spontane Einsatzerfassung bleibt erhalten.
+Terminfarben werden in Google gepflegt. Die Einrichtung der vorhandenen
+Google-Farbanbindung liegt unter Verbindung; es gibt keine konkurrierende
+manuelle Farbwahl oder Abschaltung der Übernahme in der Arbeitsansicht. Eine
+Ersatzdarstellung bleibt bei Ausfällen verfügbar. Sehr helle Farben erhalten
+weiterhin lesbare Textkontraste. Farben verändern keine Freigaben oder
+Anwesenheiten. Ferien und Feiertagskennzeichnung bleiben separat.
 
 Die linke Übersicht im Hauptbereich erscheint ab 1000 Pixeln Breite und nur
 mit der vorhandenen Gerätehaus-Verbindung. Sie scrollt unabhängig und beginnt

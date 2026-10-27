@@ -21808,6 +21808,7 @@ g.PortalHydrants={schema,route};
  async function route(action,data,env,configuration){
   const client=env.GOOGLE_CALENDAR_CLIENT_ID;
   if(action==='configuration')return {configured:!!client,clientId:client||null,scope,readScope};
+  if(!['status','resolve','list','read','update','delete'].includes(action))fail('Nicht gefunden.',404);
   if(!client)fail('Google-OAuth ist noch nicht eingerichtet. Der ICS-Import bleibt verfügbar.',503);
   const token=data.googleAccessToken;if(typeof token!=='string'||token.length<20||token.length>4096||/[\s\x00-\x1f]/.test(token))fail('Bitte zuerst Google Kalender verbinden.',401);
   // Validate audience and scopes, rather than accepting arbitrary Google tokens.
@@ -21817,7 +21818,7 @@ g.PortalHydrants={schema,route};
   if(!verification.ok)fail('Google-Zugang ungültig oder abgelaufen.',401);
   let info;try{info=await verification.json();}catch{fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);}
   if(!info||typeof info!=='object'||Array.isArray(info))fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);
-  const scopes=new Set(String(info.scope||'').split(' ')),write=['create','update','delete'].includes(action);
+  const scopes=new Set(String(info.scope||'').split(' ')),write=['update','delete'].includes(action);
   if(info.aud!==client||Number(info.expires_in)<=0||!(scopes.has(scope)||!write&&scopes.has(readScope)))fail('Google-Zugang besitzt nicht die erforderliche Freigabe.');
   const id=calendarId(configuration),base='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(id);
   // A Google account must itself have access to THIS calendar. No owner credentials.
@@ -21843,11 +21844,6 @@ g.PortalHydrants={schema,route};
    if(!Number.isFinite(data.from)||!Number.isFinite(data.to)||data.to<=data.from||data.to-data.from>31*86400000)fail('Bitte einen Zeitraum von höchstens 31 Tagen wählen.',400);
    const params=new URLSearchParams({timeMin:new Date(data.from).toISOString(),timeMax:new Date(data.to).toISOString(),singleEvents:'true',maxResults:'250',fields:'accessRole,nextPageToken,items('+fields+')'});
    const result=await json(base+'/events?'+params,token);return {events:result.items||[],truncated:!!result.nextPageToken};
-  }
-  if(action==='create'){
-   // No attendees: invitation privacy and OAuth consent must be approved/tested first.
-   if(!/^[a-v0-9]{32,64}$/.test(data.requestId||''))fail('Ungültige Vorgangskennung.',400);
-   return {event:await json(base+'/events?sendUpdates=none&fields='+fields,token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...eventData(data.event),id:data.requestId})})};
   }
   if(!['read','update','delete'].includes(action)||!/^[a-zA-Z0-9_@.-]{1,1024}$/.test(data.googleEventId||''))fail('Ungültige Google-Terminaktion.',400);
   const url=base+'/events/'+encodeURIComponent(data.googleEventId);
@@ -22392,10 +22388,21 @@ g.PortalHydrants={schema,route};
    const events=await projection(url),existing=await config(env),c={...(existing?.calendarUrl===url?existing:{}),calendarUrl:url,reminders:true,leadHours:data.leadHours},payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events},'portal-calendar');
    await env.DB.batch([env.DB.prepare('INSERT INTO portal_config(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=version+1').bind(payload),env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(cal,Date.now())]);return {ok:true,count:events.length};
   }
+  if(path==='/portal/push-devices'){
+   const deviceURL=data.endpoint===undefined?null:endpoint(data.endpoint);
+   if(data.reset!==undefined&&typeof data.reset!=='boolean')fail('Ungültige Geräteaktion.',400);
+   if(data.reset===true)await env.DB.batch([
+    env.DB.prepare('DELETE FROM portal_devices WHERE id IN (SELECT id FROM devices WHERE alias=?) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)').bind(record.alias,record.alias,record.revision),
+    env.DB.prepare('DELETE FROM devices WHERE alias=? AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)').bind(record.alias,record.alias,record.revision)
+   ]);
+   const count=(await env.DB.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').bind(record.alias).first()).n;
+   const registered=deviceURL?!!await env.DB.prepare('SELECT id FROM devices WHERE alias=? AND revision=? AND endpoint=?').bind(record.alias,record.revision,deviceURL).first():false;
+   return {ok:true,count,limit:5,registered};
+  }
   if(path==='/portal/subscribe'||path==='/portal/unsubscribe'){
    const url=endpoint(data.endpoint),id=await hash(url);if(path.endsWith('/unsubscribe')){await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,data.alias).run();return {ok:true};}
    const old=await env.DB.prepare('SELECT alias FROM devices WHERE id=?').bind(id).first();if(old&&old.alias!==data.alias)fail('Auf diesem Handy zuerst die Erinnerungen des anderen Mitglieds deaktivieren.');
-   const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM devices WHERE alias=?)<5 ON CONFLICT(id) DO UPDATE SET revision=excluded.revision').bind(id,data.alias,data.revision,url,data.alias).run();if(!saved.meta.changes&&!old)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();return {ok:true};
+   const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,data.alias,data.revision,url,data.alias,data.revision,data.alias,id,data.alias).run();if(!saved.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();return {ok:true};
   }
   if(path==='/portal/notification'){
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId));
@@ -22518,7 +22525,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"8d0d1e4690a4c95c2784a0b9a61cf98f4a8f85354caf0044b05e3e3f7a0c52a3",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"8e8b772818e4a7c2034be0a7a895038c09b118c5efb8f5f4938b79dba2108ec5",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

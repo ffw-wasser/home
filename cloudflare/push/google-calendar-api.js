@@ -30,6 +30,7 @@
  async function route(action,data,env,configuration){
   const client=env.GOOGLE_CALENDAR_CLIENT_ID;
   if(action==='configuration')return {configured:!!client,clientId:client||null,scope,readScope};
+  if(!['status','resolve','list','read','update','delete'].includes(action))fail('Nicht gefunden.',404);
   if(!client)fail('Google-OAuth ist noch nicht eingerichtet. Der ICS-Import bleibt verfügbar.',503);
   const token=data.googleAccessToken;if(typeof token!=='string'||token.length<20||token.length>4096||/[\s\x00-\x1f]/.test(token))fail('Bitte zuerst Google Kalender verbinden.',401);
   // Validate audience and scopes, rather than accepting arbitrary Google tokens.
@@ -39,7 +40,7 @@
   if(!verification.ok)fail('Google-Zugang ungültig oder abgelaufen.',401);
   let info;try{info=await verification.json();}catch{fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);}
   if(!info||typeof info!=='object'||Array.isArray(info))fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);
-  const scopes=new Set(String(info.scope||'').split(' ')),write=['create','update','delete'].includes(action);
+  const scopes=new Set(String(info.scope||'').split(' ')),write=['update','delete'].includes(action);
   if(info.aud!==client||Number(info.expires_in)<=0||!(scopes.has(scope)||!write&&scopes.has(readScope)))fail('Google-Zugang besitzt nicht die erforderliche Freigabe.');
   const id=calendarId(configuration),base='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(id);
   // A Google account must itself have access to THIS calendar. No owner credentials.
@@ -65,11 +66,6 @@
    if(!Number.isFinite(data.from)||!Number.isFinite(data.to)||data.to<=data.from||data.to-data.from>31*86400000)fail('Bitte einen Zeitraum von höchstens 31 Tagen wählen.',400);
    const params=new URLSearchParams({timeMin:new Date(data.from).toISOString(),timeMax:new Date(data.to).toISOString(),singleEvents:'true',maxResults:'250',fields:'accessRole,nextPageToken,items('+fields+')'});
    const result=await json(base+'/events?'+params,token);return {events:result.items||[],truncated:!!result.nextPageToken};
-  }
-  if(action==='create'){
-   // No attendees: invitation privacy and OAuth consent must be approved/tested first.
-   if(!/^[a-v0-9]{32,64}$/.test(data.requestId||''))fail('Ungültige Vorgangskennung.',400);
-   return {event:await json(base+'/events?sendUpdates=none&fields='+fields,token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...eventData(data.event),id:data.requestId})})};
   }
   if(!['read','update','delete'].includes(action)||!/^[a-zA-Z0-9_@.-]{1,1024}$/.test(data.googleEventId||''))fail('Ungültige Google-Terminaktion.',400);
   const url=base+'/events/'+encodeURIComponent(data.googleEventId);

@@ -311,10 +311,15 @@
 #settingsCalendarView summary{min-height:44px;padding:10px 0;font-weight:700;cursor:pointer;overflow-wrap:anywhere}
 #settingsCalendarView .portal-event-people small{display:block;color:var(--muted);font-size:.875rem;margin-bottom:12px}
 #settingsCalendarView .portal-review-edit-toggle{min-height:44px;padding:9px 16px;border-radius:8px;background:var(--white);border:1px solid #a9b0b5;color:var(--black);font-weight:700;margin-top:2px}
-#settingsCalendarView .portal-event>label{margin:14px 0 6px;font-weight:700}
-#settingsCalendarView .portal-event>label small{display:block;color:var(--muted);font-weight:400;margin-top:5px;font-size:.875rem}
-#settingsCalendarView .portal-event>button.primary-button{margin:12px 8px 0 0}
-#settingsCalendarView .portal-event>button.outline-button{margin-top:12px}
+#settingsCalendarView .portal-event-editor{min-width:0;border-top:1px solid var(--line);margin-top:16px;padding-top:12px}
+#settingsCalendarView .portal-event-editor>label{display:block;margin:14px 0 6px;font-weight:700}
+#settingsCalendarView .portal-event-editor>label small{display:block;color:var(--muted);font-weight:400;margin-top:5px;font-size:.875rem}
+#settingsCalendarView .portal-event-editor>button{margin:12px 8px 8px 0}
+#settingsCalendarView .portal-event-editor>p,#settingsCalendarView .calendar-color-source{font-size:.9375rem;line-height:1.5;color:var(--muted)}
+#settingsCalendarView .portal-event-more,#settingsCalendarView .portal-recipient-exceptions{border-top:1px solid var(--line);margin-top:12px;padding-top:8px}
+#settingsCalendarView .portal-event-more>button{display:block;margin:8px 0}
+#settingsCalendarView #portal-calendar-connection>details,#settingsCalendarView #calendar-google-colors{border-top:1px solid var(--line);padding-top:12px;margin-top:18px}
+#settingsCalendarView .portal-recipient-choices fieldset{min-width:0;margin:0;padding:0;border:0}
 #settingsCalendarView .portal-event-feedback{margin:12px 0 0;font-weight:700;font-size:.9375rem}
 #settingsCalendarView .portal-event[data-state=edited] .portal-event-feedback{color:#735016}
 #settingsCalendarView .portal-recipient-heading{display:flex;flex-direction:column;gap:4px;margin:20px 0 10px}

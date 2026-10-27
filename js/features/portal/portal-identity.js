@@ -38,7 +38,7 @@
   await post('enroll/verify',{...data,id:request.id,response});
  }
  const el=id=>document.getElementById('identity-'+id);
- function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=true;}const install=document.getElementById('installSection');if(install&&target&&install.parentElement!==target)target.append(install);g.DeckelInstall?.refresh();}
+ function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=!visible||!(current&&record);}const install=document.getElementById('installSection');if(install&&target&&install.parentElement!==target)target.append(install);g.DeckelInstall?.refresh();}
  function setMemberName(name){const member=el('member');if(member){member.textContent=name?'Angemeldet als '+name:'';member.hidden=!name;}}
  function paint(){
   if(!el('state'))return;
@@ -59,14 +59,14 @@
  async function devices(){const value=await post('devices');el('list').replaceChildren();for(const [i,key] of value.keys.entries()){const row=document.createElement('p');row.textContent='Passkey '+(i+1)+(key.current?' · aktuell verwendet':'');if(!key.current){const button=document.createElement('button');button.type='button';button.textContent='Sperren';button.onclick=()=>run(async()=>{await login();await post('remove',{credential:key.id});await devices();el('message').textContent='Passkey und zugehörige Sitzungen gesperrt.';await g.DeckelReload?.();});row.append(' ',button);}el('list').append(row);}}
  function whatsappSettings(){
   const slot=el('security-slot');if(!slot||document.getElementById('identity-whatsapp-settings'))return;
-  const section=document.createElement('section');section.id='identity-whatsapp-settings';section.style.cssText='padding:16px;margin:16px 0;border:1px solid #b8cbd4;border-radius:14px';
-  const heading=document.createElement('h3');heading.textContent='WhatsApp-Erinnerungen';
+  const section=document.createElement('details');section.id='identity-whatsapp-settings';section.className='portal-setting identity-whatsapp-settings';
+  const heading=document.createElement('summary');heading.textContent='WhatsApp-Erinnerungen';
   const phoneLabel=document.createElement('label');phoneLabel.textContent='Meine Handynummer';phoneLabel.style.cssText='display:block;margin:12px 0';
   const phone=document.createElement('input');phone.type='tel';phone.placeholder='+49 170 1234567';phone.autocomplete='tel';phone.style.cssText='display:block;width:100%;box-sizing:border-box;padding:12px;margin-top:6px';phoneLabel.append(phone);
   const consent=document.createElement('label');consent.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer';
   const check=document.createElement('input');check.type='checkbox';check.style.cssText='appearance:auto!important;-webkit-appearance:checkbox!important;width:24px;height:24px;flex:none';
   const caption=document.createElement('span');caption.textContent='Persönliche WhatsApp-Erinnerungen erlauben';consent.append(check,caption);
-  const info=document.createElement('p');info.textContent='Nur für passende Termine ohne verbindliche Rückmeldung. Du kannst die Freigabe jederzeit widerrufen und deine Nummer entfernen.';
+  const info=document.createElement('p');info.textContent='Freiwillig. Nummer und Freigabe lassen sich hier jederzeit ändern oder entfernen.';
   const status=document.createElement('p');status.setAttribute('role','status');
   const save=document.createElement('button');save.type='button';save.textContent='WhatsApp-Einstellungen speichern';save.className='primary-button';
   async function request(data){const session=g.H2OIdentity?.session(),c=g.H2OIdentity?.credentials();if(!session||!c)throw Error('Bitte zuerst anmelden.');const response=await fetch(ORIGIN+'/portal/whatsapp-preference',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit'});const value=await response.json();if(!response.ok)throw Error(value.error||'Speichern fehlgeschlagen.');return value;}

@@ -5,6 +5,31 @@ function event(start=Date.now()+86400000,title='Testprobe',extra=''){return `BEG
 const {fixture}=require('./helpers/portal-fixture.cjs');
 // Birthday scenarios advance the clock across cache expiry, never the real midnight.
 const birthdayFixture=()=>fixture({now:Date.parse('2026-06-15T12:00:00Z')});
+test('Push: five own devices can be renewed and explicitly reset without affecting another member or session',async()=>{
+ const f=await fixture(),person=f.people[0],other=f.people[1],base='https://fcm.googleapis.com/synthetic-';
+ for(let i=0;i<5;i++)assert.equal((await f.call('subscribe',{endpoint:base+i})).status,200);
+ assert.equal((await f.call('subscribe',{endpoint:base+'sixth'})).status,409);
+ f.sql.prepare('UPDATE devices SET revision=? WHERE endpoint=?').run('old-revision',base+'0');
+ assert.equal((await f.call('subscribe',{endpoint:base+'0'})).status,200);
+ assert.equal(f.sql.prepare('SELECT revision FROM devices WHERE endpoint=?').get(base+'0').revision,person.revision);
+ assert.deepEqual((await f.call('push-devices',{endpoint:base+'0'})).value,{ok:true,count:5,limit:5,registered:true});
+ assert.equal((await f.call('subscribe',{endpoint:base+'other'},other)).status,200);
+ const sessions=f.sql.prepare('SELECT COUNT(*) n FROM portal_identity_sessions').get().n;
+ const result=await f.call('push-devices',{reset:true});assert.equal(result.status,200);assert.deepEqual(result.value,{ok:true,count:0,limit:5,registered:false});
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').get(other.alias).n,1);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_devices').get().n,1);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_identity_sessions').get().n,sessions);
+ assert.equal((await f.call('subscribe',{endpoint:base+'sixth'})).status,200);
+});
+test('Push device reset requires current own identity and rolls back both device tables on failure',async()=>{
+ const f=await fixture(),person=f.people[0];await f.call('subscribe',{endpoint:'https://web.push.apple.com/synthetic-own'});
+ f.failBatch();assert.equal((await f.call('push-devices',{reset:true})).status,503);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM devices').get().n,1);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_devices').get().n,1);
+ assert.equal((await f.call('push-devices',{reset:'yes'})).status,400);
+ const denied=await f.c.worker.fetch(new Request('https://test.example/portal/push-devices',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer invalid','Content-Type':'application/json'},body:JSON.stringify({alias:person.alias,revision:person.revision,reset:true})}),f.env);assert.equal(denied.status,401);
+ f.sql.prepare('UPDATE accounts SET revision=? WHERE alias=?').run('changed-revision',person.alias);
+ assert.equal((await f.call('push-devices',{reset:true})).status,401);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM devices').get().n,1);
+});
 test('Kontakte liegen verschlüsselt und sind nur mit gültiger Mitgliederberechtigung abrufbar',async()=>{
  const f=await fixture(),contacts={schemaVersion:1,title:'Hauptamtliche Ansprechpartner',businessHours:'7:00–16:00 Uhr',sourceDate:'2026-10-21',groups:[{title:'Feuerwehr',contacts:[{name:'Musterkontakt',role:'Hauptamtlich',phone:'07641 123456',email:'kontakt@example.org'}]}]};
  assert.equal((await f.call('contacts',{contacts},null,true)).status,200);

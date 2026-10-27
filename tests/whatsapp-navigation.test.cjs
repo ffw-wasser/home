@@ -95,7 +95,7 @@ function settingsFixture({clipboardFails=false,saved=null,permission='granted',s
   document:{hidden:false,readyState:'complete',getElementById:id=>dom[id],addEventListener(){}},
   navigator:{serviceWorker:{getRegistration:async()=>({active:{},pushManager:{getSubscription:async()=>saved?{endpoint:saved.endpoint}:null}})},clipboard:{writeText:async value=>{if(clipboardFails)throw Error('denied');copied.push(value);}}},
   PushManager:{},Notification:{permission},DeckelDevice:{read:async()=>saved},
-  H2OPortal:{api:async path=>{calls.push(path);return path==='browser/status'?{sessions}:path==='browser/revoke'?{ok:true}:{code:'B'.repeat(24),expiresAt:clock.now+300000};}},
+  H2OPortal:{api:async path=>{calls.push(path);return path==='push-devices'?{ok:true,count:saved?1:0,limit:5,registered:!!saved}:path==='browser/status'?{sessions}:path==='browser/revoke'?{ok:true}:{code:'B'.repeat(24),expiresAt:clock.now+300000};}},
   confirm:()=>true,fetch:async()=>({ok:true,json:async()=>({browserPairVersion:1,portalVersion:1,publicKey:'B'.repeat(87)})})
  });
  vm.runInContext(read('js/features/drinks/deckel-push.js'),c);
@@ -108,7 +108,7 @@ test('Einstellungen: aktives Push bleibt unabhängig, WhatsApp verwendet die gem
  assert.equal(f.dom['portal-push-state'].textContent,'Aktiv');
  assert.equal(f.dom['portal-push-enable'].hidden,true);assert.equal(f.dom['portal-push-disable'].hidden,false);
  assert.equal(f.dom['portal-browser-state'],undefined);
- assert.deepEqual(f.calls,[]);
+ assert.deepEqual(f.calls,['push-devices']);
 });
 test('Einstellungen: veraltete Push-Revision lässt sich erneut aktivieren',async()=>{
  const f=settingsFixture({saved:{portal:true,alias:'a'.repeat(32),revision:'old-revision',endpoint:'https://test.invalid/push'}});
