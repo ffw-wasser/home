@@ -44,3 +44,12 @@ test('Google event mapping uses the existing H2O ID and never exposes source ide
  const result=await f.call('google-api/resolve',{eventId:event.id,googleUid:'ignored-foreign-uid',googleAccessToken:token},null,true);assert.equal(result.status,200,JSON.stringify(result.value));assert.equal(result.value.event.id,'google-event');assert.equal((await f.call('list')).value.events[0].googleUid,undefined);
  ambiguous=true;assert.equal((await f.call('google-api/resolve',{eventId:event.id,googleAccessToken:token},null,true)).status,409);
 });
+
+test('Google connection: token verification and calendar failures identify their step without leaking tokens',async()=>{
+ for(const step of ['verification','calendar'])for(const mode of ['network','body','null']){
+  const f=await fixture();f.env.GOOGLE_CALENDAR_CLIENT_ID=client;
+  f.c.fetch=async url=>{if(step==='calendar'&&String(url).includes('tokeninfo'))return Response.json({aud:client,scope,expires_in:300});if(mode==='network')throw Error(token);if(mode==='body')return new Response('invalid '+token);return Response.json(null);};
+  const result=await f.call('google-api/status',{googleAccessToken:token},null,true);
+  assert.equal(result.status,503);assert.match(result.value.error,step==='verification'?/G02/:/G03/);assert.equal(JSON.stringify(result).includes(token),false);
+ }
+});

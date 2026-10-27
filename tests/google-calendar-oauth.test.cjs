@@ -19,3 +19,13 @@ test('Google OAuth: tampering, PKCE mismatch, source changes and expiry fail bef
  for(const value of [{state:'tampered',verifier},{state:start.state,verifier:'x'.repeat(43)}])assert.equal((await f.call('google-oauth/exchange',{code:'synthetic-code',...value},null,true)).status,401);
  f.clock.now+=300001;assert.equal((await f.call('google-oauth/exchange',{code:'synthetic-code',state:start.state,verifier},null,true)).status,401);assert.equal(f.requests.length,0);
 });
+
+// Real provider outages must not collapse into the unrelated portal outage message.
+test('Google OAuth: exchange network and response failures remain specific and secret-free',async()=>{
+ for(const mode of ['network','body','null','server']){
+  const f=await setup(),start=(await f.call('google-oauth/start',{challenge},null,true)).value;
+  f.c.fetch=async()=>{if(mode==='network')throw Error(secret+' '+access);if(mode==='body')return new Response('invalid '+secret,{status:200});if(mode==='null')return Response.json(null);return new Response(secret,{status:503});};
+  const result=await f.call('google-oauth/exchange',{code:'synthetic-code',state:start.state,verifier},null,true);
+  assert.equal(result.status,503);assert.match(result.value.error,/G01/);assert.equal(JSON.stringify(result).includes(secret),false);assert.equal(JSON.stringify(result).includes(access),false);
+ }
+});

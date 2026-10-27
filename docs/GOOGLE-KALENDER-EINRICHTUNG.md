@@ -3,7 +3,7 @@
 Die Umsetzung gehört zu PR #191 / Web-App-Version 2026.10.27.5 und ist zur Finalisierung nach erfolgreicher vollständiger CI freigegeben.
 Er richtet keine Google-Dienste oder Konten automatisch ein.
 
-Stand 27.10.2026: Der Anwender hat die Einrichtung von Google-Cloud-Projekt, Calendar API, OAuth-Client und Worker-Konfiguration abgeschlossen und die Anzeige „Google Kalender verbunden · Bearbeitung erlaubt“ bestätigt. Damit ist die Anmeldung und Kalenderberechtigung für dieses Konto bestätigt. Die gemeinsame Praxisprüfung mit beiden Verwaltungskonten und echten Terminänderungen bleibt gesondert durchzuführen. Zugangsdaten werden hier nicht dokumentiert.
+Stand 27.10.2026: Der Anwender hat die Einrichtung von Google-Cloud-Projekt, Calendar API, OAuth-Client und Worker-Konfiguration abgeschlossen und die Anzeige „Google Kalender verbunden · Bearbeitung erlaubt“ bestätigt. Damit ist die Anmeldung und Kalenderberechtigung für dieses Konto bestätigt. Die gemeinsame Praxisprüfung mit beiden Verwaltungskonten und echten Terminänderungen bleibt gesondert durchzuführen. Zugangsdaten werden hier nicht dokumentiert. Beim erneuten Verbinden wurde anschließend ein Fehler nach der Google-Freigabe gemeldet. Die reale Verbindung ist deshalb aktuell erneut zu prüfen; die neue Behandlung von Google-Transportfehlern ersetzt diese Abnahme nicht.
 
 Die Bedienrubrik „Google-Kalender pflegen“ ist für diesen Ablauf aktualisiert; siehe [Kalender-Bedienung](KALENDER-BEDIENUNG.md).
 
@@ -40,6 +40,18 @@ Einstellungen → Kalender → Verbindung → „Google Kalender verbinden“.
 Im Google-Fenster das eigene berechtigte Konto auswählen und Kalenderzugriff erlauben.
 H₂O bestätigt anschließend Google-Lese-/Bearbeitungsrechte am bereits verbundenen Kalender.
 Die H₂O-Verwaltungsrolle allein erlaubt keine Google-Änderung.
+
+Bei einer Fehlermeldung nach der Freigabe den vollständigen Text beachten:
+G01 bezeichnet den Google-Codeaustausch, G02 die Google-Zugangsprüfung und G03
+den Kalenderdienst. Netzwerkfehler, Zeitüberschreitungen und ungültige Antworten
+werden für diese Schritte getrennt gemeldet. Keine Anmeldecodes, Tokens oder
+Client-Schlüssel weitergeben. Ein fehlgeschlagener Lese-/Verbindungsversuch kann
+erneut gestartet werden. Bei einer unklaren Terminänderung zuerst in Google prüfen,
+ob die Änderung bereits gespeichert wurde. Die Sammelmeldung „Portal derzeit nicht
+erreichbar“ beweist keinen Gesamtausfall und bleibt bei anderen unerwarteten
+Portalfehlern möglich. Die Ursache eines realen Google-Fehlers ist erst nach dem
+betroffenen Verbindungstest geklärt.
+
 
 Der Ablauf nutzt Authorization Code mit PKCE (SHA-256), einen verschlüsselten, zeitlich
 begrenzten und an Datenquelle/PKCE gebundenen Zustand sowie eine feste Redirect-URI.
