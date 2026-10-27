@@ -193,7 +193,11 @@ die Shell-Syntaxprüfung; Signatursecrets werden dabei nicht verwendet. Ein manu
 Signaturlauf ist auf `main` begrenzt. Der Profilprüfer kontrolliert App-ID, Team,
 Ablaufdatum, Verteilungsart, Associated Domains und ein zum Profil passendes gültiges
 Zertifikat mit privatem Schlüssel. Falsche, abgelaufene oder nicht passende Angaben
-brechen den Build ab. Jede Ausführung erhält eine eigene Build-Nummer aus
+brechen den Build ab. Der macOS-Importfehler „The specified item already exists in
+the keychain“ wird als möglicher Doppeleintrag behandelt; danach muss die gültige
+Signaturidentität mit privatem Schlüssel dennoch zum Profil passen. Andere
+Importfehler, insbesondere ein falsches P12-Passwort, bleiben Abbruchgründe.
+Jede Ausführung erhält eine eigene Build-Nummer aus
 `1000 + GitHub-Run-Nummer` und Wiederholungsnummer (z. B. `1001.1`).
 
 Die Root-Domain-Zuordnung für Passkeys und Universal Links sowie die tatsächliche
