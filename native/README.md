@@ -150,6 +150,62 @@ freischalten. Danach mit gültigem Distributionsprofil archivieren und über Org
 verteilen. Das in CI erzeugte unsignierte Gerätearchiv ist ein Build-Nachweis, keine
 auf einem iPhone installierbare oder einreichbare Fassung.
 
+### iPhone von Windows aus signieren und zu TestFlight hochladen
+
+Der Workflow **H2O iPhone TestFlight** (`.github/workflows/ios-testflight.yml`)
+verwendet einen kurzlebigen GitHub-Mac mit Xcode 26 oder neuer. Die manuelle
+Signierung nutzt das vorhandene Apple-Distribution-Zertifikat und das
+App-Store-Profil für `VKL57X3H6F.de.feuerwehrwasser.h2o`. Das lokale
+Windows-Zertifikat muss zusammen mit seinem privaten Schlüssel als
+passwortgeschützte P12-Datei exportiert sein; die öffentliche CER-Datei reicht nicht.
+
+In **Settings → Secrets and variables → Actions** diese Repository-Secrets anlegen:
+
+| Secret | Inhalt |
+| --- | --- |
+| `BUILD_CERTIFICATE_BASE64` | Vollständige P12-Datei, Base64-codiert |
+| `P12_PASSWORD` | Passwort dieser P12-Datei |
+| `BUILD_PROVISION_PROFILE_BASE64` | Vollständige `.mobileprovision`-Datei, Base64-codiert |
+| `APPSTORE_API_KEY_ID` | Key ID des App-Store-Connect-Teamschlüssels |
+| `APPSTORE_ISSUER_ID` | Issuer ID des Teamschlüssels |
+| `APPSTORE_API_PRIVATE_KEY` | Vollständiger PEM-Inhalt der `.p8`-Datei, inklusive BEGIN-/END-Zeilen |
+
+Ein zusätzliches Keychain-Secret ist nicht nötig: Das Passwort des temporären
+Schlüsselbunds wird für jeden Lauf zufällig erzeugt. Keine Signaturdateien,
+Passwörter oder Schlüssel im Repository ablegen. Base64 ist keine Verschlüsselung.
+Der Workflow lädt ausschließlich die fertige signierte IPA als Artefakt hoch;
+P12, P8 und temporärer Schlüsselbund werden im abschließenden Schritt entfernt.
+
+Nach Prüfung und Übernahme des Workflows samt nativer App nach `main`:
+
+1. **Actions → H2O iPhone TestFlight → Run workflow** öffnen, Branch **main** wählen.
+2. Zuerst die Upload-Option ausgeschaltet lassen, um Profil, Zertifikat und den
+   tatsächlichen signierten Geräte-Build zu prüfen.
+3. Nach erfolgreichem Build erneut starten und die Option **Signierten Build zu
+   Apple TestFlight hochladen** aktivieren. Apple verarbeitet den Build anschließend;
+   ein erfolgreicher Upload bedeutet noch keine abgeschlossene Verarbeitung.
+4. In **App Store Connect → App → TestFlight** Verarbeitung, Verschlüsselungsangaben
+   und interne Tester einrichten. Der Workflow fügt keine Tester hinzu und reicht
+   keine öffentliche App-Store-Prüfung ein.
+
+Auf Pull Requests laufen ausschließlich Prüfungen mit künstlichen Profilen und
+die Shell-Syntaxprüfung; Signatursecrets werden dabei nicht verwendet. Ein manueller
+Signaturlauf ist auf `main` begrenzt. Der Profilprüfer kontrolliert App-ID, Team,
+Ablaufdatum, Verteilungsart, Associated Domains und ein zum Profil passendes gültiges
+Zertifikat mit privatem Schlüssel. Falsche, abgelaufene oder nicht passende Angaben
+brechen den Build ab. Jede Ausführung erhält eine eigene Build-Nummer aus
+`1000 + GitHub-Run-Nummer` und Wiederholungsnummer (z. B. `1001.1`).
+
+Die Root-Domain-Zuordnung für Passkeys und Universal Links sowie die tatsächliche
+Bereitstellung von Portal und Worker bleiben separate Voraussetzungen. Ein
+signierter Build bestätigt diese Dienste und echte Geräteabläufe nicht. Der
+erste Signaturlauf und ein Upload müssen im tatsächlichen Apple-/GitHub-Betrieb
+geprüft werden; lokale Profiltests können sie nicht ersetzen.
+
+Offizielle Referenzen:
+https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications
+und https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/ .
+
 ## Verbindliche Freigabepunkte
 
 Vor einer Store-Einreichung sind noch offen:
