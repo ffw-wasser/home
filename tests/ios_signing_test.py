@@ -1,5 +1,6 @@
 """Synthetic provisioning profiles only; no Apple account or signing keys needed."""
 import copy
+import base64
 import datetime as dt
 import hashlib
 import importlib.util
@@ -108,6 +109,36 @@ class SigningProfileTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("manuellen Start", result.stdout)
                 self.assertEqual(list(Path(temp).iterdir()), [])
+
+    def test_keychain_duplicate_is_distinguished_from_wrong_password(self):
+        script = Path(__file__).parents[1] / "scripts/ios-testflight.sh"
+        for duplicate in [True, False]:
+            with self.subTest(duplicate=duplicate), tempfile.TemporaryDirectory() as temp:
+                directory = Path(temp)
+                tools = directory / "bin"
+                tools.mkdir()
+                error = ("The specified item already exists in the keychain." if duplicate else
+                         "MAC verification failed during PKCS12 import (wrong password?)")
+                security = tools / "security"
+                security.write_text('#!/bin/bash\nif [ "$1" = import ]; then\n'
+                                    f"  echo 'security: SecKeychainItemImport: {error}' >&2\n"
+                                    '  exit 1\nfi\nexit 0\n')
+                security.chmod(0o700)
+                # Stop before any actual download or key/profile handling.
+                curl = tools / "curl"
+                curl.write_text('#!/bin/bash\necho synthetic-download-reached\nexit 42\n')
+                curl.chmod(0o700)
+                dummy = base64.b64encode(b"synthetic-data-not-a-signing-key").decode()
+                result = subprocess.run(["bash", str(script), "prepare"], capture_output=True, text=True,
+                                        env={**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"],
+                                             "RUNNER_TEMP": temp, "BUILD_CERTIFICATE_BASE64": dummy,
+                                             "BUILD_PROVISION_PROFILE_BASE64": dummy, "P12_PASSWORD": "synthetic"})
+                self.assertNotEqual(result.returncode, 0)
+                if duplicate:
+                    self.assertIn("synthetic-download-reached", result.stdout)
+                else:
+                    self.assertNotIn("synthetic-download-reached", result.stdout)
+                    self.assertIn("wrong password", result.stderr)
 
 
 if __name__ == "__main__":

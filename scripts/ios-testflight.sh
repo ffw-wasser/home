@@ -7,6 +7,20 @@ keychain_path="$signing_dir/signing.keychain-db"
 archive_path="${RUNNER_TEMP}/H2OPortal.xcarchive"
 export_path="${RUNNER_TEMP}/h2o-ios-export"
 
+# macOS may import a usable identity, then report an already-existing bag.
+# Only that specific error is tolerated; the profile/key check still follows.
+import_signing_item() {
+  if security import "$@" > /dev/null 2> "$signing_dir/import-error.txt"; then
+    return 0
+  fi
+  if grep -Fq 'The specified item already exists in the keychain.' "$signing_dir/import-error.txt"; then
+    echo 'Bereits vorhandener Zertifikatseintrag; die passende Signaturidentität wird separat geprüft.'
+    return 0
+  fi
+  cat "$signing_dir/import-error.txt" >&2
+  return 1
+}
+
 case "${1:-}" in
   prepare)
     for name in BUILD_CERTIFICATE_BASE64 P12_PASSWORD BUILD_PROVISION_PROFILE_BASE64; do
@@ -23,8 +37,9 @@ case "${1:-}" in
     security create-keychain -p "$keychain_password" "$keychain_path"
     security set-keychain-settings -lut 3600 "$keychain_path"
     security unlock-keychain -p "$keychain_password" "$keychain_path"
-    security import "$signing_dir/certificate.p12" -P "$P12_PASSWORD" -t cert -f pkcs12 \
-      -T /usr/bin/codesign -T /usr/bin/security -k "$keychain_path" > /dev/null
+    echo 'Importiere das Distribution-Zertifikat mit privatem Schlüssel.'
+    import_signing_item "$signing_dir/certificate.p12" -P "$P12_PASSWORD" -t cert -f pkcs12 \
+      -T /usr/bin/codesign -T /usr/bin/security -k "$keychain_path"
     security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
       -k "$keychain_password" "$keychain_path" > /dev/null
     security list-keychains -d user -s "$keychain_path" "$HOME/Library/Keychains/login.keychain-db"
@@ -32,7 +47,8 @@ case "${1:-}" in
     curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
       https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
       --output "$signing_dir/wwdr.cer"
-    security import "$signing_dir/wwdr.cer" -k "$keychain_path" > /dev/null
+    echo 'Ergänze das Apple-WWDR-Zwischenzertifikat.'
+    import_signing_item "$signing_dir/wwdr.cer" -k "$keychain_path"
     security find-identity -v -p codesigning "$keychain_path" > "$signing_dir/identities.txt"
     security cms -D -i "$signing_dir/profile.mobileprovision" > "$signing_dir/profile.plist"
     python3 scripts/ios-signing.py "$signing_dir"
