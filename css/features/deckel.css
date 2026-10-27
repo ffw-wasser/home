@@ -168,7 +168,7 @@ body.h2o-portal :is(input:not([type=checkbox]),select){background:var(--surface)
 body.h2o-portal .portal-setting-help{color:var(--muted)}
 /* The same raised surface for content cards and More tiles throughout H2O. */
 @media screen{
- body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.gf-breathing-person,.challenge-entry,.challenge-hero,.deckel-challenge,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow);border-top:6px solid #762c3a;border-top-left-radius:10px;border-top-right-radius:10px}
+ body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.deckel-more,.install-card,.portal-more-detail,.portal-more-tile,.portal-more-empty,.portal-empty-state,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-setting,.contacts-pane,.contacts-group,.challenge-entry,.challenge-hero,.deckel-challenge,.bundesliga-club,.bundesliga-match,.water-info,.water-info-limit,.year-plan-heading,.year-plan-month,.guide-privacy,.guide-manual,[id=account],[id=identity-account],[id=portal-page-challenge]){box-shadow:var(--portal-card-shadow);border-top:6px solid #762c3a;border-top-left-radius:10px;border-top-right-radius:10px}
 }
 /* Status and Deckel retain their quiet surfaces and meaningful side borders. */
 body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prepaid-card,.loyalty-card,.portal-evidence-group,.portal-priority,.portal-evidence-editor,.portal-evidence-history,.portal-empty-state,#account):where(#portal-page-evidence *,#portal-page-deckel *){border-top-width:1px;border-top-color:var(--line);border-top-left-radius:var(--card-radius,18px);border-top-right-radius:var(--card-radius,18px)}
@@ -177,7 +177,7 @@ body.h2o-portal #deckel-main :is(.regulation-card,.phone-menu,.phone-order,.prep
 /* Keep hints readable on the stronger grey cards, including browser placeholders. */
 body.h2o-portal :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
 @media screen{body.h2o-portal .year-plan :is(.year-plan-heading,.year-plan-controls){background:var(--card);box-shadow:none}body.h2o-portal .year-plan :is(.year-plan-month,.year-plan-tools button:not(#year-plan-today)){background:var(--surface)}}
-body.h2o-portal .gf-breathing-person{background:var(--surface)}
+body.h2o-portal .gf-breathing-person{background:var(--surface);box-shadow:var(--portal-card-shadow)}
 @media(max-width:360px){#portal-page-deckel #phone-cash-open{gap:4px;font-size:1rem}#portal-page-deckel #phone-cash-open .cash-icon{width:22px;height:18px}}
 /* Personal layout controls for the portal tiles. */
 .portal-layout-hint{margin:4px 0 10px;color:var(--muted);font-size:1rem;line-height:1.4}
