@@ -55,6 +55,8 @@ jobs:
         run: xcodebuild archive -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal -sdk iphoneos -destination 'generic/platform=iOS' -archivePath native/ios/build/H2OPortal-unsigned.xcarchive CODE_SIGNING_ALLOWED=NO
       - name: Check bundled iPhone PDF adapter
         run: test -s native/ios/build/Build/Products/Debug-iphonesimulator/H2OPortal.app/pdf-export.js
+      - name: Check bundled iPhone entry action
+        run: test -s native/ios/build/Build/Products/Debug-iphonesimulator/H2OPortal.app/ios-entry.js
       - name: Run the same link policy tests with Apple Foundation without launching the app
         timeout-minutes: 5
         run: swift test --package-path native
