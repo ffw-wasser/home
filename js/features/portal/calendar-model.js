@@ -82,6 +82,13 @@
   });
  }
  function members(group,roster){const selected=group.source==='manual'?new Set(group.memberIds):null;return (roster?.members||[]).filter(m=>group.source==='manual'?selected.has(m.id):group.source==='agt'?m.agt===true:group.source==='leader'?m.leader===true:group.source==='committee'?m.committeeMember===true:group.source==='age'?m.ageDepartment===true:m.ageDepartment!==true).map(m=>m.id);}
+ function selection(groupIds,includeIds,excludeIds,groups,roster){
+  const valid=(ids,known)=>Array.isArray(ids)&&ids.length<=500&&new Set(ids).size===ids.length&&ids.every(id=>typeof id==='string'&&known.has(id));
+  const enabled=new Map(groups.filter(group=>group.enabled).map(group=>[group.id,group])),people=new Set((roster?.members||[]).map(m=>m.id));
+  if(!roster||!valid(groupIds,new Set(enabled.keys()))||!valid(includeIds,people)||!valid(excludeIds,people))throw Error('Gruppen oder Mitglieder wurden geändert. Bitte die Auswahl erneut prüfen.');
+  const result=new Set(groupIds.flatMap(id=>members(enabled.get(id),roster)));for(const id of includeIds)result.add(id);for(const id of excludeIds)result.delete(id);
+  return [...result];
+ }
  function resolver(groups,roster){
   const index=new Map(),cache=new Map(),people=new Map(),fallback=(roster?.members||[]).filter(m=>m.ageDepartment!==true).map(m=>m.id);let longest=1;
   const add=(word,group)=>{if(!index.has(word))index.set(word,new Set());index.get(word).add(group);};
@@ -97,5 +104,5 @@
   };
  }
  function resolve(title,groups,roster){return resolver(groups,roster)(title);}
- g.PortalGroups={normalize,defaults,validate,members,resolve,resolver};
+ g.PortalGroups={normalize,defaults,validate,members,selection,resolve,resolver};
 })(globalThis);

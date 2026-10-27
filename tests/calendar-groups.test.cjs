@@ -90,3 +90,18 @@ test('Ältere Administrationsaufrufe ohne Empfängerangabe erweitern automatisch
  assert.equal((await f.call('classify',{eventId:cal.events[0].id,kind:'probe',approved:true,expectedVersion:cal.rulesVersion},null,true)).status,200);
  assert.deepEqual((await list(f)).events[0].recipientIds,['member-1','member-2']);
 });
+
+test('Anklickbare Gruppen: dynamische Mehrfachauswahl, Ergänzung, Ausschluss und private Metadaten',async()=>{
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,groups=(await f.call('groups',{},null,true)).value;
+ const selected=groups.groups.filter(g=>g.source==='active'||g.source==='leader').map(g=>g.id);
+ const saved=await f.call('classify',{eventId:cal.events[0].id,kind:'probe',approved:true,recipientMode:'groups',groupIds:selected,includeIds:[],excludeIds:['member-2'],expectedVersion:cal.rulesVersion,expectedGroupsVersion:groups.version},null,true);
+ assert.equal(saved.status,200,JSON.stringify(saved.value));assert.equal(saved.value.recipientIds.includes('member-2'),false);
+ assert.equal((await f.call('list',{},f.people[1])).value.events.length,0);
+ const own=(await f.call('list')).value.events[0];for(const key of ['groupIds','includeIds','excludeIds','recipientIds'])assert.equal(own[key],undefined,key);
+ // Changing a member's department changes the selected group without resaving the event.
+ await f.call('roster',{members:f.people.map((p,i)=>({id:p.memberId,name:'Synthetic '+i,leader:i===0,ageDepartment:i===2}))},null,true);
+ const after=(await f.call('list',{},null,true)).value.events[0];assert.equal(after.recipientIds.includes('member-3'),false);
+ const state=(await f.call('list',{},null,true)).value;
+ assert.equal((await f.call('classify',{eventId:after.id,kind:'probe',approved:true,recipientMode:'groups',groupIds:['missing-group'],includeIds:[],excludeIds:[],expectedVersion:state.rulesVersion,expectedGroupsVersion:groups.version},null,true)).status,400);
+ assert.equal((await f.call('classify',{eventId:after.id,kind:'probe',approved:true,recipientMode:'groups',groupIds:selected,includeIds:[],excludeIds:[],expectedVersion:state.rulesVersion,expectedGroupsVersion:999},null,true)).status,409);
+});

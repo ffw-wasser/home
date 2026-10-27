@@ -20513,6 +20513,13 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   });
  }
  function members(group,roster){const selected=group.source==='manual'?new Set(group.memberIds):null;return (roster?.members||[]).filter(m=>group.source==='manual'?selected.has(m.id):group.source==='agt'?m.agt===true:group.source==='leader'?m.leader===true:group.source==='committee'?m.committeeMember===true:group.source==='age'?m.ageDepartment===true:m.ageDepartment!==true).map(m=>m.id);}
+ function selection(groupIds,includeIds,excludeIds,groups,roster){
+  const valid=(ids,known)=>Array.isArray(ids)&&ids.length<=500&&new Set(ids).size===ids.length&&ids.every(id=>typeof id==='string'&&known.has(id));
+  const enabled=new Map(groups.filter(group=>group.enabled).map(group=>[group.id,group])),people=new Set((roster?.members||[]).map(m=>m.id));
+  if(!roster||!valid(groupIds,new Set(enabled.keys()))||!valid(includeIds,people)||!valid(excludeIds,people))throw Error('Gruppen oder Mitglieder wurden geändert. Bitte die Auswahl erneut prüfen.');
+  const result=new Set(groupIds.flatMap(id=>members(enabled.get(id),roster)));for(const id of includeIds)result.add(id);for(const id of excludeIds)result.delete(id);
+  return [...result];
+ }
  function resolver(groups,roster){
   const index=new Map(),cache=new Map(),people=new Map(),fallback=(roster?.members||[]).filter(m=>m.ageDepartment!==true).map(m=>m.id);let longest=1;
   const add=(word,group)=>{if(!index.has(word))index.set(word,new Set());index.get(word).add(group);};
@@ -20528,7 +20535,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   };
  }
  function resolve(title,groups,roster){return resolver(groups,roster)(title);}
- g.PortalGroups={normalize,defaults,validate,members,resolve,resolver};
+ g.PortalGroups={normalize,defaults,validate,members,selection,resolve,resolver};
 })(globalThis);
 
 /* Getränkekonten: Cent-Beträge, unveränderliche Buchungen, persönliche PIN. */
@@ -21770,6 +21777,81 @@ g.PortalHydrants={schema,route};
  g.GoogleCalendarColors={read,validate,eventKey};
 })(globalThis);
 
+/* Optional Google API transport. H2O authority and Google authority are independent.
+   Caller tokens are short-lived and never persisted, returned or logged here.
+   OAuth consent/client configuration and live acceptance remain a deployment gate. */
+(function(g){
+ 'use strict';
+ const scope='https://www.googleapis.com/auth/calendar.events',readScope='https://www.googleapis.com/auth/calendar.events.readonly';
+ const fail=(message,status=403)=>{throw Object.assign(Error(message),{status});};
+ const fields='id,iCalUID,etag,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,status,updated,htmlLink';
+ async function json(url,token,options={}){
+  const response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'error',signal:AbortSignal.timeout(15000)});
+  if(response.status===412)fail('Der Google-Termin wurde inzwischen geändert. Bitte neu laden.',409);
+  if(!response.ok)fail(response.status===401?'Google-Anmeldung abgelaufen. Bitte erneut verbinden.':response.status===403?'Google erlaubt diesen Kalenderzugriff nicht.':'Google Kalender derzeit nicht erreichbar.',response.status===401?401:response.status===403?403:503);
+  return response.status===204?{}:response.json();
+ }
+ function calendarId(configuration){try{return decodeURIComponent(new URL(configuration.calendarUrl).pathname.split('/')[3]);}catch{fail('Bitte zuerst den bestehenden ICS-Kalender verbinden.',400);}}
+ function eventData(value){
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!['summary','description','location','start','end','recurrence'].includes(key)))fail('Ungültige Google-Termindaten.',400);
+  const out={};for(const key of ['summary','description','location']){if(typeof value[key]!=='string'||value[key].length>(key==='description'?4000:key==='summary'?240:300))fail('Titel, Beschreibung und Ort bitte prüfen.',400);out[key]=value[key];}
+  if(!out.summary.trim())fail('Bitte einen Titel eingeben.',400);
+  const time=value=>{if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!['date','dateTime','timeZone'].includes(key)))fail('Ungültige Terminzeit.',400);if(value.date&&/^\d{4}-\d{2}-\d{2}$/.test(value.date)&&!value.dateTime)return {date:value.date};if(typeof value.dateTime==='string'&&/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value.dateTime)&&Number.isFinite(Date.parse(value.dateTime))&&!value.date)return {dateTime:value.dateTime,...(value.timeZone==='Europe/Berlin'?{timeZone:value.timeZone}:{})};fail('Bitte vollständige Terminzeiten mit Zeitzone verwenden.',400);};
+  out.start=time(value.start);out.end=time(value.end);if(!!out.start.date!==!!out.end.date||Date.parse(out.end.date||out.end.dateTime)<=Date.parse(out.start.date||out.start.dateTime))fail('Terminende muss nach dem Beginn liegen.',400);
+  if(value.recurrence!==undefined){if(!Array.isArray(value.recurrence)||value.recurrence.length>10||value.recurrence.some(v=>typeof v!=='string'||v.length>500||! /^(RRULE|RDATE|EXDATE)[;:]/.test(v)||/[\r\n]/.test(v)))fail('Ungültige Wiederholung.',400);out.recurrence=value.recurrence;}
+  return out;
+ }
+ async function route(action,data,env,configuration){
+  const client=env.GOOGLE_CALENDAR_CLIENT_ID;
+  if(action==='configuration')return {configured:!!client,clientId:client||null,scope,readScope};
+  if(!client)fail('Google-OAuth ist noch nicht eingerichtet. Der ICS-Import bleibt verfügbar.',503);
+  const token=data.googleAccessToken;if(typeof token!=='string'||token.length<20||token.length>4096||/[\s\x00-\x1f]/.test(token))fail('Bitte zuerst Google Kalender verbinden.',401);
+  // Validate audience and scopes, rather than accepting arbitrary Google tokens.
+  const verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'error',signal:AbortSignal.timeout(10000)});
+  if(!verification.ok)fail('Google-Zugang ungültig oder abgelaufen.',401);
+  const info=await verification.json(),scopes=new Set(String(info.scope||'').split(' ')),write=['create','update','delete'].includes(action);
+  if(info.aud!==client||Number(info.expires_in)<=0||!(scopes.has(scope)||!write&&scopes.has(readScope)))fail('Google-Zugang besitzt nicht die erforderliche Freigabe.');
+  const id=calendarId(configuration),base='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(id);
+  // A Google account must itself have access to THIS calendar. No owner credentials.
+  // Events.list returns accessRole without requesting calendar-list/ACL scopes.
+  const permissions=await json(base+'/events?maxResults=1&fields=accessRole',token);
+  if(write&&!['writer','owner'].includes(permissions.accessRole)||!write&&!['reader','writer','owner'].includes(permissions.accessRole))fail('Google-Kalenderberechtigung reicht nicht aus.');
+  if(action==='status')return {ok:true,accessRole:permissions.accessRole,calendarId:id};
+  if(action==='list'){
+   if(!Number.isFinite(data.from)||!Number.isFinite(data.to)||data.to<=data.from||data.to-data.from>31*86400000)fail('Bitte einen Zeitraum von höchstens 31 Tagen wählen.',400);
+   const params=new URLSearchParams({timeMin:new Date(data.from).toISOString(),timeMax:new Date(data.to).toISOString(),singleEvents:'true',maxResults:'250',fields:'accessRole,nextPageToken,items('+fields+')'});
+   const result=await json(base+'/events?'+params,token);return {events:result.items||[],truncated:!!result.nextPageToken};
+  }
+  if(action==='create'){
+   // No attendees: invitation privacy and OAuth consent must be approved/tested first.
+   if(!/^[a-v0-9]{32,64}$/.test(data.requestId||''))fail('Ungültige Vorgangskennung.',400);
+   return {event:await json(base+'/events?sendUpdates=none&fields='+fields,token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...eventData(data.event),id:data.requestId})})};
+  }
+  if(!['read','update','delete'].includes(action)||!/^[a-zA-Z0-9_@.-]{1,1024}$/.test(data.googleEventId||''))fail('Ungültige Google-Terminaktion.',400);
+  const url=base+'/events/'+encodeURIComponent(data.googleEventId);
+  if(action==='read')return {event:await json(url+'?fields='+fields,token)};
+  if(typeof data.etag!=='string'||!/^"[^"\r\n]{1,200}"$/.test(data.etag))fail('Bitte den Google-Termin vor der Änderung neu laden.',400);
+  const headers={'If-Match':data.etag};
+  // A delete or source change could notify guests. Reject invited events until the
+  // invitation workflow, consent and response conflict policy have been accepted.
+  const existing=await json(url+'?fields=etag,attendees,recurringEventId,recurrence',token);
+  if(existing.etag!==data.etag)fail('Der Google-Termin wurde inzwischen geändert.',409);
+  if(existing.attendees?.length)fail('Termine mit persönlichen Einladungen sind noch nicht für Änderungen freigegeben.',409);
+  if(existing.recurrence?.length)fail('Serienänderungen bitte bis zur Geräteprüfung in Google Kalender vornehmen.',409);
+  if(action==='delete'){await json(url+'?sendUpdates=none',token,{method:'DELETE',headers});return {ok:true};}
+  return {event:await json(url+'?sendUpdates=none&fields='+fields,token,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(eventData(data.event))})};
+ }
+ const replies={accepted:'yes',declined:'excused',tentative:'maybe',needsAction:'open'};
+ // Google event.updated is not a per-attendee response clock. Never use it to
+ // overwrite a newer H2O reply. This conservative proposal requires version CAS
+ // and stops automatic imports after a member has answered in H2O.
+ function replyProposal(googleStatus,previous,observedVersion,currentVersion){
+  if(!Object.hasOwn(replies,googleStatus)||observedVersion!==currentVersion||previous?.source==='h2o'||previous&&!previous.source)return null;
+  return replies[googleStatus];
+ }
+ g.GoogleCalendarAPI={route,eventData,replyProposal};
+})(globalThis);
+
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
@@ -21889,12 +21971,13 @@ g.PortalHydrants={schema,route};
     else automaticAudience={recipientIds:[...new Set(selected.flatMap(group=>g.PortalGroups.members(group,roster)))],groupIds:selected.map(group=>group.id)};
    }
    const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',meta=display.get(e.id)||{};
-   const recipientIds=kind==='info'?(meta.recipientIds??null):kind!=='probe'?null:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
+   let groupRecipients=[];if(recipientMode==='groups')try{groupRecipients=g.PortalGroups.selection(rule.groupIds,rule.includeIds||[],rule.excludeIds||[],groups.groups,roster);}catch{issues.push('Gruppen-Auswahl bitte erneut prüfen.');}
+   const recipientIds=kind==='info'?(meta.recipientIds??null):kind!=='probe'?null:recipientMode==='groups'?groupRecipients:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
    const recognized=!!fields.type||!!auto.attendanceType||/sonderprobe|(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(e.title);
    if(!rule&&fields.release===true&&kind==='probe'&&!recognized)issues.push('Titel oder Terminart ist nicht eindeutig. Bitte Terminart angeben.');
    if(!rule&&fields.release===true&&kind==='probe'&&!automaticAudience.recipientIds.length)issues.push('Keine Mitglieder für die Freigabe zugeordnet.');
    const clothingValue=rule?.clothing??fields.clothing??(kind==='probe'?(sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
-   return {...e,...(googleColors.colors.get(g.GoogleCalendarColors.eventKey(e))?{googleColor:googleColors.colors.get(g.GoogleCalendarColors.eventKey(e)).color}:{}),description:source.note,note:g.CalendarPresentation.plain(meta.note??source.note),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,googleManaged:!rule,googleIssues:issues,approved:kind==='probe'&&(rule?rule.kind==='probe'&&rule.approved===true:fields.release===true&&!issues.length),memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:automaticAudience.groupIds,automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType||auto.attendanceType||(sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
+   return {...e,...(googleColors.colors.get(g.GoogleCalendarColors.eventKey(e))?{googleColor:googleColors.colors.get(g.GoogleCalendarColors.eventKey(e)).color}:{}),description:source.note,note:g.CalendarPresentation.plain(meta.note??source.note),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,googleManaged:!rule,googleIssues:issues,approved:kind==='probe'&&(rule?rule.kind==='probe'&&rule.approved===true:fields.release===true&&!issues.length),memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:recipientMode==='groups'?rule.groupIds:automaticAudience.groupIds,...(recipientMode==='groups'?{includeIds:rule.includeIds||[],excludeIds:rule.excludeIds||[]}:{}),automaticRecipientIds:automaticAudience.recipientIds,attendanceType:kind==='probe'?(rule?.attendanceType||auto.attendanceType||(sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null};
   })};
  }
  async function calendarColors(env,data={}){
@@ -21917,7 +22000,7 @@ g.PortalHydrants={schema,route};
   if(!saved.meta.changes)fail('Zusatzinfo wurde gleichzeitig geändert. Bitte neu laden.');return {...value,version:(row?.version||0)+1};
  }
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
- function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
+ function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,includeIds,excludeIds,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
   if(event.kind==='info')fail('INFO-Einträge sind reine Kalenderinformationen. Bitte nur Darstellung und Sichtbarkeit bearbeiten.',400);
@@ -21941,11 +22024,14 @@ g.PortalHydrants={schema,route};
   const attendanceType=data.kind==='probe'?(data.attendanceType||event.attendanceType||(targetType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null;
   if(data.attendanceType!==undefined&&data.kind!=='probe')fail('Eine iPad-Terminart kann nur Proben und Sonderproben zugeordnet werden.',400);
   if(data.kind==='probe'&&!['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung'].includes(attendanceType))fail('Ungültige iPad-Terminart.',400);
-  if(data.recipientMode!==undefined&&!['automatic','manual','legacy'].includes(data.recipientMode))fail('Ungültige Mitgliederauswahl.',400);
+  if(data.recipientMode!==undefined&&!['automatic','manual','legacy','groups'].includes(data.recipientMode))fail('Ungültige Mitgliederauswahl.',400);
   const previousMode=event.recipientMode;
   if(data.recipientMode==='legacy'&&previousMode!=='legacy')fail('Ungültige bisherige Auswahl.',400);
   const recipientMode=data.kind==='probe'?(data.recipientMode||(data.recipientIds!==undefined?'manual':previousMode==='automatic'?(event.automatic?'legacy':'manual'):previousMode)):'legacy';
-  if(recipientMode==='automatic'){
+  if(recipientMode==='groups'){
+   if(data.expectedGroupsVersion!==cal.groupsVersion)fail('Gruppen wurden inzwischen geändert. Bitte neu laden.');
+   const groups=await audienceGroups(env);try{data.recipientIds=g.PortalGroups.selection(data.groupIds,data.includeIds||[],data.excludeIds||[],groups.groups,roster);}catch(e){fail(e.message,400);}
+  }else if(recipientMode==='automatic'){
    if(data.expectedGroupsVersion!==cal.groupsVersion)fail('Schlagwort-Gruppen wurden inzwischen geändert. Bitte neu laden.');
    // New rules may use the defaults before the first explicit group save.
    data.recipientIds=event.automaticRecipientIds;
@@ -21954,7 +22040,7 @@ g.PortalHydrants={schema,route};
    if(data.kind!=='probe'||!Array.isArray(data.recipientIds)||(recipientMode!=='automatic'&&!data.recipientIds.length)||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||!roster?.members||data.recipientIds.some(id=>typeof id!=='string'||!roster.members.some(m=>m.id===id)))fail('Bitte gültige Mitglieder für diesen Termin auswählen.',400);
   }
   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
-  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,location,clothing,...(data.kind==='probe'?{sessionType:targetType,attendanceType,recipientMode,groupsVersion:cal.groupsVersion,groupIds:event.groupIds,...(Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
+  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,location,clothing,...(data.kind==='probe'?{sessionType:targetType,attendanceType,recipientMode,groupsVersion:cal.groupsVersion,groupIds:recipientMode==='groups'?data.groupIds:event.groupIds,...(recipientMode==='groups'?{includeIds:data.includeIds||[],excludeIds:data.excludeIds||[]}:{}),...(Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
   const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=? AND COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,old.version,cal.groupsVersion).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) SELECT 1,? WHERE COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,cal.groupsVersion).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,attendanceType,recipientMode,recipientIds:data.kind==='probe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
  }
  async function birthdayPolicy(env){const row=await env.DB.prepare('SELECT * FROM portal_bonus_policy WHERE id=1').first();return {row,value:await open(env,row,'portal-birthday-policy')||{revision:'birthday-default-v1',awardUnits:150}};}
@@ -22207,6 +22293,7 @@ g.PortalHydrants={schema,route};
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path.startsWith('/admin/portal/google-api/'))return g.GoogleCalendarAPI.route(path.slice('/admin/portal/google-api/'.length),data,env,await config(env));
   if(path==='/admin/portal/google-colors'){
    const row=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),c=await open(env,row,'portal-config');if(!c)fail('Bitte zuerst den Google-Kalender verbinden.',400);
    if(data.enabled===undefined)return {configured:!!c.googleColorBridge,endpoint:c.googleColorBridge?.endpoint||'',version:row.version};
@@ -22362,7 +22449,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"33e23212dcc324b7ccbcc6cf677927b736afc75c2ca821d8b30269b2b5d94962",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"509816af21c9e7454a404b5e2e69e2f181db8efb76280694fac68a6a6af02a95",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

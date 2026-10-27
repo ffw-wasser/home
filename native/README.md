@@ -1,3 +1,7 @@
+# Archivierter Vorbereitungsstand
+
+Seit dem Arbeitspaket vom 27.10.2026 wird H₂O ausschließlich als gemeinsame PWA weiterentwickelt. Keine nativen iPhone-/Android-Veröffentlichungen oder neuen Store-Abonnements vorbereiten. Die folgenden Dateien bleiben zur Nachvollziehbarkeit erhalten; sie sind kein empfohlener Installationsweg.
+
 # H₂O Portal als iPhone- und Android-App
 
 Stand: Entwicklungsvorbereitung, App-Version 1.0.0 (Build 2).
