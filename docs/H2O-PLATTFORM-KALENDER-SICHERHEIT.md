@@ -1,6 +1,6 @@
 # H₂O – Plattform, Kalender und Sicherheit
 
-Stand: 27.10.2026. **Lieferumfang zur Finalisierung freigegeben; Veröffentlichung nach erfolgreicher vollständiger CI. Persönliche Kalendereinladungen und Antwortabgleich bleiben offen.**
+Stand: 27.10.2026. **Aktueller Einladungs-/Antwortstand: siehe Aktualisierung am Ende. Die nachfolgenden früheren Arbeitspakete dokumentieren den jeweiligen damaligen Lieferumfang.**
 Ausgangscommit: `58558d32e5a19b6ccbd7e3ef34eac5058750796e`.
 Branch: `feature/h2o-platform-calendar-security`. [PR #191](https://github.com/ffw-wasser/home/pull/191). App-Version des aktualisierten Hilfestands: `2026.10.27.7` (Veröffentlichung nach vollständiger CI).
 
@@ -196,3 +196,49 @@ können auch am Limit erneuert werden. Ein ausdrücklich bestätigtes Zurückset
 löscht atomar nur die Push-Verbindungen des angemeldeten Zugangs, ohne Sitzungen,
 Anwesenheiten oder Buchungen zu verändern. Andere Mitglieder bleiben unberührt.
 Echte iPhone-Zustellung bleibt gesondert zu prüfen.
+
+
+## Aktualisierung: persönliche Einladungen, Antworten und bereinigtes H₂O-Konto
+
+Implementierter Umfang für Version 2026.10.28.1. Quelltermine bleiben im bisherigen öffentlichen
+Google-Kalender. Ein eigenständiger Apps-Script-Trigger liefert persönliche Einladungen
+in einen zusätzlich erstellten privaten Kalender. Pro Mitglied und Termin genau ein
+Gast; Gastweitergabe, Gastbearbeitung und Sichtbarkeit anderer Gäste sind deaktiviert.
+Vor jedem Lauf werden die privaten Kalenderfreigaben geprüft. Öffentliches Add-on,
+Farbbrücke und Quellkalender enthalten keine Mitgliedsadressen.
+
+Mitglieder geben ihre Kalenderadresse selbst frei und bestätigen einen einmaligen,
+24 Stunden gültigen E-Mail-Link nach persönlicher H₂O-Anmeldung. Pro Konto maximal
+3 Anfragen pro Tag mit zehn Minuten Abstand. Die eindeutige Adresse wird mit HMAC
+indiziert; E-Mail, Bestätigungstoken und Einladungszuordnung liegen verschlüsselt in D1.
+Der Apps-Script-Verbindungsschlüssel wird in H₂O nur gehasht gespeichert; keine Google-
+Zugangs- oder Refresh-Token in H₂O. Das Skript fordert zum Ändern von Kalenderereignissen
+nur den Scope für selbst angelegte Kalender an. ACL-Lesezugriff dient der Privatsphäre-
+Prüfung; E-Mail-Versand dient ausschließlich der angeforderten Adressbestätigung.
+
+Wirksame Empfänger, Freigaben, aktuelle Mitgliedschaft, Kalenderstand und Versionen
+werden vor Versand und Antwortübernahme erneut geprüft. Begrenzte Läufe und atomare
+D1-Versionsprüfungen verhindern überholte Übernahmen. Antworten und Beobachtungsstand
+werden gemeinsam gesichert. Google-Sync-Token werden erst nach bestätigter Übernahme
+fortgeschrieben; 410 führt zu erneutem Lesen. Bestehende H₂O-Antworten werden durch
+needsAction nicht gelöscht. Während aktiver Einladung ist der Kalender die Antwortquelle.
+Nach Widerruf ist die direkte H₂O-Antwort wieder möglich; entfernte Einladungen werden
+beim nächsten erfolgreichen Abgleich abgesagt. Abgelaufene Einladungen werden automatisch entfernt und bei den Mitgliedern
+zurückgezogen; der Anbieter kann dies als Absage anzeigen. Die lokale Zuordnung wird
+ohne E-Mail oder Beschreibung archiviert. Gespeicherte H₂O-Antworten bleiben erhalten. Antworten nach Terminbeginn werden
+nicht übernommen. Erneute Freigaben nach Absage erhalten eine neue Google-Kennung;
+alte Antworten können die neue Einladung nicht verändern. Abgeschlossene Absagen entfernen die
+private E-Mail und Beschreibung aus der lokalen Zustellzuordnung.
+
+WhatsApp-Einstellungen, Versandoberfläche, Teilen-/Rückkehraktionen und die zugehörigen
+veralteten Tests sind entfernt. Alte API-Routen geben 410 ohne Kontaktdaten zurück.
+Frühere persönliche H₂O-Terminlinks bleiben mit bestehender Anmeldung verwendbar.
+Ausschließlich für WhatsApp gehaltene Portal-Kontaktattribute entfallen beim nächsten
+Mitgliederabgleich. Konto & Sicherheit verwendet einheitliche einzelne Karten ohne
+verschachtelte Umrandungen; verbundene Kalenderdaten stehen kompakt mit aufklappbaren
+Einstellungen. Aktive persönliche Einladungen bieten keine zusätzliche ICS-Übernahme.
+
+Automatisierte Prüfungen verwenden künstliche Identitäten und simulierte Google-/E-Mail-
+Dienste. Ein echter Google-/Apple-/Outlook-Versand und dessen Rückantwort werden dadurch
+nicht bestätigt. Die Google-Einrichtung und die providerübergreifende praktische Abnahme
+bleiben nach Veröffentlichung durchzuführen. [Einrichtung](google-calendar-invitations/README.md).

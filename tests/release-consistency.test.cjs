@@ -28,7 +28,7 @@ test('Dynamisch geladenes Handy-Manifest verwendet denselben Release wie HTML un
  assert.equal(links.length,1);assert.equal(links[0].href,'deckel-android.webmanifest?v='+release.build);
 });
 
-test('WhatsApp-Terminseite lädt die Korrektur mit der aktuellen Buildkennung',()=>{
+test('Persönliche Terminseite lädt die Korrektur mit der aktuellen Buildkennung',()=>{
  const release=JSON.parse(read('app-release.json')),html=read('termin.html');
  for(const file of ['js/features/portal/portal-whatsapp.js','css/features/portal-whatsapp.css'])assert.ok(html.includes(file+'?v='+release.build),file);
 });

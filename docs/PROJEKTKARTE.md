@@ -12,7 +12,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Datenschutz und bebilderte Hilfe unter den Kontakten | `scripts/build-help-guide.cjs`, `css/features/help-guide.css` | `scripts/capture-help-screens.cjs`, `assets/help/guide/`, `tests/help-guide-browser.cjs`; beide Ansichten gemeinsam erzeugen |
 | Gerätehaus-Erfassung, Teilnehmer, Schritte | `js/features/attendance/attendance-controller.js` | `action-dock.js`, `js/core/keyboard.js`, `js/features/tactics/` |
 | Einsatz und Fahrzeugbesetzung | `js/features/operations/operations.js`, `js/features/tactics/` | Anwesenheit, Berichte, Qualitätsprüfungen |
-| Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, `calendar-google-admin.js`, Cloudflare `portal.js`, `google-calendar-api.js`, `google-calendar-oauth.js`, ICS-Bibliothek |
+| Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, `calendar-google-admin.js`, Cloudflare `portal.js`, `google-calendar-api.js`, `google-calendar-oauth.js`, `calendar-invitations.js`, ICS-Bibliothek |
 | Ausbildung / Funk | `deckel.html`, `js/features/portal/portal-training.js`, `assets/training/` | Lokale Motorola-Taschenkarte, gemeinsame `plan-zoom.js`-Ansicht, kompakte BW-Status und Übungsdialoge |
 | Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links, Buchansicht mit `plan-zoom.js` und authentifiziertem PDF-Transport |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js` | `js/core/database.js`, Cloudflare `portal.js` |
@@ -44,6 +44,15 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
   `node scripts/update-release.cjs` und Cache-Liste beachten.
 - Browser-Sichtbarkeit und lokale PINs sind kein Ersatz für serverseitige Rechteprüfung.
   Mitgliedsaustritt muss Zugriff auf Geräte, Links und serverseitige Berechtigungen betreffen.
+
+## Persönliche Kalendereinladungen
+
+`cloudflare/push/calendar-invitations.js` enthält die geschützte Einladungswarteschlange,
+Adressbestätigung und Antwortübernahme. `docs/google-calendar-invitations/` enthält den
+eigenständigen Google-Zeittrigger und seine Einrichtung. Der öffentliche Quellkalender
+bleibt ohne Gastadressen. H₂O-Kontoeinstellungen liegen in `portal-identity.js`,
+Verwaltungseinrichtung in `calendar-invitations-admin.js`. WhatsApp-Versand ist entfernt;
+die bisherige Datei `portal-whatsapp.js` erhält die kompatible persönliche Terminlink-Ansicht.
 
 ## Typische Tests für die erste Schleife
 

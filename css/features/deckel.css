@@ -360,3 +360,20 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 
 .h2o-onboarding h2:focus{outline:none}
 body:has(#h2o-onboarding[open]) #identity-entry{visibility:hidden}
+
+/* Account sections use the shared cards once, without a second card around them. */
+body.h2o-portal #deckel-main #portal-page-more-security,
+body.h2o-portal #deckel-main #identity-security-slot>#identity-panel{background:transparent;border:0;border-radius:0;box-shadow:none;padding:0}
+#more-security .portal-setting{margin:0 0 16px}
+#more-security #identity-account{margin:0 0 16px;padding:4px 16px}
+#identity-calendar-settings form>label{display:block;margin:12px 0}
+#identity-calendar-settings input[type=email]{display:block;width:100%;min-width:0;min-height:48px;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:10px}
+#identity-calendar-settings .portal-calendar-consent{display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+#identity-calendar-settings input[type=checkbox]{appearance:auto;width:24px;height:24px;flex:none;margin:0}
+#identity-calendar-settings button{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;min-height:46px;margin-top:10px}
+#identity-calendar-settings details{margin-top:14px}
+#identity-calendar-settings summary{cursor:pointer;min-height:36px}
+
+#more-security .portal-notifications .portal-setting-help{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+
+#more-security .portal-setting>h3,#more-security .portal-setting-heading h3{font-size:1.125rem;line-height:1.35;margin:0;color:var(--ink)}

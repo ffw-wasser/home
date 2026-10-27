@@ -541,3 +541,7 @@
 .google-event-dialog .portal-calendar-actions{display:flex;flex-wrap:wrap;gap:10px}
 
 .google-event-dialog form,.google-event-dialog label,.google-event-dialog .portal-calendar-actions{min-width:0;max-width:100%}
+
+#calendar-invitations-connection a,#calendar-invitations-connection button{display:block;max-width:100%;width:fit-content;margin:10px 0;white-space:normal;overflow-wrap:anywhere}
+#calendar-invitations-connection label{display:block;margin:14px 0}
+#calendar-invitations-connection input{display:block;box-sizing:border-box;width:100%;min-width:0;padding:10px;margin-top:6px;border:1px solid #b6c8d8;border-radius:10px}
