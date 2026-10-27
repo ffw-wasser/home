@@ -1,3 +1,12 @@
+# Archivierte native App-Vorbereitung
+
+Seit 27.10.2026 wird die native iPhone-App nicht weitergeführt. Android-Store-Veröffentlichung ist zurückgestellt.
+Der aktive Mitgliederzugang ist das H₂O-Webportal für iPhone und Android, optional mit Home-Bildschirm-Symbol.
+Die nativen Quelltexte bleiben als nachvollziehbarer Entwicklungsstand erhalten. Die Build-/TestFlight-Workflows sind entfernt; die folgenden technischen Anleitungen sind historische Dokumentation und kein aktiver Veröffentlichungsauftrag.
+Die öffentliche Apple-Domain-Zuordnung wird zurückgenommen. Vorhandene Mitgliederdaten, Passkeys und Passwortzugänge werden nicht verändert.
+
+---
+
 # H₂O Portal als iPhone- und Android-App
 
 Stand: Entwicklungsvorbereitung, App-Version 1.0.0 (Build 2).

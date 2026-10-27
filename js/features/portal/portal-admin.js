@@ -368,7 +368,8 @@
   $('qr-status').textContent='';
   $('identity-code').value=result.code;$('identity-result').hidden=false;
   const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+result.code;const code=qrcode(0,'M');code.addData(url.href);code.make();const canvas=$('qr'),count=code.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#111';for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(code.isDark(r,c))ctx.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);canvas.hidden=false;$('link').href=url.href;$('link').hidden=false;
-  $('identity-status').textContent='Nur '+name+' zeigen. In H₂O unter Konto → Sicherheit eingeben. '+(reset?'Bisherige Passkeys, Passwortzugänge und Sitzungen sind gesperrt.':'Passkey oder Benutzername und Passwort einrichten.');
+  $('install-guide').hidden=false;
+  $('identity-status').textContent='Nur '+name+' zeigen. Mit der normalen Handykamera scannen und in Safari oder Chrome öffnen. Die Freigabe wird eingetragen. '+(reset?'Bisherige Passkeys, Passwortzugänge und Sitzungen sind gesperrt.':'Passkey oder Benutzername und Passwort einrichten.');
   setTimeout(()=>{if($('identity-code').value===result.code){clearQR();}},Math.max(0,result.expiresAt-Date.now()));
  },$('qr-status')).finally(()=>qrLoading(false));}
  function qrLoading(active){const button=$('show-qr');button.disabled=active||busy;button.classList.toggle('is-loading',active);button.setAttribute('aria-busy',String(active));button.textContent=active?'Portal-Code wird vorbereitet …':'Zugangseinrichtung freigeben';}
