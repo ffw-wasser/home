@@ -38,7 +38,7 @@
   await post('enroll/verify',{...data,id:request.id,response});
  }
  const el=id=>document.getElementById('identity-'+id);
- function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=true;}}
+ function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=true;}const install=document.getElementById('installSection');if(install&&target&&install.parentElement!==target)target.append(install);g.DeckelInstall?.refresh();}
  function setMemberName(name){const member=el('member');if(member){member.textContent=name?'Angemeldet als '+name:'';member.hidden=!name;}}
  function paint(){
   if(!el('state'))return;

@@ -1,12 +1,12 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=name=>fs.readFileSync(require.resolve('../'+name),'utf8');
 const personal='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/deckel-daten&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
-function fixture({ios=false,android=false,standalone=false,url=personal,storageFails=false,native=false}={}){
+function fixture({ios=false,android=false,standalone=false,url=personal,storageFails=false,native=false,session=false}={}){
  const nodes={},events={},saved=[],actions=[];
  const node=()=>({hidden:false,disabled:false,textContent:'',children:[],replaceChildren(){this.children=[];},append(n){this.children.push(n);}});
  const u=new URL(url),ctx=vm.createContext({URL,URLSearchParams,Promise,location:{href:u.href,hash:u.hash},navigator:{userAgent:native?'iPhone H2ONative/1 iOS':ios?'iPhone':android?'Android':'Chrome',platform:'',standalone,serviceWorker:{register:async file=>actions.push(['register',file])}},matchMedia:()=>({matches:false}),
  document:{getElementById:id=>nodes[id]||(nodes[id]=node()),createElement:node},addEventListener:(name,fn)=>events[name]=fn,
- DeckelDevice:{saveLink:async link=>{actions.push(['save',link]);if(storageFails)throw Error('blocked');saved.push(link);}}});ctx.window=ctx;
+ H2OIdentity:{session:()=>session?{token:'synthetic-session',alias:'a'.repeat(32)}:null},DeckelDevice:{saveLink:async link=>{actions.push(['save',link]);if(storageFails)throw Error('blocked');saved.push(link);}}});ctx.window=ctx;
  vm.runInContext(read('js/features/drinks/deckel-install.js'),ctx);return {ctx,nodes,events,saved,actions};
 }
 test('Erster QR-Aufruf zeigt Installation ohne selbstständig zu installieren, zu speichern oder Push zu erlauben',()=>{
@@ -27,10 +27,10 @@ test('Android installiert nur nach Antippen und verwendet ohne Browserunterstüt
  assert.match(f.nodes.installStatus.textContent,/Chrome/);
  assert.deepEqual(f.saved,[personal]);
 });
-test('iPhone bekommt Home-Bildschirm-Anleitung; installierte App und ungültiger Link zeigen keine Aufforderung',()=>{
+test('iPhone bekommt freiwillige Anleitung auch vor Anmeldung; installierter Start zeigt keine Aufforderung',()=>{
  const f=fixture({ios:true});assert.equal(f.nodes.installButton.hidden,true);assert.match(f.nodes.installSteps.children[1].textContent,/Home-Bildschirm/);assert.equal(f.saved.length,0);
  assert.equal(fixture({ios:true,standalone:true}).nodes.installSection.hidden,true);
- assert.equal(fixture({url:'https://ffw-wasser.github.io/home/deckel.html'}).nodes.installSection.hidden,true);
+ const publicEntry=fixture({url:'https://ffw-wasser.github.io/home/deckel.html'});assert.equal(publicEntry.nodes.installSection.hidden,false);assert.equal(publicEntry.nodes.installButton.hidden,true);assert.equal(publicEntry.saved.length,0);
 });
 test('Abgelehnter Gerätespeicher öffnet keinen Installationsdialog; native Installation speichert nur nach Nutzeraktion',async()=>{
  const f=fixture({android:true,storageFails:true});let prompts=0;f.events.beforeinstallprompt({preventDefault(){},prompt:async()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});
@@ -72,4 +72,15 @@ test('Android lädt das stabile Manifest, iOS und Desktop behalten das vorhanden
 
 test('Native App zeigt keinen zweiten Home-Bildschirm-Installationsschritt',()=>{
  const f=fixture({native:true});assert.equal(f.nodes.installSection.hidden,true);assert.equal(f.actions.length,0);assert.equal(f.saved.length,0);
+});
+
+test('Persönliche Anmeldung braucht zum Startsymbol keinen alten Link oder zusätzlichen Gerätespeicher',async()=>{
+ const f=fixture({android:true,session:true,storageFails:true,url:'https://ffw-wasser.github.io/home/deckel.html'});
+ assert.equal(f.nodes.installButton.hidden,false);assert.equal(f.nodes.installButton.textContent,'Anleitung zum Startsymbol');
+ await f.nodes.installButton.onclick();assert.deepEqual(f.saved,[]);assert.deepEqual(f.actions.filter(a=>a[0]==='save'),[]);
+ assert.match(f.nodes.installStatus.textContent,/in diesem Browser angemeldet/);assert.doesNotMatch(f.nodes.installStatus.textContent,/gespeichert|Gerätespeicher/);
+ f.events.appinstalled();await Promise.resolve();assert.equal(f.nodes.installSection.hidden,true);assert.deepEqual(f.saved,[]);
+});
+test('Noch installierte TestFlight-App erhält Browser-Umstiegshinweis ohne automatische Übertragung',()=>{
+ const f=fixture({native:true,session:true});assert.equal(f.nodes.nativeRetired.hidden,false);assert.equal(f.nodes.installSection.hidden,true);assert.deepEqual(f.saved,[]);
 });

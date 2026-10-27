@@ -23,7 +23,7 @@ test('Google API: client audience, expiration, scope and calendar rights are ind
 });
 test('Google API: allowlisted data, stable creation id, ETag updates, and no guest changes',async()=>{
  const f=setup();await f.call('create',{event,requestId:'a'.repeat(32)});const create=f.requests.find(r=>r.options.method==='POST');assert.equal(JSON.parse(create.options.body).id,'a'.repeat(32));
- for(const bad of [{...event,attendees:[]},{...event,end:event.start},{...event,summary:''},{...event,start:{dateTime:'invalid'}}])assert.throws(()=>f.api.eventData(bad));
+ for(const bad of [{...event,attendees:[]},{...event,end:event.start},{...event,summary:''},{...event,start:{dateTime:'invalid'}},{...event,start:{date:'2026-02-30'},end:{date:'2026-03-04'}}])assert.throws(()=>f.api.eventData(bad));
  await assert.rejects(f.call('update',{googleEventId:'event123',event}),/neu laden/);
  await assert.rejects(setup({precondition:true}).call('update',{googleEventId:'event123',etag:'"v1"',event}),/inzwischen/);
  await assert.rejects(setup({attendees:true}).call('delete',{googleEventId:'event123',etag:'"v1"'}),/Einladungen/);

@@ -2,7 +2,7 @@
 
 Stand: 27.10.2026. **Teilumsetzung und technische Vorbereitung; keine Freigabe für Produktion.**
 Ausgangscommit: `58558d32e5a19b6ccbd7e3ef34eac5058750796e`.
-Branch: `feature/h2o-platform-calendar-security`. [Draft-PR #191](https://github.com/ffw-wasser/home/pull/191). Vorbereitete App-Version: `2026.10.27.4`.
+Branch: `feature/h2o-platform-calendar-security`. [Draft-PR #191](https://github.com/ffw-wasser/home/pull/191). Vorbereitete App-Version: `2026.10.27.5`.
 
 ## Ergebnis je Arbeitspaket
 
@@ -11,13 +11,13 @@ Branch: `feature/h2o-platform-calendar-security`. [Draft-PR #191](https://github
 | Eine PWA | Android-Manifest mit festem, öffentlichem Start; Browser-Installationsdialog nach Antippen, Menü-Anleitung als Rückfall. iPhone mit schematischer Bildanleitung. Bestehende automatische Versionsprüfung beibehalten; sie verhindert Neuladen bei offenen Eingaben. Native Vorbereitungen archiviert, keine neuen nativen Apps. |
 | Ersteinrichtung | Geführter Einstieg, Freigabe, Wahl der Anmeldeart, bestehende Passkey-/Passwortformulare, freiwillige Installation und Mitteilungen, Abschluss zu Terminen. Zurück/Überspringen, Fortschritt, Wiederherstellung über Verwaltung. Gültige Sitzungen starten direkt. Öffentliche Hilfe ohne Anmeldung bleibt erreichbar. Optionale persönliche Kalendereinladungen werden als noch nicht verfügbar erklärt. |
 | Kalenderquelle | Bestehender ICS-Import und Terminidentitäten unverändert. Google-API-Transport vorbereitet und ohne OAuth-Konfiguration gesperrt. **Google-OAuth-Anbindung für die Verwaltung ist integriert; echte Konfiguration/Abnahme und automatische Synchronisation fehlen noch.** |
-| Direkter Bearbeitungslink | In der Kalenderverwaltung Link kopieren und manuell in die Google-Beschreibung eintragen. `index.html?editEvent=<H2O-ID>` öffnet nach bestehender Verwaltungsanmeldung den Editor des Termins. Keine Zugangsrechte im Link. Rückkehr zum Google Kalender, ohne Garantie der ursprünglichen Terminansicht. Automatisches Eintragen in Google noch offen. |
+| Direkter Bearbeitungslink | In der Kalenderverwaltung Link kopieren und manuell in die Google-Beschreibung eintragen. `index.html?editEvent=<H2O-ID>` öffnet nach bestehender Verwaltungsanmeldung den Editor des Termins. Keine Zugangsrechte im Link. Rückkehr zum Google Kalender, ohne Garantie der ursprünglichen Terminansicht. Beim Speichern im neuen Google-Editor kann der Link direkt in die Beschreibung aufgenommen werden. |
 | Zwei Administratoren | H₂O behält die bestehende serverseitige Verwaltungsautorisierung. Google-API verlangt zusätzlich einen gültigen Google-Token für den eingerichteten OAuth-Client und ausreichend Rechte am konfigurierten Kalender. Martins Freigabe an das zweite Google-Konto ist **nicht vorgenommen oder geprüft**. Kein Eigentümerwechsel. GF erhält durch diesen PR keine neuen Google-Rechte. |
 | Teilnehmer | Mehrere anklickbare Gruppen plus individuelle Ergänzungen und Ausschlüsse; serverseitige Neuberechnung bei späteren Gruppenänderungen. Versionsprüfung, keine Ausweitung bei ungültigen/verlorenen Gruppen. Schlagwörter und bisherige manuelle Listen bleiben erhalten. |
 | Persönliche Einladungen / Antworten | **Nicht aktiviert und nicht fertig implementiert.** Kein Versand, kein E-Mail-Profil, kein Hintergrundimport. Getesteter technischer Modellnachweis der vier Status und Schutz vor veralteten Beobachtungen. Keine bidirektionale Synchronisation zugesagt. |
 | Datenschutz | Unter Infos Anbieteraufgaben, offizielle Informations-/Nachweislinks und Geltungsgrenzen. Keine Übernahme von Prüfsiegeln, keine Zertifizierung des Portals behauptet. Private Google-Kalender, privates OneDrive und kostenlose GitHub Pages werden nicht durch pauschale Workspace-/Enterprise-Zertifikate als zertifiziert ausgegeben. |
 | Bestand | Bestehende Fachmodule erhalten. Neue Gruppenfelder ergänzen verschlüsselte Kalenderregeln; keine D1-Tabellenmigration und keine produktiven Datenänderungen. |
-| Veröffentlichung | Ausschließlich Feature-Branch und Draft-PR. `main`, Google Kalender, OneDrive und produktiver Worker nicht geändert. |
+| Veröffentlichung | Neue Änderungen ausschließlich im Feature-Branch/Draft-PR. Die gemeinsame PWA aus PR #190 ist bereits in `main` (Version 2026.10.27.4). Google Kalender, OneDrive und produktiver Worker wurden durch diese Fortsetzung nicht geändert. Die gesondert beauftragte Apple-Rücknahme ist über Root-PR #2 übernommen. |
 
 ## Google-API: tatsächlich vorbereiteter Umfang
 
@@ -46,8 +46,10 @@ verschlüsselter zeitbegrenzter Zustand und zufälliger Rückkanal statt eines I
 Die kurzlebige Google-Berechtigung liegt nur im Arbeitsspeicher des Verwaltungsbrowsers;
 Sperren/Verlassen entfernt sie. Keine Refresh-Token oder Offline-Freigabe.
 Reale Client-/Redirect-Konfiguration, Zustimmungsbildschirm und beide Google-Konten
-sind noch nicht eingerichtet/geprüft. Die vollständige Google-Terminbearbeitungsoberfläche
-und Hintergrund-Synchronisation bleiben offen. Keine manuell eingefügten Tokens, keine
+sind noch nicht eingerichtet/geprüft. Die Google-Terminbearbeitungsoberfläche ist vollständig für einzelne Termine umgesetzt
+(Anlegen, Ändern, Löschen mit Bestätigung, ETag-Konflikte, Datum/Zeitzonenprüfung und optionaler
+Bearbeitungslink in der Beschreibung). Ganze Serien und Termine mit Gästen bleiben gesperrt.
+Die Hintergrund-Synchronisation bleibt offen. Keine manuell eingefügten Tokens, keine
 Google-Anmeldung für normale Mitglieder. Anleitung: `GOOGLE-KALENDER-EINRICHTUNG.md`.
 
 ## Warum Kalenderantworten noch gesperrt sind
@@ -141,3 +143,33 @@ Externe Zertifizierung bleibt eine eigene spätere Entscheidung; aktuell kein Au
 - [Google: Sicherheitsinformationen](https://safety.google/)
 - [Microsoft: Compliance nach Produkt/Geltungsbereich](https://learn.microsoft.com/en-us/compliance/regulatory/offering-home)
 - [GitHub: Compliance-Berichte, insbesondere Enterprise-Geltungsbereich](https://docs.github.com/en/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/accessing-compliance-reports-for-your-organization)
+
+## Fortsetzung am 27.10.2026
+
+- Konflikte mit dem veröffentlichten PWA-Stand aus PR #190 aufgelöst. Moderne
+  Mitgliedersitzungen speichern bei der Android-Installation keinen abgewiesenen Altlink.
+  Der Browserdialog bleibt nach aktivem Antippen nutzbar; Installation bleibt freiwillig.
+- Native Build-/TestFlight-Workflows bleiben entfernt. Root-PR #2 wurde übernommen;
+  die öffentliche Apple-Zuordnungsdatei liefert HTTP 200 mit leeren applinks- und
+  webcredentials-Listen. Apple-/Geräte-Caches können noch alte Zuordnungen enthalten.
+- Google-Editor samt Bildern/Hilfe ergänzt. Zeiten werden unabhängig von der Gerätezone
+  in Europe/Berlin interpretiert. Nicht existierende/mehrdeutige neue Uhrzeiten werden
+  abgewiesen. Unveränderte Zeitpunkte behalten Sekunden und Zeitzonenbezug.
+- Konflikte bewahren Eingaben; Wiederladen verlangt bei Änderungen eine Bestätigung.
+  Verlassen/Sperren entfernt Dialog und Token; laufende Schreibvorgänge blockieren
+  normale Navigation. Späte Antworten öffnen keine geschlossene Verwaltung neu.
+- Direktlinks für reine Kalenderinformationen behoben (kein Zugriff auf noch nicht
+  initialisierte Editierfunktionen); Kopieren zeigt eine eigene Rückmeldung.
+- Der Diagnoseanker wird im gemeinsamen Hilfe-Generator gepflegt, damit er beim
+  nächsten Hilfebau nicht wieder verschwindet.
+- 950 Unit-/Regressionstests lokal erfolgreich. Browser: Google-PKCE, CRUD, Konflikte,
+  verworfenes Abbrechen, Sommerzeitfehler, Ganztag und 320/390/768 px bei 100/200 %;
+  Passkey, Passwort, Kalenderinformationen/Direktlink, Hilfe, Offline-Neustart,
+  Start/Wiederaufnahme und Mitteilungen erfolgreich. Alle Konten künstlich.
+- **Weiter offen und nicht als fertig ausgewiesen:** echte OAuth-Client-Konfiguration,
+  beide Google-Konten/Kalenderfreigaben; freiwilliges E-Mail-Profil und dessen Verifizierung,
+  privater Einladungsversand, dauerhafte Zuordnung und automatischer Antwortabgleich.
+  Diese Funktionen sind nicht allein durch das Eintragen der OAuth-Schlüssel erledigt.
+  Keine persönlichen Einladungen oder Rückmeldungen in den öffentlichen Kalender schreiben.
+- Neue Version 2026.10.27.5 ist vorbereitet, nicht produktiv veröffentlicht.
+  Vollständigen CI-Abschluss am aktuellen PR-Commit prüfen.

@@ -62,8 +62,17 @@ App-Freigabe kann zusätzlich im Google-Konto widerrufen werden.
 
 ## Noch offene Funktionen / Abnahme
 
-Die Verbindung und API sind vorbereitet. Die vollständige Oberfläche zum Erstellen,
-Ändern und Löschen von Google-Terminen ist noch nicht fertig. Persönliche Kalendereinladungen,
+Die Verbindung, API und Oberfläche zum Erstellen, Ändern und Löschen sind umgesetzt
+und mit künstlichen Konten geprüft. Unter Verbindung „Neuen Google-Termin anlegen“
+oder am bestehenden Termin „Google-Termin bearbeiten“ wählen. Titel, Zeitraum, Ort
+und öffentliche Beschreibung werden mit einer Prüfung auf gleichzeitige Änderungen gespeichert.
+Zeiten gelten für Europe/Berlin; bei Ganztag ist das Ende exklusiv. Der H₂O-Bearbeitungslink
+lässt sich beim Speichern direkt in die Beschreibung aufnehmen. Abbrechen schützt
+ungespeicherte Eingaben, Löschen verlangt eine Bestätigung. Ganze Serien und Termine
+mit Gästen bleiben bis zum Integrationstest für Änderungen gesperrt. Ein einzelnes
+Serienvorkommen wird über seinen ursprünglichen Start zugeordnet. Unveränderte Uhrzeiten
+behalten ihre exakten Sekunden und ihren Zeitpunkt, auch beim Wechsel der Sommerzeit.
+Nach Speicherung wird der H₂O-Import neu geladen; Google kann Änderungen im ICS verzögert liefern. Persönliche Kalendereinladungen,
 E-Mail-Profil und automatischer Antwortabgleich bleiben deaktiviert. Für einen späteren
 Hintergrundabgleich ist ein eigener, datenschutzgeprüfter serverseitiger Zugriff nötig;
 die hier bewusst kurzlebige Browserverbindung ersetzt diesen nicht.
