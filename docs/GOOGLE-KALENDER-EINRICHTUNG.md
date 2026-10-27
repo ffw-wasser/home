@@ -106,3 +106,12 @@ Offizielle Grundlage:
 - https://developers.google.com/identity/protocols/oauth2/web-server
 - https://googleapis.dev/nodejs/google-auth-library/latest/interfaces/GenerateAuthUrlOpts.html
 - https://developers.google.com/workspace/calendar/api/v3/reference/events
+
+## Auswählen direkt in Google Kalender am Computer
+
+Die gesonderte [H₂O-Kalendererweiterung](google-calendar-addon/README.md) bietet
+Terminart, Kleidung, mehrere Gruppen und Freigabe als Seitenleiste im gespeicherten
+Google-Termin. Code und automatisierte Tests sind vorbereitet; die persönliche
+Installation und reale Abnahme durch beide Verwaltungspersonen stehen noch aus.
+Google unterstützt diese Kalender-Add-ons nicht auf Mobilgeräten. Gruppenlisten
+werden als Namen konfiguriert, ohne Mitglieder, und nach Änderungen separat nachgeführt.
