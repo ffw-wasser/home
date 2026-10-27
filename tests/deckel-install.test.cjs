@@ -1,10 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=name=>fs.readFileSync(require.resolve('../'+name),'utf8');
 const personal='https://ffw-wasser.github.io/home/deckel.html#r=ffw-wasser/deckel-daten&a='+ 'a'.repeat(32)+'&k='+ 'b'.repeat(64);
-function fixture({ios=false,android=false,standalone=false,url=personal,storageFails=false}={}){
+function fixture({ios=false,android=false,standalone=false,url=personal,storageFails=false,native=false}={}){
  const nodes={},events={},saved=[],actions=[];
  const node=()=>({hidden:false,disabled:false,textContent:'',children:[],replaceChildren(){this.children=[];},append(n){this.children.push(n);}});
- const u=new URL(url),ctx=vm.createContext({URL,URLSearchParams,Promise,location:{href:u.href,hash:u.hash},navigator:{userAgent:ios?'iPhone':android?'Android':'Chrome',platform:'',standalone,serviceWorker:{register:async file=>actions.push(['register',file])}},matchMedia:()=>({matches:false}),
+ const u=new URL(url),ctx=vm.createContext({URL,URLSearchParams,Promise,location:{href:u.href,hash:u.hash},navigator:{userAgent:native?'iPhone H2ONative/1 iOS':ios?'iPhone':android?'Android':'Chrome',platform:'',standalone,serviceWorker:{register:async file=>actions.push(['register',file])}},matchMedia:()=>({matches:false}),
  document:{getElementById:id=>nodes[id]||(nodes[id]=node()),createElement:node},addEventListener:(name,fn)=>events[name]=fn,
  DeckelDevice:{saveLink:async link=>{actions.push(['save',link]);if(storageFails)throw Error('blocked');saved.push(link);}}});ctx.window=ctx;
  vm.runInContext(read('js/features/drinks/deckel-install.js'),ctx);return {ctx,nodes,events,saved,actions};
@@ -68,4 +68,8 @@ test('Android lädt kein WebAPK-Manifest; iOS und Desktop behalten es',()=>{
  assert.equal(run('Android Chrome').length,0);
  assert.equal(run('iPhone Safari')[0].rel,'manifest');
  assert.match(run('Desktop Chrome')[0].href,/deckel\.webmanifest/);
+});
+
+test('Native App zeigt keinen zweiten Home-Bildschirm-Installationsschritt',()=>{
+ const f=fixture({native:true});assert.equal(f.nodes.installSection.hidden,true);assert.equal(f.actions.length,0);assert.equal(f.saved.length,0);
 });

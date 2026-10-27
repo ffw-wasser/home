@@ -1,0 +1,12 @@
+{
+  "name": "H₂O Portal",
+  "applicationId": "de.feuerwehrwasser.h2o",
+  "version": "1.0.0",
+  "build": 2,
+  "portalUrl": "https://ffw-wasser.github.io/home/deckel.html",
+  "relyingPartyId": "ffw-wasser.github.io",
+  "androidMinSdk": 28,
+  "androidTargetSdk": 36,
+  "iosMinimumVersion": "17.0",
+  "status": "development"
+}

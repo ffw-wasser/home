@@ -121,3 +121,18 @@ test('Final: legacy links and all old calendar tokens fail before any member enr
  for(const path of ['/commands/status','/challenge/solo-status'])assert.equal((await request(f,path,{...own(person),id:require('node:crypto').randomUUID()},command)).status,401,path);
  assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_identity_members').get().n,0);
 });
+
+test('Native Android-Passkeys akzeptieren nur ausdrücklich hinterlegte App-Signaturursprünge',async()=>{
+ const f=await setup(),origin='android:apk-key-hash:'+Buffer.alloc(32,7).toString('base64url');
+ f.env.H2O_ANDROID_APP_ORIGINS=JSON.stringify([origin]);
+ const code=await ticket(f),p=await passkey(f,{register:'passkey/enroll',code,registrationOrigin:origin});
+ let result=await f.call('passkey/portal/login/verify',await p.login({portal:true,origin}));assert.equal(result.status,200);
+ result=await f.call('passkey/portal/login/verify',await p.login({portal:true,origin:'android:apk-key-hash:'+Buffer.alloc(32,8).toString('base64url')}));assert.equal(result.status,401);
+ delete f.env.H2O_ANDROID_APP_ORIGINS;
+ result=await f.call('passkey/portal/login/verify',await p.login({portal:true,origin}));assert.equal(result.status,401,'native authentication is disabled by default');
+ result=await f.call('passkey/portal/login/verify',await p.login({portal:true}));assert.equal(result.status,200,'website login remains available');
+ for(const configuration of ['["https://evil.example"]','"*"','invalid','["android:apk-key-hash:short"]']){
+  f.env.H2O_ANDROID_APP_ORIGINS=configuration;
+  assert.equal((await f.call('passkey/portal/login/verify',await p.login({portal:true,origin}))).status,401);
+ }
+});

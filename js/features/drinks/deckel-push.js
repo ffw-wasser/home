@@ -3,7 +3,8 @@
  'use strict';
  let access=null,busy=false,preparing=false,prepared=null,pushConfigured=false,pushActive=false,otherAccount=false,generation=0;
  const $=id=>document.getElementById('portal-push-'+id);
- const supported=()=>Boolean(navigator.serviceWorker&&g.PushManager&&g.Notification);
+ const native=()=>/\bH2ONative\/1\b/.test(navigator.userAgent);
+ const supported=()=>!native()&&Boolean(navigator.serviceWorker&&g.PushManager&&g.Notification);
  const same=(a,b)=>Boolean(a&&b&&a.alias===b.alias&&a.revision===b.revision&&a.origin===b.origin&&a.capability===b.capability);
  const current=(c,version)=>{if(version!==generation||!same(c,access))throw Error('Der Portalzugang wurde geändert. Bitte erneut anmelden.');};
  const isIos=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
@@ -18,6 +19,7 @@
   $('enable').textContent=preparing?'Wird vorbereitet …':!prepared?'Erneut prüfen':pushConfigured?'Erneut aktivieren':'Aktivieren';
   $('enable').disabled=busy||preparing||!access||!available||blocked;$('disable').disabled=busy||preparing;
   state($('state'),otherAccount?'Anderes Konto':pushActive&&!blocked?'Aktiv':blocked?'Blockiert':!available?'Nicht verfügbar':preparing?'Wird vorbereitet':pushConfigured?'Bitte prüfen':'Aus',pushActive&&!blocked&&!otherAccount);
+  if(native()){$('enable').hidden=$('disable').hidden=true;state($('state'),'App-Vorbereitung');$('note').textContent='Server-Mitteilungen sind in dieser App-Version noch nicht eingerichtet. Oben unter Erinnerung kannst du eine tägliche App-Erinnerung wählen.';return;}
   $('note').textContent=otherAccount?'Zuerst die Verbindung des anderen Kontos deaktivieren.':blocked?'Mitteilungen in den Handy-Einstellungen erlauben.':isIos()&&!installed()?'H₂O über das Symbol auf dem Home-Bildschirm öffnen.':!available?'Dieser Browser unterstützt keine Push-Mitteilungen.':'Erinnerungen direkt auf dieses Handy.';
  }
  async function prepare(){

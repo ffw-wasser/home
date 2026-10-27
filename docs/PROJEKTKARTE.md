@@ -22,6 +22,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Mein Deckel, Zahlungen, Punkte, Challenge | `js/features/drinks/`, `deckel.html` | Cloudflare `central.js`, `challenge.js`, `js/core/privacy.js` |
 | Theater / Veranstaltungen | `js/features/theater/` | Cloudflare `theater.js`, `css/features/` |
 | Synchronisierung, Microsoft-Zugriff | `js/core/onedrive-sync.js`, `database.js` | Cloudflare-Schnittstellen, geschützte Zustände |
+| Native Mitglieder-App (Vorbereitung) | `native/README.md`, `native/ios/`, `native/android/` | `scripts/prepare-native-association.cjs`, Cloudflare `passkeys.js`, `native-app.yml`; Store-Zuordnung, echte Geräte und native Server-Push-Funktion noch freizugeben |
 | PWA, Offline/Cache, Installationsicons | `service-worker.js`, `js/core/connection-status.js`, `manifest.webmanifest`, `deckel*.webmanifest` | `scripts/update-release.cjs`, `app-release.json`; öffentliche Unterlagen in separatem Cache, private Serverantworten bleiben ausgeschlossen; `tests/portal-offline-browser.cjs` prüft echten Offline-Neustart |
 | Cloudflare Worker, Push, D1 | `cloudflare/push/worker.js` und die Fachmodule im gleichen Ordner | `build.cjs`, `wrangler.jsonc`, `*.sql` |
 | Standardisierte Prüfungen | `tests/`, `scripts/check-syntax.cjs` | `.github/workflows/application-tests.yml` |

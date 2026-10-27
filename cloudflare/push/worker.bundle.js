@@ -21287,6 +21287,14 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  'use strict';
  const RP='ffw-wasser.github.io',ORIGIN='https://ffw-wasser.github.io',TTL=300000;
  const fail=(message='Passkey konnte nicht bestätigt werden. Bitte erneut versuchen.',status=401)=>{throw Object.assign(Error(message),{status});};
+ // Android WebView uses a certificate-bound app origin. Accept only the
+ // explicitly configured signing certificates; website authentication stays valid.
+ function expectedOrigins(env){
+  if(!env.H2O_ANDROID_APP_ORIGINS)return ORIGIN;
+  let values;try{values=JSON.parse(env.H2O_ANDROID_APP_ORIGINS);}catch{fail('App-Zuordnung fehlerhaft konfiguriert.',503);}
+  if(!Array.isArray(values)||values.length>3||values.some(value=>typeof value!=='string'||!/^android:apk-key-hash:[A-Za-z0-9_-]{43}$/.test(value)))fail('App-Zuordnung fehlerhaft konfiguriert.',503);
+  return [ORIGIN,...new Set(values)];
+ }
  const random=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
  const bytes=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  const schema=[
@@ -21294,17 +21302,18 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  'CREATE TABLE IF NOT EXISTS portal_identity_grants (id TEXT PRIMARY KEY,alias TEXT NOT NULL)',
  'CREATE TABLE IF NOT EXISTS portal_identity_tickets (id TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,generation INTEGER NOT NULL,expires_at INTEGER NOT NULL)',
  'CREATE TABLE IF NOT EXISTS portal_identity_sessions (token_hash TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,credential TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL)',
+ 'CREATE TABLE IF NOT EXISTS portal_passwords (alias TEXT PRIMARY KEY,revision TEXT NOT NULL,id TEXT NOT NULL UNIQUE,username_hash TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,verifier TEXT NOT NULL)',
  'CREATE TABLE IF NOT EXISTS portal_passkey_state (alias TEXT PRIMARY KEY,generation INTEGER NOT NULL DEFAULT 0)',
  'CREATE TABLE IF NOT EXISTS portal_passkeys (id TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,public_key TEXT NOT NULL,counter INTEGER NOT NULL,user_id TEXT NOT NULL)',
  'CREATE INDEX IF NOT EXISTS portal_passkeys_alias ON portal_passkeys(alias,revision)',
  'CREATE TABLE IF NOT EXISTS portal_passkey_challenges (id TEXT PRIMARY KEY,challenge TEXT NOT NULL,kind TEXT NOT NULL,alias TEXT NOT NULL,revision TEXT NOT NULL,generation INTEGER NOT NULL,expires_at INTEGER NOT NULL)',
  'CREATE TABLE IF NOT EXISTS portal_passkey_limits (id TEXT PRIMARY KEY,count INTEGER NOT NULL,expires_at INTEGER NOT NULL)'
  ];
- async function limit(env,key){
-  const now=Date.now(),id=await hash('passkey-rate:'+env.INVITE_SECRET+':'+key+':'+Math.floor(now/TTL));
+ async function limit(env,key,max=30,window=TTL){
+  const now=Date.now(),id=await hash('passkey-rate:'+env.INVITE_SECRET+':'+key+':'+Math.floor(now/window));
   await env.DB.prepare('DELETE FROM portal_passkey_limits WHERE expires_at<?').bind(now).run();
-  const row=await env.DB.prepare('INSERT INTO portal_passkey_limits(id,count,expires_at) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET count=count+1 RETURNING count').bind(id,now+TTL).first();
-  if(row.count>30)fail('Zu viele Versuche. Bitte in fünf Minuten erneut versuchen.',429);
+  const row=await env.DB.prepare('INSERT INTO portal_passkey_limits(id,count,expires_at) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET count=count+1 RETURNING count').bind(id,now+window).first();
+  if(row.count>max)fail('Zu viele Versuche. Bitte in fünf Minuten erneut versuchen.',429);
  }
  async function generation(env,alias){await env.DB.prepare('INSERT OR IGNORE INTO portal_passkey_state(alias,generation) VALUES(?,0)').bind(alias).run();return (await env.DB.prepare('SELECT generation FROM portal_passkey_state WHERE alias=?').bind(alias).first()).generation;}
  async function challenge(env,kind,options,record){
@@ -21329,21 +21338,21 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  async function revoke(env,record){
   await env.DB.batch([
    env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) VALUES(?,1) ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(record.alias),
-   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
+   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
   ]);return {ok:true};
  }
- // Only a fresh, independently approved WebAuthn assertion can issue a portal session.
+ // Portal authority requires an approved, still-active member credential.
  async function session(env,token){
   await g.PortalService.ready(env);
   if(!/^[\w-]{43}$/.test(token||''))return null;
-  const row=await env.DB.prepare('SELECT s.* FROM portal_identity_sessions s JOIN portal_passkeys p ON p.id=s.credential AND p.alias=s.alias AND p.revision=s.revision JOIN portal_identity_grants g ON g.id=p.id WHERE s.token_hash=? AND s.expires_at>?').bind(await hash('portal-session:'+token),Date.now()).first();
+  const row=await env.DB.prepare('SELECT s.* FROM portal_identity_sessions s WHERE s.token_hash=? AND s.expires_at>? AND (EXISTS(SELECT 1 FROM portal_passkeys p JOIN portal_identity_grants g ON g.id=p.id AND g.alias=p.alias WHERE p.id=s.credential AND p.alias=s.alias AND p.revision=s.revision) OR EXISTS(SELECT 1 FROM portal_passwords w WHERE w.id=s.credential AND w.alias=s.alias AND w.revision=s.revision))').bind(await hash('portal-session:'+token),Date.now()).first();
   if(!row)return null;
   return {row,record:await owner(env,row.alias,row.revision)};
  }
  async function authorize(env,data,auth,legacy){
   const active=await session(env,auth);
   if(active){if(active.record.alias!==data.alias||data.revision&&active.record.revision!==data.revision)fail();return active;}
-  fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
+  fail('Bitte mit Passkey oder Passwort anmelden.',401);
  }
  async function migrated(env,record){return !!await env.DB.prepare('SELECT member FROM portal_identity_members WHERE member=?').bind(record.memberId).first();}
  async function ticket(env,code){
@@ -21352,7 +21361,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   if(!row||row.generation!==await generation(env,row.alias))fail('Freigabe abgelaufen oder bereits verwendet.',403);
   return {...row,record:await owner(env,row.alias,row.revision)};
  }
- function recent(active){if(!active||active.row.created_at<Date.now()-TTL)fail('Bitte für diese Sicherheitsänderung erneut mit Passkey anmelden.',401);}
+ function recent(active){if(!active||active.row.created_at<Date.now()-TTL)fail('Bitte für diese Sicherheitsänderung erneut anmelden.',401);}
  async function admin(env,data){
   const record=await owner(env,data.alias,data.revision);
   if(data.reset===true)await revoke(env,record); // Enrollment marker intentionally survives recovery.
@@ -21361,6 +21370,9 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   return {code,expiresAt};
  }
  async function identity(path,data,env,auth){
+  if(path==='password/login')return passwordLogin(env,data,auth);
+  if(path==='password/set')return passwordSet(env,data,auth);
+  if(path==='password/confirm')return passwordConfirm(env,data,auth);
   if(path==='portal/login/options')return challenge(env,'portal-login',await WebAuthnServer.generateAuthenticationOptions({rpID:RP,userVerification:'required'}));
   if(path==='portal/login/verify')return route('login/verify',data,env,null,true,null,auth);
   let active=await session(env,auth);
@@ -21370,10 +21382,10 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
    const record=approval?.record||active.record;
    return route(path.replace('enroll/','register/'),data,env,record,false,{approval,active});
   }
-  if(!active)fail('Sitzung abgelaufen. Bitte mit Passkey anmelden.',401);
+  if(!active)fail('Sitzung abgelaufen. Bitte erneut anmelden.',401);
   const {record,row}=active;
   if(data.alias&&data.alias!==record.alias)fail();
-  if(path==='session')return {alias:record.alias,revision:record.revision,key:record.key,expiresAt:row.expires_at};
+  if(path==='session')return {alias:record.alias,revision:record.revision,key:record.key,expiresAt:row.expires_at,method:row.credential.startsWith('password:')?'password':'passkey'};
   if(path==='logout'){await env.DB.prepare('DELETE FROM portal_identity_sessions WHERE token_hash=?').bind(row.token_hash).run();return {ok:true};}
   if(path==='devices'){
    const keys=(await env.DB.prepare('SELECT p.id FROM portal_passkeys p JOIN portal_identity_grants g ON g.id=p.id WHERE p.alias=? AND p.revision=?').bind(record.alias,record.revision).all()).results;
@@ -21402,7 +21414,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   }
   if(path==='register/verify'){
    const pending=await consume(env,data.id,enrollment?'enroll:'+(enrollment.approval?.id||enrollment.active.row.token_hash):'register',record);let result;
-   try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
+   try{result=await W.verifyRegistrationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:expectedOrigins(env),expectedRPID:RP,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});}catch{fail();}
    if(!result.verified||!result.registrationInfo)fail();
    const c=result.registrationInfo.credential;await owner(env,record.alias,record.revision);
    const guard=enrollment?.approval?' AND EXISTS(SELECT 1 FROM portal_identity_tickets WHERE id=? AND expires_at>?)':enrollment?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':'';
@@ -21423,7 +21435,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
    const row=await env.DB.prepare('SELECT * FROM portal_passkeys WHERE id=?').bind(data.response.id).first();if(!row)fail();
    if(data.response.response?.userHandle!==row.user_id)fail();
    await owner(env,row.alias,row.revision);let result;
-   try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:ORIGIN,expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
+   try{result=await W.verifyAuthenticationResponse({response:data.response,expectedChallenge:pending.challenge,expectedOrigin:expectedOrigins(env),expectedRPID:RP,requireUserVerification:true,credential:{id:row.id,publicKey:bytes(row.public_key),counter:row.counter}});}catch{fail();}
    if(!result.verified)fail();
    if(portal)return issuePortal(env,row,result.authenticationInfo.newCounter,data,replaceAuth);
    const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join(''),expiresAt=Date.now()+90*86400000;
@@ -21461,6 +21473,68 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   const results=await env.DB.batch(statements);if(!results[1].meta.changes)fail();
   return {token,alias:key.alias,revision:key.revision,expiresAt,scope:'portal'};
  }
+
+ // Workers cap each WebCrypto PBKDF2 invocation at 100,000 iterations. A mandatory
+ // independent Worker secret peppers the verifier; a D1 dump alone cannot test guesses.
+ // Do not lower the cost or silently fall back when the secret/runtime is unavailable.
+ const PASSWORD_ITERATIONS=100000;
+ function passwordSecret(env){if(typeof env.H2O_PASSWORD_PEPPER!=='string'||env.H2O_PASSWORD_PEPPER.length<43)fail('Passwortanmeldung ist noch nicht eingerichtet. Bitte Passkey verwenden oder die Verwaltung kontaktieren.',503);return env.H2O_PASSWORD_PEPPER;}
+ function username(value){return typeof value==='string'&&/^[a-z0-9][a-z0-9._-]{2,63}$/.test(value.trim().toLowerCase())?value.trim().toLowerCase():'';}
+ function passwordValue(value){return typeof value==='string'&&[...value].length>=15&&[...value].length<=128&&enc.encode(value).length<=512;}
+ async function pepper(env,purpose,value){const key=await crypto.subtle.importKey('raw',enc.encode(passwordSecret(env)),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(await crypto.subtle.sign('HMAC',key,enc.encode('h2o-password-v1:'+purpose+':'+value)));}
+ async function verifier(env,password,salt){
+  const key=await crypto.subtle.importKey('raw',enc.encode(password),{name:'PBKDF2'},false,['deriveBits']);
+  const derived=b64(await crypto.subtle.deriveBits({name:'PBKDF2',salt:bytes(salt),iterations:PASSWORD_ITERATIONS,hash:'SHA-512'},key,256));
+  return pepper(env,'verifier',salt+':'+derived);
+ }
+ const passwordFailure=()=>fail('Benutzername oder Passwort nicht bestätigt. Bitte erneut versuchen.',401);
+ async function passwordLogin(env,data,replaceAuth){
+  passwordSecret(env);
+  const name=username(data.username),nameHash=await pepper(env,'username',name||'invalid');
+  await limit(env,'password-user:'+nameHash,10,TTL);
+  const row=name?await env.DB.prepare('SELECT * FROM portal_passwords WHERE username_hash=?').bind(nameHash).first():null;
+  const valid=passwordValue(data.password),candidate=await verifier(env,valid?data.password:'invalid-password-value',row?.salt||b64(new Uint8Array(32)));
+  if(!row||!valid||!equal(candidate,row.verifier))passwordFailure();
+  return passwordSession(env,row,replaceAuth);
+ }
+ async function passwordConfirm(env,data,auth){
+  passwordSecret(env);const active=await session(env,auth);if(!active)passwordFailure();
+  await limit(env,'password-confirm:'+active.record.alias,10,TTL);
+  const row=await env.DB.prepare('SELECT * FROM portal_passwords WHERE id=? AND alias=? AND revision=?').bind(active.row.credential,active.record.alias,active.record.revision).first();
+  const valid=passwordValue(data.password),candidate=await verifier(env,valid?data.password:'invalid-password-value',row?.salt||b64(new Uint8Array(32)));
+  if(!row||!valid||!equal(candidate,row.verifier))passwordFailure();
+  return passwordSession(env,row,auth);
+ }
+ async function passwordSession(env,key,replaceAuth){
+  await owner(env,key.alias,key.revision);
+  const token=random(),tokenHash=await hash('portal-session:'+token),now=Date.now(),expiresAt=now+30*86400000;
+  let previous=null;try{previous=await session(env,replaceAuth);}catch{}
+  if(previous&&previous.record.alias!==key.alias)fail('Bitte vor einem Mitgliederwechsel zuerst abmelden.',403);
+  const replace=previous?.row.token_hash||'';
+  const results=await env.DB.batch([
+   env.DB.prepare('DELETE FROM portal_identity_sessions WHERE expires_at<? OR token_hash=?').bind(now,replace),
+   env.DB.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM portal_passwords WHERE id=? AND alias=? AND revision=? AND verifier=?) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND (SELECT COUNT(*) FROM portal_identity_sessions WHERE alias=?)<20').bind(tokenHash,key.alias,key.revision,key.id,now,expiresAt,key.id,key.alias,key.revision,key.verifier,key.alias,key.revision,key.alias)
+  ]);if(!results[1].meta.changes)passwordFailure();
+  return {token,alias:key.alias,revision:key.revision,expiresAt,scope:'portal',method:'password'};
+ }
+ async function passwordSet(env,data,auth){
+  passwordSecret(env);
+  const name=username(data.username);if(!name)fail('Benutzername: 3–64 Zeichen, nur a–z, Zahlen, Punkt, Bindestrich oder Unterstrich.',400);
+  if(!passwordValue(data.password))fail('Bitte ein eigenes Passwort mit 15 bis 128 Zeichen wählen. Leerzeichen und Einfügen sind erlaubt.',400);
+  if(/^(.)\1+$/u.test(data.password)||['123456789012345','passwordpassword','passwortpasswort'].includes(data.password.toLowerCase()))fail('Bitte ein weniger leicht zu erratendes Passwort wählen.',400);
+  const approval=data.code?await ticket(env,data.code):null,active=approval?null:await session(env,auth);
+  if(!approval)recent(active);
+  const record=approval?.record||active.record,epoch=await generation(env,record.alias),id='password:'+random(),salt=random(),nameHash=await pepper(env,'username',name),proof=await verifier(env,data.password,salt),now=Date.now();
+  const guard='EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND EXISTS(SELECT 1 FROM portal_passkey_state WHERE alias=? AND generation=?) AND '+(approval?'EXISTS(SELECT 1 FROM portal_identity_tickets WHERE id=? AND alias=? AND revision=? AND generation=? AND expires_at>?)':'EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND alias=? AND revision=? AND created_at>?)');
+  const args=[record.alias,record.revision,record.alias,epoch,...(approval?[approval.id,record.alias,record.revision,epoch,now]:[active.row.token_hash,record.alias,record.revision,now-TTL])];
+  const created='EXISTS(SELECT 1 FROM portal_passwords WHERE id=?)';
+  const statements=[env.DB.prepare('INSERT INTO portal_passwords(alias,revision,id,username_hash,salt,verifier) SELECT ?,?,?,?,?,? WHERE '+guard+' ON CONFLICT(alias) DO UPDATE SET revision=excluded.revision,id=excluded.id,username_hash=excluded.username_hash,salt=excluded.salt,verifier=excluded.verifier').bind(record.alias,record.revision,id,nameHash,salt,proof,...args),env.DB.prepare('INSERT OR IGNORE INTO portal_identity_members(member) SELECT ? WHERE '+created).bind(record.memberId,id),env.DB.prepare("DELETE FROM portal_identity_sessions WHERE alias=? AND credential LIKE 'password:%' AND "+created).bind(record.alias,id)];
+  if(approval)statements.push(env.DB.prepare('DELETE FROM portal_identity_tickets WHERE id=? AND '+created).bind(approval.id,id));
+  let results;try{results=await env.DB.batch(statements);}catch(error){if(/UNIQUE constraint failed: portal_passwords.username_hash/.test(error.message))fail('Dieser Benutzername ist nicht verfügbar. Bitte einen anderen wählen.',409);throw error;}
+  if(!results[0].meta.changes)fail('Freigabe abgelaufen. Bitte erneut anmelden oder die Verwaltung kontaktieren.',403);
+  return {ok:true};
+ }
+
  g.WhatsAppPasskeys={schema,limit,route,revoke,session,authorize,migrated,identity,admin};
 })(globalThis);
 
@@ -21972,7 +22046,7 @@ g.PortalHydrants={schema,route};
  async function route(path,data,env,auth,clientIP='unknown',ctx){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
    if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
-   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
+   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path)||path.includes('/password/'))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||action.startsWith('password/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
@@ -22067,7 +22141,7 @@ g.PortalHydrants={schema,route};
     // One JSON parameter keeps even bulk removals within D1 bind/query limits.
     const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
     for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE '+scope).bind(aliases,payload));
-    for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
+    for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','devices','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE '+scope).bind(aliases,payload));
     statements.push(env.DB.prepare("UPDATE commands SET status='rejected',result='accessChanged',envelope='' WHERE status='pending' AND "+scope).bind(aliases,payload));
    }
    statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));
@@ -22274,7 +22348,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"81746995424cafa8e5c652866e313a6eb5321613736dc2e504a23e59c02f182e",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"fb66afc042fe3065801bfc32bb3516f6fb9f72e5e5b40eff24ccf433b22d32c5",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

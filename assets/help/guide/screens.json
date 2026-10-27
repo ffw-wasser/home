@@ -106,5 +106,9 @@
   "geraetehaus-h2o-einladung": {
     "width": 1326,
     "height": 1365
+  },
+  "h2o-anmeldung": {
+    "width": 390,
+    "height": 1400
   }
 }

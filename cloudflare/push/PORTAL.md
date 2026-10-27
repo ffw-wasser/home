@@ -302,3 +302,57 @@ an. Es gibt kein schnelles Polling und keinen zusätzlichen Google-Import.
 Zugriffsentzug und Quellenwechsel verwerfen auch verspätete Antworten. Der Kalender
 bleibt im Browser nur im Arbeitsspeicher. Jahreswechsel laden weiterhin beide Jahre.
 Die obere Terminkarte wartet beim Aktualisieren nicht auf die privaten Rückmeldungen.
+
+
+## Alternative Passwortanmeldung (vorbereitet, nicht produktiv eingerichtet)
+
+Eine identitätsgeprüfte, zehn Minuten gültige Verwaltungsfreigabe kann wahlweise
+für einen Passkey oder einen Passwortzugang verwendet werden. Mitgliedschaft,
+Rollenprüfung, Portalberechtigungen und Sitzungen gelten für beide Anmeldearten.
+Es gibt keine offene Registrierung und keinen Zugang über die Getränke-PIN.
+
+Benutzername: 3–64 ASCII-Zeichen (a–z, Zahlen, Punkt, Unterstrich, Bindestrich),
+ohne Unterschied zwischen Groß-/Kleinschreibung. Passwort: 15–128 Unicode-Zeichen,
+maximal 512 UTF-8-Bytes; kein Trimmen, keine stille Kürzung, Einfügen und Leerzeichen
+sind erlaubt. Offensichtliche Wiederholungen und wenige triviale Passwörter werden
+abgewiesen; das ist keine vollständige Prüfung gegen geleakte Passwörter.
+
+Vor Einsatz einen eigenen, zufälligen Worker-Secret `H2O_PASSWORD_PEPPER` mit
+mindestens 32 Zufallsbytes (z. B. 64 Hexzeichen) sicher bereitstellen. Das bestehende
+Generator-Skript enthält diesen Wert für eine **neue** Einrichtung. Bei vorhandenen
+Diensten niemals die übrigen Schlüssel neu erzeugen/ersetzen. Keine Secrets in Chat,
+Repository, öffentlichen Logs oder `.well-known`-Dateien speichern. Ohne dieses
+Secret schlagen Passwortanmeldung und Einrichtung geschlossen mit HTTP 503 fehl;
+Passkeys funktionieren weiter. Kein produktiver Secret wurde hier geändert.
+
+D1 speichert zufälliges Salt, Credential-ID, Benutzername-HMAC und Passwortverifier;
+keine Klartextpasswörter und keinen Klartextbenutzernamen. Verifierformat v1:
+PBKDF2-HMAC-SHA512, 100.000 Iterationen, 256 Bit Ausgabe, danach HMAC-SHA256 mit dem
+separaten Worker-Secret und fester Zweckbindung. Die Plattform begrenzt PBKDF2 auf
+100.000 Iterationen. Das liegt unter der OWASP-Empfehlung von 220.000 für SHA512;
+der verpflichtende Pepper schützt zusätzlich gegen einen isolierten D1-Abzug,
+ersetzt aber keinen höheren KDF-Aufwand bei gemeinsamem Verlust von Datenbank und
+Secret. Vor Freigabe Kosten/Laufzeit im echten Workers-Tarif prüfen und die
+Plattformbegrenzung bei künftiger KDF-Aufrüstung berücksichtigen. Kein automatischer
+Tarifwechsel. Quellen: https://github.com/cloudflare/workerd/issues/1346 und
+https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html .
+Ein Verlust/Wechsel des Peppers erfordert eine neue Passwortfreigabe für betroffene
+Mitglieder; eine Wiederherstellung darf nie eine schwächere Hashprüfung einschalten.
+
+Anmeldeversuche werden vor der KDF je Client-IP (30/5 Minuten) und zusätzlich nach
+Benutzername-HMAC (10/5 Minuten, auch über mehrere IPs) begrenzt. Fehler verraten nicht,
+ob Benutzername oder Passwort falsch war. Unbekannte Namen erhalten dieselbe KDF-Arbeit.
+Sitzungstokens sind zufällig und werden serverseitig nur gehasht gespeichert, maximal
+30 Tage gültig. Abmelden entfernt nur das aktuelle Token. Erneute Bestätigung rotiert
+nur diese Sitzung. Sicherheitsänderungen benötigen eine höchstens fünf Minuten alte
+Anmeldung; die Oberfläche fragt bei Passwortsitzungen erneut nach dem aktuellen Passwort.
+Eine Passwortänderung ersetzt die Credential-ID und sperrt alle bisherigen
+Passwortsitzungen; Passkeys bleiben erhalten. Verwaltungs-Wiederherstellung sperrt
+Passkeys, Passwort und alle Sitzungen. Mitgliedsaustritt und Zugangsrotation gelten
+sofort auch für Passwortsitzungen. Kein automatischer E-Mail-Reset wurde eingeführt.
+
+Vor Veröffentlichung: Worker-Secret sicher einrichten, Worker und Website gemeinsam
+freigeben, D1-Sicherung sowie echten Runtime-/CPU-Test durchführen und mit einem
+künstlichen Mitglied Einrichtung, Fehlversuche, Wiederherstellung, Mitgliedsaustritt
+und beide Anmeldearten auf iPhone/Android prüfen. Die lokalen Tests verwenden keine
+produktiven Daten oder Zugänge.
