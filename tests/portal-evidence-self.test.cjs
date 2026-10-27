@@ -98,3 +98,32 @@ test('Changing AGT assignment preserves an independently confirmed driving check
  const f=await setup();await report(f,job('driver'));await review(f,{field:'driver',action:'confirm',expectedVersion:1,requestId:randomUUID()});
  f.people[0].agt=false;await f.roster(f.people);const r=await f.call('evidence');assert.equal(r.value.evidence.driver.checkedOn,'2026-10-20');assert.equal(r.value.eligibility.agt,false);
 });
+
+test('Admin overview finds existing unreviewed reports across members without changing evidence or audit',async()=>{
+ const f=await setup();await report(f,job());await report(f,job('g263',{validMonth:'2027-05'}));await report(f,job('driver'),f.people[1]);
+ const before=f.sql.prepare('SELECT COUNT(*) AS n FROM portal_evidence_audit').get().n;
+ const response=await f.call('evidence/overview',{},null,true);assert.equal(response.status,200,JSON.stringify(response.value));
+ const {items,count,memberCount}=response.value;assert.equal(count,3);assert.equal(memberCount,2);
+ assert.deepEqual(items.map(item=>[item.name,item.field,item.status]),[['Testperson 1','ffi','reported'],['Testperson 1','g263','reported'],['Testperson 2','driver','pending']]);
+ assert.equal(items[0].checkedOn,'2026-10-20');assert.equal(items[0].confirmedValue,'2026-01-01');assert.equal(items[0].version,1);
+ assert.ok(items.every(item=>!('alias' in item)&&!('revision' in item)&&!('evidence' in item)&&!('controller' in item)));
+ assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_evidence_audit').get().n,before);
+ assert.equal((await f.call('evidence',{},f.people[1])).value.evidence.driver.checkedOn,'2025-01-01');
+});
+test('Admin overview removes confirmed, rejected, superseded and ineligible reports',async()=>{
+ const f=await setup();await report(f,job());await report(f,job('instruction'));await report(f,job('driver'),f.people[1]);
+ await review(f,{field:'ffi',action:'confirm',expectedVersion:1,requestId:randomUUID()});
+ await review(f,{field:'instruction',action:'reject',expectedVersion:1,requestId:randomUUID()});
+ let result=await f.call('evidence/overview',{},null,true);assert.equal(result.value.count,1);assert.equal(result.value.items[0].memberId,f.people[1].memberId);
+ f.people[1].evidence.driver.checkedOn='2026-10-21';await f.roster(f.people);assert.equal((await f.call('evidence/overview',{},null,true)).value.count,0);
+ await report(f,job('g263',{validMonth:'2027-05'}));f.people[0].agt=false;await f.roster(f.people);assert.equal((await f.call('evidence/overview',{},null,true)).value.count,0);
+ f.people[0].agt=true;await f.roster(f.people);await report(f,job('ffi',{expectedVersion:2}));await f.roster(f.people.slice(1));assert.equal((await f.call('evidence/overview',{},null,true)).value.count,0);
+});
+test('Central evidence overview is admin-only and bound to the current data source',async()=>{
+ const f=await setup();await report(f,job());
+ assert.equal((await f.call('evidence/overview')).status,404);
+ const request=new Request('https://test.example/admin/portal/evidence/overview',{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer '+await require('node:vm').runInContext('(env,r)=>capability(env,r.alias,r.revision,"commands")',f.c)(f.env,f.people[0]),'Content-Type':'application/json'},body:JSON.stringify({source:'test-source'})});
+ assert.equal((await f.c.worker.fetch(request,f.env)).status,401);
+ assert.notEqual((await f.call('evidence/overview',{source:'another-folder'},null,true)).status,200);
+ await f.DB.prepare('DELETE FROM portal_roster WHERE id=1').run();const missing=await f.call('evidence/overview',{},null,true);assert.equal(missing.status,503);assert.ok(!('items' in missing.value));
+});

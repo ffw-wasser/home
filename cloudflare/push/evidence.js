@@ -41,6 +41,19 @@
   return Promise.all(records.map(async row=>{const e=await L.open(env,row.payload,'evidence-audit:'+member);return {field:e.field,source:e.entry.source,status:e.entry.status,checkedOn:e.entry.checkedOn,until:e.entry.until,controller:e.entry.controller,updatedAt:e.entry.updatedAt};}));
  }
  async function read(env,member,roster){if(!member)fail('Mitglied nicht mehr freigegeben.',403);return {...await view(env,member,roster),history:await history(env,member.id)};}
+ async function overview(env,roster){
+  if(!Array.isArray(roster?.members))fail('Mitglieder sind noch nicht mit dem Portal abgeglichen.',503);
+  const members=new Map(roster.members.map(member=>[member.id,member])),items=[];
+  for(const row of await rows(env)){
+   const member=members.get(row.member);
+   if(!member||!fields.includes(row.field)||!allowed(member,row.field,roster.agtSource))continue;
+   const entry=await L.open(env,row.payload,'evidence:'+member.id+':'+row.field);
+   if(entry.baseRevision!==(member.evidenceRevisions?.[row.field]||1)||entry.source!=='self'||!['pending','reported'].includes(entry.status))continue;
+   items.push({memberId:member.id,name:member.name,field:row.field,version:row.version,status:entry.status,checkedOn:entry.checkedOn,until:entry.until,updatedAt:entry.updatedAt,confirmedValue:entry.confirmedValue||baseValue(member,row.field)});
+  }
+  items.sort((a,b)=>b.updatedAt-a.updatedAt||a.name.localeCompare(b.name,'de')||a.field.localeCompare(b.field));
+  return {items,count:items.length,memberCount:new Set(items.map(item=>item.memberId)).size,servedAt:Date.now()};
+ }
  function dates(data,field){
   const checkedOn=E.date(data.checkedOn),today=E.day(Date.now());
   if(!checkedOn||checkedOn>today||checkedOn<'2000-01-01')fail('Bitte das tatsächliche Nachweisdatum eintragen; kein zukünftiges Datum.');
@@ -91,5 +104,5 @@
   if(!result[0].meta.changes)fail('Nachweis oder Mitgliederfreigabe wurde gleichzeitig geändert. Bitte neu laden.',409);
   return {ok:true,receipt:data.requestId,...await read(env,member,roster)};
  }
- g.PortalEvidence={schema,fields,revisions,rows,view,read,write};
+ g.PortalEvidence={schema,fields,revisions,rows,view,read,overview,write};
 })(globalThis);

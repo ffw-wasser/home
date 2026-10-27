@@ -21581,6 +21581,19 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   return Promise.all(records.map(async row=>{const e=await L.open(env,row.payload,'evidence-audit:'+member);return {field:e.field,source:e.entry.source,status:e.entry.status,checkedOn:e.entry.checkedOn,until:e.entry.until,controller:e.entry.controller,updatedAt:e.entry.updatedAt};}));
  }
  async function read(env,member,roster){if(!member)fail('Mitglied nicht mehr freigegeben.',403);return {...await view(env,member,roster),history:await history(env,member.id)};}
+ async function overview(env,roster){
+  if(!Array.isArray(roster?.members))fail('Mitglieder sind noch nicht mit dem Portal abgeglichen.',503);
+  const members=new Map(roster.members.map(member=>[member.id,member])),items=[];
+  for(const row of await rows(env)){
+   const member=members.get(row.member);
+   if(!member||!fields.includes(row.field)||!allowed(member,row.field,roster.agtSource))continue;
+   const entry=await L.open(env,row.payload,'evidence:'+member.id+':'+row.field);
+   if(entry.baseRevision!==(member.evidenceRevisions?.[row.field]||1)||entry.source!=='self'||!['pending','reported'].includes(entry.status))continue;
+   items.push({memberId:member.id,name:member.name,field:row.field,version:row.version,status:entry.status,checkedOn:entry.checkedOn,until:entry.until,updatedAt:entry.updatedAt,confirmedValue:entry.confirmedValue||baseValue(member,row.field)});
+  }
+  items.sort((a,b)=>b.updatedAt-a.updatedAt||a.name.localeCompare(b.name,'de')||a.field.localeCompare(b.field));
+  return {items,count:items.length,memberCount:new Set(items.map(item=>item.memberId)).size,servedAt:Date.now()};
+ }
  function dates(data,field){
   const checkedOn=E.date(data.checkedOn),today=E.day(Date.now());
   if(!checkedOn||checkedOn>today||checkedOn<'2000-01-01')fail('Bitte das tatsächliche Nachweisdatum eintragen; kein zukünftiges Datum.');
@@ -21631,7 +21644,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   if(!result[0].meta.changes)fail('Nachweis oder Mitgliederfreigabe wurde gleichzeitig geändert. Bitte neu laden.',409);
   return {ok:true,receipt:data.requestId,...await read(env,member,roster)};
  }
- g.PortalEvidence={schema,fields,revisions,rows,view,read,write};
+ g.PortalEvidence={schema,fields,revisions,rows,view,read,overview,write};
 })(globalThis);
 
 /* Private plans: encrypted chunks, atomic publication, no public file URLs. */
@@ -22187,6 +22200,7 @@ g.PortalHydrants={schema,route};
     const own=roster?.members.find(member=>member.id===record.memberId);
     return path.endsWith('/report')?g.PortalEvidence.write(env,own,roster,data,false,m):g.PortalEvidence.read(env,own,roster);
    }
+   if(path==='/admin/portal/evidence/overview')return g.PortalEvidence.overview(env,roster);
    if(path==='/admin/portal/evidence'||path==='/admin/portal/evidence/review'){
     const member=roster?.members.find(person=>person.id===data.memberId);
     return path.endsWith('/review')?g.PortalEvidence.write(env,member,roster,data,true,m):g.PortalEvidence.read(env,member,roster);
@@ -22348,7 +22362,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"fb66afc042fe3065801bfc32bb3516f6fb9f72e5e5b40eff24ccf433b22d32c5",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"33e23212dcc324b7ccbcc6cf677927b736afc75c2ca821d8b30269b2b5d94962",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}
