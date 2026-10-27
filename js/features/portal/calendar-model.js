@@ -26,7 +26,7 @@
    // Reject old series instances before doing any timezone formatting.
    if(start.zone===I.Timezone.localTimezone&&end.zone===I.Timezone.localTimezone&&(wallTime(end)<from-86400000||wallTime(start)>to+86400000))return;
    const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if((range?finish<=from:ms<from)||ms>=to)return;
-   events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),description:g.CalendarPresentation?g.CalendarPresentation.plain(event.description):String(event.description||'').slice(0,4000),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
+   events.push({googleUid:uid,googleOccurrence:recurring?(original.isDate?original.toString():original.toUnixTime()*1000):null,seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),description:g.CalendarPresentation?g.CalendarPresentation.plain(event.description):String(event.description||'').slice(0,4000),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
   }
   for(const [uid,items] of groups){
    const main=items.find(c=>!c.hasProperty('recurrence-id'));

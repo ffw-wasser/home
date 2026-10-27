@@ -146,7 +146,7 @@
   if(!saved.meta.changes)fail('Zusatzinfo wurde gleichzeitig geändert. Bitte neu laden.');return {...value,version:(row?.version||0)+1};
  }
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
- function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,includeIds,excludeIds,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
+ function memberEvent(event){const {recipientIds,automaticRecipientIds,groupIds,includeIds,excludeIds,googleUid,googleOccurrence,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds)};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
   if(event.kind==='info')fail('INFO-Einträge sind reine Kalenderinformationen. Bitte nur Darstellung und Sichtbarkeit bearbeiten.',400);
@@ -439,7 +439,17 @@
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
   if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
-  if(path.startsWith('/admin/portal/google-api/'))return g.GoogleCalendarAPI.route(path.slice('/admin/portal/google-api/'.length),data,env,await config(env));
+  if(path.startsWith('/admin/portal/google-oauth/'))return g.GoogleCalendarOAuth.route(path.slice('/admin/portal/google-oauth/'.length),data,env,m.source);
+  if(path.startsWith('/admin/portal/google-api/')){
+   const action=path.slice('/admin/portal/google-api/'.length);
+   if(action==='resolve'){
+    if(!/^[A-Za-z0-9_-]{43}$/.test(data.eventId||''))fail('Ungültiger Kalendertermin.',400);
+    let cal=await calendar(env),event=cal.events.find(e=>e.id===data.eventId);if(!event?.googleUid){cal=await calendar(env,true);event=cal.events.find(e=>e.id===data.eventId);}
+    if(cal.stale||!event?.googleUid)fail('Google-Termin bitte zuerst im Kalender aktualisieren.',409);
+    data={...data,googleUid:event.googleUid,googleOccurrence:event.googleOccurrence,from:event.start-86400000,to:event.end+86400000};
+   }
+   return g.GoogleCalendarAPI.route(action,data,env,await config(env));
+  }
   if(path==='/admin/portal/google-colors'){
    const row=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),c=await open(env,row,'portal-config');if(!c)fail('Bitte zuerst den Google-Kalender verbinden.',400);
    if(data.enabled===undefined)return {configured:!!c.googleColorBridge,endpoint:c.googleColorBridge?.endpoint||'',version:row.version};

@@ -37,3 +37,10 @@ test('Calendar reply proof: all statuses map and stale observations cannot repla
  assert.equal(api.replyProposal('accepted',{status:'excused'},1,1),null,'legacy replies protected');
  assert.equal(api.replyProposal('invalid',null,0,0),null);
 });
+
+test('Google event mapping uses the existing H2O ID and never exposes source identifiers to members',async()=>{
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,event=cal.events[0],original=f.c.fetch;f.env.GOOGLE_CALENDAR_CLIENT_ID=client;let ambiguous=false;
+ f.c.fetch=async(url,options)=>{const u=new URL(url);if(u.hostname==='oauth2.googleapis.com')return Response.json({aud:client,scope,expires_in:300});if(u.hostname==='www.googleapis.com'){if(u.searchParams.get('fields')==='accessRole')return Response.json({accessRole:'writer'});const item={id:'google-event',iCalUID:event.googleUid,etag:'"source-v1"',summary:'Synthetic source'};return Response.json({items:ambiguous?[item,item]:[item]});}return original(url,options);};
+ const result=await f.call('google-api/resolve',{eventId:event.id,googleUid:'ignored-foreign-uid',googleAccessToken:token},null,true);assert.equal(result.status,200,JSON.stringify(result.value));assert.equal(result.value.event.id,'google-event');assert.equal((await f.call('list')).value.events[0].googleUid,undefined);
+ ambiguous=true;assert.equal((await f.call('google-api/resolve',{eventId:event.id,googleAccessToken:token},null,true)).status,409);
+});

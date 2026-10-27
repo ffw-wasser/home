@@ -1,5 +1,6 @@
 const CACHE_NAME="ffw-wasser-20261027.4";
 const CORE=[
+  "./js/features/portal/calendar-google-admin.js?v=20261027.4",
   "./js/features/portal/portal-onboarding.js?v=20261027.4",
   "./assets/help/iphone-home.svg",
 

@@ -40,7 +40,7 @@ jobs:
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
       - name: Install browser for passkey integration test
-        timeout-minutes: 5
+        timeout-minutes: 12
         run: |
           # The Azure HTTP mirror repeatedly stalls while downloading font packages.
           if [ -f /etc/apt/apt-mirrors.txt ]; then
@@ -70,6 +70,8 @@ jobs:
         run: node tests/passkey-browser.cjs
       - name: Test password alternative with synthetic accounts
         run: node tests/password-browser.cjs
+      - name: Test Google Calendar PKCE administration flow
+        run: node tests/google-calendar-oauth-browser.cjs
       - name: Test H2O startup and resume transitions
         run: node tests/deckel-startup-browser.cjs
       - name: Test FFW update notice and safe reload

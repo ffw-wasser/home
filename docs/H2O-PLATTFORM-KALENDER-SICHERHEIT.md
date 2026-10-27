@@ -2,7 +2,7 @@
 
 Stand: 27.10.2026. **Teilumsetzung und technische Vorbereitung; keine Freigabe für Produktion.**
 Ausgangscommit: `58558d32e5a19b6ccbd7e3ef34eac5058750796e`.
-Branch: `feature/h2o-platform-calendar-security`. Vorbereitete App-Version: `2026.10.27.4`.
+Branch: `feature/h2o-platform-calendar-security`. [Draft-PR #191](https://github.com/ffw-wasser/home/pull/191). Vorbereitete App-Version: `2026.10.27.4`.
 
 ## Ergebnis je Arbeitspaket
 
@@ -10,7 +10,7 @@ Branch: `feature/h2o-platform-calendar-security`. Vorbereitete App-Version: `202
 | --- | --- |
 | Eine PWA | Android-Manifest mit festem, öffentlichem Start; Browser-Installationsdialog nach Antippen, Menü-Anleitung als Rückfall. iPhone mit schematischer Bildanleitung. Bestehende automatische Versionsprüfung beibehalten; sie verhindert Neuladen bei offenen Eingaben. Native Vorbereitungen archiviert, keine neuen nativen Apps. |
 | Ersteinrichtung | Geführter Einstieg, Freigabe, Wahl der Anmeldeart, bestehende Passkey-/Passwortformulare, freiwillige Installation und Mitteilungen, Abschluss zu Terminen. Zurück/Überspringen, Fortschritt, Wiederherstellung über Verwaltung. Gültige Sitzungen starten direkt. Öffentliche Hilfe ohne Anmeldung bleibt erreichbar. Optionale persönliche Kalendereinladungen werden als noch nicht verfügbar erklärt. |
-| Kalenderquelle | Bestehender ICS-Import und Terminidentitäten unverändert. Google-API-Transport vorbereitet, standardmäßig gesperrt. **Google-OAuth-Anbindung in der Oberfläche und automatische Synchronisation fehlen noch.** |
+| Kalenderquelle | Bestehender ICS-Import und Terminidentitäten unverändert. Google-API-Transport vorbereitet und ohne OAuth-Konfiguration gesperrt. **Google-OAuth-Anbindung für die Verwaltung ist integriert; echte Konfiguration/Abnahme und automatische Synchronisation fehlen noch.** |
 | Direkter Bearbeitungslink | In der Kalenderverwaltung Link kopieren und manuell in die Google-Beschreibung eintragen. `index.html?editEvent=<H2O-ID>` öffnet nach bestehender Verwaltungsanmeldung den Editor des Termins. Keine Zugangsrechte im Link. Rückkehr zum Google Kalender, ohne Garantie der ursprünglichen Terminansicht. Automatisches Eintragen in Google noch offen. |
 | Zwei Administratoren | H₂O behält die bestehende serverseitige Verwaltungsautorisierung. Google-API verlangt zusätzlich einen gültigen Google-Token für den eingerichteten OAuth-Client und ausreichend Rechte am konfigurierten Kalender. Martins Freigabe an das zweite Google-Konto ist **nicht vorgenommen oder geprüft**. Kein Eigentümerwechsel. GF erhält durch diesen PR keine neuen Google-Rechte. |
 | Teilnehmer | Mehrere anklickbare Gruppen plus individuelle Ergänzungen und Ausschlüsse; serverseitige Neuberechnung bei späteren Gruppenänderungen. Versionsprüfung, keine Ausweitung bei ungültigen/verlorenen Gruppen. Schlagwörter und bisherige manuelle Listen bleiben erhalten. |
@@ -30,7 +30,7 @@ Route `/admin/portal/google-api/<aktion>`:
 - Ohne `GOOGLE_CALENDAR_CLIENT_ID` bleiben alle Zugriffe außer Konfigurationsstatus gesperrt.
 - Der Aufrufer muss zusätzlich zur H₂O-Verwaltungsautorisierung einen kurzlebigen
   `googleAccessToken` liefern. Audience, Ablauf, Scope und Google-`accessRole` werden
-  unabhängig geprüft. Keine Tokenablage in D1, keine Rückgabe/Protokollierung.
+  unabhängig geprüft. Keine Tokenablage in D1, keine Protokollierung oder Tokenrückgabe aus API-Terminergebnissen. Der OAuth-Austausch liefert das kurzlebige Token ausschließlich an den autorisierten Verwaltungsbrowser.
 - Leseberechtigung: `calendar.events.readonly` oder `calendar.events`;
   Änderungen: `calendar.events` und `writer`/`owner`. Keine ACL-Änderung.
 - Lesen auf maximal 31 Tage/250 Einträge begrenzt; unvollständige Ergebnisse werden markiert.
@@ -40,12 +40,15 @@ Route `/admin/portal/google-api/<aktion>`:
 - Keine Einladungen/Benachrichtigungen über diese Vorbereitung (`sendUpdates=none`).
   Teilnehmerfelder werden weder als Bearbeitungseingabe akzeptiert noch ausgelesen zurückgegeben.
 
-**Das ist noch kein verwendbarer Google-Anmeldeablauf.** Keine Tokens manuell in eine
-Benutzeroberfläche kopieren. Vor Erweiterung OAuth Authorization Code mit PKCE,
-Client-/Redirect-Konfiguration, Zustimmungsbildschirm, individuelle Bindung an den
-berechtigten H₂O-Administrator sowie Ablauf/Widerruf sicher implementieren und testen.
-Google rät von einer selbst implementierten Implicit-Flow-Lösung ab.
-Ein Google-Login darf für normale Portalmitglieder nicht Voraussetzung werden.
+**Der Google-Anmeldeablauf für die Verwaltung ist jetzt integriert und mit künstlichen
+Konten im Browser geprüft.** Authorization Code mit PKCE, feste Redirect-URI,
+verschlüsselter zeitbegrenzter Zustand und zufälliger Rückkanal statt eines Implicit Flow.
+Die kurzlebige Google-Berechtigung liegt nur im Arbeitsspeicher des Verwaltungsbrowsers;
+Sperren/Verlassen entfernt sie. Keine Refresh-Token oder Offline-Freigabe.
+Reale Client-/Redirect-Konfiguration, Zustimmungsbildschirm und beide Google-Konten
+sind noch nicht eingerichtet/geprüft. Die vollständige Google-Terminbearbeitungsoberfläche
+und Hintergrund-Synchronisation bleiben offen. Keine manuell eingefügten Tokens, keine
+Google-Anmeldung für normale Mitglieder. Anleitung: `GOOGLE-KALENDER-EINRICHTUNG.md`.
 
 ## Warum Kalenderantworten noch gesperrt sind
 
@@ -80,7 +83,7 @@ Für die tatsächliche Integration fehlen insbesondere:
 Kostenlose lokale Quell-/Regressionsprüfung mit ausschließlich künstlichen Konten und
 blockierten produktiven Diensten; **kein externes Pentest-Zertifikat**.
 
-- 944 Unit-/Regressionstests erfolgreich, darunter Anmeldung, Rollenverlust, Sperrung,
+- 948 Unit-/Regressionstests erfolgreich, darunter Anmeldung, Rollenverlust, Sperrung,
   Wiederherstellung, Versionskonflikte, verschlüsselte D1-Daten, OneDrive und öffentliche Ressourcen.
 - Google-spezifische Tests prüfen zusätzliche OAuth-Client-/Scope-/Kalendergrenzen,
   ETag-Konflikte und gesperrte Gästeänderungen gegen simulierte Antworten.
@@ -105,17 +108,19 @@ Erfolgreich ausgeführt: vollständige Unit-Suite, Syntax, Bundle-/Release-Erzeu
 Passkey- und Passwort-Browserabläufe, Kalendergruppen-Browserablauf einschließlich neuer
 Mehrfachauswahl. Gemeinsame Hilfe und Originalbild des neuen Einstiegs aktualisiert.
 Auch `tests/help-guide-browser.cjs`, `tests/deckel-startup-browser.cjs` und
-`tests/portal-offline-browser.cjs` sind erfolgreich. Syntaxprüfung: 269 JavaScript-Dateien,
+`tests/portal-offline-browser.cjs` sind erfolgreich. Syntaxprüfung: 274 JavaScript-Dateien,
 0 Fehler. Hilfe-, Bundle- und Release-Konsistenz lokal erfolgreich. CI-Status siehe PR.
 
 Chromium-Ansichten: Anmeldung/Passkey bei 320 px, Passwort bei 390 px und Layout 320/390/768 px;
 Kalenderverwaltung 320/390/412/768/1024 px. Neuer Einrichtungsdialog zusätzlich
 bei 320/390/768 px mit 100 % und 200 % Schriftgröße ohne seitlichen Überlauf geprüft. Browseremulation ersetzt **keine echten Geräte**.
 Nicht geprüft: reale Android-WebAPK-Installation/Play Protect, iOS Home-Bildschirm und
-Passkey-Synchronisation, echte Push-Zustellung, reale Microsoft-Konten, Google OAuth,
+Passkey-Synchronisation, echte Push-Zustellung, reale Microsoft-Konten, reale Google-OAuth-Freigaben,
 Kalenderfreigaben, persönliche Einladungen und Kalenderantworten. Diese Abnahme fehlt.
 
-Vor Merge muss die vollständige GitHub-Action erfolgreich sein. Eine erfolgreiche CI
+Der bisherige GitHub-Lauf bestand Unit-/Konsistenzprüfungen, lief aber bei der Browserinstallation
+in das 5-Minuten-Limit. Das Limit wurde auf 12 Minuten erhöht; die Browserprüfungen
+werden weiterhin vollständig ausgeführt. Vor Merge muss die gesamte GitHub-Action erfolgreich sein. Eine erfolgreiche CI
 ersetzt weder die ausstehende Integration noch eine ausdrückliche Veröffentlichungsfreigabe.
 Rückfall: Draft-PR nicht übernehmen; nach einem später freigegebenen Release kann der
 Commit zurückgenommen werden. Bestehende ICS-/Anmeldepfade bleiben erhalten.

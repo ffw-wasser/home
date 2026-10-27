@@ -38,6 +38,20 @@
   const permissions=await json(base+'/events?maxResults=1&fields=accessRole',token);
   if(write&&!['writer','owner'].includes(permissions.accessRole)||!write&&!['reader','writer','owner'].includes(permissions.accessRole))fail('Google-Kalenderberechtigung reicht nicht aus.');
   if(action==='status')return {ok:true,accessRole:permissions.accessRole,calendarId:id};
+  if(action==='resolve'){
+   if(typeof data.googleUid!=='string'||!data.googleUid||data.googleUid.length>1024)fail('Google-Terminzuordnung fehlt.',400);
+   const params=new URLSearchParams({iCalUID:data.googleUid,singleEvents:'false',maxResults:'250',fields:'items('+fields+'),nextPageToken'});
+   const source=await json(base+'/events?'+params,token);if(source.nextPageToken)fail('Google-Terminzuordnung ist nicht eindeutig.',409);
+   let matches=(source.items||[]).filter(e=>e.iCalUID===data.googleUid&&e.status!=='cancelled');
+   if(data.googleOccurrence!=null){
+    const masters=matches.filter(e=>e.recurrence?.length&&!e.recurringEventId);if(masters.length!==1)fail('Google-Terminserie ist nicht eindeutig.',409);
+    const window=new URLSearchParams({timeMin:new Date(data.from).toISOString(),timeMax:new Date(data.to).toISOString(),maxResults:'250',fields:'items('+fields+'),nextPageToken'});
+    const instances=await json(base+'/events/'+encodeURIComponent(masters[0].id)+'/instances?'+window,token);if(instances.nextPageToken)fail('Google-Terminserie ist zu umfangreich.',409);
+    matches=(instances.items||[]).filter(e=>e.status!=='cancelled'&&(typeof data.googleOccurrence==='string'?e.originalStartTime?.date===data.googleOccurrence:Date.parse(e.originalStartTime?.dateTime)===data.googleOccurrence));
+   }else matches=matches.filter(e=>!e.recurringEventId&&!e.recurrence?.length);
+   if(matches.length!==1)fail('Der zugehörige Google-Termin ist nicht mehr eindeutig verfügbar.',409);
+   return {event:matches[0]};
+  }
   if(action==='list'){
    if(!Number.isFinite(data.from)||!Number.isFinite(data.to)||data.to<=data.from||data.to-data.from>31*86400000)fail('Bitte einen Zeitraum von höchstens 31 Tagen wählen.',400);
    const params=new URLSearchParams({timeMin:new Date(data.from).toISOString(),timeMax:new Date(data.to).toISOString(),singleEvents:'true',maxResults:'250',fields:'accessRole,nextPageToken,items('+fields+')'});
