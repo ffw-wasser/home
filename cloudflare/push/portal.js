@@ -479,10 +479,22 @@
    const events=await projection(url),existing=await config(env),c={...(existing?.calendarUrl===url?existing:{}),calendarUrl:url,reminders:true,leadHours:data.leadHours},payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events},'portal-calendar');
    await env.DB.batch([env.DB.prepare('INSERT INTO portal_config(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=version+1').bind(payload),env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(cal,Date.now())]);return {ok:true,count:events.length};
   }
+  if(path==='/portal/push-devices'){
+   const deviceURL=data.endpoint===undefined?null:endpoint(data.endpoint);
+   if(data.reset!==undefined&&typeof data.reset!=='boolean')fail('Ungültige Geräteaktion.',400);
+   if(data.reset===true)await env.DB.batch([
+    env.DB.prepare('DELETE FROM portal_devices WHERE id IN (SELECT id FROM devices WHERE alias=?) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)').bind(record.alias,record.alias,record.revision),
+    env.DB.prepare('DELETE FROM devices WHERE alias=? AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)').bind(record.alias,record.alias,record.revision)
+   ]);
+   const count=(await env.DB.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').bind(record.alias).first()).n;
+   const registered=deviceURL?!!await env.DB.prepare('SELECT id FROM devices WHERE alias=? AND revision=? AND endpoint=?').bind(record.alias,record.revision,deviceURL).first():false;
+   const renewable=deviceURL?!!await env.DB.prepare('SELECT id FROM devices WHERE alias=? AND endpoint=?').bind(record.alias,deviceURL).first():false;
+   return {ok:true,count,limit:5,registered,renewable};
+  }
   if(path==='/portal/subscribe'||path==='/portal/unsubscribe'){
    const url=endpoint(data.endpoint),id=await hash(url);if(path.endsWith('/unsubscribe')){await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,data.alias).run();return {ok:true};}
    const old=await env.DB.prepare('SELECT alias FROM devices WHERE id=?').bind(id).first();if(old&&old.alias!==data.alias)fail('Auf diesem Handy zuerst die Erinnerungen des anderen Mitglieds deaktivieren.');
-   const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM devices WHERE alias=?)<5 ON CONFLICT(id) DO UPDATE SET revision=excluded.revision').bind(id,data.alias,data.revision,url,data.alias).run();if(!saved.meta.changes&&!old)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();return {ok:true};
+   const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,data.alias,data.revision,url,data.alias,data.revision,data.alias,id,data.alias).run();if(!saved.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();return {ok:true};
   }
   if(path==='/portal/notification'){
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId));

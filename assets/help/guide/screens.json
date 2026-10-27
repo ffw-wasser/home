@@ -69,7 +69,7 @@
   },
   "h2o-aktualisieren": {
     "width": 324,
-    "height": 252
+    "height": 224
   },
   "geraetehaus-statistik": {
     "width": 1280,
@@ -145,6 +145,10 @@
   },
   "geraetehaus-google-pflege": {
     "width": 728,
-    "height": 1216
+    "height": 656
+  },
+  "h2o-konto-sicherheit": {
+    "width": 324,
+    "height": 452
   }
 }

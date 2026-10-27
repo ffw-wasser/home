@@ -1,5 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../js/features/portal/member-evidence.js');
 class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.hidden=true;this.dataset={};this.value='';this.textContent='';}append(...nodes){this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}replaceChildren(...nodes){this.children=nodes;this.firstChild=nodes[0];}get options(){return this.children;}setAttribute(){}removeAttribute(){}querySelector(){return new Node();}querySelectorAll(){return [];}}
+const descendants=n=>n.children.flatMap(c=>[c,...descendants(c)]);
+const type=card=>descendants(card).find(n=>n.tagName==='LABEL'&&n.textContent==='Terminart').children[0];
 function fixture(){
  const nodes=new Map(),events={},intervals=[],microtasks=[],observers=[],typeClicks=[],requests=[],storage=new Map();let ready=false,publicGate=null,publicResolve;const publicStarted=new Promise(r=>publicResolve=r);
  const get=id=>{if(!nodes.has(id))nodes.set(id,new Node());return nodes.get(id);};get('attendanceView').hidden=false;
@@ -34,16 +36,16 @@ test('Automatische Aktualisierung behält spontane und bereits laufende Erfassun
 
 test('Automatisches Kalenderladen behält ungespeicherte Korrekturen',async()=>{
  const f=fixture();f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
- const area=f.get('portal-admin-review-events'),card=area.children[0];assert.ok(card);const kind=card.children.find(n=>n.tagName==='SELECT');kind.value='probe';kind.onchange();
+ const area=f.get('portal-admin-review-events'),card=area.children[0];assert.ok(card);const kind=type(card);kind.value='Allgemeine Probe';kind.onchange();
  const count=f.requests.length;const Base=Date;f.c.Date=class extends Base{static now(){return Base.now()+90000;}};f.intervals[0]();await new Promise(setImmediate);
- assert.equal(f.requests.length,count);assert.equal(area.children[0],card);assert.equal(kind.value,'probe');assert.equal(card.dataset.state,'edited');
+ assert.equal(f.requests.length,count);assert.equal(area.children[0],card);assert.equal(kind.value,'Allgemeine Probe');assert.equal(card.dataset.state,'edited');
 });
 test('Während eines automatischen Abrufs begonnene Korrekturen werden ebenfalls erhalten',async()=>{
  const f=fixture();f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
- const area=f.get('portal-admin-review-events'),card=area.children[0],kind=card.children.find(n=>n.tagName==='SELECT'),request=f.c.DrinksPush.request;let release,started;const gate=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
+ const area=f.get('portal-admin-review-events'),card=area.children[0],kind=type(card),request=f.c.DrinksPush.request;let release,started;const gate=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
  f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/list')){started();await gate;}return request(...args);};
- const Base=Date;f.c.Date=class extends Base{static now(){return Base.now()+90000;}};f.intervals[0]();await waiting;kind.value='probe';kind.onchange();release();await new Promise(setImmediate);
- assert.equal(area.children[0],card);assert.equal(kind.value,'probe');assert.equal(card.dataset.state,'edited');
+ const Base=Date;f.c.Date=class extends Base{static now(){return Base.now()+90000;}};f.intervals[0]();await waiting;kind.value='Allgemeine Probe';kind.onchange();release();await new Promise(setImmediate);
+ assert.equal(area.children[0],card);assert.equal(kind.value,'Allgemeine Probe');assert.equal(card.dataset.state,'edited');
 });
 
 test('Bewusst spontaner Termin bleibt nach automatischem Kalenderabruf ohne Kalenderbindung',async()=>{
@@ -59,23 +61,23 @@ test('Kalenderkarten öffnen ihre Bearbeitung erst auf Wunsch; Kleiderwechsel fo
  const f=fixture();f.init();await f.login();
  f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
  const card=f.get('portal-admin-review-events').children[0];
- const kind=card.children.find(n=>n.tagName==='SELECT');
+ const kind=type(card);
  const edit=card.children.find(n=>n.className==='portal-review-edit-toggle');
- assert.ok(edit);assert.equal(kind.hidden,true);
- edit.onclick();assert.equal(kind.hidden,false);
+ assert.ok(edit);assert.equal(card.children.find(n=>n.className==='portal-event-editor').hidden,true);
+ edit.onclick();assert.equal(card.children.find(n=>n.className==='portal-event-editor').hidden,false);
  assert.equal(edit.attrs?.['aria-expanded']??edit.attributes?.['aria-expanded'],undefined);
- const clothingLabel=card.children.find(n=>n.tagName==='LABEL'&&n.textContent==='Kleidung');
+ const clothingLabel=descendants(card).find(n=>n.tagName==='LABEL'&&n.textContent==='Kleidung');
  assert.ok(clothingLabel);
  const clothing=clothingLabel.children[0];
- assert.equal(kind.value,'special');
- kind.value='probe';kind.onchange();
+ assert.equal(kind.value,'Sonderprobe');
+ kind.value='Allgemeine Probe';kind.onchange();
  assert.equal(clothing.value,'Einsatzkleidung');
- kind.value='special';kind.onchange();
+ kind.value='Sonderprobe';kind.onchange();
  assert.equal(clothing.value,'Tagesdienst');
  assert.equal(card.dataset.state,'edited');
- const cancel=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Abbrechen');
- f.c.confirm=()=>false;cancel.onclick();assert.equal(kind.hidden,false);assert.equal(card.dataset.state,'edited');
- f.c.confirm=()=>true;cancel.onclick();assert.equal(kind.hidden,true);assert.equal(kind.value,'special');
+ const cancel=descendants(card).find(n=>n.tagName==='BUTTON'&&n.textContent==='Abbrechen');
+ f.c.confirm=()=>false;cancel.onclick();assert.equal(card.children.find(n=>n.className==='portal-event-editor').hidden,false);assert.equal(card.dataset.state,'edited');
+ f.c.confirm=()=>true;cancel.onclick();assert.equal(card.children.find(n=>n.className==='portal-event-editor').hidden,true);assert.equal(kind.value,'Sonderprobe');
  assert.notEqual(card.dataset.state,'edited','Bestätigtes Abbrechen stellt den gespeicherten Stand wieder her');
 });
 
@@ -124,9 +126,9 @@ test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche ko
  assert.match(summary.textContent,/Bisherige Auswahl/);
  assert.match(card.children.find(n=>n.className==='portal-event-people').children[0].textContent,/Personen \(1\)/);
  shortcut.onclick();
- const recipients=card.children.find(n=>n.className==='portal-recipient-choices');
+ const recipients=descendants(card).find(n=>n.className==='portal-recipient-choices');
  assert.ok(recipients);assert.equal(recipients.hidden,false);
- const mode=recipients.children[0],count=recipients.children[1],search=recipients.children[2],actions=recipients.children[3],list=recipients.children[5];
+ const exceptions=recipients.children[4],mode=exceptions.children[1],count=recipients.children[1],search=exceptions.children[2],actions=exceptions.children[3],list=exceptions.children[5];
  assert.equal(mode.value,'selected');assert.match(count.textContent,/1 von 3/);
  assert.equal(list.children.length,3);
  search.value='müller';search.oninput();
@@ -158,9 +160,9 @@ test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und b
  await f.c.PortalAdmin.loadCalendar();
  const card=f.get('portal-admin-review-events').children[0],shortcut=card.children.find(n=>n.className==='portal-review-edit-toggle');
  shortcut.onclick();
- const recipients=card.children.find(n=>n.className==='portal-recipient-choices'),list=recipients.children[5];
+ const recipients=descendants(card).find(n=>n.className==='portal-recipient-choices'),list=recipients.children[4].children[5];
  list.children[1].children[0].checked=true;list.children[1].children[0].onchange();
- const save=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');
+ const save=descendants(card).find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');
  assert.ok(save);
  await save.onclick();
  assert.equal(payload.kind,'probe');assert.equal(payload.sessionType,'Probe');assert.equal(payload.attendanceType,'Allgemeine Probe');
@@ -208,12 +210,12 @@ test('Laufende Termine bleiben bis zum exakten Ende sichtbar, auch ganztägig ü
 test('Ablauf während Bearbeitung behält den Entwurf, sperrt Speichern und blendet nach Abbrechen aus',async()=>{
  const f=fixture(),Base=Date;f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
  const card=f.get('portal-admin-review-events').children[0];card.children.find(n=>n.className==='portal-review-edit-toggle').onclick();
- const kind=card.children.find(n=>n.tagName==='SELECT');kind.value='probe';kind.onchange();
+ const kind=type(card);kind.value='Allgemeine Probe';kind.onchange();
  f.c.Date=class extends Base{static now(){return f.privateCal.events[0].end;}};f.intervals[0]();await new Promise(setImmediate);
- assert.equal(card.hidden,false);assert.equal(kind.value,'probe');assert.match(card.children.find(n=>n.className==='portal-event-feedback').textContent,/beendet/);
- const save=card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');assert.equal(save.disabled,true);
+ assert.equal(card.hidden,false);assert.equal(kind.value,'Allgemeine Probe');assert.match(card.children.find(n=>n.className==='portal-event-feedback').textContent,/beendet/);
+ const save=descendants(card).find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');assert.equal(save.disabled,true);
  const prior=f.requests.length;await save.onclick();assert.equal(f.requests.length,prior,'Auch direkter Aufruf schreibt keinen beendeten Termin');
- f.c.confirm=()=>true;card.children.find(n=>n.tagName==='BUTTON'&&n.textContent==='Abbrechen').onclick();assert.equal(card.hidden,true);
+ f.c.confirm=()=>true;descendants(card).find(n=>n.tagName==='BUTTON'&&n.textContent==='Abbrechen').onclick();assert.equal(card.hidden,true);
 });
 
 test('Gespeicherte Termine ohne Freigabe bleiben zu prüfen; Suchfilter begrenzt die Sammelfreigabe',async()=>{
@@ -227,9 +229,9 @@ test('Gespeicherte Termine ohne Freigabe bleiben zu prüfen; Suchfilter begrenzt
 
 test('Seitenwechsel fragt vor dem Verwerfen und Abbruch erhält den Kalenderentwurf',async()=>{
  const f=fixture();f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
- const card=f.get('portal-admin-review-events').children[0];card.children.find(n=>n.className==='portal-review-edit-toggle').onclick();const kind=card.children.find(n=>n.tagName==='SELECT');kind.value='probe';kind.onchange();
- f.c.confirm=()=>false;assert.equal(f.c.PortalAdmin.beforeView('settingsView'),false);assert.equal(kind.value,'probe');assert.equal(kind.hidden,false);
- f.c.confirm=()=>true;assert.equal(f.c.PortalAdmin.beforeView('settingsView'),true);assert.equal(kind.value,'special');assert.equal(kind.hidden,true);
+ const card=f.get('portal-admin-review-events').children[0];card.children.find(n=>n.className==='portal-review-edit-toggle').onclick();const kind=type(card);kind.value='Allgemeine Probe';kind.onchange();
+ f.c.confirm=()=>false;assert.equal(f.c.PortalAdmin.beforeView('settingsView'),false);assert.equal(kind.value,'Allgemeine Probe');assert.equal(card.children.find(n=>n.className==='portal-event-editor').hidden,false);
+ f.c.confirm=()=>true;assert.equal(f.c.PortalAdmin.beforeView('settingsView'),true);assert.equal(kind.value,'Sonderprobe');assert.equal(card.children.find(n=>n.className==='portal-event-editor').hidden,true);
 });
 
 test('Abbrechen zeigt den geladenen Kalendertermin sofort und lädt ohne Minutensperre nach',async()=>{

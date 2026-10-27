@@ -179,3 +179,20 @@ Schlagwortreferenz bleiben aufklappbar. Die bestehende Farbanbindung wird als ge
 Zugriff erklärt. Hilfe und Originalbild sind mit künstlichen Daten aktualisiert.
 Die Bestätigung ersetzt keinen gemeinsamen Praxistest realer Terminänderungen mit
 beiden Konten; persönliche Einladungen/Antwortabgleich bleiben unimplementiert.
+
+## Kalender-Arbeitsansicht und Push-Geräte, 27.10.2026
+
+Neue Kalendertermine werden ausschließlich in Google angelegt. Die Anlegen-Funktion
+und API-Aktion `create` in H₂O sind entfernt. Bestehende Google-Termine sind weiter
+in der Anwendung bearbeitbar; dafür bleibt der Web-OAuth-Client nötig. Calendar API,
+Google-Seitenleiste und Farbanbindung werden weiter verwendet. Terminart, Kleidung,
+Ort und Gruppen lassen sich aus importierten Vorgaben lokal nachbearbeiten. Die
+manuelle Farbpalette und lange Google-Beispiele stehen nicht mehr in der Arbeitsansicht.
+
+Unter Konto & Sicherheit stehen Push und Aktualisieren direkt sichtbar, Anmelde-/
+Geräteaktionen und WhatsApp-Einstellungen aufklappbar. Der Push-Dienst bestätigt
+eigene Registrierungen und zählt maximal fünf pro Zugang. Bestehende Endpunkte
+können auch am Limit erneuert werden. Ein ausdrücklich bestätigtes Zurücksetzen
+löscht atomar nur die Push-Verbindungen des angemeldeten Zugangs, ohne Sitzungen,
+Anwesenheiten oder Buchungen zu verändern. Andere Mitglieder bleiben unberührt.
+Echte iPhone-Zustellung bleibt gesondert zu prüfen.
