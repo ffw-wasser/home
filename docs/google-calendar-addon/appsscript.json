@@ -1,0 +1,22 @@
+{
+  "timeZone": "Europe/Berlin",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/calendar.addons.execute",
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "urlFetchWhitelist": ["https://www.googleapis.com/calendar/v3/"],
+  "addOns": {
+    "common": {
+      "name": "H₂O Kalenderauswahl",
+      "logoUrl": "https://ffw-wasser.github.io/home/assets/branding/ffw-home-192.png",
+      "homepageTrigger": {"runFunction": "h2oHome"}
+    },
+    "calendar": {
+      "currentEventAccess": "METADATA",
+      "eventOpenTrigger": {"runFunction": "h2oOpen"},
+      "eventUpdateTrigger": {"runFunction": "h2oOpen"}
+    }
+  }
+}
