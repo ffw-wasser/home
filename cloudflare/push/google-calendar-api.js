@@ -7,10 +7,15 @@
  const fail=(message,status=403)=>{throw Object.assign(Error(message),{status});};
  const fields='id,iCalUID,etag,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,status,updated,htmlLink';
  async function json(url,token,options={}){
-  const response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'error',signal:AbortSignal.timeout(15000)});
+  let response;try{response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Kalenderdienst nicht erreichbar (G03). Verbindung bitte erneut prüfen; bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);}
+  // Do not follow redirects with the caller's Authorization header.
+  if(response.status>=300&&response.status<400)fail('Google-Kalenderdienst antwortete mit einer nicht erlaubten Weiterleitung (G03).',503);
   if(response.status===412)fail('Der Google-Termin wurde inzwischen geändert. Bitte neu laden.',409);
   if(!response.ok)fail(response.status===401?'Google-Anmeldung abgelaufen. Bitte erneut verbinden.':response.status===403?'Google erlaubt diesen Kalenderzugriff nicht.':'Google Kalender derzeit nicht erreichbar.',response.status===401?401:response.status===403?403:503);
-  return response.status===204?{}:response.json();
+  if(response.status===204)return {};
+  let value;try{value=await response.json();}catch{fail('Google-Kalenderdienst lieferte keine gültige Antwort (G03). Bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);}
+  if(!value||typeof value!=='object'||Array.isArray(value))fail('Google-Kalenderdienst lieferte keine gültige Antwort (G03). Bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);
+  return value;
  }
  function calendarId(configuration){try{return decodeURIComponent(new URL(configuration.calendarUrl).pathname.split('/')[3]);}catch{fail('Bitte zuerst den bestehenden ICS-Kalender verbinden.',400);}}
  function eventData(value){
@@ -28,9 +33,13 @@
   if(!client)fail('Google-OAuth ist noch nicht eingerichtet. Der ICS-Import bleibt verfügbar.',503);
   const token=data.googleAccessToken;if(typeof token!=='string'||token.length<20||token.length>4096||/[\s\x00-\x1f]/.test(token))fail('Bitte zuerst Google Kalender verbinden.',401);
   // Validate audience and scopes, rather than accepting arbitrary Google tokens.
-  const verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'error',signal:AbortSignal.timeout(10000)});
+  let verification;try{verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'manual',signal:AbortSignal.timeout(10000)});}catch{fail('Google-Zugangsprüfung nicht erreichbar (G02). Bitte erneut verbinden.',503);}
+  if(verification.status>=300&&verification.status<400)fail('Google-Zugangsprüfung antwortete mit einer nicht erlaubten Weiterleitung (G02).',503);
+  if(verification.status>=500||verification.status===429)fail('Google-Zugangsprüfung vorübergehend nicht verfügbar (G02). Bitte später erneut verbinden.',503);
   if(!verification.ok)fail('Google-Zugang ungültig oder abgelaufen.',401);
-  const info=await verification.json(),scopes=new Set(String(info.scope||'').split(' ')),write=['create','update','delete'].includes(action);
+  let info;try{info=await verification.json();}catch{fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);}
+  if(!info||typeof info!=='object'||Array.isArray(info))fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);
+  const scopes=new Set(String(info.scope||'').split(' ')),write=['create','update','delete'].includes(action);
   if(info.aud!==client||Number(info.expires_in)<=0||!(scopes.has(scope)||!write&&scopes.has(readScope)))fail('Google-Zugang besitzt nicht die erforderliche Freigabe.');
   const id=calendarId(configuration),base='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(id);
   // A Google account must itself have access to THIS calendar. No owner credentials.
