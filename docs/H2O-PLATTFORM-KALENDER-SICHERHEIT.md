@@ -109,7 +109,8 @@ Auch `tests/help-guide-browser.cjs`, `tests/deckel-startup-browser.cjs` und
 0 Fehler. Hilfe-, Bundle- und Release-Konsistenz lokal erfolgreich. CI-Status siehe PR.
 
 Chromium-Ansichten: Anmeldung/Passkey bei 320 px, Passwort bei 390 px und Layout 320/390/768 px;
-Kalenderverwaltung 320/390/412/768/1024 px. Browseremulation ersetzt **keine echten Geräte**.
+Kalenderverwaltung 320/390/412/768/1024 px. Neuer Einrichtungsdialog zusätzlich
+bei 320/390/768 px mit 100 % und 200 % Schriftgröße ohne seitlichen Überlauf geprüft. Browseremulation ersetzt **keine echten Geräte**.
 Nicht geprüft: reale Android-WebAPK-Installation/Play Protect, iOS Home-Bildschirm und
 Passkey-Synchronisation, echte Push-Zustellung, reale Microsoft-Konten, Google OAuth,
 Kalenderfreigaben, persönliche Einladungen und Kalenderantworten. Diese Abnahme fehlt.

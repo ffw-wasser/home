@@ -349,11 +349,11 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 @media(max-width:600px){.radio-illustrations{grid-template-columns:1fr;gap:24px}}
 
 /* Guided first entry keeps the existing identity forms in one focused dialog. */
-.h2o-onboarding{box-sizing:border-box;width:min(94vw,580px);max-height:92dvh;border:0;border-radius:20px;padding:24px;color:#142d40;background:#edf3ed;font-size:18px;line-height:1.5}
+.h2o-onboarding{box-sizing:border-box;width:min(94vw,580px);max-width:94vw;overflow-wrap:anywhere;max-height:92dvh;border:0;border-radius:20px;padding:24px;color:#142d40;background:#edf3ed;font-size:1.125rem;line-height:1.5}
 .h2o-onboarding::backdrop{background:#071927d9}
 .h2o-onboarding h2{font-size:1.5rem;line-height:1.25}
 .h2o-onboarding button,.h2o-onboarding input{box-sizing:border-box;font:inherit;min-height:52px;padding:12px;width:100%;margin:8px 0}
-.h2o-onboarding button{border-radius:12px;background:#164b64;color:#fff;border:1px solid #164b64;white-space:normal}
+.h2o-onboarding button{min-width:0;overflow-wrap:anywhere;border-radius:12px;background:#164b64;color:#fff;border:1px solid #164b64;white-space:normal}
 .h2o-onboarding nav{display:flex;gap:12px;margin-top:20px}
 .h2o-onboarding summary{font-weight:700;padding:12px 0}
 .h2o-onboarding img,#installIllustration{max-width:100%;height:auto}
