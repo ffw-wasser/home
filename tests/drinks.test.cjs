@@ -26,9 +26,9 @@ test('Konflikte bei Übernahme und fehlende Administration verhindern Überschre
 test('Auch Mitglieder ohne bisheriges Konto erhalten eine Sperre für alte Apps',async()=>{
  const {S}=app();await S.rewards();const before=await S.localMigrationSnapshot(['new-member']);assert.equal(before.entries.length,2);assert.equal(before.entries.find(e=>e.account.memberId==='new-member').item,null);await S.lockMigrationSnapshot(before);const after=await S.localMigrationSnapshot(['new-member']);assert.ok(after.entries.every(e=>e.locked));await assert.rejects(S.read('new-member'),/aktuelle App-Version/);
 });
-function app(){
+function app(options={}){
   const files=new Map(),calls=[],storageWrites=[];let folder=true,tag=0;
-  const ctx=vm.createContext({crypto:webcrypto,TextEncoder,console,navigator:{onLine:true},adminUnlocked:true,
+  const ctx=vm.createContext({crypto:options.crypto||webcrypto,TextEncoder,console,navigator:{onLine:true},adminUnlocked:true,
     oneDriveSignedIn:()=>true,oneDriveResolveSharedRoot:async()=>({id:'root',driveId:'drive'}),
     localStorage:{setItem:(...args)=>storageWrites.push(args)},sessionStorage:{setItem:(...args)=>storageWrites.push(args)},
     odFetch:async(url,options={})=>{
@@ -128,8 +128,15 @@ test('Euro-Eingabe und PayPal-Link haben genau den gewählten Betrag und keine N
   assert.equal(M.paypalUrl(750),'https://paypal.me/FeuerwehrWasser/7.50EUR');assert.throws(()=>M.paypalUrl(0));
 });
 test('PIN wird gesalzen/abgeleitet, niemals im Klartext gespeichert; falsche PIN öffnet nicht',async()=>{
-  const {M}=app(),pin=await M.createPin('4826');assert.equal(await M.verifyPin('4826',pin),true);assert.equal(await M.verifyPin('1234',pin),false);
-  assert.equal(JSON.stringify(pin).includes('4826'),false);assert.notEqual((await M.createPin('4826')).salt,pin.salt);await assert.rejects(M.createPin('111'));
+  // A random salt may contain the PIN's digits by chance. Exercise that case
+  // deterministically while retaining real PBKDF2 derivation and verification.
+  let saltNumber=0;
+  const {M}=app({crypto:{subtle:webcrypto.subtle,getRandomValues(bytes){bytes.fill(++saltNumber);bytes[0]=0x48;bytes[1]=0x26;return bytes;}}});
+  const pin=await M.createPin('4826');assert.equal(await M.verifyPin('4826',pin),true);assert.equal(await M.verifyPin('1234',pin),false);
+  assert.deepEqual(Object.keys(pin).sort(),['algorithm','hash','iterations','salt']);
+  assert.equal(Object.values(pin).includes('4826'),false,'no stored field contains the plaintext PIN');
+  assert.equal(pin.algorithm,'PBKDF2-SHA256');assert.match(pin.salt,/^4826[a-f0-9]{28}$/);assert.match(pin.hash,/^[a-f0-9]{64}$/);
+  assert.notEqual((await M.createPin('4826')).salt,pin.salt);await assert.rejects(M.createPin('111'));
 });
 test('PIN-Verwaltung legt OneDrive-Ordner an und speichert ausschließlich dort',async()=>{
   const {S,M,setFolder,storageWrites,files}=app();setFolder(false);const a=await S.setPin('a','4826');assert.equal(await M.verifyPin('4826',a.pin),true);assert.equal(files.size,1);assert.deepEqual(storageWrites,[]);
