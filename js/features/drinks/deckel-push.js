@@ -34,7 +34,7 @@
    pushActive=false;if(otherAccount)return;
    const devices=await g.H2OPortal.api('push-devices',{...(sub?{endpoint:sub.endpoint}:{})});current(c,version);
    if(!Number.isInteger(devices.count)||devices.limit!==5||typeof devices.registered!=='boolean')throw Error('Push-Geräte konnten nicht bestätigt werden. Bitte den Dienst aktualisieren.');
-   deviceLimit=devices.count>=devices.limit&&!devices.registered;
+   deviceLimit=devices.count>=devices.limit&&!devices.registered&&devices.renewable!==true;
    if(deviceLimit){$('status').textContent='Vor einer neuen Aktivierung müssen gespeicherte Push-Verbindungen freigegeben werden.';return;}
    pushActive=pushConfigured&&saved.revision===c.revision&&sub?.endpoint===saved.endpoint&&devices.registered&&g.Notification.permission==='granted';
    if(pushActive){$('status').textContent='';return;}

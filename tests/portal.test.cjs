@@ -12,10 +12,11 @@ test('Push: five own devices can be renewed and explicitly reset without affecti
  f.sql.prepare('UPDATE devices SET revision=? WHERE endpoint=?').run('old-revision',base+'0');
  assert.equal((await f.call('subscribe',{endpoint:base+'0'})).status,200);
  assert.equal(f.sql.prepare('SELECT revision FROM devices WHERE endpoint=?').get(base+'0').revision,person.revision);
- assert.deepEqual((await f.call('push-devices',{endpoint:base+'0'})).value,{ok:true,count:5,limit:5,registered:true});
+ f.sql.prepare('UPDATE devices SET revision=? WHERE endpoint=?').run('old-revision',base+'0');const expired=(await f.call('push-devices',{endpoint:base+'0'})).value;assert.equal(expired.registered,false);assert.equal(expired.renewable,true);await f.call('subscribe',{endpoint:base+'0'});
+ assert.deepEqual((await f.call('push-devices',{endpoint:base+'0'})).value,{ok:true,count:5,limit:5,registered:true,renewable:true});
  assert.equal((await f.call('subscribe',{endpoint:base+'other'},other)).status,200);
  const sessions=f.sql.prepare('SELECT COUNT(*) n FROM portal_identity_sessions').get().n;
- const result=await f.call('push-devices',{reset:true});assert.equal(result.status,200);assert.deepEqual(result.value,{ok:true,count:0,limit:5,registered:false});
+ const result=await f.call('push-devices',{reset:true});assert.equal(result.status,200);assert.deepEqual(result.value,{ok:true,count:0,limit:5,registered:false,renewable:false});
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').get(other.alias).n,1);
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_devices').get().n,1);
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_identity_sessions').get().n,sessions);

@@ -488,7 +488,8 @@
    ]);
    const count=(await env.DB.prepare('SELECT COUNT(*) n FROM devices WHERE alias=?').bind(record.alias).first()).n;
    const registered=deviceURL?!!await env.DB.prepare('SELECT id FROM devices WHERE alias=? AND revision=? AND endpoint=?').bind(record.alias,record.revision,deviceURL).first():false;
-   return {ok:true,count,limit:5,registered};
+   const renewable=deviceURL?!!await env.DB.prepare('SELECT id FROM devices WHERE alias=? AND endpoint=?').bind(record.alias,deviceURL).first():false;
+   return {ok:true,count,limit:5,registered,renewable};
   }
   if(path==='/portal/subscribe'||path==='/portal/unsubscribe'){
    const url=endpoint(data.endpoint),id=await hash(url);if(path.endsWith('/unsubscribe')){await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,data.alias).run();return {ok:true};}

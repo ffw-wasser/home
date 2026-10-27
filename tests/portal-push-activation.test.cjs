@@ -8,7 +8,7 @@ function fixture({failure=false,saved=null,permission='default'}={}){
   document:{readyState:'complete',hidden:false,getElementById:node,addEventListener(){}},location:{href:'https://ffw-wasser.github.io/home/deckel.html'},
   navigator:{userAgent:'test',serviceWorker:{getRegistration:async()=>reg}},PushManager:function(){},Notification:{get permission(){return state.permission;},requestPermission(){throw Error('must not precede subscribe');}},
   DeckelDevice:{read:async()=>state.saved,write:async value=>{calls.push('write');state.saved=value;},clear:async()=>{state.saved=null;},saveLink:async url=>{assert.ok(new URL(url).hash,'passkey URL is not an old personal link');}},
-  H2OIdentity:{session:()=>({})},H2OPortal:{api:async path=>{if(path==='push-devices')return {ok:true,count:state.saved?1:0,limit:5,registered:!!state.saved};calls.push('api');return {ok:true};}},
+  H2OIdentity:{session:()=>({})},H2OPortal:{api:async path=>{if(path==='push-devices')return {ok:true,count:state.count??(state.saved?1:0),limit:5,registered:state.registered??!!state.saved,renewable:state.renewable??false};calls.push('api');return {ok:true};}},
   fetch:async()=>{calls.push('health');if(state.failure)throw Error('offline');return {ok:true,json:async()=>({portalVersion:1,publicKey:Buffer.from(Uint8Array.from({length:65},(_,i)=>i?1:4)).toString('base64url')})};}
  });vm.runInContext(source,c);
  const access={alias:'a'.repeat(32),revision:'revision-test',origin:'https://test.example.workers.dev',capability:'b'.repeat(43)};
@@ -32,3 +32,5 @@ test('Abmeldung während der Berechtigungsabfrage verwirft die Aktivierung und r
 test('Abgelehnte Mitteilungen zeigen eine verständliche Rückmeldung',async()=>{
  const f=fixture();await f.c.DeckelPush.render(f.access);f.state.pending=Promise.reject(Object.assign(Error('denied'),{name:'NotAllowedError'}));await f.node('enable').onclick();assert.match(f.node('status').textContent,/Mitteilungseinstellungen/);assert.ok(!f.calls.includes('api'));
 });
+
+test('Bestehendes eigenes Gerät erneuert sich bei vollem Limit ohne Zurücksetzen',async()=>{const f=fixture({saved:{portal:true,alias:'a'.repeat(32),revision:'old-revision',endpoint:'https://web.push.apple.com/test'}});Object.assign(f.state,{count:5,registered:false,renewable:true});await f.c.DeckelPush.render(f.access);assert.equal(f.node('reset').hidden,true);assert.equal(f.node('enable').hidden,false);assert.equal(f.node('enable').textContent,'Erneut aktivieren');await f.node('enable').onclick();assert.equal(f.node('state').textContent,'Aktiv');});
