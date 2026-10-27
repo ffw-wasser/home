@@ -3,6 +3,10 @@
 Die Umsetzung gehört zu PR #191 / Web-App-Version 2026.10.27.5 und ist zur Finalisierung nach erfolgreicher vollständiger CI freigegeben.
 Er richtet keine Google-Dienste oder Konten automatisch ein.
 
+Stand 27.10.2026: Der Anwender hat die Einrichtung von Google-Cloud-Projekt, Calendar API, OAuth-Client und Worker-Konfiguration abgeschlossen und die Anzeige „Google Kalender verbunden · Bearbeitung erlaubt“ bestätigt. Damit ist die Anmeldung und Kalenderberechtigung für dieses Konto bestätigt. Die gemeinsame Praxisprüfung mit beiden Verwaltungskonten und echten Terminänderungen bleibt gesondert durchzuführen. Zugangsdaten werden hier nicht dokumentiert.
+
+Die Bedienrubrik „Google-Kalender pflegen“ ist für diesen Ablauf aktualisiert; siehe [Kalender-Bedienung](KALENDER-BEDIENUNG.md).
+
 ## Voraussetzungen
 
 - Martin bleibt Eigentümer des bestehenden Feuerwehrkalenders.

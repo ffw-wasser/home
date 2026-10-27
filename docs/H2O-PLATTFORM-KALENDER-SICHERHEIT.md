@@ -2,7 +2,7 @@
 
 Stand: 27.10.2026. **Lieferumfang zur Finalisierung freigegeben; Veröffentlichung nach erfolgreicher vollständiger CI. Persönliche Kalendereinladungen und Antwortabgleich bleiben offen.**
 Ausgangscommit: `58558d32e5a19b6ccbd7e3ef34eac5058750796e`.
-Branch: `feature/h2o-platform-calendar-security`. [PR #191](https://github.com/ffw-wasser/home/pull/191). App-Version: `2026.10.27.5`.
+Branch: `feature/h2o-platform-calendar-security`. [PR #191](https://github.com/ffw-wasser/home/pull/191). App-Version des aktualisierten Hilfestands: `2026.10.27.7` (Veröffentlichung nach vollständiger CI).
 
 ## Ergebnis je Arbeitspaket
 
@@ -10,9 +10,9 @@ Branch: `feature/h2o-platform-calendar-security`. [PR #191](https://github.com/f
 | --- | --- |
 | Eine PWA | Android-Manifest mit festem, öffentlichem Start; Browser-Installationsdialog nach Antippen, Menü-Anleitung als Rückfall. iPhone mit schematischer Bildanleitung. Bestehende automatische Versionsprüfung beibehalten; sie verhindert Neuladen bei offenen Eingaben. Native Vorbereitungen archiviert, keine neuen nativen Apps. |
 | Ersteinrichtung | Geführter Einstieg, Freigabe, Wahl der Anmeldeart, bestehende Passkey-/Passwortformulare, freiwillige Installation und Mitteilungen, Abschluss zu Terminen. Zurück/Überspringen, Fortschritt, Wiederherstellung über Verwaltung. Gültige Sitzungen starten direkt. Öffentliche Hilfe ohne Anmeldung bleibt erreichbar. Optionale persönliche Kalendereinladungen werden als noch nicht verfügbar erklärt. |
-| Kalenderquelle | Bestehender ICS-Import und Terminidentitäten unverändert. Google-API-Transport vorbereitet und ohne OAuth-Konfiguration gesperrt. **Google-OAuth-Anbindung für die Verwaltung ist integriert; echte Konfiguration/Abnahme und automatische Synchronisation fehlen noch.** |
+| Kalenderquelle | Bestehender ICS-Import und Terminidentitäten unverändert. Google-API-Transport vorbereitet und ohne OAuth-Konfiguration gesperrt. **Google-OAuth-Anbindung ist integriert; der Anwender hat Konfiguration und erfolgreiche Verbindung mit Bearbeitungsrechten bestätigt. Die gemeinsame Praxisprüfung beider Konten und automatische Synchronisation bleiben offen.** |
 | Direkter Bearbeitungslink | In der Kalenderverwaltung Link kopieren und manuell in die Google-Beschreibung eintragen. `index.html?editEvent=<H2O-ID>` öffnet nach bestehender Verwaltungsanmeldung den Editor des Termins. Keine Zugangsrechte im Link. Rückkehr zum Google Kalender, ohne Garantie der ursprünglichen Terminansicht. Beim Speichern im neuen Google-Editor kann der Link direkt in die Beschreibung aufgenommen werden. |
-| Zwei Administratoren | H₂O behält die bestehende serverseitige Verwaltungsautorisierung. Google-API verlangt zusätzlich einen gültigen Google-Token für den eingerichteten OAuth-Client und ausreichend Rechte am konfigurierten Kalender. Martins Freigabe an das zweite Google-Konto ist **nicht vorgenommen oder geprüft**. Kein Eigentümerwechsel. GF erhält durch diesen PR keine neuen Google-Rechte. |
+| Zwei Administratoren | H₂O behält die bestehende serverseitige Verwaltungsautorisierung. Google-API verlangt zusätzlich einen gültigen Google-Token für den eingerichteten OAuth-Client und ausreichend Rechte am konfigurierten Kalender. Die Kalenderfreigabe an das zweite Google-Konto ist durch den Anwender bestätigt; H₂O meldet für dieses Konto „Bearbeitung erlaubt“. Kein Eigentümerwechsel. GF erhält durch diesen PR keine neuen Google-Rechte. |
 | Teilnehmer | Mehrere anklickbare Gruppen plus individuelle Ergänzungen und Ausschlüsse; serverseitige Neuberechnung bei späteren Gruppenänderungen. Versionsprüfung, keine Ausweitung bei ungültigen/verlorenen Gruppen. Schlagwörter und bisherige manuelle Listen bleiben erhalten. |
 | Persönliche Einladungen / Antworten | **Nicht aktiviert und nicht fertig implementiert.** Kein Versand, kein E-Mail-Profil, kein Hintergrundimport. Getesteter technischer Modellnachweis der vier Status und Schutz vor veralteten Beobachtungen. Keine bidirektionale Synchronisation zugesagt. |
 | Datenschutz | Unter Infos Anbieteraufgaben, offizielle Informations-/Nachweislinks und Geltungsgrenzen. Keine Übernahme von Prüfsiegeln, keine Zertifizierung des Portals behauptet. Private Google-Kalender, privates OneDrive und kostenlose GitHub Pages werden nicht durch pauschale Workspace-/Enterprise-Zertifikate als zertifiziert ausgegeben. |
@@ -45,8 +45,7 @@ Konten im Browser geprüft.** Authorization Code mit PKCE, feste Redirect-URI,
 verschlüsselter zeitbegrenzter Zustand und zufälliger Rückkanal statt eines Implicit Flow.
 Die kurzlebige Google-Berechtigung liegt nur im Arbeitsspeicher des Verwaltungsbrowsers;
 Sperren/Verlassen entfernt sie. Keine Refresh-Token oder Offline-Freigabe.
-Reale Client-/Redirect-Konfiguration, Zustimmungsbildschirm und beide Google-Konten
-sind noch nicht eingerichtet/geprüft. Die Google-Terminbearbeitungsoberfläche ist vollständig für einzelne Termine umgesetzt
+Der Anwender hat die reale Client-/Redirect-Konfiguration und die erfolgreiche Anmeldung mit Kalender-Bearbeitungsrechten bestätigt. Die gemeinsame Praxisprüfung echter Terminänderungen mit beiden Google-Konten bleibt offen. Die Google-Terminbearbeitungsoberfläche ist vollständig für einzelne Termine umgesetzt
 (Anlegen, Ändern, Löschen mit Bestätigung, ETag-Konflikte, Datum/Zeitzonenprüfung und optionaler
 Bearbeitungslink in der Beschreibung). Ganze Serien und Termine mit Gästen bleiben gesperrt.
 Die Hintergrund-Synchronisation bleibt offen. Keine manuell eingefügten Tokens, keine
@@ -110,15 +109,14 @@ Erfolgreich ausgeführt: vollständige Unit-Suite, Syntax, Bundle-/Release-Erzeu
 Passkey- und Passwort-Browserabläufe, Kalendergruppen-Browserablauf einschließlich neuer
 Mehrfachauswahl. Gemeinsame Hilfe und Originalbild des neuen Einstiegs aktualisiert.
 Auch `tests/help-guide-browser.cjs`, `tests/deckel-startup-browser.cjs` und
-`tests/portal-offline-browser.cjs` sind erfolgreich. Syntaxprüfung: 274 JavaScript-Dateien,
+`tests/portal-offline-browser.cjs` sind erfolgreich. Syntaxprüfung nach Testbereinigung: 271 JavaScript-Dateien,
 0 Fehler. Hilfe-, Bundle- und Release-Konsistenz lokal erfolgreich. CI-Status siehe PR.
 
 Chromium-Ansichten: Anmeldung/Passkey bei 320 px, Passwort bei 390 px und Layout 320/390/768 px;
 Kalenderverwaltung 320/390/412/768/1024 px. Neuer Einrichtungsdialog zusätzlich
 bei 320/390/768 px mit 100 % und 200 % Schriftgröße ohne seitlichen Überlauf geprüft. Browseremulation ersetzt **keine echten Geräte**.
 Nicht geprüft: reale Android-WebAPK-Installation/Play Protect, iOS Home-Bildschirm und
-Passkey-Synchronisation, echte Push-Zustellung, reale Microsoft-Konten, reale Google-OAuth-Freigaben,
-Kalenderfreigaben, persönliche Einladungen und Kalenderantworten. Diese Abnahme fehlt.
+Passkey-Synchronisation, echte Push-Zustellung, reale Microsoft-Konten, die gemeinsame Bearbeitung mit beiden Google-Konten, persönliche Einladungen und Kalenderantworten. Google-Anmeldung und Kalenderberechtigung für das eigene Konto sind inzwischen durch den Anwender bestätigt; die übrige Abnahme bleibt offen.
 
 Der bisherige GitHub-Lauf bestand Unit-/Konsistenzprüfungen, lief aber bei der Browserinstallation
 in das 5-Minuten-Limit. Das Limit wurde auf 12 Minuten erhöht; die Browserprüfungen
@@ -164,10 +162,20 @@ Externe Zertifizierung bleibt eine eigene spätere Entscheidung; aktuell kein Au
   verworfenes Abbrechen, Sommerzeitfehler, Ganztag und 320/390/768 px bei 100/200 %;
   Passkey, Passwort, Kalenderinformationen/Direktlink, Hilfe, Offline-Neustart,
   Start/Wiederaufnahme und Mitteilungen erfolgreich. Alle Konten künstlich.
-- **Weiter offen und nicht als fertig ausgewiesen:** echte OAuth-Client-Konfiguration,
-  beide Google-Konten/Kalenderfreigaben; freiwilliges E-Mail-Profil und dessen Verifizierung,
+- **Weiter offen und nicht als fertig ausgewiesen:** gemeinsamer Praxistest echter Änderungen mit beiden Google-Konten; freiwilliges E-Mail-Profil und dessen Verifizierung,
   privater Einladungsversand, dauerhafte Zuordnung und automatischer Antwortabgleich.
   Diese Funktionen sind nicht allein durch das Eintragen der OAuth-Schlüssel erledigt.
   Keine persönlichen Einladungen oder Rückmeldungen in den öffentlichen Kalender schreiben.
 - Version 2026.10.27.5 ist zur Finalisierung freigegeben. Vor dem Merge den vollständigen CI-Abschluss am aktuellen PR-Commit prüfen und danach die tatsächliche Web-/Worker-Auslieferung verifizieren.
 - Die vier überholten aktiven nativen Testdateien sind entfernt. Der Jahresplan-Test prüft jetzt echte Browser-PDF-Downloads; 942 verbleibende Unit-/Regressionstests sind erfolgreich. iPhone-Web-App, Web-Passkeys und Offline-Nutzung bleiben geprüft.
+
+## Aktualisierte Bedienhilfe nach der Google-Einrichtung
+
+Der Anwender hat die erfolgreiche Google-Verbindung mit Bearbeitungsrechten bestätigt.
+„Google-Kalender pflegen“ erklärt nun vorrangig die persönliche Verbindung, neue und
+bestehende Google-Termine in H₂O, separate Gruppenauswahl und individuelle Ausnahmen,
+Speicherung/Konflikte sowie Bearbeitungslinks. Das direkte Google-Beispiel und die
+Schlagwortreferenz bleiben aufklappbar. Die bestehende Farbanbindung wird als getrennter
+Zugriff erklärt. Hilfe und Originalbild sind mit künstlichen Daten aktualisiert.
+Die Bestätigung ersetzt keinen gemeinsamen Praxistest realer Terminänderungen mit
+beiden Konten; persönliche Einladungen/Antwortabgleich bleiben unimplementiert.

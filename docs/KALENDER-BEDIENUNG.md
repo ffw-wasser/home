@@ -1,8 +1,33 @@
 # Kalender und Jahresplan
 
-Termine im verbundenen Feuerwehr-Google-Kalender pflegen. Datum, Uhrzeit,
-ganztägige und mehrtägige Zeiträume werden übernommen. Die Beschreibung wird
-als Klartext angezeigt; HTML und Skripte werden nicht ausgeführt.
+Der bestehende Feuerwehr-Google-Kalender bleibt die gemeinsame Terminquelle.
+Berechtigte Verwaltungspersonen können Termine direkt in Google oder nach
+persönlicher Google-Anmeldung in H₂O pflegen. Der Kalendereigentümer bleibt
+unverändert. Datum, Uhrzeit, ganztägige und mehrtägige Zeiträume werden übernommen.
+Die Beschreibung wird als Klartext angezeigt; HTML und Skripte werden nicht ausgeführt.
+
+## Gemeinsame Terminpflege in H₂O
+
+1. Einstellungen → Kalender → Verbindung → „Google Kalender verbinden“ öffnen und
+   mit dem eigenen freigegebenen Google-Konto anmelden. „Google Kalender verbunden ·
+   Bearbeitung erlaubt“ bestätigt die Kalenderberechtigung. Bei Ablauf erneut verbinden.
+2. Unter Verbindung „Neuen Google-Termin anlegen“ oder am vorhandenen Termin
+   „Google-Termin bearbeiten“ wählen. Titel, Beginn/Ende, Ort und öffentliche Beschreibung
+   pflegen. Zeiten gelten für Europe/Berlin. Bei Ganztag ist das Enddatum der erste Tag
+   nach dem Termin. Ganze Serien und Termine mit Gästen direkt in Google ändern.
+3. Am Termin „Bearbeiten“ für die H₂O-Einstellungen öffnen: Terminart, Kleidung,
+   Freigabe, mehrere anklickbare Gruppen sowie individuelle Ergänzungen/Ausschlüsse.
+   Die H₂O-Auswahl separat am Termin speichern und die betroffenen Personen prüfen.
+4. Google-Terminangaben mit „In Google Kalender speichern“ sichern. Auf Wunsch den
+   H₂O-Bearbeitungslink in die Beschreibung aufnehmen. Er öffnet den betreffenden
+   Termin nach der bestehenden Verwaltungsanmeldung. Kopieren ist ebenfalls möglich.
+   Der H₂O-Import wird neu geladen; Änderungen aus Google können verzögert erscheinen.
+   Bei Konflikten den aktuellen Google-Stand neu laden, statt fremde Änderungen zu überschreiben.
+
+„Google-Kalender pflegen“ erklärt diesen Ablauf direkt in der Kalenderverwaltung.
+Das direkte Google-Beispiel und die Schlagwort-/Gruppenreferenz bleiben aufklappbar.
+Persönliche Kalendereinladungen und automatischer Antwortabgleich sind noch nicht
+verfügbar; die Personenauswahl steuert die H₂O-Sichtbarkeit und Rückmeldungen.
 
 Ein Titel mit `INFO:` kennzeichnet eine reine Information. Auch Wörter wie Probe,
 Geburtstag oder Einsatz machen daraus keinen funktionalen Termin. Informationen
@@ -14,8 +39,10 @@ Geburtstag. Informationen erscheinen nicht in der Rückmeldeliste.
 
 Unter „Zusatzinfo bearbeiten“ lässt sich die Google-Beschreibung durch eine
 lokale Zusatzinfo ersetzen. „Google-Beschreibung verwenden“ stellt die Übernahme
-wieder her. Titel und Datum bleiben in Google zu pflegen. Änderungen können
+wieder her. Titel und Datum werden direkt in Google oder über den Google-Termin-Editor in H₂O gepflegt. Änderungen können
 einige Minuten benötigen; geöffnete Ansichten anschließend aktualisieren.
+
+Die bestehende Google-Farbanbindung bleibt getrennt von der persönlichen Google-Anmeldung zum Bearbeiten. Terminfarben weiterhin direkt in Google setzen; bei eingeschalteter Farbanbindung werden sie übernommen. Ohne erfolgreichen Farbabruf gelten die gespeicherten App-Farben.
 
 Unter „Farben der Terminarten“ werden Farben zentral gespeichert. Sie gelten
 im Jahresplan, in der iPad-Übersicht und in beiden PDF-Ansichten. Die Lesefarbe
