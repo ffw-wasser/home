@@ -190,6 +190,7 @@ const PUBLIC_FILES=[
   "./assets/help/guide/h2o-funkgeraet.jpg",
   "./assets/help/guide/h2o-fussball.jpg",
   "./assets/help/guide/h2o-jahresplan.jpg",
+  "./assets/help/guide/h2o-jahresplan-laden.jpg",
   "./assets/help/guide/h2o-atemschutz.jpg",
   "./assets/help/guide/h2o-mehr.jpg",
   "./assets/help/guide/h2o-nachweise.jpg",

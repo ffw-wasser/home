@@ -106,5 +106,6 @@
 
 
 /* No intermediate calendar flash while the personal PDF is prepared. */
-#more-year-plan.year-plan-opening>:not(#year-plan-status){visibility:hidden}
-#more-year-plan.year-plan-opening>#year-plan-status{visibility:visible}
+#portal-page-more-year-plan:has(>#more-year-plan.year-plan-opening){min-height:0}
+#more-year-plan.year-plan-opening>:not(#year-plan-status){display:none}
+#more-year-plan.year-plan-opening>#year-plan-status{margin:0;padding:8px 0}
