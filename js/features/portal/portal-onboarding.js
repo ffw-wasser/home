@@ -1,8 +1,9 @@
 /* Guided entry reuses identity controls and their existing security handlers. */
 (function(g){
  'use strict';
- let dialog,content,title,progress,back,next,step='welcome',first=false,setupFinished=false,method='passkey',mounted=false;
+ let dialog,content,title,progress,back,next,step='welcome',first=false,setupFinished=false,method='passkey',mounted=false,ticketFromQR=false;
  const homes=new Map(),$=id=>document.getElementById(id);
+ const hasRelease=()=>/^[\w-]{43}$/.test($('identity-code')?.value.trim()||'');
  const order=['welcome','release','method','access','install','options','finish'];
  function node(tag,text){const n=document.createElement(tag);if(text)n.textContent=text;return n;}
  function restore(){for(const [item,home] of homes){home.after(item);home.remove();item.hidden=false;}homes.clear();}
@@ -20,25 +21,27 @@
   if(step==='welcome'){
    say('Ein Portal für iPhone, Android, iPad und PC.');
    choice('Bereits eingerichtet',()=>{first=false;go('method');});
-   choice('Erstmals einrichten',()=>{first=true;go('release');});
-   choice('Zugang verloren',()=>{first=true;go('release');});
+   choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
+   choice('Zugang verloren',()=>{first=true;go(hasRelease()?'method':'release');});
    choice('Ausbildung & Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();});
   }else if(step==='release'){
    say('Bitte die Verwaltung um eine einmalige Freigabe bitten. Sie prüft deine Identität. Bei verlorenem Zugang lässt du den bisherigen Zugang sperren.');
    const setup=place('identity-setup');setup.open=true;
    next.hidden=false;next.textContent='Weiter';next.onclick=()=>{
     if(!/^[\w-]{43}$/.test($('identity-code').value.trim())){$('identity-message').textContent='Bitte die gültige Freigabe der Verwaltung eingeben.';return;}
-    go('method');
+    $('identity-message').textContent='';go('method');
    };
   }else if(step==='method'){
+   if(first&&hasRelease())say(ticketFromQR?'Die Freigabe aus deinem QR-Code wurde übernommen. Du musst keinen Code eingeben. Wähle jetzt deine Anmeldeart.':'Deine Freigabe wurde übernommen. Wähle jetzt deine Anmeldeart.');
    choice('Passkey · Gesicht, Fingerabdruck oder Geräte-PIN',()=>{method='passkey';go('access');});
    choice('Benutzername und Passwort',()=>{method='password';go('access');});
+   if(first&&hasRelease())choice('Andere Freigabe verwenden',()=>{ticketFromQR=false;$('identity-code').value='';$('identity-message').textContent='';go('release');});
   }else if(step==='access'){
    if(first){
     say('Die Freigabe wird erst beim erfolgreichen Einrichten verbraucht.');
     if(method==='passkey')place('identity-register');else place('identity-password-settings').open=true;
    }else if(method==='passkey')place('identity-login');else place('identity-password-login-form');
-   choice('Zugang verloren?',()=>{first=true;go('release');});
+   choice('Zugang verloren?',()=>{first=true;go(hasRelease()?'method':'release');});
   }else if(step==='install'){
    g.DeckelInstall?.refresh();if($('installSection')?.hidden)say('Du kannst H₂O über dein vorhandenes App-Symbol oder direkt im Browser öffnen.');else place('installSection').open=true;
    next.hidden=false;next.textContent='Weiter / überspringen';next.onclick=()=>go('options');
@@ -58,9 +61,9 @@
   mounted=true;dialog=node('dialog');dialog.id='h2o-onboarding';dialog.className='h2o-onboarding';dialog.setAttribute('aria-labelledby','h2o-onboarding-title');
   progress=node('p');progress.setAttribute('aria-live','polite');title=node('h2');title.id='h2o-onboarding-title';title.tabIndex=-1;content=node('div');
   const nav=node('nav');nav.setAttribute('aria-label','Einrichtung');back=node('button','Zurück');next=node('button','Weiter');back.type=next.type='button';
-  back.onclick=()=>{if(step==='method')go(first?'release':'welcome');else if(step==='access')go('method');else if(step==='install')close();else go(order[Math.max(0,order.indexOf(step)-1)]);};
+  back.onclick=()=>{if(step==='method')go(first&&!ticketFromQR?'release':'welcome');else if(step==='access')go('method');else if(step==='install')close();else go(order[Math.max(0,order.indexOf(step)-1)]);};
   nav.append(back,next);dialog.append(progress,title,content,nav);document.body.append(dialog);
-  dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.showModal();if(hasTicket){first=true;step='release';}render();
+  dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.showModal();if(hasTicket&&hasRelease()){first=true;ticketFromQR=true;step='method';}render();
  }
  g.H2OOnboarding={init,refresh(){if(dialog?.open)render();},accessReady(){if(!dialog?.open)return;setupFinished=true;first=false;go('access');},signedIn(){if(!dialog?.open)return;if(first||setupFinished)go('install');else close();}};
 })(globalThis);
