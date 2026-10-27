@@ -10,6 +10,11 @@ struct PortalWebView: UIViewRepresentable {
         let controller = model.web.configuration.userContentController
         controller.removeScriptMessageHandler(forName: "h2oPdf")
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oPdf")
+        controller.removeScriptMessageHandler(forName: "h2oInvitation")
+        controller.add(WeakPdfHandler(context.coordinator), name: "h2oInvitation")
+        if let url = Bundle.main.url(forResource: "ios-entry", withExtension: "js"), let script = try? String(contentsOf: url, encoding: .utf8) {
+            controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        }
         if let url = Bundle.main.url(forResource: "pdf-export", withExtension: "js"), let script = try? String(contentsOf: url, encoding: .utf8) {
             controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
@@ -27,9 +32,18 @@ struct PortalWebView: UIViewRepresentable {
         init(_ model: PortalModel) { self.model = model }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
-            guard message.name == "h2oPdf", message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == "ffw-wasser.github.io", [0,443].contains(origin.port),
+            guard ["h2oPdf", "h2oInvitation"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == "ffw-wasser.github.io", [0,443].contains(origin.port),
                   let frameURL = message.frameInfo.request.url, PortalLinks.trusted(frameURL),
                   let webView = message.webView, let url = webView.url, PortalLinks.trusted(url) else { return }
+            if message.name == "h2oInvitation" {
+                guard message.body as? String == "scan" else { return }
+                // Only an explicit action in the visible, signed-out setup can open the camera.
+                webView.evaluateJavaScript("(() => { const e = document.getElementById('identity-setup'); return !!e && !e.closest('[hidden]') && !window.H2OIdentity?.session?.(); })()") { value, error in
+                    guard error == nil, value as? Bool == true else { return }
+                    self.model.showScanner = true
+                }
+                return
+            }
             NativePdfPresenter.show(body: message.body, webView: webView) { self.model.message = $0 }
         }
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -46,9 +60,9 @@ struct PortalWebView: UIViewRepresentable {
             }; return nil
         }
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { model.message = "" }
-        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { if (error as NSError).code != NSURLErrorCancelled { model.message = "Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen." } }
-        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { model.message = "Die Verbindung wurde unterbrochen. Bitte unter Hilfe erneut laden." }
-        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { model.message = "Die Ansicht wurde beendet. Bitte unter Hilfe erneut laden." }
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { if (error as NSError).code != NSURLErrorCancelled { model.message = "Portal nicht erreichbar. Prüfe deine Internetverbindung und tippe auf „Erneut laden“." } }
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { model.message = "Die Verbindung wurde unterbrochen. Bitte tippe auf „Erneut laden“." }
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { model.message = "Die Ansicht wurde beendet. Bitte tippe auf „Erneut laden“." }
         func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
             guard let url = frame.request.url, frame.isMainFrame, PortalLinks.trusted(url) else { completionHandler(); return }
             let alert = UIAlertController(title: "H₂O Portal", message: message, preferredStyle: .alert)

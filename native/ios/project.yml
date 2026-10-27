@@ -16,6 +16,8 @@ targets:
     platform: iOS
     sources:
       - H2OPortal
+      - path: ../shared/ios-entry.js
+        buildPhase: resources
       - path: ../shared/pdf-export.js
         buildPhase: resources
     settings:

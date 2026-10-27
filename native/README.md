@@ -17,16 +17,21 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | --- | --- |
 | iPhone/iPad | SwiftUI, WKWebView, dauerhaftes geräteeigenes Web-Datenprofil |
 | Android | Kotlin, Android WebView mit expliziter Credential-Manager-Unterstützung |
-| Einladung | Nativer QR-Scanner, nur exakte H₂O-Einladungsadresse mit Einmalcode |
+| Einladung | iOS: Scanner auf der Anmeldeseite unter „Erste Einrichtung oder Zugang verloren“, nur ohne angemeldete Sitzung; Android: Scanner in der nativen Leiste. Nur exakte H₂O-Einladungsadresse mit Einmalcode |
 | Links aus WhatsApp | Universal Links/App Links für deckel.html und termin.html vorbereitet |
 | Anmeldung | Passkey oder Benutzername/Passwort; explizite Android-Zertifikatsbindung für Passkeys im Worker vorbereitet |
-| Erinnerung | Freiwillige, allgemeine tägliche App-Erinnerung, lokal auf dem Gerät |
+| Erinnerung | iOS: entfernt; frühere tägliche App-Erinnerungen werden beim ersten Start des Updates beendet. Android: freiwillige tägliche lokale Erinnerung |
 | PDF-Export | Native Speichern-/Teilen-Dialoge für bestätigte Portal-PDFs bis 10 MB; Gerätetest noch offen |
-| Ohne Internet | Native Einstiegshilfe und erneutes Laden; private Serverdaten brauchen Internet |
+| Ohne Internet | iOS: bei Ladefehler direkt „Erneut laden“; Hilfe über die vorhandenen Portal-Infos. Android: native Einstiegshilfe. Private Serverdaten brauchen Internet |
 | Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build, dieselben Link-Sicherheitstests separat mit Apple Foundation |
 | Datenschutz | HTTPS, keine Geheimnisse im Projekt, keine privaten URLs in Logs/Analytics, Android-Backup aus |
 
-Die lokale Erinnerung heißt bewusst **App-Erinnerung**. Sie ist keine Synchronisierung
+Die iPhone-App zeigt keine zusätzliche native Kopfleiste mehr. Nach der Anmeldung
+steht der gesamte Inhaltsbereich dem Portal zur Verfügung. Zur ersten Einrichtung
+auf der Anmeldeseite „Erste Einrichtung oder Zugang verloren“ öffnen und dort
+„Einladung scannen“ wählen. Passkey-/Passwortanmeldung bleiben unverändert.
+
+Die lokale Erinnerung auf Android heißt bewusst **App-Erinnerung**. Sie ist keine Synchronisierung
 der Termine, ersetzt keine Zu-/Absagen und wird auf Android ungefähr zugestellt.
 Server-Push (APNs/FCM) ist **noch nicht implementiert**. Die App blendet deshalb die
 Browser-Push-Aktivierung und den Home-Bildschirm-Installationshinweis aus. Es wird
@@ -225,7 +230,8 @@ Vor einer Store-Einreichung sind noch offen:
 - Gerätetest: Passkey erstellen/anmelden/wiederherstellen, Einladung und WhatsApp-Link,
   neuer Zugang nach Gerätewechsel, Abmelden, QR-Kamera bei Ablehnung/Abbruch/Hintergrund,
   Termine/Rückmeldungen, Zahlungen, PDF-Buch und PDF-Export, Offline-/Wiederanlauf,
-  lokale Erinnerung mit gesperrtem Bildschirm, große Schrift und Screenreader.
+  Android: lokale Erinnerung mit gesperrtem Bildschirm; iOS: keine Kopfleiste nach Anmeldung,
+  Scanner nur vor Anmeldung, Entfernung früherer Erinnerungen; große Schrift und Screenreader.
 - Speziell prüfen: Die neue PDF-Übergabe ist automatisiert geprüft und nativ kompiliert;
   Speichern/Teilen mit den tatsächlichen iPhone-/Android-Datei-Apps bleibt ein Gerätetest.
 - Aktuelle Datenschutzangaben, Support- und Datenschutz-URL, Screenshots,
@@ -233,7 +239,7 @@ Vor einer Store-Einreichung sind noch offen:
 - Entscheidung zum Ablauf eines Löschwunsches und zu den Store-Anforderungen an
   Kontolöschung. Es wird nicht stillschweigend eine Löschfunktion für Vereinsdaten gebaut.
 - Store-Prüfung: Apple beurteilt den Mehrwert über eine umverpackte Website hinaus.
-  Nativer QR-Scanner, lokale Erinnerungen und Offline-Hilfe sind vorhanden, garantieren
+  Nativer QR-Scanner sowie auf Android lokale Erinnerungen und Offline-Hilfe sind vorhanden, garantieren
   aber keine Zulassung. Gegenstand der Einreichung muss der tatsächliche Funktionsstand sein.
 
 Die Vorbereitung registriert keine kostenpflichtigen Konten, veröffentlicht keine
