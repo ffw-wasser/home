@@ -28,7 +28,10 @@ def validate_profile(profile, identities, domains, now=None):
     if "ProvisionedDevices" in profile or profile.get("ProvisionsAllDevices", False):
         raise ValueError("Benötigt wird ein App-Store-Profil, kein Ad-hoc-/Enterprise-Profil.")
     allowed = entitlements.get("com.apple.developer.associated-domains", [])
-    if not isinstance(allowed, list) or ("*" not in allowed and not set(domains).issubset(allowed)):
+    # Profile allowlists can use a scalar wildcard. The app's actual entitlement
+    # remains an explicit array of domains; never copy this wildcard into it.
+    if allowed != "*" and (not isinstance(allowed, list) or
+                            ("*" not in allowed and not set(domains).issubset(allowed))):
         raise ValueError("Associated Domains fehlen im Profil; Profil bei Apple neu erzeugen.")
     uuid = profile.get("UUID", "")
     if not re.fullmatch(r"[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}", uuid):

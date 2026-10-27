@@ -47,6 +47,10 @@ class SigningProfileTests(unittest.TestCase):
         self.profile["Entitlements"]["com.apple.developer.associated-domains"] = self.domains
         self.validate()
 
+    def test_apple_profile_scalar_domain_wildcard_is_supported(self):
+        self.profile["Entitlements"]["com.apple.developer.associated-domains"] = "*"
+        self.validate()
+
     def test_wrong_team_bundle_or_entitlement_rejected(self):
         for field, value in [("application-identifier", f"{signing.TEAM}.other.app"),
                              ("application-identifier", f"OTHERTEAM1.{signing.BUNDLE}"),
@@ -77,7 +81,8 @@ class SigningProfileTests(unittest.TestCase):
             self.validate()
 
     def test_missing_or_partial_domain_permissions_rejected(self):
-        for allowed in [[], [self.domains[0]], "*", ["applinks:other.example"]]:
+        for allowed in [[], [self.domains[0]], "applinks:other.example", None,
+                        ["applinks:other.example"]]:
             self.profile["Entitlements"]["com.apple.developer.associated-domains"] = allowed
             with self.subTest(allowed=allowed), self.assertRaises(ValueError):
                 self.validate()
