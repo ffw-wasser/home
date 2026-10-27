@@ -21785,7 +21785,9 @@ g.PortalHydrants={schema,route};
  const fail=(message,status=403)=>{throw Object.assign(Error(message),{status});};
  const fields='id,iCalUID,etag,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,status,updated,htmlLink';
  async function json(url,token,options={}){
-  let response;try{response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'error',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Kalenderdienst nicht erreichbar (G03). Verbindung bitte erneut prüfen; bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);}
+  let response;try{response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Kalenderdienst nicht erreichbar (G03). Verbindung bitte erneut prüfen; bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);}
+  // Do not follow redirects with the caller's Authorization header.
+  if(response.status>=300&&response.status<400)fail('Google-Kalenderdienst antwortete mit einer nicht erlaubten Weiterleitung (G03).',503);
   if(response.status===412)fail('Der Google-Termin wurde inzwischen geändert. Bitte neu laden.',409);
   if(!response.ok)fail(response.status===401?'Google-Anmeldung abgelaufen. Bitte erneut verbinden.':response.status===403?'Google erlaubt diesen Kalenderzugriff nicht.':'Google Kalender derzeit nicht erreichbar.',response.status===401?401:response.status===403?403:503);
   if(response.status===204)return {};
@@ -21809,7 +21811,8 @@ g.PortalHydrants={schema,route};
   if(!client)fail('Google-OAuth ist noch nicht eingerichtet. Der ICS-Import bleibt verfügbar.',503);
   const token=data.googleAccessToken;if(typeof token!=='string'||token.length<20||token.length>4096||/[\s\x00-\x1f]/.test(token))fail('Bitte zuerst Google Kalender verbinden.',401);
   // Validate audience and scopes, rather than accepting arbitrary Google tokens.
-  let verification;try{verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'error',signal:AbortSignal.timeout(10000)});}catch{fail('Google-Zugangsprüfung nicht erreichbar (G02). Bitte erneut verbinden.',503);}
+  let verification;try{verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'manual',signal:AbortSignal.timeout(10000)});}catch{fail('Google-Zugangsprüfung nicht erreichbar (G02). Bitte erneut verbinden.',503);}
+  if(verification.status>=300&&verification.status<400)fail('Google-Zugangsprüfung antwortete mit einer nicht erlaubten Weiterleitung (G02).',503);
   if(verification.status>=500||verification.status===429)fail('Google-Zugangsprüfung vorübergehend nicht verfügbar (G02). Bitte später erneut verbinden.',503);
   if(!verification.ok)fail('Google-Zugang ungültig oder abgelaufen.',401);
   let info;try{info=await verification.json();}catch{fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);}
@@ -21892,7 +21895,9 @@ g.PortalHydrants={schema,route};
   if(typeof data.state!=='string'||data.state.length>4000||typeof data.code!=='string'||!data.code||data.code.length>2048||! /^[A-Za-z0-9._~-]{43,128}$/.test(data.verifier||''))fail('Google-Anmeldeantwort ungültig.');
   let state;try{state=await g.CentralLedger.open(env,data.state.slice(44),'google-calendar-oauth-state');}catch{fail('Google-Anmeldung konnte nicht zugeordnet werden.',401);}
   if(!/^[A-Za-z0-9_-]{43}\./.test(data.state)||!state||state.nonce!==data.state.slice(0,43)||state.source!==source||!Number.isFinite(state.expiresAt)||state.expiresAt<=Date.now()||state.expiresAt>Date.now()+300000||state.challenge!==await digest(data.verifier))fail('Google-Anmeldung abgelaufen oder nicht diesem Gerät zugeordnet.',401);
-  let response;try{response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_CALENDAR_CLIENT_ID,client_secret:env.GOOGLE_CALENDAR_CLIENT_SECRET,grant_type:'authorization_code',code:data.code,code_verifier:data.verifier,redirect_uri:redirect}).toString(),redirect:'error',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Anmeldedienst nicht erreichbar (G01). Bitte erneut verbinden.',503);}
+  let response;try{response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_CALENDAR_CLIENT_ID,client_secret:env.GOOGLE_CALENDAR_CLIENT_SECRET,grant_type:'authorization_code',code:data.code,code_verifier:data.verifier,redirect_uri:redirect}).toString(),redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Anmeldedienst nicht erreichbar (G01). Bitte erneut verbinden.',503);}
+  // Workers supports manual/follow only. Never forward client credentials to a redirect.
+  if(response.status>=300&&response.status<400)fail('Google-Anmeldedienst antwortete mit einer nicht erlaubten Weiterleitung (G01).',503);
   if(response.status>=500||response.status===429)fail('Google-Anmeldedienst vorübergehend nicht verfügbar (G01). Bitte später erneut verbinden.',503);
   if(!response.ok)fail('Google-Anmeldung nicht bestätigt. Bitte erneut verbinden.',401);
   let value;try{value=await response.json();}catch{fail('Google-Anmeldedienst lieferte keine gültige Antwort (G01). Bitte erneut verbinden.',503);}
@@ -22513,7 +22518,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"3547a8c7cc822d207cb55ef7dd81ea52b6ef008cf9c21caf104d76180861a38b",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"8d0d1e4690a4c95c2784a0b9a61cf98f4a8f85354caf0044b05e3e3f7a0c52a3",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

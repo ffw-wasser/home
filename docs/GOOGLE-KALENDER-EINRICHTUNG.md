@@ -3,7 +3,7 @@
 Die Umsetzung gehört zu PR #191 / Web-App-Version 2026.10.27.5 und ist zur Finalisierung nach erfolgreicher vollständiger CI freigegeben.
 Er richtet keine Google-Dienste oder Konten automatisch ein.
 
-Stand 27.10.2026: Der Anwender hat die Einrichtung von Google-Cloud-Projekt, Calendar API, OAuth-Client und Worker-Konfiguration abgeschlossen und die Anzeige „Google Kalender verbunden · Bearbeitung erlaubt“ bestätigt. Damit ist die Anmeldung und Kalenderberechtigung für dieses Konto bestätigt. Die gemeinsame Praxisprüfung mit beiden Verwaltungskonten und echten Terminänderungen bleibt gesondert durchzuführen. Zugangsdaten werden hier nicht dokumentiert. Beim erneuten Verbinden wurde anschließend ein Fehler nach der Google-Freigabe gemeldet. Die reale Verbindung ist deshalb aktuell erneut zu prüfen; die neue Behandlung von Google-Transportfehlern ersetzt diese Abnahme nicht.
+Stand 27.10.2026: Der Anwender hat die Einrichtung von Google-Cloud-Projekt, Calendar API, OAuth-Client und Worker-Konfiguration abgeschlossen und die Anzeige „Google Kalender verbunden · Bearbeitung erlaubt“ bestätigt. Damit ist die Anmeldung und Kalenderberechtigung für dieses Konto bestätigt. Die gemeinsame Praxisprüfung mit beiden Verwaltungskonten und echten Terminänderungen bleibt gesondert durchzuführen. Zugangsdaten werden hier nicht dokumentiert. Beim erneuten Verbinden wurde anschließend ein Fehler nach der Google-Freigabe gemeldet. Im Code wurde eine Cloudflare-inkompatible Weiterleitungseinstellung gefunden und für Version 2026.10.27.8 korrigiert. Die reale Verbindung ist nach Veröffentlichung erneut zu prüfen.
 
 Die Bedienrubrik „Google-Kalender pflegen“ ist für diesen Ablauf aktualisiert; siehe [Kalender-Bedienung](KALENDER-BEDIENUNG.md).
 
@@ -42,6 +42,10 @@ H₂O bestätigt anschließend Google-Lese-/Bearbeitungsrechte am bereits verbun
 Die H₂O-Verwaltungsrolle allein erlaubt keine Google-Änderung.
 
 Bei einer Fehlermeldung nach der Freigabe den vollständigen Text beachten:
+Die Google-Aufrufe verwenden den von Cloudflare unterstützten Modus `manual` und
+weisen Weiterleitungen ausdrücklich ab. Weder Client-Schlüssel noch Zugriffstokens
+werden an Weiterleitungsziele gesendet.
+
 G01 bezeichnet den Google-Codeaustausch, G02 die Google-Zugangsprüfung und G03
 den Kalenderdienst. Netzwerkfehler, Zeitüberschreitungen und ungültige Antworten
 werden für diese Schritte getrennt gemeldet. Keine Anmeldecodes, Tokens oder

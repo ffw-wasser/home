@@ -7,7 +7,9 @@
  const fail=(message,status=403)=>{throw Object.assign(Error(message),{status});};
  const fields='id,iCalUID,etag,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,status,updated,htmlLink';
  async function json(url,token,options={}){
-  let response;try{response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'error',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Kalenderdienst nicht erreichbar (G03). Verbindung bitte erneut prüfen; bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);}
+  let response;try{response=await fetch(url,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('Google-Kalenderdienst nicht erreichbar (G03). Verbindung bitte erneut prüfen; bei Terminänderungen zuerst den Google-Kalender kontrollieren.',503);}
+  // Do not follow redirects with the caller's Authorization header.
+  if(response.status>=300&&response.status<400)fail('Google-Kalenderdienst antwortete mit einer nicht erlaubten Weiterleitung (G03).',503);
   if(response.status===412)fail('Der Google-Termin wurde inzwischen geändert. Bitte neu laden.',409);
   if(!response.ok)fail(response.status===401?'Google-Anmeldung abgelaufen. Bitte erneut verbinden.':response.status===403?'Google erlaubt diesen Kalenderzugriff nicht.':'Google Kalender derzeit nicht erreichbar.',response.status===401?401:response.status===403?403:503);
   if(response.status===204)return {};
@@ -31,7 +33,8 @@
   if(!client)fail('Google-OAuth ist noch nicht eingerichtet. Der ICS-Import bleibt verfügbar.',503);
   const token=data.googleAccessToken;if(typeof token!=='string'||token.length<20||token.length>4096||/[\s\x00-\x1f]/.test(token))fail('Bitte zuerst Google Kalender verbinden.',401);
   // Validate audience and scopes, rather than accepting arbitrary Google tokens.
-  let verification;try{verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'error',signal:AbortSignal.timeout(10000)});}catch{fail('Google-Zugangsprüfung nicht erreichbar (G02). Bitte erneut verbinden.',503);}
+  let verification;try{verification=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token),{redirect:'manual',signal:AbortSignal.timeout(10000)});}catch{fail('Google-Zugangsprüfung nicht erreichbar (G02). Bitte erneut verbinden.',503);}
+  if(verification.status>=300&&verification.status<400)fail('Google-Zugangsprüfung antwortete mit einer nicht erlaubten Weiterleitung (G02).',503);
   if(verification.status>=500||verification.status===429)fail('Google-Zugangsprüfung vorübergehend nicht verfügbar (G02). Bitte später erneut verbinden.',503);
   if(!verification.ok)fail('Google-Zugang ungültig oder abgelaufen.',401);
   let info;try{info=await verification.json();}catch{fail('Google-Zugangsprüfung lieferte keine gültige Antwort (G02). Bitte erneut verbinden.',503);}

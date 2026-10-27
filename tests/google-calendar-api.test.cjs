@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const {fixture}=require('./helpers/portal-fixture.cjs');
 const scope='https://www.googleapis.com/auth/calendar.events',token='SYNTHETIC_GOOGLE_TOKEN_1234567890',client='synthetic.apps.googleusercontent.com';
 function setup({role='writer',aud=client,granted=scope,expires=300,precondition=false,attendees=false}={}){
- const requests=[],ctx={URL,URLSearchParams,Date,AbortSignal,fetch:async(url,options={})=>{requests.push({url,options});if(url.includes('tokeninfo'))return Response.json({aud,scope:granted,expires_in:expires});if(url.includes('maxResults=1'))return Response.json({accessRole:role});if(options.method&&precondition)return new Response('',{status:412});if(options.method==='DELETE')return new Response(null,{status:204});return Response.json({etag:'"v1"',attendees:attendees?[{email:'synthetic@example.invalid'}]:undefined,items:[]});}};
+ const requests=[],ctx={URL,URLSearchParams,Date,AbortSignal,fetch:async(url,options={})=>{if(options.redirect==='error')throw new TypeError('Invalid redirect value, must be follow or manual');requests.push({url,options});if(url.includes('tokeninfo'))return Response.json({aud,scope:granted,expires_in:expires});if(url.includes('maxResults=1'))return Response.json({accessRole:role});if(options.method&&precondition)return new Response('',{status:412});if(options.method==='DELETE')return new Response(null,{status:204});return Response.json({etag:'"v1"',attendees:attendees?[{email:'synthetic@example.invalid'}]:undefined,items:[]});}};
  vm.runInNewContext(fs.readFileSync('cloudflare/push/google-calendar-api.js','utf8'),ctx);
  const call=(action,data={},env={GOOGLE_CALENDAR_CLIENT_ID:client})=>ctx.GoogleCalendarAPI.route(action,{googleAccessToken:token,...data},env,{calendarUrl:'https://calendar.google.com/calendar/ical/test%40example.invalid/public/basic.ics'});
  return {api:ctx.GoogleCalendarAPI,call,requests};
@@ -51,5 +51,14 @@ test('Google connection: token verification and calendar failures identify their
   f.c.fetch=async url=>{if(step==='calendar'&&String(url).includes('tokeninfo'))return Response.json({aud:client,scope,expires_in:300});if(mode==='network')throw Error(token);if(mode==='body')return new Response('invalid '+token);return Response.json(null);};
   const result=await f.call('google-api/status',{googleAccessToken:token},null,true);
   assert.equal(result.status,503);assert.match(result.value.error,step==='verification'?/G02/:/G03/);assert.equal(JSON.stringify(result).includes(token),false);
+ }
+});
+
+test('Google API: neither access verification nor calendar requests follow credential-bearing redirects',async()=>{
+ for(const step of ['verification','calendar']){
+  const f=await fixture();f.env.GOOGLE_CALENDAR_CLIENT_ID=client;let calls=0;
+  f.c.fetch=async(url,options)=>{calls++;assert.equal(options.redirect,'manual');assert.notEqual(new URL(url).hostname,'synthetic.example.invalid');if(step==='calendar'&&String(url).includes('tokeninfo'))return Response.json({aud:client,scope,expires_in:300});return new Response(token,{status:307,headers:{Location:'https://synthetic.example.invalid/collect'}});};
+  const result=await f.call('google-api/status',{googleAccessToken:token},null,true);
+  assert.equal(result.status,503);assert.match(result.value.error,step==='verification'?/Weiterleitung.*G02/:/Weiterleitung.*G03/);assert.equal(calls,step==='verification'?1:2);assert.equal(JSON.stringify(result).includes(token),false);
  }
 });
