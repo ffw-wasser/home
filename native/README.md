@@ -197,6 +197,10 @@ brechen den Build ab. Der macOS-Importfehler „The specified item already exist
 the keychain“ wird als möglicher Doppeleintrag behandelt; danach muss die gültige
 Signaturidentität mit privatem Schlüssel dennoch zum Profil passen. Andere
 Importfehler, insbesondere ein falsches P12-Passwort, bleiben Abbruchgründe.
+Bei Associated Domains akzeptiert der Prüfer sowohl die Profilliste als auch
+Apples einzelnen `*`-Platzhalter in der Profil-Allowlist. Die eigentliche App
+behält ihre ausdrücklich eingetragenen Domains; der Platzhalter wird nicht in
+die App-Berechtigungen übernommen.
 Jede Ausführung erhält eine eigene Build-Nummer aus
 `1000 + GitHub-Run-Nummer` und Wiederholungsnummer (z. B. `1001.1`).
 
