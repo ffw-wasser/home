@@ -21487,7 +21487,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  const PASSWORD_ITERATIONS=100000;
  function passwordSecret(env){if(typeof env.H2O_PASSWORD_PEPPER!=='string'||env.H2O_PASSWORD_PEPPER.length<43)fail('Passwortanmeldung ist noch nicht eingerichtet. Bitte Passkey verwenden oder die Verwaltung kontaktieren.',503);return env.H2O_PASSWORD_PEPPER;}
  function username(value){return typeof value==='string'&&/^[a-z0-9][a-z0-9._-]{2,63}$/.test(value.trim().toLowerCase())?value.trim().toLowerCase():'';}
- function passwordValue(value){return typeof value==='string'&&[...value].length>=15&&[...value].length<=128&&enc.encode(value).length<=512;}
+ function passwordValue(value){return typeof value==='string'&&[...value].length>=1&&[...value].length<=128&&enc.encode(value).length<=512;}
  async function pepper(env,purpose,value){const key=await crypto.subtle.importKey('raw',enc.encode(passwordSecret(env)),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(await crypto.subtle.sign('HMAC',key,enc.encode('h2o-password-v1:'+purpose+':'+value)));}
  async function verifier(env,password,salt){
   const key=await crypto.subtle.importKey('raw',enc.encode(password),{name:'PBKDF2'},false,['deriveBits']);
@@ -21527,8 +21527,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  async function passwordSet(env,data,auth){
   passwordSecret(env);
   const name=username(data.username);if(!name)fail('Benutzername: 3–64 Zeichen, nur a–z, Zahlen, Punkt, Bindestrich oder Unterstrich.',400);
-  if(!passwordValue(data.password))fail('Bitte ein eigenes Passwort mit 15 bis 128 Zeichen wählen. Leerzeichen und Einfügen sind erlaubt.',400);
-  if(/^(.)\1+$/u.test(data.password)||['123456789012345','passwordpassword','passwortpasswort'].includes(data.password.toLowerCase()))fail('Bitte ein weniger leicht zu erratendes Passwort wählen.',400);
+  if(!passwordValue(data.password))fail('Bitte ein Passwort eingeben (technisch höchstens 128 Zeichen).',400);
   const approval=data.code?await ticket(env,data.code):null,active=approval?null:await session(env,auth);
   if(!approval)recent(active);
   const record=approval?.record||active.record,epoch=await generation(env,record.alias),id='password:'+random(),salt=random(),nameHash=await pepper(env,'username',name),proof=await verifier(env,data.password,salt),now=Date.now();
@@ -22449,7 +22448,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"509816af21c9e7454a404b5e2e69e2f181db8efb76280694fac68a6a6af02a95",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"59b04f8f12e40c9a4d2f0df154f521e872826f997c2ee38a84cf6b377efb676a",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

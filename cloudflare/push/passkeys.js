@@ -196,7 +196,7 @@
  const PASSWORD_ITERATIONS=100000;
  function passwordSecret(env){if(typeof env.H2O_PASSWORD_PEPPER!=='string'||env.H2O_PASSWORD_PEPPER.length<43)fail('Passwortanmeldung ist noch nicht eingerichtet. Bitte Passkey verwenden oder die Verwaltung kontaktieren.',503);return env.H2O_PASSWORD_PEPPER;}
  function username(value){return typeof value==='string'&&/^[a-z0-9][a-z0-9._-]{2,63}$/.test(value.trim().toLowerCase())?value.trim().toLowerCase():'';}
- function passwordValue(value){return typeof value==='string'&&[...value].length>=15&&[...value].length<=128&&enc.encode(value).length<=512;}
+ function passwordValue(value){return typeof value==='string'&&[...value].length>=1&&[...value].length<=128&&enc.encode(value).length<=512;}
  async function pepper(env,purpose,value){const key=await crypto.subtle.importKey('raw',enc.encode(passwordSecret(env)),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(await crypto.subtle.sign('HMAC',key,enc.encode('h2o-password-v1:'+purpose+':'+value)));}
  async function verifier(env,password,salt){
   const key=await crypto.subtle.importKey('raw',enc.encode(password),{name:'PBKDF2'},false,['deriveBits']);
@@ -236,8 +236,7 @@
  async function passwordSet(env,data,auth){
   passwordSecret(env);
   const name=username(data.username);if(!name)fail('Benutzername: 3–64 Zeichen, nur a–z, Zahlen, Punkt, Bindestrich oder Unterstrich.',400);
-  if(!passwordValue(data.password))fail('Bitte ein eigenes Passwort mit 15 bis 128 Zeichen wählen. Leerzeichen und Einfügen sind erlaubt.',400);
-  if(/^(.)\1+$/u.test(data.password)||['123456789012345','passwordpassword','passwortpasswort'].includes(data.password.toLowerCase()))fail('Bitte ein weniger leicht zu erratendes Passwort wählen.',400);
+  if(!passwordValue(data.password))fail('Bitte ein Passwort eingeben (technisch höchstens 128 Zeichen).',400);
   const approval=data.code?await ticket(env,data.code):null,active=approval?null:await session(env,auth);
   if(!approval)recent(active);
   const record=approval?.record||active.record,epoch=await generation(env,record.alias),id='password:'+random(),salt=random(),nameHash=await pepper(env,'username',name),proof=await verifier(env,data.password,salt),now=Date.now();

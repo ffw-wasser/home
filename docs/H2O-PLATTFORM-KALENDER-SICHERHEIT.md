@@ -80,12 +80,16 @@ Für die tatsächliche Integration fehlen insbesondere:
 Kostenlose lokale Quell-/Regressionsprüfung mit ausschließlich künstlichen Konten und
 blockierten produktiven Diensten; **kein externes Pentest-Zertifikat**.
 
-- 943 Unit-/Regressionstests erfolgreich, darunter Anmeldung, Rollenverlust, Sperrung,
+- 944 Unit-/Regressionstests erfolgreich, darunter Anmeldung, Rollenverlust, Sperrung,
   Wiederherstellung, Versionskonflikte, verschlüsselte D1-Daten, OneDrive und öffentliche Ressourcen.
 - Google-spezifische Tests prüfen zusätzliche OAuth-Client-/Scope-/Kalendergrenzen,
   ETag-Konflikte und gesperrte Gästeänderungen gegen simulierte Antworten.
 - Gruppen-Tests: Mehrfachauswahl, individuelle Ausnahmen, dynamischer Mitgliedsstatus,
   veraltete Gruppenversionen, unbekannte Gruppen, keine privaten Auswahlfelder im Mitgliederportal.
+- Passwörter werden auf Nutzerwunsch ohne Mindestlänge, Komplexitätsvorgaben oder
+  Trivialpasswort-Sperre akzeptiert; leer bleibt unzulässig. Die technische Obergrenze
+  von 128 Zeichen/512 UTF-8-Bytes verhindert übergroße Eingaben. Bestehende Hashes,
+  Pepper, Versuchslimits und Verwaltungsfreigabe bleiben erhalten.
 - `npm audit --json`: 0 bekannte Schwachstellen (27.10.2026); dies beweist keine Fehlerfreiheit.
 - Die bestehende ICS-Adresse ist öffentlich. Keine persönlichen Einladungs-/Mitgliederdaten,
   Zugangsdaten oder geschützten Informationen in Titel/Beschreibung/Ort veröffentlichen.
