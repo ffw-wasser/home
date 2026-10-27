@@ -74,12 +74,6 @@ test('Neue Kalenderdaten erhalten automatisch Empfänger, unabhängig von der Te
  const f=await setup();f.sql.prepare('DELETE FROM portal_rules').run();await rename(f,'Sonderprobe Atemschutz');
  const event=(await list(f)).events[0];assert.equal(event.recipientMode,'automatic');assert.equal(event.approved,false);assert.equal(event.sessionType,'Sonderprobe');assert.deepEqual(event.recipientIds,['member-1','member-2']);
 });
-test('WhatsApp: automatische Gruppen begrenzen Empfänger; Zusagen, Entschuldigte und Abfragender werden ausgelassen',async()=>{
- const f=await setup();await rename(f,'Probe');await automatic(f);const event=(await list(f)).events[0],requestId=()=>require('node:crypto').randomUUID();
- for(const [i,status] of [[0,'yes'],[1,'excused'],[2,'maybe']])assert.equal((await f.call('reply',{eventId:event.id,status,expectedVersion:0,requestId:requestId()},f.people[i])).status,200);
- const result=await f.call('whatsapp-recipients',{eventId:event.id,organizerMemberId:'member-4'},null,true);assert.equal(result.status,200);assert.deepEqual(result.value.members.filter(m=>m.eligible).map(m=>m.id),['member-3']);assert.ok(!result.value.members.some(m=>m.id==='member-5'));
- assert.equal((await f.call('whatsapp-prepare',{eventId:event.id,memberId:'member-5',organizerMemberId:'member-4'},null,true)).value.eligible,false);assert.equal(f.sends.length,0);
-});
 test('Zwei gleichzeitige Gruppenschreibvorgänge bestätigen höchstens eine Version',async()=>{
  const f=await setup(),groups=(await f.call('groups',{},null,true)).value.groups;
  const results=await Promise.all([f.call('groups',{groups,expectedVersion:0},null,true),f.call('groups',{groups:groups.map(g=>({...g,name:g.name+' neu'})),expectedVersion:0},null,true)]);

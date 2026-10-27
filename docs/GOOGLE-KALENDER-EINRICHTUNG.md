@@ -93,10 +93,12 @@ ungespeicherte Eingaben, Löschen verlangt eine Bestätigung. Ganze Serien und T
 mit Gästen bleiben bis zum Integrationstest für Änderungen gesperrt. Ein einzelnes
 Serienvorkommen wird über seinen ursprünglichen Start zugeordnet. Unveränderte Uhrzeiten
 behalten ihre exakten Sekunden und ihren Zeitpunkt, auch beim Wechsel der Sommerzeit.
-Nach Speicherung wird der H₂O-Import neu geladen; Google kann Änderungen im ICS verzögert liefern. Persönliche Kalendereinladungen,
-E-Mail-Profil und automatischer Antwortabgleich bleiben deaktiviert. Für einen späteren
-Hintergrundabgleich ist ein eigener, datenschutzgeprüfter serverseitiger Zugriff nötig;
-die hier bewusst kurzlebige Browserverbindung ersetzt diesen nicht.
+Nach Speicherung wird der H₂O-Import neu geladen; Google kann Änderungen im ICS
+verzögert liefern. Persönliche Einladungen verwenden einen eigenen privaten
+Einladungskalender und einen eigenständigen Apps-Script-Zeittrigger. Die einmalige
+Einrichtung, freiwillige Adressbestätigung und praktische Abnahme stehen in
+[Persönliche Kalendereinladungen und Antworten](google-calendar-invitations/README.md).
+Die kurzlebige Browserverbindung für Quelltermin-Korrekturen bleibt davon getrennt.
 
 Vor Produktivfreigabe beide echten Google-Konten und ihre Kalenderrechte prüfen.
 Google-/Apple-/Outlook-Einladungen, Serienausnahmen und die Sichtbarkeit persönlicher

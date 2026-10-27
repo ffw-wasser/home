@@ -85,6 +85,11 @@ jobs:
       - name: Test public learning and documents after a real offline restart
         run: node tests/portal-offline-browser.cjs
 
+      - name: Test private calendar invitations and consistent account sections
+        run: |
+          node tests/calendar-invitations-browser.cjs
+          BROWSER_ENGINE=webkit node tests/calendar-invitations-browser.cjs
+
       - name: Test direct notification activation and settings layout
         run: node tests/portal-notifications-browser.cjs
 
@@ -98,10 +103,9 @@ jobs:
         run: node tests/portal-evidence-browser.cjs
       - name: Test member batch editing and mobile cards
         run: node tests/members-editor-browser.cjs
-      - name: Test manual WhatsApp reminder flow on mobile viewports
+      - name: Test appointment replies on mobile viewports
         run: |
-          node tests/portal-reminders-browser.cjs
-          node tests/whatsapp-reply-browser.cjs
+          node tests/term-reply-browser.cjs
       - name: Test annual plan, navigation and private access
         run: |
           node tests/year-plan-browser.cjs

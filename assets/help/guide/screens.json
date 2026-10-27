@@ -68,8 +68,8 @@
     "height": 1050
   },
   "h2o-aktualisieren": {
-    "width": 324,
-    "height": 224
+    "width": 354,
+    "height": 221
   },
   "geraetehaus-statistik": {
     "width": 1280,
@@ -148,7 +148,15 @@
     "height": 656
   },
   "h2o-konto-sicherheit": {
-    "width": 324,
-    "height": 452
+    "width": 354,
+    "height": 523
+  },
+  "h2o-kalenderkonto": {
+    "width": 354,
+    "height": 531
+  },
+  "geraetehaus-kalender-einladungen": {
+    "width": 728,
+    "height": 542
   }
 }

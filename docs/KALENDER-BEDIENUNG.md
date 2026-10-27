@@ -37,8 +37,11 @@ Lokale Änderungen bleiben bei späteren Importen erhalten. Unter „Weitere Akt
 kann man ausdrücklich wieder die Google-Angaben übernehmen; dabei lokale
 Ausnahmen vorher prüfen. Titel, Zeiten und Originalbeschreibung werden über den
 Google-Editor in derselben Anwendung geändert; Zusatzinfos lokal separat speichern.
-Persönliche Kalendereinladungen und automatischer Antwortabgleich sind noch nicht
-verfügbar; die Personenauswahl steuert die H₂O-Sichtbarkeit und Rückmeldungen.
+Persönliche Kalendereinladungen und Antwortabgleich werden getrennt vom öffentlichen
+Kalender eingerichtet. Die Personenauswahl steuert auch diese Einladungen. Anleitung:
+[Persönliche Kalendereinladungen](google-calendar-invitations/README.md). Die Verwaltung
+richtet den Zeittrigger einmal ein; Mitglieder bestätigen ihre Kalenderadresse unter
+Konto & Sicherheit. WhatsApp-Erinnerungen sind entfernt.
 
 Ein Titel mit `INFO:` kennzeichnet eine reine Information. Auch Wörter wie Probe,
 Geburtstag oder Einsatz machen daraus keinen funktionalen Termin. Informationen

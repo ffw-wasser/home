@@ -2,7 +2,8 @@
 (function(g){
  'use strict';
  const ORIGIN='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev',STORAGE='h2o-portal-identity-v1';
- let current=null,record=null,busy=false;
+ let current=null,record=null,busy=false,calendarConfirmRouted=false;
+ let calendarConfirmation=(()=>{const url=new URL(location.href),token=url.searchParams.get('calendarConfirm');if(!/^[a-f0-9]{64}$/.test(token||''))return '';url.searchParams.delete('calendarConfirm');history.replaceState(null,'',url.pathname+url.search+url.hash);return token;})();
  const setupCode=(()=>{const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(m||/(?:^#|&)[rak]=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);return m?.[1]||'';})();
  function read(){try{const s=JSON.parse(localStorage.getItem(STORAGE));return s?.scope==='portal'&&/^[\w-]{43}$/.test(s.token)&&/^[a-f0-9]{32}$/.test(s.alias)&&s.expiresAt>Date.now()?s:null;}catch{return null;}}
  function save(s){for(const id of ['login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else localStorage.removeItem(STORAGE);current=s;record=null;el('list')?.replaceChildren();setMemberName('');}
@@ -16,7 +17,7 @@
   try{const value=await post('session');if(value.alias!==current.alias||value.revision!==current.revision||!/^[a-f0-9]{64}$/.test(value.key))throw Error('Mitgliederzuordnung nicht bestätigt.');record={version:1,alias:value.alias,key:value.key};paint();return record;}
   catch(e){if(e.status===401||e.status===403)save(null);paint();throw e;}
  }
- function supported(){if(!g.H2OPasskeys?.browserSupportsWebAuthn())throw Error('Bitte in Safari oder Chrome öffnen. Im WhatsApp-Menü „Im Browser öffnen“ wählen.');}
+ function supported(){if(!g.H2OPasskeys?.browserSupportsWebAuthn())throw Error('Bitte in Safari oder Chrome öffnen. Bitte den normalen Browser verwenden.');}
  async function login(code,confirmation){
   const expected=current||read();
   if(!code&&expected?.method==='password'){const input=el('confirm-password'),password=confirmation??input?.value??'';if(input)input.value='';if(!password)throw Error('Bitte unter Konto dein aktuelles Passwort zur Bestätigung eingeben.');return accept(await post('password/confirm',{password}));}
@@ -38,7 +39,7 @@
   await post('enroll/verify',{...data,id:request.id,response});
  }
  const el=id=>document.getElementById('identity-'+id);
- function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=!visible||!(current&&record);}const install=document.getElementById('installSection');if(install&&target&&install.parentElement!==target)target.append(install);g.DeckelInstall?.refresh();}
+ function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=!visible||!(current&&record);}const install=document.getElementById('installSection');if(install&&target&&install.parentElement!==target)target.append(install);g.DeckelInstall?.refresh();if(visible&&current&&record&&calendarConfirmation&&!calendarConfirmRouted){calendarConfirmRouted=true;g.DeckelMobile?.jump('more-security');}}
  function setMemberName(name){const member=el('member');if(member){member.textContent=name?'Angemeldet als '+name:'';member.hidden=!name;}}
  function paint(){
   if(!el('state'))return;
@@ -53,27 +54,36 @@
   el('register').textContent=signedIn?'Weiteren Passkey hinzufügen':'Passkey einrichten';
   if(signedIn){el('setup').open=false;el('code').value='';}
   else{setMemberName('');el('list').replaceChildren();}
-  whatsappSettings();document.getElementById('identity-whatsapp-settings')?.load?.();
+  calendarSettings();document.getElementById('identity-calendar-settings')?.load?.();
  }
  async function run(action){if(busy)return;if(g.PortalEvidenceEditor?.hasUnsaved?.())return void(el('message').textContent='Bitte die Nachweiseingabe zuerst speichern oder abbrechen.');if(g.DeckelActions?.hasUnsaved?.())return void(el('message').textContent='Bitte zuerst offene Getränkeeingaben abschließen.');busy=true;try{el('message').textContent='Bitte am Gerät bestätigen …';await action();paint();}catch(e){el('message').textContent=e.name==='NotAllowedError'?'Abgebrochen oder kein passender Passkey verfügbar. Bitte erneut versuchen oder die Verwaltung um eine Freigabe bitten.':e.message;}finally{busy=false;}}
  async function devices(){const value=await post('devices');el('list').replaceChildren();for(const [i,key] of value.keys.entries()){const row=document.createElement('p');row.textContent='Passkey '+(i+1)+(key.current?' · aktuell verwendet':'');if(!key.current){const button=document.createElement('button');button.type='button';button.textContent='Sperren';button.onclick=()=>run(async()=>{await login();await post('remove',{credential:key.id});await devices();el('message').textContent='Passkey und zugehörige Sitzungen gesperrt.';await g.DeckelReload?.();});row.append(' ',button);}el('list').append(row);}}
- function whatsappSettings(){
-  const slot=el('security-slot');if(!slot||document.getElementById('identity-whatsapp-settings'))return;
-  const section=document.createElement('details');section.id='identity-whatsapp-settings';section.className='portal-setting identity-whatsapp-settings';
-  const heading=document.createElement('summary');heading.textContent='WhatsApp-Erinnerungen';
-  const phoneLabel=document.createElement('label');phoneLabel.textContent='Meine Handynummer';phoneLabel.style.cssText='display:block;margin:12px 0';
-  const phone=document.createElement('input');phone.type='tel';phone.placeholder='+49 170 1234567';phone.autocomplete='tel';phone.style.cssText='display:block;width:100%;box-sizing:border-box;padding:12px;margin-top:6px';phoneLabel.append(phone);
-  const consent=document.createElement('label');consent.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer';
-  const check=document.createElement('input');check.type='checkbox';check.style.cssText='appearance:auto!important;-webkit-appearance:checkbox!important;width:24px;height:24px;flex:none';
-  const caption=document.createElement('span');caption.textContent='Persönliche WhatsApp-Erinnerungen erlauben';consent.append(check,caption);
-  const info=document.createElement('p');info.textContent='Freiwillig. Nummer und Freigabe lassen sich hier jederzeit ändern oder entfernen.';
-  const status=document.createElement('p');status.setAttribute('role','status');
-  const save=document.createElement('button');save.type='button';save.textContent='WhatsApp-Einstellungen speichern';save.className='primary-button';
-  async function request(data){const session=g.H2OIdentity?.session(),c=g.H2OIdentity?.credentials();if(!session||!c)throw Error('Bitte zuerst anmelden.');const response=await fetch(ORIGIN+'/portal/whatsapp-preference',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit'});const value=await response.json();if(!response.ok)throw Error(value.error||'Speichern fehlgeschlagen.');return value;}
-  save.onclick=async()=>{save.disabled=true;status.textContent='Speichert …';try{const value=await request({phone:phone.value,allowed:check.checked});phone.value=value.phone;check.checked=value.allowed;status.textContent='WhatsApp-Einstellungen gespeichert.';}catch(e){status.textContent=e.message;}finally{save.disabled=false;}};
-  section.append(heading,phoneLabel,consent,info,save,status);slot.append(section);
-  section.load=async()=>{section.hidden=!(current&&record);if(section.hidden)return;status.textContent='Lädt …';try{const value=await request({});phone.value=value.phone||'';check.checked=value.allowed===true;status.textContent='';}catch(e){status.textContent=e.message;}};
-  section.load();
+ function calendarSettings(){
+  const host=document.getElementById('more-security');if(!host||document.getElementById('identity-calendar-settings'))return;
+  const section=document.createElement('section');section.id='identity-calendar-settings';section.className='portal-setting';
+  const heading=document.createElement('h3');heading.textContent='Kalendereinladungen';
+  const intro=document.createElement('p');intro.textContent='Freigegebene Termine in deinem Google-, Apple- oder Outlook-Kalender erhalten und dort zu- oder absagen.';
+  const state=document.createElement('p');state.setAttribute('role','status');
+  const form=document.createElement('form'),label=document.createElement('label'),address=document.createElement('input');address.type='email';address.autocomplete='email';address.maxLength=254;address.required=true;address.setAttribute('aria-label','Meine Kalender-E-Mail-Adresse');label.textContent='Meine Kalender-E-Mail-Adresse';label.append(address);
+  const consent=document.createElement('label'),allowed=document.createElement('input');consent.className='portal-calendar-consent';allowed.type='checkbox';allowed.required=true;consent.append(allowed,document.createTextNode('Kalendereinladungen und Antwortabgleich über Google erlauben'));
+  const help=document.createElement('details'),summary=document.createElement('summary'),info=document.createElement('p');summary.textContent='So funktioniert die Kalenderanbindung';info.textContent='Freiwillig. Bestätige deine Adresse über den Link in der E-Mail. Danach kommen Einladungen nur für deine freigegebenen Termine. Google verarbeitet die Einladungen und Antworten; andere Mitgliedsadressen stehen nicht darin. Während eine Einladung aktiv ist, antworte im Kalender. Änderungen werden regelmäßig übernommen. Eine bestehende H₂O-Antwort bleibt bis zu deiner ersten Kalenderantwort erhalten. Abgelaufene Einladungen werden nach Terminende entfernt; dein Kalenderanbieter kann dafür eine Absagemeldung anzeigen. Du kannst die Anbindung jederzeit beenden. Zukünftige Einladungen werden beim nächsten erfolgreichen Abgleich abgesagt.';help.append(summary,info);
+  const options=document.createElement('details'),optionsTitle=document.createElement('summary');options.className='portal-setting-options';optionsTitle.textContent='Kalenderadresse hinterlegen';options.append(optionsTitle);
+  const save=document.createElement('button');save.type='submit';save.className='primary-button';save.textContent='Bestätigungs-E-Mail anfordern';
+  const stop=document.createElement('button');stop.type='button';stop.className='secondary';stop.textContent='Kalenderanbindung beenden';stop.hidden=true;
+  const confirmAddress=document.createElement('button');confirmAddress.type='button';confirmAddress.className='primary-button';confirmAddress.textContent='Kalenderadresse bestätigen';confirmAddress.hidden=true;
+  const refresh=document.createElement('button');refresh.type='button';refresh.className='secondary';refresh.textContent='Status aktualisieren';
+  const feedback=document.createElement('p');feedback.setAttribute('role','status');feedback.className='portal-setting-feedback';
+  let version=0,owner='',loading=false,dirty=false,known=false,lastLoad=0,verifiedAddress='';
+  async function request(data){const session=g.H2OIdentity?.session();if(!session||!g.H2OIdentity?.credentials())throw Error('Bitte zuerst persönlich anmelden.');const response=await fetch(ORIGIN+'/portal/calendar-preference',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit',redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(20000)});const value=await response.json();if(!response.ok)throw Error(value.error||'Die Kalenderanbindung wurde nicht bestätigt.');return value;}
+  function show(value){version=value.version;known=true;address.value=value.email||'';allowed.checked=value.allowed===true;stop.hidden=!value.allowed;verifiedAddress=value.verified?value.email:'';options.hidden=!value.configured&&!value.allowed;options.open=!value.allowed;optionsTitle.textContent=value.allowed?'Adresse ändern oder trennen':'Kalenderadresse hinterlegen';confirmAddress.hidden=!calendarConfirmation||!value.pending;save.disabled=!value.configured;address.disabled=allowed.disabled=!value.configured;state.textContent=!value.configured?'Die Verwaltung richtet Kalendereinladungen noch ein.':value.verified?'Verbunden · '+value.email:value.pending?'Bitte den Link in der Bestätigungs-E-Mail öffnen. Der Versand erfolgt beim nächsten Abgleich.':value.allowed?'Bitte die Kalenderadresse erneut bestätigen lassen.':'Noch nicht verbunden';save.textContent='Bestätigungs-E-Mail anfordern';save.disabled=save.disabled||!!verifiedAddress;dirty=false;}
+  async function action(data,message){save.disabled=stop.disabled=confirmAddress.disabled=true;try{const value=await request({...data,expectedVersion:version});show(value);feedback.textContent=message;}catch(e){feedback.textContent=e.message;}finally{save.disabled=!known||address.disabled||!!verifiedAddress&&address.value.trim().toLowerCase()===verifiedAddress;stop.disabled=confirmAddress.disabled=false;}}
+  form.addEventListener('input',()=>{dirty=true;save.disabled=address.disabled||!!verifiedAddress&&address.value.trim().toLowerCase()===verifiedAddress;});form.onsubmit=event=>{event.preventDefault();if(!known)return;void action({email:address.value.trim(),allowed:allowed.checked},'Bestätigung angefordert. Bitte die E-Mail abwarten und den Link öffnen.');};
+  stop.onclick=()=>{if(!confirm('Kalenderanbindung beenden? Weitere Einladungen und der Antwortimport stoppen. Zukünftige Einladungen werden beim nächsten erfolgreichen Abgleich abgesagt.'))return;void action({allowed:false},'Kalenderanbindung beendet. Du kannst wieder in H₂O antworten.');};
+  confirmAddress.onclick=async()=>{if(!calendarConfirmation)return;await action({confirm:calendarConfirmation},'Kalenderadresse bestätigt. Deine freigegebenen Termine werden automatisch eingeladen.');if(state.textContent.startsWith('Verbunden')){calendarConfirmation='';confirmAddress.hidden=true;}};
+  refresh.onclick=()=>section.load(true);
+  form.append(label,consent,save);options.append(form,stop,refresh);section.append(heading,intro,state,confirmAddress,options,help,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
+  section.load=async force=>{const key=current&&record?current.alias+':'+current.revision:'';section.hidden=!key;if(!key){owner='';known=false;address.value='';allowed.checked=false;dirty=false;return;}if(loading||dirty&&!force||key===owner&&!force&&Date.now()-lastLoad<30000)return;if(dirty&&force&&!confirm('Ungespeicherte Kalenderadresse verwerfen?'))return;loading=true;save.disabled=true;try{const value=await request({});if(current?.alias+':'+current?.revision!==key)return;owner=key;lastLoad=Date.now();show(value);feedback.textContent=calendarConfirmation&&!value.pending&&!value.verified?'Für diesen Bestätigungslink bitte mit dem zugehörigen H₂O-Konto anmelden.':'';}catch(e){known=false;feedback.textContent=e.message;}finally{loading=false;}};
+  g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-security')section.load();});
  }
  function init(){if(!el('login'))return;paint();if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}g.H2OOnboarding?.init(!!setupCode);
   el('password-login-form').onsubmit=event=>{event.preventDefault();const name=el('username').value,password=el('login-password').value;el('login-password').value='';void run(async()=>{await loginPassword(name,password);el('message').textContent='';el('account').open=false;g.H2OOnboarding?.signedIn();await g.DeckelReload?.();});};
