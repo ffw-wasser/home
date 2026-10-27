@@ -46,11 +46,11 @@ jobs:
           if [ -f /etc/apt/apt-mirrors.txt ]; then
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Capture and review all H2O portal screens
         env:
           PORTAL_REVIEW_OUTPUT: qa/portal-review
-        run: node scripts/capture-help-screens.cjs --only=h2o-ausbildung,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+        run: node scripts/capture-help-screens.cjs --only=h2o-atemschutz,h2o-ausbildung,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
       - name: Keep refreshed portal help screens for visual review
         uses: actions/upload-artifact@v4
         with:
@@ -102,6 +102,7 @@ jobs:
         run: |
           node tests/year-plan-browser.cjs
           node tests/portal-year-plan-browser.cjs
+          H2O_TEST_BROWSER=webkit node tests/portal-year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
         run: node tests/calendar-groups-browser.cjs
       - name: Test calendar information, colors and combined start card

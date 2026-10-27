@@ -2,15 +2,18 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await (process.env.H2O_TEST_BROWSER==='webkit'?require('playwright').webkit:chromium).launch({headless:true});
  try{
-  for(const width of [320,360,390,412,768,1024,1366]){
-   const page=await browser.newPage({viewport:{width,height:844},serviceWorkers:'block'}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.stack||e.message));
+  for(const width of (process.env.H2O_TEST_BROWSER? [390]:[320,360,390,412,768,1024,1366])){
+   const page=await browser.newPage({viewport:{width,height:844},serviceWorkers:'block'}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.stack||e.message));page.on('dialog',async d=>{errors.push(d.message());await d.dismiss();});
+   await page.addInitScript(()=>{window.nativePdfMessages=[];window.webkit={messageHandlers:{h2oPdf:{postMessage:value=>nativePdfMessages.push(value)}}};});
+   await page.addInitScript({content:'document.addEventListener("DOMContentLoaded",()=>{'+fs.readFileSync(path.join(root,'native/shared/pdf-export.js'),'utf8')+'});'});
    await page.addInitScript(()=>{window.testPdfBlobs=new Map();const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL);URL.createObjectURL=blob=>{const url=create(blob);testPdfBlobs.set(url,blob);return url;};URL.revokeObjectURL=url=>{testPdfBlobs.delete(url);revoke(url);};});
    await page.addInitScript(()=>localStorage.setItem('h2o_portal_layout_v1',JSON.stringify({main:['portal-section','portal-evidence','account','portal-points'],more:['more-water','more-hydrants','more-help']})));
    let yearMode='wait',yearCalls=0,releaseYear,enteredYear;const firstYear=new Promise(resolve=>enteredYear=resolve);
    await page.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
+    if(url.protocol==='blob:'&&url.origin==='https://ffw-wasser.github.io')return route.continue();
     if(url.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,url.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file))return route.fulfill({path:file});}
     if(url.hostname==='test.example.workers.dev'){
      if(url.pathname==='/portal/evidence')return route.fulfill({json:{evidence:{version:1,medical:{g262:'',g263:''},breathing:null,driver:null},syncedAt:Date.now()}});
@@ -28,6 +31,12 @@ const root=path.resolve(__dirname,'..');
    yearMode='success';releaseYear();await pdfDialog.locator('canvas').waitFor();
    assert.equal(await pdfDialog.isVisible(),true);assert.equal(await pdfDialog.evaluate(n=>n.scrollWidth>n.clientWidth),false);
    const pdfText=await page.evaluate(async()=>{const lib=await import('./js/vendor/pdfjs/pdf-5.4.624.min.mjs'),bytes=new Uint8Array(await testPdfBlobs.get(document.querySelector('#year-plan-pdf-dialog a').href).arrayBuffer()),doc=await lib.getDocument({data:bytes,isEvalSupported:false,useWasm:false}).promise,text=[];for(let i=1;i<=doc.numPages;i++)text.push((await(await doc.getPage(i)).getTextContent()).items.map(n=>n.str).join(' '));await doc.destroy();return text;});
+   await pdfDialog.getByRole('link',{name:'PDF öffnen ↗',exact:true}).click();
+   await page.waitForFunction(()=>nativePdfMessages.length===1);
+   assert.equal(await page.evaluate(()=>nativePdfMessages[0].mime),'application/pdf');
+   await pdfDialog.getByRole('link',{name:'Speichern',exact:true}).click();
+   await page.waitForFunction(()=>nativePdfMessages.length===2);
+   assert.equal(await page.evaluate(async()=>{const original=new Uint8Array(await testPdfBlobs.get(document.querySelector('#year-plan-pdf-dialog a').href).arrayBuffer());return nativePdfMessages.every(m=>m.mime==='application/pdf'&&atob(m.data)===Array.from(original,b=>String.fromCharCode(b)).join(''));}),true,'both native actions deliver the actual generated PDF bytes');
    assert.equal(pdfText.length,2);assert.match(pdfText[0],/Januar/);assert.match(pdfText.join(' '),/Dezember/);assert.match(pdfText.join(' '),/Sonderprobe\s+Atemschutz/);assert.match(pdfText.join(' '),/Heilige Drei Könige/);
    await page.getByRole('button',{name:'Nächste PDF-Seite',exact:true}).click();await page.getByText('Seite 2 / 2',{exact:true}).waitFor();
    if(width===390&&process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.screenshot({path:path.join(process.env.QA_OUTPUT,'jahresplan-pdf-handy.png')});}
@@ -43,6 +52,6 @@ const root=path.resolve(__dirname,'..');
    await page.evaluate(()=>H2OPortal.clear());assert.equal(await page.locator('.year-plan-event').count(),0,'logout clears personal annual data');assert.equal(await pdfDialog.isVisible(),false);assert.equal(await pdfDialog.locator('a').first().getAttribute('href'),null);assert.equal(await page.evaluate(url=>testPdfBlobs.has(url),pdfUrl),false,'logout revokes PDF bytes');
    assert.deepEqual(errors,[]);await page.close();
   }
-  console.log('PASS direct personal annual PDF: seven widths, content, paging, Close/Escape return routes, pinned tile, delayed navigation and logout');
+  console.log('PASS direct personal annual PDF ('+(process.env.H2O_TEST_BROWSER||'chromium seven widths')+'): native Open/Save payloads under real CSP, content, paging, return routes and logout');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

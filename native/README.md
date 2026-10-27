@@ -27,7 +27,8 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | Datenschutz | HTTPS, keine Geheimnisse im Projekt, keine privaten URLs in Logs/Analytics, Android-Backup aus |
 
 Die iPhone-App zeigt keine zusätzliche native Kopfleiste mehr. Nach der Anmeldung
-steht der gesamte Inhaltsbereich dem Portal zur Verfügung. Zur ersten Einrichtung
+steht der gesamte Inhaltsbereich dem Portal zur Verfügung. Der dunkelblaue Fußbereich
+wird hinter dem unteren iPhone-Sicherheitsabstand bis zum Home-Indikator fortgeführt. Zur ersten Einrichtung
 auf der Anmeldeseite „Erste Einrichtung oder Zugang verloren“ öffnen und dort
 „Einladung scannen“ wählen. Passkey-/Passwortanmeldung bleiben unverändert.
 
