@@ -105,7 +105,7 @@
   },
   "geraetehaus-h2o-einladung": {
     "width": 1326,
-    "height": 1660
+    "height": 1751
   },
   "h2o-anmeldung": {
     "width": 390,
@@ -122,5 +122,13 @@
   "h2o-jahresplan-laden": {
     "width": 354,
     "height": 80
+  },
+  "h2o-install-iphone": {
+    "width": 354,
+    "height": 641
+  },
+  "h2o-install-android": {
+    "width": 354,
+    "height": 756
   }
 }

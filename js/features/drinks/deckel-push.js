@@ -19,7 +19,7 @@
   $('enable').textContent=preparing?'Wird vorbereitet …':!prepared?'Erneut prüfen':pushConfigured?'Erneut aktivieren':'Aktivieren';
   $('enable').disabled=busy||preparing||!access||!available||blocked;$('disable').disabled=busy||preparing;
   state($('state'),otherAccount?'Anderes Konto':pushActive&&!blocked?'Aktiv':blocked?'Blockiert':!available?'Nicht verfügbar':preparing?'Wird vorbereitet':pushConfigured?'Bitte prüfen':'Aus',pushActive&&!blocked&&!otherAccount);
-  if(native()){$('enable').hidden=$('disable').hidden=true;state($('state'),'App-Vorbereitung');$('note').textContent='Server-Mitteilungen sind in dieser App-Version noch nicht eingerichtet. Oben unter Erinnerung kannst du eine tägliche App-Erinnerung wählen.';return;}
+  if(native()){$('enable').hidden=$('disable').hidden=true;state($('state'),'Webportal verwenden');$('note').textContent='Die TestFlight-App wird nicht weitergeführt. Mitteilungen bei Bedarf im Webportal auf deinem Home-Bildschirm einrichten.';return;}
   $('note').textContent=otherAccount?'Zuerst die Verbindung des anderen Kontos deaktivieren.':blocked?'Mitteilungen in den Handy-Einstellungen erlauben.':isIos()&&!installed()?'H₂O über das Symbol auf dem Home-Bildschirm öffnen.':!available?'Dieser Browser unterstützt keine Push-Mitteilungen.':'Erinnerungen direkt auf dieses Handy.';
  }
  async function prepare(){
@@ -29,7 +29,7 @@
    if(isIos()&&!installed())throw Error('Auf dem iPhone: Teilen → Zum Home-Bildschirm hinzufügen. Danach H₂O über dieses Symbol öffnen.');
    const [saved,existing]=await Promise.all([g.DeckelDevice.read(),navigator.serviceWorker.getRegistration()]);current(c,version);
    pushConfigured=!!saved?.portal;otherAccount=pushConfigured&&(saved.alias!==c.alias||saved.origin&&saved.origin!==c.origin);
-   const reg=existing?.active?existing:await timeout((async()=>{await navigator.serviceWorker.register('service-worker.js');return navigator.serviceWorker.ready;})(),20000,'Die App-Vorbereitung dauert zu lange. Bitte online erneut prüfen.');current(c,version);
+   const reg=existing?.active?existing:await timeout((async()=>{await navigator.serviceWorker.register('service-worker.js');return navigator.serviceWorker.ready;})(),20000,'Das Einrichten der Mitteilungen dauert zu lange. Bitte online erneut prüfen.');current(c,version);
    const sub=await reg.pushManager.getSubscription();current(c,version);
    pushActive=pushConfigured&&!otherAccount&&saved.revision===c.revision&&sub?.endpoint===saved.endpoint&&g.Notification.permission==='granted';
    if(otherAccount||pushActive)return;
