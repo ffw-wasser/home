@@ -3,7 +3,9 @@
 Seit 27.10.2026 wird die native iPhone-App nicht weitergeführt. Android-Store-Veröffentlichung ist zurückgestellt.
 Der aktive Mitgliederzugang ist das H₂O-Webportal für iPhone und Android, optional mit Home-Bildschirm-Symbol.
 Die nativen Quelltexte bleiben als nachvollziehbarer Entwicklungsstand erhalten. Die Build-/TestFlight-Workflows sind entfernt; die folgenden technischen Anleitungen sind historische Dokumentation und kein aktiver Veröffentlichungsauftrag.
-Die öffentliche Apple-Domain-Zuordnung wird zurückgenommen. Vorhandene Mitgliederdaten, Passkeys und Passwortzugänge werden nicht verändert.
+Die öffentliche Apple-Domain-Zuordnung ist zurückgenommen; die ausgelieferte Datei enthält leere `applinks`- und `webcredentials`-Listen. Vorhandene Mitgliederdaten, Passkeys und Passwortzugänge werden nicht verändert.
+
+Die früheren aktiven Tests für native App-Zuordnung, iOS-Scanner, native PDF-Brücke und Apple-Signierung wurden entfernt. Der Jahresplan wird über echte Browser-PDF-Downloads geprüft. Tests innerhalb dieses Archivordners gehören nicht zur aktiven Web-App-CI. Umstiegshinweis und Schutz gegen versehentliche native Push-/Installationsaufrufe bleiben bis zur Entfernung alter TestFlight-Installationen geprüft.
 
 ---
 
@@ -118,7 +120,7 @@ in der produktiven Origin-Liste freischalten; dafür einen getrennten Testdienst
 Automatische Projekt-/Zuordnungsprüfungen:
 
 ```sh
-node --test tests/native-association.test.cjs tests/portal-identity.test.cjs
+node --test tests/portal-identity.test.cjs
 ```
 
 ## PDFs in der nativen App

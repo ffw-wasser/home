@@ -13,25 +13,24 @@
   if(native()){by('installSection').hidden=true;return;}
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
   const show=!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
+  if(by('installIllustration'))by('installIllustration').hidden=!isIos();
   by('installButton').hidden=isIos()||!personal();by('installButton').disabled=busy;
-  by('installButton').textContent=isAndroid()?(globalThis.H2OIdentity?.session?.()?'Anleitung zum Startsymbol':'Zugang auf diesem Handy sichern'):pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
-  steps(isIos()?['Das Portal in Safari öffnen. Im Menü auf „Teilen“ tippen.','„Zum Home-Bildschirm hinzufügen“ wählen, falls angeboten „Als Web-App öffnen“ einschalten und „Hinzufügen“ bestätigen.','Das H₂O-Symbol öffnen. Falls erneut gefragt, mit deinem Passkey oder Passwort anmelden. Eine neue Freigabe ist dafür nicht erforderlich.']:
-   isAndroid()?['Das Portal in Google Chrome öffnen.','Im Menü ⋮ „Zum Startbildschirm hinzufügen“ oder „Installieren und Verknüpfung erstellen“ wählen. Eine Verknüpfung erstellen, keine APK aus anderen Quellen installieren.','Das H₂O-Symbol öffnen und bei Bedarf mit deinem Passkey oder Passwort anmelden. Bei einer Play-Protect-Warnung abbrechen, den Schutz eingeschaltet lassen und das Portal im Browser nutzen.']:
-   ['Das Portal kann direkt im Browser genutzt und als Lesezeichen gespeichert werden.','Wenn der Browser eine Installation anbietet, kannst du das H₂O-Symbol zusätzlich einrichten.','Mit deinem persönlichen Passkey oder Passwort anmelden. Die Installation ist freiwillig.']);
+  by('installButton').textContent=!pending&&globalThis.H2OIdentity?.session?.()?'Anleitung zum Startsymbol':pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
+  steps(isIos()?['Auf „Teilen“ tippen.','„Zum Home-Bildschirm“ auswählen und „Hinzufügen“ bestätigen.','Das H₂O Portal auf dem Home-Bildschirm öffnen. Dort findest du Termine, Rückmeldungen und deinen Deckel.']:
+   ['Wenn dein Browser die Installation unterstützt, öffnet „H₂O Portal installieren“ den Installationsdialog.','Alternativ im Browser-Menü ⋮ „Zum Startbildschirm hinzufügen“ wählen.','Falls Google Play Protect warnt: Installation abbrechen, Schutz nicht ausschalten und das Portal im Browser nutzen.']);
  }
  async function install(){
   if(busy||!personal())return;busy=true;by('installButton').disabled=true;by('installStatus').textContent='';
   try{
    // Explicit click: persist the personal URL only locally, never in a manifest or network request.
    const personalURL=new URL(location.href);personalURL.search='';if(!globalThis.H2OIdentity?.session?.())await DeckelDevice.saveLink(personalURL.href);
-   if(isAndroid()){by('installStatus').textContent=(globalThis.H2OIdentity?.session?.()?'Du bist in diesem Browser angemeldet. ':'Persönlicher Zugang lokal gespeichert. ')+'In Chrome ⋮ → „Zum Startbildschirm hinzufügen“ oder „Installieren und Verknüpfung erstellen“ → Verknüpfung erstellen. Bei einer Play-Protect-Warnung abbrechen und das Portal im Browser öffnen.';return;}
-   if(!pending){by('installStatus').textContent='Dein Zugang ist auf diesem Handy gespeichert. Öffne jetzt das Browser-Menü und wähle „Zum Startbildschirm hinzufügen“.';return;}
+   if(!pending){by('installStatus').textContent=(globalThis.H2OIdentity?.session?.()?'Du bist in diesem Browser angemeldet. ':'Dein Zugang ist auf diesem Handy gespeichert. ')+'Öffne jetzt in Chrome oder deinem Browser das Menü und wähle „Zum Startbildschirm hinzufügen“.';return;}
    const prompt=pending;pending=null;await prompt.prompt();const choice=await prompt.userChoice;
    by('installStatus').textContent=choice.outcome==='accepted'?'Installation bestätigt. Öffne das H₂O Portal über das neue Symbol.':'Du kannst den Deckel später über das Browser-Menü hinzufügen.';
   }catch{by('installStatus').textContent='Der Deckel konnte nicht auf diesem Handy gespeichert werden. Bitte Gerätespeicher erlauben und erneut versuchen.';}
   finally{busy=false;refresh();}
  }
- addEventListener('beforeinstallprompt',event=>{if(isAndroid()){event.preventDefault();return;}if(!personal()||standalone())return;event.preventDefault();pending=event;refresh();});
+ addEventListener('beforeinstallprompt',event=>{if(standalone())return;event.preventDefault();pending=event;refresh();});
  addEventListener('appinstalled',()=>{if(!personal())return;installed=true;pending=null;if(!globalThis.H2OIdentity?.session?.())DeckelDevice.saveLink(location.href.split('?')[0].split('#')[0]+location.hash).catch(()=>{});refresh();});
  addEventListener('hashchange',refresh);
  by('installButton').onclick=install;

@@ -12,16 +12,16 @@ function fixture({ios=false,android=false,standalone=false,url=personal,storageF
 test('Erster QR-Aufruf zeigt Installation ohne selbstständig zu installieren, zu speichern oder Push zu erlauben',()=>{
  const f=fixture({android:true});assert.equal(f.nodes.installSection.hidden,false);assert.equal(f.nodes.deckelManifest,undefined);assert.equal(f.saved.length,0);
  let prompts=0,prevented=0;f.events.beforeinstallprompt({preventDefault:()=>prevented++,prompt:()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});
- assert.equal(prevented,1);assert.equal(prompts,0);assert.equal(f.nodes.installButton.textContent,'Zugang auf diesem Handy sichern');
+ assert.equal(prevented,1);assert.equal(prompts,0);assert.equal(f.nodes.installButton.textContent,'H₂O Portal installieren');
 });
-test('Android speichert den Zugang, startet aber kein möglicherweise veraltetes WebAPK',async()=>{
+test('Android installiert nur nach Antippen und verwendet ohne Browserunterstützung die Menü-Anleitung',async()=>{
  for(const outcome of ['accepted','dismissed']){
   const f=fixture({android:true});let prompts=0;
   f.events.beforeinstallprompt({preventDefault(){},prompt:async()=>prompts++,userChoice:Promise.resolve({outcome})});
   await f.nodes.installButton.onclick();
   assert.deepEqual(f.saved,[personal]);
-  assert.equal(prompts,0);
-  assert.match(f.nodes.installStatus.textContent,/Verknüpfung/);
+  assert.equal(prompts,1);
+  assert.match(f.nodes.installStatus.textContent,outcome==='accepted'?/bestätigt/:/später/);
  }
  const f=fixture({android:true});await f.nodes.installButton.onclick();
  assert.match(f.nodes.installStatus.textContent,/Chrome/);
@@ -60,12 +60,12 @@ test('Portalstart verändert vorhandene Push-Anmeldung nicht ohne Benutzeraktion
  vm.runInContext(read('js/features/drinks/deckel-push.js'),c);assert.ok(state.saved);assert.equal(state.link,null);assert.deepEqual(events,[]);assert.equal(nodes.pushEnable,undefined);
 });
 
-test('Android lädt kein WebAPK-Manifest; iOS und Desktop behalten es',()=>{
+test('Android lädt das stabile Manifest, iOS und Desktop behalten das vorhandene',()=>{
  const html=read('deckel.html'),script=read('js/features/drinks/deckel-manifest.js');
  assert.match(html,/src="js\/features\/drinks\/deckel-manifest\.js/);
  assert.doesNotMatch(html,/<link[^>]+rel="manifest"/);
  const run=ua=>{const links=[],ctx={navigator:{userAgent:ua},document:{head:{appendChild:link=>links.push(link)},createElement:()=>({})}};vm.runInNewContext(script,ctx);return links;};
- assert.equal(run('Android Chrome').length,0);
+ assert.match(run('Android Chrome')[0].href,/deckel-android\.webmanifest/);
  assert.equal(run('iPhone Safari')[0].rel,'manifest');
  assert.match(run('Desktop Chrome')[0].href,/deckel\.webmanifest/);
 });

@@ -525,3 +525,14 @@
 @media(max-width:360px){.deckel-nav{width:calc(100% - 8px);padding-inline:2px;gap:2px}}
 
 .regulations-administration{margin:18px 0}.regulations-administration label{display:grid;gap:6px;margin:12px 0;font-weight:650}.regulations-administration input{width:100%;min-width:0;min-height:48px;padding:10px;font:inherit}.regulations-administration fieldset{min-width:0;margin:16px 0;padding:16px;border:1px solid var(--line,#c3d7cb);border-radius:14px}.regulation-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.regulation-actions button{flex:1 1 120px;min-height:44px}.regulations-administration form>button{margin:12px 0}
+
+/* Shared-calendar editor stays within small mobile screens and enlarged text. */
+.google-event-dialog{box-sizing:border-box;width:min(94vw,680px);max-height:90dvh;overflow:auto;border:0;border-radius:18px;padding:20px;color:#152d40;background:#f3f7f5;overflow-wrap:anywhere}
+.google-event-dialog::backdrop{background:#071927b3}
+.google-event-dialog label{display:grid;gap:6px;margin:14px 0;font-weight:600}
+.google-event-dialog input,.google-event-dialog textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;font:inherit;padding:10px;border:1px solid #8799a6;border-radius:8px;background:white;color:#152d40}
+.google-event-dialog input[type=checkbox]{width:24px;height:24px;appearance:auto;-webkit-appearance:checkbox;accent-color:#196b47}
+.google-event-dialog button{min-height:48px;white-space:normal;overflow-wrap:anywhere}
+.google-event-dialog .portal-calendar-actions{display:flex;flex-wrap:wrap;gap:10px}
+
+.google-event-dialog form,.google-event-dialog label,.google-event-dialog .portal-calendar-actions{min-width:0;max-width:100%}

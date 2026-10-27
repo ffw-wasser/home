@@ -312,10 +312,11 @@ Rollenprüfung, Portalberechtigungen und Sitzungen gelten für beide Anmeldearte
 Es gibt keine offene Registrierung und keinen Zugang über die Getränke-PIN.
 
 Benutzername: 3–64 ASCII-Zeichen (a–z, Zahlen, Punkt, Unterstrich, Bindestrich),
-ohne Unterschied zwischen Groß-/Kleinschreibung. Passwort: 15–128 Unicode-Zeichen,
+ohne Unterschied zwischen Groß-/Kleinschreibung. Passwort: frei gewählt, ohne Mindestlänge oder Zeichenvorgaben; nur leer ist unzulässig.
+Technische Obergrenze: 128 Unicode-Zeichen,
 maximal 512 UTF-8-Bytes; kein Trimmen, keine stille Kürzung, Einfügen und Leerzeichen
-sind erlaubt. Offensichtliche Wiederholungen und wenige triviale Passwörter werden
-abgewiesen; das ist keine vollständige Prüfung gegen geleakte Passwörter.
+sind erlaubt. Wiederholungen und einfache Passwörter sind entsprechend der Projektvorgabe ebenfalls
+zulässig. Hashverfahren, Pepper, Versuchslimits, Freigaben und Sitzungsprüfung bleiben bestehen.
 
 Vor Einsatz einen eigenen, zufälligen Worker-Secret `H2O_PASSWORD_PEPPER` mit
 mindestens 32 Zufallsbytes (z. B. 64 Hexzeichen) sicher bereitstellen. Das bestehende

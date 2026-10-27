@@ -6,8 +6,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  for(const file of ['index.html','deckel.html']){
   await page.goto('https://ffw-wasser.github.io/home/'+file);
   if(file==='index.html'){await page.locator('#appStartup').waitFor({state:'detached'});await page.evaluate(()=>showView('helpView'));}
-  else{await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('more-help');});}
-  const guide=page.locator('#help-guide');assert.equal(await guide.count(),1);assert.equal(await guide.locator(':scope > :first-child').getAttribute('class'),'guide-privacy');assert.equal(await guide.locator('.guide-privacy-grid section').count(),6);
+  else{await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.keyboard.press('Escape');await page.evaluate(()=>{DeckelMobile.show(true);DeckelMobile.jump('more-help');});}
+  const guide=page.locator('#help-guide');assert.equal(await guide.count(),1);assert.equal(await guide.locator(':scope > :first-child').getAttribute('class'),'guide-privacy');assert.equal(await guide.locator('.guide-privacy-grid section').count(),10);
   assert.equal(await guide.evaluate(n=>n.previousElementSibling?.classList.contains('contacts-pane')),true,'privacy and instructions follow the existing contacts');
   assert.equal(await page.locator(file==='index.html'?'#helpView .help-document':'#more-help .portal-help').count(),0,'old help texts are replaced');
   assert.match(await guide.locator('.guide-privacy').innerText(),/Passkey/);assert.match(await guide.locator('.guide-privacy').innerText(),file==='index.html'?/dadurch nicht gelöscht/:/löscht keine bestätigten/);assert.match(await guide.locator('.guide-privacy').innerText(),/keine ärztlichen Befunde/);
@@ -16,7 +16,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   for(const width of [320,390,768,1280])for(const scale of [100,200]){
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
-   assert.equal(await guide.locator('img').count(),file==='index.html'?32:19);
+   assert.equal(await guide.locator('img').count(),file==='index.html'?34:19);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' page overflow '+width+'/'+scale);
    assert.deepEqual(await guide.locator('.guide-lesson-body,.guide-privacy-grid').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[],file+' guide overflow '+width+'/'+scale);
    assert.equal(await guide.locator('img').evaluateAll(ns=>ns.every(n=>n.naturalWidth>0&&n.getAttribute('width')&&n.getAttribute('height'))),true);

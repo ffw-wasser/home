@@ -25,7 +25,7 @@ test('Dynamisch geladenes Handy-Manifest verwendet denselben Release wie HTML un
  const links=[];vm.runInNewContext(source,{navigator:{userAgent:'iPhone'},document:{createElement:()=>({}),head:{appendChild:n=>links.push(n)}}});
  assert.equal(links.length,1);assert.equal(links[0].href,'deckel.webmanifest?v='+release.build);
  links.length=0;vm.runInNewContext(source,{navigator:{userAgent:'Android'},document:{createElement:()=>({}),head:{appendChild:n=>links.push(n)}}});
- assert.equal(links.length,0,'Android-Verknüpfung bleibt ohne WebAPK-Manifest');
+ assert.equal(links.length,1);assert.equal(links[0].href,'deckel-android.webmanifest?v='+release.build);
 });
 
 test('WhatsApp-Terminseite lädt die Korrektur mit der aktuellen Buildkennung',()=>{

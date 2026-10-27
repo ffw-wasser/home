@@ -26,7 +26,7 @@
    // Reject old series instances before doing any timezone formatting.
    if(start.zone===I.Timezone.localTimezone&&end.zone===I.Timezone.localTimezone&&(wallTime(end)<from-86400000||wallTime(start)>to+86400000))return;
    const ms=timestamp(start),finish=timestamp(end);if(!Number.isFinite(ms)||!Number.isFinite(finish))throw Error('Ungültige Terminzeit.');if((range?finish<=from:ms<from)||ms>=to)return;
-   events.push({seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),description:g.CalendarPresentation?g.CalendarPresentation.plain(event.description):String(event.description||'').slice(0,4000),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
+   events.push({googleUid:uid,googleOccurrence:recurring?(original.isDate?original.toString():original.toUnixTime()*1000):null,seriesKey:uid,birthdayHint:/geburtstag|birthday|\bgeb\.|🎂/i.test(String(event.summary||'')+' '+String(event.component.getFirstPropertyValue('categories')||'')),key:uid+(recurring?'\n'+original.toString():''),description:g.CalendarPresentation?g.CalendarPresentation.plain(event.description):String(event.description||'').slice(0,4000),title:String(event.summary||'Termin').slice(0,240),location:String(event.location||'').slice(0,300),start:ms,end:finish,allDay:start.isDate});if(events.length>500)throw Error('Zu viele Termine im Vorschauzeitraum.');
   }
   for(const [uid,items] of groups){
    const main=items.find(c=>!c.hasProperty('recurrence-id'));
@@ -82,6 +82,13 @@
   });
  }
  function members(group,roster){const selected=group.source==='manual'?new Set(group.memberIds):null;return (roster?.members||[]).filter(m=>group.source==='manual'?selected.has(m.id):group.source==='agt'?m.agt===true:group.source==='leader'?m.leader===true:group.source==='committee'?m.committeeMember===true:group.source==='age'?m.ageDepartment===true:m.ageDepartment!==true).map(m=>m.id);}
+ function selection(groupIds,includeIds,excludeIds,groups,roster){
+  const valid=(ids,known)=>Array.isArray(ids)&&ids.length<=500&&new Set(ids).size===ids.length&&ids.every(id=>typeof id==='string'&&known.has(id));
+  const enabled=new Map(groups.filter(group=>group.enabled).map(group=>[group.id,group])),people=new Set((roster?.members||[]).map(m=>m.id));
+  if(!roster||!valid(groupIds,new Set(enabled.keys()))||!valid(includeIds,people)||!valid(excludeIds,people))throw Error('Gruppen oder Mitglieder wurden geändert. Bitte die Auswahl erneut prüfen.');
+  const result=new Set(groupIds.flatMap(id=>members(enabled.get(id),roster)));for(const id of includeIds)result.add(id);for(const id of excludeIds)result.delete(id);
+  return [...result];
+ }
  function resolver(groups,roster){
   const index=new Map(),cache=new Map(),people=new Map(),fallback=(roster?.members||[]).filter(m=>m.ageDepartment!==true).map(m=>m.id);let longest=1;
   const add=(word,group)=>{if(!index.has(word))index.set(word,new Set());index.get(word).add(group);};
@@ -97,5 +104,5 @@
   };
  }
  function resolve(title,groups,roster){return resolver(groups,roster)(title);}
- g.PortalGroups={normalize,defaults,validate,members,resolve,resolver};
+ g.PortalGroups={normalize,defaults,validate,members,selection,resolve,resolver};
 })(globalThis);

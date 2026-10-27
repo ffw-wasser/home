@@ -8,11 +8,11 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 
 | Anliegen | Zuerst ansehen | Häufige Abhängigkeiten |
 | --- | --- | --- |
-| Start, Navigation, Oberflächen-Zustände | `index.html`, `js/app/app.js`; H₂O: `deckel.html`, `js/features/drinks/deckel-startup.js`, `deckel-view.js` | `js/core/ui.js`, `css/layout/mobile.css` |
+| Start, Navigation, Oberflächen-Zustände | `index.html`, `js/app/app.js`; H₂O: `deckel.html`, `js/features/drinks/deckel-startup.js`, `deckel-view.js`, `js/features/portal/portal-onboarding.js` | `js/core/ui.js`, `css/layout/mobile.css` |
 | Datenschutz und bebilderte Hilfe unter den Kontakten | `scripts/build-help-guide.cjs`, `css/features/help-guide.css` | `scripts/capture-help-screens.cjs`, `assets/help/guide/`, `tests/help-guide-browser.cjs`; beide Ansichten gemeinsam erzeugen |
 | Gerätehaus-Erfassung, Teilnehmer, Schritte | `js/features/attendance/attendance-controller.js` | `action-dock.js`, `js/core/keyboard.js`, `js/features/tactics/` |
 | Einsatz und Fahrzeugbesetzung | `js/features/operations/operations.js`, `js/features/tactics/` | Anwesenheit, Berichte, Qualitätsprüfungen |
-| Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, Cloudflare `portal.js`, ICS-Bibliothek |
+| Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, `calendar-google-admin.js`, Cloudflare `portal.js`, `google-calendar-api.js`, `google-calendar-oauth.js`, ICS-Bibliothek |
 | Ausbildung / Funk | `deckel.html`, `js/features/portal/portal-training.js`, `assets/training/` | Lokale Motorola-Taschenkarte, gemeinsame `plan-zoom.js`-Ansicht, kompakte BW-Status und Übungsdialoge |
 | Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links, Buchansicht mit `plan-zoom.js` und authentifiziertem PDF-Transport |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js` | `js/core/database.js`, Cloudflare `portal.js` |
@@ -22,7 +22,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Mein Deckel, Zahlungen, Punkte, Challenge | `js/features/drinks/`, `deckel.html` | Cloudflare `central.js`, `challenge.js`, `js/core/privacy.js` |
 | Theater / Veranstaltungen | `js/features/theater/` | Cloudflare `theater.js`, `css/features/` |
 | Synchronisierung, Microsoft-Zugriff | `js/core/onedrive-sync.js`, `database.js` | Cloudflare-Schnittstellen, geschützte Zustände |
-| Native Mitglieder-App (archiviert; nicht weitergeführt) | `native/README.md`, `native/ios/`, `native/android/` | `scripts/prepare-native-association.cjs`, Cloudflare `passkeys.js`, Build-/TestFlight-Workflows entfernt; aktive Lösung ist die bestehende Web-App. Archivierte Signatur-/Link-Tests bleiben für die Nachvollziehbarkeit erhalten |
+| Native Mitglieder-App (archiviert; nicht weitergeführt) | `native/README.md`, `native/ios/`, `native/android/` | `scripts/prepare-native-association.cjs`, Cloudflare `passkeys.js`, Build-/TestFlight-Workflows entfernt; aktive Lösung ist die bestehende Web-App. Native Signatur-/Brücken-/Zuordnungstests sind aus der aktiven Testsuite entfernt; iPhone-Web-App, Web-Passkeys und Browser-PDF bleiben geprüft |
 | PWA, Offline/Cache, Installationsicons | `service-worker.js`, `js/core/connection-status.js`, `manifest.webmanifest`, `deckel*.webmanifest` | `scripts/update-release.cjs`, `app-release.json`; öffentliche Unterlagen in separatem Cache, private Serverantworten bleiben ausgeschlossen; `tests/portal-offline-browser.cjs` prüft echten Offline-Neustart |
 | Cloudflare Worker, Push, D1 | `cloudflare/push/worker.js` und die Fachmodule im gleichen Ordner | `build.cjs`, `wrangler.jsonc`, `*.sql` |
 | Standardisierte Prüfungen | `tests/`, `scripts/check-syntax.cjs` | `.github/workflows/application-tests.yml` |

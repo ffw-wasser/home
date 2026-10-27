@@ -41,7 +41,7 @@ test('Password: recovery, expired ticket, member removal and revision rotation c
 });
 test('Password: input policy, duplicate names, fail-closed missing pepper and failed batch',async()=>{
  const f=await setup(),code=await ticket(f);
- for(const [name,password] of [['../bad',PASSWORD],['ok.user','short'],['ok.user','111111111111111'],['ok.user','x'.repeat(129)]])assert.equal((await set(f,code,name,password)).status,400);
+ for(const [name,password] of [['../bad',PASSWORD],['ok.user',''],['ok.user',null],['ok.user','x'.repeat(129)]])assert.equal((await set(f,code,name,password)).status,400);
  assert.equal((await set(f,code)).status,200);
  const second=await ticket(f,1);assert.equal((await set(f,second)).status,409);assert.equal((await set(f,second,'second.user')).status,200);
  const third=await ticket(f,2);f.failBatch();assert.equal((await set(f,third,'third.user')).status,503);assert.equal((await set(f,third,'third.user')).status,200);
@@ -64,4 +64,10 @@ test('Password: concurrent admin reset cannot be undone by an in-flight enrollme
  const wait=new Promise(resolve=>resume=resolve),entered=new Promise(resolve=>started=resolve);
  f.c.crypto={getRandomValues:v=>native.getRandomValues(v),subtle:new Proxy(native.subtle,{get(target,property){if(property==='deriveBits')return async(params,...args)=>{assert.ok(params.iterations<=100000);started();await wait;return target.deriveBits(params,...args);};const value=target[property];return typeof value==='function'?value.bind(target):value;}})};
  const saving=set(f,code);await entered;await ticket(f,0,true);resume();assert.equal((await saving).status,403);assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passwords').get().n,0);
+});
+
+ test('Password: freely chosen short and repeated passwords work without composition rules',async()=>{
+ for(const password of ['a','1234','111111111111111','passwortpasswort',' ']){
+  const f=await setup(),code=await ticket(f);assert.equal((await set(f,code,'free.user',password)).status,200);assert.equal((await login(f,'free.user',password)).status,200);
+ }
 });

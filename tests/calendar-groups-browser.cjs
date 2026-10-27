@@ -57,6 +57,11 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
   }
   await page.setViewportSize({width:390,height:844});await agt.screenshot({path:path.join(require('node:os').tmpdir(),'calendar-group-new-mobile.png')});
   await page.getByRole('button',{name:'Termine',exact:true}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(require('node:os').tmpdir(),'calendar-new-mobile.png'),fullPage:true});
+  await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();
+  await card.getByRole('checkbox',{name:'Atemschutz',exact:true}).check();await card.getByRole('checkbox',{name:'Alterskameraden',exact:true}).check();
+  await card.locator('.portal-recipient-list input[value="member-1"]').uncheck();
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/admin/portal/classify')),card.getByRole('button',{name:'Speichern',exact:true}).click()]);await card.getByRole('button',{name:'Bearbeiten',exact:true}).waitFor();
+  const groupEvent=(await f.call('list',{},null,true)).value.events[0];assert.equal(groupEvent.recipientMode,'groups');assert.equal(groupEvent.recipientIds.includes('member-1'),false);assert.equal(groupEvent.recipientIds.includes('member-5'),true);
   await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();const auto=card.getByRole('button',{name:'Automatische Gruppenauswahl erneut übernehmen'});await auto.click();assert.equal(await card.locator('.portal-recipient-list input:checked').count(),2);
   await Promise.all([page.waitForResponse(r=>r.url().endsWith('/admin/portal/classify')),card.getByRole('button',{name:'Speichern',exact:true}).click()]);await card.getByRole('button',{name:'Bearbeiten',exact:true}).waitFor();
   assert.equal((await f.call('list',{},null,true)).value.events[0].recipientMode,'automatic');assert.equal((await f.call('list',{},null,true)).value.events[0].approved,false,'Audience never approves event');

@@ -1,12 +1,10 @@
-/* Android browser installs may generate outdated WebAPKs. Retain the web manifest
-   for iOS and desktop; Android can create a plain home-screen shortcut instead. */
+/* Stable, public manifests: never embed member credentials or setup tickets. */
 (function(){
  'use strict';
- if(/Android/i.test(navigator.userAgent))return;
  const link=document.createElement('link');
  link.id='deckelManifest';
  link.rel='manifest';
- link.href='deckel.webmanifest?v=20261027.4';
+ link.href=(/Android/i.test(navigator.userAgent)?'deckel-android.webmanifest':'deckel.webmanifest')+'?v=20261027.5';
  document.head.appendChild(link);
 })();
 
