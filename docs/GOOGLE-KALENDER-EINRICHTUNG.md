@@ -1,6 +1,6 @@
 # Google Kalender für die H₂O-Verwaltung vorbereiten
 
-Dieser Stand ist Teil von Draft-PR #191 und noch nicht veröffentlicht.
+Die Umsetzung gehört zu PR #191 / Web-App-Version 2026.10.27.5 und ist zur Finalisierung nach erfolgreicher vollständiger CI freigegeben.
 Er richtet keine Google-Dienste oder Konten automatisch ein.
 
 ## Voraussetzungen
@@ -24,7 +24,7 @@ Er richtet keine Google-Dienste oder Konten automatisch ein.
    - `GOOGLE_CALENDAR_CLIENT_SECRET`: ausschließlich als privates Worker-Secret.
 5. Den Client-Schlüssel weder ins Repository noch in den Chat oder in OneDrive-Anleitungen
    kopieren. Die im Browser ausgelieferten Dateien enthalten keinen Client-Schlüssel.
-6. Erst nach gesonderter Produktionsfreigabe die geänderten Worker-/Webdateien ausliefern.
+6. Nach erfolgreicher vollständiger CI die zur Finalisierung freigegebenen Worker-/Webdateien ausliefern. Vor echter Nutzung beide Google-Konten und ihre Kalenderrechte prüfen.
    Das Speichern dieser Anleitung oder ein erfolgreicher Testlauf veröffentlicht nichts.
 
 Ohne beide Konfigurationswerte bleibt „Google Kalender verbinden“ gesperrt. Die bestehende

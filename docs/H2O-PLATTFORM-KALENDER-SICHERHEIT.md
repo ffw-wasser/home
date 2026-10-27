@@ -1,8 +1,8 @@
 # H₂O – Plattform, Kalender und Sicherheit
 
-Stand: 27.10.2026. **Teilumsetzung und technische Vorbereitung; keine Freigabe für Produktion.**
+Stand: 27.10.2026. **Lieferumfang zur Finalisierung freigegeben; Veröffentlichung nach erfolgreicher vollständiger CI. Persönliche Kalendereinladungen und Antwortabgleich bleiben offen.**
 Ausgangscommit: `58558d32e5a19b6ccbd7e3ef34eac5058750796e`.
-Branch: `feature/h2o-platform-calendar-security`. [Draft-PR #191](https://github.com/ffw-wasser/home/pull/191). Vorbereitete App-Version: `2026.10.27.5`.
+Branch: `feature/h2o-platform-calendar-security`. [PR #191](https://github.com/ffw-wasser/home/pull/191). App-Version: `2026.10.27.5`.
 
 ## Ergebnis je Arbeitspaket
 
@@ -17,7 +17,7 @@ Branch: `feature/h2o-platform-calendar-security`. [Draft-PR #191](https://github
 | Persönliche Einladungen / Antworten | **Nicht aktiviert und nicht fertig implementiert.** Kein Versand, kein E-Mail-Profil, kein Hintergrundimport. Getesteter technischer Modellnachweis der vier Status und Schutz vor veralteten Beobachtungen. Keine bidirektionale Synchronisation zugesagt. |
 | Datenschutz | Unter Infos Anbieteraufgaben, offizielle Informations-/Nachweislinks und Geltungsgrenzen. Keine Übernahme von Prüfsiegeln, keine Zertifizierung des Portals behauptet. Private Google-Kalender, privates OneDrive und kostenlose GitHub Pages werden nicht durch pauschale Workspace-/Enterprise-Zertifikate als zertifiziert ausgegeben. |
 | Bestand | Bestehende Fachmodule erhalten. Neue Gruppenfelder ergänzen verschlüsselte Kalenderregeln; keine D1-Tabellenmigration und keine produktiven Datenänderungen. |
-| Veröffentlichung | Neue Änderungen ausschließlich im Feature-Branch/Draft-PR. Die gemeinsame PWA aus PR #190 ist bereits in `main` (Version 2026.10.27.4). Google Kalender, OneDrive und produktiver Worker wurden durch diese Fortsetzung nicht geändert. Die gesondert beauftragte Apple-Rücknahme ist über Root-PR #2 übernommen. |
+| Veröffentlichung | Der Auftrag vom 27.10.2026 gibt den implementierten Web-App-Stand zur Finalisierung frei; Merge und automatische Veröffentlichung folgen erst nach erfolgreicher vollständiger CI. Die tatsächliche Web-/Worker-Auslieferung wird anschließend separat geprüft. Die gemeinsame PWA aus PR #190 ist bereits in `main` (Version 2026.10.27.4). Google Kalender, OneDrive und produktiver Worker wurden durch diese Fortsetzung nicht geändert. Die gesondert beauftragte Apple-Rücknahme ist über Root-PR #2 übernommen. |
 
 ## Google-API: tatsächlich vorbereiteter Umfang
 
@@ -85,7 +85,7 @@ Für die tatsächliche Integration fehlen insbesondere:
 Kostenlose lokale Quell-/Regressionsprüfung mit ausschließlich künstlichen Konten und
 blockierten produktiven Diensten; **kein externes Pentest-Zertifikat**.
 
-- 948 Unit-/Regressionstests erfolgreich, darunter Anmeldung, Rollenverlust, Sperrung,
+- 942 verbleibende Unit-/Regressionstests nach Entfernung der überholten nativen Tests erfolgreich, darunter Anmeldung, Rollenverlust, Sperrung,
   Wiederherstellung, Versionskonflikte, verschlüsselte D1-Daten, OneDrive und öffentliche Ressourcen.
 - Google-spezifische Tests prüfen zusätzliche OAuth-Client-/Scope-/Kalendergrenzen,
   ETag-Konflikte und gesperrte Gästeänderungen gegen simulierte Antworten.
@@ -122,10 +122,8 @@ Kalenderfreigaben, persönliche Einladungen und Kalenderantworten. Diese Abnahme
 
 Der bisherige GitHub-Lauf bestand Unit-/Konsistenzprüfungen, lief aber bei der Browserinstallation
 in das 5-Minuten-Limit. Das Limit wurde auf 12 Minuten erhöht; die Browserprüfungen
-werden weiterhin vollständig ausgeführt. Vor Merge muss die gesamte GitHub-Action erfolgreich sein. Eine erfolgreiche CI
-ersetzt weder die ausstehende Integration noch eine ausdrückliche Veröffentlichungsfreigabe.
-Rückfall: Draft-PR nicht übernehmen; nach einem später freigegebenen Release kann der
-Commit zurückgenommen werden. Bestehende ICS-/Anmeldepfade bleiben erhalten.
+werden weiterhin vollständig ausgeführt. Vor Merge muss die gesamte GitHub-Action erfolgreich sein. Eine erfolgreiche CI ersetzt die ausstehende echte Google-Konfiguration und Integration nicht. Die inzwischen erteilte Freigabe zur Finalisierung betrifft den implementierten Web-App-Stand, nicht die fehlenden Einladungs-/Antwortfunktionen.
+Rückfall: Den Release-Commit über einen geprüften Revert zurücknehmen. Bestehende ICS-/Anmeldepfade bleiben erhalten.
 
 ## Kosten
 
@@ -171,5 +169,5 @@ Externe Zertifizierung bleibt eine eigene spätere Entscheidung; aktuell kein Au
   privater Einladungsversand, dauerhafte Zuordnung und automatischer Antwortabgleich.
   Diese Funktionen sind nicht allein durch das Eintragen der OAuth-Schlüssel erledigt.
   Keine persönlichen Einladungen oder Rückmeldungen in den öffentlichen Kalender schreiben.
-- Neue Version 2026.10.27.5 ist vorbereitet, nicht produktiv veröffentlicht.
-  Vollständigen CI-Abschluss am aktuellen PR-Commit prüfen.
+- Version 2026.10.27.5 ist zur Finalisierung freigegeben. Vor dem Merge den vollständigen CI-Abschluss am aktuellen PR-Commit prüfen und danach die tatsächliche Web-/Worker-Auslieferung verifizieren.
+- Die vier überholten aktiven nativen Testdateien sind entfernt. Der Jahresplan-Test prüft jetzt echte Browser-PDF-Downloads; 942 verbleibende Unit-/Regressionstests sind erfolgreich. iPhone-Web-App, Web-Passkeys und Offline-Nutzung bleiben geprüft.
