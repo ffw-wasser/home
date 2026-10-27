@@ -65,8 +65,8 @@
  }
  async function load(scroll=false,{openPdfOnLoad=false}={}){
   if(scroll){const today=dayKey(Date.now());year=Number(today.slice(0,4));if($('month'))$('month').value=Number(today.slice(5,7))-1;}
+  const directPdf=portal&&openPdfOnLoad,section=document.getElementById('more-year-plan');section?.classList.toggle('year-plan-opening',directPdf);
   const epoch=++generation,selected=year;events=[];privateData=false;loaded=false;message='Jahresplan wird geladen …';render();
-  const directPdf=portal&&openPdfOnLoad;const section=document.getElementById('more-year-plan');if(directPdf)section.classList.add('year-plan-opening');
   if(!directPdf)jump();
   try{
    const privateAccess=authorized();let result;

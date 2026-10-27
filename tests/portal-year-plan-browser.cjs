@@ -28,6 +28,8 @@ const root=path.resolve(__dirname,'..');
    const pdfDialog=page.locator('#year-plan-pdf-dialog');
    await tile.click();await firstYear;
    assert.equal(await page.locator('#year-plan-filter').isVisible(),false,'no intermediate calendar during loading');assert.equal(yearCalls,1);
+   for(const scale of [100,200]){await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);const box=await page.locator('#portal-page-more-year-plan').boundingBox();assert.ok(box.height<=160*scale/100,'loading card remains compact at '+width+'px / '+scale+'%: '+box.height);assert.equal(await page.locator('#year-plan-months').isVisible(),false,'hidden calendar does not reserve loading height');}
+   await page.evaluate(()=>document.documentElement.style.fontSize='100%');
    yearMode='success';releaseYear();await pdfDialog.locator('canvas').waitFor();
    assert.equal(await pdfDialog.isVisible(),true);assert.equal(await pdfDialog.evaluate(n=>n.scrollWidth>n.clientWidth),false);
    const pdfText=await page.evaluate(async()=>{const lib=await import('./js/vendor/pdfjs/pdf-5.4.624.min.mjs'),bytes=new Uint8Array(await testPdfBlobs.get(document.querySelector('#year-plan-pdf-dialog a').href).arrayBuffer()),doc=await lib.getDocument({data:bytes,isEvalSupported:false,useWasm:false}).promise,text=[];for(let i=1;i<=doc.numPages;i++)text.push((await(await doc.getPage(i)).getTextContent()).items.map(n=>n.str).join(' '));await doc.destroy();return text;});

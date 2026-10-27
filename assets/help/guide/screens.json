@@ -118,5 +118,9 @@
   "h2o-atemschutz": {
     "width": 324,
     "height": 822
+  },
+  "h2o-jahresplan-laden": {
+    "width": 354,
+    "height": 80
   }
 }
