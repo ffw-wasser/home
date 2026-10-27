@@ -11,13 +11,15 @@ const root=path.resolve(__dirname,'..');
  f.sql.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) VALUES(?,?,?,?,?,?)').run(createHash('sha256').update('portal-session:'+token).digest('base64url'),person.alias,person.revision,credential,now,now+30*86400000);
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
-  const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];let dropReply=true;
+  const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];let dropReply=true,failOverview=false,holdOverview=false,releaseOverview,overviewHeld;const overviewHoldReady=new Promise(resolve=>overviewHeld=resolve);
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(session=>localStorage.setItem('h2o-portal-identity-v1',JSON.stringify(session)),{scope:'portal',alias:person.alias,revision:person.revision,token,expiresAt:now+30*86400000});
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
    if(u.hostname.endsWith('workers.dev')){
+    if(u.pathname==='/admin/portal/evidence/overview'&&failOverview)return route.fulfill({status:503,json:{error:'Künstlicher Ladefehler'}});
     const response=await f.c.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),...(req.method()==='POST'?{body:req.postData()}: {})}),f.env);
+    if(u.pathname==='/admin/portal/evidence/overview'&&holdOverview){holdOverview=false;overviewHeld();await new Promise(resolve=>releaseOverview=resolve);}
     if(dropReply&&u.pathname==='/portal/evidence/report'){dropReply=false;return route.abort();}
     return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
    }
@@ -65,12 +67,32 @@ const root=path.resolve(__dirname,'..');
    showView('settingsPortalView');
   },{adminToken:f.env.ADMIN_TOKEN,id:person.memberId});
   await page.locator('#portal-admin-member option[value="'+person.memberId+'"]').waitFor({state:'attached'});
-  await page.locator('#portal-admin-member').selectOption(person.memberId);
-  await page.getByRole('button',{name:'Portalnachweise des ausgewählten Mitglieds laden'}).click();
+  await page.locator('.portal-evidence-overview-item').first().waitFor({state:'visible'});
+  assert.equal(await page.locator('.portal-evidence-overview-item').count(),3,'all existing self reports appear without selecting a member');
+  assert.match(await page.locator('#portal-evidence-overview').textContent(),/Ungeprüfte Nachweisänderungen \(3\)/);
+  for(const width of [320,390,768])for(const scale of [100,200]){await page.setViewportSize({width,height:844});await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await page.locator('#portal-evidence-overview').evaluate(n=>n.scrollWidth<=n.clientWidth),true,'central evidence overview fits '+width+'/'+scale);}
+  await page.evaluate(()=>document.documentElement.style.fontSize='100%');await page.setViewportSize({width:390,height:844});await page.locator('#portal-evidence-overview').screenshot({path:'/tmp/h2o-evidence-overview-mobile.png'});
+  failOverview=true;await page.getByRole('button',{name:'Übersicht aktualisieren',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#portal-evidence-overview').textContent.includes('Übersicht nicht geladen.'));
+  assert.ok(!(await page.locator('#portal-evidence-overview').textContent()).includes('Keine ungeprüften Nachweisänderungen'),'load failures do not claim an empty review queue');
+  failOverview=false;await page.getByRole('button',{name:'Übersicht aktualisieren',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.portal-evidence-overview-item').length===3);
+  holdOverview=true;const heldResponse=page.waitForResponse(response=>response.url().endsWith('/admin/portal/evidence/overview'));
+  await page.getByRole('button',{name:'Übersicht aktualisieren',exact:true}).click();await overviewHoldReady;await page.evaluate(()=>showView('settingsMembersView'));releaseOverview();await (await heldResponse).finished();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.equal(await page.locator('.portal-evidence-overview-item').count(),0,'late overview response cannot refill private data after leaving');
+  await page.evaluate(()=>showView('settingsPortalView'));await page.waitForFunction(()=>document.querySelectorAll('.portal-evidence-overview-item').length===3);
+  await page.getByRole('button',{name:'Testperson 1 · Führerscheinkontrolle prüfen',exact:true}).click();
   const card=page.locator('.portal-evidence-review-card').filter({has:page.getByRole('heading',{name:'Führerscheinkontrolle',exact:true})});await card.waitFor({state:'visible'}).catch(async error=>{console.error('Admin evidence:',await page.locator('#portal-evidence-admin').textContent(),errors);await page.screenshot({path:'/tmp/evidence-admin-debug.png',fullPage:true});throw error;});
   await card.getByRole('button',{name:'Nach Prüfung bestätigen',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('#portal-evidence-admin').textContent.includes('Nachweisänderung gespeichert'));
+  await page.waitForFunction(()=>document.querySelector('#portal-evidence-overview h3').textContent.includes('(2)'));
+  assert.equal(await page.getByRole('button',{name:'Testperson 1 · Führerscheinkontrolle prüfen',exact:true}).count(),0,'confirmed item leaves central overview');
   result=(await f.call('evidence')).value;assert.equal(result.entries.driver.status,'confirmed');assert.equal(result.evidence.driver.checkedOn,today);
+  await page.getByRole('button',{name:'Testperson 1 · FFI prüfen',exact:true}).click();
+  const ffiCard=page.locator('.portal-evidence-review-card[data-evidence-field="ffi"]');page.once('dialog',dialog=>dialog.accept());await ffiCard.getByRole('button',{name:'Eigenangabe ablehnen',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#portal-evidence-overview h3').textContent.includes('(1)'));
+  await page.getByRole('button',{name:'Testperson 1 · G26.3 prüfen',exact:true}).click();
+  await page.locator('.portal-evidence-review-card[data-evidence-field="g263"]').getByRole('button',{name:'Nach Prüfung bestätigen',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#portal-evidence-overview').textContent.includes('Keine ungeprüften Nachweisänderungen vorhanden.'));
+  await page.evaluate(()=>showView('settingsMembersView'));assert.equal(await page.locator('.portal-evidence-overview-item').count(),0,'leaving the view clears private overview data');
   await page.goto(url+'deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.waitForFunction(()=>!document.querySelector('#portal-section').hidden);await page.evaluate(()=>DeckelMobile.jump('portal-evidence'));
   await page.locator('.portal-evidence-group[data-group="Führerscheinkontrolle"] .portal-evidence-item[data-state="valid"]').waitFor({state:'visible'});
   assert.match(await page.locator('.portal-evidence-group[data-group="Führerscheinkontrolle"] .portal-evidence-source').textContent(),/Verwaltung/);

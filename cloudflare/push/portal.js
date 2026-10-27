@@ -428,6 +428,7 @@
     const own=roster?.members.find(member=>member.id===record.memberId);
     return path.endsWith('/report')?g.PortalEvidence.write(env,own,roster,data,false,m):g.PortalEvidence.read(env,own,roster);
    }
+   if(path==='/admin/portal/evidence/overview')return g.PortalEvidence.overview(env,roster);
    if(path==='/admin/portal/evidence'||path==='/admin/portal/evidence/review'){
     const member=roster?.members.find(person=>person.id===data.memberId);
     return path.endsWith('/review')?g.PortalEvidence.write(env,member,roster,data,true,m):g.PortalEvidence.read(env,member,roster);
