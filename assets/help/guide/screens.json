@@ -138,5 +138,9 @@
   "geraetehaus-google-termin": {
     "width": 680,
     "height": 1132
+  },
+  "h2o-qr-einrichtung": {
+    "width": 367,
+    "height": 589
   }
 }
