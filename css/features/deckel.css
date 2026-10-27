@@ -243,7 +243,7 @@ body.portal-drag-active{overscroll-behavior:none}
 /* Header, scrollable content and navigation occupy separate rows. */
 body{grid-template-rows:auto minmax(0,1fr) auto}
 /* A light page base keeps browser edge tint out of the heading; navy belongs only behind the footer. */
-body.h2o-portal:not(.theater-mode)::after{content:"";grid-area:3/1;align-self:stretch;background:#101c2c;pointer-events:none;z-index:0}
+body.h2o-portal:not(.theater-mode)::after{content:"";grid-area:3/1;align-self:stretch;background:#101c2c;border-radius:28px 28px 0 0;pointer-events:none;z-index:0}
 body>.deckel-header{grid-area:1/1}
 body>#deckel-main{grid-area:2/1}
 body>#deckel-nav{grid-area:3/1}
