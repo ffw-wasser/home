@@ -37,7 +37,7 @@ const {chromium}=require('playwright');
  await page.goto('about:blank');
  console.log('Browser: onboarding');
  await page.goto('https://ffw-wasser.github.io/home/deckel.html#setup='+ticket.code);await page.locator('#h2oStartup').waitFor({state:'hidden'});
- await page.locator('#h2o-onboarding').getByText('Die Freigabe aus deinem QR-Code wurde übernommen.',{exact:false}).waitFor();assert.equal(await page.locator('#h2o-onboarding #identity-code').count(),0,'scanned QR needs no second code entry');await page.getByRole('button',{name:'Passkey · Gesicht, Fingerabdruck oder Geräte-PIN',exact:true}).click();assert.equal(await page.locator('#identity-code').inputValue(),ticket.code);assert.equal(await page.evaluate(()=>location.hash),'');
+ await page.locator('#h2o-onboarding').getByText('Dein persönlicher Willkommenslink wurde übernommen.',{exact:false}).waitFor();assert.equal(await page.locator('#h2o-onboarding #identity-code').count(),0,'scanned QR needs no second code entry');await page.getByRole('button',{name:'Passkey · Gesicht, Fingerabdruck oder Geräte-PIN',exact:true}).click();assert.equal(await page.locator('#identity-code').inputValue(),ticket.code);assert.equal(await page.evaluate(()=>location.hash),'');
  console.log('Browser: registering');
  await page.locator('#identity-register').click();
  await page.waitForFunction(()=>document.querySelector('#identity-message').textContent.includes('Passkey gespeichert'));
