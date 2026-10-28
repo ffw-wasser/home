@@ -87,3 +87,7 @@ test('Verbundene Google-Erweiterung legt Gruppen zentral an, behält den Termin-
 test('Neue Gruppen sind ohne Verbindung oder nach Entzug gesperrt; Schlüssel erscheinen nie in Karten',()=>{
  const f=controller(),params=f.open();const result=f.c.h2oNewGroup({...f.context,commonEventObject:{parameters:params,formInputs:fields({})}});assert.match(result.setNotification.setText,/Google-Gruppenverbindung/);const denied=controller({connected:true,groupStatus:401});const card=denied.c.h2oOpen(denied.context);assert.ok(!JSON.stringify(card).includes('g'.repeat(43)));assert.equal(denied.calls.some(c=>c.options.method==='patch'),false);
 });
+
+test('Fehlermeldungen passen zur direkten zentralen Gruppenauswahl',()=>{
+ const M=model();assert.throws(()=>M.build({}, {...selection,groups:[]},names),/^Error: Bitte mindestens eine passende Gruppe wählen\.$/);assert.throws(()=>M.read('Gruppen: Nicht mehr vorhanden',names),/Gruppenliste aktualisieren/);
+});

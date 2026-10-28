@@ -43,6 +43,12 @@ async function packageFilesFromZip(file){const zip=await JSZip.loadAsync(file),f
 
 /* Probe-/Terminabschluss: nur ein ZIP-Paket nach außen speichern. */
 let closingDay=false;
+// Keep the existing session identity across retries; never fall back to date alone.
+function terminPackageBase(date,type,id){
+  if(typeof id!=="string"||!id)throw new Error("Die Vorgangskennung fehlt. Bitte den bestehenden Termin erneut öffnen.");
+  const key=Array.from(id,char=>/^[A-Za-z0-9_-]$/.test(char)?char:"~"+char.codePointAt(0).toString(16)+"~").join("");
+  return `FFW-Wasser_${date}_${type.replace(/ /g,"-")}_${key}`;
+}
 window.closeDay=async function(topic=currentClosingTopic){
   if(closingDay)return;closingDay=true;
   try{
@@ -72,7 +78,11 @@ window.closeDay=async function(topic=currentClosingTopic){
   const rows=exportMembers.map(member=>{const name=nameForStorage(member),entry=entryByName.get(name)||entryByName.get(nameForTile(member));if(!entry)return[today(),"",name,exportType,concerns(member)?"Fehlt":"Betrifft nicht",""];if(entry.status==="Fehlt")return[entry.date,entry.time,name,exportType,"Fehlt",""];if(entry.status==="Entschuldigt")return[entry.date,entry.time,name,exportType,"Entschuldigt",""];if(entry.status==="Betrifft nicht")return[entry.date,entry.time,name,exportType,"Betrifft nicht",""];if(entry.role==="Orga")return[entry.date,entry.time,name,exportType,"Anwesend","Orga"];if(exportType==="Sonderprobe")return[entry.date,entry.time,name,exportType,"Anwesend","Anwesend"];if(exportType==="Unterricht")return[entry.date,entry.time,name,exportType,"Anwesend","Unterricht"];if(exportType==="Ausschuss Sitzung")return[entry.date,entry.time,name,exportType,"Anwesend","Ausschuss Sitzung"];return[entry.date,entry.time,name,exportType,"Anwesend",csvRoleForEntry(entry,member)];});
   const includeFunction=exportType==="Allgemeine Probe"||exportType==="Einsatz";
   const csvHeader=includeFunction?"Datum;Uhrzeit;Name;Terminart;Status;Funktion / Status;Thema":"Datum;Uhrzeit;Name;Terminart;Status;Thema";
-  const csv="\ufeff"+[csvHeader,...rows.map(row=>(includeFunction?[...row,topic]:[...row.slice(0,5),topic]).map(csvCell).join(";"))].join("\r\n"),safeType=exportType.replace(/ /g,"-"),base=`FFW-Wasser_${today()}_${safeType}`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,pdfRows=rows.map(r=>({time:r[1],name:r[2],status:r[4],role:includeFunction?r[5]:""})),notApplicable=rows.filter(r=>r[4]==="Betrifft nicht").length,pdf=probePdfBlob(pdfRows,exportType,{present:present+organizers,excused,missing,notApplicable},topic);
+  // Older local entries may predate session IDs. Persist their identity before
+  // the first upload so failure/reload cannot generate a second package name.
+  const packageSessionId=ensureCurrentSessionId()||startAttendanceSession();
+  if(allCurrent.some(entry=>!entry.sessionId)){allCurrent.forEach(entry=>{entry.sessionId=packageSessionId;});saveEntries();}
+  const csv="\ufeff"+[csvHeader,...rows.map(row=>(includeFunction?[...row,topic]:[...row.slice(0,5),topic]).map(csvCell).join(";"))].join("\r\n"),base=terminPackageBase(today(),exportType,packageSessionId),csvName=`${base}.csv`,pdfName=`${base}.pdf`,pdfRows=rows.map(r=>({time:r[1],name:r[2],status:r[4],role:includeFunction?r[5]:""})),notApplicable=rows.filter(r=>r[4]==="Betrifft nicht").length,pdf=probePdfBlob(pdfRows,exportType,{present:present+organizers,excused,missing,notApplicable},topic);
   const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Probe"}),result=await saveTerminPackage(`${base}.zip`,packageResult.zipBlob);
   if(result!=="saved")return;
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
@@ -110,9 +120,8 @@ window.finishOperationZip=async function(){
 
     const previous=editingOperationArchiveId?csvArchive.find(entry=>entry.id===editingOperationArchiveId):null;
     if(editingOperationArchiveId&&!previous)throw new Error("Der Originalbericht ist nicht mehr geladen. Bitte die Historie aktualisieren und die Korrektur erneut öffnen.");
-    const generatedBase=`FFW-Wasser_${d.date}_Einsatz`;
     const previousBase=String(previous?.packageFileName||previous?.fileName||"").replace(/\.(zip|csv|pdf)$/i,"");
-    const base=previousBase||generatedBase,zipName=`${base}.zip`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,csv=operationCsv(d);
+    const base=previousBase||terminPackageBase(d.date,"Einsatz",d.id||currentOperationId),zipName=`${base}.zip`,csvName=`${base}.csv`,pdfName=`${base}.pdf`,csv=operationCsv(d);
     if(validationBox)validationBox.innerHTML='<p class="warning">PDF-Vorschau wird lokal erstellt. Bitte kurz warten ...</p>';
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const pdf=await operationPdfBlob(d);

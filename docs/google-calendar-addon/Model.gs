@@ -39,7 +39,7 @@ var H2OCalendarAddonModel = (function () {
     const raw = fields.terminart || fallback, type = types.find(function (t) { return t.toLocaleLowerCase('de') === raw.toLocaleLowerCase('de'); }) || aliases[raw.toLocaleLowerCase('de')];
     if (!type) fail('Unbekannte Terminart bitte zuerst in der Google-Beschreibung korrigieren.');
     const selected = fields.group === undefined ? [] : (knownGroups.includes(fields.group) ? [fields.group] : fields.group.split(';').map(function (x) { return x.trim(); }));
-    if (selected.some(function (name) { return !knownGroups.includes(name); })) fail('Vorhandene Gruppe fehlt in H2O_GROUP_NAMES. Erst die Auswahlliste aktualisieren.');
+    if (selected.some(function (name) { return !knownGroups.includes(name); })) fail('Vorhandene Gruppe fehlt in der Gruppenliste. Bitte die Gruppenliste aktualisieren und den Termin erneut öffnen.');
     if (fields.freigabe !== undefined && !/^(ja|nein)$/i.test(fields.freigabe)) fail('Freigabe muss Ja oder Nein sein.');
     if ((fields.kleidung || '').length > 120) fail('Kleidung ist zu lang.');
     return {type:type, clothing:fields.kleidung || (type === 'Probe' ? 'Einsatzkleidung' : 'Tagesdienst'), mode:fields.group === undefined ? 'automatic' : 'selected', groups:selected, release:/^ja$/i.test(fields.freigabe || '')};
@@ -48,7 +48,7 @@ var H2OCalendarAddonModel = (function () {
     if (!types.includes(selection.type) || !['automatic', 'selected'].includes(selection.mode) || typeof selection.release !== 'boolean') fail('Bitte Terminart, Gruppenauswahl und Freigabe prüfen.');
     if (typeof selection.clothing !== 'string' || !selection.clothing.trim() || selection.clothing.length > 120 || /[<>\x00-\x1f\x7f]/.test(selection.clothing)) fail('Bitte eine Kleidungsangabe mit höchstens 120 Zeichen verwenden.');
     if (!Array.isArray(selection.groups) || new Set(selection.groups).size !== selection.groups.length || selection.groups.some(function (name) { return !knownGroups.includes(name); })) fail('Die Gruppenauswahl ist nicht mehr gültig.');
-    if (selection.mode === 'selected' && !selection.groups.length) fail('Bitte mindestens eine Gruppe wählen oder die automatische Zuordnung verwenden.');
+    if (selection.mode === 'selected' && !selection.groups.length) fail('Bitte mindestens eine passende Gruppe wählen.');
     let base = String(event.description || '');
     const old = (event.extendedProperties || {}).shared || {}, suffix = old[property];
     if (suffix !== undefined) {
