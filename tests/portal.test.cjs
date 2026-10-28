@@ -439,3 +439,15 @@ test('Optionale Google-Farben blockieren die Terminliste auch beim ersten Abruf 
  const env={DB:{}},config={calendarUrl:'https://calendar.google.com/calendar/ical/test/public/basic.ics',googleColorBridge:{endpoint:'https://script.google.com/macros/s/'+'a'.repeat(25)+'/exec',secret:'s'.repeat(32)}};
  try{const colors=await c.GoogleCalendarColors.read(env,config,[{start:Date.now(),end:Date.now()+3600000}],{waitUntil:job=>jobs.push(job)});assert.equal(colors.status,'fallback');assert.equal(jobs.length,1);}finally{release();await Promise.all(jobs);}
 });
+
+test('GF-Erinnerung benötigt echte Rolle, freigegebene Abfrage und passenden Termin; Client-Rollen werden ignoriert',async()=>{
+ const f=await fixture({requestReplies:false}),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
+ for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
+ const body={eventId:e.id,requestId:crypto.randomUUID()};assert.equal((await f.call('remind',{...body,leader:true},f.people[1])).status,403);assert.equal(f.sends.length,0);
+ assert.equal((await f.call('remind',body)).status,423);assert.equal(f.sends.length,0);
+ await f.call('request-responses',{eventId:e.id,requestId:crypto.randomUUID(),expectedVersion:cal.rulesVersion,expectedGroupsVersion:cal.groupsVersion},null,true);
+ await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:0,requestId:crypto.randomUUID()},f.people[1]);
+ let sent=await f.call('remind',body);assert.equal(sent.status,200);assert.equal(sent.value.accepted,2);assert.equal(sent.value.remaining,2);
+ for(let i=0;i<3;i++)sent=await f.call('remind',body);assert.equal(sent.value.remaining,0);assert.equal(f.sends.length,4);assert.equal(f.sends.some(x=>x.url.endsWith('/member-2')),false);
+ await f.call('roster',{members:f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+i,leader:false}))},null,true);assert.equal((await f.call('remind',{...body,requestId:crypto.randomUUID(),leader:true})).status,403);
+});

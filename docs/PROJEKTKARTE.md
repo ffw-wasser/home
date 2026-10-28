@@ -45,14 +45,13 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 - Browser-Sichtbarkeit und lokale PINs sind kein Ersatz für serverseitige Rechteprüfung.
   Mitgliedsaustritt muss Zugriff auf Geräte, Links und serverseitige Berechtigungen betreffen.
 
-## Persönliche Kalendereinladungen
+## Bereinigung früherer Kalendereinladungen
 
-`cloudflare/push/calendar-invitations.js` enthält die geschützte Einladungswarteschlange,
-Adressbestätigung und Antwortübernahme. `docs/google-calendar-invitations/` enthält den
-eigenständigen Google-Zeittrigger und seine Einrichtung. Der öffentliche Quellkalender
-bleibt ohne Gastadressen. H₂O-Kontoeinstellungen liegen in `portal-identity.js`,
-Verwaltungseinrichtung in `calendar-invitations-admin.js`. WhatsApp-Versand ist entfernt;
-die bisherige Datei `portal-whatsapp.js` erhält die kompatible persönliche Terminlink-Ansicht.
+`cloudflare/push/calendar-invitations.js` enthält nur noch Rückmeldeanforderungen und
+die geschützte Bereinigung eigener alter Einladungen. Neue Einladungen,
+Kalenderadress-Einwilligungen und Kalenderantwortimporte sind entfernt.
+`docs/google-calendar-invitations/Code.gs` ist eine optionale Bereinigungsvorlage
+für das bestehende Skript, ohne Mailversand und ohne Kalenderneuanlage.
 
 ## Typische Tests für die erste Schleife
 
@@ -79,3 +78,11 @@ Microsoft-Login-, Worker- und D1-Tests benötigen gegebenenfalls gesonderte Prü
 
 Diese Karte bei einer Modulverschiebung mit aktualisieren, nicht bei jeder kleinen
 Oberflächenkorrektur neu schreiben.
+
+## Kalenderabo mit H₂O-Antwortlink
+
+Der aktive Rückmeldeweg ist ausschließlich Kalenderabo mit H₂O-Link. Das vorhandene Skript bleibt für das Zurückziehen
+alter Einladungen kompatibel. Neue Rückmeldelinks entstehen in
+`calendar-presentation.js` und werden über `calendar-google-admin.js` mit eigener
+Google-Autorisierung in bestehende Termine ergänzt. `portal-whatsapp.js` enthält
+die geschützte Termin-Link-Antwortseite; `portal-member.js` die GF-Erinnerungsaktion.

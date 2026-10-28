@@ -30,14 +30,6 @@ test('Google API: allowlisted updates, ETags and no guest changes',async()=>{
  await f.call('update',{googleEventId:'event123',etag:'"v1"',event});assert.equal(f.requests.find(r=>r.options.method==='PATCH').options.headers['If-Match'],'"v1"');
  await f.call('delete',{googleEventId:'event123',etag:'"v1"'});assert.ok(f.requests.find(r=>r.options.method==='DELETE'));
 });
-test('Calendar reply proof: all statuses map and stale observations cannot replace H2O replies',()=>{
- const {api}=setup();for(const [input,output] of [['accepted','yes'],['declined','excused'],['tentative','maybe'],['needsAction','open']])assert.equal(api.replyProposal(input,null,0,0),output);
- assert.equal(api.replyProposal('accepted',{source:'h2o'},1,1),null);
- assert.equal(api.replyProposal('declined',{source:'google'},1,2),null);
- assert.equal(api.replyProposal('accepted',{status:'excused'},1,1),null,'legacy replies protected');
- assert.equal(api.replyProposal('invalid',null,0,0),null);
-});
-
 test('Google event mapping uses the existing H2O ID and never exposes source identifiers to members',async()=>{
  const f=await fixture(),cal=(await f.call('list',{},null,true)).value,event=cal.events[0],original=f.c.fetch;f.env.GOOGLE_CALENDAR_CLIENT_ID=client;let ambiguous=false;
  f.c.fetch=async(url,options)=>{const u=new URL(url);if(u.hostname==='oauth2.googleapis.com')return Response.json({aud:client,scope,expires_in:300});if(u.hostname==='www.googleapis.com'){if(u.searchParams.get('fields')==='accessRole')return Response.json({accessRole:'writer'});const item={id:'google-event',iCalUID:event.googleUid,etag:'"source-v1"',summary:'Synthetic source'};return Response.json({items:ambiguous?[item,item]:[item]});}return original(url,options);};

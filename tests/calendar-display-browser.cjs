@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'..');
  // Treat the upcoming appointment as a new import, so automatic membership needs no approval.
  f.sql.prepare('DELETE FROM portal_rules').run();const row=f.sql.prepare('SELECT * FROM portal_calendar').get(),cal=await f.L.open(f.env,row.payload,'portal-calendar');cal.events[0].title='Sonderprobe Atemschutz';f.sql.prepare('UPDATE portal_calendar SET payload=?').run(await f.L.seal(f.env,cal,'portal-calendar'));
  cal.events.push({...cal.events[0],id:'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii',seriesId:'info-series',title:'INFO: Probe und Geburtstag Hinweis',description:'Google Zusatzinfo',key:'info-source',seriesKey:'info-source'});f.sql.prepare('UPDATE portal_calendar SET payload=?').run(await f.L.seal(f.env,cal,'portal-calendar'));
- cal.events.push({...cal.events[0],id:'bad-group-synthetic',title:'Sonderprobe GF + Ausschuss',description:'Terminart: Sonderprobe\nGruppe: GF und Ausschuss\nFreigabe: Ja'});f.sql.prepare('UPDATE portal_calendar SET payload=?').run(await f.L.seal(f.env,cal,'portal-calendar'));
+ cal.events.push({...cal.events[0],id:'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',title:'Sonderprobe GF + Ausschuss',description:'Terminart: Sonderprobe\nGruppe: GF und Ausschuss\nFreigabe: Ja'});f.sql.prepare('UPDATE portal_calendar SET payload=?').run(await f.L.seal(f.env,cal,'portal-calendar'));
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));

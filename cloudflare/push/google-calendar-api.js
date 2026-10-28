@@ -81,13 +81,5 @@
   if(action==='delete'){await json(url+'?sendUpdates=none',token,{method:'DELETE',headers});return {ok:true};}
   return {event:await json(url+'?sendUpdates=none&fields='+fields,token,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(eventData(data.event))})};
  }
- const replies={accepted:'yes',declined:'excused',tentative:'maybe',needsAction:'open'};
- // Google event.updated is not a per-attendee response clock. Never use it to
- // overwrite a newer H2O reply. This conservative proposal requires version CAS
- // and stops automatic imports after a member has answered in H2O.
- function replyProposal(googleStatus,previous,observedVersion,currentVersion){
-  if(!Object.hasOwn(replies,googleStatus)||observedVersion!==currentVersion||previous?.source==='h2o'||previous&&!previous.source)return null;
-  return replies[googleStatus];
- }
- g.GoogleCalendarAPI={route,eventData,replyProposal};
+ g.GoogleCalendarAPI={route,eventData};
 })(globalThis);
