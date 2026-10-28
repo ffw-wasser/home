@@ -377,11 +377,6 @@
 .portal-notification-settings{display:grid;gap:16px}
 .portal-setting{margin:18px 0;padding:18px;border:1px solid #d7e1ed;border-radius:18px;background:#fff;box-shadow:none}
 .portal-notification-settings .portal-setting{margin:0}
-.portal-manual-refresh{display:grid;gap:12px}
-.portal-manual-refresh h3,.portal-manual-refresh p{margin:0;font-size:1.125rem;line-height:1.5}
-.portal-manual-refresh #refresh{margin:0;justify-content:flex-start;padding:12px 16px;gap:12px;min-height:52px;text-align:left}
-.portal-manual-refresh #refresh>span:first-child{display:grid;place-items:center;flex:none;width:28px;height:28px}
-.portal-manual-refresh #refresh>span:last-child{min-width:0}
 .portal-setting-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .portal-setting-heading h3{font-size:1.125rem;line-height:1.35;margin:0;color:#16365a}
 .portal-setting-state{display:inline-block;max-width:100%;padding:4px 9px;border-radius:999px;background:#edf1f6;color:var(--portal-muted,#42566e);font-size:var(--portal-support-size,.875rem);font-weight:750;overflow-wrap:anywhere}
@@ -563,3 +558,7 @@
 .portal-subscription-item dt{font-weight:600;margin-top:.6rem}
 .portal-subscription-item dd{margin:.2rem 0 0}
 .portal-subscription-item [data-state="active"]{color:var(--success,#166534)}
+
+/* Pull to refresh belongs to the scrollable portal content. */
+.deckel-pull-refresh{position:fixed;z-index:90;top:calc(env(safe-area-inset-top) + 108px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);padding:12px 18px;border:1px solid #b7cbdc;border-radius:24px;background:#fff;color:#15365a;box-shadow:0 4px 18px #10284326;font-size:1rem;line-height:1.4;font-weight:700;text-align:center;pointer-events:none}
+.deckel-pull-refresh[hidden]{display:none!important}

@@ -10,7 +10,7 @@ async function fixture(){
   H2OIdentity:{onboarding:()=>false,prepare:async()=>{},credentials:()=>({alias:'a'.repeat(32),key:'b'.repeat(64)})},DeckelLive:{load:async()=>{if(ctx.failedLoad)throw new TypeError('Failed to fetch');return {};}},
   DeckelCrypto:{access(){},open:async()=>structuredClone(data)},fetch:async()=>{if(ctx.failedLoad)throw new TypeError('Failed to fetch');return {ok:true,text:async()=> '{}'};}});
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/deckel-view.js'),'utf8'),ctx);await flush();
- return {ctx,data,nodes,events,async reload(){nodes.get('refresh').onclick();await flush();},advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
+ return {ctx,data,nodes,events,async reload(){ctx.DeckelReload();await flush();},advance(ms){now+=ms;for(const [id,t] of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }
 test('Danke auf dem Handy verschwindet automatisch, während Kontostand und Buchungen sichtbar bleiben',async()=>{
  const f=await fixture();assert.equal(f.nodes.get('thanks').hidden,false);f.advance(2999);assert.equal(f.nodes.get('thanks').hidden,false);
@@ -26,7 +26,7 @@ test('Handy bedankt sich nach einer neuen Begleichung erneut und entfernt den Hi
 
 test('Aktualisieren hält den geprüften Kontostand sichtbar; Netzfehler zeigen Alter statt leerer Ansicht',async()=>{
  const f=await fixture();f.data.balance=450;await f.reload();const balance=f.nodes.get('balance').textContent;f.ctx.failedLoad=true;
- const loading=f.nodes.get('refresh').onclick();assert.equal(f.nodes.get('account').hidden,false);await loading;assert.equal(f.nodes.get('balance').textContent,balance);assert.equal(f.nodes.get('account').hidden,false);assert.match(f.nodes.get('status').textContent,/Angezeigt bleibt der Stand/);assert.match(f.nodes.get('status').textContent,/Verbindung prüfen/);
+ const loading=f.ctx.DeckelReload();assert.equal(f.nodes.get('account').hidden,false);await loading;assert.equal(f.nodes.get('balance').textContent,balance);assert.equal(f.nodes.get('account').hidden,false);assert.match(f.nodes.get('status').textContent,/Angezeigt bleibt der Stand/);assert.match(f.nodes.get('status').textContent,/Verbindung prüfen/);
  f.ctx.document.hidden=true;f.events.visibilitychange();assert.equal(f.nodes.get('account').hidden,true);assert.equal(f.nodes.get('balance').textContent,'');
 });
 
