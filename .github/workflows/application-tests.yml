@@ -67,7 +67,9 @@ jobs:
           path: qa/portal-review
           retention-days: 7
       - name: Test passkey browser flow with synthetic credentials
-        run: node tests/passkey-browser.cjs
+        run: |
+          node tests/passkey-browser.cjs
+          node tests/portal-home-login-browser.cjs
       - name: Test password alternative with synthetic accounts
         run: node tests/password-browser.cjs
       - name: Test Google Calendar PKCE administration flow

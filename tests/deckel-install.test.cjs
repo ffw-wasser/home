@@ -18,6 +18,11 @@ test('Geräte- und Browsererkennung unterscheidet Safari, Samsung, Chrome und ei
   ['Mozilla/5.0 (Windows NT 10.0) Chrome/140 Safari/537.36 Edg/140','desktop','Edge',false]
  ]){f.ctx.navigator.userAgent=ua;const p=f.ctx.DeckelInstall.profile();assert.equal(p.platform,platform);assert.equal(p.browser,browser);assert.equal(p.embedded,embedded);}
 });
+test('iPhone-Home-App ohne Safari-Kennung ist kein eingebetteter Browser',()=>{
+ const f=fixture({ios:true,standalone:true});f.ctx.navigator.userAgent='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+ const p=f.ctx.DeckelInstall.profile();assert.equal(p.browser,'Safari');assert.equal(p.embedded,false);assert.equal(f.ctx.DeckelInstall.isStandalone(),true);
+ f.ctx.navigator.standalone=false;assert.equal(f.ctx.DeckelInstall.profile().embedded,true,'the same UA in a real embedded view still needs the browser handoff');
+});
 test('Erster QR-Aufruf zeigt Installation ohne selbstständig zu installieren, zu speichern oder Push zu erlauben',()=>{
  const f=fixture({android:true});assert.equal(f.nodes.installSection.hidden,false);assert.equal(f.nodes.deckelManifest,undefined);assert.equal(f.saved.length,0);
  let prompts=0,prevented=0;f.events.beforeinstallprompt({preventDefault:()=>prevented++,prompt:()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});
