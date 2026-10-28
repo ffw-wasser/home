@@ -65,7 +65,7 @@ function h2oInvitationEvent_(job, existing, palette) {
   const old = existing && (existing.attendees || []).find(function (guest) { return String(guest.email).toLowerCase() === job.email; });
   const value = {summary:job.summary, description:job.description, location:job.location || '', start:job.start, end:job.end, visibility:'private', guestsCanSeeOtherGuests:false, guestsCanInviteOthers:false, guestsCanModify:false,
     attendees:[{email:job.email, responseStatus:old && old.responseStatus || 'needsAction'}],
-    extendedProperties:{private:{h2oInvitation:job.id, h2oFingerprint:job.fingerprint}}, reminders:{useDefault:true}};
+    extendedProperties:{private:{h2oInvitation:job.id, h2oFingerprint:job.fingerprint}}, reminders:{useDefault:false,overrides:[]}};
   if (!existing) value.id = job.googleEventId;
   const color = Object.keys(palette || {}).find(function (id) { return String(palette[id].background).toLowerCase() === String(job.color).toLowerCase(); });
   if (color) value.colorId = color;
@@ -77,12 +77,12 @@ function h2oSyncInvitations() {
     const config = h2oInvitationConfig_();
     const properties = config.props.getProperties();
     Object.keys(properties).forEach(function (key) { if (/^H2O_VERIFICATION_[a-f0-9]{64}$/.test(key) && Number(properties[key]) < Date.now() - 2 * 86400000) config.props.deleteProperty(key); });
-    const base = h2oPrivateInvitationCalendar_(config), plan = h2oInvitationWorker_(config, 'begin', {calendarId:config.calendar, sourceCalendarId:config.source}), run = plan.run;
+    const base = h2oPrivateInvitationCalendar_(config), plan = h2oInvitationWorker_(config, 'begin', {calendarId:config.calendar, sourceCalendarId:config.source, adapterVersion:2}), run = plan.run;
     if (!/^[a-f0-9]{64}$/.test(run || '') || plan.calendarId !== config.calendar || !Array.isArray(plan.jobs) || plan.jobs.length > 30) throw Error('H₂O-Auftrag ist nicht gültig.');
     const palette = plan.jobs.some(function (j) { return j.color; }) ? (h2oInvitationGoogle_(config, 'colors').event || {}) : {};
     for (const job of plan.jobs) {
-      if (!/^[a-f0-9]{64}$/.test(job.id || '') || !new RegExp('^h2o' + job.id + '[a-f0-9]{1,8}$').test(job.googleEventId || '') || !['upsert','cancel','cleanup'].includes(job.action)) throw Error('Ungültiger Einladungsauftrag.');
-      const permission = h2oInvitationWorker_(config, 'authorize', {run:run, id:job.id, googleEventId:job.googleEventId, action:job.action, fingerprint:job.fingerprint});
+      if (!/^[a-f0-9]{64}$/.test(job.id || '') || !new RegExp('^h2o' + job.id + '[a-f0-9]{1,8}$').test(job.googleEventId || '') || !['upsert','cancel','cleanup','reply'].includes(job.action)) throw Error('Ungültiger Einladungsauftrag.');
+      const permission = h2oInvitationWorker_(config, 'authorize', {run:run, id:job.id, googleEventId:job.googleEventId, action:job.action, fingerprint:job.fingerprint, replyVersion:job.replyVersion, responseStatus:job.responseStatus});
       if (!permission.eligible) continue;
       try {
       if (job.verification && job.action === 'upsert') {
@@ -97,7 +97,14 @@ function h2oSyncInvitations() {
       }
       const url = base + '/events/' + encodeURIComponent(job.googleEventId);
       const existing = h2oInvitationGoogle_(config, url, 'get', null, null, true);
-      if (job.action === 'cancel' || job.action === 'cleanup') {
+      if (job.action === 'reply') {
+        if (!existing || typeof existing.etag !== 'string' || existing.status === 'cancelled' || !['accepted','declined','tentative','needsAction'].includes(job.responseStatus) || !Number.isSafeInteger(job.replyVersion)) throw Error('Die persönliche Einladung für die Korrektur fehlt oder ist nicht gültig.');
+        const marker = (existing.extendedProperties || {}).private || {}, guests = existing.attendees || [];
+        if (marker.h2oInvitation !== job.id || marker.h2oFingerprint !== job.fingerprint || guests.length !== 1 || String(guests[0].email).toLowerCase() !== job.email) throw Error('Die Kalenderkorrektur gehört nicht zu dieser persönlichen Einladung.');
+        const saved = guests[0].responseStatus === job.responseStatus ? existing : h2oInvitationGoogle_(config, url + '?sendUpdates=all', 'patch', {attendees:[{email:job.email,responseStatus:job.responseStatus}]}, existing.etag);
+        if (saved.id !== job.googleEventId || !saved.attendees || saved.attendees.length !== 1 || String(saved.attendees[0].email).toLowerCase() !== job.email || saved.attendees[0].responseStatus !== job.responseStatus) throw Error('Google hat die Kalenderkorrektur nicht bestätigt.');
+        h2oInvitationWorker_(config, 'result', {run:run, id:job.id, googleEventId:job.googleEventId, action:'reply', fingerprint:job.fingerprint, replyVersion:job.replyVersion, responseStatus:job.responseStatus});
+      } else if (job.action === 'cancel' || job.action === 'cleanup') {
         if (existing && existing.status !== 'cancelled') {
           if ((((existing.extendedProperties || {}).private || {}).h2oInvitation) !== job.id) throw Error('Fremden Google-Termin nicht löschen.');
           h2oInvitationGoogle_(config, url + '?sendUpdates=all', 'delete', null, existing.etag);
@@ -110,13 +117,14 @@ function h2oSyncInvitations() {
         if (saved.id !== job.googleEventId) throw Error('Google hat eine andere Einladungskennung geliefert.');
         h2oInvitationWorker_(config, 'result', {run:run, id:job.id, googleEventId:job.googleEventId, action:'upsert', fingerprint:job.fingerprint});
       }
-      } catch (error) { h2oInvitationWorker_(config, 'result', {run:run, id:job.id, googleEventId:job.googleEventId, action:job.action, fingerprint:job.fingerprint, error:String(error.message || 'Einladung nicht bestätigt.').slice(0,160)}); }
+      } catch (error) { h2oInvitationWorker_(config, 'result', {run:run, id:job.id, googleEventId:job.googleEventId, action:job.action, fingerprint:job.fingerprint, replyVersion:job.replyVersion, responseStatus:job.responseStatus, error:String(error.message || 'Einladung nicht bestätigt.').slice(0,160)}); }
     }
     // Delta cursor belongs to this private calendar. Persist only after every page is acknowledged.
-    let sync = config.props.getProperty('H2O_INVITATION_SYNC_TOKEN'), page = null, next = null, pages = 0;
+    const clearReminders = !config.props.getProperty('H2O_INVITATION_REMINDERS_V2');
+    let sync = clearReminders ? null : config.props.getProperty('H2O_INVITATION_SYNC_TOKEN'), page = null, next = null, pages = 0;
     while (true) {
       if (++pages > 40) throw Error('Der private Kalender ist für einen Lauf zu umfangreich.');
-      const query = ['showDeleted=true','maxResults=100','fields=nextPageToken,nextSyncToken,items(id,status,attendees(email,responseStatus,organizer),extendedProperties/private)'];
+      const query = ['showDeleted=true','maxResults=100','fields=nextPageToken,nextSyncToken,items(id,status,etag,reminders,attendees(email,responseStatus,organizer),extendedProperties/private)'];
       if (sync) query.push('syncToken=' + encodeURIComponent(sync));
       if (page) query.push('pageToken=' + encodeURIComponent(page));
       let result;
@@ -130,6 +138,11 @@ function h2oSyncInvitations() {
         if (!/^[a-f0-9]{64}$/.test(marker.h2oInvitation || '') || !new RegExp('^h2o' + marker.h2oInvitation + '[a-f0-9]{1,8}$').test(event.id || '') || event.status === 'cancelled') continue;
         const guests = (event.attendees || []).filter(function (a) { return !a.organizer; });
         if (guests.length !== 1 || !['accepted','declined','tentative','needsAction'].includes(guests[0].responseStatus)) throw Error('Persönliche Kalenderantwort ist nicht eindeutig.');
+        // Only reminders on the private organizer copy; guests retain their own calendar preferences.
+        if (event.reminders && (event.reminders.useDefault || (event.reminders.overrides || []).length)) {
+          if (!event.etag) throw Error('Die Erinnerung konnte nicht sicher aktualisiert werden.');
+          h2oInvitationGoogle_(config, base + '/events/' + encodeURIComponent(event.id) + '?sendUpdates=none', 'patch', {reminders:{useDefault:false,overrides:[]}}, event.etag);
+        }
         observations.push({id:marker.h2oInvitation, googleEventId:event.id, fingerprint:marker.h2oFingerprint, email:String(guests[0].email).toLowerCase(), googleStatus:guests[0].responseStatus});
       }
       for (let i = 0; i < observations.length; i += 8) h2oInvitationWorker_(config, 'observe', {run:run, items:observations.slice(i, i + 8)});
@@ -139,5 +152,6 @@ function h2oSyncInvitations() {
     if (!next) throw Error('Google hat den Antwortabgleich nicht vollständig bestätigt.');
     h2oInvitationWorker_(config, 'finish', {run:run});
     config.props.setProperty('H2O_INVITATION_SYNC_TOKEN', next);
+    config.props.setProperty('H2O_INVITATION_REMINDERS_V2', '1');
   } finally { lock.releaseLock(); }
 }

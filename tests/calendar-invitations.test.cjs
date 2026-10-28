@@ -1,9 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),{fixture}=require('./helpers/portal-fixture.cjs');
-async function setup(){
- const f=await fixture(),enabled=await f.call('calendar-invitations',{enabled:true,expectedVersion:0},null,true);assert.equal(enabled.status,200);
+async function setup(options={}){
+ const f=await fixture(options),enabled=await f.call('calendar-invitations',{enabled:true,expectedVersion:0},null,true);assert.equal(enabled.status,200);
  const secret=enabled.value.secret;
  const bridge=async(action,data={})=>{const r=await f.c.worker.fetch(new Request('https://test.example/portal/calendar-bridge/'+action,{method:'POST',headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},body:JSON.stringify(data)}),f.env);return {status:r.status,value:await r.json()};};
- const begin=()=>bridge('begin',{calendarId:'private-invitations@group.calendar.google.com',sourceCalendarId:'test-calendar'});
+ const begin=()=>bridge('begin',{calendarId:'private-invitations@group.calendar.google.com',sourceCalendarId:'test-calendar',adapterVersion:2});
  return {...f,bridge,begin,secret};
 }
 async function verified(f){
@@ -39,13 +39,27 @@ test('Nur freigegebene tatsächliche Empfänger erhalten persönliche Einladungs
  plan=await f.begin();const job=plan.value.jobs.find(j=>!j.verification&&j.action==='upsert');assert.ok(job);assert.equal(job.email,'member@example.test');assert.equal(job.member,f.people[0].memberId);assert.match(job.googleEventId,/^h2o[a-f0-9]{65,72}$/);
  const publicCal=await f.c.PortalService.publicCalendar(f.env);assert.ok(!JSON.stringify(publicCal).includes('@'));assert.ok(!JSON.stringify(publicCal).includes('calendarConfirm'));
 });
-test('Google-Antworten werden idempotent übernommen; eine aktive Einladung sperrt widersprüchliche H₂O-Antworten',async()=>{
+test('H₂O-Korrekturen bleiben bei unverändertem Kalenderstatus erhalten; eine neue Kalenderantwort wird übernommen',async()=>{
  const f=await setup(),{plan,job}=await invited(f),data={run:plan.value.run,id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email};
+ const read=async()=>{const row=f.sql.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').get(job.event,job.member);return {...row,...await f.L.open(f.env,row.payload,'portal-reply:'+job.event+':'+job.member)};};
  assert.equal((await f.bridge('observe',{...data,googleStatus:'accepted'})).status,200);
- let reply=f.sql.prepare('SELECT * FROM portal_replies').get();assert.equal((await f.L.open(f.env,reply.payload,'portal-reply:'+job.event+':'+job.member)).status,'yes');
- assert.equal((await f.call('reply',{eventId:job.event,status:'excused',expectedVersion:reply.version,requestId:crypto.randomUUID()})).status,423);
- await f.bridge('observe',{...data,googleStatus:'accepted'});assert.equal(f.sql.prepare('SELECT version FROM portal_replies').get().version,reply.version);
- await f.bridge('observe',{...data,googleStatus:'declined'});reply=f.sql.prepare('SELECT * FROM portal_replies').get();assert.equal((await f.L.open(f.env,reply.payload,'portal-reply:'+job.event+':'+job.member)).status,'excused');
+ let reply=await read();assert.equal(reply.status,'yes');
+ const correction={eventId:job.event,status:'excused',expectedVersion:reply.version,requestId:crypto.randomUUID()};
+ const saved=await f.call('reply',correction);assert.equal(saved.status,200);assert.equal(saved.value.status,'excused');
+ assert.equal((await f.call('reply',correction)).value.version,saved.value.version,'retry is idempotent');
+ assert.equal((await f.call('reply',{...correction,status:'maybe',requestId:crypto.randomUUID()})).status,409,'stale app version cannot overwrite correction');
+ for(let i=0;i<2;i++)assert.equal((await f.bridge('observe',{...data,googleStatus:'accepted'})).status,200);
+ reply=await read();assert.equal(reply.status,'excused');assert.equal(reply.source,'h2o');assert.equal(reply.version,saved.value.version);
+ await f.bridge('finish',{run:plan.value.run});const next=await f.begin();
+ assert.equal((await f.bridge('observe',{...data,run:next.value.run,googleStatus:'accepted'})).status,200);
+ assert.equal((await read()).status,'excused','next synchronization preserves correction');
+ const write=next.value.jobs.find(j=>j.action==='reply');assert.ok(write);assert.equal(write.responseStatus,'declined');assert.equal(write.replyVersion,saved.value.version);assert.equal((await f.bridge('authorize',{...write,run:next.value.run})).value.eligible,true);assert.equal((await f.bridge('result',{...write,run:next.value.run})).status,200);
+ assert.equal((await f.bridge('observe',{...data,run:next.value.run,googleStatus:'tentative'})).status,200);
+ reply=await read();assert.equal(reply.status,'maybe');assert.equal(reply.source,'google');
+ const reset=await f.call('reply',{eventId:job.event,status:'open',expectedVersion:reply.version,requestId:crypto.randomUUID()});assert.equal(reset.status,200);
+ await f.bridge('observe',{...data,run:next.value.run,googleStatus:'tentative'});assert.equal((await read()).status,'open');
+ const other=await f.call('reply',{eventId:job.event,status:'yes',expectedVersion:0,requestId:crypto.randomUUID()},f.people[1]);assert.equal(other.status,200);assert.equal((await read()).status,'open','members can only correct their own reply');
+ f.clock.now=f.start+1;await f.call('refresh',{},null,true);assert.equal((await f.call('reply',{eventId:job.event,status:'yes',expectedVersion:reset.value.version,requestId:crypto.randomUUID()})).status,409,'reply closes at start');
 });
 test('Widerruf und Mitgliedersperrung stoppen Antwortimporte und planen Absagen',async()=>{
  const f=await setup(),{plan,job}=await invited(f),data={run:plan.value.run,id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email,googleStatus:'accepted'};
@@ -106,7 +120,8 @@ test('Abgelaufene unbestätigte Adressen können neu beansprucht werden, eine be
  const fresh=await setup(),event=(await fresh.call('list')).value.events[0];await fresh.call('reply',{eventId:event.id,status:'excused',expectedVersion:0,requestId:crypto.randomUUID()});
  const {plan,job}=await invited(fresh),data={run:plan.value.run,id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email};await fresh.bridge('observe',{...data,googleStatus:'needsAction'});
  let row=fresh.sql.prepare('SELECT * FROM portal_replies').get();assert.equal((await fresh.L.open(fresh.env,row.payload,'portal-reply:'+job.event+':'+job.member)).status,'excused');
- await fresh.bridge('observe',{...data,googleStatus:'tentative'});row=fresh.sql.prepare('SELECT * FROM portal_replies').get();assert.equal((await fresh.L.open(fresh.env,row.payload,'portal-reply:'+job.event+':'+job.member)).status,'maybe');
+ await fresh.bridge('finish',{run:plan.value.run});const next=await fresh.begin(),correction=next.value.jobs.find(j=>j.action==='reply');assert.ok(correction);await fresh.bridge('result',{...correction,run:next.value.run});
+ await fresh.bridge('observe',{...data,run:next.value.run,googleStatus:'tentative'});row=fresh.sql.prepare('SELECT * FROM portal_replies').get();assert.equal((await fresh.L.open(fresh.env,row.payload,'portal-reply:'+job.event+':'+job.member)).status,'maybe');
 });
 
 test('Fehlgeschlagene Absagen werden nicht als abgeschlossen markiert und entfernte Einladungen geben H₂O-Antworten wieder frei',async()=>{
@@ -143,4 +158,59 @@ test('Mitgliederentfernung löscht die Kalenderadresse atomar und bewahrt die Ve
  const f=await setup();await verified(f);const members=f.people.slice(1).map((p,i)=>({id:p.memberId,name:'Testperson '+(i+2),leader:false}));
  f.failBatch();assert.equal((await f.call('roster',{members},null,true)).status,503);let row=f.sql.prepare('SELECT * FROM portal_calendar_profiles').get();assert.notEqual(row.payload,'');assert.ok(row.email_hash);
  assert.equal((await f.call('roster',{members},null,true)).status,200);row=f.sql.prepare('SELECT * FROM portal_calendar_profiles').get();assert.equal(row.payload,'');assert.equal(row.email_hash,null);assert.equal(row.version,3);assert.equal((await f.call('calendar-preference')).status,401);
+});
+
+test('App-Korrekturen warten bei alten Adaptern und Google-Fehlern; überholte Aufträge können neue Antworten nicht quittieren',async()=>{
+ const f=await setup(),{plan,job}=await invited(f),observation={id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email};
+ await f.bridge('observe',{...observation,run:plan.value.run,googleStatus:'accepted'});await f.bridge('finish',{run:plan.value.run});
+ let reply=(await f.call('list')).value.events.find(e=>e.id===job.event);
+ await f.call('reply',{eventId:job.event,status:'maybe',expectedVersion:reply.version,requestId:crypto.randomUUID()});
+ const old=await f.bridge('begin',{calendarId:'private-invitations@group.calendar.google.com',sourceCalendarId:'test-calendar'});assert.equal(old.value.jobs.some(j=>j.action==='reply'),false);
+ assert.equal((await f.bridge('observe',{...observation,run:old.value.run,googleStatus:'declined'})).value.pendingReply,true);assert.equal((await f.call('list')).value.events[0].status,'maybe');await f.bridge('finish',{run:old.value.run});
+ const next=await f.begin(),first=next.value.jobs.find(j=>j.action==='reply');assert.equal(first.responseStatus,'tentative');
+ assert.equal((await f.bridge('result',{...first,run:next.value.run,error:'synthetic Google failure'})).status,200);assert.equal(f.sql.prepare('SELECT last_error FROM portal_calendar_invites WHERE id=?').get(job.id).last_error,'reply_failed');
+ reply=(await f.call('list')).value.events[0];await f.call('reply',{eventId:job.event,status:'excused',expectedVersion:reply.version,requestId:crypto.randomUUID()});
+ assert.equal((await f.bridge('authorize',{...first,run:next.value.run})).value.eligible,false);assert.equal((await f.bridge('result',{...first,run:next.value.run})).status,409);
+ await f.bridge('finish',{run:next.value.run});const retry=await f.begin(),last=retry.value.jobs.find(j=>j.action==='reply');assert.equal(last.responseStatus,'declined');assert.ok(last.replyVersion>first.replyVersion);
+ assert.equal((await f.bridge('result',{...last,run:retry.value.run})).status,200);assert.equal((await f.bridge('result',{...last,run:retry.value.run})).status,200,'lost acknowledgement is idempotent');
+ assert.equal(f.sql.prepare('SELECT last_error FROM portal_calendar_invites WHERE id=?').get(job.id).last_error,null);
+ await f.bridge('finish',{run:retry.value.run});const clean=await f.begin();assert.equal(clean.value.jobs.some(j=>j.action==='reply'),false);
+});
+test('Kalenderkorrekturen prüfen Adresse, Version, Freigabe und aktuellen Kontozugang vor dem Schreiben',async()=>{
+ const f=await setup(),{plan,job}=await invited(f);await f.bridge('finish',{run:plan.value.run});await f.call('reply',{eventId:job.event,status:'yes',expectedVersion:0,requestId:crypto.randomUUID()});
+ const next=await f.begin(),write=next.value.jobs.find(j=>j.action==='reply');assert.ok(write);
+ assert.equal((await f.bridge('authorize',{...write,run:next.value.run,responseStatus:'declined'})).value.eligible,false);
+ assert.equal((await f.bridge('result',{...write,run:next.value.run,replyVersion:write.replyVersion+1})).status,409);
+ const batch=f.DB.prepare;let changed=false;
+ f.DB.prepare=function(query){const statement=batch.call(this,query);if(query.startsWith('UPDATE portal_calendar_invites SET payload=?,last_error=NULL')){const run=statement.run;statement.run=async function(){if(!changed){changed=true;f.sql.prepare('UPDATE accounts SET revision=? WHERE alias=?').run('revoked-revision',f.people[0].alias);}return run.call(this);};}return statement;};
+ assert.equal((await f.bridge('result',{...write,run:next.value.run})).status,409,'account revocation between read and write rejects acknowledgement');
+ const saved=f.sql.prepare('SELECT payload FROM portal_calendar_invites WHERE id=?').get(job.id);assert.equal((await f.L.open(f.env,saved.payload,'calendar-invite:'+job.id)).appReplyVersion||0,0);
+});
+
+test('Eine gleichzeitig gespeicherte App-Korrektur verhindert einen überholten Kalenderimport atomar',async()=>{
+ const f=await setup(),{plan,job}=await invited(f),data={run:plan.value.run,id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email};
+ await f.bridge('observe',{...data,googleStatus:'accepted'});const before=f.sql.prepare('SELECT version FROM portal_replies').get().version,batch=f.DB.batch;let once=true;
+ f.DB.batch=async statements=>{if(once&&statements.some(s=>s.query.includes('portal_replies'))){once=false;assert.equal((await f.call('reply',{eventId:job.event,status:'maybe',expectedVersion:before,requestId:crypto.randomUUID()})).status,200);}return batch(statements);};
+ assert.equal((await f.bridge('observe',{...data,googleStatus:'declined'})).status,409);
+ const reply=f.sql.prepare('SELECT * FROM portal_replies').get();assert.equal((await f.L.open(f.env,reply.payload,'portal-reply:'+job.event+':'+job.member)).status,'maybe');
+ const invitation=f.sql.prepare('SELECT payload FROM portal_calendar_invites WHERE id=?').get(job.id);assert.equal((await f.L.open(f.env,invitation.payload,'calendar-invite:'+job.id)).googleStatus,'accepted');
+ assert.equal((await f.bridge('observe',{...data,googleStatus:'declined'})).value.pendingReply,true);
+});
+
+test('Normale Terminfreigabe startet weder H₂O-Rückmeldung noch persönliche Einladung; nur der Admin-Befehl startet den gewählten Termin',async()=>{
+ const f=await setup({requestReplies:false});await verified(f);let cal=(await f.call('list',{},null,true)).value,e=cal.events[0];assert.equal(e.approved,true);assert.equal(e.responseRequested,false);
+ assert.equal((await f.call('list')).value.events[0].responseRequested,false,'the date remains visible');assert.equal((await f.call('reply',{eventId:e.id,status:'yes',requestId:crypto.randomUUID(),expectedVersion:0})).status,423);
+ let plan=await f.begin();assert.equal(plan.value.jobs.some(j=>!j.verification&&j.action==='upsert'),false);await f.bridge('finish',{run:plan.value.run});
+ const data={eventId:e.id,requestId:crypto.randomUUID(),expectedVersion:cal.rulesVersion,expectedGroupsVersion:cal.groupsVersion};
+ assert.equal((await f.call('request-responses',data)).status,404,'members cannot start a query');assert.equal((await f.call('request-responses',{...data,expectedVersion:cal.rulesVersion+1},null,true)).status,409);
+ assert.equal((await f.call('request-responses',data,null,true)).status,200);assert.equal((await f.call('request-responses',data,null,true)).status,200);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_response_requests').get().n,1);
+ assert.equal((await f.call('list')).value.events[0].responseRequested,true);assert.equal((await f.call('reply',{eventId:e.id,status:'yes',requestId:crypto.randomUUID(),expectedVersion:0})).status,200);
+ plan=await f.begin();const job=plan.value.jobs.find(j=>!j.verification&&j.action==='upsert');assert.ok(job);assert.equal(job.event,e.id);await f.bridge('finish',{run:plan.value.run});
+ f.raw('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:second-unrequested\r\nDTSTART:'+new Date(f.start+86400000).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'')+'\r\nDTEND:'+new Date(f.start+90000000).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'')+'\r\nSUMMARY:Probe\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n');
+ await f.c.PortalService.calendar(f.env,true);cal=(await f.call('list',{},null,true)).value;e=cal.events[0];await f.call('classify',{eventId:e.id,kind:'probe',approved:true,expectedVersion:cal.rulesVersion},null,true);
+ plan=await f.begin();assert.equal(plan.value.jobs.some(j=>j.event===e.id&&j.action==='upsert'),false,'a different approved date is not requested');
+});
+test('Bereits automatisch versandte Einladungen ohne bewusste Rückmeldeanforderung werden zurückgezogen',async()=>{
+ const f=await setup(),{plan,job}=await invited(f);await f.bridge('finish',{run:plan.value.run});f.sql.prepare('DELETE FROM portal_response_requests').run();
+ const next=await f.begin();assert.equal(next.value.jobs.find(j=>j.id===job.id).action,'cancel');assert.equal((await f.call('list')).value.events[0].responseRequested,false);
 });
