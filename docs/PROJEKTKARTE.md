@@ -12,7 +12,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Datenschutz und bebilderte Hilfe unter den Kontakten | `scripts/build-help-guide.cjs`, `css/features/help-guide.css` | `scripts/capture-help-screens.cjs`, `assets/help/guide/`, `tests/help-guide-browser.cjs`; beide Ansichten gemeinsam erzeugen |
 | Gerätehaus-Erfassung, Teilnehmer, Schritte | `js/features/attendance/attendance-controller.js` | `action-dock.js`, `js/core/keyboard.js`, `js/features/tactics/` |
 | Einsatz und Fahrzeugbesetzung | `js/features/operations/operations.js`, `js/features/tactics/` | Anwesenheit, Berichte, Qualitätsprüfungen |
-| Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, `calendar-google-admin.js`, Cloudflare `portal.js`, `google-calendar-api.js`, `google-calendar-oauth.js`, `calendar-invitations.js`, ICS-Bibliothek |
+| Kalender, Rückmeldungen, Terminansichten | `js/features/portal/portal-admin.js`, `portal-member.js`, `calendar-model.js` | `portal-whatsapp.js`, `calendar-google-admin.js`, Cloudflare `portal.js`, `google-calendar-api.js`, `google-calendar-oauth.js`, `calendar-invitations.js`, `calendar-subscriptions.js`, ICS-Bibliothek |
 | Ausbildung / Funk | `deckel.html`, `js/features/portal/portal-training.js`, `assets/training/` | Lokale Motorola-Taschenkarte, gemeinsame `plan-zoom.js`-Ansicht, kompakte BW-Status und Übungsdialoge |
 | Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links, Buchansicht mit `plan-zoom.js` und authentifiziertem PDF-Transport |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js` | `js/core/database.js`, Cloudflare `portal.js` |
@@ -47,7 +47,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 
 ## Bereinigung früherer Kalendereinladungen
 
-`cloudflare/push/calendar-invitations.js` enthält nur noch den öffentlichen Abo-Status und
+`cloudflare/push/calendar-invitations.js` enthält nur noch den alten eigenen Profil-Löschweg und
 die geschützte Bereinigung eigener alter Testeinladungen. Neue Einladungen,
 Kalenderadress-Einwilligungen, Kalenderantwortimporte und zusätzliche Abfragefreigaben sind entfernt.
 Jeder hinterlegte GF kann für sichtbare kommende Termine direkt erinnern;
@@ -83,7 +83,10 @@ Oberflächenkorrektur neu schreiben.
 
 ## Aktueller Kalenderablauf
 
-Mitglieder abonnieren unter Daten und Sicherheit den vorhandenen öffentlichen Kalender.
+Mitglieder abonnieren unter Daten und Sicherheit ein persönliches H₂O-Abo, niemals den Hauptkalender.
+`cloudflare/push/calendar-subscriptions.js` verwaltet zufällige zurücksetzbare Nur-Lese-Kennungen,
+verschlüsselte Tokens und den serverseitig nach aktueller Mitgliedschaft gefilterten ICS-Feed.
+Jeder Eintrag enthält automatisch den öffentlichen, nicht berechtigenden H₂O-Antwortlink.
 Zu- und Absage sind für sichtbare kommende Termine sofort möglich. Jeder hinterlegte GF
 kann direkt erinnern. Die zusätzliche Abfragefreigabe und ihre Statuskarte sind entfernt.
 Die technische Bereinigung alter Testkopien bleibt kompatibel; keine neue Einrichtung.

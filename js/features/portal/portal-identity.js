@@ -62,30 +62,32 @@
  function calendarSettings(){
   const host=document.getElementById('more-security');if(!host||document.getElementById('identity-calendar-settings'))return;
   const section=document.createElement('section');section.id='identity-calendar-settings';section.className='portal-setting';
-  const heading=document.createElement('h3');heading.textContent='Feuerwehrkalender';
-  const intro=document.createElement('p');intro.textContent='Einmal abonnieren und alle Feuerwehrtermine im eigenen Kalender sehen. Wer den Kalender bereits abonniert hat, braucht ihn nicht erneut hinzuzufügen.';
+  const heading=document.createElement('h3');heading.textContent='Meine Feuerwehrtermine';
+  const intro=document.createElement('p');intro.textContent='Dein persönliches Abo enthält nur die kommenden Termine, die dir in H₂O angezeigt werden.';
   const subscribe=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Feuerwehrkalender abonnieren';subscribe.hidden=true;subscribe.append(summary);
   const apple=document.createElement('a');apple.className='button secondary';apple.textContent='In Apple Kalender abonnieren';apple.referrerPolicy='no-referrer';
   const google=document.createElement('a');google.className='button secondary';google.textContent='In Google Kalender abonnieren';google.target='_blank';google.rel='noopener noreferrer';google.referrerPolicy='no-referrer';
   const copy=document.createElement('button');copy.type='button';copy.className='secondary';copy.textContent='Abo-Link kopieren';
-  const help=document.createElement('p');help.textContent='In der Kalender-App einmal bestätigen. Für Google Kalender bei Bedarf den Browser am Computer verwenden: Weitere Kalender → + → Per URL. Den Abo-Link dort einfügen. Keine Kalenderdatei importieren.';
-  const address=document.createElement('input');address.type='url';address.readOnly=true;address.hidden=true;address.setAttribute('aria-label','Öffentlicher Kalender-Abo-Link');
-  const note=document.createElement('p');note.textContent='Zu- und Absage erfolgen über den H₂O-Link im Termin. Erinnerungen nutzen deine bestehende Push-Freigabe.';
-  subscribe.append(apple,google,copy,help,address,note);
+  const help=document.createElement('p');help.textContent='Einmal in deiner Kalender-App bestätigen. Google bei Bedarf am Computer: Weitere Kalender → + → Per URL. Ein bisheriges Hauptkalender-Abo entfernen, wenn du nur deine Termine sehen möchtest.';
+  const address=document.createElement('input');address.type='url';address.readOnly=true;address.hidden=true;address.setAttribute('aria-label','Persönlicher Kalender-Abo-Link');
+  const note=document.createElement('p');note.textContent='Persönlicher Link – nicht weitergeben. Jeder Termin enthält „H₂O-Rückmeldung“ zur Zu- und Absage.';
+  const reset=document.createElement('button');reset.type='button';reset.className='secondary';reset.textContent='Persönlichen Abo-Link zurücksetzen';
+  subscribe.append(apple,google,copy,help,address,note,reset);
   const state=document.createElement('p');state.setAttribute('role','status');state.textContent='Kalenderabo wird geladen …';
   const retry=document.createElement('button');retry.type='button';retry.className='secondary';retry.textContent='Kalenderabo erneut laden';retry.hidden=true;
-  const feedback=document.createElement('p');feedback.setAttribute('role','status');let owner='',loading=false,subscriptionUrl='';
+  const feedback=document.createElement('p');feedback.setAttribute('role','status');let owner='',loading=false,version=0,subscriptionUrl='';
   function clearSubscription(){subscriptionUrl='';subscribe.hidden=true;subscribe.open=false;apple.removeAttribute('href');google.removeAttribute('href');address.value='';address.hidden=true;}
   function setSubscription(value){
    clearSubscription();if(!value){state.textContent='Der Feuerwehrkalender ist noch nicht hinterlegt. Bitte die Verwaltung ansprechen.';return;}
-   const url=new URL(value);if(url.origin!=='https://calendar.google.com'||!/^\/calendar\/ical\/[^/]+\/public\/basic\.ics$/.test(url.pathname)||url.search||url.hash||url.username||url.password)throw Error('Der Kalender-Abo-Link ist ungültig. Bitte die Verwaltung ansprechen.');
+   const url=new URL(value);if(url.origin!==ORIGIN||!/^\/calendar\/member\/[A-Za-z0-9_-]{43}\.ics$/.test(url.pathname)||url.search||url.hash||url.username||url.password)throw Error('Der Kalender-Abo-Link ist ungültig. Bitte die Verwaltung ansprechen.');
    subscriptionUrl=url.href;apple.href=url.href.replace(/^https:/,'webcal:');
-   // Use the same public Google calendar, never a new event or personal invitation.
-   google.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(btoa(decodeURIComponent(url.pathname.split('/')[3])));
+   // Subscribe to the personal read-only feed; the master Google calendar stays private to configuration.
+   google.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(subscriptionUrl);
    address.value=subscriptionUrl;subscribe.hidden=false;state.textContent='';
   }
   async function request(data={}){const session=g.H2OIdentity?.session();if(!session||!g.H2OIdentity?.credentials())throw Error('Bitte zuerst persönlich anmelden.');const response=await fetch(ORIGIN+'/portal/calendar-subscription',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit',redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(20000)});const value=await response.json();if(!response.ok)throw Error(value.error||'Kalenderstatus nicht bestätigt.');return value;}
-  section.load=async force=>{const key=current&&record?current.alias+':'+current.revision:'';section.hidden=!key;if(!key){owner='';clearSubscription();feedback.textContent='';return;}if(loading||owner===key&&!force)return;loading=true;retry.hidden=true;state.textContent='Kalenderabo wird geladen …';try{const value=await request();if(current?.alias+':'+current?.revision!==key)return;setSubscription(value.subscriptionUrl);owner=key;feedback.textContent='';}catch(e){clearSubscription();state.textContent=e.message;retry.hidden=false;}finally{loading=false;}};
+  section.load=async force=>{const key=current&&record?current.alias+':'+current.revision:'';section.hidden=!key;if(!key){owner='';clearSubscription();feedback.textContent='';return;}if(loading||owner===key&&!force)return;loading=true;retry.hidden=true;state.textContent='Kalenderabo wird geladen …';try{const value=await request();if(current?.alias+':'+current?.revision!==key)return;setSubscription(value.subscriptionUrl);version=value.version;owner=key;feedback.textContent='';}catch(e){clearSubscription();state.textContent=e.message;retry.hidden=false;}finally{loading=false;}};
+  reset.onclick=async()=>{if(!confirm('Persönlichen Abo-Link zurücksetzen? Der bisherige Link wird ungültig. Danach den neuen Link in deiner Kalender-App abonnieren und das alte Abo entfernen. Bereits gespeicherte Kalenderdaten werden dadurch nicht vom Gerät gelöscht.'))return;const key=current?.alias+':'+current?.revision;reset.disabled=true;try{const value=await request({reset:true,expectedVersion:version});if(current?.alias+':'+current?.revision!==key)return;setSubscription(value.subscriptionUrl);version=value.version;feedback.textContent='Neuer Abo-Link erstellt. Bitte neu abonnieren und das bisherige Abo entfernen.';}catch(e){feedback.textContent=e.message;}finally{reset.disabled=false;}};
   retry.onclick=()=>section.load(true);
   copy.onclick=async()=>{if(!subscriptionUrl)return;try{await navigator.clipboard.writeText(subscriptionUrl);address.hidden=true;feedback.textContent='Abo-Link kopiert. In deiner Kalender-App als Kalenderabonnement hinzufügen.';}catch{address.hidden=false;address.focus();address.select();feedback.textContent='Bitte den markierten Abo-Link kopieren und in deiner Kalender-App als Kalenderabonnement hinzufügen.';}};
   section.append(heading,intro,subscribe,state,retry,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));

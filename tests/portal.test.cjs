@@ -368,8 +368,8 @@ test('Große Mitgliedersperrung bleibt unter dem D1-Free-Abfragelimit',async()=>
  }
  const prepare=f.DB.prepare;let count=0;f.DB.prepare=query=>{assert.ok(++count<=50,'D1 query budget exceeded');return prepare(query);};
  assert.equal((await f.call('roster',{members:[]},null,true)).status,200);
- // One additional bulk query clears calendar addresses; cost stays constant for 125 accounts.
- assert.ok(count<=20);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,0);
+ // Two bulk queries clear old addresses and personal feeds; cost stays constant for 125 accounts.
+ assert.ok(count<=21);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,0);
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM retired').get().n,125);
 });
 test('Health liefert den reproduzierbaren Fingerabdruck des Worker-Quellstands',async()=>{

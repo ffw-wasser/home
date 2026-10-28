@@ -6,6 +6,7 @@
   'CREATE TABLE IF NOT EXISTS portal_groups (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   ...g.PortalEvidence.schema,
   ...(g.CalendarInvitations?.schema||[]),
+  ...(g.PortalCalendarSubscriptions?.schema||[]),
   ...g.PortalHydrants.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
   'CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
@@ -302,7 +303,7 @@
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
-  if(path==='/portal/calendar-subscription')return g.CalendarInvitations.subscription(env);
+  if(path==='/portal/calendar-subscription')return g.PortalCalendarSubscriptions.subscription(env,data,record);
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster');
@@ -382,6 +383,7 @@
    const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) SELECT 1,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload,m.seq)];
    const activeMembers=new Set(people.map(p=>p.id));
    const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
+   if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_calendar_subscriptions WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(removed.size)statements.push(env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member IN (SELECT value FROM json_each(?)) AND "+marker).bind(JSON.stringify([...removed]),payload));
    const linked=(await env.DB.prepare('SELECT alias,revision,payload FROM ledger_access').all()).results;
    const revoked=[];
@@ -545,6 +547,11 @@
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
+ async function personalCalendar(env,record){
+  await assertMember(env,record);const cal=await decorate(env,await calendar(env));
+  if(!cal.configured||cal.stale)fail('Kalender derzeit nicht erreichbar. Bitte später erneut versuchen.',503);
+  return {fetchedAt:cal.fetchedAt,events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&e.end>Date.now()&&isRecipient(e,record.memberId)).map(memberEvent)};
+ }
  async function publicCalendar(env,year=null){
   await ready(env);
   const cal=year===null?await decorate(env,await cachedCalendar(env)):await yearCalendar(env,year);
@@ -556,5 +563,5 @@
     audienceRestricted:Array.isArray(e.recipientIds)
    }))};
  }
- g.PortalService={calendar,config,assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
+ g.PortalService={personalCalendar,calendar,config,assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
 })(globalThis);

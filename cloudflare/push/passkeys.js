@@ -54,7 +54,7 @@
  async function revoke(env,record){
   await env.DB.batch([
    env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) VALUES(?,1) ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(record.alias),
-   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
+   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','portal_calendar_subscriptions'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
   ]);return {ok:true};
  }
  // Portal authority requires an approved, still-active member credential.

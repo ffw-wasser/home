@@ -21354,7 +21354,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  async function revoke(env,record){
   await env.DB.batch([
    env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) VALUES(?,1) ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(record.alias),
-   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
+   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','portal_calendar_subscriptions'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
   ]);return {ok:true};
  }
  // Portal authority requires an approved, still-active member credential.
@@ -21926,7 +21926,6 @@ g.PortalHydrants={schema,route};
  const config=async env=>open(env,await env.DB.prepare('SELECT * FROM portal_calendar_bridge WHERE id=1').first(),'calendar-bridge');
  // Compatibility-only: finish withdrawing copies created during the old test.
  const remaining=async env=>(await env.DB.prepare("SELECT COUNT(*) n FROM portal_calendar_invites WHERE state NOT IN ('cancelled','finished') AND event<>'verification'").first()).n;
- async function subscription(env){const source=await g.PortalService.config(env);return {subscriptionUrl:source?.calendarUrl||null};}
  async function preference(env,data,record){
   const row=await env.DB.prepare('SELECT * FROM portal_calendar_profiles WHERE member=?').bind(record.memberId).first();
   if(data.email!==undefined||data.confirm!==undefined||data.allowed!==undefined&&data.allowed!==false)fail('Keine Kalenderadresse oder zusätzliche Freigabe nötig. Bitte den H₂O-Link im Kalenderabo verwenden.',410);
@@ -21934,8 +21933,7 @@ g.PortalHydrants={schema,route};
    if(data.expectedVersion!==(row?.version||0))fail('Die gespeicherte Kalenderadresse wurde geändert. Bitte neu laden.');
    if(row){const saved=await env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member=? AND version=?").bind(record.memberId,row.version).run();if(!saved.meta.changes)fail('Die gespeicherte Kalenderadresse wurde gleichzeitig geändert.');}
   }
-  const source=await g.PortalService.config(env);
-  return {subscriptionUrl:source?.calendarUrl||null,deliveryMode:'links',allowed:false,verified:false,pending:false,email:'',hasSavedAddress:data.allowed===false?false:!!row?.payload,version:(row?.version||0)+(data.allowed===false&&row?1:0),configured:false};
+  return {deliveryMode:'links',allowed:false,verified:false,pending:false,email:'',hasSavedAddress:data.allowed===false?false:!!row?.payload,version:(row?.version||0)+(data.allowed===false&&row?1:0),configured:false};
  }
  async function authenticated(env,auth){const c=await config(env);if(!c?.enabled||! /^[a-f0-9]{64}$/.test(auth)||!same(await digest(auth),c.secretHash))fail('Kalenderbereinigung nicht autorisiert.',401);return c;}
  async function run(env,data){const row=await env.DB.prepare('SELECT * FROM portal_calendar_bridge WHERE id=1').first();if(!row?.run_id||!same(row.run_id,data.run)||row.run_until<=Date.now())fail('Bereinigung abgelaufen. Bitte erneut starten.');return row;}
@@ -21973,7 +21971,54 @@ g.PortalHydrants={schema,route};
   const payload=await L.seal(env,{phase:done,googleEventId:value.googleEventId},'calendar-invite:'+data.id);
   const saved=await env.DB.prepare('UPDATE portal_calendar_invites SET payload=?,state=?,last_error=NULL,version=version+1 WHERE id=? AND version=? AND EXISTS(SELECT 1 FROM portal_calendar_bridge WHERE run_id=? AND run_until>?)').bind(payload,done,data.id,row.version,data.run,Date.now()).run();if(!saved.meta.changes)fail('Bereinigung wurde gleichzeitig geändert.');return {ok:true};
  }
- g.CalendarInvitations={schema,subscription,preference,bridge};
+ g.CalendarInvitations={schema,preference,bridge};
+})(globalThis);
+
+/* Personal read-only calendar feeds. The opaque link grants calendar access only. */
+(function(g){
+ 'use strict';
+ const L=g.CentralLedger,origin='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev';
+ const schema=['CREATE TABLE IF NOT EXISTS portal_calendar_subscriptions (member TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)'];
+ const fail=(message,status=409)=>{throw Object.assign(Error(message),{status});};
+ const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('calendar-subscription:'+token))),n=>n.toString(16).padStart(2,'0')).join('');
+ const random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+ const open=(env,row)=>row?L.open(env,row.payload,'calendar-subscription:'+row.member):null;
+ async function subscription(env,data,record){
+  await g.PortalService.assertMember(env,record);const meta=await L.meta(env);L.active(meta);
+  if(!await g.PortalService.config(env))return {subscriptionUrl:null,version:0};
+  const row=await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions WHERE member=?').bind(record.memberId).first(),old=await open(env,row);
+  if(data.reset!==undefined&&typeof data.reset!=='boolean')fail('Ungültige Kalenderaktion.',400);
+  if(data.reset===true&&data.expectedVersion!==(row?.version||0))fail('Der Kalenderlink wurde inzwischen geändert. Bitte neu laden.');
+  if(data.reset!==true&&row?.alias===record.alias&&row.revision===record.revision&&old?.source===meta.source)return {subscriptionUrl:origin+'/calendar/member/'+old.token+'.ics',version:row.version};
+  const token=random(),tokenHash=await digest(token),payload=await L.seal(env,{token,source:meta.source},'calendar-subscription:'+record.memberId);
+  const guard="EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND state='active') AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)";
+  const result=row?await env.DB.prepare('UPDATE portal_calendar_subscriptions SET alias=?,revision=?,token_hash=?,payload=?,version=version+1 WHERE member=? AND version=? AND '+guard).bind(record.alias,record.revision,tokenHash,payload,record.memberId,row.version,meta.source,record.alias,record.revision).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_subscriptions(member,alias,revision,token_hash,payload) SELECT ?,?,?,?,? WHERE '+guard).bind(record.memberId,record.alias,record.revision,tokenHash,payload,meta.source,record.alias,record.revision).run();
+  if(!result.meta.changes){if(data.reset===true)fail('Der Kalenderlink wurde gleichzeitig geändert. Bitte neu laden.');const winner=await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions WHERE member=? AND alias=? AND revision=?').bind(record.memberId,record.alias,record.revision).first(),value=await open(env,winner);if(value?.source===meta.source)return {subscriptionUrl:origin+'/calendar/member/'+value.token+'.ics',version:winner.version};fail('Kalenderzugang wurde geändert. Bitte neu laden.');}
+  await g.PortalService.assertMember(env,record);
+  return {subscriptionUrl:origin+'/calendar/member/'+token+'.ics',version:(row?.version||0)+1};
+ }
+ async function resolve(env,token){
+  if(!/^[A-Za-z0-9_-]{43}$/.test(token||''))fail('Kalenderabo nicht verfügbar.',404);
+  const row=await env.DB.prepare('SELECT s.* FROM portal_calendar_subscriptions s JOIN accounts a ON a.alias=s.alias AND a.revision=s.revision JOIN ledger_access l ON l.alias=s.alias AND l.revision=s.revision WHERE s.token_hash=?').bind(await digest(token)).first();
+  if(!row)fail('Kalenderabo nicht verfügbar.',404);const meta=await L.meta(env),value=await open(env,row);L.active(meta);if(value?.source!==meta.source)fail('Kalenderabo nicht verfügbar.',404);
+  const access=await env.DB.prepare('SELECT payload FROM ledger_access WHERE alias=? AND revision=?').bind(row.alias,row.revision).first();if(!access)fail('Kalenderabo nicht verfügbar.',404);
+  const record=await L.open(env,access.payload,'access:'+row.alias);if(record.memberId!==row.member)fail('Kalenderabo nicht verfügbar.',404);await g.PortalService.assertMember(env,record);return record;
+ }
+ const utc=ms=>new Date(ms).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+ const day=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms)).replace(/-/g,'');
+ const escape=value=>String(value||'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');
+ function fold(line){let result='',part='',length=0;for(const ch of line){const size=new TextEncoder().encode(ch).length;if(length+size>75){result+=part+'\r\n';part=' ';length=1;}part+=ch;length+=size;}return result+part;}
+ function serialize(events,updatedAt){
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Feuerwehr Wasser//H2O Personal Calendar//DE','CALSCALE:GREGORIAN','X-WR-CALNAME:H₂O – Meine Feuerwehrtermine','REFRESH-INTERVAL;VALUE=DURATION:PT1H','X-PUBLISHED-TTL:PT1H'];
+  for(const e of events){const link=g.CalendarPresentation.responseLink(e.id);lines.push('BEGIN:VEVENT','UID:'+e.id+'@h2o.feuerwehr-wasser','DTSTAMP:'+utc(updatedAt),...(e.allDay?['DTSTART;VALUE=DATE:'+day(e.start),'DTEND;VALUE=DATE:'+day(e.end)]:['DTSTART:'+utc(e.start),'DTEND:'+utc(e.end)]),'CLASS:PRIVATE','SUMMARY:'+escape(e.title),'LOCATION:'+escape(e.location),'DESCRIPTION:'+escape('H₂O-Rückmeldung: '+link+(e.clothing?'\nKleidung: '+e.clothing:'')+(e.note?'\n'+e.note:'')),'URL:'+link,'END:VEVENT');}
+  lines.push('END:VCALENDAR');return lines.map(fold).join('\r\n')+'\r\n';
+ }
+ async function feed(env,token){
+  await g.PortalService.ready(env);const record=await resolve(env,token),cal=await g.PortalService.personalCalendar(env,record);
+  // Recheck after a slow source fetch: reset/removal may have invalidated the link meanwhile.
+  await resolve(env,token);return serialize(cal.events,cal.fetchedAt);
+ }
+ g.PortalCalendarSubscriptions={schema,subscription,feed};
 })(globalThis);
 
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
@@ -21984,6 +22029,7 @@ g.PortalHydrants={schema,route};
   'CREATE TABLE IF NOT EXISTS portal_groups (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   ...g.PortalEvidence.schema,
   ...(g.CalendarInvitations?.schema||[]),
+  ...(g.PortalCalendarSubscriptions?.schema||[]),
   ...g.PortalHydrants.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
   'CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
@@ -22280,7 +22326,7 @@ g.PortalHydrants={schema,route};
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
-  if(path==='/portal/calendar-subscription')return g.CalendarInvitations.subscription(env);
+  if(path==='/portal/calendar-subscription')return g.PortalCalendarSubscriptions.subscription(env,data,record);
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster');
@@ -22360,6 +22406,7 @@ g.PortalHydrants={schema,route};
    const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) SELECT 1,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload,m.seq)];
    const activeMembers=new Set(people.map(p=>p.id));
    const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
+   if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_calendar_subscriptions WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(removed.size)statements.push(env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member IN (SELECT value FROM json_each(?)) AND "+marker).bind(JSON.stringify([...removed]),payload));
    const linked=(await env.DB.prepare('SELECT alias,revision,payload FROM ledger_access').all()).results;
    const revoked=[];
@@ -22523,6 +22570,11 @@ g.PortalHydrants={schema,route};
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
+ async function personalCalendar(env,record){
+  await assertMember(env,record);const cal=await decorate(env,await calendar(env));
+  if(!cal.configured||cal.stale)fail('Kalender derzeit nicht erreichbar. Bitte später erneut versuchen.',503);
+  return {fetchedAt:cal.fetchedAt,events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&e.end>Date.now()&&isRecipient(e,record.memberId)).map(memberEvent)};
+ }
  async function publicCalendar(env,year=null){
   await ready(env);
   const cal=year===null?await decorate(env,await cachedCalendar(env)):await yearCalendar(env,year);
@@ -22534,7 +22586,7 @@ g.PortalHydrants={schema,route};
     audienceRestricted:Array.isArray(e.recipientIds)
    }))};
  }
- g.PortalService={calendar,config,assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
+ g.PortalService={personalCalendar,calendar,config,assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
 })(globalThis);
 
 /* Cloudflare Workers Free + D1 Free. Financial records are encrypted at rest. */
@@ -22558,7 +22610,13 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"ae7346a57aac532419dec38e829660ea5b3d13f1b04a92841d81ba5d63597da4",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"57168b03e3b090433215c26f1328d7508c56b6497c5acff72e9b0033a7373186",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
+   if(personalFeed&&['GET','HEAD'].includes(request.method)){
+    const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
+    try{const calendar=await globalThis.PortalCalendarSubscriptions.feed(env,personalFeed[1]);return new Response(request.method==='HEAD'?null:calendar,{headers:privateHeaders});}
+    catch(error){return new Response(request.method==='HEAD'?null:'Kalenderabo derzeit nicht verfügbar.',{status:error.status||503,headers:{...privateHeaders,'Content-Type':'text/plain; charset=utf-8'}});}
+   }
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

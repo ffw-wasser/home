@@ -36,9 +36,9 @@ test('Alte Abfragefreigaben sind beendet; Antworten und Erinnerungen benötigen 
  for(let i=0;i<4;i++)r=await f.call('remind',body);assert.equal(r.value.remaining,0);assert.equal(f.sends.length,5);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_response_requests').get().n,0);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_invites').get().n,0);assert.ok((await f.call('list')).value.events[0].remindedAt);
 });
 
-test('Mitglieder erhalten ausschließlich die öffentliche vorhandene Abo-URL, ohne Kalender- oder Versandauftrag',async()=>{
+test('Mitglieder erhalten ausschließlich ihren persönlichen Abo-Link, ohne Quellkalender-Link oder Versandauftrag',async()=>{
  const f=await fixture(),before=f.sql.prepare('SELECT payload FROM portal_config WHERE id=1').get().payload;
- const value=(await f.call('calendar-subscription')).value;assert.equal(value.subscriptionUrl,'https://calendar.google.com/calendar/ical/test-calendar/public/basic.ics');assert.equal(Object.keys(value).join(','),'subscriptionUrl');assert.equal(value.calendarId,undefined);assert.equal(value.secret,undefined);
+ const value=(await f.call('calendar-subscription')).value;assert.match(value.subscriptionUrl,/\/calendar\/member\/[A-Za-z0-9_-]{43}\.ics$/);assert.equal(Object.keys(value).sort().join(','),'subscriptionUrl,version');assert.equal(value.calendarId,undefined);assert.equal(value.secret,undefined);
  assert.equal(f.sql.prepare('SELECT payload FROM portal_config WHERE id=1').get().payload,before);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_invites').get().n,0);assert.equal(f.sends.length,0);
  f.sql.prepare('DELETE FROM portal_config').run();assert.equal((await f.call('calendar-subscription')).value.subscriptionUrl,null);
 });

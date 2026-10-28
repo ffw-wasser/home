@@ -40,11 +40,29 @@ Google-Editor in derselben Anwendung geändert; Zusatzinfos lokal separat speich
 ## Kalender abonnieren, antworten und erinnern
 
 Mitglieder öffnen **Daten und Sicherheit → Feuerwehrkalender abonnieren**.
-Der vorhandene öffentliche Kalender ist voreingestellt. Apple oder Google Kalender
-wählen und beim Anbieter einmal bestätigen; alternativ den Abo-Link kopieren und
-als Kalenderabonnement hinzufügen. Ein bestehendes Abo nicht erneut hinzufügen.
-Für Google bei Bedarf am Computer **Weitere Kalender → + → Per URL** verwenden.
-Keine einzelne Kalenderdatei importieren.
+Das persönliche Abo heißt **H₂O – Meine Feuerwehrtermine**. Es enthält ausschließlich
+die eigenen kommenden Termine aus der H₂O-Terminliste und ist bereits voreingestellt.
+Die serverseitige Auswahl folgt aktuellen Gruppen und individuellen Ausnahmen.
+Der Hauptkalender mit sämtlichen Terminen bleibt die Quelle und wird hier nicht abonniert.
+Apple oder Google Kalender wählen und einmal beim Anbieter bestätigen; alternativ den
+persönlichen Abo-Link kopieren und als Kalenderabonnement hinzufügen. Für Google bei
+Bedarf am Computer **Weitere Kalender → + → Per URL** verwenden. Ein bereits vorhandenes
+persönliches H₂O-Abo nicht erneut hinzufügen; das bisherige Hauptkalender-Abo entfernen,
+wenn nur die persönliche Auswahl angezeigt werden soll. Keine Einzeltermin-Datei importieren.
+
+Jeder Abo-Termin enthält automatisch **H₂O-Rückmeldung** als Link in Beschreibung und
+URL-Feld. Er öffnet genau diesen Termin zur Zu-/Absage, gegebenenfalls nach der eigenen
+Passkey-/Passwortanmeldung. Er ist unabhängig davon vorhanden, ob im Google-Original
+bereits ein Link ergänzt wurde. Es entstehen keine neuen Google-Termine oder Einladungen.
+
+Der Abo-Link ist persönlich und enthält eine zufällige, ausschließlich lesende Kennung.
+Nicht weitergeben. Die gewählte Kalender-App bzw. ihr Anbieter erhält beim Abonnieren
+Zugriff auf die ausgewählten Termindaten. **Persönlichen Abo-Link zurücksetzen** sperrt
+zukünftige Abrufe mit dem alten Link; danach neu abonnieren und das alte Abo entfernen.
+Bereits gespeicherte Daten werden nicht vom Anbieter/Gerät zurückgerufen. Kontenwechsel,
+Mitgliedersperrung und Änderungen an der Terminauswahl werden bei jedem Abruf geprüft.
+Bei nicht bestätigter Quelle wird ein Abruffehler geliefert; der Anbieter kann seinen
+letzten Stand behalten. Kalender-Apps aktualisieren Abos in ihrem eigenen Zeitabstand.
 
 Für sichtbare kommende Termine ist die Rückmeldung sofort möglich:
 **Bin dabei**, **Entschuldigt** oder **Noch unsicher**; erneut antippen nimmt sie zurück.

@@ -95,7 +95,7 @@ Serienvorkommen wird über seinen ursprünglichen Start zugeordnet. Unverändert
 behalten ihre exakten Sekunden und ihren Zeitpunkt, auch beim Wechsel der Sommerzeit.
 Nach Speicherung wird der H₂O-Import neu geladen; Google kann Änderungen im ICS
 verzögert liefern. Mitglieder abonnieren unter **Daten und Sicherheit** den
-voreingestellten öffentlichen Kalender. Sichtbare kommende Termine können direkt
+persönlich gefilterten H₂O-Kalender. Der Hauptkalender bleibt ausschließlich die Quelle; in jedem Abo-Termin steht automatisch der H₂O-Antwortlink. Sichtbare kommende Termine können direkt
 in H₂O beantwortet werden; jeder hinterlegte GF kann ohne zusätzliche Freigabe erinnern.
 Anleitung: [Kalender und Jahresplan](KALENDER-BEDIENUNG.md).
 
