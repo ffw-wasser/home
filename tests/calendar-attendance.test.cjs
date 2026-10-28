@@ -124,7 +124,7 @@ test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche ko
  assert.ok(shortcut,'Mitglieder ändern auf der normalen Probe');
  const summary=card.children.find(n=>n.className==='portal-review-audience');
  assert.match(summary.textContent,/Bisherige Auswahl/);
- assert.match(card.children.find(n=>n.className==='portal-event-people').children[0].textContent,/Personen \(1\)/);
+ assert.match(card.children.find(n=>n.className==='portal-event-people').children[0].textContent,/Mitglieder \(1\)/);
  shortcut.onclick();
  const recipients=descendants(card).find(n=>n.className==='portal-recipient-choices');
  assert.ok(recipients);assert.equal(recipients.hidden,false);
