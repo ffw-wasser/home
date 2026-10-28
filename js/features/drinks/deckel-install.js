@@ -12,7 +12,7 @@
   return {platform:override||(ios?'ios':android?'android':'desktop'),browser,embedded,label:(ios?'iPhone / iPad':android?'Android':/Macintosh/.test(ua)?'Mac':'Computer')+' · '+browser};
  }
  function instructions(p){
-  if(p.platform==='ios')return ['Tippe in Safari auf „Teilen“. Falls nötig, öffne zuerst das Seitenmenü.','Wähle „Zum Home-Bildschirm“.','Lass „Als Web-App öffnen“ eingeschaltet, falls angezeigt. Tippe auf „Hinzufügen“.','Öffne das neue H₂O-Symbol. Melde dich bei Bedarf mit demselben Zugang an.'];
+  if(p.platform==='ios')return ['Safari: Auf „Teilen“ tippen (Quadrat mit Pfeil ↑). Falls nötig, zuerst „…“ öffnen.','Im Menü nach unten scrollen. „Zu Home-Bildschirm hinzufügen“ wählen (auch „Zum Home-Bildschirm“ genannt).','„Als Web-App öffnen“ eingeschaltet lassen, falls angezeigt. Oben „Hinzufügen“ antippen.'];
   if(p.platform==='android')return [p.browser==='Samsung Internet'?'Öffne das Browser-Menü ☰.':'Öffne das Browser-Menü ⋮.','Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.','Bestätige mit „Installieren“ oder „Hinzufügen“.','Öffne das neue H₂O-Symbol. Melde dich bei Bedarf mit demselben Zugang an.'];
   if(p.browser==='Safari')return ['Öffne in Safari das Menü „Ablage“.','Wähle „Zum Dock hinzufügen“. Fehlt der Eintrag, nutze ein Lesezeichen.','Bestätige mit „Hinzufügen“.','Öffne H₂O über das neue Symbol.'];
   if(!['Chrome','Edge'].includes(p.browser))return ['Öffne das Lesezeichen-Menü deines Browsers.','Speichere diese Seite als Lesezeichen.','Öffne H₂O später über dieses Lesezeichen.'];
@@ -26,13 +26,15 @@
   if(native()){by('installSection').hidden=true;return;}
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
   const show=!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
-  const p=profile(),values=instructions(p);step=Math.min(step,values.length-1);
+  const p=profile(),values=instructions(p),systemGuide=p.platform==='ios';step=Math.min(step,values.length-1);
+  by('installSection').classList?.toggle('is-system-guide',systemGuide);
+  if(by('installAfterSteps'))by('installAfterSteps').hidden=!systemGuide;
   if(by('installIllustration'))by('installIllustration').hidden=p.platform!=='ios';
   if(by('installPlatform')){by('installPlatform').value=override;by('installDetected').textContent='Erkannt: '+p.label+(p.embedded?' · Möglicherweise innerhalb einer anderen App. Bitte im normalen Browser öffnen.':'');}
   by('installButton').hidden=p.platform==='ios'||!personal()||!pending||step>0;by('installButton').disabled=busy;
   by('installButton').textContent=!pending&&globalThis.H2OIdentity?.session?.()?'Anleitung zum Startsymbol':pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
   steps(values);
-  if(by('installProgress')){by('installProgress').textContent='Schritt '+(step+1)+' von '+values.length;Array.from(by('installSteps').children).forEach((item,index)=>item.hidden=index!==step);by('installBack').disabled=step===0;by('installNext').disabled=step===values.length-1;}
+  if(by('installProgress')){by('installProgress').hidden=systemGuide;by('installProgress').textContent='Schritt '+(step+1)+' von '+values.length;Array.from(by('installSteps').children).forEach((item,index)=>item.hidden=!systemGuide&&index!==step);by('installBack').hidden=by('installNext').hidden=systemGuide;by('installBack').disabled=step===0;by('installNext').disabled=step===values.length-1;}
  }
  async function install(){
   if(busy||!personal())return;busy=true;by('installButton').disabled=true;by('installStatus').textContent='';
@@ -50,7 +52,7 @@
  addEventListener('hashchange',refresh);
  by('installButton').onclick=install;
  if(by('installPlatform'))by('installPlatform').onchange=()=>{override=by('installPlatform').value;step=0;refresh();};
- function currentStep(){return {index:step,total:instructions(profile()).length};}
+ function currentStep(){const p=profile();return {index:step,total:instructions(p).length,systemGuide:p.platform==='ios'};}
  function moveStep(direction){step=Math.max(0,Math.min(instructions(profile()).length-1,step+direction));refresh();}
  if(by('installBack'))by('installBack').onclick=()=>moveStep(-1);
  if(by('installNext'))by('installNext').onclick=()=>moveStep(1);

@@ -48,9 +48,11 @@
    g.DeckelInstall?.refresh();
    if($('installSection')?.hidden){say('H₂O ist bereit.');next.hidden=false;next.textContent='Weiter';next.onclick=()=>go('finish');}
    else{
-    place('installSection').open=true;const state=g.DeckelInstall.currentStep();progress.textContent='App-Symbol · Schritt '+(state.index+1)+' von '+state.total;
-    back.hidden=state.index===0;next.hidden=false;next.textContent=state.index===state.total-1?'Fertig':'Weiter';
-    next.onclick=()=>{const current=g.DeckelInstall.currentStep();if(current.index===current.total-1)go('finish');else{g.DeckelInstall.moveStep(1);render();}};
+    const state=g.DeckelInstall.currentStep();
+    if(state.systemGuide){title.textContent='H₂O auf den Home-Bildschirm';progress.textContent='iPhone / iPad';say('Jetzt im Safari-Menü:');}
+    place('installSection').open=true;if(!state.systemGuide)progress.textContent='App-Symbol · Schritt '+(state.index+1)+' von '+state.total;
+    back.hidden=state.systemGuide||state.index===0;next.hidden=false;next.textContent=state.systemGuide?'Symbol ist hinzugefügt':state.index===state.total-1?'Fertig':'Weiter';
+    next.onclick=()=>{const current=g.DeckelInstall.currentStep();if(current.systemGuide||current.index===current.total-1)go('finish');else{g.DeckelInstall.moveStep(1);render();}};
    }
    later.hidden=false;later.textContent='Später · im Browser weiter';later.onclick=()=>go('finish');
   }else{

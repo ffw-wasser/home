@@ -43,6 +43,7 @@ test('Android installiert nur nach Antippen und verwendet ohne Browserunterstüt
 });
 test('iPhone bekommt freiwillige Anleitung auch vor Anmeldung; installierter Start zeigt keine Aufforderung',()=>{
  const f=fixture({ios:true});assert.equal(f.nodes.installButton.hidden,true);assert.match(f.nodes.installSteps.children[1].textContent,/Home-Bildschirm/);assert.equal(f.saved.length,0);
+ assert.equal(f.nodes.installSteps.children.length,3);assert.ok(f.nodes.installSteps.children.every(item=>!item.hidden),'all Safari actions remain visible before opening the system share menu');assert.equal(f.nodes.installBack.hidden,true);assert.equal(f.nodes.installNext.hidden,true);assert.equal(f.nodes.installProgress.hidden,true);assert.equal(f.ctx.DeckelInstall.currentStep().systemGuide,true);
  assert.equal(fixture({ios:true,standalone:true}).nodes.installSection.hidden,true);
  const publicEntry=fixture({url:'https://ffw-wasser.github.io/home/deckel.html'});assert.equal(publicEntry.nodes.installSection.hidden,false);assert.equal(publicEntry.nodes.installButton.hidden,true);assert.equal(publicEntry.saved.length,0);
 });
