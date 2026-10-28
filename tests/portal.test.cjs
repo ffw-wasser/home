@@ -44,7 +44,7 @@ test('Kalenderprojektion: UID bleibt bei Titel-/Zeitwechsel stabil, abgesagte Te
 test('Rückmeldung: echte Speicherung, versionierte Änderung, Wiederholung und Konflikt',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0],data={eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()};assert.equal((await f.call('reply',data)).status,200);assert.equal((await f.call('reply',data)).value.version,1);assert.equal((await f.call('reply',{...data,status:'excused'})).status,409);assert.equal((await f.call('reply',{...data,requestId:webcrypto.randomUUID()})).status,409);assert.equal((await f.call('reply',{...data,status:'excused',expectedVersion:1,requestId:webcrypto.randomUUID()})).value.version,2);assert.equal((await f.call('list')).value.events[0].status,'excused');assert.equal((await f.call('list',{},f.people[1])).value.events[0].status,'open');const raw=f.sql.prepare('SELECT payload FROM portal_replies').get().payload;assert.ok(!raw.includes('excused'));assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledgers').get().n,0);});
 test('Nur GF sieht Namen; Client-Rolle, fremde Token und ungültige Zugänge verleihen keine Rechte',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];assert.equal((await f.call('list')).value.leader,true);assert.equal((await f.call('overview',{eventId:e.id})).value.members.length,5);assert.equal((await f.call('list',{},f.people[1])).value.leader,false);assert.equal((await f.call('overview',{eventId:e.id,leader:true,challengeLevel:'GF'},f.people[1])).status,403);assert.equal((await f.call('list',{}, {...f.people[0],revision:'wrong-revision'})).status,401);assert.ok(!f.sql.prepare('SELECT payload FROM portal_roster').get().payload.includes('Testperson'));await f.call('roster',{members:[{id:f.people[1].memberId,name:'Testperson 2',leader:true}]},null,true);assert.equal((await f.call('list')).status,401);assert.equal((await f.call('overview',{eventId:e.id},f.people[1])).status,200);});
 test('Erinnerung geht an Zusagen und offene Antworten, niemals an Entschuldigte; Wiederholung bleibt einmalig',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];for(const p of f.people)assert.equal((await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p)).status,200);for(const [i,status] of [[0,'yes'],[1,'excused'],[2,'maybe']])await f.call('reply',{eventId:e.id,status,expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[i]);const data={eventId:e.id,requestId:webcrypto.randomUUID()};let r=await f.call('remind',data,null,true);assert.equal(r.status,200);assert.equal(r.value.accepted,2);assert.equal(r.value.remaining,2);r=await f.call('remind',data,null,true);assert.equal(r.value.accepted,2);assert.equal(r.value.remaining,0);assert.equal(f.sends.length,4);assert.ok(!f.sends.some(s=>s.url.endsWith('/member-2')));assert.ok(f.sends.every(s=>s.options.body===null));await f.call('remind',data,null,true);assert.equal(f.sends.length,4);assert.equal((await f.call('notification')).value.event.id,e.id);assert.equal((await f.call('notification',{},f.people[1])).value.event,null);});
-test('Geplanter Versand bleibt nach wiederholtem Cron einmalig und setzt keinen Admin-Aufruf voraus',async()=>{const f=await fixture();for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);await f.c.PortalService.scheduled(f.env);await f.c.PortalService.scheduled(f.env);await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5);await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5);});
+test('Wiederholter Cron versendet ohne ausdrücklichen Admin-Aufruf keine Erinnerungen',async()=>{const f=await fixture();for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);for(let i=0;i<4;i++)await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,0);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_sends').get().n,0);});
 test('Unsichere Antwort bleibt gespeichert, versioniert und getrennt von offenen Antworten',async()=>{
  const f=await fixture(),list=(await f.call('list')).value,e=list.events[0],job={eventId:e.id,status:'maybe',expectedVersion:0,requestId:webcrypto.randomUUID()};assert.equal(list.uncertainReplies,true);
  assert.equal((await f.call('reply',job)).status,200);assert.equal((await f.call('reply',job)).value.version,1);assert.equal((await f.call('reply',{...job,status:'yes'})).status,409);
@@ -52,12 +52,12 @@ test('Unsichere Antwort bleibt gespeichert, versioniert und getrennt von offenen
  assert.equal((await f.call('list',{},f.people[1])).value.events[0].status,'open');
  assert.equal((await f.call('reply',{...job,status:'open',expectedVersion:1,requestId:webcrypto.randomUUID()})).value.version,2);assert.equal((await f.call('list')).value.events[0].status,'open');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM ledgers').get().n,0);
 });
-test('Unsichere Mitglieder erhalten die konfigurierte Erinnerung einmalig, Entschuldigte nicht',async()=>{
+test('Unsichere Mitglieder erhalten manuell ausgelöste Erinnerungen einmalig, Entschuldigte nicht',async()=>{
  const f=await fixture(),e=(await f.call('list')).value.events[0];await f.call('configure',{calendarUrl:'https://calendar.google.com/calendar/ical/test-calendar/public/basic.ics',reminders:true,leadHours:12},null,true);
  for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
  for(const [i,status] of [[0,'maybe'],[1,'excused'],[2,'yes']])assert.equal((await f.call('reply',{eventId:e.id,status,expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[i])).status,200);
  await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,0);f.clock.now=e.start-12*3600000+1000;
- for(let i=0;i<4;i++)await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,4);assert.ok(f.sends.some(s=>s.url.endsWith('/member-1')));assert.ok(!f.sends.some(s=>s.url.endsWith('/member-2')));assert.equal((await f.call('notification')).value.event.id,e.id);
+ for(let i=0;i<4;i++)await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,0);const command={eventId:e.id,requestId:webcrypto.randomUUID()};for(let i=0;i<3;i++)assert.equal((await f.call('remind',command,null,true)).status,200);assert.equal(f.sends.length,4);assert.ok(f.sends.some(s=>s.url.endsWith('/member-1')));assert.ok(!f.sends.some(s=>s.url.endsWith('/member-2')));assert.equal((await f.call('notification')).value.event.id,e.id);
 });
 test('Kalenderausfall zeigt letzten Stand, blockiert Schreiben und Erinnerungen; abgelaufener Termin ist gesperrt',async()=>{const f=await fixture(),e=(await f.call('list')).value.events[0];f.offline(true);f.clock.now+=901000;await f.c.PortalService.scheduled(f.env);assert.equal((await f.call('list')).value.stale,true);assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,503);assert.equal((await f.call('remind',{eventId:e.id,requestId:webcrypto.randomUUID()},null,true)).status,503);f.offline(false);f.clock.now=e.start+1000;await f.c.PortalService.scheduled(f.env);assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,409);});
 test('Kalenderverbindung weist fremde Hosts, private Links, Querys und Kalenderwechsel ab',async()=>{const f=await fixture();for(const url of ['https://example.invalid/calendar.ics','https://calendar.google.com/calendar/ical/test/private-secret/basic.ics','https://calendar.google.com/calendar/ical/test/public/basic.ics?redirect=x'])assert.equal((await f.call('configure',{calendarUrl:url,reminders:false,leadHours:24},null,true)).status,400);assert.equal((await f.call('configure',{calendarUrl:'https://calendar.google.com/calendar/ical/other/public/basic.ics',reminders:false,leadHours:24},null,true)).status,409);});
@@ -170,23 +170,25 @@ test('Gleichzeitige Regeländerung verhindert verlustreiche Bereinigung',async()
  assert.ok(kept[e.id],'Optimistic conflict must retain the pre-existing archive classification');
 });
 
-test('Automatische Erinnerungen gelten auch bei alter deaktivierter Einstellung und beachten Empfänger sowie Entschuldigungen',async()=>{
+test('Erinnerungen werden auch mit alten Einstellungen nur auf ausdrücklichen Befehl gesendet',async()=>{
  const f=await fixture(),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
  const cfg=(await f.call('config',{},null,true)).value.config;
  await f.DB.prepare('UPDATE portal_config SET payload=? WHERE id=1').bind(await f.L.seal(f.env,{...cfg,reminders:false},'portal-config')).run();
- assert.equal((await f.call('config',{},null,true)).value.config.reminders,true);
+ assert.equal((await f.call('config',{},null,true)).value.config.reminders,false);
  const ids=f.people.slice(0,3).map(p=>p.memberId);
  assert.equal((await f.call('classify',{eventId:e.id,kind:'probe',sessionType:'Sonderprobe',recipientIds:ids,approved:true,expectedVersion:cal.rulesVersion},null,true)).status,200);
  for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
  for(const [i,status] of [[0,'yes'],[1,'excused']])assert.equal((await f.call('reply',{eventId:e.id,status,expectedVersion:0,requestId:webcrypto.randomUUID()},f.people[i])).status,200);
  for(let i=0;i<4;i++)await f.c.PortalService.scheduled(f.env);
+ assert.equal(f.sends.length,0);
+ assert.equal((await f.call('remind',{eventId:e.id,requestId:webcrypto.randomUUID()},null,true)).status,200);
  assert.deepEqual(f.sends.map(s=>s.url).sort(),['https://fcm.googleapis.com/member-1','https://fcm.googleapis.com/member-3']);
 });
-test('Kalender kann mit Vorlauf gespeichert werden; alte Clients können Erinnerungen nicht deaktivieren',async()=>{
+test('Alte Clients und gespeicherter Vorlauf können automatische Erinnerungen nicht wieder einschalten',async()=>{
  const f=await fixture(),config=(await f.call('config',{},null,true)).value.config;
- for(const patch of [{reminders:false},{}]){
+ for(const patch of [{reminders:true},{reminders:false},{}]){
   assert.equal((await f.call('configure',{calendarUrl:config.calendarUrl,leadHours:12,...patch},null,true)).status,200);
-  const saved=(await f.call('config',{},null,true)).value.config;assert.equal(saved.reminders,true);assert.equal(saved.leadHours,12);
+  const saved=(await f.call('config',{},null,true)).value.config;assert.equal(saved.reminders,false);assert.equal(saved.leadHours,12);
  }
 });
 

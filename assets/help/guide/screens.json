@@ -25,7 +25,7 @@
   },
   "h2o-termine": {
     "width": 390,
-    "height": 780
+    "height": 844
   },
   "h2o-nachweise": {
     "width": 390,
@@ -157,6 +157,10 @@
   },
   "geraetehaus-kalender-einladungen": {
     "width": 728,
-    "height": 542
+    "height": 589
+  },
+  "geraetehaus-kalender-rueckmeldung": {
+    "width": 728,
+    "height": 374
   }
 }

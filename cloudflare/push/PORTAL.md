@@ -44,9 +44,9 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
    `portal.sql` einmal in der bestehenden D1-Datenbank ausführen. Bestehende
    Konten, Schlüssel und Buchungen werden dadurch nicht geändert.
 4. Auf dem iPad Website aktualisieren und OneDrive verbinden. Unter
-   **Einstellungen → H₂O Portal** den öffentlichen Google-iCal-Link eintragen,
-   Erinnerungszeit auswählen und speichern. Vorgabe: 24 Stunden; automatischen
-   Versand ausdrücklich über den Schalter einschalten.
+   **Einstellungen → Kalender → Verbindung** den öffentlichen Google-iCal-Link
+   eintragen und speichern. Erinnerungen werden nur beim jeweiligen Termin nach
+   ausdrücklicher Bestätigung verschickt.
 5. **Kalendereinträge laden:** Geburtstage (Geburtstag, Birthday, Geb. oder 🎂)
    werden bei eindeutig passendem vollständigem Mitgliedernamen automatisch
    zugeordnet. Reihenfolge, Groß-/Kleinschreibung und übliche Umlautschreibweisen
@@ -99,13 +99,14 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
   nicht aus einer selbst gewählten Ausbildungsstufe. Nach erfolgreichem
   OneDrive-Abgleich werden Namen und Rollen im Dienst aktualisiert. Änderungen
   können bis zum nächsten erfolgreichen Abgleich verzögert sein.
-- Automatische Terminerinnerungen sind dauerhaft aktiv, auch bei einer zuvor deaktivierten Einstellung. Der Vorlauf bleibt einstellbar. Erinnerungen gehen nur an aktivierte Geräte der für den Termin freigegebenen Personen mit Zusagen oder offenen Antworten.
-  Entschuldigte werden vor Versand nochmals geprüft. Ganztägige Einträge
-  erhalten keine automatische Probe-Erinnerung. Der Cron versendet kleine
-  Gruppen, üblicherweise innerhalb einiger Minuten um die eingestellte Zeit;
-  nach einem Ausfall wird maximal eine Stunde nachgeholt. Bei mehreren zugleich
-  fälligen Terminen wechseln sich diese ab. Manueller Versand kann mit derselben
-  Versandkennung fortgesetzt werden, bis keine Empfänger mehr offen sind.
+- Terminerinnerungen werden ausschließlich auf ausdrücklichen Befehl über
+  `/admin/portal/remind` verschickt. Der Cron aktualisiert Kalender, Bereinigung
+  und Geburtstagsbonus, versendet aber keine Erinnerungen. Alte Clients und
+  gespeicherte Vorlauf-Einstellungen können automatische Erinnerungen nicht
+  einschalten. Empfänger bleiben die freigegebenen Personen mit aktivierten
+  Handy-Mitteilungen; Entschuldigte werden vor dem Versand nochmals geprüft.
+  Derselbe bestätigte Versand kann mit derselben Kennung fortgesetzt werden,
+  bis keine Empfänger mehr offen sind.
 - Unklare/fehlgeschlagene Push-Zustellungen werden nicht automatisch ein zweites
   Mal gesendet. „Angenommen“ bestätigt die Annahme beim Push-Anbieter, nicht
   Anzeige oder Lesen. Bereits übergebene Pushs sind nicht zurückrufbar.

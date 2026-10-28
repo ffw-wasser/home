@@ -22,3 +22,5 @@ CREATE TABLE IF NOT EXISTS portal_calendar_bridge (id INTEGER PRIMARY KEY CHECK(
 CREATE TABLE IF NOT EXISTS portal_calendar_profiles (member TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,email_hash TEXT UNIQUE,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS portal_calendar_invites (id TEXT PRIMARY KEY,event TEXT NOT NULL,member TEXT NOT NULL,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,state TEXT NOT NULL DEFAULT 'pending',last_error TEXT);
 CREATE INDEX IF NOT EXISTS portal_calendar_invites_member ON portal_calendar_invites(member,event);
+
+CREATE TABLE IF NOT EXISTS portal_response_requests (event TEXT PRIMARY KEY,request TEXT NOT NULL,requested_at INTEGER NOT NULL);

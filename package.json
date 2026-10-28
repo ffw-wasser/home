@@ -7,6 +7,6 @@
     "pdfjs-dist": "5.4.624"
   },
   "devDependencies": {
-    "playwright": "1.56.1"
+    "playwright": "1.57.0"
   }
 }

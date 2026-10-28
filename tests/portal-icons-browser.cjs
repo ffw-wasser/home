@@ -65,6 +65,7 @@ const root=path.resolve(__dirname,'..');
    await verify('#deckel-nav',32,30);await verify('#portal-more-grid',32,30);
    if(width===390&&process.env.PORTAL_ICON_SCREENSHOT)await page.screenshot({path:process.env.PORTAL_ICON_SCREENSHOT});
    // Every movable tile must use the same container rules in both directions.
+   await page.locator('#portal-response-count').evaluate(node=>{node.hidden=false;node.textContent='2';});
    await page.locator('#portal-layout-open').click();
    const ids=await page.locator('#portal-layout-item option').evaluateAll(items=>items.map(item=>item.value));
    for(const id of ids){
@@ -72,6 +73,7 @@ const root=path.resolve(__dirname,'..');
     const wasMain=await page.locator('#deckel-nav [data-portal-tile="'+id+'"]').count();
     await page.locator('#portal-layout-transfer').click();
     const target=wasMain?'#portal-more-grid':'#deckel-nav';assert.equal(await page.locator(target+' [data-portal-tile="'+id+'"]').count(),1);
+    if(id==='portal-section'){assert.equal(await page.locator('#portal-response-count').isVisible(),true);assert.match(await page.locator('[data-portal-tile="portal-section"]').getAttribute('aria-label'),/2 Rückmeldungen/);const fits=await page.locator('#portal-response-count').evaluate(b=>{const badge=b.getBoundingClientRect(),tile=b.parentElement.getBoundingClientRect();return badge.left>=tile.left&&badge.right<=tile.right&&badge.top>=tile.top&&badge.bottom<=tile.bottom;});assert.equal(fits,true,'response badge stays within the moved tile');}
     await verify('#deckel-nav',32,30);await verify('#portal-more-grid',32,30);
     const labelMetrics=await page.locator('#deckel-nav button>strong').evaluateAll(ns=>ns.map(n=>({text:n.textContent,h:n.getBoundingClientRect().height,line:parseFloat(getComputedStyle(n).lineHeight),width:n.clientWidth,scroll:n.scrollWidth})));assert.ok(labelMetrics.every(n=>n.h<=n.line+1&&n.scroll<=n.width+1),'every moved tile has a complete one-line name: '+JSON.stringify(labelMetrics));
     if(target==='#portal-more-grid')assert.equal(await page.locator(target+' [data-portal-tile="'+id+'"] strong').innerHTML(),originalLabels[id],'More restores the complete original title and word breaks');
