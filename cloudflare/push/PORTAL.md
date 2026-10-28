@@ -4,46 +4,19 @@ Release 2026.10.15.1 erweitert die bestehenden persönlichen Handy-Zugänge.
 Die öffentlichen GitHub-Dateien enthalten nur Programmcode und Grafiken. Den
 produktiven Kalender-Link ausschließlich in der geschützten Anwendung eingeben.
 
-## Privaten Google-Kalender verwenden (2026.10.28.11)
+## Privaten Google-Kalender verwenden
 
-Die aktuelle Einrichtung steht in [Privater Kalender](../../docs/KALENDER-DATENSCHUTZ-ANALYSE.md).
-Unter Kalender → Verbindung die geheime iCal-Adresse desselben Kalenders prüfen
-und verschlüsselt speichern. Sie wird nicht zurückgegeben. Erst danach die
-öffentliche Google-Freigabe ausschalten und den gespeicherten Zugriff prüfen.
-Alle Google-Kalenderverwalter behalten ihren Zugriff auf sämtliche Termine.
+Die Kalenderverwaltung verwendet ausschließlich die private Einrichtung unter
+Kalender → Verbindung. Sie liest die geheime iCal-Adresse desselben bestehenden
+Kalenders. Eine vorhandene private Verbindung beibehalten; sie gilt zentral für
+Geräte mit derselben Datenquelle. Die Adresse wird verschlüsselt gespeichert und
+nicht an andere Geräte zurückgegeben. Der Gerätehauskalender benötigt die
+bestätigte OneDrive-/Kontodienst-Verbindung. Persönliche Portalzugänge und Abos
+bleiben unverändert.
 
-Bei aktivem privaten Import gibt `/calendar/public` auch mit Jahresparameter
-keine Termine aus. Das Gerätehaus benötigt seine vorhandene OneDrive-Verbindung.
-Persönliche H₂O-Zugänge und Abos bleiben unverändert. Der Worker muss den neuen
-Import unterstützen (`privateCalendarVersion: 1` unter `/health`). Die nachfolgende
-Beschreibung des öffentlichen Modus gilt nur für noch nicht umgestellte Verbindungen.
-
-## Bisheriger Kalender ohne OneDrive-Anmeldung (öffentlicher Modus)
-
-Nach Aktualisierung und Veröffentlichung des vorhandenen `worker.bundle.js` liefert
-`GET /calendar/public` ausschließlich **ausdrücklich freigegebene** Probe-
-und Sonderprobetermine. Titel werden aus Datenschutzgründen auf „Probe“ oder
-„Sonderprobe“ reduziert. Geburtstage, Kalender-Originaladresse, Personendaten,
-Rückmeldungen, Admin-Token und Verwaltungsfunktionen werden nicht ausgegeben.
-
-Im Gerätehaus-iPad unter **Einstellungen → Kalenderverbindung → Kalenderadresse einrichten** die öffentliche Adresse des bestehenden Cloudflare-Workers
-(`https://…workers.dev`) eintragen und speichern. **Kein Token eingeben.**
-Die öffentliche Adresse bleibt in diesem Browser gespeichert. Sobald das iPad
-mit OneDrive verbunden ist und der Kontodienst zur Verfügung steht, wird die
-Adresse auch aus der vorhandenen Verbindung übernommen.
-
-Die Leseansicht zeigt ohne OneDrive alle ausdrücklich freigegebenen Proben und
-Sonderproben, auch solche für ausgewählte Mitglieder. Diese Termine sind mit
-„Nur ausgewählte Mitglieder“ gekennzeichnet. Weder Empfängerlisten noch
-Mitgliedernamen werden öffentlich übertragen. Persönliche Rückmeldungen,
-Geburtstagszuordnungen, Freigaben, QR-Verwaltung und Push-Versand bleiben
-durch die bisherigen Zugangskontrollen geschützt. Die Kalenderverwaltung
-im H₂O Portal benötigt weiterhin eine bestätigte OneDrive-Anmeldung.
-
-Die GitHub-Veröffentlichung aktualisiert den produktiven Cloudflare-Worker
-**nicht automatisch**. Dessen vollständigen aktualisierten Bundle-Code
-unverändert im bestehenden Worker bereitstellen. Wenn der neue Endpunkt
-noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
+Alle berechtigten Google-Kalenderverwalter sehen im gemeinsamen Kalender sämtliche
+Termine, unabhängig von ihren H₂O-Gruppen. Einrichtung und Schutz stehen in
+[Privater Kalender](../../docs/KALENDER-DATENSCHUTZ-ANALYSE.md).
 
 ## Bestehenden Dienst aktualisieren
 
@@ -59,8 +32,7 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
    Konten, Schlüssel und Buchungen werden dadurch nicht geändert.
 4. Auf dem iPad Website aktualisieren und OneDrive verbinden. Unter
    **Einstellungen → Kalender → Verbindung → Privaten Google-Kalender einrichten**
-   die geheime iCal-Adresse des bisherigen Kalenders prüfen und speichern. Danach
-   die öffentliche Google-Freigabe ausschalten und den gespeicherten Zugriff prüfen. Erinnerungen werden nur beim jeweiligen Termin nach
+   die geheime iCal-Adresse des bisherigen Kalenders prüfen und speichern. Den gespeicherten Zugriff anschließend erneut prüfen. Erinnerungen werden nur beim jeweiligen Termin nach
    ausdrücklicher Bestätigung verschickt.
 5. **Kalendereinträge laden:** Geburtstage (Geburtstag, Birthday, Geb. oder 🎂)
    werden bei eindeutig passendem vollständigem Mitgliedernamen automatisch
