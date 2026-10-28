@@ -10,6 +10,10 @@ const root=path.resolve(__dirname,'..');
    await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
    await page.waitForFunction(()=>globalThis.DeckelMobile);
    await page.evaluate(()=>{document.getElementById('h2o-onboarding')?.dispatchEvent(new Event('cancel',{cancelable:true}));DeckelMobile.show(true);DeckelMobile.jump('deckel-more');document.querySelector('[data-portal-tile="more-breathing"]').hidden=false;});
+   const version=page.locator('#deckel-more .portal-more-toolbar #deckel-version');assert.equal(await version.textContent(),'Version '+JSON.parse(fs.readFileSync(path.join(root,'app-release.json'),'utf8')).version);assert.equal(await version.isVisible(),true);
+   const versionBox=await version.boundingBox(),arrangeBox=await page.locator('#portal-layout-open').boundingBox();assert.ok(versionBox.x>=arrangeBox.x+arrangeBox.width,'version sits beside Anordnen');assert.ok(versionBox.y<arrangeBox.y+arrangeBox.height,'same toolbar row');
+   for(const scale of [100,200]){await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await page.locator('.portal-more-toolbar').evaluate(n=>n.scrollWidth>n.clientWidth+1),false,'toolbar fits '+width+'/'+scale);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
+   await page.evaluate(()=>document.documentElement.style.fontSize='');
    assert.deepEqual(await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['more-training','more-year-plan','more-breathing','more-hydrants','more-regulations','more-water','more-help','theater-phone-section','more-bundesliga','more-security'],'fire brigade topics precede leisure and account');
    await page.locator('[data-portal-tile="more-training"]').click();
    assert.equal(await page.locator('#more-training').isVisible(),true);
