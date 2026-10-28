@@ -12,9 +12,11 @@
   return {platform:override||(ios?'ios':android?'android':'desktop'),browser,embedded,label:(ios?'iPhone / iPad':android?'Android':/Macintosh/.test(ua)?'Mac':'Computer')+' · '+browser};
  }
  function instructions(p){
-  if(p.platform==='ios')return ['Den persönlichen Link in Safari öffnen. Falls du schon angemeldet bist: Bei einem Browserwechsel mit demselben Passkey oder Passwort anmelden.','Auf „Teilen“ tippen (gegebenenfalls zuerst das Seitenmenü öffnen) und „Zum Home-Bildschirm“ wählen. Falls angezeigt, „Als Web-App öffnen“ einschalten und „Hinzufügen“ bestätigen.','Das neue H₂O-Symbol auf dem Home-Bildschirm öffnen. Falls eine Anmeldung erscheint, denselben Passkey oder Benutzernamen und dasselbe Passwort verwenden. Termine und deinen persönlichen Zugang prüfen.'];
-  if(p.platform==='android')return ['Den Link in Chrome, Samsung Internet oder deinem normalen Browser öffnen. In einer E-Mail-App zuerst „Im Browser öffnen“ wählen.','Wenn verfügbar, unten „H₂O Portal installieren“ antippen. Sonst im Browser-Menü „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen und bestätigen. Falls Google Play Protect warnt: Installation abbrechen und H₂O im Browser nutzen.','Das neue H₂O-Symbol öffnen. Falls nötig, mit demselben Passkey oder Passwort anmelden und deinen persönlichen Zugang prüfen.'];
-  return ['Den Link in deinem normalen Browser öffnen. Du kannst H₂O auch direkt im Browser nutzen.','In Chrome oder Edge die Installationsschaltfläche unten oder das Installationssymbol in der Adressleiste verwenden. Auf dem Mac in Safari, falls angeboten, „Ablage → Zum Dock hinzufügen“ wählen. Fehlt die Funktion, ein Lesezeichen setzen.','H₂O über das neue Symbol oder Lesezeichen öffnen. Falls nötig, mit demselben Passkey oder Passwort anmelden und deinen persönlichen Zugang prüfen.'];
+  if(p.platform==='ios')return ['Tippe in Safari auf „Teilen“. Falls nötig, öffne zuerst das Seitenmenü.','Wähle „Zum Home-Bildschirm“.','Lass „Als Web-App öffnen“ eingeschaltet, falls angezeigt. Tippe auf „Hinzufügen“.','Öffne das neue H₂O-Symbol. Melde dich bei Bedarf mit demselben Zugang an.'];
+  if(p.platform==='android')return [p.browser==='Samsung Internet'?'Öffne das Browser-Menü ☰.':'Öffne das Browser-Menü ⋮.','Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.','Bestätige mit „Installieren“ oder „Hinzufügen“.','Öffne das neue H₂O-Symbol. Melde dich bei Bedarf mit demselben Zugang an.'];
+  if(p.browser==='Safari')return ['Öffne in Safari das Menü „Ablage“.','Wähle „Zum Dock hinzufügen“. Fehlt der Eintrag, nutze ein Lesezeichen.','Bestätige mit „Hinzufügen“.','Öffne H₂O über das neue Symbol.'];
+  if(!['Chrome','Edge'].includes(p.browser))return ['Öffne das Lesezeichen-Menü deines Browsers.','Speichere diese Seite als Lesezeichen.','Öffne H₂O später über dieses Lesezeichen.'];
+  return ['Klicke in Chrome oder Edge auf das Installationssymbol in der Adressleiste.','Bestätige mit „Installieren“.','Öffne H₂O über das neue Symbol.'];
  }
  function standalone(){return Boolean(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches);}
  function personal(){if(globalThis.H2OIdentity?.session?.())return true;try{const p=new URLSearchParams(location.hash.slice(1)),repo=p.get('r');return /^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo||'')&&repo!=='ffw-wasser/home'&&/^[a-f0-9]{32}$/.test(p.get('a')||'')&&/^[a-f0-9]{64}$/.test(p.get('k')||'');}catch{return false;}}
@@ -24,10 +26,10 @@
   if(native()){by('installSection').hidden=true;return;}
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
   const show=!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
-  const p=profile(),values=instructions(p);
+  const p=profile(),values=instructions(p);step=Math.min(step,values.length-1);
   if(by('installIllustration'))by('installIllustration').hidden=p.platform!=='ios';
   if(by('installPlatform')){by('installPlatform').value=override;by('installDetected').textContent='Erkannt: '+p.label+(p.embedded?' · Möglicherweise innerhalb einer anderen App. Bitte im normalen Browser öffnen.':'');}
-  by('installButton').hidden=p.platform==='ios'||!personal();by('installButton').disabled=busy;
+  by('installButton').hidden=p.platform==='ios'||!personal()||!pending||step>0;by('installButton').disabled=busy;
   by('installButton').textContent=!pending&&globalThis.H2OIdentity?.session?.()?'Anleitung zum Startsymbol':pending?'H₂O Portal installieren':'H₂O Portal auf dem Handy speichern';
   steps(values);
   if(by('installProgress')){by('installProgress').textContent='Schritt '+(step+1)+' von '+values.length;Array.from(by('installSteps').children).forEach((item,index)=>item.hidden=index!==step);by('installBack').disabled=step===0;by('installNext').disabled=step===values.length-1;}
@@ -48,7 +50,9 @@
  addEventListener('hashchange',refresh);
  by('installButton').onclick=install;
  if(by('installPlatform'))by('installPlatform').onchange=()=>{override=by('installPlatform').value;step=0;refresh();};
- if(by('installBack'))by('installBack').onclick=()=>{step=Math.max(0,step-1);refresh();};
- if(by('installNext'))by('installNext').onclick=()=>{step=Math.min(2,step+1);refresh();};
- window.DeckelInstall={refresh,profile,instructions};refresh();
+ function currentStep(){return {index:step,total:instructions(profile()).length};}
+ function moveStep(direction){step=Math.max(0,Math.min(instructions(profile()).length-1,step+direction));refresh();}
+ if(by('installBack'))by('installBack').onclick=()=>moveStep(-1);
+ if(by('installNext'))by('installNext').onclick=()=>moveStep(1);
+ window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep};refresh();
 })();

@@ -85,7 +85,7 @@ test('Native App zeigt keinen zweiten Home-Bildschirm-Installationsschritt',()=>
 
 test('Persönliche Anmeldung braucht zum Startsymbol keinen alten Link oder zusätzlichen Gerätespeicher',async()=>{
  const f=fixture({android:true,session:true,storageFails:true,url:'https://ffw-wasser.github.io/home/deckel.html'});
- assert.equal(f.nodes.installButton.hidden,false);assert.equal(f.nodes.installButton.textContent,'Anleitung zum Startsymbol');
+ assert.equal(f.nodes.installButton.hidden,true,'no redundant instruction button without native installation dialog');assert.equal(f.nodes.installButton.textContent,'Anleitung zum Startsymbol');
  await f.nodes.installButton.onclick();assert.deepEqual(f.saved,[]);assert.deepEqual(f.actions.filter(a=>a[0]==='save'),[]);
  assert.match(f.nodes.installStatus.textContent,/in diesem Browser angemeldet/);assert.doesNotMatch(f.nodes.installStatus.textContent,/gespeichert|Gerätespeicher/);
  f.events.appinstalled();await Promise.resolve();assert.equal(f.nodes.installSection.hidden,true);assert.deepEqual(f.saved,[]);
