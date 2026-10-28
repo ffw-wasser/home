@@ -2,10 +2,11 @@
 (function(g){
  'use strict';
  const ORIGIN='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev',STORAGE='h2o-portal-identity-v1';
- let current=null,record=null,busy=false;
+ let current=null,record=null,busy=false,initialized=false,pendingSetup='';
  // Retired confirmation links contain a former one-use secret: erase it without enrolling an address.
  {const url=new URL(location.href);if(url.searchParams.has('calendarConfirm')){url.searchParams.delete('calendarConfirm');history.replaceState(null,'',url.pathname+url.search+url.hash);}}
- const setupCode=(()=>{const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(m||/(?:^#|&)[rak]=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);return m?.[1]||'';})();
+ function takeSetupCode(){const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(m||/(?:^#|&)[rak]=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);return m?.[1]||'';}
+ let setupCode=takeSetupCode();
  function read(){try{const s=JSON.parse(localStorage.getItem(STORAGE));return s?.scope==='portal'&&/^[\w-]{43}$/.test(s.token)&&/^[a-f0-9]{32}$/.test(s.alias)&&s.expiresAt>Date.now()?s:null;}catch{return null;}}
  function save(s){for(const id of ['login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else localStorage.removeItem(STORAGE);current=s;record=null;el('list')?.replaceChildren();setMemberName('');}
  async function post(path,data={},token=current?.token||read()?.token){
@@ -15,8 +16,9 @@
  async function prepare(){
   current=read();record=null;
   if(!current)return null;
-  try{const value=await post('session');if(value.alias!==current.alias||value.revision!==current.revision||!/^[a-f0-9]{64}$/.test(value.key))throw Error('Mitgliederzuordnung nicht bestätigt.');record={version:1,alias:value.alias,key:value.key};paint();return record;}
-  catch(e){if(e.status===401||e.status===403)save(null);paint();throw e;}
+  const expected=current,stillCurrent=()=>current?.token===expected.token&&read()?.token===expected.token;
+  try{const value=await post('session',{},expected.token);if(!stillCurrent())return record;if(value.alias!==expected.alias||value.revision!==expected.revision||!/^[a-f0-9]{64}$/.test(value.key))throw Error('Mitgliederzuordnung nicht bestätigt.');record={version:1,alias:value.alias,key:value.key};paint();return record;}
+  catch(e){if(!stillCurrent())return record;if(e.status===401||e.status===403){save(null);if(initialized)g.H2OOnboarding?.init(!!setupCode,true);}paint();throw e;}
  }
  function supported(){if(!g.H2OPasskeys?.browserSupportsWebAuthn())throw Error('Bitte in Safari oder Chrome öffnen. Bitte den normalen Browser verwenden.');}
  async function login(code,confirmation){
@@ -59,7 +61,7 @@
   else{setMemberName('');el('list').replaceChildren();}
   calendarSettings();document.getElementById('identity-calendar-settings')?.load?.();
  }
- async function run(action){if(busy)return;if(g.PortalEvidenceEditor?.hasUnsaved?.())return void(el('message').textContent='Bitte die Nachweiseingabe zuerst speichern oder abbrechen.');if(g.DeckelActions?.hasUnsaved?.())return void(el('message').textContent='Bitte zuerst offene Getränkeeingaben abschließen.');busy=true;try{el('message').textContent='Bitte am Gerät bestätigen …';await action();paint();}catch(e){el('message').textContent=e.name==='NotAllowedError'?'Abgebrochen oder kein passender Passkey verfügbar. Bitte erneut versuchen oder die Verwaltung um eine Freigabe bitten.':e.message;}finally{busy=false;}}
+ async function run(action){if(busy)return;if(g.PortalEvidenceEditor?.hasUnsaved?.())return void(el('message').textContent='Bitte die Nachweiseingabe zuerst speichern oder abbrechen.');if(g.DeckelActions?.hasUnsaved?.())return void(el('message').textContent='Bitte zuerst offene Getränkeeingaben abschließen.');busy=true;try{el('message').textContent='Bitte am Gerät bestätigen …';await action();paint();}catch(e){el('message').textContent=e.name==='NotAllowedError'?'Abgebrochen oder kein passender Passkey verfügbar. Bitte erneut versuchen oder die Verwaltung um eine Freigabe bitten.':e.message;}finally{busy=false;applySetupLink();}}
  async function devices(){const value=await post('devices');el('list').replaceChildren();for(const [i,key] of value.keys.entries()){const row=document.createElement('p');row.textContent='Passkey '+(i+1)+(key.current?' · aktuell verwendet':'');if(!key.current){const button=document.createElement('button');button.type='button';button.textContent='Sperren';button.onclick=()=>run(async()=>{await login();await post('remove',{credential:key.id});await devices();el('message').textContent='Passkey und zugehörige Sitzungen gesperrt.';await g.DeckelReload?.();});row.append(' ',button);}el('list').append(row);}}
  function calendarSettings(){
   const host=document.getElementById('more-security');if(!host||document.getElementById('identity-calendar-settings'))return;
@@ -101,7 +103,7 @@
   section.append(heading,intro,cleanup,subscribe,state,retry,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
   g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-security')section.load(true);});
  }
- function init(){if(!el('login'))return;paint();if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}g.H2OOnboarding?.init(!!setupCode);
+ function init(){if(!el('login'))return;initialized=true;paint();if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}pendingSetup='';g.H2OOnboarding?.init(!!setupCode);
   el('password-login-form').onsubmit=event=>{event.preventDefault();const name=el('username').value,password=el('login-password').value;el('login-password').value='';void run(async()=>{await loginPassword(name,password);el('message').textContent='';el('account').open=false;g.H2OOnboarding?.signedIn();await g.DeckelReload?.();});};
   el('password-set-form').onsubmit=event=>{event.preventDefault();const username=el('new-username').value,password=el('new-password').value,repeat=el('repeat-password').value,confirmation=el('change-password').value,code=el('code').value.trim();el('new-password').value=el('repeat-password').value=el('change-password').value='';void run(async()=>{if(password!==repeat)throw Error('Die beiden neuen Passwörter stimmen nicht überein.');const wasPassword=current?.method==='password';if(current&&!code)await login(undefined,confirmation);await post('password/set',{username,password,...(code?{code}:{})});el('code').value='';el('password-settings').open=false;if(wasPassword){save(null);await g.DeckelReload?.();}el('message').textContent='Passwort gespeichert. Jetzt mit Benutzername und Passwort anmelden.';g.H2OOnboarding?.accessReady();});};
   el('login').onclick=()=>run(async()=>{await login(g.H2OOnboarding?.loginCode?.()??el('code').value.trim());el('code').value='';el('message').textContent='';el('account').open=false;g.H2OOnboarding?.signedIn();await g.DeckelReload?.();});
@@ -111,6 +113,10 @@
   el('logout').onclick=()=>run(async()=>{await post('logout');save(null);history.replaceState(null,'',location.pathname+location.search);await g.DeckelDevice?.clearLink?.();location.reload();});
  }
  g.H2OIdentity={refresh:paint,setMemberName,setPortalVisible,onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,loginPassword,session:()=>current||read(),credentials:()=>record,post};
+ function applySetupLink(){if(!pendingSetup||!initialized||busy)return;const next=pendingSetup;pendingSetup='';if(!current&&!read())for(const id of ['username','new-username','login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';el('code').value=next;el('message').textContent='';g.H2OOnboarding?.init(true,true);}
+ function receiveSetupLink(){const next=takeSetupCode();if(!next)return;setupCode=next;pendingSetup=next;applySetupLink();}
+ g.addEventListener('hashchange',receiveSetupLink);
+ g.addEventListener('pageshow',receiveSetupLink);
  g.addEventListener('storage',event=>{if(event.key===STORAGE)location.reload();});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

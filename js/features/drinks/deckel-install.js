@@ -12,7 +12,7 @@
   return {platform:override||(ios?'ios':android?'android':'desktop'),browser,embedded,label:(ios?'iPhone / iPad':android?'Android':/Macintosh/.test(ua)?'Mac':'Computer')+' · '+browser};
  }
  function instructions(p){
-  if(p.platform==='ios')return ['Safari: Auf „Teilen“ tippen (Quadrat mit Pfeil ↑). Falls nötig, zuerst „…“ öffnen.','Im Menü nach unten scrollen. „Zu Home-Bildschirm hinzufügen“ wählen (auch „Zum Home-Bildschirm“ genannt).','„Als Web-App öffnen“ eingeschaltet lassen, falls angezeigt. Oben „Hinzufügen“ antippen.'];
+  if(p.platform==='ios')return ['Unten in Safari auf die waagerechten Striche tippen (Seitenmenü; je nach Ansicht „…“).','Im geöffneten Menü „Teilen“ wählen – das Quadrat mit dem Pfeil ↑.','Nach unten scrollen. „Zu Home-Bildschirm hinzufügen“ wählen (auch „Zum Home-Bildschirm“ genannt).','„Als Web-App öffnen“ eingeschaltet lassen, falls angezeigt. Oben „Hinzufügen“ antippen.'];
   if(p.platform==='android')return [p.browser==='Samsung Internet'?'Öffne das Browser-Menü ☰.':'Öffne das Browser-Menü ⋮.','Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.','Bestätige mit „Installieren“ oder „Hinzufügen“.','Öffne das neue H₂O-Symbol. Melde dich bei Bedarf mit demselben Zugang an.'];
   if(p.browser==='Safari')return ['Öffne in Safari das Menü „Ablage“.','Wähle „Zum Dock hinzufügen“. Fehlt der Eintrag, nutze ein Lesezeichen.','Bestätige mit „Hinzufügen“.','Öffne H₂O über das neue Symbol.'];
   if(!['Chrome','Edge'].includes(p.browser))return ['Öffne das Lesezeichen-Menü deines Browsers.','Speichere diese Seite als Lesezeichen.','Öffne H₂O später über dieses Lesezeichen.'];

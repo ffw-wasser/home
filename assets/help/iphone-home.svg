@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="230" viewBox="0 0 600 230" role="img" aria-labelledby="title description">
  <title id="title">H₂O in Safari zum Home-Bildschirm hinzufügen</title>
- <desc id="description">Erstens: Teilen, das Quadrat mit dem Pfeil nach oben. Zweitens: im Safari-Menü nach unten zu Zu Home-Bildschirm hinzufügen scrollen. Drittens: Hinzufügen bestätigen.</desc>
+ <desc id="description">Zuerst unten in Safari das Seitenmenü mit den waagerechten Strichen öffnen. Dann Teilen wählen, im Menü nach unten zu Zu Home-Bildschirm hinzufügen scrollen und oben Hinzufügen bestätigen.</desc>
  <rect width="600" height="230" rx="18" fill="#e7edf2"/>
- <g fill="#fff" stroke="#b8cad1" stroke-width="2"><rect x="10" y="12" width="184" height="184" rx="14"/><rect x="208" y="12" width="184" height="184" rx="14"/><rect x="406" y="12" width="184" height="184" rx="14"/></g>
+ <g fill="#fff" stroke="#b8cad1" stroke-width="2"><rect x="8" y="12" width="140" height="184" rx="14"/><rect x="156" y="12" width="140" height="184" rx="14"/><rect x="304" y="12" width="140" height="184" rx="14"/><rect x="452" y="12" width="140" height="184" rx="14"/></g>
  <g font-family="system-ui,sans-serif" fill="#142d40" text-anchor="middle">
-  <g font-size="25" font-weight="700"><text x="102" y="46">1 · Teilen</text><text x="300" y="46">2 · Scrollen</text><text x="498" y="46">3 · Bestätigen</text></g>
-  <rect x="57" y="62" width="90" height="86" rx="16" fill="#fff7ed" stroke="#d76615" stroke-width="3"/>
-  <path d="M79 101v29h46v-29M102 112V76m-13 13 13-13 13 13" fill="none" stroke="#164b64" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="102" y="177" font-size="19">Quadrat mit Pfeil ↑</text>
-  <path d="M300 63v27m-10-10 10 10 10-10" fill="none" stroke="#d76615" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="220" y="102" width="160" height="73" rx="10" fill="#fff7ed" stroke="#d76615" stroke-width="3"/>
-  <text x="300" y="131" font-size="18">Zu Home-Bildschirm</text><text x="300" y="157" font-size="20">hinzufügen</text>
-  <rect x="420" y="78" width="156" height="58" rx="12" fill="#164b64"/>
-  <text x="498" y="115" font-size="24" fill="#fff">Hinzufügen</text><text x="498" y="172" font-size="19">oben im Fenster</text>
+  <text x="78" y="46" font-size="23" font-weight="700">1 · Menü</text><text x="226" y="46" font-size="23" font-weight="700">2 · Teilen</text><text x="374" y="46" font-size="20" font-weight="700">3 · Scrollen</text><text x="522" y="46" font-size="18" font-weight="700">4 · Hinzufügen</text>
+  <g stroke="#d76615" stroke-width="3" fill="#fff7ed"><rect x="35" y="68" width="86" height="80" rx="14"/><rect x="183" y="68" width="86" height="80" rx="14"/></g>
+  <path d="M54 95h48M54 117h32" fill="none" stroke="#164b64" stroke-width="6" stroke-linecap="round"/>
+  <path d="M207 106v27h38v-27M226 117V80m-11 11 11-11 11 11" fill="none" stroke="#164b64" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="78" y="177" font-size="20">Striche unten</text><text x="226" y="177" font-size="19">Quadrat + Pfeil</text>
+  <path d="M374 73v27m-10-10 10 10 10-10" fill="none" stroke="#d76615" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="345" y="117" width="58" height="34" rx="8" fill="#164b64"/><path d="M360 134h28m-14-10v20" stroke="#fff" stroke-width="3"/>
+  <text x="374" y="177" font-size="16">Home-Bildschirm</text>
+  <rect x="460" y="85" width="124" height="56" rx="12" fill="#164b64"/>
+  <text x="522" y="119" font-size="19" fill="#fff">Hinzufügen</text><text x="522" y="177" font-size="18">oben antippen</text>
   <text x="300" y="219" font-size="18" fill="#425a69">Safari-Menü · Darstellung vereinfacht</text>
  </g>
 </svg>
