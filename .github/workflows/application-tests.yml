@@ -136,7 +136,9 @@ jobs:
       - name: Test QR attendance and full appointment layout
         run: node tests/qr-checkin-browser.cjs
       - name: Test privacy-first illustrated instructions on tablet and phone
-        run: node tests/help-guide-browser.cjs
+        run: |
+          node tests/contacts-browser.cjs
+          node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: node tests/navigation-settings-browser.cjs
       - name: Test commander statistics, documented readiness and fair participation
