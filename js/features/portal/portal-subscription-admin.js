@@ -27,9 +27,10 @@
   try{
    if(!g.requireAdmin('settingsPortalView'))throw Error('Bitte die Verwaltung entsperren.');
    if(!g.oneDriveAdministrationReady())throw Error('Bitte OneDrive verbinden.');
-   source=g.DrinksStore.sourceKey();snapshotSource=source;
-   const [state,connection]=await Promise.all([g.oneDriveReadState(),g.DrinksCentral.connection()]);if(!current())return;
-   if(!connection||connection.source!==source)throw Error('Kontodienst nicht mit diesem Mitgliederordner verbunden.');
+   const initialSource=g.DrinksStore.sourceKey(),connection=await g.DrinksCentral.connection();if(version!==epoch)return;
+   source=connection?.source;snapshotSource=source||null;
+   if(!connection||!source||initialSource&&initialSource!==source)throw Error('Kontodienst nicht mit diesem Mitgliederordner verbunden.');
+   if(!current())return;const state=await g.oneDriveReadState();if(!current())return;
    const result=await g.DrinksPush.request(connection,'/admin/portal/subscriptions',{source});if(!current())return;
    if(result.version!==1||result.source!==source||!Number.isFinite(result.checkedAt)||!Array.isArray(result.members)||result.members.some(row=>typeof row.memberId!=='string'||!Number.isInteger(row.pushDevices)||row.pushDevices<0||row.calendarLastFetchedAt!==null&&(!Number.isFinite(row.calendarLastFetchedAt)||row.calendarLastFetchedAt<=0))||new Set(result.members.map(row=>row.memberId)).size!==result.members.length)throw Error('Abo-Status konnte nicht vollständig bestätigt werden.');
    people=(state.members||[]).map(person=>({id:String(person.id),name:[person.lastName,person.firstName].filter(Boolean).join(' ')})).sort((a,b)=>a.name.localeCompare(b.name,'de'));
