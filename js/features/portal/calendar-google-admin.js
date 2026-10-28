@@ -45,6 +45,16 @@
   const b=node('button','Google-Termin bearbeiten');b.type='button';b.className='outline-button';
   b.onclick=()=>{if(beforeOpen&&beforeOpen()===false)return;return openEditor(event,reload);};return b;
  }
+ async function addResponseLink(event){
+  if(!cancel())throw Error('Bitte zuerst die offene Google-Bearbeitung abschließen.');
+  const version=epoch,source=(await api('resolve',{eventId:event.id})).event;
+  if(version!==epoch)throw Error('Verwaltung wurde geschlossen.');
+  const description=g.CalendarPresentation.withResponseLink(source.description,event.id);
+  if(description===String(source.description||''))return {ok:true,unchanged:true};
+  const saved=await api('update',{googleEventId:source.id,etag:source.etag,event:{summary:source.summary,description,location:source.location||'',start:source.start,end:source.end}});
+  if(saved.event?.description!==description)throw Error('Google hat den Rückmeldelink nicht bestätigt. Bitte den Termin neu prüfen.');
+  return {ok:true};
+ }
  async function openEditor(event,reload){
   if(!event?.id)return;
   if(!cancel())return;
@@ -102,5 +112,5 @@
   try{config=await send('google-oauth/configuration');if(version!==epoch)return;paint();}catch(e){if(version===epoch)paint(e.message);}
  }
  g.addEventListener('beforeunload',event=>{if(editing||saving){event.preventDefault();event.returnValue='';}});
- g.GoogleCalendarAdmin={mount,clear,api,openEditor,button,dirty:()=>editing,cancel,connected:()=>!!access&&access.expiresAt>Date.now()};
+ g.GoogleCalendarAdmin={addResponseLink,mount,clear,api,openEditor,button,dirty:()=>editing,cancel,connected:()=>!!access&&access.expiresAt>Date.now()};
 })(globalThis);

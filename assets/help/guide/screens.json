@@ -153,14 +153,18 @@
   },
   "h2o-kalenderkonto": {
     "width": 354,
-    "height": 531
+    "height": 328
   },
   "geraetehaus-kalender-einladungen": {
     "width": 728,
-    "height": 589
+    "height": 502
   },
   "geraetehaus-kalender-rueckmeldung": {
     "width": 728,
-    "height": 374
+    "height": 496
+  },
+  "h2o-gf-erinnerung": {
+    "width": 352,
+    "height": 661
   }
 }

@@ -79,3 +79,12 @@ Microsoft-Login-, Worker- und D1-Tests benötigen gegebenenfalls gesonderte Prü
 
 Diese Karte bei einer Modulverschiebung mit aktualisieren, nicht bei jeder kleinen
 Oberflächenkorrektur neu schreiben.
+
+## Kalenderabo mit H₂O-Antwortlink
+
+Die explizite zentrale Umstellung wird in `calendar-invitations.js` als
+`deliveryMode: links` gespeichert. Das vorhandene Skript bleibt für das Zurückziehen
+alter Einladungen kompatibel. Neue Rückmeldelinks entstehen in
+`calendar-presentation.js` und werden über `calendar-google-admin.js` mit eigener
+Google-Autorisierung in bestehende Termine ergänzt. `portal-whatsapp.js` enthält
+die geschützte Termin-Link-Antwortseite; `portal-member.js` die GF-Erinnerungsaktion.

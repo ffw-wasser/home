@@ -1,4 +1,4 @@
-/* Shared display metadata only. Never used for attendance, bonuses or audiences. */
+/* Shared display metadata and public response links. No personal access credentials. */
 (function(g){
  'use strict';
  const types=[['general','Allgemeine Probe','#326A9B'],['special','Sonderprobe','#82559C'],['lesson','Unterricht','#39765A'],['committee','Ausschusssitzung','#96652E'],['other','Weitere Termine','#566773'],['info','Kalenderinformation','#66717A'],['birthday','Geburtstag','#AF526F']].map(([id,label,color])=>({id,label,color}));
@@ -29,5 +29,14 @@
   if(fields.release!==undefined){const word=fields.release.toLocaleLowerCase('de');if(!['ja','nein'].includes(word))issues.push('Freigabe muss Ja oder Nein sein.');fields.release=word==='ja';}
   return {fields,issues,note:note.join('\n').trim()};
  }
- g.CalendarPresentation={types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ function responseLink(id){if(!/^[A-Za-z0-9_-]{43}$/.test(id||''))throw Error('Ungültiger Kalendertermin.');return 'https://ffw-wasser.github.io/home/termin.html?event='+id;}
+ function withResponseLink(description,id){
+  const url=responseLink(id),text=String(description||'');
+  if(text.split(url).slice(1).some(rest=>!rest||/^[\s<>"']/.test(rest)))return text;
+  // Prefix only. Google notes, HTML and add-on suffix markers stay byte-for-byte intact.
+  const next=(/<[^>]+>/.test(text)?'<p>H₂O-Rückmeldung: <a href="'+url+'">Zu- oder absagen in H₂O</a></p>':'H₂O-Rückmeldung: '+url+'\n\n')+text;
+  if(next.length>4000)throw Error('Die Google-Beschreibung ist für den zusätzlichen Rückmeldelink zu lang. Bitte dort zuerst Platz schaffen.');
+  return next;
+ }
+ g.CalendarPresentation={responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);

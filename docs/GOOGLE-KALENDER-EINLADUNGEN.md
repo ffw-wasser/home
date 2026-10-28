@@ -1,3 +1,36 @@
+# Kalenderabo mit H₂O-Antwortlink
+
+Vorbereitet: 2026.10.28.3, noch nicht veröffentlicht.
+
+Der gewählte Ablauf behält den öffentlichen Google-Kalender als einzige
+Kalenderanzeige. Rückmeldungen werden über einen öffentlichen, nicht berechtigenden
+Link im bestehenden Termin in H₂O geöffnet. Die Verwaltung schaltet die Antwort
+pro Termin ausdrücklich frei. Handy-Mitteilungen folgen ausschließlich auf Befehl.
+Gruppenführer können nach Freischaltung im vorhandenen Rückmeldedialog erinnern.
+
+Die zentrale Umstellung auf `deliveryMode: links` wird administrativ und mit
+Versionsprüfung gespeichert. Sie invalidiert laufende Einladungsaufträge, verhindert
+neue Einladungen und Bestätigungsmails, unterbindet ältere Kalenderantwortimporte
+und lässt geschützte H₂O-Antworten unverändert. Das vorhandene Google-Skript entfernt
+anschließend nur seine bisherigen privaten Einladungen. Das öffentliche Abo wird
+nicht verändert. Ein Kalenderanbieter kann Absagemeldungen anzeigen.
+
+Der Rückmeldelink enthält nur die bestehende Termin-ID. Google-Änderungen benötigen
+die eigene, kurzlebige OAuth-Anmeldung mit Schreibrechten und ETag; sie ergänzen
+nur den Link im bestehenden Eintrag, ohne neue Termine oder Gäste. Beschreibung,
+Zeiten und der Google-Add-on-Auswahlblock bleiben erhalten. Der Link kann auch
+manuell kopiert und eingefügt werden. Native Zu-/Absagen im Kalender entfallen für
+diesen Ablauf; persönliche Kalenderadressen werden nicht mehr benötigt.
+
+Einmalige begrenzte Versendungen werden über die gespeicherte Anforderungskennung
+fortgesetzt. GF-Erinnerungen nutzen eine eigene ausdrücklich bestätigte Kampagne;
+Rolle, aktuelle Mitgliedschaft, Empfänger, Freischaltung und Terminzeit werden
+serverseitig geprüft. Entschuldigte erhalten keine Nachricht.
+
+Bedienung, Migration, Grenzen und Abnahme: [Anleitung](google-calendar-invitations/README.md).
+
+## Vorheriger Stand (Bestand)
+
 # Persönliche Kalendereinladungen – Umsetzung
 
 Implementierter Stand: Version 2026.10.28.2.

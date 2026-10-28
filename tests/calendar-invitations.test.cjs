@@ -214,3 +214,32 @@ test('Bereits automatisch versandte Einladungen ohne bewusste Rückmeldeanforder
  const f=await setup(),{plan,job}=await invited(f);await f.bridge('finish',{run:plan.value.run});f.sql.prepare('DELETE FROM portal_response_requests').run();
  const next=await f.begin();assert.equal(next.value.jobs.find(j=>j.id===job.id).action,'cancel');assert.equal((await f.call('list')).value.events[0].responseRequested,false);
 });
+
+test('Kalenderabo mit Antwortlink stoppt neue Einladungen, invalidiert alte Läufe und behält Rückmeldungen',async()=>{
+ const f=await setup(),{plan,job}=await invited(f);await f.bridge('observe',{run:plan.value.run,id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email,googleStatus:'accepted'});await f.bridge('finish',{run:plan.value.run});
+ const oldRun=await f.begin(),cfg=(await f.call('calendar-invitations',{},null,true)).value;
+ assert.equal((await f.call('calendar-invitations',{deliveryMode:'links',expectedVersion:cfg.version})).status,404);
+ assert.equal((await f.call('calendar-invitations',{deliveryMode:'links',expectedVersion:cfg.version+1},null,true)).status,409);
+ const mode=await f.call('calendar-invitations',{deliveryMode:'links',expectedVersion:cfg.version},null,true);assert.equal(mode.status,200);assert.equal(mode.value.deliveryMode,'links');
+ assert.equal((await f.bridge('finish',{run:oldRun.value.run})).status,409,'the previous adapter run cannot continue');
+ const list=(await f.call('list')).value;assert.equal(list.events[0].calendarLinkOnly,true);assert.equal(list.events[0].calendarManaged,false);assert.equal(list.events[0].status,'yes');
+ const next=await f.begin();assert.equal(next.status,200);assert.equal(next.value.jobs.find(j=>j.id===job.id).action,'cancel');assert.ok(next.value.jobs.every(j=>['cancel','cleanup'].includes(j.action)));assert.ok(!JSON.stringify(next.value.jobs).includes(job.email));
+ const cancel=next.value.jobs.find(j=>j.id===job.id);assert.equal((await f.bridge('authorize',{...cancel,run:next.value.run})).value.eligible,true);for(const item of next.value.jobs)await f.bridge('result',{...item,run:next.value.run});
+ assert.equal((await f.bridge('observe',{run:next.value.run,id:job.id,googleEventId:job.googleEventId,fingerprint:job.fingerprint,email:job.email,googleStatus:'declined'})).value.ignored,true);
+ const answer=await f.call('reply',{eventId:job.event,status:'maybe',expectedVersion:list.events[0].version,requestId:crypto.randomUUID()});assert.equal(answer.status,200);assert.equal((await f.call('list')).value.events[0].status,'maybe');
+ assert.equal((await f.call('calendar-preference')).value.deliveryMode,'links');assert.equal((await f.call('calendar-preference',{email:'new@example.test',allowed:true,expectedVersion:2})).status,409);
+ const own=(await f.call('calendar-preference')).value;assert.equal((await f.call('calendar-preference',{allowed:false,expectedVersion:own.version})).value.deliveryMode,'links');
+ await f.bridge('finish',{run:next.value.run});const empty=await f.begin();assert.equal(empty.value.jobs.length,0);await f.bridge('finish',{run:empty.value.run});
+ const settings=(await f.call('calendar-invitations',{},null,true)).value;await f.call('calendar-invitations',{enabled:true,expectedVersion:settings.version},null,true);assert.equal((await f.call('calendar-invitations',{},null,true)).value.deliveryMode,'links','an old client cannot switch invitations back on');
+});
+
+test('Rückmeldelink-Modus verschickt die bewusst angeforderte Abfrage einmalig und setzt begrenzte Sendungen fort',async()=>{
+ const f=await fixture({requestReplies:false});assert.equal((await f.call('calendar-invitations',{deliveryMode:'links',expectedVersion:0},null,true)).status,200);
+ for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
+ await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,0);
+ const cal=(await f.call('list',{},null,true)).value,id=cal.events[0].id,body={eventId:id,notify:true,requestId:crypto.randomUUID(),expectedVersion:cal.rulesVersion,expectedGroupsVersion:cal.groupsVersion};
+ let result=await f.call('request-responses',body,null,true);assert.equal(result.status,200);assert.equal(result.value.accepted,2);assert.equal(result.value.remaining,3);const campaign=result.value.requestId;
+ for(let i=0;i<4;i++){result=await f.call('request-responses',{...body,requestId:crypto.randomUUID()},null,true);assert.equal(result.value.requestId,campaign);}
+ assert.equal(result.value.remaining,0);assert.equal(f.sends.length,5);await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5);
+ assert.equal((await f.call('list')).value.events[0].responseRequested,true);assert.equal((await f.call('request-responses',body)).status,404);
+});

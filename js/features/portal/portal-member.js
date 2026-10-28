@@ -129,6 +129,19 @@
    const summary=node('div');content.append(summary);
    if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){const people=result.members.filter(m=>m.status===value);summary.append(node('h3',label+' ('+people.length+')'),node('p',people.map(m=>m.name).join(' · ')||'Keine'));}
+   const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false;
+   remind.disabled=result.stale||event.start<=Date.now()||event.responseRequested!==true;
+   if(event.responseRequested!==true)feedback.textContent='Die Verwaltung muss die Rückmeldung für diesen Termin zuerst anfordern.';
+   remind.onclick=async()=>{
+    if(sending)return;
+    if(!campaign&&!confirm('Erinnerung für diesen Termin abschicken?\n\n'+event.title+'\n'+date(event)+'\n\nBerechtigte Mitglieder mit aktivierten Handy-Mitteilungen werden erinnert. Entschuldigte erhalten keine Nachricht.'))return;
+    campaign=campaign||crypto.randomUUID();sending=true;remind.disabled=true;feedback.textContent='Erinnerungen werden versendet …';
+    try{const sent=await api('remind',{eventId:event.id,requestId:campaign});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;feedback.textContent=sent.accepted+' Handy-Mitteilungen angenommen · '+sent.failed+' fehlgeschlagen'+(sent.remaining?' · Versand bitte fortsetzen.':'.');remind.textContent=sent.remaining?'Versand fortsetzen':sent.failed?'Versand beendet · Fehler prüfen':'Erinnerung abgeschickt';remind.disabled=!sent.remaining;}
+    catch(e){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;feedback.textContent=(g.ConnectionStatus?.message(e)||e.message)+' Denselben Versand erneut prüfen.';remind.textContent='Versand erneut prüfen';remind.disabled=[401,403,404,409,423].includes(e.status);}
+    finally{sending=false;}
+   };
+   content.append(remind,feedback);
+
   }catch(error){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;const retry=node('button','Erneut laden');retry.type='button';retry.onclick=()=>showOverview(event);content.replaceChildren(node('p',g.ConnectionStatus?.message(error)||error.message),retry);}
  }
  function responseBadge(events=[]){

@@ -1,3 +1,88 @@
+# Kalenderabo mit H₂O-Antwortlink – ein Termineintrag
+
+Vorbereitet für Version 2026.10.28.3. Bis zur ausdrücklichen Veröffentlichung und
+bestätigten Umstellung bleibt die bisherige Anbindung unverändert.
+
+## Gewünschter Ablauf
+
+1. Alle Termine wie bisher im öffentlichen Feuerwehr-Google-Kalender vorbereiten.
+   Mitglieder behalten genau dieses Kalenderabo für die Anzeige aller Termine.
+2. In der Feuerwehr-Anwendung unter **Kalender → Verbindung → Kalenderabo &
+   H₂O-Rückmeldungen** einmal **Auf Kalenderabo mit H₂O-Link umstellen** wählen.
+   Nur die Verwaltung darf dies tun. Die Bestätigung erklärt die Auswirkungen.
+3. Unter **Kalender → Termine** beim bestehenden Termin **Rückmeldelink in Google
+   ergänzen** wählen. Dafür unter Verbindung das eigene berechtigte Google-Konto
+   verbinden. Alternativ **Rückmeldelink kopieren** und den Link selbst in dieselbe
+   Google-Beschreibung einfügen. Titel, Zeit, Ort und bestehende Notizen bleiben
+   erhalten. Es wird kein zweiter Termin erstellt und keine Abfrage gestartet.
+   Ganze Serien und Termine mit Gästen bleiben für die direkte Änderung gesperrt;
+   einzelne Serienvorkommen werden über ihre bestehende H₂O-Kennung zugeordnet.
+4. Erst wenn gewünscht **Rückmeldung anfordern** bestätigen. Das schaltet die
+   Antworten für genau diesen Termin frei und sendet Handy-Mitteilungen an die
+   berechtigten Mitglieder mit aktivierten Mitteilungen. Entschuldigte erhalten
+   keine Nachricht. Bei begrenzten Sendungen **Abfrageversand fortsetzen / prüfen**
+   verwenden; derselbe Versand bleibt einmalig. Normales Speichern, Linkergänzung,
+   Terminanzeige und Sammelfreigaben starten keine Abfrage.
+5. Mitglieder öffnen im Kalendertermin den Link **H₂O-Rückmeldung**, melden sich
+   bei Bedarf persönlich an und antworten in H₂O. Vor der Freischaltung sind die
+   Antworttasten gesperrt. Antworten lassen sich bis Terminbeginn ändern oder
+   zurücknehmen. Native Kalender-Antwortschaltflächen werden nicht verwendet.
+
+Abonnements aktualisieren Beschreibungen je nach Kalenderanbieter zeitversetzt.
+Der öffentliche Link enthält ausschließlich die Termin-ID, keine Anmeldung,
+Mitgliedsadresse, Antwort oder Berechtigung. Der Server prüft die tatsächliche
+Mitgliedschaft und Empfängerauswahl. Eine eigene Kalenderadresse ist nicht nötig.
+Die H₂O-Kalenderansicht bietet im Linkmodus keinen zusätzlichen ICS-Import an.
+
+## Bestehende zusätzliche Einladungen entfernen
+
+Die ausdrücklich bestätigte zentrale Umstellung stoppt neue Einladungs- und
+Bestätigungsmail-Aufträge sofort und macht laufende Einladungsaufträge ungültig.
+Das vorhandene eigenständige Google-Skript vorerst weiterlaufen lassen: Beim
+nächsten erfolgreichen Abgleich zieht es nur seine bisherigen persönlichen
+Einladungen zurück. Der öffentliche Kalender und sein Abo werden nicht geändert.
+Der Anbieter kann Absagemeldungen zeigen oder zurückgezogene Einträge noch eine
+Weile anzeigen. Bereits manuell importierte Kalenderdateien lassen sich nicht
+zentral entfernen. Gespeicherte H₂O-Antworten und Anwesenheitsberichte bleiben erhalten;
+alte Kalenderantworten können sie nach der Umstellung nicht mehr überschreiben.
+
+Vorhandenen privaten Kalender, Trigger und Schlüssel zum Aufräumen beibehalten.
+Das bisherige Skript versteht die bestehenden Absageaufträge; für diese Umstellung
+ist keine zusätzliche Google-Berechtigung und kein neuer Kalender erforderlich.
+Bisherige Kalenderadressen bleiben geschützt gespeichert, bis das Mitglied unter
+Konto & Sicherheit die gespeicherte Adresse entfernt. Sie werden im Linkmodus
+nicht mehr für neue Einladungen oder Bestätigungsmails genutzt.
+
+## Erinnerungen durch Gruppenführer
+
+Ein hinterlegter Gruppenführer kann in **Rückmeldungen ansehen → Erinnerung
+abschicken** nach Bestätigung für den geöffneten Termin erinnern. Der Server prüft
+Rolle, Mitgliedschaft, Empfängerauswahl, Freischaltung und Terminbeginn. Ein im
+Client behauptetes GF-Kennzeichen genügt nicht. Entschuldigte werden vor dem
+Versand erneut ausgeschlossen. Begrenzte Sendungen können mit derselben Kennung
+fortgesetzt werden. Automatische Erinnerungen bleiben ausgeschaltet.
+
+Die rote Zahl am Termine-Icon zählt angeforderte offene oder unsichere Antworten.
+Manuelle Handy-Mitteilungen markieren außerdem das installierte App-Symbol, soweit
+Gerät und Berechtigungen dies unterstützen. Es gibt keine Zustell-/Lesegarantie.
+
+## Abnahme vor Veröffentlichung
+
+Automatisiert mit künstlichen Daten prüfen: Umstellung und Konflikte, ungültige
+alte Läufe, begrenzte einmalige Benachrichtigungen, alte Kalenderantworten,
+Empfänger-/GF-Rechte, gesperrte Antwort vor Freischaltung, Anmeldung über den Link,
+Änderung/Rücknahme, Google-ETags und Erhalt vorhandener Beschreibungen einschließlich
+Add-on-Auswahlblock. Echte Abo-Aktualisierung und Entfernung bisheriger Einladungen
+auf Google, Apple Kalender und Outlook bleiben eine Geräteabnahme nach Freigabe.
+
+---
+
+## Bisherige persönliche Einladungsanbindung (Bestand und Aufräumen)
+
+Die folgenden Abschnitte dokumentieren den bisherigen Modus. Sie sind für bestehende
+Installationen und die kontrollierte Bereinigung erhalten. Für den oben gewählten
+Ablauf keine neue persönliche Einladungsanbindung einrichten.
+
 # Persönliche Kalendereinladungen und Antworten
 
 Neue Termine, Farben und die H₂O-Auswahl werden weiterhin im bisherigen

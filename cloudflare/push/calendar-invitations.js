@@ -23,9 +23,16 @@
  const publicProfile=(p,record)=>({email:p?.allowed?p.email:'',allowed:p?.allowed===true,verified:p?.allowed===true&&p.verified===true&&(!record||p.alias===record.alias&&p.revision===record.revision),pending:p?.allowed===true&&!p.verified&&p.expiresAt>Date.now(),version:p?.version||0});
  async function settings(env,data){
   const row=await env.DB.prepare('SELECT * FROM portal_calendar_bridge WHERE id=1').first(),c=await open(env,row,'calendar-bridge');
-  if(data.enabled===undefined){const source=await g.PortalService.config(env);const sourceCalendarId=source?decodeURIComponent(new URL(source.calendarUrl).pathname.split('/')[3]):null;const counts=await env.DB.prepare("SELECT SUM(CASE WHEN state=\'pending\' THEN 1 ELSE 0 END) pending,SUM(CASE WHEN last_error IS NOT NULL THEN 1 ELSE 0 END) errors FROM portal_calendar_invites").first();return {sourceCalendarId,pending:counts?.pending||0,errors:counts?.errors||0,configured:c?.enabled===true,calendarId:c?.calendarId||null,adapterVersion:c?.adapterVersion||1,version:row?.version||0,lastSyncAt:row?.updated_at||null,error:c?.error||null};}
+  if(data.enabled===undefined&&data.deliveryMode===undefined){const source=await g.PortalService.config(env);const sourceCalendarId=source?decodeURIComponent(new URL(source.calendarUrl).pathname.split('/')[3]):null;const counts=await env.DB.prepare("SELECT SUM(CASE WHEN state=\'pending\' THEN 1 ELSE 0 END) pending,SUM(CASE WHEN last_error IS NOT NULL THEN 1 ELSE 0 END) errors,SUM(CASE WHEN event<>\'verification\' AND state NOT IN (\'cancelled\',\'finished\') THEN 1 ELSE 0 END) remaining FROM portal_calendar_invites").first();return {remainingInvitations:counts?.remaining||0,deliveryMode:c?.deliveryMode||'invitations',sourceCalendarId,pending:counts?.pending||0,errors:counts?.errors||0,configured:c?.enabled===true,calendarId:c?.calendarId||null,adapterVersion:c?.adapterVersion||1,version:row?.version||0,lastSyncAt:row?.updated_at||null,error:c?.error||null};}
+  if(data.deliveryMode!==undefined){
+   if(data.deliveryMode!=='links'||data.expectedVersion!==(row?.version||0)||data.enabled!==undefined)fail('Die Kalenderanbindung wurde geändert. Bitte neu laden.');
+   const next={...(c||{enabled:false}),deliveryMode:'links'},payload=await L.seal(env,next,'calendar-bridge');
+   const saved=row?await env.DB.prepare('UPDATE portal_calendar_bridge SET payload=?,version=version+1,run_id=NULL,run_until=0 WHERE id=1 AND version=?').bind(payload,row.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_bridge(id,payload) VALUES(1,?)').bind(payload).run();
+   if(!saved.meta.changes)fail('Die Kalenderanbindung wurde gleichzeitig geändert.');
+   return {ok:true,deliveryMode:'links',configured:next.enabled===true,version:(row?.version||0)+1};
+  }
   if(typeof data.enabled!=='boolean'||data.expectedVersion!==(row?.version||0))fail('Die Kalenderanbindung wurde geändert. Bitte neu laden.');
-  const secret=data.enabled?random():null,next={enabled:data.enabled,secretHash:secret?await digest(secret):null,calendarId:c?.calendarId||null,error:null};
+  const secret=data.enabled?random():null,next={deliveryMode:c?.deliveryMode||'invitations',enabled:data.enabled,secretHash:secret?await digest(secret):null,calendarId:c?.calendarId||null,error:null};
   const payload=await L.seal(env,next,'calendar-bridge');
   const saved=row?await env.DB.prepare('UPDATE portal_calendar_bridge SET payload=?,version=version+1,run_id=NULL,run_until=0 WHERE id=1 AND version=?').bind(payload,row.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_bridge(id,payload) VALUES(1,?)').bind(payload).run();
   if(!saved.meta.changes)fail('Die Kalenderanbindung wurde gleichzeitig geändert.');
@@ -33,6 +40,11 @@
  }
  async function preference(env,data,record){
   const c=await config(env),old=await profile(env,record.memberId),version=old?.version||0;
+  if(c?.deliveryMode==='links'){
+   if(data.allowed===false&&data.email===undefined&&data.confirm===undefined){} // Members may still erase an old address.
+   else if(data.email!==undefined||data.confirm!==undefined||data.allowed!==undefined)fail('Die Rückmeldung erfolgt über den H₂O-Link im Kalenderabo. Persönliche Einladungen sind ausgeschaltet.',409);
+   else return {...publicProfile(old,record),deliveryMode:'links',configured:c?.enabled===true};
+  }
   if(data.email===undefined&&data.confirm===undefined&&data.allowed===undefined)return {...publicProfile(old,record),configured:c?.enabled===true};
   if(data.expectedVersion!==version)fail('Die Kalenderadresse wurde geändert. Bitte neu laden.');
   let next;
@@ -61,7 +73,7 @@
   const payload=await L.seal(env,next,'calendar-profile:'+record.memberId);
   let saved;try{saved=version?await env.DB.prepare('UPDATE portal_calendar_profiles SET alias=?,revision=?,email_hash=?,payload=?,version=version+1 WHERE member=? AND version=?').bind(record.alias,record.revision,emailHash,payload,record.memberId,version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_profiles(member,alias,revision,email_hash,payload) VALUES(?,?,?,?,?)').bind(record.memberId,record.alias,record.revision,emailHash,payload).run();}catch{fail('Die Kalenderadresse konnte nicht eindeutig gespeichert werden. Bitte neu laden.');}
   if(!saved.meta.changes)fail('Die Kalenderadresse wurde gleichzeitig geändert.');
-  return {...publicProfile({...next,version:version+1}),configured:c?.enabled===true};
+  return {...publicProfile({...next,version:version+1}),deliveryMode:c?.deliveryMode||'invitations',configured:c?.enabled===true};
  }
  async function requestResponses(env,data,cal){
   const event=cal.events.find(e=>e.id===data.eventId&&e.kind==='probe'&&e.approved);
@@ -69,12 +81,12 @@
   if(cal.stale)fail('Kalenderstand bitte zuerst aktualisieren.',503);
   if(event.start<=Date.now())fail('Der Termin hat bereits begonnen.');
   if(typeof data.requestId!=='string'||! /^[A-Za-z0-9_-]{8,100}$/.test(data.requestId))fail('Ungültige Anforderungskennung.',400);
-  const old=await env.DB.prepare('SELECT requested_at FROM portal_response_requests WHERE event=?').bind(event.id).first();if(old)return {ok:true,requestedAt:old.requested_at};
+  const old=await env.DB.prepare('SELECT request,requested_at FROM portal_response_requests WHERE event=?').bind(event.id).first();if(old)return {ok:true,requestId:old.request,requestedAt:old.requested_at};
   if(data.expectedVersion!==cal.rulesVersion||data.expectedGroupsVersion!==cal.groupsVersion)fail('Terminauswahl wurde geändert. Bitte erneut prüfen.');
   const requestedAt=Date.now(),meta=await L.meta(env);
   const saved=await env.DB.prepare("INSERT OR IGNORE INTO portal_response_requests(event,request,requested_at) SELECT ?,?,? WHERE COALESCE((SELECT version FROM portal_rules WHERE id=1),0)=? AND COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=? AND EXISTS(SELECT 1 FROM portal_calendar WHERE id=1 AND fetched_at=?) AND EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=? AND state='active')").bind(event.id,data.requestId,requestedAt,cal.rulesVersion,cal.groupsVersion,cal.fetchedAt,meta.seq).run();
-  if(!saved.meta.changes){const current=await env.DB.prepare('SELECT requested_at FROM portal_response_requests WHERE event=?').bind(event.id).first();if(current)return {ok:true,requestedAt:current.requested_at};fail('Termin wurde gleichzeitig geändert. Bitte neu prüfen.');}
-  return {ok:true,requestedAt};
+  if(!saved.meta.changes){const current=await env.DB.prepare('SELECT request,requested_at FROM portal_response_requests WHERE event=?').bind(event.id).first();if(current)return {ok:true,requestId:current.request,requestedAt:current.requested_at};fail('Termin wurde gleichzeitig geändert. Bitte neu prüfen.');}
+  return {ok:true,requestId:data.requestId,requestedAt};
  }
  async function context(env,onlyMembers=null){
   const configuration=await g.PortalService.config(env),calendar=await g.PortalService.decorate(env,await g.PortalService.calendar(env));
@@ -89,7 +101,7 @@
  }
  async function desired(env,onlyMembers=null){
   const ctx=await context(env,onlyMembers),out=new Map(),now=Date.now();
-  for(const p of ctx.profiles){
+  for(const p of (await config(env))?.deliveryMode==='links'?[]:ctx.profiles){
    if(!p.verified){if(p.expiresAt<=now)continue;const id=await digest('verify:'+p.member+':'+p.version),day=new Date(p.requestedAt+DAY).toISOString().slice(0,10);out.set(id,{id,member:p.member,event:'verification',profileVersion:p.version,verification:true,email:p.email,summary:'H₂O · Kalenderadresse bestätigen',description:'Bestätige deine freiwillige Kalenderanbindung in deinem angemeldeten H₂O-Konto:\n'+ROOT+'?calendarConfirm='+p.confirmToken+'\nDer Link ist einmalig und 24 Stunden gültig. Wenn du dies nicht angefordert hast, ignoriere diese E-Mail. Es werden keine Termine versendet.',start:{date:day},end:{date:new Date(Date.parse(day)+DAY).toISOString().slice(0,10)},colorId:null});continue;}
    for(const e of ctx.calendar.events){
     if(e.kind!=='probe'||!e.approved||!e.responseRequested||e.end<=now||Array.isArray(e.recipientIds)&&!e.recipientIds.includes(p.member))continue;
@@ -235,11 +247,12 @@
   return {ok:true};
  }
  async function managedEvents(env,member){
-  const out=new Set(),p=await profile(env,member);if(!p?.allowed||!p.verified)return out;
+  const out=new Set();if((await config(env))?.deliveryMode==='links')return out;const p=await profile(env,member);if(!p?.allowed||!p.verified)return out;
   try{const record=await g.PortalService.assertAlias(env,p.alias);if(record.memberId!==member||record.revision!==p.revision)return out;}catch{return out;}
   for(const row of (await env.DB.prepare('SELECT * FROM portal_calendar_invites WHERE member=?').bind(member).all()).results){const item=await open(env,row,'calendar-invite:'+row.id);if(item.profileVersion===p.version&&(item.phase==='active'||item.delivered===true&&item.phase==='pending')&&!item.verification)out.add(row.event);}
   return out;
  }
  const managed=async(env,member,event)=>(await managedEvents(env,member)).has(event);
- g.CalendarInvitations={schema,settings,preference,bridge,managed,managedEvents,email,requestResponses};
+ const linkMode=async env=>(await config(env))?.deliveryMode==='links';
+ g.CalendarInvitations={linkMode,schema,settings,preference,bridge,managed,managedEvents,email,requestResponses};
 })(globalThis);
