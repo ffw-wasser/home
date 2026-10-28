@@ -23,7 +23,7 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
   });
   await page.goto('http://localhost/index.html');await page.locator('#appStartup').waitFor({state:'detached'});
   assert.equal(await page.locator('#app-update-banner').isVisible(),false);
-  await page.locator('#menuToggleButton').click();await page.locator('#helpTab').click();await page.locator('#app-update-check').click();
+  await page.locator('#menuToggleButton').click();await page.locator('#helpTab').click();await page.locator('[data-info-view="privacyHelpView"]').click();await page.locator('#app-update-check').click();
   await page.waitForFunction(()=>document.querySelector('#app-update-message').textContent.includes('neuesten Stand'));
   remote=next;await page.evaluate(()=>window.dispatchEvent(new Event('online')));
   await page.locator('#app-update-now').waitFor({state:'visible'});
