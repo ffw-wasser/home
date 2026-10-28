@@ -70,6 +70,7 @@ jobs:
         run: |
           node tests/passkey-browser.cjs
           node tests/portal-home-login-browser.cjs
+          node tests/portal-qr-first-open-browser.cjs
       - name: Test password alternative with synthetic accounts
         run: node tests/password-browser.cjs
       - name: Test Google Calendar PKCE administration flow

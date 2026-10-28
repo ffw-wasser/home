@@ -49,7 +49,7 @@
    if($('installSection')?.hidden){say('H₂O ist bereit.');next.hidden=false;next.textContent='Weiter';next.onclick=()=>go('finish');}
    else{
     const state=g.DeckelInstall.currentStep();
-    if(state.systemGuide){title.textContent='H₂O auf den Home-Bildschirm';progress.textContent='iPhone / iPad';say('Jetzt im Safari-Menü:');}
+    if(state.systemGuide){title.textContent='H₂O auf den Home-Bildschirm';progress.textContent='iPhone / iPad';say('Jetzt diese vier Schritte in Safari ausführen:');}
     place('installSection').open=true;if(!state.systemGuide)progress.textContent='App-Symbol · Schritt '+(state.index+1)+' von '+state.total;
     back.hidden=state.systemGuide||state.index===0;next.hidden=false;next.textContent=state.systemGuide?'Symbol ist hinzugefügt':state.index===state.total-1?'Fertig':'Weiter';
     next.onclick=()=>{const current=g.DeckelInstall.currentStep();if(current.systemGuide||current.index===current.total-1)go('finish');else{g.DeckelInstall.moveStep(1);render();}};
@@ -61,14 +61,20 @@
   }
   place('identity-message');title.focus();
  }
- function init(hasTicket){
-  if(mounted||g.H2OIdentity?.session())return;
+ function start(hasTicket){
+  restore();step='welcome';first=false;setupFinished=false;method='passkey';ticketFromLink=false;
+  if(g.DeckelInstall?.isStandalone()){step='method';}else if(hasTicket&&hasRelease()){first=true;ticketFromLink=true;step='method';}
+  if(!dialog.open)dialog.showModal();render();
+ }
+ function init(hasTicket,restart=false){
+  if(g.H2OIdentity?.session())return;
+  if(mounted){if(restart)start(hasTicket);return;}
   mounted=true;dialog=node('dialog');dialog.id='h2o-onboarding';dialog.className='h2o-onboarding';dialog.setAttribute('aria-labelledby','h2o-onboarding-title');
   progress=node('p');progress.className='onboarding-progress';progress.setAttribute('aria-live','polite');title=node('h2');title.id='h2o-onboarding-title';title.tabIndex=-1;content=node('div');
   const nav=node('nav');nav.setAttribute('aria-label','Einrichtung');back=node('button','Zurück');next=node('button','Weiter');later=node('button');later.className='onboarding-secondary';back.className='onboarding-secondary';back.type=next.type=later.type='button';
   back.onclick=()=>{if(step==='install'){g.DeckelInstall.moveStep(-1);render();}else if(step==='method')go(first&&!ticketFromLink?'release':'welcome');else if(step==='access')go('method');else go('welcome');};
   nav.append(back,next);dialog.append(progress,title,content,nav,later);document.body.append(dialog);
-  dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.showModal();if(g.DeckelInstall?.isStandalone()){first=false;step='method';}else if(hasTicket&&hasRelease()){first=true;ticketFromLink=true;step='method';}render();
+  dialog.addEventListener('cancel',event=>{event.preventDefault();close();});start(hasTicket);
  }
  g.H2OOnboarding={init,loginCode(){return dialog?.open?(first?$('identity-code').value.trim():''):null;},refresh(){if(dialog?.open)render();},accessReady(){if(!dialog?.open)return;setupFinished=true;first=false;go('access');},signedIn(){if(!dialog?.open)return;if(first||setupFinished){g.DeckelInstall.moveStep(-Infinity);go('install');}else close();}};
 })(globalThis);
