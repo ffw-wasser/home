@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const read=p=>fs.readFileSync(__dirname+'/../../'+p,'utf8'),icsTime=ms=>new Date(ms).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
 function calendar(events){return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'+events.join('\r\n')+'\r\nEND:VCALENDAR\r\n';}
 function event(start=Date.now()+86400000,title='Testprobe',extra=''){return `BEGIN:VEVENT\r\nUID:test-event\r\nDTSTART:${icsTime(start)}\r\nDTEND:${icsTime(start+3600000)}\r\nSUMMARY:${title}\r\n${extra}\r\nEND:VEVENT`;}
-async function fixture({now=Date.now(),authenticated=true,fetchPdf=null,requestReplies=true}={}){
+async function fixture({now=Date.now(),authenticated=true,fetchPdf=null}={}){
  const sql=new DatabaseSync(':memory:');for(const p of ['schema.sql','central.sql','challenge.sql'])sql.exec(read('cloudflare/push/'+p));
  let batchFailure=false;const DB={prepare(query){return {query,args:[],bind(...args){return {...this,args};},async first(){return sql.prepare(this.query).get(...this.args)||null;},async all(){return {results:sql.prepare(this.query).all(...this.args)};},async run(){const r=sql.prepare(this.query).run(...this.args);return {meta:{changes:Number(r.changes)}};}};},async batch(statements){sql.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());if(batchFailure){batchFailure=false;throw Error('failure');}sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
  const start=now+86400000-30000,sends=[];let raw=calendar([event(start)]),offline=false,calendarFetches=0;const clock={now};
@@ -13,7 +13,7 @@ async function fixture({now=Date.now(),authenticated=true,fetchPdf=null,requestR
  const token=authenticated?await require('./portal-session.cjs').sessions(c,env,sql,people,clock.now):vm.runInContext('(env,r)=>capability(env,r.alias,r.revision,"commands")',c),call=async(path,data={},person=people[0],admin=false,ctx)=>{const auth=admin?env.ADMIN_TOKEN:await token(env,person),r=await c.worker.fetch(new Request('https://test.example'+(admin?'/admin/portal/':'/portal/')+path,{method:'POST',headers:{Origin:'https://ffw-wasser.github.io',Authorization:'Bearer '+auth,'Content-Type':'application/json'},body:JSON.stringify(admin?{source:'test-source',...data}:{...data,alias:person.alias,revision:person.revision})}),env,ctx);return {status:r.status,value:r.headers.get('Content-Type')?.startsWith('application/pdf')?new Uint8Array(await r.arrayBuffer()):await r.json()};};
  await call('configure',{calendarUrl:'https://calendar.google.com/calendar/ical/test-calendar/public/basic.ics',reminders:true,leadHours:24},null,true);await call('roster',{members:people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0}))},null,true);
  const initial=(await call('list',{},null,true)).value;assert.equal((await call('classify',{eventId:initial.events[0].id,kind:'probe',approved:true,expectedVersion:initial.rulesVersion},null,true)).status,200);
- if(requestReplies){const cal=(await call('list',{},null,true)).value;assert.equal((await call('request-responses',{eventId:cal.events[0].id,requestId:webcrypto.randomUUID(),expectedVersion:cal.rulesVersion,expectedGroupsVersion:cal.groupsVersion},null,true)).status,200);}
+
  return {c,env,DB,sql,L,people,start,sends,clock,call,raw:v=>raw=v,offline:v=>offline=v,failBatch:()=>batchFailure=true,calendarFetches:()=>calendarFetches};
 }
 module.exports={fixture};

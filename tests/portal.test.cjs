@@ -440,14 +440,22 @@ test('Optionale Google-Farben blockieren die Terminliste auch beim ersten Abruf 
  try{const colors=await c.GoogleCalendarColors.read(env,config,[{start:Date.now(),end:Date.now()+3600000}],{waitUntil:job=>jobs.push(job)});assert.equal(colors.status,'fallback');assert.equal(jobs.length,1);}finally{release();await Promise.all(jobs);}
 });
 
-test('GF-Erinnerung benötigt echte Rolle, freigegebene Abfrage und passenden Termin; Client-Rollen werden ignoriert',async()=>{
- const f=await fixture({requestReplies:false}),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
+test('Jeder echte GF kann ohne Abfragefreigabe erinnern; Client-Rollen, fremde und beendete Termine sind gesperrt',async()=>{
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];
  for(const p of f.people)await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/'+p.memberId},p);
- const body={eventId:e.id,requestId:crypto.randomUUID()};assert.equal((await f.call('remind',{...body,leader:true},f.people[1])).status,403);assert.equal(f.sends.length,0);
- assert.equal((await f.call('remind',body)).status,423);assert.equal(f.sends.length,0);
- await f.call('request-responses',{eventId:e.id,requestId:crypto.randomUUID(),expectedVersion:cal.rulesVersion,expectedGroupsVersion:cal.groupsVersion},null,true);
+ await f.call('roster',{members:f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+i,leader:i===0||i===2}))},null,true);
+ const body={eventId:e.id,requestId:crypto.randomUUID()};assert.equal((await f.call('remind',{...body,leader:true},f.people[1])).status,403);assert.equal(f.sends.length,0);assert.equal((await f.call('list')).value.events[0].remindedAt,null);
  await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:0,requestId:crypto.randomUUID()},f.people[1]);
- let sent=await f.call('remind',body);assert.equal(sent.status,200);assert.equal(sent.value.accepted,2);assert.equal(sent.value.remaining,2);
- for(let i=0;i<3;i++)sent=await f.call('remind',body);assert.equal(sent.value.remaining,0);assert.equal(f.sends.length,4);assert.equal(f.sends.some(x=>x.url.endsWith('/member-2')),false);
+ let sent=await f.call('remind',body,f.people[2]);assert.equal(sent.status,200);assert.equal(sent.value.accepted,2);assert.equal(sent.value.remaining,2);
+ for(let i=0;i<3;i++)sent=await f.call('remind',body,f.people[2]);assert.equal(sent.value.remaining,0);assert.equal(f.sends.length,4);assert.equal(f.sends.some(x=>x.url.endsWith('/member-2')),false);
  await f.call('roster',{members:f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+i,leader:false}))},null,true);assert.equal((await f.call('remind',{...body,requestId:crypto.randomUUID(),leader:true})).status,403);
+});
+
+test('GF-Erinnerungen ohne Freigabeschritt bleiben auf sichtbare kommende Termine begrenzt',async()=>{
+ const f=await fixture(),cal=(await f.call('list',{},null,true)).value,e=cal.events[0],body={eventId:e.id,requestId:crypto.randomUUID()};
+ assert.equal((await f.call('remind',{...body,requestId:''})).status,400);assert.equal((await f.call('list')).value.events[0].remindedAt,null);
+ assert.equal((await f.call('classify',{eventId:e.id,kind:'probe',approved:true,recipientIds:[f.people[1].memberId],expectedVersion:cal.rulesVersion},null,true)).status,200);
+ assert.equal((await f.call('remind',body)).status,404,'GF outside the audience cannot send');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_event_reminders').get().n,0);
+ const next=(await f.call('list',{},null,true)).value;await f.call('classify',{eventId:e.id,kind:'probe',approved:true,recipientIds:null,expectedVersion:next.rulesVersion},null,true);
+ f.clock.now=e.start+1;assert.equal((await f.call('remind',body)).status,409);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_event_reminders').get().n,0);
 });

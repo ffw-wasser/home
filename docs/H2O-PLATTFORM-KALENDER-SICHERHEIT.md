@@ -1,3 +1,6 @@
+> Historischer Arbeitsstand. Aktuelle Kalenderbedienung: [Kalender und Jahresplan](KALENDER-BEDIENUNG.md).
+> Persönliche Einladungen und die zusätzliche Abfragefreigabe sind entfernt; jeder hinterlegte GF kann direkt erinnern.
+
 # H₂O – Plattform, Kalender und Sicherheit
 
 Stand: 27.10.2026. **Aktueller Einladungs-/Antwortstand: siehe Aktualisierung am Ende. Die nachfolgenden früheren Arbeitspakete dokumentieren den jeweiligen damaligen Lieferumfang.**
