@@ -89,6 +89,8 @@ jobs:
         run: |
           node tests/calendar-private-source-browser.cjs
           BROWSER_ENGINE=webkit node tests/calendar-private-source-browser.cjs
+          TEST_PRIVATE_INITIAL_FAILURE=1 node tests/calendar-private-source-browser.cjs
+          TEST_PRIVATE_INITIAL_FAILURE=1 BROWSER_ENGINE=webkit node tests/calendar-private-source-browser.cjs
 
       - name: Test private calendar invitations and consistent account sections
         run: |
