@@ -98,7 +98,10 @@ jobs:
           BROWSER_ENGINE=webkit node tests/calendar-invitations-browser.cjs
 
       - name: Test direct notification activation and settings layout
-        run: node tests/portal-notifications-browser.cjs
+        run: |
+          node tests/portal-notifications-browser.cjs
+          node tests/portal-pull-refresh-browser.cjs
+          BROWSER_ENGINE=webkit node tests/portal-pull-refresh-browser.cjs
 
       - name: Test movable portal icon sizes
         run: node tests/portal-icons-browser.cjs
