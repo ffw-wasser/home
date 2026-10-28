@@ -90,3 +90,15 @@ Jeder Eintrag enthält automatisch den öffentlichen, nicht berechtigenden H₂O
 Zu- und Absage sind für sichtbare kommende Termine sofort möglich. Jeder hinterlegte GF
 kann direkt erinnern. Die zusätzliche Abfragefreigabe und ihre Statuskarte sind entfernt.
 Die technische Bereinigung alter Testkopien bleibt kompatibel; keine neue Einrichtung.
+
+## Privater Kalenderimport
+
+`portal.js` behält `calendarUrl` als bisherige, nicht berechtigende Identität.
+`privateCalendarUrl` ist ein verschlüsseltes, nie ausgegebenes Lesegeheimnis.
+`privateCalendarRevision` trennt Caches bei Wechsel des Zugangs; Ereignis-/Serien-IDs
+bleiben identisch. `/admin/portal/private-calendar` prüft denselben Kalender,
+verwendet Versionsschutz und schaltet bei Erfolg den öffentlichen H₂O-Feed leer.
+Die Google-Freigabe selbst wird anschließend in Google abgeschaltet.
+`js/features/portal/calendar-private-source.js` stellt die geschützte Einrichtung
+mit leerbarem Passwortfeld und erneuter Zugriffsprüfung bereit.
+Prüfungen: `tests/calendar-private-source.test.cjs`, `tests/calendar-private-source-browser.cjs`.
