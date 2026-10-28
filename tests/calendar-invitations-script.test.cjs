@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('docs/google-calendar-invitations/Code.gs','utf8');
-const job={id:'a'.repeat(64),googleEventId:'h2o'+'a'.repeat(64)+'0',fingerprint:'b'.repeat(64),action:'upsert',email:'member@example.test',summary:'Probe Beispiel',description:'Öffentliche Termininformation',location:'GH Wasser',start:{dateTime:'2030-06-10T18:00:00Z',timeZone:'Europe/Berlin'},end:{dateTime:'2030-06-10T20:00:00Z',timeZone:'Europe/Berlin'}};
+const job={id:'a'.repeat(64),googleEventId:'h2o'+'a'.repeat(64)+'0',action:'cancel'};
 function fixture(options={}){
  const properties=new Map([['H2O_CALENDAR_ID','public-source'],['H2O_INVITATION_SECRET','c'.repeat(64)],['H2O_INVITATION_CALENDAR_ID','private-calendar'],['H2O_INVITATION_SYNC_TOKEN','old-sync'],['H2O_INVITATION_REMINDERS_V2','1']]),requests=[],mails=[],state={existing:options.existing||null,expired:false,released:0,ackFailed:false,interval:null};
  const googleEvent=()=>({id:job.googleEventId,status:'confirmed',extendedProperties:{private:{h2oInvitation:job.id,h2oFingerprint:job.fingerprint}},attendees:[{email:job.email,responseStatus:'accepted'}]});
@@ -13,7 +13,7 @@ function fixture(options={}){
    if(action==='authorize')return response(200,{ok:true,eligible:options.eligible!==false});
    if(action==='observe'&&options.observeFails)return response(503,{error:'synthetic failure'});
    if(action==='result'&&options.ackFailsOnce&&!state.ackFailed){state.ackFailed=true;return response(503,{error:'synthetic failure'});}
-   return response(200,{ok:true});
+   return response(200,{ok:true,done:options.done===true});
   }
   assert.ok(url.startsWith('https://www.googleapis.com/calendar/v3/'));assert.ok(!url.includes('calendars/public-source/events'),'never write guests into the public source');
   if(url.includes('/acl?'))return response(200,{items:options.publicCalendar?[{role:'reader',scope:{type:'default'}}]:[{role:'owner',scope:{type:'user',value:'owner@example.test'}}]});
@@ -28,57 +28,10 @@ function fixture(options={}){
   const value=JSON.parse(opts.payload);state.existing={...(opts.method==='patch'?state.existing:{}),...value,id:value.id||job.googleEventId,etag:'"saved"'};if(options.unconfirmedStatus)state.existing.attendees[0].responseStatus='needsAction';return response(200,state.existing);
  }}});vm.runInContext(source,c);return {c,state,properties,requests,mails};
 }
-const workerCalls=(f,action)=>f.requests.filter(r=>r.url.endsWith('/portal/calendar-bridge/'+action)).map(r=>JSON.parse(r.opts.payload));
-test('Standalone invitation adapter creates one private guest copy, uses notifications and acknowledges bounded reply batches',()=>{
- const f=fixture({jobs:[job]});f.c.h2oSyncInvitations();
- const write=f.requests.find(r=>r.opts.method==='post'&&r.url.includes('googleapis.com')&&r.url.includes('/events?'));assert.ok(write);const event=JSON.parse(write.opts.payload);
- assert.deepEqual(event.reminders,{useDefault:false,overrides:[]});assert.equal(event.visibility,'private');assert.equal(event.guestsCanSeeOtherGuests,false);assert.equal(event.guestsCanInviteOthers,false);assert.equal(event.guestsCanModify,false);assert.deepEqual(event.attendees,[{email:job.email,responseStatus:'needsAction'}]);assert.match(write.url,/sendUpdates=all/);assert.equal(write.opts.followRedirects,false);
- assert.equal(workerCalls(f,'authorize').length,1);assert.equal(workerCalls(f,'observe')[0].items[0].googleStatus,'accepted');assert.equal(f.properties.get('H2O_INVITATION_SYNC_TOKEN'),'next-sync');assert.equal(f.state.released,1);
-});
-test('Public or reader-shared invitation calendars stop before any H2O job or member address is fetched',()=>{
- const f=fixture({publicCalendar:true,jobs:[job]});assert.throws(()=>f.c.h2oSyncInvitations(),/privat/);assert.equal(workerCalls(f,'begin').length,0);assert.equal(f.mails.length,0);assert.equal(f.state.released,1);
-});
-test('Withdrawn jobs never send mail or write Google events; foreign events are not deleted',()=>{
- const f=fixture({jobs:[job],eligible:false});f.c.h2oSyncInvitations();assert.equal(f.requests.some(r=>r.url.includes('googleapis.com')&&['post','patch','delete'].includes(r.opts.method)),false);
- const foreign=fixture({jobs:[{...job,action:'cancel'}],existing:{id:job.googleEventId,etag:'"foreign"',extendedProperties:{private:{h2oInvitation:'foreign'}}}});foreign.c.h2oSyncInvitations();assert.equal(foreign.requests.some(r=>r.opts.method==='delete'),false);assert.ok(workerCalls(foreign,'result')[0].error);
-});
-test('A lost acknowledgement does not resend an already saved invitation or confirmation email',()=>{
- const existing={...job,id:job.googleEventId,etag:'"existing"',extendedProperties:{private:{h2oInvitation:job.id,h2oFingerprint:job.fingerprint}},attendees:[{email:job.email,responseStatus:'accepted'}]};
- const f=fixture({jobs:[job],existing});f.c.h2oSyncInvitations();assert.equal(f.requests.some(r=>r.url.includes('googleapis.com')&&['post','patch'].includes(r.opts.method)),false);
- const mail=fixture({jobs:[{...job,verification:true}],ackFailsOnce:true,delta:[]});mail.c.h2oSyncInvitations();mail.c.h2oSyncInvitations();assert.equal(mail.mails.length,1);assert.equal(mail.mails[0].to,job.email);assert.equal(JSON.stringify(mail.mails).includes('c'.repeat(64)),false);
-});
-test('Mail quota failure leaves replies operational and the verification job retryable',()=>{
- const f=fixture({jobs:[{...job,verification:true}],quota:0});f.c.h2oSyncInvitations();assert.equal(f.mails.length,0);assert.ok(workerCalls(f,'result')[0].error);assert.equal(workerCalls(f,'observe').length,1);assert.equal(f.properties.has('H2O_VERIFICATION_'+job.id),false);
-});
-test('Delta token expiry re-reads safely; failed answer import never advances the cursor',()=>{
- const f=fixture({expired:true});f.c.h2oSyncInvitations();const reads=f.requests.filter(r=>r.url.includes('/events?'));assert.equal(reads.length,2);assert.match(reads[0].url,/syncToken=/);assert.doesNotMatch(reads[1].url,/syncToken=/);assert.equal(f.properties.get('H2O_INVITATION_SYNC_TOKEN'),'next-sync');
- const failing=fixture({observeFails:true});assert.throws(()=>failing.c.h2oSyncInvitations());assert.equal(failing.properties.get('H2O_INVITATION_SYNC_TOKEN'),'old-sync');assert.equal(workerCalls(failing,'finish').length,0);
-});
-test('Deleted invitation tombstones are reported, and standalone setup installs a five-minute trigger',()=>{
- const f=fixture({delta:[{id:job.googleEventId,status:'cancelled'}]});f.c.h2oSetupInvitations();assert.equal(f.state.interval,5);assert.equal(workerCalls(f,'observe')[0].items[0].cancelled,true);assert.equal(f.state.released,2);
- const manifest=JSON.parse(fs.readFileSync('docs/google-calendar-invitations/appsscript.json','utf8'));assert.ok(!manifest.oauthScopes.includes('https://www.googleapis.com/auth/calendar.events'));assert.equal(manifest.addOns,undefined);assert.equal(manifest.webapp,undefined);assert.ok(manifest.oauthScopes.includes('https://www.googleapis.com/auth/script.send_mail'));assert.ok(!manifest.oauthScopes.some(s=>/drive|gmail|admin/.test(s)));
-});
+const existing=()=>({id:job.googleEventId,status:'confirmed',etag:'"old"',extendedProperties:{private:{h2oInvitation:job.id}}});
+test('Bereinigung löscht nur die eigene alte Einladung mit ETag und erstellt weder Kalender noch E-Mail',()=>{const f=fixture({jobs:[job],existing:existing()});f.c.h2oSyncInvitations();const writes=f.requests.filter(r=>r.url.includes('googleapis.com')&&['post','patch','delete'].includes(r.opts.method));assert.equal(writes.length,1);assert.equal(writes[0].opts.method,'delete');assert.equal(writes[0].opts.headers['If-Match'],'"old"');assert.match(writes[0].url,/sendUpdates=all/);assert.equal(f.mails.length,0);assert.throws(()=>f.c.h2oSetupInvitations(),/abgelöst/);});
+test('Fremde Kalender und Marker sowie neue Auftragsarten werden ohne Änderungen abgelehnt',()=>{for(const options of [{publicCalendar:true,jobs:[job]},{jobs:[{...job,action:'upsert'}]}]){const f=fixture(options);assert.throws(()=>f.c.h2oSyncInvitations());assert.equal(f.requests.some(r=>r.url.includes('googleapis.com')&&r.opts.method==='delete'),false);}const f=fixture({jobs:[job],existing:{...existing(),extendedProperties:{private:{h2oInvitation:'foreign'}}}});f.c.h2oSyncInvitations();assert.equal(f.requests.some(r=>r.opts.method==='delete'),false);assert.equal(f.mails.length,0);});
+test('Nicht vorhandene oder bereits gelöschte eigene Einladungen werden ohne erneute Löschung quittiert',()=>{for(const value of [null,{...existing(),status:'cancelled'}]){const f=fixture({jobs:[job],existing:value});f.c.h2oSyncInvitations();assert.equal(f.requests.some(r=>r.opts.method==='delete'),false);assert.ok(f.requests.some(r=>r.url.endsWith('/result')));}});
+test('Das Bereinigungsmanifest fordert keine E-Mail-Berechtigung und keine neuen Kalender an',()=>{const m=JSON.parse(fs.readFileSync('docs/google-calendar-invitations/appsscript.json'));assert.equal(m.oauthScopes.some(x=>/send_mail|gmail/.test(x)),false);assert.doesNotMatch(source,/MailApp|\/events\?.*post|ScriptApp\.newTrigger/);});
 
-test('Finished invitation cleanup removes only the private copy and requests attendee updates',()=>{const f=fixture({jobs:[{...job,action:'cleanup'}],existing:{id:job.googleEventId,etag:'\"v1\"',extendedProperties:{private:{h2oInvitation:job.id}}},delta:[]});f.c.h2oSyncInvitations();const removal=f.requests.find(r=>r.opts.method==='delete');assert.ok(removal);assert.match(removal.url,/sendUpdates=all/);assert.equal(workerCalls(f,'result')[0].action,'cleanup');});
-
-const replyJob={...job,action:'reply',replyVersion:7,responseStatus:'declined'};
-const replyEvent=()=>({id:job.googleEventId,status:'confirmed',etag:'"old"',summary:'Original title',extendedProperties:{private:{h2oInvitation:job.id,h2oFingerprint:job.fingerprint}},attendees:[{email:job.email,responseStatus:'accepted'}]});
-test('App reply updates only the single private guest response with ETag and acknowledges the exact app version',()=>{
- const f=fixture({jobs:[replyJob],existing:replyEvent(),deltaFromExisting:true});f.c.h2oSyncInvitations();
- const patch=f.requests.find(r=>r.opts.method==='patch');assert.ok(patch);assert.match(patch.url,/sendUpdates=all/);assert.equal(patch.opts.headers['If-Match'],'"old"');assert.deepEqual(JSON.parse(patch.opts.payload),{attendees:[{email:job.email,responseStatus:'declined'}]});
- assert.equal(f.state.existing.summary,'Original title');assert.equal(workerCalls(f,'result')[0].replyVersion,7);assert.equal(workerCalls(f,'result')[0].responseStatus,'declined');assert.equal(workerCalls(f,'observe')[0].items[0].googleStatus,'declined');assert.equal(workerCalls(f,'begin')[0].adapterVersion,2);
-});
-test('Calendar reply retries do not send duplicate updates after a lost acknowledgement',()=>{
- const f=fixture({jobs:[replyJob],existing:replyEvent(),deltaFromExisting:true,ackFailsOnce:true});f.c.h2oSyncInvitations();f.c.h2oSyncInvitations();assert.equal(f.requests.filter(r=>r.opts.method==='patch').length,1);assert.equal(workerCalls(f,'result').at(-1).replyVersion,7);
-});
-test('Foreign guests, missing invitations, concurrent Google edits and unconfirmed responses leave app replies retryable',()=>{
- for(const options of [{existing:null},{existing:{...replyEvent(),attendees:[{email:'other@example.test',responseStatus:'accepted'}]}},{existing:{...replyEvent(),extendedProperties:{private:{h2oInvitation:job.id,h2oFingerprint:'old'}}}},{existing:replyEvent(),patchConflict:true},{existing:replyEvent(),unconfirmedStatus:true}]){
-  const f=fixture({...options,jobs:[replyJob],delta:[]});f.c.h2oSyncInvitations();const ack=workerCalls(f,'result');assert.equal(ack.length,1);assert.ok(ack[0].error);assert.equal(ack[0].replyVersion,7);
- }
-});
-
-test('Updating the adapter clears organizer reminders once without bulk guest notifications',()=>{
- const f=fixture({delta:[{...replyEvent(),reminders:{useDefault:true}}]});f.properties.delete('H2O_INVITATION_REMINDERS_V2');f.c.h2oSyncInvitations();
- const read=f.requests.find(r=>r.url.includes('/events?'));assert.doesNotMatch(read.url,/syncToken=/);
- const patch=f.requests.find(r=>r.opts.method==='patch');assert.match(patch.url,/sendUpdates=none/);assert.deepEqual(JSON.parse(patch.opts.payload),{reminders:{useDefault:false,overrides:[]}});assert.equal(patch.opts.headers['If-Match'],'"old"');assert.equal(f.properties.get('H2O_INVITATION_REMINDERS_V2'),'1');
-});
+test('Nach bestätigter vollständiger Bereinigung wird ausschließlich der eigene alte Trigger entfernt',()=>{const f=fixture({done:true}),own={getHandlerFunction:()=> 'h2oSyncInvitations'},other={getHandlerFunction:()=> 'anotherTask'},removed=[];f.c.ScriptApp.getProjectTriggers=()=>[own,other];f.c.ScriptApp.deleteTrigger=t=>removed.push(t);f.c.h2oSyncInvitations();assert.equal(removed.length,1);assert.equal(removed[0],own);});
