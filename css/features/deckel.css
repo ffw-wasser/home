@@ -82,6 +82,9 @@
 /* One calm type scale: readable content, clear actions, quieter supporting text. */
 .phone-hint,.phone-deposit label,.cash-confirm span{font-size:1rem;line-height:1.6}
 .deckel-more p,.install-card p,.install-card li{font-size:var(--portal-body-size);line-height:1.6}
+.install-card select{display:block;max-width:100%;width:100%;min-height:48px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+.install-navigation{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.install-navigation button{flex:1 1 130px;width:auto}
 .phone-edit button,.phone-rewards button,#phone-undo,.notification-settings button,.install-card button,.payment-area summary,.phone-sync-info summary,.loyalty-card summary{font-size:1rem}
 
 @media(max-width:360px){.deckel-header{gap:8px;padding:8px 10px}.deckel-title{gap:8px}.deckel-title h1{font-size:1.25rem}}

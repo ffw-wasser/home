@@ -73,7 +73,7 @@
    const dx=Math.abs(touch.clientX-pull.x),dy=touch.clientY-pull.y;
    if(!pull.active){if(Math.max(dx,Math.abs(dy))<12)return;if(dy<=0||dy<dx*1.5){cancel();return;}pull.active=true;}
    if(!event.cancelable){cancel();return;}event.preventDefault();
-   pull.armed=dy>=80;hint.hidden=false;hint.textContent=pull.armed?'Loslassen zum Aktualisieren':'Zum Aktualisieren weiter nach unten ziehen';
+   pull.armed=dy>=140;hint.hidden=false;hint.textContent=pull.armed?'Loslassen zum Aktualisieren':'Zum Aktualisieren weiter nach unten ziehen';
   },{passive:false});
   main.addEventListener('touchend',event=>{
    if(!pull)return;const start=pull,ended=Array.from(event.changedTouches).some(t=>t.identifier===start.id);

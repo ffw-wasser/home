@@ -32,7 +32,10 @@
     $('identity-message').textContent='';go('method');
    };
   }else if(step==='method'){
-   if(first&&hasRelease())say(ticketFromQR?'Die Freigabe aus deinem QR-Code wurde übernommen. Du musst keinen Code eingeben. Wähle jetzt deine Anmeldeart.':'Deine Freigabe wurde übernommen. Wähle jetzt deine Anmeldeart.');
+   if(first&&hasRelease()){
+    say('Willkommen! Dein persönlicher Willkommenslink wurde übernommen. Du musst keinen Code eingeben. Wähle jetzt deine Anmeldeart.');
+    const device=g.DeckelInstall?.profile();if(device){say('Erkannt: '+device.label+'. Nach der Anmeldung führen wir dich durch die passende Installation.');if(device.embedded){say('Bitte zuerst im normalen Browser öffnen: auf iPhone und iPad in Safari, auf Android etwa in Chrome. Die Freigabe bleibt im folgenden Link enthalten.');choice('Willkommenslink für den Browser kopieren',async()=>{const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+$('identity-code').value.trim();try{await navigator.clipboard.writeText(url.href);$('identity-message').textContent='Link kopiert. Im normalen Browser in die Adressleiste einfügen.';}catch{$('identity-message').textContent='Bitte die E-Mail erneut öffnen und den Willkommenslink über das Menü im Browser öffnen.';}});}}
+   }
    choice('Passkey · Gesicht, Fingerabdruck oder Geräte-PIN',()=>{method='passkey';go('access');});
    choice('Benutzername und Passwort',()=>{method='password';go('access');});
    if(first&&hasRelease())choice('Andere Freigabe verwenden',()=>{ticketFromQR=false;$('identity-code').value='';$('identity-message').textContent='';go('release');});
@@ -48,10 +51,10 @@
   }else if(step==='options'){
    say('Benachrichtigungen kannst du freiwillig aktivieren. Auf dem iPhone öffnest du H₂O dafür zuerst über das Symbol auf dem Home-Bildschirm.');
    const push=$('portal-push-heading')?.closest('section');if(push)place(push.id||(push.id='onboarding-push-settings'));
-   say('Einzelne Termine kannst du in deinen Kalender übernehmen. Persönliche Einladungen mit Rückmeldungen sind erst nach Einrichtung und Prüfung der Google-Anbindung verfügbar. Für die normale H₂O-Nutzung brauchst du kein Google-Konto.');
+   say('Dein persönliches H₂O-Kalenderabo findest du unter Konto & Sicherheit. Es enthält die für dich freigegebenen Termine. Für H₂O brauchst du kein Google-Konto.');
    next.hidden=false;next.textContent='Weiter / überspringen';next.onclick=()=>go('finish');
   }else{
-   say('Dein Zugang ist eingerichtet. Weitere Einstellungen findest du unter Mehr → Konto & Sicherheit.');
+   say('Deine Anmeldung ist eingerichtet. Öffne H₂O zum Prüfen über das neue Symbol. Falls du die Installation übersprungen hast, kannst du weiter im Browser arbeiten. Weitere Einstellungen und die Installationshilfe findest du unter Mehr → Konto & Sicherheit.');
    next.hidden=false;next.textContent='Zu den Terminen';next.onclick=close;
   }
   place('identity-message');title.focus();

@@ -10,6 +10,10 @@
 .help-guide h3{margin:0 0 8px;color:#18344c;font-size:1.0625rem;font-weight:750;line-height:1.4}
 .help-guide p,.help-guide li{font-size:var(--portal-body-size,1rem);line-height:1.65;overflow-wrap:anywhere}
 .help-guide .guide-privacy-grid p{margin:0}
+.help-guide .guide-data-fields{grid-column:1/-1}
+.help-guide .guide-data-fields dl{margin:16px 0 0}
+.help-guide .guide-data-fields dt{font-weight:750;margin-top:16px}
+.help-guide .guide-data-fields dd{margin:4px 0 0;overflow-wrap:anywhere}
 .guide-privacy-footer{border-top:1px solid #dce4eb;margin-top:22px;padding-top:20px}
 .guide-privacy-footer>strong{display:block;font-size:1rem}
 .help-guide .guide-privacy-footer>p{margin:5px 0 16px}.help-guide .guide-privacy-footer>p:last-child{margin-bottom:0}
