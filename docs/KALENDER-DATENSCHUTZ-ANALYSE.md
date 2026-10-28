@@ -39,7 +39,9 @@ entziehbarer Identität. Er ist für die jetzt umgesetzte Verbindung nicht nöti
    einrichten** den Link in das Passwortfeld einfügen und **Privaten Import prüfen
    und speichern** wählen. Den Link nur hier eingeben, nicht im Chat, in einem
    Google-Termin, in Skripteigenschaften oder auf der Homepage.
-4. H₂O liest tatsächlich die private Quelle, prüft ihre Kalender-ID und speichert
+4. Wenn der erste Verbindungsabruf fehlschlägt, bleibt der Speicherbutton nutzbar.
+   Beim erneuten Speichern lädt H₂O zuerst den aktuellen Verbindungsstand. Es
+   speichert nichts ohne bestätigte Versionsprüfung. H₂O liest tatsächlich die private Quelle, prüft ihre Kalender-ID und speichert
    erst nach einem erfolgreichen Abruf. Ein fremder Kalender wird abgewiesen.
    Die Bestätigung erscheint ohne den Link. Die zentrale Einrichtung gilt für
    Geräte mit derselben Gerätehaus-/Kontodienst-Verbindung.
