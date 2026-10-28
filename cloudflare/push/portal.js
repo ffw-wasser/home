@@ -7,6 +7,7 @@
   ...g.PortalEvidence.schema,
   ...(g.CalendarInvitations?.schema||[]),
   ...(g.PortalCalendarSubscriptions?.schema||[]),
+  ...(g.CalendarGroupAccess?.schema||[]),
   ...g.PortalHydrants.schema,
   ...(g.WhatsAppPasskeys?.schema||[]),
   'CREATE TABLE IF NOT EXISTS portal_bonus_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
@@ -104,6 +105,7 @@
   if(!value||!Array.isArray(value.groups))fail('Gruppendaten konnten nicht sicher gelesen werden.',503);
   return {groups:g.PortalGroups.validate(value.groups),version:row?.version||0};
  }
+ async function groupData(env){const current=await audienceGroups(env),row=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,row,'portal-roster');return {...current,rosterPayload:row?.payload||null,rosterUpdatedAt:roster?.updatedAt||null,members:(roster?.members||[]).map(({id,name})=>({id,name}))};}
  async function decorate(env,cal,configuration,ctx){
   const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),groups=await audienceGroups(env);
   const reminded=new Map((await env.DB.prepare('SELECT event,reminded_at FROM portal_event_reminders').all()).results.map(r=>[r.event,r.reminded_at]));
@@ -299,8 +301,10 @@
    if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path)||path.includes('/password/'))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||action.startsWith('password/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    if(path.startsWith('/portal/calendar-bridge/'))return g.CalendarInvitations.bridge(path.slice('/portal/calendar-bridge/'.length),data,env,auth);
+   if(path==='/portal/calendar-addon/groups')return g.CalendarGroupAccess.route(env,data,auth,m.source);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
+  if(path==='/admin/portal/google-group-access')return g.CalendarGroupAccess.admin(env,data,m.source);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
   if(path==='/portal/calendar-subscription')return g.PortalCalendarSubscriptions.subscription(env,data,record);
@@ -563,5 +567,5 @@
     audienceRestricted:Array.isArray(e.recipientIds)
    }))};
  }
- g.PortalService={personalCalendar,calendar,config,assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
+ g.PortalService={groupData,personalCalendar,calendar,config,assertMember,assertAlias,route,scheduled,ready,calendarURL,projection,send,decorate,awardBirthdays,publicCalendar};
 })(globalThis);

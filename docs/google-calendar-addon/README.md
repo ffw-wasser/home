@@ -1,134 +1,129 @@
 # H₂O-Auswahl direkt in Google Kalender am Computer
 
-Version 1.0, 27.10.2026. Quellcode und automatisierte Abnahme sind vorbereitet.
-Die Erweiterung ist noch in keinem echten Google-Konto installiert oder praktisch
-abgenommen. Die laufende Safe-Browsing-Prüfung der Feuerwehrseite bleibt separat
-offen; eine rote Browserwarnung nicht umgehen. Erst nach Klärung real abnehmen.
+Stand: 28.10.2026. Die Erweiterung wird im eigenen Google-Konto als privates
+Apps-Script-Add-on installiert. Die neue Funktion benötigt die aktualisierten
+Skriptdateien und einmalig eine begrenzte Gruppenverbindung zu H₂O.
 
 ## Bedienung
 
-1. In Google Kalender am Computer einen Termin im gemeinsamen Feuerwehrkalender
-   anlegen, Titel, Datum, Uhrzeit und Ort eintragen und **in Google speichern**.
-2. Den gespeicherten Termin öffnen und rechts das **H₂O-Symbol** wählen.
-3. In der Seitenleiste auswählen:
-   - Terminart: Probe, Sonderprobe, Unterricht, Ausschusssitzung, Veranstaltung
-     oder Information. Geburtstage und ihre persönliche Zuordnung bleiben in H₂O.
-   - Kleidung: Einsatzkleidung, Tagesdienst, Uniform, T-Shirt/Fest, Zivil oder Freitext.
-   - Automatische Schlagwortzuordnung oder mehrere ausgewählte Gruppen.
-   - Noch nicht freigeben oder Rückmeldung freigeben. Die Freigabe gilt für
-     Probe, Sonderprobe, Unterricht und Ausschusssitzung; Informationen werden
-     weiterhin in der H₂O-Informationsverwaltung sichtbar geschaltet.
-4. **H₂O-Auswahl in Google speichern**. Danach den Termin schließen und neu öffnen.
-   Nicht anschließend eine noch offene, ältere Google-Bearbeitung speichern:
-   Sie könnte die zwischenzeitlich gespeicherte Beschreibung ersetzen.
-5. H₂O übernimmt die Angaben über den vorhandenen Google-ICS-Import. Google und
-   H₂O können zwischenspeichern; die Änderung muss nicht sofort sichtbar sein.
+1. Termin im gemeinsamen Feuerwehrkalender anlegen und **in Google speichern**.
+2. Gespeicherten Termin öffnen und rechts das **H₂O-Symbol** wählen.
+3. Terminart, Kleidung und **eine oder mehrere passende Gruppen** auswählen.
+   Der zusätzliche Schlagwort-Modus entfällt. „Termin in H₂O anzeigen“ bestimmt
+   die Sichtbarkeit; eine Erinnerung verschickt der GF anschließend selbst in H₂O.
+4. Fehlt eine Gruppe: **Neue Gruppe**, Namen eingeben, Mitglieder auswählen und
+   **Gruppe in H₂O anlegen** wählen. Die Gruppe wird zentral in H₂O gespeichert und in
+   der Terminauswahl angehakt. Die bisherigen Eingaben bleiben erhalten.
+5. **H₂O-Auswahl in Google speichern** übernimmt die Auswahl in den Termin.
+   Das Anlegen einer Gruppe allein verändert den Google-Termin noch nicht.
+6. Termin schließen und neu öffnen. Keine ältere, noch offene Google-Bearbeitung
+   anschließend speichern. H₂O übernimmt die Angaben über den bestehenden ICS-Import;
+   Google und H₂O können Änderungen verzögert anzeigen.
 
-Die Seitenleiste ist eine zusätzliche Oberfläche innerhalb von Google Kalender;
-sie fügt keine neuen Felder in Googles ursprüngliches Terminformular ein.
-Google unterstützt Kalender-Add-ons nicht auf iPhone oder Android. Dafür bleibt
-die bestehende H₂O-Bearbeitung nutzbar.
+**Gruppenliste aktualisieren** lädt die aktuellen Gruppen. Verbundene Installationen
+übernehmen neue Gruppen automatisch beim Öffnen. Bei gleichzeitigen Änderungen an
+Gruppen oder Mitgliedern neu öffnen und die Auswahl prüfen. Bei einer unklaren
+Antwort zum Anlegen denselben Vorgang erneut prüfen: seine Vorgangskennung verhindert
+eine doppelte Gruppe. Nach dem Schließen zuerst die vorhandenen Gruppen prüfen.
 
-## Speicherung und Datenschutz
+Eigene H₂O-Einstellungen und persönliche Ausnahmen haben Vorrang. Soll ein lokal
+bearbeiteter Termin wieder Google folgen, in H₂O ausdrücklich **Google-Angaben
+übernehmen** wählen; dabei die bisherigen persönlichen Ausnahmen prüfen.
+Die Seitenleiste ergänzt Googles ursprüngliches Terminformular. Kalender-Add-ons
+stehen am Computer zur Verfügung; in der Google-Kalender-App für iPhone/Android
+bleibt die Bearbeitung über H₂O möglich.
 
-Die Auswahl erzeugt automatisch die bereits unterstützten Steuerzeilen
-`Terminart`, `Kleidung`, `Gruppen` und `Freigabe` in der Google-Beschreibung.
-Keine Steuerzeilen von Hand schreiben. Gruppen werden mit Semikolon getrennt.
-**Beschreibung, Kleidungsangabe und Gruppennamen sind im öffentlichen Kalender
-lesbar.** Nur unbedenkliche Gruppenbezeichnungen konfigurieren; keine Namen,
-Nummern, individuellen Ausnahmen, Gesundheitsdaten oder anderen privaten Angaben.
+## Bestehende Installation aktualisieren und verbinden
 
-Mitgliederlisten, individuelle Ein-/Ausschlüsse, Anwesenheit und Rückmeldungen
-werden nicht an die Erweiterung übertragen. Sie besitzt keine H₂O-/Cloudflare-
-Zugangsdaten und speichert keine Google-Tokens. Für API-Aufrufe nutzt sie jeweils
-das ausführende Google-Konto und dessen Kalenderrechte. Der notwendige Google-Scope
-`calendar.events` erlaubt technisch Ereigniszugriff auf die vom Konto zugänglichen
-Kalender; der Code begrenzt Aufrufe zusätzlich auf die konfigurierte Kalender-ID.
+Jede Verwaltungsperson verwendet ihr eigenes Projekt **H₂O Kalenderauswahl**.
+Es werden keine gemeinsamen administrativen Zugangsdaten benötigt.
 
-Eigene H₂O-Einstellungen und persönliche Ausnahmen haben weiterhin Vorrang. Soll
-ein bereits lokal bearbeiteter Termin künftig die Google-Angaben übernehmen, die
-Auswahl zuerst in H₂O prüfen und dort ausdrücklich **Google-Angaben übernehmen**
-wählen. Diese Aktion gibt die bisherige lokale Überschreibung auf. Bei Terminen
-mit individuellen Ausnahmen die lokale Bearbeitung beibehalten.
-
-Die Erweiterung ändert ausschließlich die Beschreibung und ihre eigene gemeinsame
-Google-Eigenschaft `h2oDescriptionSuffixV1`. Titel, Zeit, Ort, Farben und fremde
-Eigenschaften werden nicht verändert. Die Eigenschaft merkt sich nur den erzeugten
-Beschreibungsanhang, damit Freitext und vorhandene HTML-Formatierung erhalten bleiben.
-Unklare oder doppelte Steuerzeilen werden abgewiesen. Bei manuell umformatierten
-H₂O-Steuerzeilen in HTML diese Zeilen erst in Google entfernen; den übrigen Text
-beibehalten und die Erweiterung neu öffnen. Reine Textbeschreibungen mit bisherigen
-Steuerzeilen werden beim expliziten Speichern übernommen.
-
-Gleichzeitige Änderungen werden vor und beim PATCH mit Googles ETag geprüft.
-Keine automatische Wiederholung eines Schreibversuchs. Bei unklarer Fehlermeldung
-erst den aktuellen Google-Termin prüfen. Termine mit Google-Gästen, abgesagte
-Termine und ganze Serien sind gesperrt; ein gespeichertes einzelnes Serienvorkommen
-kann ohne Gäste bearbeitet werden. Diese Beschränkungen entsprechen der bisherigen
-H₂O-Google-Bearbeitung.
-
-## Einmalige Einrichtung – je Verwaltungsperson
-
-Jede Person legt für die persönliche Nutzung ihr eigenes Apps-Script-Projekt an und
-installiert es als unveröffentlichtes Add-on. Damit muss kein privates Add-on über
-unterschiedliche Kontodomänen geteilt werden. Martin führt dieselben Schritte mit
-seinem eigenen Konto aus. Es werden keine kostenpflichtigen Dienste eingerichtet.
-Eine allgemeine Marketplace-Veröffentlichung ist nicht Bestandteil dieses Pakets.
-
-1. Am Computer [Apps Script](https://script.google.com/) öffnen, **Neues Projekt**,
-   Name **H₂O Kalenderauswahl**.
-2. Den vollständigen Inhalt aus [Code.gs](Code.gs) in `Code.gs` einsetzen.
-   Eine zweite Skriptdatei `Model` anlegen und [Model.gs](Model.gs) einsetzen.
-3. Unter **Projekteinstellungen** die Anzeige von `appsscript.json` aktivieren.
-   Das Manifest durch [appsscript.json](appsscript.json) ersetzen.
-4. Unter **Dienste → +** die **Google Calendar API** hinzufügen. Bei einem normalen
-   Apps-Script-Standardprojekt wird damit die API aktiviert. Wird bewusst ein
-   eigenes Cloud-Projekt zugeordnet, dort die Calendar API aktivieren und die
-   OAuth-Einrichtung/Testnutzer für das ausführende Konto prüfen. Keine vorhandene
-   Farbanbindung ersetzen.
-5. Unter **Projekteinstellungen → Skripteigenschaften** zwei Einträge setzen:
+1. Am Computer das vorhandene Projekt in [Apps Script](https://script.google.com/)
+   öffnen. **Code.gs**, **Model.gs** und **appsscript.json** vollständig durch
+   [Code.gs](Code.gs), [Model.gs](Model.gs) und [appsscript.json](appsscript.json)
+   aus diesem Ordner ersetzen und speichern. Die Manifestanzeige lässt sich in
+   den Projekteinstellungen aktivieren.
+2. In der Feuerwehr-Anwendung die Verwaltung entsperren, dann **Kalender →
+   Verbindung → Gruppen direkt in Google Kalender anlegen** öffnen.
+3. Eine Bezeichnung für das eigene Skript eingeben und **Google-Gruppenverbindung
+   erstellen** wählen. Den angezeigten Verbindungsschlüssel kopieren.
+4. Im eigenen Apps-Script-Projekt unter **Projekteinstellungen → Skripteigenschaften**:
 
    | Eigenschaft | Wert |
    | --- | --- |
-   | `H2O_CALENDAR_ID` | ID des gemeinsamen Feuerwehrkalenders aus Google Kalender → Einstellungen → Kalender integrieren → Kalender-ID. Keine ICS-URL und nicht `primary`. |
-   | `H2O_GROUP_NAMES` | JSON-Liste mit den **exakten, aktivierten Gruppennamen aus H₂O**, ohne Mitgliederdaten. Beispiel siehe unten. |
+   | `H2O_CALENDAR_ID` | ID des gemeinsamen Quellkalenders aus Google Kalender → Einstellungen → Kalender integrieren. Keine ICS-URL und nicht `primary`. |
+   | `H2O_GROUPS_TOKEN` | Der gerade in H₂O erstellte Verbindungsschlüssel. |
 
-   ```json
-   ["Alle aktiven Mitglieder","Atemschutz","Gruppenführer","Ausschuss","Alterskameraden"]
-   ```
+   `H2O_GROUP_NAMES` wird bei verbundener Installation nicht mehr benötigt und
+   kann entfernt werden. Alte Installationen ohne Gruppenverbindung können ihre
+   statische Namensliste weiter lesen, aber keine neuen Gruppen anlegen.
+5. Bestehende Testinstallation prüfen bzw. unter **Bereitstellen →
+   Testbereitstellungen** als **Google Workspace Add-on** installieren.
+   Google Kalender neu laden und die Erweiterung am gespeicherten Termin öffnen.
+   Google kann für den Zugriff auf den zusätzlichen Dienst eine erneute
+   Autorisierung verlangen.
 
-   Das Beispiel an die tatsächlich gespeicherten H₂O-Gruppen anpassen. Änderungen
-   der Gruppennamen/aktivierten Gruppen anschließend in beiden persönlichen
-   Installationen nachführen. Maximal 30 Namen mit je 80 Zeichen, keine Semikolons.
-   Neue H₂O-Gruppen werden nicht automatisch ins Apps-Script-Projekt übertragen.
-   Unbekannte/deaktivierte Gruppen führen beim H₂O-Import zu einer gesperrten
-   Freigabe statt zu einer Einladung aller Mitglieder.
-6. **Bereitstellen → Testbereitstellungen**, falls nötig als Typ **Google Workspace
-   Add-on** wählen, dann **Installieren**. Berechtigungen für das eigene Konto
-   prüfen und autorisieren. Keine Web-App bereitstellen, keine Zugangsschlüssel
-   aus dem Worker oder heruntergeladene OAuth-JSON-Dateien eintragen.
-7. Google Kalender neu laden, einen gespeicherten Termin im gemeinsamen Kalender
-   öffnen und rechts das H₂O-Symbol anklicken.
+Den Schlüssel nur im eigenen Skript speichern, niemals in einer Terminbeschreibung,
+im Repository oder in Nachrichten. Die Anzeige in H₂O wird beim Schließen oder
+Verlassen geleert. Unter demselben Menü lässt sich jede Verbindung einzeln
+**trennen**; vorhandene Gruppen bleiben bestehen. Bis zu acht getrennte
+Verbindungen sind möglich, beispielsweise je eine für die persönlichen Skripte.
 
-## Reale Abnahme vor regulärer Nutzung
+## Erstinstallation
 
-- Erst einen künstlichen Testtermin ohne Gäste erstellen, H₂O-Auswahl speichern
-  und die sichtbare Google-Beschreibung kontrollieren.
-- Nach dem Import Terminart, Kleidung, Gruppen und Freigabe in H₂O prüfen; lokale
-  Überschreibungen bewusst berücksichtigen. Keine Anwesenheit wird erzeugt.
-- Mit Martins eigener Installation denselben Testtermin lesen/ändern. Beide
-  Konten müssen selbst Bearbeitungsrechte am gemeinsamen Kalender haben.
-- Einen konkurrierenden Bearbeitungsversuch prüfen: zweites Konto speichert zuerst,
-  erstes Konto muss neu öffnen. Testtermin danach entfernen.
+Ein eigenes Apps-Script-Projekt **H₂O Kalenderauswahl** anlegen, die drei Dateien
+wie oben einsetzen und unter **Dienste → +** die **Google Calendar API** ergänzen.
+Bei einem Standardprojekt wird die API dabei aktiviert. Bei einem eigenen
+Cloud-Projekt dessen API-/OAuth-Einstellungen für das eigene Konto prüfen.
+Anschließend die Gruppenverbindung einrichten und das Add-on als Testinstallation
+installieren. Keine Web-App und keine allgemeine Marketplace-Veröffentlichung nötig.
+Das ausführende Google-Konto benötigt weiterhin Bearbeitungsrechte am Quellkalender.
 
-Automatisiert geprüft werden CardService-Aufrufe mit künstlichen Ereignissen,
-Mehrfachauswahl, Validierung, Google-API-Parameter, ETag-Konflikte, verweigerte
-Zugriffe und die Verarbeitung durch den echten Worker mit künstlichem ICS.
-Die Darstellung in der echten Google-Seitenleiste und die persönlichen
-Installations-/OAuth-Dialoge sind dadurch nicht praktisch nachgewiesen.
+## Speicherung und Datenschutz
+
+Die Erweiterung liest über den begrenzten H₂O-Schlüssel aktive **Gruppennamen sowie
+Mitglieder-ID und Name** für die Auswahl beim Anlegen einer Gruppe. Sie kann nur
+Gruppen lesen und neue Gruppen mit vorhandenen Mitgliedern anlegen. Sie kann keine
+Mitgliedskonten, Nachweise, ärztlichen Atteste oder Geburtstagsdaten lesen und keine Erinnerungen senden oder Rückmeldungen lesen.
+Der Schlüssel ist an den eingerichteten Quellkalender und Mitgliederbestand gebunden.
+Mitgliedernamen erscheinen in der berechtigten Seitenleiste, **nicht in der
+öffentlichen Google-Terminbeschreibung**. Die Verbindung kann jederzeit getrennt werden.
+
+**Gruppennamen, Kleidung und Beschreibung sind im öffentlichen Quellkalender
+lesbar.** Nur unbedenkliche Gruppenbezeichnungen verwenden. Keine individuellen
+Ausnahmen, Gesundheitsdaten oder anderen privaten Angaben eintragen.
+Die Auswahl erzeugt die Steuerzeilen `Terminart`, `Kleidung`, `Gruppen` und `Freigabe`
+automatisch; keine Steuerzeilen von Hand schreiben. Keine Google-Gäste hinzufügen.
+
+Google-Aufrufe verwenden das eigene Google-Konto. Der Scope `calendar.events`
+erlaubt technisch Ereigniszugriff auf dessen zugängliche Kalender; der Code grenzt
+Aufrufe auf die konfigurierte Kalender-ID ein. Beschreibungen und die eigene
+Eigenschaft `h2oDescriptionSuffixV1` werden geändert. Titel, Zeit, Ort, Farben und
+fremde Eigenschaften bleiben erhalten. Die Eigenschaft merkt sich den erzeugten
+Anhang, damit Freitext und vorhandene HTML-Formatierung erhalten bleiben.
+
+ETags schützen vor gleichzeitigem Überschreiben. Bei unklarem Google-Schreibstatus
+zuerst den aktuellen Termin prüfen. Doppelte oder unklare Steuerzeilen, abgesagte
+Termine, ganze Serien und Termine mit Gästen sind gesperrt. Einzelne gespeicherte
+Serienvorkommen ohne Gäste können bearbeitet werden. Bei manuell umformatierten
+H₂O-Zeilen diese zuerst in Google entfernen, übrigen Text erhalten und neu öffnen.
+
+## Prüfung im eigenen Google-Konto
+
+Automatisierte Prüfungen verwenden künstliche Mitglieder und Ereignisse sowie den
+echten Worker im lokalen Test. Die tatsächlichen Google-Installationsdialoge und
+die Darstellung im persönlichen Konto müssen nach dem Einsetzen noch geprüft werden:
+
+- Künstlichen Termin ohne Gäste speichern und die Seitenleiste öffnen.
+- Gruppe mit künstlichen Testmitgliedern anlegen: genau einmal in H₂O vorhanden,
+  am Termin ausgewählt, noch kein Google-Termin geändert.
+- Auswahl ausdrücklich speichern, Google-Beschreibung und H₂O-Import prüfen.
+- Im zweiten berechtigten Konto mit eigener Verbindung dieselbe Gruppe auswählen.
+- Gleichzeitige Änderungen und das Trennen einer Testverbindung prüfen.
+- Testgruppe und Testtermin anschließend entfernen.
 
 Offizielle Grundlagen:
-- https://developers.google.com/workspace/add-ons/calendar
-- https://developers.google.com/workspace/add-ons/how-tos/testing-workspace-addons
-- https://developers.google.com/workspace/add-ons/concepts/workspace-scopes
-- https://developers.google.com/workspace/calendar/api/v3/reference/events/patch
+- [Kalender-Add-ons](https://developers.google.com/workspace/add-ons/calendar)
+- [Testinstallation](https://developers.google.com/workspace/add-ons/how-tos/testing-workspace-addons)
+- [Berechtigungen](https://developers.google.com/workspace/add-ons/concepts/workspace-scopes)
+- [Google Events PATCH](https://developers.google.com/workspace/calendar/api/v3/reference/events/patch)

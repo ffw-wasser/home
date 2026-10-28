@@ -28,7 +28,7 @@ Die Beschreibung wird als Klartext angezeigt; HTML und Skripte werden nicht ausg
 Die Kalenderverwaltung startet mit den drei Bereichen Termine, Gruppen und
 Verbindung. „Kalender kurz erklärt“ steht aufklappbar unter Verbindung. Lange
 Google-Beispiele und die manuelle App-Farbpalette sind aus der Arbeitsansicht
-entfernt. Gruppen zeigen ihre gespeicherten Schlagwörter im eigenen Bereich.
+entfernt. Gruppen werden direkt am Termin ausgewählt. Neue Gruppen benötigen einen Namen und die Mitgliederauswahl. Der zusätzliche Knopf zum erneuten automatischen Zuordnen entfällt.
 
 Am Termin öffnet „Bearbeiten“ eine gemeinsame Terminart-Auswahl, Ort, Kleidung,
 Gruppen und Freigabe. Einzelpersonen-Ausnahmen und weitere Aktionen sind
@@ -130,3 +130,21 @@ Regelzuordnung erzwungen. Die persönliche Jahresprojektion filtert serverseitig
 die öffentliche Projektion enthält keine Zusatzinfos. Die Jahres-Rohdaten werden
 weiterhin nur kurz zwischengespeichert und bei jedem Abruf frisch autorisiert
 und dekoriert.
+
+## Gruppen direkt in Google anlegen
+
+Die aktualisierte [Google-Erweiterung](google-calendar-addon/README.md) bietet am
+Computer dieselbe direkte Mehrfachauswahl sowie „Neue Gruppe“. Nach Name und
+Mitgliederauswahl wird die Gruppe zentral gespeichert und am geöffneten Termin
+ausgewählt. Die Terminzuordnung wird erst mit „H₂O-Auswahl in Google speichern“
+übernommen. Bestehende lokale H₂O-Ausnahmen bleiben vorrangig.
+
+Einmalig je eigenem Apps-Script-Projekt unter Kalender → Verbindung →
+„Gruppen direkt in Google Kalender anlegen“ eine benannte Verbindung erstellen.
+Den begrenzten Schlüssel als H2O_GROUPS_TOKEN in den Skripteigenschaften speichern
+und die drei Skriptdateien aktualisieren. Die Verbindung erlaubt der Google-
+Seitenleiste nur Gruppennamen und Mitgliedernamen/IDs zu lesen und neue Gruppen
+anzulegen. Keine Mitgliedernamen werden in öffentliche Termine geschrieben.
+Jede Verbindung lässt sich einzeln trennen; Gruppen bleiben bestehen.
+
+Geburtstagseinträge erscheinen in der Hauptanwendung weder in der Kalenderübersicht noch im Jahresplan oder dessen PDF. Der eigene Geburtstag bleibt im persönlichen H₂O-Plan und Kalenderabo erhalten. Die zentrale Zuordnung für die jährlichen Treuepunkte wird dadurch nicht verändert.

@@ -40,3 +40,5 @@ test('H₂O und Hauptanwendung verwenden dieselben PDF-Maße und Ferienbeschrift
   assert.equal(raw.split(Buffer.from('Testferien','latin1').toString('hex').toUpperCase()).length-1,1);
  }
 });
+
+test('Hauptanwendungs-PDF enthält keine Geburtstagslegende; persönliche PDF behält sie',async()=>{for(const includeBirthdays of [false,true]){const result=await fixture().build({year:2026,months:months(),includeBirthdays}),doc=await PDFLib.PDFDocument.load(result.bytes);for(const page of doc.getPages()){const raw=page.node.Contents().asArray().map(ref=>Buffer.from(PDFLib.decodePDFRawStream(doc.context.lookup(ref)).decode()).toString('latin1')).join(' ');assert.equal(raw.includes(Buffer.from('Geburtstag','latin1').toString('hex').toUpperCase()),includeBirthdays);}}});

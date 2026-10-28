@@ -18,7 +18,7 @@ var H2OCalendarAddonModel = (function () {
   }
   function groups(raw) {
     let list; try { list = JSON.parse(raw); } catch (_) { fail('H2O_GROUP_NAMES muss eine JSON-Liste von Gruppennamen enthalten.'); }
-    if (!Array.isArray(list) || !list.length || list.length > 30) fail('Bitte 1 bis 30 Gruppennamen konfigurieren.');
+    if (!Array.isArray(list) || !list.length || list.length > 100) fail('Bitte 1 bis 100 Gruppennamen konfigurieren.');
     const names = new Set();
     return list.map(function (name) {
       if (typeof name !== 'string' || !name.trim() || name.length > 80 || /[;<>\x00-\x1f\x7f]/.test(name)) fail('Ungültiger Gruppenname. Keine Semikolons, HTML-Zeichen oder Zeilenumbrüche verwenden.');
