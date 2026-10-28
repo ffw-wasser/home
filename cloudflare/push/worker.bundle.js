@@ -22279,7 +22279,7 @@ g.PortalHydrants={schema,route};
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
-  if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte Kalendereinladungen verwenden.',410);
+  if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
   if(path==='/portal/calendar-subscription')return g.CalendarInvitations.subscription(env);
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
@@ -22558,7 +22558,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"870168cddc405438b04d757fbf9bf9859e9f57e07cf0fd92a5f28ac7f0fa0c3c",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"ae7346a57aac532419dec38e829660ea5b3d13f1b04a92841d81ba5d63597da4",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    if(path==='/calendar/public'&&request.method==='GET'){
     if(!globalThis.PortalService)return reply({error:'Kalender noch nicht eingerichtet.'},503);
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}

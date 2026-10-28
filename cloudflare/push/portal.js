@@ -301,7 +301,7 @@
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
-  if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte Kalendereinladungen verwenden.',410);
+  if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
   if(path==='/portal/calendar-subscription')return g.CalendarInvitations.subscription(env);
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
