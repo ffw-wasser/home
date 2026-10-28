@@ -21354,7 +21354,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
  async function revoke(env,record){
   await env.DB.batch([
    env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) VALUES(?,1) ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(record.alias),
-   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','portal_calendar_subscriptions'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
+   ...['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_passkey_challenges','portal_browser_sessions','portal_browser_pairs','portal_calendar_subscriptions','portal_calendar_usage'].map(t=>env.DB.prepare('DELETE FROM '+t+' WHERE alias=?').bind(record.alias))
   ]);return {ok:true};
  }
  // Portal authority requires an approved, still-active member credential.
@@ -21978,7 +21978,8 @@ g.PortalHydrants={schema,route};
 (function(g){
  'use strict';
  const L=g.CentralLedger,origin='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev';
- const schema=['CREATE TABLE IF NOT EXISTS portal_calendar_subscriptions (member TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)'];
+ const schema=['CREATE TABLE IF NOT EXISTS portal_calendar_subscriptions (member TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
+  'CREATE TABLE IF NOT EXISTS portal_calendar_usage (member TEXT PRIMARY KEY,alias TEXT NOT NULL,payload TEXT NOT NULL)'];
  const fail=(message,status=409)=>{throw Object.assign(Error(message),{status});};
  const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('calendar-subscription:'+token))),n=>n.toString(16).padStart(2,'0')).join('');
  const random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -22013,12 +22014,33 @@ g.PortalHydrants={schema,route};
   for(const e of events){const link=g.CalendarPresentation.responseLink(e.id);lines.push('BEGIN:VEVENT','UID:'+e.id+'@h2o.feuerwehr-wasser','DTSTAMP:'+utc(updatedAt),...(e.allDay?['DTSTART;VALUE=DATE:'+day(e.start),'DTEND;VALUE=DATE:'+day(e.end)]:['DTSTART:'+utc(e.start),'DTEND:'+utc(e.end)]),'CLASS:PRIVATE','SUMMARY:'+escape(e.title),'LOCATION:'+escape(e.location),'DESCRIPTION:'+escape('H₂O-Rückmeldung: '+link+(e.clothing?'\nKleidung: '+e.clothing:'')+(e.note?'\n'+e.note:'')),'URL:'+link,'END:VEVENT');}
   lines.push('END:VCALENDAR');return lines.map(fold).join('\r\n')+'\r\n';
  }
- async function feed(env,token){
+ async function overview(env,roster,source){
+  // Only current account revisions and the current data source can contribute a status.
+  const rows=(await env.DB.prepare('SELECT l.alias,l.revision,l.payload,(SELECT COUNT(*) FROM devices d WHERE d.alias=l.alias AND d.revision=l.revision) AS devices FROM ledger_access l JOIN accounts a ON a.alias=l.alias AND a.revision=l.revision').all()).results;
+  const subscriptions=new Map((await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions').all()).results.map(row=>[row.member,row]));
+  const usage=new Map((await env.DB.prepare('SELECT * FROM portal_calendar_usage').all()).results.map(row=>[row.member,row]));
+  const members=new Map((roster?.members||[]).map(person=>[person.id,{memberId:person.id,pushDevices:0,calendarLastFetchedAt:null}]));
+  for(const row of rows){
+   const record=await L.open(env,row.payload,'access:'+row.alias),person=members.get(record.memberId);if(!person||record.alias!==row.alias||record.revision!==row.revision)continue;
+   person.pushDevices+=Number(row.devices)||0;
+   const sub=subscriptions.get(record.memberId),read=usage.get(record.memberId);
+   if(!sub||sub.alias!==row.alias||sub.revision!==row.revision||!read||read.alias!==row.alias)continue;
+   const [value,seen]=await Promise.all([open(env,sub),L.open(env,read.payload,'calendar-usage:'+record.memberId)]);
+   if(value.source===source&&seen.source===source&&seen.tokenHash===sub.token_hash&&Number.isFinite(seen.lastFetchedAt))person.calendarLastFetchedAt=Math.max(person.calendarLastFetchedAt||0,seen.lastFetchedAt);
+  }
+  return {version:1,source,checkedAt:Date.now(),members:[...members.values()]};
+ }
+ async function markFetched(env,record,token){
+  const meta=await L.meta(env),tokenHash=await digest(token),payload=await L.seal(env,{source:meta.source,tokenHash,lastFetchedAt:Date.now()},'calendar-usage:'+record.memberId);
+  // A late request cannot resurrect usage after link reset, revocation or source change.
+  await env.DB.prepare("INSERT INTO portal_calendar_usage(member,alias,payload) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM portal_calendar_subscriptions s JOIN accounts a ON a.alias=s.alias AND a.revision=s.revision WHERE s.member=? AND s.alias=? AND s.revision=? AND s.token_hash=?) AND EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND state='active') ON CONFLICT(member) DO UPDATE SET alias=excluded.alias,payload=excluded.payload").bind(record.memberId,record.alias,payload,record.memberId,record.alias,record.revision,tokenHash,meta.source).run();
+ }
+ async function feed(env,token,method='GET'){
   await g.PortalService.ready(env);const record=await resolve(env,token),cal=await g.PortalService.personalCalendar(env,record);
   // Recheck after a slow source fetch: reset/removal may have invalidated the link meanwhile.
-  await resolve(env,token);return serialize(cal.events,cal.fetchedAt);
+  await resolve(env,token);const result=serialize(cal.events,cal.fetchedAt);if(method==='GET')await markFetched(env,record,token).catch(()=>{});return result;
  }
- g.PortalCalendarSubscriptions={schema,subscription,feed};
+ g.PortalCalendarSubscriptions={schema,subscription,feed,overview};
 })(globalThis);
 
 /* Narrow, revocable access for the Google Calendar sidebar: read names and create groups only. */
@@ -22415,6 +22437,7 @@ g.PortalHydrants={schema,route};
    const sealed=await L.seal(env,{alias:record.alias,revision:record.revision,source:m.source,expiresAt},'attendance-checkin-v1');
    return {code:'FFW-CHECKIN:1:'+btoa(sealed),expiresAt};
   }
+  if(path==='/admin/portal/subscriptions')return g.PortalCalendarSubscriptions.overview(env,roster,m.source);
   if(path==='/admin/portal/checkin-resolve'){
    if(typeof data.code!=='string'||data.code.length>4096||!data.code.startsWith('FFW-CHECKIN:1:'))fail('Kein gültiger Anwesenheitscode.',400);
    let ticket;try{ticket=await L.open(env,atob(data.code.slice(14)),'attendance-checkin-v1');}catch{fail('Anwesenheitscode ungültig. Bitte neu öffnen.',400);}
@@ -22485,6 +22508,7 @@ g.PortalHydrants={schema,route};
    const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) SELECT 1,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload,m.seq)];
    const activeMembers=new Set(people.map(p=>p.id));
    const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
+   if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_calendar_usage WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_calendar_subscriptions WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(removed.size)statements.push(env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member IN (SELECT value FROM json_each(?)) AND "+marker).bind(JSON.stringify([...removed]),payload));
    const linked=(await env.DB.prepare('SELECT alias,revision,payload FROM ledger_access').all()).results;
@@ -22706,11 +22730,11 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"d21f6f9c943ae04fc9deb11a0a1248b6d171dcea270a796c9e1c73ec9025af84",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"40c7ca7824d7d14e82f529856c22eb7fd2f5303a77163df5c15ea1d6f81eb05b",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
-    try{const calendar=await globalThis.PortalCalendarSubscriptions.feed(env,personalFeed[1]);return new Response(request.method==='HEAD'?null:calendar,{headers:privateHeaders});}
+    try{const calendar=await globalThis.PortalCalendarSubscriptions.feed(env,personalFeed[1],request.method);return new Response(request.method==='HEAD'?null:calendar,{headers:privateHeaders});}
     catch(error){return new Response(request.method==='HEAD'?null:'Kalenderabo derzeit nicht verfügbar.',{status:error.status||503,headers:{...privateHeaders,'Content-Type':'text/plain; charset=utf-8'}});}
    }
    if(path==='/calendar/public'&&request.method==='GET'){

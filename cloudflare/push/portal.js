@@ -343,6 +343,7 @@
    const sealed=await L.seal(env,{alias:record.alias,revision:record.revision,source:m.source,expiresAt},'attendance-checkin-v1');
    return {code:'FFW-CHECKIN:1:'+btoa(sealed),expiresAt};
   }
+  if(path==='/admin/portal/subscriptions')return g.PortalCalendarSubscriptions.overview(env,roster,m.source);
   if(path==='/admin/portal/checkin-resolve'){
    if(typeof data.code!=='string'||data.code.length>4096||!data.code.startsWith('FFW-CHECKIN:1:'))fail('Kein gültiger Anwesenheitscode.',400);
    let ticket;try{ticket=await L.open(env,atob(data.code.slice(14)),'attendance-checkin-v1');}catch{fail('Anwesenheitscode ungültig. Bitte neu öffnen.',400);}
@@ -413,6 +414,7 @@
    const statements=[env.DB.prepare('INSERT INTO portal_roster(id,payload) SELECT 1,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND seq=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(payload,m.seq)];
    const activeMembers=new Set(people.map(p=>p.id));
    const removed=new Set((roster?.members||[]).map(p=>p.id).filter(id=>!activeMembers.has(id)));
+   if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_calendar_usage WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_calendar_subscriptions WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(removed.size)statements.push(env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member IN (SELECT value FROM json_each(?)) AND "+marker).bind(JSON.stringify([...removed]),payload));
    const linked=(await env.DB.prepare('SELECT alias,revision,payload FROM ledger_access').all()).results;

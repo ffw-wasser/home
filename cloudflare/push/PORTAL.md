@@ -345,3 +345,17 @@ freigeben, D1-Sicherung sowie echten Runtime-/CPU-Test durchführen und mit eine
 künstlichen Mitglied Einrichtung, Fehlversuche, Wiederherstellung, Mitgliedsaustritt
 und beide Anmeldearten auf iPhone/Android prüfen. Die lokalen Tests verwenden keine
 produktiven Daten oder Zugänge.
+
+### Geschützte Übersicht für Push und Kalenderabos
+
+`POST /admin/portal/subscriptions` erfordert den vorhandenen Server-Adminzugang und die aktive
+Datenquelle. Die Antwort enthält nur Mitgliederkennungen, aktuelle Push-Geräteanzahl,
+`calendarLastFetchedAt` und den Prüfzeitpunkt; keine Namen, Geräteendpunkte oder Abo-Links.
+Die Verwaltung ergänzt Namen aus OneDrive ausschließlich im Arbeitsspeicher.
+
+`portal_calendar_usage` speichert je Mitglied genau einen verschlüsselten letzten erfolgreichen
+ICS-GET samt Quell- und Linkbindung. HEAD und fehlgeschlagene Abrufe verändern den Stand nicht.
+Eine fehlgeschlagene Statusspeicherung verhindert nicht die Kalenderauslieferung. Ein Zurücksetzen
+des Abo-Links macht den alten Status ungültig; Wiederherstellung und Austritt löschen ihn.
+IP-Adressen, User-Agent oder Abrufverläufe werden für diese Funktion nicht gespeichert. Ein Abruf
+ist kein Beleg für ein noch bestehendes Abo; direkte Google-Freigaben werden nicht erfasst.

@@ -103,3 +103,15 @@ Einrichtung und Oberfläche für den früheren anonymen Kalender sind entfernt.
 `js/features/portal/calendar-private-source.js` stellt die geschützte Einrichtung
 mit leerbarem Passwortfeld und erneuter Zugriffsprüfung bereit.
 Prüfungen: `tests/calendar-private-source.test.cjs`, `tests/calendar-private-source-browser.cjs`.
+
+## Geschützte Aboübersicht
+
+Unter Mitglieder → Portalzugänge lädt `portal-subscription-admin.js` die Namen aus OneDrive
+und `/admin/portal/subscriptions` nur mit dem bestehenden Verwaltungszugang und Datenquellenschutz.
+`calendar-subscriptions.js` zählt aktuelle Push-Geräteregistrierungen und liest den letzten
+erfolgreichen persönlichen ICS-GET aus `portal_calendar_usage` (verschlüsselter Einzelstand,
+kein Verlauf). HEAD, Linkerstellung und fehlgeschlagene Abrufe bestätigen kein Abo.
+Ein Kalenderabruf ist kein Nachweis eines weiterhin eingerichteten Abos. Linkreset,
+Zugangswiederherstellung und Mitgliederaustritt entwerten beziehungsweise entfernen den Status.
+Namen und Status werden nicht in öffentlichen Dateien oder zusätzlichen Browserablagen gespeichert.
+Prüfungen: `tests/member-subscriptions.test.cjs`, `tests/member-subscriptions-browser.cjs`.

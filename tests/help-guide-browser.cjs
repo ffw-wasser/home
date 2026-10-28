@@ -17,7 +17,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
    assert.match(await guide.locator('.guide-privacy').textContent(),/Google-Gruppenschnittstelle/);assert.match(await guide.locator('.guide-privacy').textContent(),/keine ärztlichen Atteste/);assert.match(await guide.locator('.guide-privacy').textContent(),/Geburtstagsdaten/);
-   assert.equal(await guide.locator('img').count(),file==='index.html'?41:23);
+   assert.equal(await guide.locator('img').count(),file==='index.html'?42:23);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' page overflow '+width+'/'+scale);
    assert.deepEqual(await guide.locator('.guide-lesson-body,.guide-privacy-grid').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[],file+' guide overflow '+width+'/'+scale);
    assert.equal(await guide.locator('img').evaluateAll(ns=>ns.every(n=>n.naturalWidth>0&&n.getAttribute('width')&&n.getAttribute('height'))),true);

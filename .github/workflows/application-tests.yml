@@ -107,7 +107,10 @@ jobs:
       - name: Test calendar and member invitation with uppercase OneDrive drive IDs
         run: node tests/portal-invitation-browser.cjs
       - name: Test personal evidence and driver review
-        run: node tests/portal-evidence-browser.cjs
+        run: |
+          node tests/portal-evidence-browser.cjs
+          node tests/member-subscriptions-browser.cjs
+          BROWSER_ENGINE=webkit node tests/member-subscriptions-browser.cjs
       - name: Test member batch editing and mobile cards
         run: node tests/members-editor-browser.cjs
       - name: Test appointment replies on mobile viewports

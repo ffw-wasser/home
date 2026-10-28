@@ -2,7 +2,8 @@
 (function(g){
  'use strict';
  const L=g.CentralLedger,origin='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev';
- const schema=['CREATE TABLE IF NOT EXISTS portal_calendar_subscriptions (member TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)'];
+ const schema=['CREATE TABLE IF NOT EXISTS portal_calendar_subscriptions (member TEXT PRIMARY KEY,alias TEXT NOT NULL,revision TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
+  'CREATE TABLE IF NOT EXISTS portal_calendar_usage (member TEXT PRIMARY KEY,alias TEXT NOT NULL,payload TEXT NOT NULL)'];
  const fail=(message,status=409)=>{throw Object.assign(Error(message),{status});};
  const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('calendar-subscription:'+token))),n=>n.toString(16).padStart(2,'0')).join('');
  const random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -37,10 +38,31 @@
   for(const e of events){const link=g.CalendarPresentation.responseLink(e.id);lines.push('BEGIN:VEVENT','UID:'+e.id+'@h2o.feuerwehr-wasser','DTSTAMP:'+utc(updatedAt),...(e.allDay?['DTSTART;VALUE=DATE:'+day(e.start),'DTEND;VALUE=DATE:'+day(e.end)]:['DTSTART:'+utc(e.start),'DTEND:'+utc(e.end)]),'CLASS:PRIVATE','SUMMARY:'+escape(e.title),'LOCATION:'+escape(e.location),'DESCRIPTION:'+escape('H₂O-Rückmeldung: '+link+(e.clothing?'\nKleidung: '+e.clothing:'')+(e.note?'\n'+e.note:'')),'URL:'+link,'END:VEVENT');}
   lines.push('END:VCALENDAR');return lines.map(fold).join('\r\n')+'\r\n';
  }
- async function feed(env,token){
+ async function overview(env,roster,source){
+  // Only current account revisions and the current data source can contribute a status.
+  const rows=(await env.DB.prepare('SELECT l.alias,l.revision,l.payload,(SELECT COUNT(*) FROM devices d WHERE d.alias=l.alias AND d.revision=l.revision) AS devices FROM ledger_access l JOIN accounts a ON a.alias=l.alias AND a.revision=l.revision').all()).results;
+  const subscriptions=new Map((await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions').all()).results.map(row=>[row.member,row]));
+  const usage=new Map((await env.DB.prepare('SELECT * FROM portal_calendar_usage').all()).results.map(row=>[row.member,row]));
+  const members=new Map((roster?.members||[]).map(person=>[person.id,{memberId:person.id,pushDevices:0,calendarLastFetchedAt:null}]));
+  for(const row of rows){
+   const record=await L.open(env,row.payload,'access:'+row.alias),person=members.get(record.memberId);if(!person||record.alias!==row.alias||record.revision!==row.revision)continue;
+   person.pushDevices+=Number(row.devices)||0;
+   const sub=subscriptions.get(record.memberId),read=usage.get(record.memberId);
+   if(!sub||sub.alias!==row.alias||sub.revision!==row.revision||!read||read.alias!==row.alias)continue;
+   const [value,seen]=await Promise.all([open(env,sub),L.open(env,read.payload,'calendar-usage:'+record.memberId)]);
+   if(value.source===source&&seen.source===source&&seen.tokenHash===sub.token_hash&&Number.isFinite(seen.lastFetchedAt))person.calendarLastFetchedAt=Math.max(person.calendarLastFetchedAt||0,seen.lastFetchedAt);
+  }
+  return {version:1,source,checkedAt:Date.now(),members:[...members.values()]};
+ }
+ async function markFetched(env,record,token){
+  const meta=await L.meta(env),tokenHash=await digest(token),payload=await L.seal(env,{source:meta.source,tokenHash,lastFetchedAt:Date.now()},'calendar-usage:'+record.memberId);
+  // A late request cannot resurrect usage after link reset, revocation or source change.
+  await env.DB.prepare("INSERT INTO portal_calendar_usage(member,alias,payload) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM portal_calendar_subscriptions s JOIN accounts a ON a.alias=s.alias AND a.revision=s.revision WHERE s.member=? AND s.alias=? AND s.revision=? AND s.token_hash=?) AND EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND state='active') ON CONFLICT(member) DO UPDATE SET alias=excluded.alias,payload=excluded.payload").bind(record.memberId,record.alias,payload,record.memberId,record.alias,record.revision,tokenHash,meta.source).run();
+ }
+ async function feed(env,token,method='GET'){
   await g.PortalService.ready(env);const record=await resolve(env,token),cal=await g.PortalService.personalCalendar(env,record);
   // Recheck after a slow source fetch: reset/removal may have invalidated the link meanwhile.
-  await resolve(env,token);return serialize(cal.events,cal.fetchedAt);
+  await resolve(env,token);const result=serialize(cal.events,cal.fetchedAt);if(method==='GET')await markFetched(env,record,token).catch(()=>{});return result;
  }
- g.PortalCalendarSubscriptions={schema,subscription,feed};
+ g.PortalCalendarSubscriptions={schema,subscription,feed,overview};
 })(globalThis);
