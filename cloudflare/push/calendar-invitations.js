@@ -16,7 +16,6 @@
  const config=async env=>open(env,await env.DB.prepare('SELECT * FROM portal_calendar_bridge WHERE id=1').first(),'calendar-bridge');
  // Compatibility-only: finish withdrawing copies created during the old test.
  const remaining=async env=>(await env.DB.prepare("SELECT COUNT(*) n FROM portal_calendar_invites WHERE state NOT IN ('cancelled','finished') AND event<>'verification'").first()).n;
- async function subscription(env){const source=await g.PortalService.config(env);return {subscriptionUrl:source?.calendarUrl||null};}
  async function preference(env,data,record){
   const row=await env.DB.prepare('SELECT * FROM portal_calendar_profiles WHERE member=?').bind(record.memberId).first();
   if(data.email!==undefined||data.confirm!==undefined||data.allowed!==undefined&&data.allowed!==false)fail('Keine Kalenderadresse oder zusätzliche Freigabe nötig. Bitte den H₂O-Link im Kalenderabo verwenden.',410);
@@ -24,8 +23,7 @@
    if(data.expectedVersion!==(row?.version||0))fail('Die gespeicherte Kalenderadresse wurde geändert. Bitte neu laden.');
    if(row){const saved=await env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member=? AND version=?").bind(record.memberId,row.version).run();if(!saved.meta.changes)fail('Die gespeicherte Kalenderadresse wurde gleichzeitig geändert.');}
   }
-  const source=await g.PortalService.config(env);
-  return {subscriptionUrl:source?.calendarUrl||null,deliveryMode:'links',allowed:false,verified:false,pending:false,email:'',hasSavedAddress:data.allowed===false?false:!!row?.payload,version:(row?.version||0)+(data.allowed===false&&row?1:0),configured:false};
+  return {deliveryMode:'links',allowed:false,verified:false,pending:false,email:'',hasSavedAddress:data.allowed===false?false:!!row?.payload,version:(row?.version||0)+(data.allowed===false&&row?1:0),configured:false};
  }
  async function authenticated(env,auth){const c=await config(env);if(!c?.enabled||! /^[a-f0-9]{64}$/.test(auth)||!same(await digest(auth),c.secretHash))fail('Kalenderbereinigung nicht autorisiert.',401);return c;}
  async function run(env,data){const row=await env.DB.prepare('SELECT * FROM portal_calendar_bridge WHERE id=1').first();if(!row?.run_id||!same(row.run_id,data.run)||row.run_until<=Date.now())fail('Bereinigung abgelaufen. Bitte erneut starten.');return row;}
@@ -63,5 +61,5 @@
   const payload=await L.seal(env,{phase:done,googleEventId:value.googleEventId},'calendar-invite:'+data.id);
   const saved=await env.DB.prepare('UPDATE portal_calendar_invites SET payload=?,state=?,last_error=NULL,version=version+1 WHERE id=? AND version=? AND EXISTS(SELECT 1 FROM portal_calendar_bridge WHERE run_id=? AND run_until>?)').bind(payload,done,data.id,row.version,data.run,Date.now()).run();if(!saved.meta.changes)fail('Bereinigung wurde gleichzeitig geändert.');return {ok:true};
  }
- g.CalendarInvitations={schema,subscription,preference,bridge};
+ g.CalendarInvitations={schema,preference,bridge};
 })(globalThis);
