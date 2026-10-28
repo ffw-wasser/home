@@ -1,11 +1,11 @@
 # Kalenderabo mit H₂O-Antwortlink – ein Termineintrag
 
-Version 2026.10.28.3. Nach dem Update ist Kalenderabo mit H₂O-Antwortlink der einzige aktive Rückmeldeweg. Neue persönliche Kalendereinladungen und Kalenderadress-Bestätigungen sind entfernt.
+Version 2026.10.28.4. Nach dem Update ist Kalenderabo mit H₂O-Antwortlink der einzige aktive Rückmeldeweg. Neue persönliche Kalendereinladungen und Kalenderadress-Bestätigungen sind entfernt.
 
 ## Gewünschter Ablauf
 
 1. Alle Termine wie bisher im öffentlichen Feuerwehr-Google-Kalender vorbereiten.
-   Mitglieder behalten genau dieses Kalenderabo für die Anzeige aller Termine.
+   Mitglieder abonnieren in H₂O unter **Daten und Sicherheit → Feuerwehrkalender abonnieren** genau diesen voreingestellten Kalender. Apple Kalender oder Google Kalender wählen und beim Anbieter einmal bestätigen; ein bestehendes Abo nicht erneut hinzufügen. Alternativ den Abo-Link kopieren und als Kalenderabonnement hinzufügen. Für Google bei Bedarf am Computer **Weitere Kalender → + → Per URL** verwenden. Der Link wird aus der bestehenden öffentlichen Kalenderverbindung geladen, nie aus persönlichen Einladungsdaten. Es wird keine Kalenderdatei importiert.
 2. Unter **Kalender → Verbindung → Kalenderabo mit H₂O-Antwortlink** den Status prüfen. Eine neue Einladungsanbindung oder zusätzliche Mitgliederfreigabe gibt es nicht mehr. Die bestehende Push-Freigabe gilt weiterhin.
 3. Unter **Kalender → Termine** beim bestehenden Termin **Rückmeldelink in Google
    ergänzen** wählen. Dafür unter Verbindung das eigene berechtigte Google-Konto
