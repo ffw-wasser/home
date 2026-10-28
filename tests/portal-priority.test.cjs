@@ -206,9 +206,9 @@ test('Monatsmarke zeigt den Berliner Monat des Termins, auch an Monatsgrenzen',(
  const {c}=fixture();for(const [start,label] of [['2026-10-26T18:00:00Z','Okt'],['2026-10-31T23:30:00Z','Nov'],['2026-12-31T23:30:00Z','Jan']])assert.equal(c.eventMonthLabel(event('month',Date.parse(start))),label);
 });
 
-test('Terminmarkierung zählt nur angeforderte offene Antworten und verschwindet nach Bestätigung oder Terminbeginn',()=>{
+test('Terminmarkierung zählt nur nach Erinnerung offene Antworten und verschwindet nach Bestätigung oder Terminbeginn',()=>{
  const f=fixture(),badge=new Node(),tile={attributes:{},setAttribute(k,v){this.attributes[k]=v;}};f.nodes.set('portal-response-count',badge);f.c.document.querySelector=()=>tile;
- const future=Date.now()+60000,events=[{...event('open',future),responseRequested:true},{...event('maybe',future,'maybe'),responseRequested:true},{...event('yes',future,'yes'),responseRequested:true},{...event('no',future,'excused'),responseRequested:true},{...event('not-requested',future),responseRequested:false},{...event('old-client',future)},{...event('started',Date.now()-1),responseRequested:true}];
+ const future=Date.now()+60000,events=[{...event('open',future),remindedAt:Date.now()},{...event('maybe',future,'maybe'),remindedAt:Date.now()},{...event('yes',future,'yes'),remindedAt:Date.now()},{...event('no',future,'excused'),remindedAt:Date.now()},{...event('not-requested',future),remindedAt:null},{...event('old-client',future)},{...event('started',Date.now()-1),remindedAt:Date.now()}];
  f.c.responseBadge(events);assert.equal(badge.hidden,false);assert.equal(badge.textContent,'2');assert.match(tile.attributes['aria-label'],/2 Rückmeldungen/);
  events[0].status='yes';f.c.responseBadge(events);assert.equal(badge.textContent,'1');assert.match(tile.attributes['aria-label'],/1 Rückmeldung offen/);
  events[1].status='excused';f.c.responseBadge(events);assert.equal(badge.hidden,true);assert.equal(tile.attributes['aria-label'],'Termine');

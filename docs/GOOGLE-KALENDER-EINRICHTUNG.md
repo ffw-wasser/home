@@ -94,16 +94,14 @@ mit Gästen bleiben bis zum Integrationstest für Änderungen gesperrt. Ein einz
 Serienvorkommen wird über seinen ursprünglichen Start zugeordnet. Unveränderte Uhrzeiten
 behalten ihre exakten Sekunden und ihren Zeitpunkt, auch beim Wechsel der Sommerzeit.
 Nach Speicherung wird der H₂O-Import neu geladen; Google kann Änderungen im ICS
-verzögert liefern. Persönliche Einladungen verwenden einen eigenen privaten
-Einladungskalender und einen eigenständigen Apps-Script-Zeittrigger. Die einmalige
-Einrichtung, freiwillige Adressbestätigung und praktische Abnahme stehen in
-[Persönliche Kalendereinladungen und Antworten](google-calendar-invitations/README.md).
-Die kurzlebige Browserverbindung für Quelltermin-Korrekturen bleibt davon getrennt.
+verzögert liefern. Mitglieder abonnieren unter **Daten und Sicherheit** den
+voreingestellten öffentlichen Kalender. Sichtbare kommende Termine können direkt
+in H₂O beantwortet werden; jeder hinterlegte GF kann ohne zusätzliche Freigabe erinnern.
+Anleitung: [Kalender und Jahresplan](KALENDER-BEDIENUNG.md).
 
-Vor Produktivfreigabe beide echten Google-Konten und ihre Kalenderrechte prüfen.
-Google-/Apple-/Outlook-Einladungen, Serienausnahmen und die Sichtbarkeit persönlicher
-Teilnehmerdaten im öffentlichen ICS müssen separat getestet werden. Keine privaten
-Teilnehmer-/Mitgliederdaten in den öffentlichen Kalender schreiben.
+Echte Abo-Aktualisierung sowie Google-Terminänderungen mit beiden berechtigten
+Konten bleiben eine Praxisprüfung. Keine privaten Teilnehmer-/Mitgliederdaten
+in den öffentlichen Kalender schreiben.
 
 Offizielle Grundlage:
 - https://developers.google.com/identity/protocols/oauth2/web-server

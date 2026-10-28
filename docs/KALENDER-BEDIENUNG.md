@@ -37,11 +37,36 @@ Lokale Änderungen bleiben bei späteren Importen erhalten. Unter „Weitere Akt
 kann man ausdrücklich wieder die Google-Angaben übernehmen; dabei lokale
 Ausnahmen vorher prüfen. Titel, Zeiten und Originalbeschreibung werden über den
 Google-Editor in derselben Anwendung geändert; Zusatzinfos lokal separat speichern.
-Persönliche Kalendereinladungen und Antwortabgleich werden getrennt vom öffentlichen
-Kalender eingerichtet. Die Personenauswahl steuert auch diese Einladungen. Anleitung:
-[Persönliche Kalendereinladungen](google-calendar-invitations/README.md). Die Verwaltung
-richtet den Zeittrigger einmal ein; Mitglieder bestätigen ihre Kalenderadresse unter
-Konto & Sicherheit. WhatsApp-Erinnerungen sind entfernt.
+## Kalender abonnieren, antworten und erinnern
+
+Mitglieder öffnen **Daten und Sicherheit → Feuerwehrkalender abonnieren**.
+Der vorhandene öffentliche Kalender ist voreingestellt. Apple oder Google Kalender
+wählen und beim Anbieter einmal bestätigen; alternativ den Abo-Link kopieren und
+als Kalenderabonnement hinzufügen. Ein bestehendes Abo nicht erneut hinzufügen.
+Für Google bei Bedarf am Computer **Weitere Kalender → + → Per URL** verwenden.
+Keine einzelne Kalenderdatei importieren.
+
+Für sichtbare kommende Termine ist die Rückmeldung sofort möglich:
+**Bin dabei**, **Entschuldigt** oder **Noch unsicher**; erneut antippen nimmt sie zurück.
+Änderungen sind bis zum Terminbeginn möglich. Es gibt keine zusätzliche
+Abfragefreigabe und keinen Schritt „Rückmeldung anfordern“.
+Der Link in der Beschreibung desselben Google-Termins öffnet die H₂O-Antwortseite.
+Die Verwaltung kann ihn am Termin kopieren oder nach eigener Google-Anmeldung
+mit **Rückmeldelink in Google ergänzen** eintragen. Das erstellt keinen neuen Termin.
+
+Jeder hinterlegte GF kann in **Rückmeldungen ansehen → Erinnerung abschicken**
+für einen eigenen sichtbaren kommenden Termin direkt erinnern. Eine vorherige
+Freigabe durch die Verwaltung ist nicht erforderlich. Erst die Versandbestätigung
+startet die Nachricht; größere Versendungen mit **Versand fortsetzen** abschließen.
+Der Server prüft Rolle, aktuelle Mitgliedschaft, Terminzeit und Empfängerauswahl.
+Entschuldigte werden vor dem Versand ausgeschlossen. Wiederholungen desselben
+Versands schicken keine doppelte Nachricht; eine Zustell-/Lesegarantie gibt es nicht.
+Die vorhandene Push-Freigabe genügt. Die rote Zahl am Termine-Icon zählt nach einer
+Erinnerung noch offene oder unsichere Antworten. Normales Speichern versendet nichts.
+
+Persönliche Kalendereinladungen, Kalenderadress-Registrierung und zusätzliche
+Status-/Einrichtungskarten sind aus der aktuellen Oberfläche entfernt.
+Bestehende Antworten und Anwesenheitsberichte bleiben erhalten.
 
 Ein Titel mit `INFO:` kennzeichnet eine reine Information. Auch Wörter wie Probe,
 Geburtstag oder Einsatz machen daraus keinen funktionalen Termin. Informationen

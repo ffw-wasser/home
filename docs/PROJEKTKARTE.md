@@ -47,9 +47,11 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 
 ## Bereinigung früherer Kalendereinladungen
 
-`cloudflare/push/calendar-invitations.js` enthält nur noch Rückmeldeanforderungen und
-die geschützte Bereinigung eigener alter Einladungen. Neue Einladungen,
-Kalenderadress-Einwilligungen und Kalenderantwortimporte sind entfernt.
+`cloudflare/push/calendar-invitations.js` enthält nur noch den öffentlichen Abo-Status und
+die geschützte Bereinigung eigener alter Testeinladungen. Neue Einladungen,
+Kalenderadress-Einwilligungen, Kalenderantwortimporte und zusätzliche Abfragefreigaben sind entfernt.
+Jeder hinterlegte GF kann für sichtbare kommende Termine direkt erinnern;
+`portal_event_reminders` dient ausschließlich der Markierung offener Antworten nach einer Erinnerung.
 `docs/google-calendar-invitations/Code.gs` ist eine optionale Bereinigungsvorlage
 für das bestehende Skript, ohne Mailversand und ohne Kalenderneuanlage.
 
@@ -79,10 +81,9 @@ Microsoft-Login-, Worker- und D1-Tests benötigen gegebenenfalls gesonderte Prü
 Diese Karte bei einer Modulverschiebung mit aktualisieren, nicht bei jeder kleinen
 Oberflächenkorrektur neu schreiben.
 
-## Kalenderabo mit H₂O-Antwortlink
+## Aktueller Kalenderablauf
 
-Der aktive Rückmeldeweg ist ausschließlich Kalenderabo mit H₂O-Link. Das vorhandene Skript bleibt für das Zurückziehen
-alter Einladungen kompatibel. Neue Rückmeldelinks entstehen in
-`calendar-presentation.js` und werden über `calendar-google-admin.js` mit eigener
-Google-Autorisierung in bestehende Termine ergänzt. `portal-whatsapp.js` enthält
-die geschützte Termin-Link-Antwortseite; `portal-member.js` die GF-Erinnerungsaktion.
+Mitglieder abonnieren unter Daten und Sicherheit den vorhandenen öffentlichen Kalender.
+Zu- und Absage sind für sichtbare kommende Termine sofort möglich. Jeder hinterlegte GF
+kann direkt erinnern. Die zusätzliche Abfragefreigabe und ihre Statuskarte sind entfernt.
+Die technische Bereinigung alter Testkopien bleibt kompatibel; keine neue Einrichtung.
