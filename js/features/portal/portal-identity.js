@@ -52,7 +52,9 @@
   for(const id of ['logout','devices','revoke-sessions','session-actions','passkeys-heading'])el(id).hidden=!signedIn;
   el('password-confirmation').hidden=el('password-change-confirmation').hidden=!(signedIn&&current.method==='password');
   el('password-settings-title').textContent=signedIn?'Passwort einrichten oder ändern':'Zugang mit Passwort einrichten';
-  el('register').textContent=signedIn?'Weiteren Passkey hinzufügen':'Passkey einrichten';
+  const guided=document.getElementById('h2o-onboarding')?.open===true;
+  el('register').textContent=signedIn?'Weiteren Passkey hinzufügen':guided?'Zugang einrichten':'Passkey einrichten';
+  el('login').textContent=guided?'Anmelden':'Mit Passkey anmelden';
   if(signedIn){el('setup').open=false;el('code').value='';}
   else{setMemberName('');el('list').replaceChildren();}
   calendarSettings();document.getElementById('identity-calendar-settings')?.load?.();
