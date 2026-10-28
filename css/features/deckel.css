@@ -373,6 +373,11 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 .h2o-onboarding #installSection>summary,.h2o-onboarding #installSection>p:not(#installStatus),.h2o-onboarding #installIllustration,.h2o-onboarding label[for="installPlatform"],.h2o-onboarding #installPlatform,.h2o-onboarding .install-navigation{display:none}
 .h2o-onboarding #installSteps{list-style:none;padding:0;margin:20px 0}
 .h2o-onboarding #installSteps li{font-size:1.25rem;line-height:1.6}
+.is-system-guide .install-navigation{display:none}
+.h2o-onboarding #installSection.is-system-guide #installIllustration{display:block;width:100%;margin:16px 0}
+.h2o-onboarding #installSection.is-system-guide>#installAfterSteps{display:block;font-size:1rem}
+.h2o-onboarding #installSection.is-system-guide #installSteps{list-style:decimal;padding-left:1.4em;margin:16px 0}
+.h2o-onboarding #installSection.is-system-guide #installSteps li{font-size:1.125rem;line-height:1.5;margin:12px 0}
 .h2o-onboarding #identity-password-login-form h3,.h2o-onboarding #identity-password-set-form>p{display:none}
 .h2o-onboarding #identity-message:empty,.h2o-onboarding #installStatus:empty{display:none}
 body:has(#h2o-onboarding[open]) #identity-entry{visibility:hidden}
