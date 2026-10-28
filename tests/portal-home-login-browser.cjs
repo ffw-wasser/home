@@ -13,7 +13,13 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  // Set up and sign in once in Safari with the genuine UI and server grant flow.
  const person=f.people[0],ticket=(await f.call('identity-ticket',{alias:person.alias,revision:person.revision},null,true)).value;
  const safari=await context(false);await safari.p.goto(base+'#setup='+ticket.code);await safari.p.locator('#h2oStartup').waitFor({state:'hidden'});
- await safari.p.locator('#identity-register').click();await safari.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await safari.p.locator('#identity-login').click();await safari.p.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await safari.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await safari.p.locator('#portal-section').waitFor({state:'visible'});
+ await safari.p.locator('#identity-register').click();await safari.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await safari.p.locator('#identity-login').click();
+ await safari.p.locator('#h2o-onboarding .onboarding-install-list li').first().waitFor({state:'visible'});
+ assert.equal(await safari.p.locator('#h2o-onboarding').getAttribute('data-step'),'install');
+ assert.equal(await safari.p.locator('#h2o-onboarding .onboarding-install-list li:visible').count(),4,'Safari-Anleitung ist nach Passkey-Anmeldung vollständig sichtbar');
+ assert.match(await safari.p.locator('#h2o-onboarding .onboarding-install-list').innerText(),/Teilen/);
+ assert.equal(await safari.p.locator('#h2o-onboarding .onboarding-install-image').isVisible(),true);
+ await safari.p.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await safari.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await safari.p.locator('#portal-section').waitFor({state:'visible'});
  let credential=(await safari.client.send('WebAuthn.getCredentials',{authenticatorId:safari.authenticatorId})).credentials[0];assert.ok(credential);
  await safari.c.close();
  // Each app launch starts with EMPTY storage; only the device's existing passkey is present.

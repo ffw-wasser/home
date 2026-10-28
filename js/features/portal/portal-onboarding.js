@@ -49,10 +49,26 @@
    if($('installSection')?.hidden){say('H₂O ist bereit.');next.hidden=false;next.textContent='Weiter';next.onclick=()=>go('finish');}
    else{
     const state=g.DeckelInstall.currentStep();
-    if(state.systemGuide){title.textContent='H₂O auf den Home-Bildschirm';progress.textContent='iPhone / iPad';say('Jetzt diese vier Schritte in Safari ausführen:');}
-    place('installSection').open=true;if(!state.systemGuide)progress.textContent='App-Symbol · Schritt '+(state.index+1)+' von '+state.total;
-    back.hidden=state.systemGuide||state.index===0;next.hidden=false;next.textContent=state.systemGuide?'Symbol ist hinzugefügt':state.index===state.total-1?'Fertig':'Weiter';
-    next.onclick=()=>{const current=g.DeckelInstall.currentStep();if(current.systemGuide||current.index===current.total-1)go('finish');else{g.DeckelInstall.moveStep(1);render();}};
+    if(state.systemGuide){
+     // Show the Safari guide directly, rather than moving a shared <details> element.
+     // Hidden summaries can leave the details content invisible on iOS.
+     title.textContent='H₂O auf den Home-Bildschirm';progress.textContent='iPhone / iPad';
+     say('Jetzt diese vier Schritte in Safari ausführen:');
+     const illustration=node('img');illustration.className='onboarding-install-image';
+     illustration.src='assets/help/iphone-home.svg';
+     illustration.alt='Safari-Menü öffnen, Teilen wählen und Zum Home-Bildschirm hinzufügen';
+     content.append(illustration);
+     const list=node('ol');list.className='onboarding-install-list';
+     for(const instruction of g.DeckelInstall.instructions(g.DeckelInstall.profile()))list.append(node('li',instruction));
+     content.append(list);
+     say('Danach das neue H₂O-Symbol öffnen. Bei Bedarf mit demselben Passkey anmelden.');
+     back.hidden=true;next.hidden=false;next.textContent='Symbol ist hinzugefügt';next.onclick=()=>go('finish');
+    }else{
+     place('installSection').open=true;
+     progress.textContent='App-Symbol · Schritt '+(state.index+1)+' von '+state.total;
+     back.hidden=state.index===0;next.hidden=false;next.textContent=state.index===state.total-1?'Fertig':'Weiter';
+     next.onclick=()=>{const current=g.DeckelInstall.currentStep();if(current.index===current.total-1)go('finish');else{g.DeckelInstall.moveStep(1);render();}};
+    }
    }
    later.hidden=false;later.textContent='Später · im Browser weiter';later.onclick=()=>go('finish');
   }else{
