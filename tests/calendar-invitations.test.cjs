@@ -32,3 +32,10 @@ test('Bewusst angeforderte Push-Abfragen werden einmalig fortgesetzt und versend
  const cal=(await f.call('list',{},null,true)).value,body={eventId:cal.events[0].id,notify:true,requestId:crypto.randomUUID(),expectedVersion:cal.rulesVersion,expectedGroupsVersion:cal.groupsVersion};let r=await f.call('request-responses',body,null,true);assert.equal(r.value.accepted,2);assert.equal(r.value.remaining,3);const campaign=r.value.requestId;
  for(let i=0;i<4;i++){r=await f.call('request-responses',{...body,requestId:crypto.randomUUID()},null,true);assert.equal(r.value.requestId,campaign);}assert.equal(r.value.remaining,0);assert.equal(f.sends.length,5);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_invites').get().n,0);assert.equal((await f.call('request-responses',body)).status,404);
 });
+
+test('Mitglieder erhalten ausschließlich die öffentliche vorhandene Abo-URL, ohne Kalender- oder Versandauftrag',async()=>{
+ const f=await fixture(),before=f.sql.prepare('SELECT payload FROM portal_config WHERE id=1').get().payload;
+ const value=(await f.call('calendar-preference')).value;assert.equal(value.subscriptionUrl,'https://calendar.google.com/calendar/ical/test-calendar/public/basic.ics');assert.equal(value.email,'');assert.equal(value.calendarId,undefined);assert.equal(value.secret,undefined);
+ assert.equal(f.sql.prepare('SELECT payload FROM portal_config WHERE id=1').get().payload,before);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_invites').get().n,0);assert.equal(f.sends.length,0);
+ f.sql.prepare('DELETE FROM portal_config').run();assert.equal((await f.call('calendar-preference')).value.subscriptionUrl,null);
+});

@@ -28,7 +28,8 @@
    if(data.expectedVersion!==(row?.version||0))fail('Die gespeicherte Kalenderadresse wurde geändert. Bitte neu laden.');
    if(row){const saved=await env.DB.prepare("UPDATE portal_calendar_profiles SET email_hash=NULL,payload='',version=version+1 WHERE member=? AND version=?").bind(record.memberId,row.version).run();if(!saved.meta.changes)fail('Die gespeicherte Kalenderadresse wurde gleichzeitig geändert.');}
   }
-  return {deliveryMode:'links',allowed:false,verified:false,pending:false,email:'',hasSavedAddress:data.allowed===false?false:!!row?.payload,version:(row?.version||0)+(data.allowed===false&&row?1:0),configured:false};
+  const source=await g.PortalService.config(env);
+  return {subscriptionUrl:source?.calendarUrl||null,deliveryMode:'links',allowed:false,verified:false,pending:false,email:'',hasSavedAddress:data.allowed===false?false:!!row?.payload,version:(row?.version||0)+(data.allowed===false&&row?1:0),configured:false};
  }
  async function requestResponses(env,data,cal){
   const event=cal.events.find(e=>e.id===data.eventId&&e.kind==='probe'&&e.approved);

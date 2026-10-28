@@ -62,16 +62,36 @@
  function calendarSettings(){
   const host=document.getElementById('more-security');if(!host||document.getElementById('identity-calendar-settings'))return;
   const section=document.createElement('section');section.id='identity-calendar-settings';section.className='portal-setting';
-  const heading=document.createElement('h3');heading.textContent='Kalenderabo & Rückmeldung';
-  const intro=document.createElement('p');intro.textContent='Alle Termine bleiben im abonnierten Feuerwehrkalender. Der Link im Termin öffnet deine Rückmeldung in H₂O. Erinnerungen nutzen deine bestehende Push-Freigabe; eine Kalenderadresse oder zusätzliche Freigabe ist nicht nötig.';
-  const state=document.createElement('p');state.textContent='Ein Termineintrag · Antworten in H₂O';
+  const heading=document.createElement('h3');heading.textContent='Feuerwehrkalender';
+  const intro=document.createElement('p');intro.textContent='Einmal abonnieren und alle Feuerwehrtermine im eigenen Kalender sehen. Wer den Kalender bereits abonniert hat, braucht ihn nicht erneut hinzuzufügen.';
+  const subscribe=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Feuerwehrkalender abonnieren';subscribe.hidden=true;subscribe.append(summary);
+  const apple=document.createElement('a');apple.className='button secondary';apple.textContent='In Apple Kalender abonnieren';apple.referrerPolicy='no-referrer';
+  const google=document.createElement('a');google.className='button secondary';google.textContent='In Google Kalender abonnieren';google.target='_blank';google.rel='noopener noreferrer';google.referrerPolicy='no-referrer';
+  const copy=document.createElement('button');copy.type='button';copy.className='secondary';copy.textContent='Abo-Link kopieren';
+  const help=document.createElement('p');help.textContent='In der Kalender-App einmal bestätigen. Für Google Kalender bei Bedarf den Browser am Computer verwenden: Weitere Kalender → + → Per URL. Den Abo-Link dort einfügen. Keine Kalenderdatei importieren.';
+  const address=document.createElement('input');address.type='url';address.readOnly=true;address.hidden=true;address.setAttribute('aria-label','Öffentlicher Kalender-Abo-Link');
+  const note=document.createElement('p');note.textContent='Zu- und Absage erfolgen über den H₂O-Link im Termin. Erinnerungen nutzen deine bestehende Push-Freigabe.';
+  subscribe.append(apple,google,copy,help,address,note);
+  const state=document.createElement('p');state.setAttribute('role','status');state.textContent='Kalenderabo wird geladen …';
+  const retry=document.createElement('button');retry.type='button';retry.className='secondary';retry.textContent='Kalenderabo erneut laden';retry.hidden=true;
   const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Alte Kalenderadresse entfernen';remove.hidden=true;
-  const feedback=document.createElement('p');feedback.setAttribute('role','status');let owner='',loading=false,version=0;
+  const feedback=document.createElement('p');feedback.setAttribute('role','status');let owner='',loading=false,version=0,subscriptionUrl='';
+  function clearSubscription(){subscriptionUrl='';subscribe.hidden=true;subscribe.open=false;apple.removeAttribute('href');google.removeAttribute('href');address.value='';address.hidden=true;}
+  function setSubscription(value){
+   clearSubscription();if(!value){state.textContent='Der Feuerwehrkalender ist noch nicht hinterlegt. Bitte die Verwaltung ansprechen.';return;}
+   const url=new URL(value);if(url.origin!=='https://calendar.google.com'||!/^\/calendar\/ical\/[^/]+\/public\/basic\.ics$/.test(url.pathname)||url.search||url.hash||url.username||url.password)throw Error('Der Kalender-Abo-Link ist ungültig. Bitte die Verwaltung ansprechen.');
+   subscriptionUrl=url.href;apple.href=url.href.replace(/^https:/,'webcal:');
+   // Use the same public Google calendar, never a new event or personal invitation.
+   google.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(btoa(decodeURIComponent(url.pathname.split('/')[3])));
+   address.value=subscriptionUrl;subscribe.hidden=false;state.textContent='';
+  }
   async function request(data={}){const session=g.H2OIdentity?.session();if(!session||!g.H2OIdentity?.credentials())throw Error('Bitte zuerst persönlich anmelden.');const response=await fetch(ORIGIN+'/portal/calendar-preference',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit',redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(20000)});const value=await response.json();if(!response.ok)throw Error(value.error||'Kalenderstatus nicht bestätigt.');return value;}
-  section.load=async force=>{const key=current&&record?current.alias+':'+current.revision:'';section.hidden=!key;if(!key){owner='';remove.hidden=true;return;}if(loading||owner===key&&!force)return;loading=true;try{const value=await request();if(current?.alias+':'+current?.revision!==key)return;owner=key;version=value.version;remove.hidden=!value.hasSavedAddress;}catch(e){feedback.textContent=e.message;}finally{loading=false;}};
+  section.load=async force=>{const key=current&&record?current.alias+':'+current.revision:'';section.hidden=!key;if(!key){owner='';clearSubscription();remove.hidden=true;feedback.textContent='';return;}if(loading||owner===key&&!force)return;loading=true;retry.hidden=true;state.textContent='Kalenderabo wird geladen …';try{const value=await request();if(current?.alias+':'+current?.revision!==key)return;setSubscription(value.subscriptionUrl);owner=key;version=value.version;remove.hidden=!value.hasSavedAddress;feedback.textContent='';}catch(e){clearSubscription();state.textContent=e.message;retry.hidden=false;}finally{loading=false;}};
+  retry.onclick=()=>section.load(true);
+  copy.onclick=async()=>{if(!subscriptionUrl)return;try{await navigator.clipboard.writeText(subscriptionUrl);address.hidden=true;feedback.textContent='Abo-Link kopiert. In deiner Kalender-App als Kalenderabonnement hinzufügen.';}catch{address.hidden=false;address.focus();address.select();feedback.textContent='Bitte den markierten Abo-Link kopieren und in deiner Kalender-App als Kalenderabonnement hinzufügen.';}};
   remove.onclick=async()=>{if(!confirm('Die früher gespeicherte Kalenderadresse entfernen? Antworten und Kalenderabo bleiben erhalten.'))return;remove.disabled=true;try{const value=await request({allowed:false,expectedVersion:version});version=value.version;remove.hidden=!value.hasSavedAddress;feedback.textContent='Alte Kalenderadresse entfernt.';}catch(e){feedback.textContent=e.message;}finally{remove.disabled=false;}};
-  section.append(heading,intro,state,remove,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
-  g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-security')section.load();});
+  section.append(heading,intro,subscribe,state,retry,remove,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
+  g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-security')section.load(true);});
  }
  function init(){if(!el('login'))return;paint();if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}g.H2OOnboarding?.init(!!setupCode);
   el('password-login-form').onsubmit=event=>{event.preventDefault();const name=el('username').value,password=el('login-password').value;el('login-password').value='';void run(async()=>{await loginPassword(name,password);el('message').textContent='';el('account').open=false;g.H2OOnboarding?.signedIn();await g.DeckelReload?.();});};
