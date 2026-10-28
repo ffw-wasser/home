@@ -30,7 +30,7 @@
  async function refresh(){
   if(refreshing||g.DeckelReload?.isLoading?.())return;
   const hint=$('deckel-pull-refresh');g.clearTimeout?.(hintTimer);
-  if(Date.now()<nextRefreshAt){if(hint){hint.hidden=false;hint.textContent='Bitte kurz warten – die Daten wurden gerade aktualisiert.';hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},1800);}return false;}
+  if(Date.now()<nextRefreshAt){if(hint){hint.hidden=false;hint.textContent='Bitte kurz warten, bevor du erneut aktualisierst.';hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},1800);}return false;}
   refreshing=true;let completed=false;
   if(hint){hint.hidden=false;hint.textContent='Wird aktualisiert …';}
   try{if(await check())completed=reload();else{await g.DeckelReload?.({checkUpdate:false});completed=true;}return completed;}
