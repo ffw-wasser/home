@@ -426,15 +426,18 @@ continue;}
   area.append(node('p',plan.length?'Mit einem Tippen Zusagen als „Anwesend“ und Entschuldigungen vormerken. Anschließend vor Ort prüfen und „Markierungen übernehmen“ wählen. Ohne Rückmeldung bleibt offen.':'Neue Rückmeldungen werden hier zur Vormerkung angeboten. Bereits erfasste Personen und eigene Markierungen bleiben erhalten.'));
   const reminder=node('button',manual?'Versand fortsetzen / erneut prüfen':'Alle außer Entschuldigten erinnern');reminder.type='button';reminder.className='outline-button';reminder.disabled=replyData.stale||replyData.event.start<=Date.now();reminder.onclick=async()=>{if(!requireAdmin(!document.getElementById(CALENDAR).hidden?CALENDAR:VIEW))return;if(!manual&&!confirm('Alle für diesen Termin freigegebenen Mitglieder mit aktivierten Handy-Mitteilungen erinnern? Entschuldigte erhalten keine Nachricht.'))return;manual=manual||{eventId:replyData.event.id,requestId:crypto.randomUUID()};reminder.disabled=true;try{const result=await request('remind',manual);if(!result.remaining)manual=null;showToast(result.accepted+' Handy-Mitteilungen angenommen · '+result.failed+' fehlgeschlagen'+(result.remaining?' · Versand bitte fortsetzen.':'.'));paintReplies();}catch(e){showToast(e.message+' Denselben Versand erneut prüfen.','error');reminder.disabled=false;reminder.textContent='Versand erneut prüfen';}};area.append(reminder);
  }
+ function clearAttendanceCalendar(){
+  list=[];selected=null;replyData=null;lastLoad=0;
+  const picker=document.getElementById('portal-calendar-pick'),none=node('option','Ohne Kalendertermin / spontan');none.value='';picker?.replaceChildren(none);if(picker)picker.value='';paintReplies();
+ }
  async function refreshAttendance(force=false){
   if(document.hidden||!document.getElementById('portal-calendar-pick'))return;
   if(loading){if(force)attendanceRefreshPending=true;return;}
   if(!force&&Date.now()-lastLoad<60000)return;
-  loading=true;const epoch=attendanceEpoch;
+  loading=true;const epoch=attendanceEpoch,source=g.DrinksStore.sourceKey();
   try{
    if(typeof oneDriveAdministrationReady!=='function'||!oneDriveAdministrationReady()){
-    list=[];selected=null;replyData=null;lastLoad=0;
-    const picker=document.getElementById('portal-calendar-pick'),none=node('option','Ohne Kalendertermin / spontan');none.value='';picker?.replaceChildren(none);if(picker)picker.value='';paintReplies();
+    clearAttendanceCalendar();
     throw Error('Für den privaten Kalender bitte die OneDrive-Verbindung des Gerätehauses herstellen.');
    }
    const cal=await request('list');
@@ -458,7 +461,7 @@ continue;}
    if(!running&&(nextId!==current||changed))select(true);
    document.getElementById('portal-calendar-status').textContent=cal.configured?(cal.stale?'Kalender zuletzt nicht aktualisiert.':'Kalenderstand: '+new Date(cal.fetchedAt).toLocaleString('de-DE')):'Privaten Kalender unter Einstellungen → Kalender → Verbindung einrichten.';
    g.syncAttendanceStart?.();await replies();
-  }catch(e){const status=document.getElementById('portal-calendar-status');if(epoch===attendanceEpoch&&status)status.textContent=g.ConnectionStatus?.message(e)||e.message;}
+  }catch(e){const status=document.getElementById('portal-calendar-status');if(epoch===attendanceEpoch){if([401,403].includes(e.status)||source!==g.DrinksStore.sourceKey())clearAttendanceCalendar();if(status)status.textContent=g.ConnectionStatus?.message(e)||e.message;}}
   finally{loading=false;g.syncAttendanceStart?.();const again=attendanceRefreshPending;attendanceRefreshPending=false;if(again)await refreshAttendance(true);}
  }
  function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if((currentOperationId||currentSessionId)&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Eine Erfassung läuft bereits. Bitte diesen Termin zuerst abschließen oder verwerfen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){const spontaneous=document.getElementById('attendanceSpontaneous');if(spontaneous)spontaneous.open=false;if(!currentSessionId&&!currentOperationId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(sessionType)){if(typeof chooseSessionType==='function')chooseSessionType(sessionType,{calendar:true});else document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}

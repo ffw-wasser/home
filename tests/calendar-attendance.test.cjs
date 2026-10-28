@@ -286,3 +286,6 @@ test('Abmeldung während eines privaten Kalenderabrufs stellt später keine Term
  f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/list')){started();await gate;}return request(...args);};
  const opening=f.login();await waiting;const logout=f.logout();release();await opening;await logout;assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/OneDrive-Verbindung/);
 });
+
+for(const status of [401,403])test('Abgewiesener Kalenderzugriff '+status+' entfernt den bisherigen privaten Stand',async()=>{const f=fixture();await f.login();f.c.DrinksPush.request=async()=>{throw Object.assign(Error('Kalenderzugang abgelaufen.'),{status});};await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/abgelaufen/);});
+test('Geänderter Datenordner entfernt den bisherigen Kalender bei abgewiesenem Abruf',async()=>{const f=fixture();await f.login();f.c.DrinksPush.request=async()=>{f.c.DrinksStore.sourceKey=()=> 'anderer-ordner';throw Error('Datenordner geändert.');};await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);});
