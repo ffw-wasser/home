@@ -552,3 +552,14 @@
 [data-portal-tile="portal-section"]{position:relative}
 [data-portal-tile="portal-section"]>.portal-response-count{position:absolute;top:3px;right:8px;display:grid;place-items:center;min-width:21px;height:21px;padding:0 5px;border-radius:12px;background:#a62c3c;color:#fff;font-size:.875rem;line-height:1;font-weight:850;border:2px solid #fff}
 [data-portal-tile="portal-section"]>.portal-response-count[hidden]{display:none!important}
+
+/* Private subscription overview: readable member cards on phones and tablets. */
+.portal-subscription-filters{display:flex;flex-wrap:wrap;gap:1rem;margin:1rem 0}
+.portal-subscription-filters>label{flex:1 1 14rem;min-width:0}
+.portal-subscription-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:.75rem}
+.portal-subscription-item{border:1px solid var(--border,#d1d5db);border-radius:.75rem;padding:1rem;min-width:0;overflow-wrap:anywhere}
+.portal-subscription-item h4{margin:0 0 .75rem}
+.portal-subscription-item dl{margin:0}
+.portal-subscription-item dt{font-weight:600;margin-top:.6rem}
+.portal-subscription-item dd{margin:.2rem 0 0}
+.portal-subscription-item [data-state="active"]{color:var(--success,#166534)}

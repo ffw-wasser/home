@@ -2,6 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),{chromium}=require('playwright'),{PDFDocument,rgb}=require('../js/vendor/pdf-lib.min.js');
 const vm=require('node:vm'),regulationsContext=vm.createContext({URL});vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/features/portal/regulations-model.js'),'utf8'),regulationsContext);const regulationItems=regulationsContext.RegulationsModel.defaults();
 const root=path.resolve(__dirname,'..'),out=path.join(root,'assets/help/guide');
+if(process.argv.includes('--only=geraetehaus-abos')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/member-subscriptions-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_SUBSCRIPTIONS_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-kalender-privat')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-private-source-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_PRIVATE_CALENDAR_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-google-gruppen')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-groups-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_GOOGLE_GROUP_ACCESS_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=h2o-termine')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-invitations-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_INVITATIONS_TERMS_HELP:'1'}});process.exit(0);}

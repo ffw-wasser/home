@@ -170,5 +170,9 @@
   "geraetehaus-kalender-privat": {
     "width": 728,
     "height": 701
+  },
+  "geraetehaus-abos": {
+    "width": 728,
+    "height": 1030
   }
 }
