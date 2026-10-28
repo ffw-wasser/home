@@ -151,7 +151,7 @@ test('Mehr-Kacheln öffnen eigene Rubriken und Rückkehr hält Mehr im Menü aus
 function layoutFixture(storage=new Map()){
  const dom=nodes(),main=dom['deckel-main'],nav=dom['deckel-nav'],grid=dom['portal-more-grid'];
  nav.id='deckel-nav';grid.id='portal-more-grid';
- const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-training','more-year-plan','more-hydrants','more-regulations','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-help'];
+ const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-training','more-year-plan','more-hydrants','more-regulations','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-contacts','more-help'];
  for(const [ids,parent] of [[mainIds,nav],[moreIds,grid]])for(const id of ids){const tile=new Node('button');tile.dataset.portalTile=id;tile.dataset.portalTitle=id;tile.dataset.deckelTarget=mainIds.includes(id)?id:'';if(moreIds.includes(id)&&id!=='theater-phone-section')tile.dataset.moreTarget=id;parent.append(tile);}
  const pinned=new Node('button');pinned.dataset.portalPinned='more';pinned.dataset.deckelTarget='deckel-more';nav.append(pinned);main.append(grid);
  const timers=new Map();let timerId=0,under=null;const ctx=vm.createContext({history:{state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}},innerWidth:390,innerHeight:844,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],createElement:tag=>new Node(tag),addEventListener(){},elementFromPoint:()=>under}});
@@ -202,7 +202,7 @@ test('Kopfbereich zeigt die gewählte Rubrik bei Menüwechsel, Unterseite und Ak
  const dom=nodes(),ctx=vm.createContext({innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
  assert.equal(dom['portal-menu-title'].textContent,'Termine');
- for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-help','Infos'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
+ for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-help','Datenschutz & Hilfe'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
  ctx.DeckelMobile.show(false);assert.equal(dom['portal-menu-title'].textContent,'H₂O Portal');ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,'Termine');
 });
 
@@ -252,7 +252,7 @@ test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit alte
  assert.deepEqual(navIds(),['portal-section','account','more-water','portal-evidence']);
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-help'));
  const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
- assert.equal(all.length,14);assert.equal(new Set(all).size,14);
+ assert.equal(all.length,15);assert.equal(new Set(all).size,15);
 });
 
 test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellung',()=>{
@@ -279,10 +279,10 @@ test('Ursprüngliche Hauptkacheln erhalten unter Mehr ebenfalls einen Rückweg',
 });
 
 test('Neue Standardreihenfolge: Feuerwehr zuerst, gespeicherter alter Standard wird aktualisiert, persönliche Reihenfolge bleibt',()=>{
- const expected=['more-training','more-year-plan','more-breathing','more-hydrants','more-regulations','more-water','more-help','theater-phone-section','more-bundesliga','more-security'],main=['portal-section','portal-evidence','account','portal-points'],old=['more-year-plan','more-hydrants','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-help'],key='h2o_portal_layout_v1',order=f=>f.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(t=>t.dataset.portalTile);
+ const expected=['more-training','more-year-plan','more-breathing','more-hydrants','more-regulations','more-water','more-contacts','more-help','theater-phone-section','more-bundesliga','more-security'],main=['portal-section','portal-evidence','account','portal-points'],old=['more-year-plan','more-hydrants','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-help'],key='h2o_portal_layout_v1',order=f=>f.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(t=>t.dataset.portalTile);
  assert.deepEqual(order(layoutFixture()),expected);
- const recent=new Map([[key,JSON.stringify({main,more:expected.filter(id=>id!=='more-training')})]]);assert.deepEqual(order(layoutFixture(recent)),expected);
+ const recent=new Map([[key,JSON.stringify({main,more:expected.filter(id=>!['more-training','more-contacts'].includes(id))})]]);assert.deepEqual(order(layoutFixture(recent)),expected);
  const storage=new Map([[key,JSON.stringify({main,more:old})]]),migrated=layoutFixture(storage);assert.deepEqual(order(migrated),expected);assert.deepEqual(JSON.parse(storage.get(key)),{main,more:expected});
- const custom={main,more:[old[3],...old.filter(id=>id!==old[3])]},customStorage=new Map([[key,JSON.stringify(custom)]]),personal=layoutFixture(customStorage);assert.deepEqual(order(personal),[...custom.more,'more-training','more-regulations']);assert.deepEqual(JSON.parse(customStorage.get(key)),custom);
+ const custom={main,more:[old[3],...old.filter(id=>id!==old[3])]},customStorage=new Map([[key,JSON.stringify(custom)]]),personal=layoutFixture(customStorage);assert.deepEqual(order(personal),[...custom.more,'more-training','more-regulations','more-contacts']);assert.deepEqual(JSON.parse(customStorage.get(key)),custom);
  personal.dom['portal-layout-reset'].click();assert.deepEqual(order(personal),expected);assert.deepEqual(JSON.parse(customStorage.get(key)),{main,more:expected});
 });

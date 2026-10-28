@@ -562,3 +562,5 @@
 /* Pull to refresh belongs to the scrollable portal content. */
 .deckel-pull-refresh{position:fixed;z-index:90;top:calc(env(safe-area-inset-top) + 108px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);padding:12px 18px;border:1px solid #b7cbdc;border-radius:24px;background:#fff;color:#15365a;box-shadow:0 4px 18px #10284326;font-size:1rem;line-height:1.4;font-weight:700;text-align:center;pointer-events:none}
 .deckel-pull-refresh[hidden]{display:none!important}
+
+.portal-icon-art.portal-icon-contacts{background:none;color:#075baf}
