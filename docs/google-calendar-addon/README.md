@@ -79,6 +79,22 @@ Anschließend die Gruppenverbindung einrichten und das Add-on als Testinstallati
 installieren. Keine Web-App und keine allgemeine Marketplace-Veröffentlichung nötig.
 Das ausführende Google-Konto benötigt weiterhin Bearbeitungsrechte am Quellkalender.
 
+## Öffentliche Kalenderfreigabe
+
+Die Seitenleiste selbst benötigt **keine öffentliche Freigabe**. Sie arbeitet mit
+dem persönlichen Google-Konto und dessen Bearbeitungsrechten. Der aktuelle
+**automatische H₂O-Import** akzeptiert allerdings nur die öffentliche iCal-Adresse.
+Die öffentliche Freigabe erst nach einer gesonderten Umstellung dieses Imports
+abschalten. Die vorhandene Google-Anmeldung in H₂O ersetzt den Hintergrundimport
+nicht: ihr kurzlebiges Token bleibt nur im geöffneten Verwaltungsfenster.
+
+Die [Datenschutzanalyse](../KALENDER-DATENSCHUTZ-ANALYSE.md) beschreibt den aktuellen
+Datenfluss und die Voraussetzungen für einen privaten Quellkalender.
+
+Nach dieser Fehlerkorrektur genügt bei bereits eingerichteten Google-Projekten,
+**Model.gs vollständig zu ersetzen und zu speichern** und Google Kalender neu zu
+laden. Code.gs, Manifest, Kalender-ID und Gruppenverbindung bleiben unverändert.
+
 ## Speicherung und Datenschutz
 
 Die Erweiterung liest über den begrenzten H₂O-Schlüssel aktive **Gruppennamen sowie

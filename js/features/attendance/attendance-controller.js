@@ -218,7 +218,11 @@ function todayEntries() {
   return entries.filter(entry=>entry.date===today()&&!entry.operationId&&!entry.sessionId);
 }
 function renderEntries() {
-  const current = todayEntries();
+  const allCurrent = todayEntries();
+  const committee=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
+  const exportMembers=committee?members.filter(member=>member.committeeMember):members;
+  const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
+  const current=committee?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   byId("entries").innerHTML = current.map(entry => `
     <tr>
       <td>${escapeHtml(entry.time)}</td>
@@ -229,7 +233,9 @@ function renderEntries() {
   const presentCount = current.filter(entry => entry.status === "Anwesend").length;
   const excusedCount = current.filter(entry => entry.status === "Entschuldigt").length;
   const recordedNames = new Set(current.flatMap(entry => [entry.storedName, entry.displayName].filter(Boolean)));
-  const missingCount = members.filter(member => !member.ageDepartment && !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member))).length;
+  const audience=window.PortalAdmin?.attendanceAudience?.();
+  const invited=Array.isArray(audience?.recipientIds)?new Set(audience.recipientIds.map(String)):null;
+  const missingCount=audience?.pending?"–":exportMembers.filter(member=>(!invited||invited.has(String(member.id)))&&!recordedNames.has(nameForStorage(member))&&!recordedNames.has(nameForTile(member))).length+current.filter(entry=>entry.status==="Fehlt").length;
   byId("entryCount").textContent = current.length;
   byId("todayCount").textContent = presentCount;
   byId("excusedCount").textContent = excusedCount;

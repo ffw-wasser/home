@@ -286,3 +286,9 @@ test('Nicht freigegebene, unbekannte und inzwischen beendete Termine bleiben ohn
  for(const id of ['not-approved','unknown']){assert.equal(f.c.PortalAdmin.selectCalendarEvent(id),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,original.id);}
  const Base=Date;f.c.Date=class extends Base{static now(){return original.end;}};assert.equal(f.c.PortalAdmin.selectCalendarEvent(original.id),false);assert.equal(f.c.currentSessionId,'');
 });
+
+test('Geladene Empfänger und spätere Gruppenänderungen aktualisieren den Live-Zähler ohne Statusänderung',async()=>{
+ const f=fixture(),seen=[];f.c.renderEntries=()=>seen.push(f.c.PortalAdmin.attendanceAudience());f.privateCal.events[0].recipientIds=['member-a'];await f.login();
+ assert.deepEqual(Array.from(seen.at(-1).recipientIds),['member-a']);const before=seen.length;f.privateCal.events[0].recipientIds=['member-a','member-b'];await f.c.PortalAdmin.refreshAttendance(true);
+ assert.ok(seen.length>before);assert.deepEqual(Array.from(seen.at(-1).recipientIds),['member-a','member-b']);
+});
