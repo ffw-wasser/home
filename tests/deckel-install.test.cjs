@@ -9,6 +9,15 @@ function fixture({ios=false,android=false,standalone=false,url=personal,storageF
  H2OIdentity:{session:()=>session?{token:'synthetic-session',alias:'a'.repeat(32)}:null},DeckelDevice:{saveLink:async link=>{actions.push(['save',link]);if(storageFails)throw Error('blocked');saved.push(link);}}});ctx.window=ctx;
  vm.runInContext(read('js/features/drinks/deckel-install.js'),ctx);return {ctx,nodes,events,saved,actions};
 }
+test('Geräte- und Browsererkennung unterscheidet Safari, Samsung, Chrome und eingebettete Ansichten',()=>{
+ const f=fixture();
+ for(const [ua,platform,browser,embedded] of [
+  ['Mozilla/5.0 (iPhone) Version/26.0 Mobile Safari/604.1','ios','Safari',false],
+  ['Mozilla/5.0 (Linux; Android 15) Chrome/140 SamsungBrowser/29.0 Safari/537.36','android','Samsung Internet',false],
+  ['Mozilla/5.0 (Linux; Android 15; wv) Chrome/140 Safari/537.36','android','Chrome',true],
+  ['Mozilla/5.0 (Windows NT 10.0) Chrome/140 Safari/537.36 Edg/140','desktop','Edge',false]
+ ]){f.ctx.navigator.userAgent=ua;const p=f.ctx.DeckelInstall.profile();assert.equal(p.platform,platform);assert.equal(p.browser,browser);assert.equal(p.embedded,embedded);}
+});
 test('Erster QR-Aufruf zeigt Installation ohne selbstständig zu installieren, zu speichern oder Push zu erlauben',()=>{
  const f=fixture({android:true});assert.equal(f.nodes.installSection.hidden,false);assert.equal(f.nodes.deckelManifest,undefined);assert.equal(f.saved.length,0);
  let prompts=0,prevented=0;f.events.beforeinstallprompt({preventDefault:()=>prevented++,prompt:()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});

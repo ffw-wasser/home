@@ -101,6 +101,7 @@ jobs:
         run: |
           node tests/portal-notifications-browser.cjs
           node tests/portal-pull-refresh-browser.cjs
+          node tests/portal-welcome-browser.cjs
           BROWSER_ENGINE=webkit node tests/portal-pull-refresh-browser.cjs
 
       - name: Test movable portal icon sizes

@@ -71,7 +71,7 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
  await page.evaluate(()=>{const wizard=document.getElementById('h2o-onboarding');if(wizard?.open)wizard.dispatchEvent(new Event('cancel',{cancelable:true}));});
  if(!only||only.split(',').some(name=>name.startsWith('h2o-install-'))){
   await page.setViewportSize({width:390,height:1000});
-  for(const [platform,name] of [['iPhone','h2o-install-iphone'],['Android Chrome','h2o-install-android']]){
+  for(const [platform,name] of [['Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1','h2o-install-iphone'],['Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36','h2o-install-android']]){
    await page.evaluate(platform=>{Object.defineProperty(navigator,'userAgent',{configurable:true,value:platform});DeckelInstall.refresh();document.getElementById('installSection').open=true;},platform);
    await shot(name,'#installSection');
   }
