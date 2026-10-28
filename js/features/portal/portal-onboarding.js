@@ -34,7 +34,7 @@
     say(device.platform==='ios'?'Öffne die Einladung zuerst in Safari.':'Öffne die Einladung zuerst im normalen Browser.');
     const copy=choice('Einladungslink kopieren',async()=>{const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+$('identity-code').value.trim();try{await navigator.clipboard.writeText(url.href);$('identity-message').textContent='Kopiert. Im Browser einfügen.';}catch{$('identity-message').textContent='Öffne den Link über das Menü deiner E-Mail-App im Browser.';}});copy.className='';back.hidden=true;place('identity-message');title.focus();return;
    }
-   say(first?'Nutze Gesicht, Fingerabdruck oder Geräte-PIN.':g.DeckelInstall?.isStandalone()?'Melde dich mit deinem vorhandenen Zugang an.':'Entsperre deinen Zugang mit deinem Gerät.');
+   say(first?(device?.platform==='android'?'Nutze Fingerabdruck, Gesichtserkennung, Geräte-PIN oder Entsperrmuster.':device?.platform==='ios'?'Nutze Face ID, Touch ID oder deinen Gerätecode.':'Nutze die Entsperrung deines Geräts.'):(g.DeckelInstall?.isStandalone()?'Melde dich mit deinem vorhandenen Zugang an.':'Entsperre deinen Zugang mit deinem Gerät.'));
    method='passkey';place(first?'identity-register':'identity-login').textContent=first?'Zugang einrichten':'Anmelden';
    choice('Benutzername und Passwort',()=>{method='password';go('access');});
    const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else{choice('Zugang verloren',release,more);if(!first){if(hasRelease())choice('Mit Einladung erstmals einrichten',()=>{first=true;ticketFromLink=true;go('method');},more);else choice('Erstmals einrichten',()=>{first=true;go('release');},more);}}
@@ -62,6 +62,25 @@
      for(const instruction of g.DeckelInstall.instructions(g.DeckelInstall.profile()))list.append(node('li',instruction));
      content.append(list);
      say('Danach das neue H₂O-Symbol öffnen. Bei Bedarf mit demselben Passkey anmelden.');
+     back.hidden=true;next.hidden=false;next.textContent='Symbol ist hinzugefügt';next.onclick=()=>go('finish');
+    }else if(g.DeckelInstall.profile().platform==='android'){
+     // Render the Android steps directly: a moved <details> can be invisible.
+     const device=g.DeckelInstall.profile();
+     title.textContent='H₂O auf den Startbildschirm';progress.textContent='Android · '+device.browser;
+     say('H₂O lässt sich ohne App-Store direkt auf deinem Handy hinzufügen.');
+     if(g.DeckelInstall.canInstall()){
+      const direct=node('button','H₂O jetzt installieren');direct.type='button';
+      direct.onclick=async()=>{
+       direct.disabled=true;
+       const accepted=await g.DeckelInstall.install();
+       if(accepted)go('finish');else render();
+      };
+      content.append(direct);
+      say('Alternativ geht es über das Browser-Menü:');
+     }else say('So funktioniert es über das Browser-Menü:');
+     const list=node('ol');list.className='onboarding-install-list';
+     for(const instruction of g.DeckelInstall.instructions(device))list.append(node('li',instruction));
+     content.append(list);
      back.hidden=true;next.hidden=false;next.textContent='Symbol ist hinzugefügt';next.onclick=()=>go('finish');
     }else{
      place('installSection').open=true;

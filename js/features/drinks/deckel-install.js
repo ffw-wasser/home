@@ -37,18 +37,19 @@
   if(by('installProgress')){by('installProgress').hidden=systemGuide;by('installProgress').textContent='Schritt '+(step+1)+' von '+values.length;Array.from(by('installSteps').children).forEach((item,index)=>item.hidden=!systemGuide&&index!==step);by('installBack').hidden=by('installNext').hidden=systemGuide;by('installBack').disabled=step===0;by('installNext').disabled=step===values.length-1;}
  }
  async function install(){
-  if(busy||!personal())return;busy=true;by('installButton').disabled=true;by('installStatus').textContent='';
+  if(busy||!personal())return false;busy=true;by('installButton').disabled=true;by('installStatus').textContent='';
   try{
    // Explicit click: persist the personal URL only locally, never in a manifest or network request.
    const personalURL=new URL(location.href);personalURL.search='';if(!globalThis.H2OIdentity?.session?.())await DeckelDevice.saveLink(personalURL.href);
-   if(!pending){by('installStatus').textContent=(globalThis.H2OIdentity?.session?.()?'Du bist in diesem Browser angemeldet. ':'Dein Zugang ist auf diesem Handy gespeichert. ')+'Öffne jetzt in Chrome oder deinem Browser das Menü und wähle „Zum Startbildschirm hinzufügen“.';return;}
+   if(!pending){by('installStatus').textContent=(globalThis.H2OIdentity?.session?.()?'Du bist in diesem Browser angemeldet. ':'Dein Zugang ist auf diesem Handy gespeichert. ')+'Öffne jetzt in Chrome oder deinem Browser das Menü und wähle „Zum Startbildschirm hinzufügen“.';return false;}
    const prompt=pending;pending=null;await prompt.prompt();const choice=await prompt.userChoice;
-   by('installStatus').textContent=choice.outcome==='accepted'?'Installation bestätigt. Öffne das H₂O Portal über das neue Symbol.':'Du kannst den Deckel später über das Browser-Menü hinzufügen.';
-  }catch{by('installStatus').textContent='Der Deckel konnte nicht auf diesem Handy gespeichert werden. Bitte Gerätespeicher erlauben und erneut versuchen.';}
+   by('installStatus').textContent=choice.outcome==='accepted'?'Installation bestätigt. Öffne das H₂O Portal über das neue Symbol.':'Du kannst H₂O über das Browser-Menü hinzufügen.';
+   return choice.outcome==='accepted';
+  }catch{by('installStatus').textContent='Die Installation konnte nicht gestartet werden. Bitte das Browser-Menü verwenden.';return false;}
   finally{busy=false;refresh();}
  }
- addEventListener('beforeinstallprompt',event=>{if(standalone())return;event.preventDefault();pending=event;refresh();});
- addEventListener('appinstalled',()=>{if(!personal())return;installed=true;pending=null;if(!globalThis.H2OIdentity?.session?.())DeckelDevice.saveLink(location.href.split('?')[0].split('#')[0]+location.hash).catch(()=>{});refresh();});
+ addEventListener('beforeinstallprompt',event=>{if(standalone())return;event.preventDefault();pending=event;refresh();globalThis.H2OOnboarding?.refresh();});
+ addEventListener('appinstalled',()=>{if(!personal())return;installed=true;pending=null;if(!globalThis.H2OIdentity?.session?.())DeckelDevice.saveLink(location.href.split('?')[0].split('#')[0]+location.hash).catch(()=>{});refresh();globalThis.H2OOnboarding?.refresh();});
  addEventListener('hashchange',refresh);
  by('installButton').onclick=install;
  if(by('installPlatform'))by('installPlatform').onchange=()=>{override=by('installPlatform').value;step=0;refresh();};
@@ -56,5 +57,5 @@
  function moveStep(direction){step=Math.max(0,Math.min(instructions(profile()).length-1,step+direction));refresh();}
  if(by('installBack'))by('installBack').onclick=()=>moveStep(-1);
  if(by('installNext'))by('installNext').onclick=()=>moveStep(1);
- window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep,isStandalone:standalone};refresh();
+ window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep,isStandalone:standalone,canInstall:()=>Boolean(pending&&!busy&&!standalone()&&personal()),install};refresh();
 })();

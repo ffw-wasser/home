@@ -32,12 +32,14 @@ test('Android installiert nur nach Antippen und verwendet ohne Browserunterstüt
  for(const outcome of ['accepted','dismissed']){
   const f=fixture({android:true});let prompts=0;
   f.events.beforeinstallprompt({preventDefault(){},prompt:async()=>prompts++,userChoice:Promise.resolve({outcome})});
-  await f.nodes.installButton.onclick();
+  assert.equal(f.ctx.DeckelInstall.canInstall(),true);
+  assert.equal(await f.ctx.DeckelInstall.install(),outcome==='accepted');
+  assert.equal(f.ctx.DeckelInstall.canInstall(),false);
   assert.deepEqual(f.saved,[personal]);
   assert.equal(prompts,1);
   assert.match(f.nodes.installStatus.textContent,outcome==='accepted'?/bestätigt/:/später/);
  }
- const f=fixture({android:true});await f.nodes.installButton.onclick();
+ const f=fixture({android:true});assert.equal(f.ctx.DeckelInstall.canInstall(),false);await f.nodes.installButton.onclick();
  assert.match(f.nodes.installStatus.textContent,/Chrome/);
  assert.deepEqual(f.saved,[personal]);
 });

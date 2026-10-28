@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),base='https://ffw-wasser.github.io/home/
 const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
 (async()=>{const f=await fixture({authenticated:false}),browser=await chromium.launch({headless:true});try{
  const errors=[];
- async function context(home){const c=await browser.newContext({viewport:{width:390,height:844},userAgent:ios+(home?'':' Version/26.0 Safari/604.1'),serviceWorkers:'block'}),calls=[];
+ async function context(home,platform='ios'){const ua=platform==='android'?'Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36':ios+(home?'':' Version/26.0 Safari/604.1');const c=await browser.newContext({viewport:{width:390,height:844},userAgent:ua,serviceWorkers:'block'}),calls=[];
   if(home)await c.addInitScript(()=>Object.defineProperty(navigator,'standalone',{get:()=>true}));
   c.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
   await c.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.hostname.endsWith('workers.dev')){calls.push({path:u.pathname,body:req.postDataJSON()});const r=await f.c.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),...(req.method()==='POST'?{body:req.postData()}: {})}),f.env);return route.fulfill({status:r.status,headers:Object.fromEntries(r.headers),body:await r.text()});}const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();});
@@ -45,5 +45,17 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  await firstHome.p.goto(base+'#setup='+newTicket.code);await firstHome.p.locator('#h2oStartup').waitFor({state:'hidden'});
  await firstHome.p.getByText('Brauchst du Hilfe?',{exact:true}).click();await firstHome.p.getByRole('button',{name:'Mit Einladung erstmals einrichten',exact:true}).click();
  assert.equal(await firstHome.p.locator('#h2o-onboarding-title').innerText(),'Zugang einrichten');await firstHome.p.locator('#identity-register').click();await firstHome.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await firstHome.p.locator('#identity-login').click();await firstHome.p.getByRole('button',{name:'Weiter',exact:true}).click();await firstHome.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await firstHome.p.locator('#portal-section').waitFor({state:'visible'});await firstHome.c.close();
- assert.deepEqual(errors,[]);console.log('PASS: Safari enrollment -> separate Home app storage, Safari-less UA, existing-passkey login with clean/consumed/invalid setup URLs, no re-enrollment, reload keeps the session, fresh invitations still allow first setup');
+ // Android setup: screen unlock pattern and all Home Screen steps must be visible.
+ const androidPerson=f.people[2],androidTicket=(await f.call('identity-ticket',{alias:androidPerson.alias,revision:androidPerson.revision},null,true)).value,android=await context(false,'android');
+ await android.p.goto(base+'#setup='+androidTicket.code);await android.p.locator('#h2oStartup').waitFor({state:'hidden'});
+ assert.match(await android.p.locator('#h2o-onboarding').innerText(),/Entsperrmuster/);
+ await android.p.locator('#identity-register').click();await android.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await android.p.locator('#identity-login').click();
+ await android.p.locator('#h2o-onboarding .onboarding-install-list li').first().waitFor({state:'visible'});
+ assert.equal(await android.p.locator('#h2o-onboarding').getAttribute('data-step'),'install');
+ assert.equal(await android.p.locator('#h2o-onboarding .onboarding-install-list li:visible').count(),4,'Android displays all four steps without opening a hidden card');
+ assert.match(await android.p.locator('#h2o-onboarding .onboarding-install-list').innerText(),/Startbildschirm/);
+ await android.p.getByRole('button',{name:'Symbol ist hinzugefügt',exact:true}).click();
+ assert.equal(await android.p.locator('#h2o-onboarding-title').innerText(),'Fertig!');
+ await android.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await android.p.locator('#portal-section').waitFor({state:'visible'});await android.c.close();
+ assert.deepEqual(errors,[]);console.log('PASS: Safari and Android enrollment, visible Home installation steps, existing-passkey login and fresh invitations');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
