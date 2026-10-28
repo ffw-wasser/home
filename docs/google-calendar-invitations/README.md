@@ -113,8 +113,11 @@ Termin ausdrücklich anfordern; die neue Einladung erhält eine neue Kennung.
 
 Die Einladung muss im betreffenden Kalenderkonto verfügbar sein. Ein öffentliches
 Kalenderabonnement oder eine manuell importierte ICS-Datei erzeugt keine persönliche
-Antwortmöglichkeit. Wenn derselbe Feuerwehrkalender bereits abonniert wurde, das
-alte Abonnement ausblenden oder entfernen, um doppelte Einträge zu vermeiden.
+Antwortmöglichkeit. Das öffentliche Abo und die persönliche Einladung können denselben Termin zweimal
+zeigen. Sie werden im Kalenderanbieter nicht automatisch zusammengeführt. H₂O
+ändert keine Abonnements der Mitglieder. Das Ausblenden des öffentlichen Abos
+blendet auch vorbereitete, noch nicht angefragte Termine aus; es ist deshalb keine
+vollständige Lösung für Mitglieder, die weiterhin alle Termine sehen möchten.
 H₂O bietet bei einer aktiven persönlichen Einladung keine zusätzliche ICS-Übernahme an.
 
 Neue Einladungen für kommende Termine werden nur nach ausdrücklicher
@@ -196,3 +199,16 @@ Das Einladungsscript setzt keine Standarderinnerung auf die technischen Kopien.
 Eigene Erinnerungen im persönlichen Kalender stellt jedes Mitglied selbst ein.
 Einladungs-, Änderungs- und Absagebenachrichtigungen des Kalenderanbieters bleiben
 von zusätzlichen Erinnerungen vor einem Termin getrennt.
+
+## Markierung bei offenen Rückmeldungen
+
+Das Termine-Icon in H₂O zeigt eine rote Anzahl für ausdrücklich angeforderte,
+noch offene oder unsichere Rückmeldungen vor Terminbeginn. Zu- und Absage
+entfernen den betreffenden Termin sofort aus der Anzahl. Kalenderantworten,
+Absagen und geänderte Empfänger werden beim nächsten erfolgreichen Laden
+berücksichtigt. Die Markierung bleibt auch an einer nach Mehr verschobenen Kachel.
+Beim Abmelden wird die persönliche Anzahl entfernt.
+
+Manuell versendete Handy-Erinnerungen setzen zusätzlich die vorhandene Markierung
+am installierten H₂O-App-Symbol, sofern Gerät und erteilte Berechtigungen dies
+unterstützen. Diese Markierung wird beim Öffnen quittiert.
