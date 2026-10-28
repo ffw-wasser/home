@@ -4,7 +4,21 @@ Release 2026.10.15.1 erweitert die bestehenden persönlichen Handy-Zugänge.
 Die öffentlichen GitHub-Dateien enthalten nur Programmcode und Grafiken. Den
 produktiven Kalender-Link ausschließlich in der geschützten Anwendung eingeben.
 
-## Kalender ohne OneDrive-Anmeldung am Gerätehaus-iPad (2026.10.15.10)
+## Privaten Google-Kalender verwenden (2026.10.28.11)
+
+Die aktuelle Einrichtung steht in [Privater Kalender](../../docs/KALENDER-DATENSCHUTZ-ANALYSE.md).
+Unter Kalender → Verbindung die geheime iCal-Adresse desselben Kalenders prüfen
+und verschlüsselt speichern. Sie wird nicht zurückgegeben. Erst danach die
+öffentliche Google-Freigabe ausschalten und den gespeicherten Zugriff prüfen.
+Alle Google-Kalenderverwalter behalten ihren Zugriff auf sämtliche Termine.
+
+Bei aktivem privaten Import gibt `/calendar/public` auch mit Jahresparameter
+keine Termine aus. Das Gerätehaus benötigt seine vorhandene OneDrive-Verbindung.
+Persönliche H₂O-Zugänge und Abos bleiben unverändert. Der Worker muss den neuen
+Import unterstützen (`privateCalendarVersion: 1` unter `/health`). Die nachfolgende
+Beschreibung des öffentlichen Modus gilt nur für noch nicht umgestellte Verbindungen.
+
+## Bisheriger Kalender ohne OneDrive-Anmeldung (öffentlicher Modus)
 
 Nach Aktualisierung und Veröffentlichung des vorhandenen `worker.bundle.js` liefert
 `GET /calendar/public` ausschließlich **ausdrücklich freigegebene** Probe-
@@ -44,8 +58,9 @@ noch nicht ausgerollt wurde, ist ein 404 beim Abruf zu erwarten.
    `portal.sql` einmal in der bestehenden D1-Datenbank ausführen. Bestehende
    Konten, Schlüssel und Buchungen werden dadurch nicht geändert.
 4. Auf dem iPad Website aktualisieren und OneDrive verbinden. Unter
-   **Einstellungen → Kalender → Verbindung** den öffentlichen Google-iCal-Link
-   eintragen und speichern. Erinnerungen werden nur beim jeweiligen Termin nach
+   **Einstellungen → Kalender → Verbindung → Privaten Google-Kalender einrichten**
+   die geheime iCal-Adresse des bisherigen Kalenders prüfen und speichern. Danach
+   die öffentliche Google-Freigabe ausschalten und den gespeicherten Zugriff prüfen. Erinnerungen werden nur beim jeweiligen Termin nach
    ausdrücklicher Bestätigung verschickt.
 5. **Kalendereinträge laden:** Geburtstage (Geburtstag, Birthday, Geb. oder 🎂)
    werden bei eindeutig passendem vollständigem Mitgliedernamen automatisch

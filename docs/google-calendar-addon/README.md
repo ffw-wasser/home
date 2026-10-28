@@ -79,17 +79,23 @@ Anschließend die Gruppenverbindung einrichten und das Add-on als Testinstallati
 installieren. Keine Web-App und keine allgemeine Marketplace-Veröffentlichung nötig.
 Das ausführende Google-Konto benötigt weiterhin Bearbeitungsrechte am Quellkalender.
 
-## Öffentliche Kalenderfreigabe
+## Privater gemeinsamer Kalender
 
-Die Seitenleiste selbst benötigt **keine öffentliche Freigabe**. Sie arbeitet mit
-dem persönlichen Google-Konto und dessen Bearbeitungsrechten. Der aktuelle
-**automatische H₂O-Import** akzeptiert allerdings nur die öffentliche iCal-Adresse.
-Die öffentliche Freigabe erst nach einer gesonderten Umstellung dieses Imports
-abschalten. Die vorhandene Google-Anmeldung in H₂O ersetzt den Hintergrundimport
-nicht: ihr kurzlebiges Token bleibt nur im geöffneten Verwaltungsfenster.
+Die Seitenleiste benötigt keine öffentliche Freigabe. Alle Kalenderverwalter
+behalten ihre persönlichen Google-Bearbeitungsrechte am bisherigen gemeinsamen
+Kalender und sehen dort **alle Termine**, auch außerhalb ihrer eigenen Gruppen.
+Martin und Markus benötigen dafür kein persönliches H₂O-Abo mit erweiterten
+Rechten. Gruppen steuern die Teilnahme in H₂O, nicht die Google-Kalenderfreigabe.
 
-Die [Datenschutzanalyse](../KALENDER-DATENSCHUTZ-ANALYSE.md) beschreibt den aktuellen
-Datenfluss und die Voraussetzungen für einen privaten Quellkalender.
+H₂O unterstützt jetzt den privaten ICS-Import: Unter **Kalender → Verbindung →
+Privaten Google-Kalender einrichten** die geheime iCal-Adresse desselben Kalenders
+prüfen und speichern. Erst danach Googles öffentliche Kalenderfreigabe ausschalten
+und den gespeicherten privaten Zugriff erneut prüfen. Die Adresse nicht hier oder
+in Skripteigenschaften speichern; die Seitenleiste benötigt sie nicht. Für die
+Umstellung dieses Imports müssen die Skriptdateien nicht geändert werden.
+
+Die [Einrichtungs- und Datenschutzbeschreibung](../KALENDER-DATENSCHUTZ-ANALYSE.md)
+erläutert den Datenweg, den Schutz des Leseschlüssels und die Prüfschritte.
 
 Nach dieser Fehlerkorrektur genügt bei bereits eingerichteten Google-Projekten,
 **Model.gs vollständig zu ersetzen und zu speichern** und Google Kalender neu zu
@@ -105,8 +111,9 @@ Der Schlüssel ist an den eingerichteten Quellkalender und Mitgliederbestand geb
 Mitgliedernamen erscheinen in der berechtigten Seitenleiste, **nicht in der
 öffentlichen Google-Terminbeschreibung**. Die Verbindung kann jederzeit getrennt werden.
 
-**Gruppennamen, Kleidung und Beschreibung sind im öffentlichen Quellkalender
-lesbar.** Nur unbedenkliche Gruppenbezeichnungen verwenden. Keine individuellen
+**Solange der Quellkalender öffentlich freigegeben ist, sind Gruppennamen, Kleidung
+und Beschreibungen öffentlich lesbar.** Im privaten Betrieb sehen sie die am
+Google-Kalender berechtigten Personen. Nur unbedenkliche Gruppenbezeichnungen verwenden. Keine individuellen
 Ausnahmen, Gesundheitsdaten oder anderen privaten Angaben eintragen.
 Die Auswahl erzeugt die Steuerzeilen `Terminart`, `Kleidung`, `Gruppen` und `Freigabe`
 automatisch; keine Steuerzeilen von Hand schreiben. Keine Google-Gäste hinzufügen.

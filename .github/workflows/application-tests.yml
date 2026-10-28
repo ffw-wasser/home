@@ -85,6 +85,11 @@ jobs:
       - name: Test public learning and documents after a real offline restart
         run: node tests/portal-offline-browser.cjs
 
+      - name: Test private Google calendar import and credential handling
+        run: |
+          node tests/calendar-private-source-browser.cjs
+          BROWSER_ENGINE=webkit node tests/calendar-private-source-browser.cjs
+
       - name: Test private calendar invitations and consistent account sections
         run: |
           node tests/calendar-invitations-browser.cjs

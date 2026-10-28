@@ -166,5 +166,9 @@
   "geraetehaus-google-gruppen": {
     "width": 728,
     "height": 472
+  },
+  "geraetehaus-kalender-privat": {
+    "width": 728,
+    "height": 749
   }
 }

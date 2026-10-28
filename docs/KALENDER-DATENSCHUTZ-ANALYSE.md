@@ -1,106 +1,145 @@
-# Google-Kalender: Datenschutz und privater Betrieb
+# Privater Google-Kalender: Einrichtung und Datenschutz
 
-Stand: 28.10.2026. Quellcodeanalyse; keine produktiven Google-Freigaben oder
-Mitgliederdaten geändert. Eine rechtliche Bewertung der konkreten Datenverarbeitung
-ersetzt diese technische Analyse nicht.
+Stand: 28.10.2026 · Implementierung ab Version 2026.10.28.11.
+Die Veröffentlichung allein schaltet Googles öffentliche Freigabe nicht aus.
+Die bestehende Kalenderverbindung muss einmal geschützt umgestellt werden.
 
-## Ergebnis
+## Ergebnis und gewählter Datenweg
 
-Ein öffentlicher Google-Kalender ist **fachlich nicht erforderlich**. Die aktuelle
-Implementierung benötigt ihn aber für den automatischen ICS-Import. Empfehlung:
-den gemeinsamen Quellkalender künftig privat halten und über einen getrennt
-berechtigten, nur lesenden Dienstzugriff importieren. Erst nach erfolgreicher
-Umstellung die öffentliche Google-Freigabe abschalten.
+H₂O unterstützt den privaten gemeinsamen Google-Kalender über dessen **geheime
+Adresse im iCal-Format**. Für die vorhandene Einrichtung wurde diese Variante
+gewählt, weil der bewährte ICS-Parser Serien, Ausnahmen, Ganztagstermine und
+Geburtstage unverändert verarbeitet. Es ist kein zusätzliches Google-Cloud-Projekt,
+Dienstkonto oder kostenpflichtiger Dienst nötig. Die bisherigen Google-Skripte
+und persönlichen H₂O-Abos können bestehen bleiben.
 
-## Was der aktuelle Code macht
+Die geheime Adresse ist ein **Leseschlüssel für den gesamten Quellkalender**,
+keine persönliche Anmeldung und keine Verschlüsselung der Google-Kalenderfreigabe.
+Jeder Besitzer dieses Links kann den Feed lesen. Im H₂O-Dienst wird sie verschlüsselt
+in der bestehenden Kalenderkonfiguration gespeichert. Sie wird weder an
+Mitglieder noch an andere Verwaltungsgeräte zurückgegeben und erscheint nicht in
+Logs, Fehlermeldungen, öffentlichen Antworten oder dem Repository. Die Eingabe
+wird beim Absenden, Schließen, Ansichtswechsel, Verbergen der Seite und Sperren
+geleert; H₂O speichert sie nicht im Browserspeicher. Ein verlorener Link muss in
+Google zurückgesetzt und anschließend in H₂O ersetzt werden.
 
-| Verbindung | Zugriff und Inhalt | Bedeutung |
-| --- | --- | --- |
-| Google → H₂O-Hintergrundimport | `PortalService.calendarURL` akzeptiert nur `https://calendar.google.com/calendar/ical/<ID>/public/basic.ics`. Worker ruft diesen Feed ohne persönliche Google-Anmeldung ab. | Mit abgeschalteter öffentlicher Freigabe können neue Daten nicht mehr zuverlässig importiert werden. Alte Cache-Daten sind kein erfolgreicher Import. |
-| Google-Seitenleiste | Eigenes Google-OAuth, konfigurierte Kalender-ID, Bearbeitungsrechte, ETag-Prüfung. | Funktioniert grundsätzlich auch an einem privat freigegebenen Kalender. Allein deshalb muss nichts öffentlich sein. |
-| Google-Bearbeitung in H₂O | Persönliches Google-Konto; Access-Token nur im Arbeitsspeicher, keine gespeicherte Offline-Berechtigung. | Liefert keinen dauerhaften automatischen Import, sobald das Verwaltungsfenster geschlossen oder das Token abgelaufen ist. |
-| Google-Farbanbindung | Separates Apps Script mit Nur-Lese-Google-Freigabe, fester Kalender-ID und Zugangsschlüssel; liefert nur Kennungen, Zeiten und Farben. | Kann grundsätzlich privat lesen, ersetzt den Terminimport gegenwärtig nicht. |
-| H₂O-Gruppenschnittstelle | Benannter, widerrufbarer Schlüssel; Gruppennamen, Mitgliedernamen und technische Kennungen; Anlegen neuer Gruppen. | Kein Zugriff auf Atteste, Nachweisgültigkeiten, Geburtstage, Konten oder Rückmeldungen. Mitgliedernamen landen nicht durch diese Funktion in der Google-Beschreibung. |
-| Öffentlicher H₂O-Kalender | `/calendar/public` gibt freigegebene Proben mit neutralem Titel, Beginn/Ende, Terminart, technischer Ereignis-ID und Kennzeichnung eingeschränkter Zielgruppe aus. | Keine Namen, Orte, Beschreibungen, Geburtstage oder Empfängerlisten. Zeiten und das Vorhandensein einer eingeschränkten Zielgruppe bleiben öffentlich. |
-| Persönliches Kalenderabo | Individueller widerrufbarer Link, serverseitige Mitglieds-/Empfängerprüfung. Enthält eigene relevante Termine und den eigenen Geburtstag. | Link berechtigt zum Lesen: privat halten. Kein allgemeiner Mitgliederkalender. |
+Ein eigener Google-Dienstzugang mit einem ausschließlich für diesen Kalender
+vergebenen Leserrecht bleibt eine mögliche spätere Alternative mit getrennt
+entziehbarer Identität. Er ist für die jetzt umgesetzte Verbindung nicht nötig.
 
-Quellen im Repository: `cloudflare/push/portal.js`, `google-calendar-api.js`,
-`google-calendar-oauth.js`, `calendar-subscriptions.js`, `calendar-group-access.js`,
-`docs/google-calendar-addon/Code.gs`, `docs/google-calendar-colors/Code.gs`.
+## Einmalige Umstellung des bestehenden Kalenders
 
-## Tatsächliche Datenschutzlücke der öffentlichen Quelle
+1. Hauptanwendung und vorhandenen Cloudflare-Worker auf den neuen Stand bringen.
+   `/health` meldet `privateCalendarVersion: 1`. Keine neuen Datenbanken,
+   allgemeinen Adminschlüssel oder Google-Skripte anlegen.
+2. In Google Kalender **am Computer** die Einstellungen des bisherigen
+   Feuerwehrkalenders öffnen. Unter **Kalender integrieren → Geheime Adresse im
+   iCal-Format** den Link kopieren. Keinen neuen Kalender anlegen.
+3. Im Gerätehaus unter **Kalender → Verbindung → Privaten Google-Kalender
+   einrichten** den Link in das Passwortfeld einfügen und **Privaten Import prüfen
+   und speichern** wählen. Den Link nur hier eingeben, nicht im Chat, in einem
+   Google-Termin, in Skripteigenschaften oder auf der Homepage.
+4. H₂O liest tatsächlich die private Quelle, prüft ihre Kalender-ID und speichert
+   erst nach einem erfolgreichen Abruf. Ein fremder Kalender wird abgewiesen.
+   Die Bestätigung erscheint ohne den Link. Die zentrale Einrichtung gilt für
+   Geräte mit derselben Gerätehaus-/Kontodienst-Verbindung.
+5. **Erst danach** in Google unter **Zugriffsberechtigungen für Termine** die
+   öffentliche Freigabe ausschalten. Die persönlichen Zugriffe der Verwaltung
+   beibehalten. Auch organisationsweite oder einzelne zusätzliche Freigaben
+   prüfen, falls vorhanden.
+6. Zurück in H₂O **Gespeicherten privaten Zugriff prüfen** wählen. Der Dienst
+   prüft erneut die private Quelle und zusätzlich die alte öffentliche iCal-Adresse.
+   Eine lesbare öffentliche Adresse wird ausdrücklich gemeldet. Eine eindeutige
+   Zugriffssperre wird getrennt von Netzwerkfehlern und unbekannten Antworten
+   dargestellt. Ein Netzwerkfehler ist kein Beweis, dass der Kalender privat ist.
+7. Google kann die Änderung der öffentlichen Freigabe verzögert anwenden.
+   Die Google-Einstellungen und den Zugriff ohne Google-Anmeldung zusätzlich prüfen.
+   Google nennt für die Umstellung bis zu vier Stunden. Alte fremde Kopien werden
+   dadurch nicht rückwirkend entfernt.
 
-Bei öffentlicher Detailfreigabe können Google-Titel, Zeiten, Orte und
-Beschreibungen einschließlich Gruppenbezeichnungen außerhalb von H₂O gelesen
-werden. H₂O-Freigabe und Google-Öffentlichkeit sind verschiedene Einstellungen:
-`Freigabe: Nein` schützt den Google-Eintrag nicht. Auch das Verbergen von
-Geburtstagen in der Hauptanwendung ändert keine Freigabe bei Google. Enthält der
-Quellkalender Namen/Geburtstagsdaten, können diese weiterhin über Google zugänglich
-sein. Dafür war kein Abruf produktiver Daten nötig; dies folgt aus dem Datenweg.
+Falls die geheime Adresse im Google-Konto fehlt, können Organisationsrichtlinien
+diese Funktion sperren. Dann ist ein gezielt freigegebener Dienstzugang oder eine
+separat geschützte Lese-Brücke nötig; die öffentliche Freigabe nicht vor einem
+funktionierenden Ersatz abschalten.
 
-Die geprüften Kalenderfunktionen übertragen keine medizinischen Nachweise aus der
-Mitgliederverwaltung an Google. Eine pauschale Aussage „Es gehen nur Namen durch
-alle Schnittstellen“ wäre trotzdem falsch: Der geschützte H₂O-Mitgliederabgleich
-verarbeitet notwendige Nachweisgültigkeiten, und das persönliche Abo enthält wie
-gewünscht den eigenen Geburtstag. Manuelle private Angaben in Google würden
-unabhängig davon der Google-Freigabe unterliegen.
+## Alle Kalenderverwalter sehen alle Termine
 
-## Varianten für den privaten Betrieb
+**Martin, Markus und alle weiteren Kalenderverwalter behalten den gemeinsamen
+Google-Kalender in ihrem Google-Konto.** Martin bleibt gegebenenfalls Eigentümer;
+die anderen persönlichen Google-Konten benötigen mindestens die Freigabe
+**Änderungen an Terminen vornehmen**. Eine öffentliche Freigabe ist dafür nicht nötig.
 
-| Variante | Vorteil | Grenze / Aufwand |
-| --- | --- | --- |
-| Geschützter Lesezugriff über eigenen Google-Dienstzugang, z. B. Service Account mit Leserrecht genau dieses Kalenders | Kein öffentlicher Feed und keine persönliche Sitzung auf jedem iPad; Berechtigung separat entziehbar. | Google-Projekt und sichere serverseitige Schlüsselverwaltung nötig; neue API-Projektion und Tests für Serien/IDs/Jahresplan. Keine domänenweite Delegierung nötig, wenn der Kalender dem Dienstkonto ausdrücklich freigegeben wird. Organisationsrichtlinien vorher prüfen. |
-| Separate lesende Apps-Script-Brücke mit festem Kalender und widerrufbarem H₂O-Schlüssel | Passt zum vorhandenen Skriptansatz; liest mit Berechtigung des installierenden Kontos. | Neue geprüfte Schnittstelle, Quoten, Ablauf-/Fehlerüberwachung und Schutz des Schlüssels nötig. Die bestehende Farbanbindung allein liefert zu wenige Daten. Das Bearbeitungs-Add-on nicht mit einem allgemeinen Adminschlüssel ausstatten. |
-| Geheime iCal-Adresse nur im geschützten Worker | Kleinster Umbau, vorhandener ICS-Parser verwendbar. | Der Link gewährt jedem Besitzer Lesezugriff auf den ganzen Kalender, keine individuelle Authentifizierung. Wie ein Passwort behandeln, nie öffentlich ausliefern/loggen, bei Verlust zurücksetzen. Google warnt ausdrücklich vor Weitergabe. Schwächer als gezielt entziehbare Dienstberechtigung. |
+Diese Konten sehen im gemeinsamen Google-Kalender **sämtliche Termine**, auch
+wenn die jeweilige Person nicht zur Zielgruppe gehört. Die H₂O-Gruppenauswahl
+steuert Teilnahme, Rückmeldungen und persönliche Mitgliedsansichten. Sie verändert
+weder Google-Freigaben noch die vollständige Sicht der Kalenderverwalter.
 
-Bevorzugt wird ein eigener, nur lesender Dienstzugriff auf genau den Quellkalender.
-Die Skriptbrücke ist eine mögliche Alternative für die bestehende kleine
-Installation. Normale Portalmitglieder brauchen auch dann kein Google-Konto.
-Ein neuer öffentlicher Kalender ist für interne Termine nicht nötig. Falls die
-Feuerwehr bewusst öffentliche Veranstaltungshinweise wünscht, dafür eine gesonderte
-Auswahl ohne interne Gruppen, Mitgliedernamen oder Geburtstage verwenden.
+Das persönliche **H₂O – Meine Feuerwehrtermine**-Abo bleibt auf die eigenen
+relevanten Termine begrenzt. Für die Verwaltungsübersicht den gemeinsamen
+privaten Google-Kalender verwenden, kein erweitertes Mitgliederabo oder fremden
+Aboschlüssel weitergeben. Die Google-Seitenleiste arbeitet weiterhin mit dem
+eigenen Google-Konto und der bisherigen `H2O_CALENDAR_ID`; der geheime ICS-Link
+wird dort nicht benötigt. Auch die bestehende Farbanbindung bleibt unabhängig.
 
-## Wichtig: vorhandene Rückmeldungen erhalten
+## Öffentliche und geschützte Ansichten
 
-Die heutigen Ereignis- und Serienkennungen werden aus **der vollständigen
-Kalender-URL und der ICS-Termin-/Serienkennung** abgeleitet
-(`projection` in `cloudflare/push/portal.js`). Ein bloßer Wechsel von `public` zu
-einer privaten Adresse erzeugte andere Kennungen. Der Konfigurationsweg sperrt
-Kalenderwechsel derzeit ausdrücklich.
+| Verbindung | Verhalten nach Umstellung |
+| --- | --- |
+| Google-Hintergrundimport | Liest ausschließlich die gespeicherte geheime Google-iCal-Adresse. Bei Fehler kein Rückfall auf die öffentliche Quelle. Ein alter Cache wird als veraltet behandelt. |
+| Öffentlicher H₂O-Endpunkt `/calendar/public`, auch mit Jahr | Liefert keine Termine, Zeiten, Ereigniskennungen oder Gruppenhinweise mehr. Die Antwort enthält nur den Hinweis auf den privaten Betrieb. Auch bestehende Jahrescaches werden nicht öffentlich ausgegeben. |
+| Gerätehaus-iPad | Benötigt die bestehende OneDrive-/Kontodienst-Verbindung. Kalender, Verwaltung und Jahresplan verwenden weiterhin die geschützten Lesewege. Die öffentliche Dienstadresse allein gewährt keinen Kalenderzugriff. |
+| Persönliches H₂O-Portal | Weiterhin Anmeldung mit persönlichem Passkey oder Passwort; serverseitige Empfängerprüfung. |
+| Persönliches Kalenderabo | Bisheriger individueller, widerrufbarer Nur-Lese-Link; enthält eigene relevante Termine und den eigenen Geburtstag. Link privat halten. |
+| Google-Gruppenschnittstelle | Unverändert begrenzter Zugriff auf Gruppen, Namen und technische Mitgliederkennungen; keine Konten, Rückmeldungen, Atteste oder Geburtstage. |
+| Noch nicht umgestellter öffentlicher Modus | Bisheriges Verhalten bleibt kompatibel. Google kann Titel, Beschreibungen und Orte weiterhin öffentlich ausliefern; H₂O-Blenden oder `Freigabe: Nein` verhindern das nicht. |
 
-Vor einer Umstellung muss die technische Kalenderidentität vom Zugang getrennt
-werden. Bestehende Ereignis- und Serienkennungen bleiben stabil; Zugriffsschlüssel
-oder private URL dürfen sich ändern, ohne neue Termine entstehen zu lassen.
-Dabei insbesondere Rückmeldungen, individuelle Ausnahmen, Gruppenregeln,
-Erinnerungsmarker, persönliche Abos, Serienausnahmen und Gerätehaus-Zuordnungen
-prüfen. Geburtstage und jährliche Treuepunktmarker müssen ebenfalls gleich bleiben.
-Einfach nur private URLs zuzulassen wäre deshalb keine vollständige Korrektur.
+Der Google-Import verarbeitet die im Quellkalender eingetragenen Daten,
+einschließlich dort hinterlegter Geburtstage. Das Ausblenden in der Hauptanwendung
+ist davon getrennt. Die geprüften Google-Kalenderfunktionen übertragen keine
+medizinischen Nachweise aus der Mitgliederverwaltung an Google. Der geschützte
+H₂O-Mitgliederabgleich verarbeitet notwendige Nachweisgültigkeiten für die
+Nachweisfunktion; das persönliche Abo enthält weiterhin den eigenen Geburtstag.
+Eine pauschale Aussage „Alle Schnittstellen übertragen nur Namen“ wäre falsch.
 
-## Sichere Reihenfolge einer späteren Umstellung
+## Technischer Erhalt der Zuordnungen
 
-1. Privaten Import und feste Kalenderidentität implementieren; Berechtigungen eng
-   begrenzen. Keine Zugangsdaten im Repository oder in ausgeliefertem JavaScript.
-2. Mit künstlichen Daten Zugriffsschutz, Serien, Jahresgrenzen, Ausfälle,
-   Zurücksetzen/Entzug des Zugangs und unveränderte IDs prüfen.
-3. Am vorhandenen Kalender berechtigten Zugriff einrichten und denselben Datenstand
-   abgleichen. Geburtstags-/Treuepunktverarbeitung und bestehende Rückmeldungen
-   prüfen, ohne neue Testbuchungen im Produktivbestand anzulegen.
-4. Erst dann öffentliche Google-Freigabe abschalten; direkte öffentliche ICS-/Web-
-   Zugriffe nach Ablauf der Google-Umstellungszeit erneut prüfen.
-5. Öffentlichen H₂O-Endpunkt getrennt bewerten: Wenn auch neutrale Probenzeiten
-   intern sein sollen, diesen Zugriff ebenfalls auf berechtigte Geräte beschränken.
-6. Persönliches Abo, iPad-Kalender, Google-Seitenleiste und beide Verwaltungszugänge
-   praktisch prüfen. Datenschutzerklärung anschließend an den tatsächlich aktiven
-   Import anpassen. Bisherige öffentliche Daten werden durch Umstellung nicht
-   rückwirkend aus fremden Kopien entfernt.
+Die bisherige öffentliche `calendarUrl` bleibt intern als **nicht berechtigende
+Identität** erhalten. Sie ist kein aktiver öffentlicher Ersatzabruf im privaten
+Betrieb. Die private Adresse wird getrennt als `privateCalendarUrl` verschlüsselt
+abgelegt. Die ICS-Projektion bildet Ereignis-/Serien-IDs weiterhin aus der
+bisherigen Identität plus UID/ursprünglichem Serienvorkommen.
 
-Dieser Arbeitsauftrag setzt die vier Fehlerkorrekturen um und dokumentiert die
-Analyse. Er stellt den produktiven Kalender **noch nicht auf privat um**.
+Damit bleiben Rückmeldungen, Gruppen-/Einzelregeln, Erinnerungsmarker, persönliche
+Abos, Gerätehaus-Zuordnungen sowie Geburtstag-/Treuepunktmarker an denselben
+Terminen. Ein bloßer Tokenwechsel erzeugt keine neuen Kalendertermine.
+Eine eigene Zugriffsrevision invalidiert Quellcaches, ohne Termin-IDs zu ändern.
+Versionsprüfung und bedingte Datenbankschreibvorgänge verhindern, dass gleichzeitig
+laufende alte Importe eine neue Verbindung überschreiben. Fehlgeschlagene
+Einrichtung lässt die bisherige Verbindung unverändert.
 
-## Offizielle Grundlagen
+## Prüfrahmen und praktische Abnahme
 
-- [Google: Öffentliche Kalender und Freigabe beenden](https://support.google.com/calendar/answer/37083?hl=de)
-- [Google: Freigabe für bestimmte Personen und Gruppen](https://support.google.com/calendar/answer/37082?hl=de)
+Automatisierte Prüfungen verwenden ausschließlich künstliche Kalender und Personen:
+Identitätserhalt, Rückmeldungen und Abos, Serien/Jahresplan/Geburtstagsmarker,
+verschlüsselte Speicherung, fehlende Geheimnisse in Ausgaben, fremde Kalender,
+ungültige URLs, Weiterleitungen, Ausfälle, parallele Einrichtung, Schlüsselwechsel,
+alte laufende Importe sowie öffentliche Sperren. Der Browsertest prüft das echte
+Formular einschließlich Navigation, Sperren und Handy-/Tabletbreiten.
+
+Die persönliche Google-Freigabe und geheime Adresse werden nicht automatisch
+verändert oder aus einem Konto ausgelesen. Die letzte praktische Einrichtung muss
+im berechtigten Google-Konto und der geschützten H₂O-Verwaltung erfolgen. Danach
+auf den tatsächlichen iPads das Laden und auf beiden Google-Konten die vollständige
+Verwaltungssicht prüfen. Die technische Beschreibung ersetzt keine rechtliche
+Bewertung der konkreten Datenverarbeitung.
+
+## Zuständige Dateien und offizielle Grundlagen
+
+- `cloudflare/push/portal.js`: Identität, privater Import, Versionsschutz,
+  Cachewechsel, öffentliche Sperre und Zugriffsprüfung.
+- `js/features/portal/calendar-private-source.js`: geschützte Eingabe ohne Rückgabe
+  oder Browserablage; `portal-admin.js`: Einbindung und Leeren beim Sperren/Wechsel.
+- `tests/calendar-private-source.test.cjs`, `tests/calendar-private-source-browser.cjs`.
 - [Google: Geheime iCal-Adresse und Zurücksetzen](https://support.google.com/calendar/answer/37648?hl=de)
-- [Google: Zugangsdaten, OAuth und Service Accounts](https://developers.google.com/workspace/guides/create-credentials)
-- [Google: Kalenderberechtigungen und OAuth-Scopes](https://developers.google.com/workspace/calendar/api/auth)
+- [Google: Öffentliche Kalenderfreigabe beenden](https://support.google.com/calendar/answer/37083?hl=de)
+- [Google: Freigabe für bestimmte Personen](https://support.google.com/calendar/answer/37082?hl=de)
