@@ -17,7 +17,7 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#settingsTab').click();assert.equal(await page.locator('#adminLoginView').isVisible(),true);assert.equal(await page.locator('#settingsView').isVisible(),false);
   await page.locator('#cancelLoginButton').click();
   await page.evaluate(()=>{oneDriveAdministrationReady=()=>true;adminUnlocked=true;resetAdminTimeout();showView('settingsView');});
-  assert.equal(await page.locator('#settingsView .administration-card').count(),4);
+  assert.equal(await page.locator('#settingsView .administration-card').count(),5);
   for(const width of [320,390,768,1024]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'administration overflow '+width);}
   await page.evaluate(()=>{
    window.oneDriveReadState=async()=>({members:[]});DrinksCentral.connection=async()=>({origin:'https://test.example.workers.dev',source:'test-source'});DrinksStore.sourceKey=()=> 'test-source';window.qaYearCalls=[];window.qaYearFailures=1;

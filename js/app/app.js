@@ -133,7 +133,6 @@ function buildSettingsSubpages(){
   const members=byId("admin-members"),goals=byId("admin-settings"),pinArticle=byId("changePinButton")?.closest("article");
   if(pinArticle)pinArticle.remove();
   const membersPage=makePage("settingsMembersView","Mitglieder","Mitglieder, Funktionen und Berechtigungen verwalten.",members);
-  if(membersPage&&!byId('portal-admin-open')){const button=document.createElement('button');button.id='portal-admin-open';button.type='button';button.className='outline-button';button.textContent='Portalzugänge';const heading=membersPage.querySelector('.screen-heading'),actions=document.createElement('div');actions.className='settings-member-actions';actions.append(button);heading.append(actions);}
   if(membersPage&&!byId('memberEvidenceSync')){
     const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Nachweise · Handy-Abgleich</h3><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
     byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync');button.disabled=true;try{await window.PortalAdmin.syncRoster(true);}catch{/* The status card shows the confirmed sync result. */}finally{window.PortalAdmin.renderSyncStatus();}};
@@ -191,6 +190,7 @@ byId("attendanceTab").addEventListener("click", () => {
 document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => {const target=button.closest("#settingsView")?"attendanceView":"settingsView";if(target==="attendanceView"&&!requestReturnToHomeStage())return;showView(target);}));
 byId("adminTab")?.addEventListener("click", () => showView(adminUnlocked ? "adminView" : "adminLoginView"));
 byId("archiveTab")?.addEventListener("click", () => { if (adminUnlocked) { renderArchive(); showView("archiveView"); } else showView("archiveLoginView"); });
+document.querySelectorAll("[data-info-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.infoView)));
 byId("helpTab")?.addEventListener("click", () => showView("helpView"));
 byId("finalizeProbeButton").addEventListener("click", finalizeProbeFromTactics);
 // Der zusätzliche Abbruchknopf ist redundant: Home und „Zurück zu Schritt 1“ übernehmen den Rückweg.

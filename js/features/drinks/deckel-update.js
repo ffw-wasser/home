@@ -1,6 +1,6 @@
 /* One refresh action for release and account updates; private fragments stay local. */
 (function(g){
- 'use strict';const $=id=>document.getElementById(id);let checking=null,refreshing=false;
+ 'use strict';const $=id=>document.getElementById(id);let checking=null,refreshing=false,nextRefreshAt=0,hintTimer;
  const updateMessage='Eine neue Ansicht ist verfügbar. Bitte die Ansicht neu laden.';
  function resume(){if(document.hidden)return;$('deckel-update-message').textContent=updateMessage;check();}
  // Only an actually newer release should display the banner. A previous
@@ -29,10 +29,12 @@
  }
  async function refresh(){
   if(refreshing||g.DeckelReload?.isLoading?.())return;
-  refreshing=true;const hint=$('deckel-pull-refresh');
+  const hint=$('deckel-pull-refresh');g.clearTimeout?.(hintTimer);
+  if(Date.now()<nextRefreshAt){if(hint){hint.hidden=false;hint.textContent='Bitte kurz warten, bevor du erneut aktualisierst.';hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},1800);}return false;}
+  refreshing=true;let completed=false;
   if(hint){hint.hidden=false;hint.textContent='Wird aktualisiert …';}
-  try{if(await check())reload();else await g.DeckelReload?.({checkUpdate:false});}
-  finally{refreshing=false;if(hint)hint.hidden=true;}
+  try{if(await check())completed=reload();else{await g.DeckelReload?.({checkUpdate:false});completed=true;}return completed;}
+  finally{if(completed)nextRefreshAt=Date.now()+10000;refreshing=false;if(hint)hint.hidden=true;}
  }
  function reload(){
   const messages=[];
@@ -43,24 +45,24 @@
   if(messages.length){
    $('deckel-update-banner').hidden=false;
    $('deckel-update-message').textContent=messages.join(' ');
-   return;
+   return false;
   }
   // Reload the public HTML past stale browser caches, while preserving the
   // entire personal URL fragment (account access never enters the query).
   const url=new URL(g.location.href);
   url.searchParams.set('_h2o_refresh',String(Date.now()));
-  g.location.replace(url.href);
+  g.location.replace(url.href);return true;
  }
  function initPullRefresh(){
   const main=$('deckel-main'),hint=$('deckel-pull-refresh');if(!main||!hint)return;
-  let pull=null;
+  let pull=null,suppressClickUntil=0;
   const atTop=()=>main.scrollTop<=1&&(g.scrollY||0)<=1;
   const blocked=()=>document.hidden||refreshing||g.DeckelReload?.isLoading?.()||g.DeckelMobile?.isResources?.()||!document.body.classList.contains('h2o-portal')||document.body.classList.contains('portal-drag-active')||document.querySelector('dialog[open]')||Math.abs((g.visualViewport?.scale||1)-1)>.05;
   function cancel(){pull=null;if(!refreshing)hint.hidden=true;}
   main.addEventListener('touchstart',event=>{
    cancel();if(event.touches.length!==1||!atTop()||blocked())return;
    const target=event.target;
-   if(target.closest('input,select,textarea,button,a,summary,[role="button"],[contenteditable],[data-no-swipe],canvas,iframe,dialog'))return;
+   if(target.closest('input,select,textarea,a,summary,[contenteditable],[data-no-swipe],canvas,iframe,dialog'))return;
    for(let node=target;node&&node!==main;node=node.parentElement){if(node.scrollHeight>node.clientHeight+1&&/auto|scroll/.test(g.getComputedStyle(node).overflowY))return;}
    const touch=event.touches[0];pull={id:touch.identifier,x:touch.clientX,y:touch.clientY,armed:false,active:false};
   },{passive:true});
@@ -75,9 +77,11 @@
   },{passive:false});
   main.addEventListener('touchend',event=>{
    if(!pull)return;const start=pull,ended=Array.from(event.changedTouches).some(t=>t.identifier===start.id);
+   if(start.active)suppressClickUntil=Date.now()+700;
    cancel();if(ended&&start.armed&&atTop()&&!blocked())refresh().catch(()=>{});
   },{passive:true});
   main.addEventListener('touchcancel',cancel,{passive:true});
+  main.addEventListener('click',event=>{if(Date.now()<suppressClickUntil){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   g.addEventListener('portal-pagechange',cancel);document.addEventListener('visibilitychange',cancel);
  }
  function init(){

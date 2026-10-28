@@ -37,3 +37,10 @@
 .guide-support>div,.guide-diagnostics>p,.guide-diagnostics>button{margin:0 18px 18px}.guide-support>div{padding:0 0 8px}.help-guide .guide-support p{margin:6px 0 20px}.help-guide .guide-diagnostics button{min-height:44px;white-space:normal;max-width:calc(100% - 36px)}
 @media(max-width:760px){.help-guide .guide-privacy,.help-guide .guide-manual,.help-guide .guide-provider-security{padding:18px}.guide-privacy-grid{grid-template-columns:minmax(0,1fr);gap:12px}.guide-lesson-body,.guide-lesson-body:has(>.guide-phone){grid-template-columns:minmax(0,1fr);gap:20px;padding:14px}.guide-area>div{padding:0 8px 8px}.help-guide summary{padding:14px;gap:10px}.guide-area>summary strong{font-size:1.0625rem}.help-guide .guide-phone{max-width:280px;justify-self:center}.help-guide .guide-number{flex-basis:28px;width:28px;height:28px}.help-guide .guide-small{max-width:100%}}
 @media print{.help-guide .guide-picture a{border:0}.help-guide .guide-privacy,.help-guide .guide-manual,.help-guide .guide-provider-security{box-shadow:none}.help-guide .guide-lesson-body{break-inside:avoid}}
+
+/* Two clear destinations below Infos in the Gerätehaus application. */
+.info-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;max-width:900px;margin:20px auto}
+.info-menu-card{display:grid;grid-template-columns:40px minmax(0,1fr);gap:6px 14px;text-align:left;align-content:start;min-height:136px;padding:24px;border:1px solid #cbd5df;border-top:5px solid #762c3a;border-radius:16px;background:#eef7f1;color:#18344c;box-shadow:0 4px 16px #1025340c;cursor:pointer}
+.info-menu-card>span{grid-row:span 2;font-size:2rem;color:#075baf}.info-menu-card strong{font-size:1.25rem;overflow-wrap:anywhere}.info-menu-card small{font-size:1rem;color:#435d76;line-height:1.5}
+#contactsView>.contacts-pane{max-width:900px;margin:16px auto 22px}
+@media(max-width:600px){.info-menu{grid-template-columns:minmax(0,1fr)}.info-menu-card{padding:20px}}

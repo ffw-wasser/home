@@ -50,8 +50,8 @@ async function loadIpad(){
 function init(){
  $('contacts-refresh')?.addEventListener('click',loadPhone);
  $('contacts-refresh-ipad')?.addEventListener('click',loadIpad);
- const help=$('helpView');if(help)new MutationObserver(()=>{if(!help.hidden)loadIpad();}).observe(help,{attributes:true,attributeFilter:['hidden']});
- g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-help')loadPhone();});
+ const help=$('contactsView');if(help)new MutationObserver(()=>{if(!help.hidden)loadIpad();}).observe(help,{attributes:true,attributeFilter:['hidden']});
+ g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-contacts')loadPhone();});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

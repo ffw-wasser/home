@@ -5,8 +5,8 @@ const root=path.resolve(__dirname,'..'),read=file=>fs.readFileSync(path.join(roo
  for(const [file,postfix] of [['deckel.html',''],['index.html','-ipad']]){
   const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'});
   await page.route('**/*',route=>route.abort());
-  const markup=read(file).match(/<section class="contacts-pane" id="contacts-duty[\s\S]*?<!-- help-guide:start -->/)[0];
-  await page.setContent('<!doctype html><html lang="de"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><main id="helpView" hidden>'+markup+'</main></body></html>');
+  const markup=read(file).match(/<section class="contacts-pane" id="contacts-duty[\s\S]*?<p class="contacts-source">[\s\S]*?<\/section>/)[0];
+  await page.setContent('<!doctype html><html lang="de"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><main id="contactsView" hidden>'+markup+'</main></body></html>');
   await page.addStyleTag({content:read('css/features/portal.css')});
   assert.equal(await page.locator('#contacts-duty'+postfix).isVisible(),false);
   await page.evaluate(()=>{
@@ -19,7 +19,7 @@ const root=path.resolve(__dirname,'..'),read=file=>fs.readFileSync(path.join(roo
    window.DrinksCentral={connection:async()=>null};
   });
   await page.addScriptTag({content:read('js/features/contacts.js')});
-  const load=()=>page.evaluate(postfix=>{if(postfix){const help=document.getElementById('helpView');help.hidden=true;help.hidden=false;}else{document.getElementById('helpView').hidden=false;dispatchEvent(new CustomEvent('portal-pagechange',{detail:{page:'more-help'}}));}},postfix);
+  const load=()=>page.evaluate(postfix=>{if(postfix){const help=document.getElementById('contactsView');help.hidden=true;help.hidden=false;}else{document.getElementById('contactsView').hidden=false;dispatchEvent(new CustomEvent('portal-pagechange',{detail:{page:'more-contacts'}}));}},postfix);
   await load();const duty=page.locator('#contacts-duty'+postfix);
   await duty.waitFor({state:'visible'});
   assert.equal(await duty.locator('h3').innerText(),'C-Dienst');assert.match(await duty.innerText(),/24\/7 erreichbar/);

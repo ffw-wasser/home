@@ -61,7 +61,7 @@ function showView(viewId) {
   document.querySelectorAll("main.app-shell > .view").forEach(view => view.hidden = view.id !== viewId);
   byId("drinksShortcut")?.classList.toggle("active",viewId==="drinksView");
   byId("attendanceTab").classList.toggle("active", viewId === "attendanceView");
-  if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", viewId === "helpView");
+  if(byId("adminTab"))byId("adminTab").classList.remove("active");if(byId("archiveTab"))byId("archiveTab").classList.remove("active");if(byId("settingsTab"))byId("settingsTab").classList.toggle("active", viewId === "settingsView" || (viewId.startsWith("settings")&&!["settingsHistoryView","settingsStatisticsView"].includes(viewId)));if(byId("helpTab"))byId("helpTab").classList.toggle("active", ["helpView","contactsView","privacyHelpView"].includes(viewId));
   window.YearPlan?.afterView(viewId);
   for(const [id,active] of [["historyTab",viewId==="settingsHistoryView"],["statisticsTab",viewId==="settingsStatisticsView"],["yearPlanTab",viewId==="yearPlanView"],["plansTab",viewId==="plansView"],["eventsTab",viewId==="eventsView"||viewId==="theaterView"]]){const tab=byId(id);tab?.classList.toggle("active",active);if(tab){if(active)tab.setAttribute("aria-current","page");else tab.removeAttribute("aria-current");}}
   if(viewId!=="yearPlanView")window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);

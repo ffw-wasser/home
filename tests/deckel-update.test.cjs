@@ -22,3 +22,13 @@ test('Ein Aktualisieren übernimmt eine neue Version und verhindert dabei Datenv
  f.unsaved(true);await f.ctx.DeckelUpdate.refresh();assert.equal(f.reloads,0);assert.equal(dataLoads,0);
  f.unsaved(false);await f.ctx.DeckelUpdate.refresh();assert.equal(f.reloads,1);assert.equal(dataLoads,0);
 });
+
+test('Manuelle Aktualisierung wartet zehn Sekunden nach Abschluss und startet nie parallel',async()=>{
+ const f=await fixture({build:'20261013.9'});vm.runInContext('let testNow=100000;Date.now=()=>testNow;',f.ctx);
+ let loads=0,release;f.ctx.DeckelReload=async()=>{loads++;await new Promise(resolve=>release=resolve);};
+ const first=f.ctx.DeckelUpdate.refresh();await flush();assert.equal(loads,1);
+ vm.runInContext('testNow+=30000',f.ctx);await f.ctx.DeckelUpdate.refresh();assert.equal(loads,1);
+ release();await first;await f.ctx.DeckelUpdate.refresh();assert.equal(loads,1,'cooldown starts after completion');
+ vm.runInContext('testNow+=9999',f.ctx);await f.ctx.DeckelUpdate.refresh();assert.equal(loads,1);
+ vm.runInContext('testNow+=1',f.ctx);f.ctx.DeckelReload=async()=>loads++;await f.ctx.DeckelUpdate.refresh();assert.equal(loads,2);
+});

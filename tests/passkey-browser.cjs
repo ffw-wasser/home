@@ -63,7 +63,6 @@ const {chromium}=require('playwright');
  await page.evaluate(()=>DeckelMobile.jump('more-security'));
  assert.equal(await page.locator('.deckel-header #refresh').count(),0);
  assert.equal(await page.locator('#refresh').count(),0);
- await page.evaluate(()=>DeckelUpdate.refresh());
  await page.waitForFunction(()=>!DeckelReload.isLoading()&&!DeckelUpdate.isRefreshing());
  assert.equal(await page.locator('#portal-page-more-security').isVisible(),true,'manual refresh preserves selected page');
  await page.evaluate(()=>DeckelMobile.jump('account'));

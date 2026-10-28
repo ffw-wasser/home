@@ -14,7 +14,7 @@
  }
  function stand(){return loadedAt?'Stand '+new Date(Number(cached?.fetchedAt)||loadedAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';}
  function mountDiagnostics(){
-  const help=document.querySelector('#help-connection-recovery > div')||document.getElementById('helpView');if(!help||document.getElementById('calendar-load-help'))return;
+  const help=document.querySelector('#help-connection-recovery > div')||document.getElementById('privacyHelpView');if(!help||document.getElementById('calendar-load-help'))return;
   const box=node('details');box.id='calendar-load-help';box.className='guide-diagnostics';box.append(node('summary','Kalender-Ladezeit prüfen'),node('p','Die letzte Messung bleibt auf diesem Gerät und enthält keine Termin- oder Mitgliederdaten.'));
   const output=node('p'),button=node('button','Messung anzeigen');output.setAttribute('role','status');button.type='button';button.className='outline-button';
   button.onclick=()=>{const t=[...timings].reverse().find(t=>Number.isFinite(t.fetchMs));output.textContent=t?'Letzter Kalenderabruf: '+(t.fetchMs/1000).toLocaleString('de-DE',{maximumFractionDigits:2})+' Sekunden · Aufbereitung: '+t.indexMs+' ms · Darstellung: '+t.renderMs+' ms.':'Noch keine Messung. Öffne zuerst die Kalenderübersicht auf der Gerätehaus-Startseite.';};
