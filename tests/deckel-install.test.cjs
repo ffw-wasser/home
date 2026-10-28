@@ -37,7 +37,7 @@ test('Android installiert nur nach Antippen und verwendet ohne Browserunterstüt
   assert.equal(f.ctx.DeckelInstall.canInstall(),false);
   assert.deepEqual(f.saved,[personal]);
   assert.equal(prompts,1);
-  assert.match(f.nodes.installStatus.textContent,outcome==='accepted'?/bestätigt/:/später/);
+  assert.match(f.nodes.installStatus.textContent,outcome==='accepted'?/bestätigt/:/Browser-Menü/);
  }
  const f=fixture({android:true});assert.equal(f.ctx.DeckelInstall.canInstall(),false);await f.nodes.installButton.onclick();
  assert.match(f.nodes.installStatus.textContent,/Chrome/);
@@ -51,7 +51,7 @@ test('iPhone bekommt freiwillige Anleitung auch vor Anmeldung; installierter Sta
 });
 test('Abgelehnter Gerätespeicher öffnet keinen Installationsdialog; native Installation speichert nur nach Nutzeraktion',async()=>{
  const f=fixture({android:true,storageFails:true});let prompts=0;f.events.beforeinstallprompt({preventDefault(){},prompt:async()=>prompts++,userChoice:Promise.resolve({outcome:'accepted'})});
- await f.nodes.installButton.onclick();assert.equal(prompts,0);assert.equal(f.saved.length,0);assert.match(f.nodes.installStatus.textContent,/Gerätespeicher/);
+ await f.nodes.installButton.onclick();assert.equal(prompts,0);assert.equal(f.saved.length,0);assert.match(f.nodes.installStatus.textContent,/Browser-Menü/);
  const g=fixture({android:true});g.events.appinstalled();await Promise.resolve();assert.deepEqual(g.saved,[personal]);assert.equal(g.nodes.installSection.hidden,true);
 });
 test('App-Manifeste und Icons enthalten keine persönlichen Zugänge; Android hat stabilen Start und iOS behält QR-Adresse',()=>{
