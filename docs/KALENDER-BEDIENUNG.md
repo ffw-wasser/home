@@ -13,7 +13,7 @@ Die Beschreibung wird als Klartext angezeigt; HTML und Skripte werden nicht ausg
    mit dem eigenen freigegebenen Google-Konto anmelden. „Google Kalender verbunden ·
    Bearbeitung erlaubt“ bestätigt die Kalenderberechtigung. Bei Ablauf erneut verbinden.
 2. Unter Termine beim vorhandenen Termin „Bearbeiten“ und dann
-   „Google-Termin bearbeiten“ wählen. Titel, Beginn/Ende, Ort und öffentliche Beschreibung
+   „Google-Termin bearbeiten“ wählen. Titel, Beginn/Ende, Ort und Beschreibung im gemeinsamen privaten Kalender
    pflegen. Zeiten gelten für Europe/Berlin. Bei Ganztag ist das Enddatum der erste Tag
    nach dem Termin. Ganze Serien und Termine mit Gästen direkt in Google ändern.
 3. Am Termin „Bearbeiten“ für die H₂O-Einstellungen öffnen: Terminart, Kleidung,
@@ -127,7 +127,7 @@ Darstellung und Informationssichtbarkeit liegen verschlüsselt und versioniert
 in `portal_calendar_colors` und `portal_calendar_display`. Die bestehenden
 funktionalen Terminregeln werden dadurch nicht geändert. INFO wird vor jeder
 Regelzuordnung erzwungen. Die persönliche Jahresprojektion filtert serverseitig;
-die öffentliche Projektion enthält keine Zusatzinfos. Die Jahres-Rohdaten werden
+die Gerätehausansicht lädt ausschließlich mit bestätigter Gerätehaus-Verbindung. Die Jahres-Rohdaten werden
 weiterhin nur kurz zwischengespeichert und bei jedem Abruf frisch autorisiert
 und dekoriert.
 
@@ -144,7 +144,7 @@ Einmalig je eigenem Apps-Script-Projekt unter Kalender → Verbindung →
 Den begrenzten Schlüssel als H2O_GROUPS_TOKEN in den Skripteigenschaften speichern
 und die drei Skriptdateien aktualisieren. Die Verbindung erlaubt der Google-
 Seitenleiste nur Gruppennamen und Mitgliedernamen/IDs zu lesen und neue Gruppen
-anzulegen. Keine Mitgliedernamen werden in öffentliche Termine geschrieben.
+anzulegen. Mitgliedernamen werden nicht in Google-Termine geschrieben.
 Jede Verbindung lässt sich einzeln trennen; Gruppen bleiben bestehen.
 
 Geburtstagseinträge erscheinen in der Hauptanwendung weder in der Kalenderübersicht noch im Jahresplan oder dessen PDF. Der eigene Geburtstag bleibt im persönlichen H₂O-Plan und Kalenderabo erhalten. Die zentrale Zuordnung für die jährlichen Treuepunkte wird dadurch nicht verändert.

@@ -79,7 +79,7 @@
    const endHelp=node('p','Bei ganztägigen Terminen ist das Enddatum der erste Tag nach dem Termin.');form.append(endHelp);
    const dates=()=>{start.type=end.type=allDay.checked?'date':'datetime-local';endHelp.hidden=!allDay.checked;};dates();if(allDay.checked){start.value=source.start.date;end.value=source.end.date;}
    allDay.onchange=()=>{editing=true;const a=start.value,b=end.value;dates();start.value=allDay.checked?a.slice(0,10):a+'T18:00';end.value=allDay.checked?b.slice(0,10):b+'T20:00';};
-   const locationInput=field('Ort','text',source?.location,300),description=field('Beschreibung · öffentlich im Kalender','textarea',source?.description,4000);description.rows=5;
+   const locationInput=field('Ort','text',source?.location,300),description=field('Beschreibung im gemeinsamen Kalender','textarea',source?.description,4000);description.rows=5;
    let link=null;if(event){link=field('H₂O-Bearbeitungslink in Beschreibung aufnehmen','checkbox','');link.checked=true;}
    const save=node('button','In Google Kalender speichern');save.type='submit';save.className='primary-button';
    const discard=node('button','Abbrechen');discard.type='button';discard.onclick=cancel;

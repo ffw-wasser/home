@@ -3,26 +3,27 @@ class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[
 const descendants=n=>n.children.flatMap(c=>[c,...descendants(c)]);
 const type=card=>descendants(card).find(n=>n.tagName==='LABEL'&&n.textContent==='Terminart').children[0];
 function fixture(){
- const nodes=new Map(),events={},intervals=[],microtasks=[],observers=[],typeClicks=[],requests=[],storage=new Map();let ready=false,publicGate=null,publicResolve;const publicStarted=new Promise(r=>publicResolve=r);
+ const nodes=new Map(),events={},intervals=[],microtasks=[],observers=[],typeClicks=[],requests=[],removedSettings=[],storage=new Map();let ready=false;
  const get=id=>{if(!nodes.has(id))nodes.set(id,new Node());return nodes.get(id);};get('attendanceView').hidden=false;
  const start=Date.now()+3600000,privateCal={configured:true,stale:false,fetchedAt:Date.now(),events:[{id:'test-event',title:'Funkübung',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',kind:'probe',approved:true,start,end:start+3600000}]};
- const publicCal=()=>({...privateCal,events:privateCal.events.map(e=>({...e,title:e.sessionType}))}),clone=v=>JSON.parse(JSON.stringify(v));
- const c=vm.createContext({console,Intl,Date,Promise,MemberEvidence:E,CalendarPresentation:{responseLink:id=>'https://calendar.example.test/response?event='+encodeURIComponent(id)},oneDriveStateConfirmed:false,oneDriveAdministrationReady:()=>ready,oneDriveReadState:async()=>({members:[]}),sessionType:'Sonderprobe',currentSessionId:'',currentOperationId:'',currentProbeDate:'',pendingMemberStatuses:new Map(),members:[],todayEntries:()=>[],byId:get,showToast(){},showView(){},requireAdmin:()=>true,localStorage:{getItem:k=>k==='h2o_calendar_public_origin'?'https://test.account.workers.dev/':null,setItem(){}},safeStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev/',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(_,path,data)=>{requests.push(path);if(path.endsWith('/list'))return clone(privateCal);if(path.endsWith('/replies'))return {event:clone(privateCal.events.find(e=>e.id===data.eventId)||privateCal.events[0]),replies:[],stale:false};return {evidenceVersion:1};}},document:{hidden:false,readyState:'loading',getElementById:get,createElement:tag=>new Node(tag),querySelector:s=>s.startsWith('#sessionTypes ')?{click:()=>typeClicks.push(s.match(/data-session-type="([^"]+)"/)[1])}:new Node(),querySelectorAll:()=>[],addEventListener:(key,fn)=>events['doc:'+key]=fn},addEventListener:(key,fn)=>events['window:'+key]=fn,MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(node){(this.nodes??=[]).push(node);}},queueMicrotask:fn=>microtasks.push(fn),setInterval:fn=>intervals.push(fn),fetch:async()=>{publicResolve();if(publicGate)await publicGate;return {ok:true,json:async()=>clone(publicCal())};}});
+ const clone=v=>JSON.parse(JSON.stringify(v));
+ const c=vm.createContext({console,Intl,Date,Promise,MemberEvidence:E,CalendarPresentation:{responseLink:id=>'https://calendar.example.test/response?event='+encodeURIComponent(id)},oneDriveStateConfirmed:false,oneDriveAdministrationReady:()=>ready,oneDriveReadState:async()=>({members:[]}),sessionType:'Sonderprobe',currentSessionId:'',currentOperationId:'',currentProbeDate:'',pendingMemberStatuses:new Map(),members:[],todayEntries:()=>[],byId:get,showToast(){},showView(){},requireAdmin:()=>true,localStorage:{getItem:()=>null,setItem(){},removeItem:key=>removedSettings.push(key)},safeStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev/',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(_,path,data)=>{requests.push(path);if(path.endsWith('/list'))return clone(privateCal);if(path.endsWith('/replies'))return {event:clone(privateCal.events.find(e=>e.id===data.eventId)||privateCal.events[0]),replies:[],stale:false};return {evidenceVersion:1};}},document:{hidden:false,readyState:'loading',getElementById:get,createElement:tag=>new Node(tag),querySelector:s=>s.startsWith('#sessionTypes ')?{click:()=>typeClicks.push(s.match(/data-session-type="([^"]+)"/)[1])}:new Node(),querySelectorAll:()=>[],addEventListener:(key,fn)=>events['doc:'+key]=fn},addEventListener:(key,fn)=>events['window:'+key]=fn,MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(node){(this.nodes??=[]).push(node);}},queueMicrotask:fn=>microtasks.push(fn),setInterval:fn=>intervals.push(fn),fetch:async()=>{throw Error('Anonymer Kalenderabruf ist nicht erlaubt.');}});
  vm.runInContext(fs.readFileSync('js/features/portal/portal-admin.js','utf8'),c);
- return {c,get,events,intervals,microtasks,observers,typeClicks,requests,privateCal,publicStarted,gate:p=>publicGate=p,init:()=>events['doc:DOMContentLoaded'](),login:()=>{ready=true;c.oneDriveStateConfirmed=true;return c.PortalAdmin.storageChanged();},label:()=>get('portal-calendar-pick').children[1]?.textContent};
+ return {c,get,events,intervals,microtasks,observers,typeClicks,requests,removedSettings,privateCal,logout:()=>{ready=false;c.oneDriveStateConfirmed=false;return c.PortalAdmin.storageChanged();},init:()=>events['doc:DOMContentLoaded'](),login:()=>{ready=true;c.oneDriveStateConfirmed=true;return c.PortalAdmin.storageChanged();},label:()=>get('portal-calendar-pick').children[1]?.textContent};
 }
-test('Hauptansicht ersetzt neutrale Sonderprobe nach OneDrive-Bestätigung automatisch durch den richtigen Namen',async()=>{
- const f=fixture();await f.c.PortalAdmin.refreshAttendance(true);assert.match(f.label(),/Sonderprobe/);assert.ok(!f.label().includes('Sonderprobe · Sonderprobe'));assert.equal(f.requests.length,0);
+test('Hauptansicht lädt Termine ausschließlich nach bestätigter Gerätehaus-Verbindung',async()=>{
+ const f=fixture();await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.match(f.get('portal-calendar-status').textContent,/OneDrive-Verbindung/);assert.equal(f.requests.length,0);
  await f.login();assert.match(f.label(),/Funkübung · Sonderprobe/);assert.ok(f.requests.some(p=>p.endsWith('/replies')));
 });
-test('Öffentlicher Gerätehaus-Kalender zeigt ausgewählte Termine mit Kennzeichnung',async()=>{
+test('Privater Gerätehaus-Kalender kennzeichnet Termine für ausgewählte Mitglieder',async()=>{
  const f=fixture();f.privateCal.events[0].audienceRestricted=true;f.privateCal.events[0].recipientIds=['mitglied-1'];
- await f.c.PortalAdmin.refreshAttendance(true);assert.match(f.label(),/Sonderprobe · Nur ausgewählte Mitglieder/);
  await f.login();assert.match(f.label(),/Funkübung · Sonderprobe · Nur ausgewählte Mitglieder/);
 });
-
-test('Anmeldung während eines laufenden öffentlichen Abrufs verliert die automatische Aktualisierung nicht',async()=>{
- const f=fixture();let release;f.gate(new Promise(r=>release=r));const first=f.c.PortalAdmin.refreshAttendance(true);await f.publicStarted;await f.login();release();await first;assert.match(f.label(),/Funkübung · Sonderprobe/);
+test('Abmeldung entfernt geladene Termine und Rückmeldungen ohne anonymen Ersatzabruf',async()=>{
+ const f=fixture();await f.login();assert.ok(f.c.PortalAdmin.selectedEvent());const calls=f.requests.length;await f.logout();assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.equal(f.get('portal-attendance-replies').hidden,true);assert.equal(f.requests.length,calls);
+});
+test('Fehler beim geschützten Abruf werden angezeigt und nicht durch einen leeren öffentlichen Kalender verdeckt',async()=>{
+ const f=fixture();await f.login();const request=f.c.DrinksPush.request;f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/list'))throw Error('Kalenderverbindung unterbrochen.');return request(...args);};await f.c.PortalAdmin.refreshAttendance(true);assert.match(f.get('portal-calendar-status').textContent,/Kalenderverbindung unterbrochen/);assert.match(f.label(),/Funkübung/);
 });
 test('Zurückkehr zur Erfassung lädt Namens- und Terminartkorrekturen bei unveränderter Kalenderkennung',async()=>{
  const f=fixture();f.init();await f.login();f.privateCal.events[0].title='Fahrzeugkunde';f.privateCal.events[0].attendanceType='Unterricht';
@@ -104,8 +105,8 @@ test('Sammelfreigabe darf nach Abbrechen der Vorschau keine Kalenderregeln schre
 test('Kalenderverwaltung besitzt getrennte Bereiche, Suche und faltbare Verbindung',()=>{
  const html=fs.readFileSync('index.html','utf8'),section=html.slice(html.indexOf('id="settingsCalendarView"'),html.indexOf('id="adminLoginView"'));
  for(const id of ['portal-admin-review-search','portal-calendar-nav-events','portal-calendar-nav-groups','portal-calendar-nav-connection','portal-admin-review-filter','portal-admin-review-events'])assert.ok(section.includes('id="'+id+'"'),id);
- assert.match(section,/class="portal-calendar-technical"/);
- assert.ok(section.indexOf('portal-calendar-workspace')<section.indexOf('portal-calendar-technical'));
+ assert.ok(section.includes('id="calendar-private-source"'));assert.doesNotMatch(section,/portal-calendar-technical|portal-admin-form|portal-public-origin|calendar-legacy-source/);
+ assert.ok(section.indexOf('portal-calendar-workspace')<section.indexOf('calendar-private-source'));
 });
 
 
@@ -258,20 +259,6 @@ test('Ohne kommenden Termin bleibt der Kalender leer; Terminartwechsel behält d
  f.c.PortalAdmin.discard();assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.equal(f.get('portal-calendar-pick').value,'');
 });
 
-for(const reason of ['Sperren','Quellenwechsel'])test('Wartendes Speichern der Kalenderverbindung nach '+reason+' sendet keinen Auftrag',async()=>{
- const f=fixture();f.init();await f.login();f.get('attendanceView').hidden=true;f.get('settingsCalendarView').hidden=false;await f.c.PortalAdmin.loadCalendar();
- f.get('portal-admin-show-qr').classList={toggle(){}};
- let release,started;const pending=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
- f.c.DrinksCentral.connection=async()=>{started();await pending;return {origin:'https://test.account.workers.dev/',source:f.c.DrinksStore.sourceKey()};};
- f.get('portal-admin-calendar').value='https://example.invalid/new.ics';f.get('portal-admin-hours').value='24';
- const saving=f.get('portal-admin-form').onsubmit({preventDefault(){}});await waiting;
- if(reason==='Sperren')f.c.PortalAdmin.lock();else f.c.DrinksStore.sourceKey=()=> 'different-source';
- release();await saving;
- assert.equal(f.requests.filter(p=>p.endsWith('/configure')).length,0);
- assert.equal(f.get('portal-calendar-administration').hidden,true);
-});
-
-
 test('Kalenderauswahl übernimmt Datum und Terminart, startet aber keine Erfassung',async()=>{
  const f=fixture();const original=f.privateCal.events[0],next={...original,id:'next-event',title:'Unterricht',attendanceType:'Unterricht',start:original.start+86400000,end:original.end+86400000};f.privateCal.events.push(next);await f.login();
  assert.equal(f.c.PortalAdmin.selectCalendarEvent(next.id),true);assert.equal(f.c.PortalAdmin.selectedEvent().id,next.id);assert.equal(f.c.PortalAdmin.isNextEvent(),false);assert.equal(f.typeClicks.at(-1),'Unterricht');assert.equal(f.c.currentProbeDate,new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(next.start));assert.equal(f.c.currentSessionId,'');assert.equal(f.c.currentOperationId,'');assert.equal(f.c.pendingMemberStatuses.size,0);
@@ -291,4 +278,11 @@ test('Geladene Empfänger und spätere Gruppenänderungen aktualisieren den Live
  const f=fixture(),seen=[];f.c.renderEntries=()=>seen.push(f.c.PortalAdmin.attendanceAudience());f.privateCal.events[0].recipientIds=['member-a'];await f.login();
  assert.deepEqual(Array.from(seen.at(-1).recipientIds),['member-a']);const before=seen.length;f.privateCal.events[0].recipientIds=['member-a','member-b'];await f.c.PortalAdmin.refreshAttendance(true);
  assert.ok(seen.length>before);assert.deepEqual(Array.from(seen.at(-1).recipientIds),['member-a','member-b']);
+});
+
+test('Alte lokale Kalender-Dienstadresse wird ohne Änderung anderer Einstellungen entfernt',()=>{const f=fixture();f.init();assert.deepEqual(f.removedSettings,['h2o_calendar_public_origin']);});
+test('Abmeldung während eines privaten Kalenderabrufs stellt später keine Termine wieder her',async()=>{
+ const f=fixture(),request=f.c.DrinksPush.request;let release,started;const gate=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
+ f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/list')){started();await gate;}return request(...args);};
+ const opening=f.login();await waiting;const logout=f.logout();release();await opening;await logout;assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/OneDrive-Verbindung/);
 });

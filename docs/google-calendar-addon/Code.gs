@@ -63,7 +63,7 @@ function h2oEvent_(context) {
 }
 function h2oCard_(context, event, draft, notice) {
   const M = H2OCalendarAddonModel, value = draft || M.read(event.description, context.config.groups, event.summary);
-  const section = CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(h2oEscape_('Google-Titel, Datum und Ort zuerst speichern. Danach hier auswählen. Gruppennamen und Kleidung stehen öffentlich in der Terminbeschreibung; keine Mitgliedernamen eingeben. Eine oder mehrere passende Gruppen direkt auswählen. H₂O-Einzelanpassungen behalten Vorrang. Sichtbarkeit gilt für Probe, Sonderprobe, Unterricht und Ausschusssitzung.')));
+  const section = CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(h2oEscape_('Google-Titel, Datum und Ort zuerst speichern. Danach hier auswählen. Gruppennamen und Kleidung stehen in der Terminbeschreibung des privaten Kalenders; keine Mitgliedernamen eingeben. Eine oder mehrere passende Gruppen direkt auswählen. H₂O-Einzelanpassungen behalten Vorrang. Sichtbarkeit gilt für Probe, Sonderprobe, Unterricht und Ausschusssitzung.')));
   if(notice)section.addWidget(CardService.newTextParagraph().setText(h2oEscape_(notice)));
   function choose(name, title, type, items, selected) {
     const input = CardService.newSelectionInput().setFieldName(name).setTitle(title).setType(type);

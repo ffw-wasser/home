@@ -101,7 +101,7 @@ Anleitung: [Kalender und Jahresplan](KALENDER-BEDIENUNG.md).
 
 Echte Abo-Aktualisierung sowie Google-Terminänderungen mit beiden berechtigten
 Konten bleiben eine Praxisprüfung. Keine privaten Teilnehmer-/Mitgliederdaten
-in den öffentlichen Kalender schreiben.
+in den gemeinsamen Google-Kalender schreiben.
 
 Offizielle Grundlage:
 - https://developers.google.com/identity/protocols/oauth2/web-server

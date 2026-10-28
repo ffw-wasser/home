@@ -33,6 +33,14 @@ Die Seitenleiste ergänzt Googles ursprüngliches Terminformular. Kalender-Add-o
 stehen am Computer zur Verfügung; in der Google-Kalender-App für iPhone/Android
 bleibt die Bearbeitung über H₂O möglich.
 
+## Hinweistext der bestehenden Installation
+
+Die aktuelle `Code.gs` beschreibt den privaten gemeinsamen Kalender. Soll die
+persönliche Google-Seitenleiste auch diesen aktualisierten Hinweistext anzeigen,
+`Code.gs` im eigenen Apps-Script-Projekt ersetzen und speichern. Für diese reine
+Textanpassung bleiben `Model.gs`, Manifest, Skripteigenschaften und Verbindungen
+unverändert.
+
 ## Bestehende Installation aktualisieren und verbinden
 
 Jede Verwaltungsperson verwendet ihr eigenes Projekt **H₂O Kalenderauswahl**.
@@ -81,7 +89,7 @@ Das ausführende Google-Konto benötigt weiterhin Bearbeitungsrechte am Quellkal
 
 ## Privater gemeinsamer Kalender
 
-Die Seitenleiste benötigt keine öffentliche Freigabe. Alle Kalenderverwalter
+Alle Kalenderverwalter
 behalten ihre persönlichen Google-Bearbeitungsrechte am bisherigen gemeinsamen
 Kalender und sehen dort **alle Termine**, auch außerhalb ihrer eigenen Gruppen.
 Martin und Markus benötigen dafür kein persönliches H₂O-Abo mit erweiterten
@@ -89,8 +97,8 @@ Rechten. Gruppen steuern die Teilnahme in H₂O, nicht die Google-Kalenderfreiga
 
 H₂O unterstützt jetzt den privaten ICS-Import: Unter **Kalender → Verbindung →
 Privaten Google-Kalender einrichten** die geheime iCal-Adresse desselben Kalenders
-prüfen und speichern. Erst danach Googles öffentliche Kalenderfreigabe ausschalten
-und den gespeicherten privaten Zugriff erneut prüfen. Die Adresse nicht hier oder
+prüfen und speichern. Eine bereits eingerichtete Verbindung beibehalten und bei
+Bedarf den gespeicherten privaten Zugriff erneut prüfen. Die Adresse nicht hier oder
 in Skripteigenschaften speichern; die Seitenleiste benötigt sie nicht. Für die
 Umstellung dieses Imports müssen die Skriptdateien nicht geändert werden.
 
@@ -109,11 +117,10 @@ Gruppen lesen und neue Gruppen mit vorhandenen Mitgliedern anlegen. Sie kann kei
 Mitgliedskonten, Nachweise, ärztlichen Atteste oder Geburtstagsdaten lesen und keine Erinnerungen senden oder Rückmeldungen lesen.
 Der Schlüssel ist an den eingerichteten Quellkalender und Mitgliederbestand gebunden.
 Mitgliedernamen erscheinen in der berechtigten Seitenleiste, **nicht in der
-öffentlichen Google-Terminbeschreibung**. Die Verbindung kann jederzeit getrennt werden.
+Google-Terminbeschreibung**. Die Verbindung kann jederzeit getrennt werden.
 
-**Solange der Quellkalender öffentlich freigegeben ist, sind Gruppennamen, Kleidung
-und Beschreibungen öffentlich lesbar.** Im privaten Betrieb sehen sie die am
-Google-Kalender berechtigten Personen. Nur unbedenkliche Gruppenbezeichnungen verwenden. Keine individuellen
+**Gruppennamen, Kleidung und Beschreibungen sehen die am privaten
+Google-Kalender berechtigten Personen.** Nur unbedenkliche Gruppenbezeichnungen verwenden. Keine individuellen
 Ausnahmen, Gesundheitsdaten oder anderen privaten Angaben eintragen.
 Die Auswahl erzeugt die Steuerzeilen `Terminart`, `Kleidung`, `Gruppen` und `Freigabe`
 automatisch; keine Steuerzeilen von Hand schreiben. Keine Google-Gäste hinzufügen.
