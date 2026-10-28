@@ -18,7 +18,7 @@
   restore();content.replaceChildren();dialog.dataset.step=step;
   progress.textContent=first||setupFinished?'Dein Zugang':'H₂O Portal';
   title.textContent={welcome:'Willkommen',release:'Einladung öffnen',method:first?'Zugang einrichten':'Anmelden',access:first?'Passwort wählen':'Jetzt anmelden',install:'App-Symbol hinzufügen',finish:'Fertig!'}[step];
-  back.hidden=step==='welcome'||step==='finish'||step==='install'||step==='method'&&first&&ticketFromLink;next.hidden=later.hidden=true;
+  back.hidden=step==='welcome'||step==='finish'||step==='install'||step==='method'&&(first&&ticketFromLink||!first&&g.DeckelInstall?.isStandalone());next.hidden=later.hidden=true;
   if(step==='welcome'){
    say('Wie möchtest du starten?');
    const login=choice('Bereits eingerichtet',()=>{first=false;go('method');});login.className='';
@@ -34,10 +34,10 @@
     say(device.platform==='ios'?'Öffne die Einladung zuerst in Safari.':'Öffne die Einladung zuerst im normalen Browser.');
     const copy=choice('Einladungslink kopieren',async()=>{const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+$('identity-code').value.trim();try{await navigator.clipboard.writeText(url.href);$('identity-message').textContent='Kopiert. Im Browser einfügen.';}catch{$('identity-message').textContent='Öffne den Link über das Menü deiner E-Mail-App im Browser.';}});copy.className='';back.hidden=true;place('identity-message');title.focus();return;
    }
-   say(first?'Nutze Gesicht, Fingerabdruck oder Geräte-PIN.':'Entsperre deinen Zugang mit deinem Gerät.');
+   say(first?'Nutze Gesicht, Fingerabdruck oder Geräte-PIN.':g.DeckelInstall?.isStandalone()?'Melde dich mit deinem vorhandenen Zugang an.':'Entsperre deinen Zugang mit deinem Gerät.');
    method='passkey';place(first?'identity-register':'identity-login').textContent=first?'Zugang einrichten':'Anmelden';
    choice('Benutzername und Passwort',()=>{method='password';go('access');});
-   const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else choice('Zugang verloren',release,more);
+   const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else{choice('Zugang verloren',release,more);if(!first){if(hasRelease())choice('Mit Einladung erstmals einrichten',()=>{first=true;ticketFromLink=true;go('method');},more);else choice('Erstmals einrichten',()=>{first=true;go('release');},more);}}
   }else if(step==='access'){
    if(first){say('Wähle deinen Benutzernamen und dein Passwort.');place('identity-password-set-form');}
    else if(method==='passkey'){say('Bestätige deinen neuen Zugang.');place('identity-login').textContent='Anmelden';}
@@ -66,7 +66,7 @@
   const nav=node('nav');nav.setAttribute('aria-label','Einrichtung');back=node('button','Zurück');next=node('button','Weiter');later=node('button');later.className='onboarding-secondary';back.className='onboarding-secondary';back.type=next.type=later.type='button';
   back.onclick=()=>{if(step==='install'){g.DeckelInstall.moveStep(-1);render();}else if(step==='method')go(first&&!ticketFromLink?'release':'welcome');else if(step==='access')go('method');else go('welcome');};
   nav.append(back,next);dialog.append(progress,title,content,nav,later);document.body.append(dialog);
-  dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.showModal();if(hasTicket&&hasRelease()){first=true;ticketFromLink=true;step='method';}render();
+  dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.showModal();if(g.DeckelInstall?.isStandalone()){first=false;step='method';}else if(hasTicket&&hasRelease()){first=true;ticketFromLink=true;step='method';}render();
  }
- g.H2OOnboarding={init,refresh(){if(dialog?.open)render();},accessReady(){if(!dialog?.open)return;setupFinished=true;first=false;go('access');},signedIn(){if(!dialog?.open)return;if(first||setupFinished){g.DeckelInstall.moveStep(-Infinity);go('install');}else close();}};
+ g.H2OOnboarding={init,loginCode(){return dialog?.open?(first?$('identity-code').value.trim():''):null;},refresh(){if(dialog?.open)render();},accessReady(){if(!dialog?.open)return;setupFinished=true;first=false;go('access');},signedIn(){if(!dialog?.open)return;if(first||setupFinished){g.DeckelInstall.moveStep(-Infinity);go('install');}else close();}};
 })(globalThis);

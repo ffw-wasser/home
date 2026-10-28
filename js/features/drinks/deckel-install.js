@@ -6,9 +6,9 @@
  const isAndroid=()=>/Android/i.test(navigator.userAgent);
  let pending=null,busy=false,installed=false,registered=false,step=0,override='';
  function profile(){
-  const ua=navigator.userAgent,ios=isIos(),android=isAndroid();
-  const browser=/Edg\//.test(ua)?'Edge':/SamsungBrowser/.test(ua)?'Samsung Internet':/Firefox|FxiOS/.test(ua)?'Firefox':/Chrome|CriOS/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':'Browser';
-  const embedded=/FBAN|FBAV|Instagram|GSA\/|; wv\)|WebView|Outlook/i.test(ua)||(ios&&!/Safari|CriOS|FxiOS|EdgiOS/.test(ua));
+  const ua=navigator.userAgent,ios=isIos(),android=isAndroid(),app=standalone();
+  const browser=ios&&app?'Safari':/Edg\//.test(ua)?'Edge':/SamsungBrowser/.test(ua)?'Samsung Internet':/Firefox|FxiOS/.test(ua)?'Firefox':/Chrome|CriOS/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':'Browser';
+  const embedded=!app&&(/FBAN|FBAV|Instagram|GSA\/|; wv\)|WebView|Outlook/i.test(ua)||(ios&&!/Safari|CriOS|FxiOS|EdgiOS/.test(ua)));
   return {platform:override||(ios?'ios':android?'android':'desktop'),browser,embedded,label:(ios?'iPhone / iPad':android?'Android':/Macintosh/.test(ua)?'Mac':'Computer')+' · '+browser};
  }
  function instructions(p){
@@ -54,5 +54,5 @@
  function moveStep(direction){step=Math.max(0,Math.min(instructions(profile()).length-1,step+direction));refresh();}
  if(by('installBack'))by('installBack').onclick=()=>moveStep(-1);
  if(by('installNext'))by('installNext').onclick=()=>moveStep(1);
- window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep};refresh();
+ window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep,isStandalone:standalone};refresh();
 })();

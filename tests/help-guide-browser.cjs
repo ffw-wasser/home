@@ -27,7 +27,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    assert.ok((await guide.locator('.guide-manual').innerText()).length<4500,'daily instructions remain concise alongside the explicit data inventory');
    assert.ok(await guide.locator('.guide-data-fields dt').count()>=6,'privacy enumerates the actual data fields');
    assert.doesNotMatch(await guide.innerText(),/TestFlight|Google-Gruppenschnittstelle|zertifiziert|APK/);
-   assert.equal(await guide.locator('img').count(),file==='index.html'?6:7);
+   assert.equal(await guide.locator('img').count(),file==='index.html'?6:8);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' overflow '+width+'/'+scale);
    assert.deepEqual(await guide.locator('.guide-lesson-body,.guide-privacy-grid').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[]);
