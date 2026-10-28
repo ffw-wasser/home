@@ -123,12 +123,12 @@ test('Gespeicherte normale Probe lässt sich öffnen und Mitglieder mit Suche ko
  const shortcut=card.children.find(n=>n.className==='portal-review-edit-toggle');
  assert.ok(shortcut,'Mitglieder ändern auf der normalen Probe');
  const summary=card.children.find(n=>n.className==='portal-review-audience');
- assert.match(summary.textContent,/Bisherige Auswahl/);
+ assert.match(summary.textContent,/Zugeordnete Mitglieder/);
  assert.match(card.children.find(n=>n.className==='portal-event-people').children[0].textContent,/Mitglieder \(1\)/);
  shortcut.onclick();
  const recipients=descendants(card).find(n=>n.className==='portal-recipient-choices');
  assert.ok(recipients);assert.equal(recipients.hidden,false);
- const exceptions=recipients.children[4],mode=exceptions.children[1],count=recipients.children[1],search=exceptions.children[2],actions=exceptions.children[3],list=exceptions.children[5];
+ const exceptions=recipients.children.find(n=>n.className==='portal-recipient-exceptions'),mode=exceptions.children[1],count=recipients.children[1],search=exceptions.children[2],actions=exceptions.children[3],list=exceptions.children[5];
  assert.equal(mode.value,'selected');assert.match(count.textContent,/1 von 3/);
  assert.equal(list.children.length,3);
  search.value='müller';search.oninput();
@@ -160,7 +160,7 @@ test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und b
  await f.c.PortalAdmin.loadCalendar();
  const card=f.get('portal-admin-review-events').children[0],shortcut=card.children.find(n=>n.className==='portal-review-edit-toggle');
  shortcut.onclick();
- const recipients=descendants(card).find(n=>n.className==='portal-recipient-choices'),list=recipients.children[4].children[5];
+ const recipients=descendants(card).find(n=>n.className==='portal-recipient-choices'),list=recipients.children.find(n=>n.className==='portal-recipient-exceptions').children[5];
  list.children[1].children[0].checked=true;list.children[1].children[0].onchange();
  const save=descendants(card).find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');
  assert.ok(save);

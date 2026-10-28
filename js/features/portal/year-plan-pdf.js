@@ -1,7 +1,7 @@
 /* Shared A4 annual PDF layout; each authorized view supplies its own events. */
 (function(g){
  'use strict';
- async function build({year,months,colors=g.CalendarPresentation?.defaults()}){
+ async function build({year,months,colors=g.CalendarPresentation?.defaults(),includeBirthdays=true}){
   const {PDFDocument,StandardFonts,rgb}=g.PDFLib,pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
   const safe=value=>[...String(value||'').replace(/[\r\n\t]+/g,' ').replace(/[–—]/g,'-')].map(c=>{try{regular.encodeText(c);return c;}catch{return '?';}}).join('');
   function wrap(value,size,width){const lines=[];let line='';for(const word of safe(value).split(/\s+/)){if(!word)continue;if(line&&bold.widthOfTextAtSize(line+' '+word,size)<=width){line+=' '+word;continue;}if(line){lines.push(line);line='';}for(const char of word){if(line&&bold.widthOfTextAtSize(line+char,size)>width){lines.push(line);line='';}line+=char;}}if(line)lines.push(line);return lines;}
@@ -9,7 +9,7 @@
   let condensed=false,bottom=66,available=top-bottom;
   const text=(page,value,x,y,size=8,strong=false,color=ink)=>page.drawText(safe(value),{x,y,size,font:strong?bold:regular,color});
   const palette=(raw,native=false)=>{const channels=raw.slice(1).match(/../g).map(v=>parseInt(v,16));return {color:native?ink:rgb(...channels.map(v=>Math.min(v,175)/255)),accent:native?rgb(...channels.map(v=>v/255)):null,background:rgb(...channels.map(v=>(229.5+v*.1)/255))};};
-  const allEvents=months.flatMap(month=>month.days.flatMap(day=>day.events||[])),native=allEvents.some(event=>event.googleColor),types=g.CalendarPresentation?.types||[],used=new Map();
+  const allEvents=months.flatMap(month=>month.days.flatMap(day=>day.events||[])),native=allEvents.some(event=>event.googleColor),types=(g.CalendarPresentation?.types||[]).filter(type=>includeBirthdays||type.id!=='birthday'),used=new Map();
   if(native){for(const event of allEvents){const type=types.find(type=>type.id===(event.type||(event.birthday?'birthday':'other')))||types.find(type=>type.id==='other'),raw=event.googleColor||colors?.[type.id]||type.color,key=(event.googleColor?'google:':'app:')+raw.toUpperCase();if(!used.has(key))used.set(key,{raw,native:!!event.googleColor,labels:new Set()});used.get(key).labels.add(type.label);}}
   const combined=new Map();for(const entry of used.values()){const label=[...entry.labels].sort((a,b)=>a.localeCompare(b,'de')).join(' / ');if(!combined.has(label))combined.set(label,{label,swatches:[]});combined.get(label).swatches.push(palette(entry.raw,entry.native));}
   const legend=[{label:'Ferien',background:rgb(1,1,.8)},{label:'Sonntag',background:rgb(1,.8,.6)},{label:'Feiertag',background:rgb(.89,.96,.87)},...(native?[...combined.values()]:types.map(type=>({label:type.label,...palette(colors?.[type.id]||type.color)})))];

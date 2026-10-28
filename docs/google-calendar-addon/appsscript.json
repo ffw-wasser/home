@@ -6,17 +6,26 @@
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/script.external_request"
   ],
-  "urlFetchWhitelist": ["https://www.googleapis.com/calendar/v3/"],
+  "urlFetchWhitelist": [
+    "https://www.googleapis.com/calendar/v3/",
+    "https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/portal/calendar-addon/"
+  ],
   "addOns": {
     "common": {
       "name": "H₂O Kalenderauswahl",
       "logoUrl": "https://ffw-wasser.github.io/home/assets/branding/ffw-home-192.png",
-      "homepageTrigger": {"runFunction": "h2oHome"}
+      "homepageTrigger": {
+        "runFunction": "h2oHome"
+      }
     },
     "calendar": {
       "currentEventAccess": "METADATA",
-      "eventOpenTrigger": {"runFunction": "h2oOpen"},
-      "eventUpdateTrigger": {"runFunction": "h2oOpen"}
+      "eventOpenTrigger": {
+        "runFunction": "h2oOpen"
+      },
+      "eventUpdateTrigger": {
+        "runFunction": "h2oOpen"
+      }
     }
   }
 }

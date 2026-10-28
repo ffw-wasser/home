@@ -25,8 +25,9 @@ test('Google add-on: migration, validation, renamed groups and outside descripti
  assert.throws(()=>M.build({...first,description:first.description.replace('Freigabe: Ja','<b>Freigabe: Nein</b>')},selection,names),/formatierten/);
  const recovered=M.build({...first,description:'<b>Hinweis nach manueller Bereinigung</b>'},selection,names);assert.ok(recovered.description.startsWith('<b>Hinweis nach manueller Bereinigung</b>'));
 });
-function controller({role='writer',event={},responseStatus=200,network=false}={}){
+function controller({role='writer',event={},responseStatus=200,network=false,connected=false,groupStatus=200}={}){
  const widgets=[],calls=[],props={H2O_CALENDAR_ID:'synthetic@example.invalid',H2O_GROUP_NAMES:JSON.stringify(names)};
+ if(connected)props.H2O_GROUPS_TOKEN='g'.repeat(43);const groupState={ok:true,groups:[...names],version:0,rosterRevision:'r'.repeat(64),rosterUpdatedAt:1,members:[{id:'member-a',name:'Beispiel Anna'},{id:'member-b',name:'Beispiel Ben'}]};const receipts=new Map();
  const context={calendar:{calendarId:props.H2O_CALENDAR_ID,id:'synthetic-event'},commonEventObject:{}};
  const current={id:'synthetic-event',etag:'"v1"',summary:'Probe',description:'Öffentlicher Hinweis',...event};
  const builder=()=>{
@@ -35,11 +36,11 @@ function controller({role='writer',event={},responseStatus=200,network=false}={}
   return proxy;
  };
  const CardService=new Proxy({SelectionInputType:{DROPDOWN:'dropdown',CHECK_BOX:'checkbox'}},{get(t,k){return t[k]||builder;}});
- const c={CardService,PropertiesService:{getScriptProperties:()=>({getProperty:key=>props[key]})},ScriptApp:{getOAuthToken:()=> 'SYNTHETIC-TOKEN'},UrlFetchApp:{fetch(url,options){calls.push({url,options});if(network)throw Error('SYNTHETIC-TOKEN');const result=url.includes('maxResults=1')?{accessRole:role}:options.method==='patch'?{...current,...JSON.parse(options.payload)}:current;return {getResponseCode:()=>options.method==='patch'?responseStatus:200,getContentText:()=>JSON.stringify(result)};}}};
+ const c={CardService,Utilities:{getUuid:()=> 'synthetic-request-0001'},PropertiesService:{getScriptProperties:()=>({getProperty:key=>props[key]})},ScriptApp:{getOAuthToken:()=> 'SYNTHETIC-TOKEN'},UrlFetchApp:{fetch(url,options){calls.push({url,options});if(url.includes('/portal/calendar-addon/groups')){const body=JSON.parse(options.payload);let result=groupState;if(body.action==='create'){if(receipts.has(body.requestId))result=receipts.get(body.requestId);else{const group={id:'google-created',name:body.name};groupState.groups.push(body.name);groupState.version++;result={ok:true,group,version:groupState.version};receipts.set(body.requestId,result);}}return {getResponseCode:()=>groupStatus,getContentText:()=>JSON.stringify(groupStatus===200?result:{error:'Verbindung wurde getrennt.'})};}if(network)throw Error('SYNTHETIC-TOKEN');const result=url.includes('maxResults=1')?{accessRole:role}:options.method==='patch'?{...current,...JSON.parse(options.payload)}:current;return {getResponseCode:()=>options.method==='patch'?responseStatus:200,getContentText:()=>JSON.stringify(result)};}}};
  vm.runInNewContext(read('Model.gs')+'\n'+read('Code.gs'),c);
  function open(){widgets.length=0;c.h2oOpen(context);return widgets.find(w=>w.setOnClickAction)?.setOnClickAction.setParameters;}
  function save(params){const values={type:['Unterricht'],outfit:['Tagesdienst'],mode:['Ausgewählte Gruppen'],groups:['Atemschutz','Gruppenführer'],release:['Freigeben']};return c.h2oSave({...context,commonEventObject:{parameters:params,formInputs:Object.fromEntries(Object.entries(values).map(([k,v])=>[k,{stringInputs:{value:v}}]))}});}
- return {c,context,props,current,calls,widgets,open,save};
+ return {c,context,props,current,calls,widgets,groupState,open,save};
 }
 test('Google add-on cards: dropdowns and multi-selection save description only, use own OAuth and ETag, never follow redirects',()=>{
  const f=controller(),params=f.open();assert.ok(params);assert.equal(f.widgets.find(w=>w.setFieldName==='groups').setType,'checkbox');assert.equal(f.widgets.find(w=>w.setFieldName==='type').items.length,6);
@@ -67,7 +68,22 @@ test('Google add-on selection is consumed by the real Worker; explicit H2O indiv
  const own=await f.call('classify',{eventId:e.id,kind:'probe',approved:true,sessionType:'Sonderprobe',clothing:'Uniform',recipientMode:'groups',groupIds:['active'],includeIds:[],excludeIds:[f.people[0].memberId],expectedVersion:fresh.rulesVersion,expectedGroupsVersion:fresh.groupsVersion},null,true);assert.equal(own.status,200,JSON.stringify(own.value));
  const protectedEvent=(await f.call('list',{force:true},null,true)).value.events[0];assert.equal(protectedEvent.clothing,'Uniform');assert.equal(protectedEvent.recipientIds.includes(f.people[0].memberId),false);
 });
-test('Google add-on manifest is desktop Calendar metadata with API scopes, no web-app endpoint or stored account secrets',()=>{
- const manifest=JSON.parse(read('appsscript.json'));assert.equal(manifest.addOns.calendar.currentEventAccess,'METADATA');assert.equal(manifest.addOns.calendar.eventOpenTrigger.runFunction,'h2oOpen');assert.equal(manifest.webapp,undefined);assert.deepEqual(manifest.urlFetchWhitelist,['https://www.googleapis.com/calendar/v3/']);
+test('Google add-on manifest is desktop Calendar metadata with API scopes, no web-app endpoint or general account secrets',()=>{
+ const manifest=JSON.parse(read('appsscript.json'));assert.equal(manifest.addOns.calendar.currentEventAccess,'METADATA');assert.equal(manifest.addOns.calendar.eventOpenTrigger.runFunction,'h2oOpen');assert.equal(manifest.webapp,undefined);assert.deepEqual(manifest.urlFetchWhitelist,['https://www.googleapis.com/calendar/v3/','https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/portal/calendar-addon/']);
  assert.equal(manifest.oauthScopes.some(x=>/drive|mail|admin/.test(x)),false);assert.doesNotMatch(read('Code.gs'),/console\.|Logger\.|setProperty|ADMIN_TOKEN|GOOGLE_CALENDAR_CLIENT_SECRET/);
+});
+
+const fields=value=>Object.fromEntries(Object.entries(value).map(([k,v])=>[k,{stringInputs:{value:v}}]));
+test('Google-Seitenleiste nutzt direkte Gruppenwahl ohne Schlagwort-Schalter',()=>{
+ const f=controller();f.open();assert.equal(f.widgets.some(w=>w.setFieldName==='mode'),false);assert.ok(f.widgets.some(w=>w.setText==='Neue Gruppe'));assert.ok(f.widgets.some(w=>w.setText==='Gruppenliste aktualisieren'));
+});
+test('Verbundene Google-Erweiterung legt Gruppen zentral an, behält den Termin-Entwurf und schreibt den Termin erst ausdrücklich',()=>{
+ const f=controller({connected:true});f.props.H2O_GROUP_NAMES='invalid old static list';f.open();const button=f.widgets.find(w=>w.setText==='Neue Gruppe'),params=button.setOnClickAction.setParameters,draft={type:['Unterricht'],outfit:['Uniform'],groups:['Atemschutz'],release:['Freigeben']};
+ const createdCard=f.c.h2oNewGroup({...f.context,commonEventObject:{parameters:params,formInputs:fields(draft)}});assert.ok(createdCard.setNavigation.pushCard);const memberInput=f.widgets.find(w=>w.setFieldName==='newGroupMembers');assert.equal(memberInput.items.length,2);const action=f.widgets.find(w=>w.setText==='Gruppe in H₂O anlegen').setOnClickAction;
+ const event={...f.context,commonEventObject:{parameters:action.setParameters,formInputs:fields({newGroupName:['Neue Testgruppe'],newGroupMembers:['member-a']})}};const result=f.c.h2oCreateGroup(event);assert.match(result.setNotification.setText,/Gruppe in H₂O angelegt/);assert.equal(f.calls.some(c=>c.options.method==='patch'),false,'creating a group never edits the date');const create=f.calls.find(c=>c.url.includes('/calendar-addon/')&&JSON.parse(c.options.payload).action==='create');assert.equal(create.options.headers.Authorization,'Bearer '+'g'.repeat(43));assert.equal(create.options.followRedirects,false);assert.deepEqual(JSON.parse(create.options.payload).memberIds,['member-a']);assert.ok(!JSON.stringify(result).includes('g'.repeat(43)));assert.ok(!JSON.stringify(result).includes('Beispiel Anna'));
+ const card=result.setNavigation.updateCard;const widgets=card.addSection.flatMap(s=>s.addWidget);assert.equal(widgets.find(w=>w.setFieldName==='outfit').items.find(i=>i[2])[0],'Uniform');assert.deepEqual(widgets.find(w=>w.setFieldName==='groups').items.filter(i=>i[2]).map(i=>i[0]),['Atemschutz','Neue Testgruppe']);
+ assert.match(f.c.h2oCreateGroup(event).setNotification.setText,/Gruppe in H₂O angelegt/);assert.equal(f.groupState.groups.filter(n=>n==='Neue Testgruppe').length,1);
+});
+test('Neue Gruppen sind ohne Verbindung oder nach Entzug gesperrt; Schlüssel erscheinen nie in Karten',()=>{
+ const f=controller(),params=f.open();const result=f.c.h2oNewGroup({...f.context,commonEventObject:{parameters:params,formInputs:fields({})}});assert.match(result.setNotification.setText,/Google-Gruppenverbindung/);const denied=controller({connected:true,groupStatus:401});const card=denied.c.h2oOpen(denied.context);assert.ok(!JSON.stringify(card).includes('g'.repeat(43)));assert.equal(denied.calls.some(c=>c.options.method==='patch'),false);
 });

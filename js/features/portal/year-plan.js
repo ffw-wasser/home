@@ -12,10 +12,10 @@
   if(!$('months'))return;
   g.YearPlanPdf?.clear();$('print').disabled=!loaded||!privateData;
   $('heading-year').textContent=year;$('year').value=year;$('prev').disabled=year<=2000;$('next').disabled=year>=2100;
-  $('birthdays').disabled=!privateData;
+  if($('birthdays'))$('birthdays').disabled=!privateData;
   $('status').textContent=message;
   $('holiday-status').textContent=g.SchoolHolidays.complete(year)?'Landesweite Ferien für '+year+' vollständig erfasst.':'Für '+year+' liegen keine vollständigen Feriendaten vor. Einzelne bekannte Zeiträume werden angezeigt.';
-  const today=dayKey(Date.now()),filter=$('filter').value,showBirthdays=$('birthdays').checked&&privateData;
+  const today=dayKey(Date.now()),filter=$('filter').value,showBirthdays=portal&&$('birthdays')?.checked&&privateData;
   const visible=events.filter(e=>e.kind==='birthday'?showBirthdays:filter==='all'||e.kind===filter);
   const next=events.filter(e=>e.kind==='probe'&&e.end>Date.now()).sort((a,b)=>a.start-b.start)[0];
   // Index each event once; mobile must not format every event for every day.
@@ -107,7 +107,7 @@
    if(privateData&&!accessCurrent())return lock();
    if(!loaded||!privateData)return;
    const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),compactHolidays:[...row.querySelectorAll('.year-plan-public-holiday,.year-plan-holiday[data-holiday-start="true"]')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,googleColor:event.dataset.googleColor,birthday:event.classList.contains('is-birthday')}))}))}));
-   return g.YearPlanPdf.open({year,months,colors,...(portal?{onClose:()=>{g.DeckelMobile.jump(returnPage,false);g.history?.replaceState({...g.history.state,portalPage:returnPage},'');}}:{}),isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
+   return g.YearPlanPdf.open({year,months,colors,includeBirthdays:portal,...(portal?{onClose:()=>{g.DeckelMobile.jump(returnPage,false);g.history?.replaceState({...g.history.state,portalPage:returnPage},'');}}:{}),isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
 
  }
  function init(){
@@ -117,7 +117,7 @@
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
   $('today').onclick=()=>{const today=dayKey(Date.now()),currentYear=Number(today.slice(0,4)),month=Number(today.slice(5,7))-1;if(year!==currentYear){load(true);return;}jump(month);};$('reload').onclick=()=>load();
   $('print').textContent='Als PDF ansehen';$('print').onclick=openPdf;
-  for(const id of ['filter','birthdays','holidays'])$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
+  for(const id of ['filter','birthdays','holidays'])if($(id))$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
   const monthLabel=node('label','Monat '),monthSelect=node('select');monthLabel.className='year-plan-month-jump';monthSelect.id='year-plan-month';monthSelect.setAttribute('aria-label','Zum Monat springen');
   for(let month=0;month<12;month++){const option=node('option',format(Date.UTC(2026,month,15),{month:'long'}));option.value=month;monthSelect.append(option);}monthSelect.value=Number(dayKey(Date.now()).slice(5,7))-1;monthLabel.append(monthSelect);$('today').before(monthLabel);
   monthSelect.onchange=()=>jump(Number(monthSelect.value));
