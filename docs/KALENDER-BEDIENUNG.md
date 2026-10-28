@@ -65,7 +65,7 @@ Bei nicht bestätigter Quelle wird ein Abruffehler geliefert; der Anbieter kann 
 letzten Stand behalten. Kalender-Apps aktualisieren Abos in ihrem eigenen Zeitabstand.
 
 Für sichtbare kommende Termine ist die Rückmeldung sofort möglich:
-**Dabei**, **Entschuldigt** oder **Unsicher**. Die Schaltflächen sind grün, bernsteinfarben und violett hervorgehoben; die ausgewählte Antwort ist kräftig gefüllt und mit einem Häkchen markiert. Erneut antippen nimmt sie zurück.
+**Dabei**, **Entschuldigt** oder **Unsicher**. Die Schaltflächen sind grün, bernsteinfarben und violett hervorgehoben; die ausgewählte Antwort ist kräftig gefüllt und umrandet. Die beiden anderen Optionen erscheinen blasser und bleiben auswählbar. Erneut antippen nimmt sie zurück.
 Änderungen sind bis zum Terminbeginn möglich. Es gibt keine zusätzliche
 Abfragefreigabe und keinen Schritt „Rückmeldung anfordern“.
 Der Link in der Beschreibung desselben Google-Termins öffnet die H₂O-Antwortseite.
