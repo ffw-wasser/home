@@ -28,7 +28,7 @@ function removeTacticsMenuEntry(){
 function moveProbeStatusToHeader(){
   const brand=document.querySelector(".top-brand span");if(brand)brand.textContent="Feuerwehr Wasser";
   document.title="Feuerwehr Wasser";
-  const homeButton=byId("attendanceTab");if(homeButton){homeButton.setAttribute("aria-label","Termin");homeButton.title="Terminerfassung neu laden";}
+  const homeButton=byId("attendanceTab");if(homeButton){homeButton.setAttribute("aria-label","Termin");homeButton.title="Zur Terminübersicht";}
   const menuButton=byId("menuToggleButton");if(menuButton)menuButton.textContent="Menü";
 
   const original=byId("homeCurrentProbeStatus"),menu=byId("compactMenu");if(!original||!menu)return;
@@ -185,7 +185,6 @@ byId("menuToggleButton").addEventListener("click", () => {
 byId("attendanceTab").addEventListener("click", () => {
   if(!requestReturnToHomeStage())return;
   if(showView("attendanceView")===false)return;
-  window.FFWUpdate?.refreshHome();
 });
 document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => {const target=button.closest("#settingsView")?"attendanceView":"settingsView";if(target==="attendanceView"&&!requestReturnToHomeStage())return;showView(target);}));
 byId("adminTab")?.addEventListener("click", () => showView(adminUnlocked ? "adminView" : "adminLoginView"));
