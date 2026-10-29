@@ -98,10 +98,16 @@ async function exportCompleteBackup() { if(!requireAdmin("settingsFilesView"))re
     const payload=completeBackupPayload();
     payload.data.importedPdfs=await exportImportedReportPdfs();
     payload.data.documentReports=await exportDocumentReports();
+    let centralBackup=null;
+    if(window.DrinksCentral&&await window.DrinksCentral.connection()){
+      if(!requireAdmin("settingsFilesView"))return;
+      const saved=await window.DrinksCentral.backup();
+      centralBackup={file:'Getraenke/'+saved.name,accountCount:saved.accounts.length,sequence:saved.seq,verified:true};
+    }
     if(!requireAdmin("settingsFilesView"))return;
     if(source!==(typeof attendanceDraftSource==='function'?attendanceDraftSource():''))throw new Error('Der Datenordner wurde während der Sicherung geändert.');
-    payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true,includesRunningState:true,
-      excludes:['Getränkekonten und Handyzugänge (separate OneDrive-Sicherung)','Cloudflare/D1: Portal, Rückmeldungen, Challenge, Theater und Zugänge','Zusätzliche OneDrive-Dateien: Kontakte, Hydrantenplan, Originalpakete und Verwaltungsverbindungen','Dienstschlüssel und Microsoft-Anmeldungen'],encrypted:false};
+    payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true,includesRunningState:true,centralBackup,
+      excludes:[centralBackup?'Getränkekonten und Handyzugänge: geprüft in separater OneDrive-Sicherung '+centralBackup.file:'Getränkekonten und Handyzugänge (separate OneDrive-Sicherung; zentrale Kontenführung nicht aktiv)','Cloudflare/D1: Portal, Rückmeldungen, Challenge, Theater und Zugänge','Zusätzliche OneDrive-Dateien: Kontakte, Hydrantenplan, Originalpakete und Verwaltungsverbindungen','Dienstschlüssel und Microsoft-Anmeldungen'],encrypted:false};
     const result=await shareOrDownloadJson(fileName,payload,`App-Datensicherung wurde mit ${payload.data.importedPdfs.length} PDF-Datei(en) ausgegeben.`);
     if(["saved","shared","downloaded"].includes(result))window.WorkflowUX?.backupResult(fileName,payload,result);
   }catch(error){showToast(`Sicherung nicht erstellt: ${error.message||'Daten konnten nicht vollständig gelesen werden.'}`,"error");}

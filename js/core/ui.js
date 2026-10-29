@@ -30,7 +30,7 @@ function lockAdministration(){
   window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();window.DrinksBirthdaySettings?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
   window.SmartWorkflow?.settings();
-  for(const id of ['settingsView','settingsBacklogView','settingsOptionsView','theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView','settingsCalendarView']){
+  for(const id of ['settingsView','settingsBacklogView','settingsOptionsView','theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsBackupView','settingsPortalView','settingsCalendarView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id==='theaterView'?(theaterReturn||'eventsView'):id;showView('adminLoginView');break;}
   }
   for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
@@ -42,7 +42,7 @@ function showView(viewId) {
   const theaterMode=({theaterCashView:"cash",theaterStatsView:"stats",theaterManageView:"manage"})[viewId];
   if(theaterMode)viewId="theaterView";
   if(["settingsView","settingsOptionsView","settingsBacklogView"].includes(viewId)&&!requireAdmin(requestedView,{allowDisconnected:true}))return false;
-  if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView","settingsPortalView","settingsCalendarView"].includes(viewId)&&!requireAdmin(requestedView))return false;
+  if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsBackupView","settingsPortalView","settingsCalendarView"].includes(viewId)&&!requireAdmin(requestedView))return false;
   if(window.PortalEvidenceAdmin?.beforeView(viewId)===false)return false;
   if(window.PortalAdmin?.beforeView(viewId)===false)return false;
   if(window.TheaterAdmin?.beforeView(viewId)===false)return false;
@@ -68,6 +68,7 @@ function showView(viewId) {
   if(viewId!=="yearPlanView")window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
   if(viewId==="settingsView")window.SmartWorkflow?.settings();
   if(viewId==="theaterView")window.TheaterAdmin?.load();
+  if(viewId==="settingsBackupView")window.DrinksCentral?.load?.();
   if(viewId==="settingsPortalView")window.PortalAdmin?.load();
   if(viewId==="settingsCalendarView"&&adminUnlocked&&oneDriveAdministrationReady())window.PortalAdmin?.loadCalendar();
   if(viewId==="settingsQuizQuestionsView")window.DrinksQuizQuestions?.load();

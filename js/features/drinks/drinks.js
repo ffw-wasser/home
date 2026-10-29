@@ -40,14 +40,13 @@
     if(menuMemberId&&currentScreen==='members'){memberId=menuMemberId;account=S.cached(memberId);cardIntent={action:'menu'};}
     if(all)clearCardSessions();else{cardSessions.delete(memberId);renderCards();}clearTimeout(timer);if(!memberId||root.hidden)return;
     if(busy){lockAfterRun=true;return;}
-    if(!account?.pin){clearMobileQr();clearPinInputs();return;}
-    signature='';clearMobileQr();clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
+    if(!account?.pin){clearPinInputs();return;}
+    signature='';clearPinInputs();el('pin').value='';updatePinDots();screen('pin');
     message(pending?'Konto gesperrt. Nach deiner PIN-Eingabe dieselbe Buchung erneut prüfen.':'Konto gesperrt. Bitte deine PIN erneut eingeben. Vorgemerkte Einträge bleiben bis zum Neuladen erhalten.');
   }
   function touch(){if(menuMemberId&&currentScreen==='members'&&!busy&&!document.hidden){const value=S.cached(menuMemberId);if(value.pin&&cardUnlocked(menuMemberId,value))rememberCardSession(menuMemberId,value,JSON.stringify(value.pin));}clearTimeout(timer);if(memberId&&signature&&account?.pin&&!busy){rememberCardSession(memberId,account,signature);timer=setTimeout(()=>lockAccount(false),60000);}}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
-  function clearMobileQr(){if(el('mobile-qr')){el('mobile-qr').width=1;el('mobile-qr').height=1;}}
-  function resetSession(){clearTimeout(paidTimer);global.DrinksExtras?.dismiss?.();cardIntent=null;clearTimeout(timer);clearMobileQr();memberId='';account=null;signature='';payment=0;pending=null;if(el('pin'))el('pin').value='';clearPinInputs();setPinChecking(false);}
+  function resetSession(){clearTimeout(paidTimer);global.DrinksExtras?.dismiss?.();cardIntent=null;clearTimeout(timer);memberId='';account=null;signature='';payment=0;pending=null;if(el('pin'))el('pin').value='';clearPinInputs();setPinChecking(false);}
   function reset(){menuMemberId='';preloadEpoch++;preloaded=null;preloading=null;global.DrinksConsumption?.reset();cardDrafts.clear();confirmRequested=false;clearCardSessions();cardNotices.clear();openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
@@ -216,10 +215,6 @@
   }
   function render(){
     const totals=account?M.totals(account):{balance:0,count:0};global.DrinksRewards?.render(account,0,0);root.querySelectorAll('[data-dr-person]').forEach(e=>e.textContent=name(memberId));renderRecent();
-    el('account-mobile-status').textContent=global.DrinksMobile?.status(memberId)||'';
-    for(const id of ['mobile-open','mobile-back','mobile-refresh','mobile-rotate'])if(el(id))el(id).disabled=busy||Boolean(pending);
-    if(el('mobile-refresh'))el('mobile-refresh').hidden=busy||currentScreen!=='mobile'||el('mobile-qr').width>1;
-    if(el('mobile-retry')){el('mobile-retry').hidden=!global.DrinksMobile?.status(memberId).includes('noch nicht aktualisiert');el('mobile-retry').disabled=busy||Boolean(pending);}
     el('balance').textContent=euro(totals.balance);el('count').textContent=totals.balance===0?'Alles bezahlt.':totals.count+' gespeicherte Getränke seit Kontostart';el('cancel').disabled=busy||Boolean(pending);
     root.querySelectorAll('[data-dr-pay]').forEach(b=>b.disabled=busy||Boolean(pending)||totals.balance<=0);
     el('partial').disabled=busy||Boolean(pending)||totals.balance<=0;
@@ -244,7 +239,7 @@
     if(error.code==='pinChanged'){signature='';el('pin').value='';account=await S.read(memberId).catch(()=>account);if(account?.pin)screen('pin');else{signature=JSON.stringify(null);screen('account');}}
     if(error.code==='balanceChanged'){account=await S.read(memberId).catch(()=>account);payment=0;screen('account');}
     if(error.code==='correctionChanged'){account=await S.read(memberId).catch(()=>account);screen('account');}
-    message(userMessage(error));if(currentScreen==='mobile')el('mobile-status').textContent=userMessage(error)+(el('mobile-qr').width>1?' Dein angezeigter Kontozugang bleibt gültig.':'');
+    message(userMessage(error));
   }finally{busy=false;render();if(lockAfterRun){lockAfterRun=false;lockAccount();}flushCards();if(confirmRequested){confirmRequested=false;confirmCards(confirmTarget);}}}
   async function open(){
     if(busy||pending||(cardQueue.length&&!cardError)){showToast('Die aktuelle Buchung bitte zuerst fertig speichern.','error');return;}
@@ -348,7 +343,6 @@
   function init(){
     root=byId('drinksView');if(!root)return;
     byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
-    el('mobile-retry')?.addEventListener('click',()=>run(()=>global.DrinksMobile.publish(memberId)));
     el('confirm')?.addEventListener('click',()=>confirmCards());
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});
     el('discard-all').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;if(confirm('Alle vorgemerkten Änderungen verwerfen? Gespeicherte Buchungen bleiben erhalten.')){cardDrafts.clear();stagedOnly=false;renderPeople();render();}});
@@ -380,19 +374,6 @@
     el('cash-confirm').addEventListener('click',()=>run(confirmPayment));el('paypal-confirm').addEventListener('click',()=>{if(busy||pending)return;finishSession();showToast('Die Verwaltung trägt den geprüften PayPal-Eingang ein.');});
     root.querySelectorAll('[data-dr-back-account]').forEach(b=>b.addEventListener('click',()=>{if(busy||pending)return;payment=0;returnToCards();}));
     el('paid-next').addEventListener('click',finishSession);el('paid-account').addEventListener('click',()=>screen('account'));
-    const showMobile=rotate=>run(async()=>{
-      if(!signature)throw new Error('Bitte erneut mit deiner PIN anmelden.');
-      clearMobileQr();screen('mobile');el('mobile-status').textContent='Dein QR-Code wird vorbereitet …';const url=await global.DrinksMobile.link(memberId,signature,rotate);
-      const qr=qrcode(0,'M');qr.addData(url);qr.make();const canvas=el('mobile-qr'),count=qr.getModuleCount(),unit=6,quiet=4;canvas.width=canvas.height=(count+quiet*2)*unit;
-      const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.fillStyle='#111';
-      for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c))context.fillRect((c+quiet)*unit,(r+quiet)*unit,unit,unit);
-      screen('mobile');el('mobile-status').textContent='QR-Code bereit. Mit der Handykamera scannen und den persönlichen Deckel öffnen.';
-    });
-    el('mobile-open').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
-    el('mobile-back').addEventListener('click',()=>{if(busy)return;clearMobileQr();screen('account');});
-    el('mobile-refresh').addEventListener('click',()=>{if(!busy&&!pending)showMobile(false);});
-    el('mobile-rotate').addEventListener('click',()=>{if(!busy&&!pending&&confirm('Neuen Handyzugang erstellen? Der alte Link kann zukünftige Kontostände nicht mehr öffnen. Bereits gelesene Daten und alte GitHub-Versionen bleiben erhalten.'))showMobile(true);});
-    document.addEventListener('deckel-status',event=>{if(event.detail.id===memberId&&el('mobile-status')&&currentScreen!=='mobile')el('mobile-status').textContent=event.detail.text;});
     el('own-open').addEventListener('click',()=>{if(busy||pending)return;clearPinInputs();screen('own-pin');el(account?.pin?'own-current':'own-new').focus();});
     el('own-back').addEventListener('click',()=>{clearPinInputs();screen('account');});
     el('own-form').addEventListener('submit',event=>{

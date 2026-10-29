@@ -147,7 +147,9 @@ jobs:
           node tests/contacts-browser.cjs
           node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation
-        run: node tests/navigation-settings-browser.cjs
+        run: |
+          node tests/navigation-settings-browser.cjs
+          node tests/drinks-admin-browser.cjs
       - name: Test commander statistics, documented readiness and fair participation
         run: node tests/statistics-dashboard-browser.cjs
       - name: Test auxiliary navigation, portal access, touch and event flows

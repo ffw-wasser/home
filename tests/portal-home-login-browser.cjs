@@ -18,7 +18,8 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  assert.equal(await safari.p.locator('#h2o-onboarding').getAttribute('data-step'),'install');
  assert.equal(await safari.p.locator('#h2o-onboarding .onboarding-install-list li:visible').count(),4,'Safari-Anleitung ist nach Passkey-Anmeldung vollständig sichtbar');
  assert.match(await safari.p.locator('#h2o-onboarding .onboarding-install-list').innerText(),/Teilen/);
- assert.equal(await safari.p.locator('#h2o-onboarding .onboarding-install-image').isVisible(),true);
+ // The illustration loads independently of the instruction list.
+ await safari.p.locator('#h2o-onboarding .onboarding-install-image').waitFor({state:'visible'});
  await safari.p.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await safari.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await safari.p.locator('#portal-section').waitFor({state:'visible'});
  let credential=(await safari.client.send('WebAuthn.getCredentials',{authenticatorId:safari.authenticatorId})).credentials[0];assert.ok(credential);
  await safari.c.close();

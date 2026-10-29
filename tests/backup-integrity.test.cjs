@@ -182,3 +182,11 @@ test('Erfolgreiche App-Sicherung benennt zusätzlich notwendige Sicherungen und 
   assert.equal(output.data.backupInfo.encrypted,false);
   assert.ok(output.data.backupInfo.excludes.some(x=>x.includes('Cloudflare/D1')));
 });
+
+for(const fails of [false,true])test(`App-Sicherung integriert zentrale Konten und meldet Fehler ohne unvollständigen Export: ${fails}`,async()=>{
+ let output=null,calls=0,message='';
+ const central={connection:async()=>({source:'test-source'}),backup:async()=>{calls++;if(fails)throw Error('OneDrive-Sicherung fehlgeschlagen');return {name:'sicherung-test.json',accounts:[{memberId:'test'}],seq:7};}};
+ const context=vm.createContext({BackupEngine,safeStorage:storage(),window:{DrinksCentral:central},document:{addEventListener(){}},members:[member],entries:[],csvArchive:[],getMemberRoles:m=>m.roles,getRoleTargets:()=>({}),isFunctionEntryEnabled:()=>true,requireAdmin:()=>true,today:()=> '2026-10-29',exportImportedReportPdfs:async()=>[],exportDocumentReports:async()=>[],showToast:m=>message=m,console});
+ vm.runInContext(source('js/features/history/archive.js'),context);context.shareOrDownloadJson=async(name,payload)=>{output=payload;return 'downloaded';};await context.exportCompleteBackup();assert.equal(calls,1);
+ if(fails){assert.equal(output,null);assert.match(message,/Sicherung nicht erstellt.*OneDrive-Sicherung fehlgeschlagen/);}else{assert.equal(output.data.backupInfo.centralBackup.file,'Getraenke/sicherung-test.json');assert.equal(output.data.backupInfo.centralBackup.verified,true);assert.equal(output.data.backupInfo.centralBackup.accountCount,1);assert.equal(output.data.backupInfo.centralBackup.sequence,7);assert.ok(!JSON.stringify(output).includes('token'));}
+});
