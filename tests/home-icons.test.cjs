@@ -47,3 +47,10 @@ test('Cache- und HTML-Build stimmen überein, Schutzdaten unverändert',()=>{
  assert.ok(!portal.includes('20261016.41'));
 });
 
+
+test('Startwappen verwendet dieselbe Originalform ohne weiße Außenfläche',()=>{
+ const png=fs.readFileSync(path.join(__dirname,'..','assets/branding/ffw-crest-transparent.png'));
+ assert.equal(png[25],6,'RGBA-PNG erhält einen transparenten Außenbereich');
+ assert.match(main,/<div id="appStartup"[\s\S]*?<img src="assets\/branding\/ffw-crest-transparent\.png\?v=/);
+ assert.ok(service.includes('./assets/branding/ffw-crest-transparent.png?v='+release.build));
+});

@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..'),folder={id:'0123456789abcdef!s1234',name
   if(u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});
   if(u.origin==='https://graph.microsoft.com'){calls.push({url:u.href,method:req.method(),auth:req.headers().authorization});return route.fulfill({json:u.href.includes(':/feuerwehr-wasser-daten.json?')?{id:'test-state',file:{}}:folder});}
   return route.abort();});
- await page.goto('https://ffw-wasser.github.io/home/index.html');await page.locator('#appStartup').waitFor({state:'detached'});
+ await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
  await page.evaluate(()=>{localStorage.setItem(OD_CLIENT_KEY,'test-client');localStorage.setItem(OD_SHARE_KEY,'https://example.test/old-share');localStorage.setItem(OD_TOKEN_KEY,JSON.stringify({access_token:'TEST-TOKEN',obtained_at:Date.now(),expires_in:3600,id_token:'a.'+btoa(JSON.stringify({iss:'test-issuer',sub:'test-owner'}))+'.b'}));oneDriveAccessConfirmed=true;adminUnlocked=true;resetAdminTimeout();currentSessionId='test-session';currentClosingTopic='Testthema';persistAttendanceDraft();});
  await page.locator('#cloudSyncButton').click();
  assert.equal(await page.getByRole('button',{name:'Direkten Ordnerzugriff einrichten',exact:true}).isVisible(),true);

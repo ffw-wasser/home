@@ -73,6 +73,10 @@ def build_blue_h2o_icons():
         canvas.convert("RGB").resize((size, size), Image.Resampling.LANCZOS).save(
             DRINKS / f"h2o-symbol-blue-{size}.png", optimize=True)
 
+def build_startup_crest():
+    # Use the same original, unframed crest as the existing Home icons.
+    unframe_crest().save(BRANDING / "ffw-crest-transparent.png", optimize=True)
+
 def main():
     crest = unframe_crest()
     source = Image.open(BRANDING / "h2o-symbol-white-source.webp").convert("RGB")
@@ -86,7 +90,9 @@ def main():
 
 if __name__ == "__main__":
     import sys
-    if "--h2o-blue" in sys.argv:
+    if "--crest" in sys.argv:
+        build_startup_crest()
+    elif "--h2o-blue" in sys.argv:
         build_blue_h2o_icons()
     else:
         main()

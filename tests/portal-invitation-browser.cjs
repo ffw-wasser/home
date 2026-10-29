@@ -13,7 +13,7 @@ const root=path.resolve(__dirname,'..');
    if(u.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});}
    if(u.hostname==='api.github.com')github.push(req.url());return route.abort();
   });
-  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.locator('#appStartup').waitFor({state:'detached'});
+  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(async({token,record,source})=>{
    oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();
    window.qaMembers=[{id:record.memberId,firstName:'Anna',lastName:'Testperson'},{id:'new-member',firstName:'Ben',lastName:'Testperson'}];

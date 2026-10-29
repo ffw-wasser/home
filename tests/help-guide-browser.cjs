@@ -6,7 +6,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  for(const file of ['index.html','deckel.html']){
   await page.goto('https://ffw-wasser.github.io/home/'+file);
   if(file==='index.html'){
-   await page.locator('#appStartup').waitFor({state:'detached'});await page.evaluate(()=>showView('helpView'));
+   await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});await page.evaluate(()=>showView('helpView'));
    assert.equal(await page.locator('#helpView .info-menu-card').count(),2);assert.equal(await page.locator('#help-guide').isVisible(),false);
    await page.locator('[data-info-view="contactsView"]').click();assert.equal(await page.locator('#contactsView').isVisible(),true);assert.equal(await page.locator('#helpTab').evaluate(n=>n.classList.contains('active')),true);
    await page.locator('#contactsView [data-info-view="helpView"]').click();await page.locator('[data-info-view="privacyHelpView"]').click();
