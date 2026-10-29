@@ -137,12 +137,10 @@ test('Bezahlung eines PIN-Kontos verlangt PIN und Bestätigung und schreibt erst
  f.pin('4826');await wait(()=>f.root.dataset.screen==='payment'&&!f.nodes['dr-partial'].disabled);assert.equal(f.books.length,0);f.nodes['dr-partial'].handlers.click();await wait(()=>f.root.dataset.screen==='amount');f.nodes['dr-amount'].value='5,00';f.nodes['dr-pay-form'].handlers.submit({preventDefault(){}});await wait(()=>f.root.dataset.screen==='cash');assert.equal(f.books.length,0);
  f.nodes['dr-cash-confirm'].handlers.click();await wait(()=>f.root.dataset.screen==='paid');assert.equal(f.M.totals(f.accounts.get('a')).balance,250);
 });
-test('Handy-QR zeigt sofort Vorbereitung an und wird erst nach geprüftem Zugang gezeichnet',async()=>{
- const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-mobile-open'].disabled);
- let ready;const link=new Promise(resolve=>ready=resolve);f.context.DrinksMobile={link:async()=>link,status:()=>''};
- f.context.qrcode=()=>({addData(){},make(){},getModuleCount:()=>21,isDark:()=>false});f.nodes['dr-mobile-qr'].getContext=()=>({fillRect(){}});
- f.nodes['dr-mobile-open'].handlers.click();assert.equal(f.root.dataset.screen,'mobile');assert.equal(f.nodes['dr-mobile-qr'].width,1);assert.match(f.nodes['dr-mobile-status'].textContent,/vorbereitet/);assert.equal(f.nodes['dr-mobile-refresh'].hidden,true);
- ready('https://example.invalid/deckel');await wait(()=>f.nodes['dr-mobile-qr'].width>1);assert.equal(f.root.dataset.screen,'mobile');assert.equal(f.nodes['dr-mobile-refresh'].hidden,true);
+test('Getränkekonto bietet nur die iPad-PIN und keinen zweiten Handyzugang an',async()=>{
+ const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-own-open'].disabled);
+ assert.equal(f.nodes['dr-mobile-open'],undefined);assert.equal(f.nodes['dr-mobile-rotate'],undefined);assert.equal(f.nodes['dr-mobile-retry'],undefined);
+ f.nodes['dr-own-open'].handlers.click();assert.equal(f.root.dataset.screen,'own-pin');
 });
 test('Abgelaufene PIN schützt auch das Rückgängigmachen vorgemerkter Einträge',async()=>{
  const f=await fixture({pin:true});f.click('a','wine');await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-confirm'].disabled);
@@ -215,12 +213,4 @@ test('Freiwillige PIN schützt das Eingabemenü und sperrt nach Inaktivität ode
 
 test('PIN-Abbruch nach abgelaufener Freigabe führt zur Namensübersicht, nicht in die geschützte Karte',async()=>{
  const f=await fixture({pin:true});const tile=f.nodes['dr-directory'].children[0];f.nodes['dr-directory'].handlers.click({target:{closest:()=>tile}});await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-pin'].disabled);f.advance(60001);assert.equal(f.root.dataset.screen,'pin');f.nodes['dr-pin-back'].handlers.click();assert.equal(f.nodes['dr-directory'].hidden,false);assert.equal(f.card('a').hidden,true);assert.equal(f.root.dataset.memberMenu,'false');
-});
-
-test('QR-Ladefehler bietet Wiederholung und entfernt den Button nach Erfolg',async()=>{
- const f=await fixture();f.click('a','account');await wait(()=>f.root.dataset.screen==='account'&&!f.nodes['dr-mobile-open'].disabled);
- let failed=true;f.context.DrinksMobile={link:async()=>{if(failed)throw Error('Test: Verbindung unterbrochen');return 'https://example.invalid/deckel';},status:()=>''};
- f.context.qrcode=()=>({addData(){},make(){},getModuleCount:()=>21,isDark:()=>false});f.nodes['dr-mobile-qr'].getContext=()=>({fillRect(){}});
- f.nodes['dr-mobile-open'].handlers.click();await wait(()=>!f.nodes['dr-mobile-refresh'].hidden&&!f.nodes['dr-mobile-refresh'].disabled);
- failed=false;f.nodes['dr-mobile-refresh'].handlers.click();await wait(()=>f.nodes['dr-mobile-qr'].width>1&&!f.nodes['dr-mobile-open'].disabled);assert.equal(f.nodes['dr-mobile-refresh'].hidden,true);
 });
