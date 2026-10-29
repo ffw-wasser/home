@@ -49,6 +49,12 @@ const root=path.resolve(__dirname,'..');
   await page.evaluate(()=>{oneDriveAdministrationReady=()=>false;});await page.locator('#year-plan-reload').click();await page.locator('#year-plan-status').filter({hasText:'Eine Verwaltungs-PIN ist nicht erforderlich'}).waitFor();assert.equal(publicRequests,0);assert.equal(await page.locator('#adminLoginView').isVisible(),false);
   await page.evaluate(()=>{oneDriveAdministrationReady=()=>true;});
   await page.evaluate(()=>{showView('settingsView');});assert.equal(await page.locator('#settingsView').isVisible(),false);
+  // Production is paused: the old entry opens the protected backlog, not the bonus form.
+  await page.evaluate(()=>{adminUnlocked=true;resetAdminTimeout();showView('settingsRewardsView');});
+  assert.equal(await page.locator('#settingsBacklogView').isVisible(),true);
+  assert.equal(await page.locator('#birthday-assignments-load').isVisible(),false);
+  // Isolated synthetic future-rollout scenario keeps the retained birthday editor covered.
+  await page.evaluate(()=>{globalThis.H2OFeatures=Object.freeze({rewards:true,challenge:true});delete document.documentElement.dataset.loyalty;});
   await page.evaluate(()=>{
    adminUnlocked=true;resetAdminTimeout();window.qaBirthday={id:'birthday-test',seriesId:'series-test',title:'Geburtstag Testperson',start:Date.now()+86400000,end:Date.now()+90000000,kind:'birthday',memberId:null};window.qaBirthday2={...qaBirthday,id:'birthday-second',seriesId:'series-second',title:'Geburtstag Zweite Testperson'};window.qaBirthdayVersion=0;
    window.oneDriveReadState=async()=>({members:[{id:'test-person',lastName:'Testperson',firstName:'Anna'}]});
