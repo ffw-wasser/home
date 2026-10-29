@@ -11,14 +11,14 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
   const people=[{id:'qa-1',firstName:'Anna',lastName:'Test',roles:[]},{id:'qa-2',firstName:'Bert',lastName:'Fiktiv',roles:[]}];
   window.qaPeople=people;oneDriveReadState=async()=>({members:people});
   DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev/',source:'qa-source'});
-  DrinksStore.sourceKey=()=> 'qa-source';DrinksPush.request=async()=>({evidenceVersion:1});
+  DrinksStore.sourceKey=()=> 'qa-source';DrinksPush.request=async()=>({evidenceVersion:1,replyFunctionsVersion:1});
   showView('settingsPortalView');
  });
  await page.waitForFunction(()=>document.querySelector('#portal-admin-member').options.length===3);
  await page.locator('#portal-admin-member').selectOption('qa-1');
  await page.evaluate(()=>{
   window.qaCalls=0;DrinksMobile.preparePortalAccess=async id=>{qaCalls++;return {memberId:id,alias:'synthetic',revision:'r1'};};
-  DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?new Promise((resolve,reject)=>{window.qaResolve=()=>resolve({code:'SYNTHETIC-CODE',expiresAt:Date.now()+300000});window.qaReject=()=>reject(Error('Test: keine Verbindung'));}):({evidenceVersion:1});
+  DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?new Promise((resolve,reject)=>{window.qaResolve=()=>resolve({code:'SYNTHETIC-CODE',expiresAt:Date.now()+300000});window.qaReject=()=>reject(Error('Test: keine Verbindung'));}):({evidenceVersion:1,replyFunctionsVersion:1});
  });
  page.on('dialog',d=>d.accept());
  const button=page.locator('#portal-admin-show-qr'),status=page.locator('#portal-admin-qr-status'),result=page.locator('#portal-admin-identity-result');
