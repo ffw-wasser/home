@@ -3,13 +3,13 @@
  'use strict';
  const labels={g262:'G26.2',g263:'G26.3',instruction:'Sicherheitsunterweisung',ffi:'FFI',driver:'Führerscheinkontrolle'};
  const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
- let root,content,status,loadButton,memberSelect,overviewRoot,overviewHeading,overviewStatus,overviewList,overviewButton,overviewEpoch=0,overviewBusy=false,snapshot=null,memberId='',pending=null,busy=false,epoch=0,needsReload=false,dirty=false;
- function clearMember(){epoch++;snapshot=null;memberId='';pending=null;busy=false;needsReload=false;dirty=false;content?.replaceChildren();if(status)status.textContent='Mitglied oben auswählen und persönliche Portalnachweise laden.';if(loadButton)loadButton.disabled=false;}
- function clear(){clearMember();overviewEpoch++;overviewBusy=false;overviewList?.replaceChildren();if(overviewHeading)overviewHeading.textContent='Ungeprüfte Nachweisänderungen';if(overviewStatus)overviewStatus.textContent='Die Übersicht wird beim Öffnen geladen.';if(overviewButton)overviewButton.disabled=false;}
- function admin(){if(!g.requireAdmin('settingsPortalView'))throw Error('Bitte die Verwaltung entsperren.');}
+ let root,content,status,loadButton,memberSelect,overviewRoot,overviewHeading,overviewStatus,overviewList,overviewButton,overviewEpoch=0,memberLoadEpoch=0,overviewBusy=false,snapshotSource=null,snapshot=null,memberId='',pending=null,busy=false,epoch=0,needsReload=false,dirty=false;
+ function clearMember(){epoch++;snapshot=null;memberId='';pending=null;busy=false;needsReload=false;dirty=false;content?.replaceChildren();if(status)status.textContent='Mitglied auswählen und persönliche Nachweise laden.';if(loadButton)loadButton.disabled=false;}
+ function clear(){memberLoadEpoch++;snapshotSource=null;memberSelect?.replaceChildren();clearMember();overviewEpoch++;overviewBusy=false;overviewList?.replaceChildren();if(overviewHeading)overviewHeading.textContent='Ungeprüfte Nachweisänderungen';if(overviewStatus)overviewStatus.textContent='Die Übersicht wird beim Öffnen geladen.';if(overviewButton)overviewButton.disabled=false;}
+ function admin(){if(!g.requireAdmin('settingsMembersView'))throw Error('Bitte die Verwaltung entsperren.');}
  async function request(path,data){
   admin();const c=await g.DrinksCentral.connection();if(!c)throw Error('Kontodienst nicht verbunden.');
-  const result=await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});
+  snapshotSource=c.source;const result=await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});
   admin();if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert. Bitte neu laden.');return result;
  }
  const stamp=entry=>(entry.source==='self'?'Eigenangabe':'Verwaltung')+(entry.status==='pending'?' · Bestätigung ausstehend':entry.status==='rejected'?' · Abgelehnt':'')+(entry.updatedAt?' · '+new Date(entry.updatedAt).toLocaleString('de-DE'):'');
@@ -27,8 +27,17 @@
   const heading=content.querySelector('[data-evidence-field="'+item.field+'"] h4');
   if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});heading.parentElement.scrollIntoView({block:'start'});}
  }
+ async function open(){
+  if(!root||document.getElementById('settingsMembersView').hidden||busy||pending||dirty)return;
+  const version=++memberLoadEpoch,source=g.DrinksStore.sourceKey();snapshotSource=source;
+  try{admin();const state=await g.oneDriveReadState();if(version!==memberLoadEpoch||document.getElementById('settingsMembersView').hidden)return;admin();if(source!==g.DrinksStore.sourceKey())throw Error('Mitgliederordner wurde geändert.');
+   const selected=memberSelect.value;memberSelect.replaceChildren();const placeholder=node('option','Bitte Mitglied auswählen');placeholder.value='';memberSelect.append(placeholder);
+   for(const member of state.members){const option=node('option',[member.lastName,member.firstName].filter(Boolean).join(' '));option.value=String(member.id);memberSelect.append(option);}memberSelect.value=selected;
+  }catch(error){if(version===memberLoadEpoch)status.textContent='Mitglieder nicht geladen. '+error.message;}
+  if(version===memberLoadEpoch)await loadOverview();
+ }
  async function loadOverview(){
-  if(!overviewRoot||document.getElementById('settingsPortalView').hidden)return;
+  if(!overviewRoot||document.getElementById('settingsMembersView').hidden)return;
   const version=++overviewEpoch;overviewBusy=true;overviewList.replaceChildren();overviewHeading.textContent='Ungeprüfte Nachweisänderungen';overviewStatus.textContent='Nachweisänderungen werden geladen …';controls();
   try{
    const result=await request('evidence/overview',{});
@@ -86,18 +95,19 @@
   if(snapshot.history?.length){const history=node('details');history.append(node('summary','Änderungsverlauf (letzte 30 Änderungen)'));for(const entry of snapshot.history)history.append(node('p',(labels[entry.field]||entry.field)+' · '+stamp(entry)+' · Nachweis '+entry.checkedOn+(entry.until?' · gültig bis '+entry.until:'')));content.append(history);}
  }
  function init(){
-  memberSelect=document.getElementById('portal-admin-member');const view=document.getElementById('settingsPortalView');if(!memberSelect||!view)return;
-  root=node('section');root.className='panel portal-evidence-admin';root.id='portal-evidence-admin';root.append(node('h3','Persönliche Nachweise prüfen'));
+  const view=document.getElementById('settingsMembersView');if(!view)return;memberSelect=node('select');memberSelect.id='member-evidence-member';memberSelect.className='text-input';
+  root=node('section');root.className='panel portal-evidence-admin';root.id='portal-evidence-admin';root.append(node('h3','Persönliche Nachweise prüfen'));const label=node('label','Mitglied');label.htmlFor='member-evidence-member';root.append(label,memberSelect);
   overviewRoot=node('section');overviewRoot.className='panel portal-evidence-admin portal-evidence-overview';overviewRoot.id='portal-evidence-overview';overviewHeading=node('h3','Ungeprüfte Nachweisänderungen');overviewStatus=node('p');overviewStatus.setAttribute('role','status');overviewStatus.setAttribute('aria-live','polite');overviewButton=node('button','Übersicht aktualisieren');overviewButton.type='button';overviewButton.className='outline-button';overviewButton.onclick=loadOverview;overviewList=node('div');overviewList.className='portal-evidence-overview-list';overviewRoot.append(overviewHeading,node('p','Eigenangaben aller Mitglieder zu Atemschutz und Führerscheinkontrollen. „Prüfen“ öffnet den aktuellen Nachweis des Mitglieds.'),overviewButton,overviewStatus,overviewList);view.querySelector('.screen-heading').after(overviewRoot);
   status=node('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   loadButton=node('button','Portalnachweise des ausgewählten Mitglieds laden');loadButton.type='button';loadButton.onclick=load;
   content=node('div');root.append(loadButton,status,content);view.append(root);clear();
+  new MutationObserver(()=>{if(view.hidden)clear();}).observe(view,{attributes:true,attributeFilter:['hidden']});
   memberSelect.addEventListener('change',()=>{if(pending||busy||dirty&&!confirm('Ungespeicherte Nachweiskorrektur verwerfen?')){memberSelect.value=memberId;status.textContent='Bitte den laufenden Vorgang zuerst abwarten bzw. erneut prüfen.';return;}clearMember();});
   content.addEventListener('input',()=>{dirty=true;});
   content.addEventListener('change',()=>{dirty=true;});
   g.addEventListener('beforeunload',event=>{if(dirty||pending||busy){event.preventDefault();event.returnValue='';}});
  }
- function beforeView(view){if(view==='settingsPortalView')return true;if(busy||pending){status.textContent='Bitte die Nachweisänderung zuerst abwarten oder die Speicherung erneut prüfen.';return false;}if(dirty&&!confirm('Ungespeicherte Nachweiskorrektur verwerfen?'))return false;clear();return true;}
- g.PortalEvidenceAdmin={clear,beforeView,loadOverview,hasUnsaved:()=>dirty||!!pending||busy};
+ function beforeView(view){if(view==='settingsMembersView')return true;if(busy||pending){status.textContent='Bitte die Nachweisänderung zuerst abwarten oder die Speicherung erneut prüfen.';return false;}if(dirty&&!confirm('Ungespeicherte Nachweiskorrektur verwerfen?'))return false;clear();return true;}
+ g.PortalEvidenceAdmin={clear,beforeView,loadOverview,open,storageChanged:()=>{if(snapshotSource!==null&&snapshotSource!==g.DrinksStore.sourceKey())clear();},hasUnsaved:()=>dirty||!!pending||busy};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

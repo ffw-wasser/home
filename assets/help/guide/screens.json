@@ -105,7 +105,7 @@
   },
   "geraetehaus-h2o-einladung": {
     "width": 1326,
-    "height": 2270
+    "height": 2111
   },
   "h2o-anmeldung": {
     "width": 390,
@@ -113,7 +113,7 @@
   },
   "geraetehaus-nachweise": {
     "width": 1326,
-    "height": 740
+    "height": 744
   },
   "h2o-atemschutz": {
     "width": 324,
@@ -208,7 +208,7 @@
     "height": 900
   },
   "geraetehaus-sicherung": {
-    "width": 1024,
-    "height": 900
+    "width": 984,
+    "height": 1420
   }
 }

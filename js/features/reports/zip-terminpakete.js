@@ -218,6 +218,7 @@ function reorganizeStorageAndBackups(){
   const folder=layout.querySelector('[data-folder]');for(const node of [...backupCard.querySelectorAll('.storage-folder-status,#backupFolderActions,#completeBackupFileInput')])folder.append(node);
   const scope=backupCard.querySelector('.ux-backup-scope');if(scope)layout.querySelector('[data-scope]').append(scope);
   backupCard.remove();content.append(layout);
+  const central=byId("centralBackupCard"),recovery=byId("qualityStatusCard")?.closest("details");if(central)content.append(central);if(recovery)content.append(recovery);
   byId('archiveStorageCenter')?.remove();
   const title=page.querySelector('.screen-heading h2');if(title)title.textContent='Berichte & Datensicherung';
   const description=page.querySelector('.screen-heading p:not(.eyebrow)');if(description)description.remove();

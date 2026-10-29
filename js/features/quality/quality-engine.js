@@ -26,7 +26,7 @@ function migrateArchiveSchema(){
 function updateQualityStatusCard(){
   const card=byId("qualityStatusCard"),button=byId("restoreSafetySnapshotMenuButton");
   if(button&&!button.dataset.bound){button.dataset.bound="1";button.addEventListener("click",restoreLatestSafetySnapshot);}
-  if(card){let count=0;try{const snapshots=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]");if(Array.isArray(snapshots))count=snapshots.length;}catch{}card.querySelector("p").textContent=count?`Plausibilitätsprüfung aktiv · ${count} Sicherungspunkt${count===1?"":"e"} vorhanden.`:"Plausibilitätsprüfung aktiv · Noch kein Sicherungspunkt vorhanden.";}
+  if(card){let count=0;try{const snapshots=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]");if(Array.isArray(snapshots))count=snapshots.length;}catch{}(card.querySelector("[data-snapshot-status]")||card.querySelector("p")).textContent=count?`Plausibilitätsprüfung aktiv · ${count} Sicherungspunkt${count===1?"":"e"} vorhanden.`:"Plausibilitätsprüfung aktiv · Noch kein Sicherungspunkt vorhanden.";}
 }
 function guardProbeCompletion(){
   const result=validateProbeBeforeFinish();
@@ -41,7 +41,6 @@ function captureQualitySnapshot(reason){
 function initializeQualityControls(){
   migrateArchiveSchema();
   updateQualityStatusCard();
-  const dataPanel=byId("backupLocationPanel")?.parentElement||byId("settingsFilesView")?.querySelector(".panel");if(dataPanel&&!byId("restoreSafetySnapshotButton")){const button=document.createElement("button");button.id="restoreSafetySnapshotButton";button.type="button";button.className="outline-button";button.textContent="Letzten automatischen Sicherungspunkt wiederherstellen";button.addEventListener("click",restoreLatestSafetySnapshot);dataPanel.appendChild(button);}
 }
 window.addEventListener("DOMContentLoaded",()=>setTimeout(initializeQualityControls,0));
 
