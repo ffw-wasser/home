@@ -128,7 +128,15 @@
   try{const result=await api('overview',{eventId:event.id});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;content.replaceChildren();
    const summary=node('div');content.append(summary);
    if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
-   for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){const people=result.members.filter(m=>m.status===value);summary.append(node('h3',label+' ('+people.length+')'),node('p',people.map(m=>m.name).join(' · ')||'Keine'));}
+   for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){
+    const people=result.members.filter(m=>m.status===value).sort((a,b)=>a.name.localeCompare(b.name,'de'));summary.append(node('h3',label+' ('+people.length+')'));
+    if(value!=='yes'||!people.length||result.functionsVersion!==1){summary.append(node('p',people.map(m=>m.name).join(' · ')||'Keine'));continue;}
+    const groups=node('div');groups.className='portal-reply-functions';
+    for(const [role,label] of [['GF','GF'],['ATF','ATF'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
+     const list=people.filter(m=>(['GF','ATF','Maschinist'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section');section.dataset.replyFunction=role;section.append(node('h4',label+' ('+list.length+')'),node('p',list.map(m=>m.name).join(' · ')||'Keine'));groups.append(section);
+    }
+    summary.append(groups,node('p','Jede Person einmal · Reihenfolge: GF, ATF, Maschinist, weitere Zusagen. Hinterlegte Funktionen, keine feste Einteilung.'));
+   }
    const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false;
    remind.disabled=result.stale||event.start<=Date.now();
    remind.onclick=async()=>{

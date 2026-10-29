@@ -198,7 +198,8 @@
 .portal-overview-symbol{order:-1;flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #portal-events .portal-answer:empty{display:none}
 #portal-events .portal-answer{border-top:1px solid #b7c5d5;padding-top:10px;font-size:1rem;overflow-wrap:anywhere}
-.portal-overview-dialog h3{font-size:1.125rem;margin:20px 0 6px}.portal-overview-dialog p{overflow-wrap:anywhere}
+.portal-overview-dialog h3{font-size:1.125rem;margin:20px 0 6px}.portal-overview-dialog :is(h2,h3,h4,p,button){overflow-wrap:anywhere}
+.portal-reply-functions{display:grid;gap:10px}.portal-reply-functions section{padding:10px 12px;border:1px solid #c4d3e2;border-radius:10px;background:var(--card,#edf5f1)}.portal-reply-functions h4{margin:0 0 5px;font-size:1rem}.portal-reply-functions p{margin:0}
 
 
 /* Natural card height keeps replies on screen instead of filling the viewport.

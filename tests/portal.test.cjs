@@ -459,3 +459,14 @@ test('GF-Erinnerungen ohne Freigabeschritt bleiben auf sichtbare kommende Termin
  const next=(await f.call('list',{},null,true)).value;await f.call('classify',{eventId:e.id,kind:'probe',approved:true,recipientIds:null,expectedVersion:next.rulesVersion},null,true);
  f.clock.now=e.start+1;assert.equal((await f.call('remind',body)).status,409);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_event_reminders').get().n,0);
 });
+
+test('GF-Rückmeldeübersicht gibt nur Funktionen zugesagter Empfänger frei und schützt Rollen und Rechte',async()=>{
+ const f=await fixture(),event=(await f.call('list')).value.events[0],members=f.people.map((p,i)=>({id:p.memberId,name:'Funktionsperson '+i,leader:i===0,replyRoles:i===0?['ATF','Maschinist']:i===1?['ATF']:i===2?['Maschinist']:[]}));
+ assert.equal((await f.call('roster',{members,replyFunctionsVersion:1},null,true)).status,200);
+ for(const person of f.people.slice(0,4))assert.equal((await f.call('reply',{eventId:event.id,status:'yes',expectedVersion:0,requestId:webcrypto.randomUUID()},person)).status,200);
+ const view=(await f.call('overview',{eventId:event.id})).value;assert.equal(view.functionsVersion,1);assert.deepEqual(JSON.parse(JSON.stringify(view.members.map(m=>m.functions))),[['GF','ATF','Maschinist'],['ATF'],['Maschinist'],[],null]);assert.equal(view.members[4].functions,undefined);assert.ok(view.members.every(m=>!m.evidence&&!m.memberId&&!m.replyRoles));
+ assert.equal((await f.call('overview',{eventId:event.id,leader:true},f.people[1])).status,403);
+ for(const replyRoles of [['GF'],['ATF','ATF'],['ATF','Maschinist','other'],'ATF'])assert.equal((await f.call('roster',{members:[{...members[0],replyRoles}],replyFunctionsVersion:1},null,true)).status,400);
+ assert.equal((await f.call('roster',{members:members.map(({replyRoles,...m})=>m),replyFunctionsVersion:1},null,true)).status,400);
+ assert.equal((await f.call('roster',{members:members.map(({replyRoles,...m})=>m)},null,true)).status,200);assert.equal((await f.call('overview',{eventId:event.id})).value.functionsVersion,0,'older roster upload cannot leave stale role claims');
+});
