@@ -112,7 +112,7 @@
   el('revoke-sessions').onclick=()=>run(async()=>{await login();await post('sessions/revoke');el('message').textContent='Alle anderen Portal- und Termin-Sitzungen wurden abgemeldet.';await g.DeckelReload?.();});
   el('logout').onclick=()=>run(async()=>{await post('logout');save(null);history.replaceState(null,'',location.pathname+location.search);await g.DeckelDevice?.clearLink?.();location.reload();});
  }
- g.H2OIdentity={refresh:paint,setMemberName,setPortalVisible,onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,loginPassword,session:()=>current||read(),credentials:()=>record,post};
+ g.H2OIdentity={isBusy:()=>busy,refresh:paint,setMemberName,setPortalVisible,onboarding:()=>!!setupCode&&!read(),usesPortal:()=>true,forget:()=>save(null),prepare,login,loginPassword,session:()=>current||read(),credentials:()=>record,post};
  function applySetupLink(){if(!pendingSetup||!initialized||busy)return;const next=pendingSetup;pendingSetup='';if(!current&&!read())for(const id of ['username','new-username','login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';el('code').value=next;el('message').textContent='';g.H2OOnboarding?.init(true,true);}
  function receiveSetupLink(){const next=takeSetupCode();if(!next)return;setupCode=next;pendingSetup=next;applySetupLink();}
  g.addEventListener('hashchange',receiveSetupLink);

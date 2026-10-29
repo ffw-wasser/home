@@ -1,58 +1,30 @@
 /* One refresh action for release and account updates; private fragments stay local. */
 (function(g){
  'use strict';const $=id=>document.getElementById(id);let checking=null,refreshing=false,nextRefreshAt=0,hintTimer;
- const updateMessage='Eine neue Ansicht ist verfügbar. Bitte die Ansicht neu laden.';
- function resume(){if(document.hidden)return;$('deckel-update-message').textContent=updateMessage;check();}
- // Only an actually newer release should display the banner. A previous
- // release.json was older than deckel.html, causing an endless update loop.
- function newer(remote,local){
-  const pattern=/^(\d{8})\.(\d+)$/,a=pattern.exec(remote||''),b=pattern.exec(local||'');
-  if(!a||!b)return false;
-  return Number(a[1])>Number(b[1])||a[1]===b[1]&&Number(a[2])>Number(b[2]);
- }
- async function check(){
-  if(checking)return checking;
-  if(document.hidden)return false;
-  const build=document.querySelector('meta[name="deckel-build"]')?.content;
-  if(!build)return false;
-  checking=(async()=>{
-   try{
-    const response=await fetch('app-release.json?t='+Date.now(),{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(10000)});
-    if(!response.ok)return false;
-    const value=await response.json(),available=newer(value.build,build);
-    $('deckel-update-banner').hidden=!available;
-    if(available)$('deckel-update-message').textContent=updateMessage;
-    return available;
-   }catch{return false;}
-  })();
-  try{return await checking;}finally{checking=null;}
- }
+ async function check(){return document.hidden?false:Boolean(await g.AppRelease?.check());}
+ function feedback(text){const hint=$('deckel-pull-refresh');if(hint){g.clearTimeout?.(hintTimer);hint.hidden=false;hint.textContent=text;hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},6000);}}
  async function refresh(){
   if(refreshing||g.DeckelReload?.isLoading?.())return;
   const hint=$('deckel-pull-refresh');g.clearTimeout?.(hintTimer);
   if(Date.now()<nextRefreshAt){if(hint){hint.hidden=false;hint.textContent='Bitte kurz warten, bevor du erneut aktualisierst.';hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},1800);}return false;}
   refreshing=true;let completed=false;
   if(hint){hint.hidden=false;hint.textContent='Wird aktualisiert …';}
-  try{if(await check())completed=reload();else{await g.DeckelReload?.({checkUpdate:false});completed=true;}return completed;}
-  finally{if(completed)nextRefreshAt=Date.now()+10000;refreshing=false;if(hint)hint.hidden=true;}
+  try{if(await check())completed=await reload();else{await g.DeckelReload?.({checkUpdate:false});completed=true;}return completed;}
+  finally{if(completed)nextRefreshAt=Date.now()+10000;refreshing=false;if(hint&&(completed||hint.textContent==='Wird aktualisiert …'))hint.hidden=true;}
  }
- function reload(){
+ function blocked(){
   const messages=[];
   if(g.PortalEvidenceEditor?.hasUnsaved?.())messages.push('Status: Die Nachweiseingabe zuerst speichern oder abbrechen. Bei unbestätigter Speicherung erneut prüfen.');
   if(g.DeckelActions?.hasUnsaved?.())messages.push('Mein Deckel: Vorgemerkte Getränke zuerst speichern oder verwerfen. Bei einer gesendeten Buchung die Speicherung erneut prüfen.');
   if(g.TheaterPhone?.hasUnsaved?.())messages.push('Theater: Die vorgemerkte Bestellung zuerst senden oder die Mengen mit Minus auf null setzen. Bei unbestätigter Übertragung „Übertragung erneut prüfen“ wählen.');
   else if(g.H2OPortal?.hasUnsaved?.()&&!g.PortalEvidenceEditor?.hasUnsaved?.())messages.push('Termine: Bei unbestätigten Termin-Rückmeldungen die Bestätigung abwarten oder „Speicherung erneut prüfen“ wählen.');
-  if(messages.length){
-   $('deckel-update-banner').hidden=false;
-   $('deckel-update-message').textContent=messages.join(' ');
-   return false;
-  }
-  // Reload the public HTML past stale browser caches, while preserving the
-  // entire personal URL fragment (account access never enters the query).
-  const url=new URL(g.location.href);
-  url.searchParams.set('_h2o_refresh',String(Date.now()));
-  g.location.replace(url.href);return true;
+  return messages.join(' ');
  }
+ async function reload(){
+  const reason=blocked();if(reason){feedback(reason);return false;}
+  const applied=await g.AppRelease?.apply({guard:blocked});if(!applied&&g.AppRelease?.error)feedback(g.AppRelease.error);return Boolean(applied);
+ }
+ async function startup(){if(document.querySelector('dialog[open]')||g.H2OIdentity?.isBusy?.()||blocked()||!g.AppRelease?.start)return false;const ready=g.AppRelease.start({guard:blocked});g.DeckelStartup?.begin();return ready;}
  function initPullRefresh(){
   const main=$('deckel-main'),hint=$('deckel-pull-refresh');if(!main||!hint)return;
   let pull=null,suppressClickUntil=0;
@@ -84,14 +56,7 @@
   main.addEventListener('click',event=>{if(Date.now()<suppressClickUntil){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   g.addEventListener('portal-pagechange',cancel);document.addEventListener('visibilitychange',cancel);
  }
- function init(){
-  $('deckel-update-now').onclick=reload;
-  initPullRefresh();
-  check();
-  g.setInterval(()=>{if(!document.hidden)check();},60000);
-  document.addEventListener('visibilitychange',resume);
-  g.addEventListener?.('pageshow',resume);
- }
- g.DeckelUpdate={check,reload,refresh,isRefreshing:()=>refreshing};
+ function init(){initPullRefresh();}
+ g.DeckelUpdate={check,reload,refresh,startup,isRefreshing:()=>refreshing};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

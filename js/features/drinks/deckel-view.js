@@ -9,6 +9,8 @@ function credentials(){const identity=globalThis.H2OIdentity?.credentials();if(!
 function clear({preserveResources=false}={}){globalThis.H2OPortal?.clear();if(!preserveResources)globalThis.DeckelMobile?.show(false);globalThis.DeckelChallenge?.clear();hideThanks();$('account').hidden=true;for(const id of ['balance','credit','bonus','updated','points','points-use','stack-note'])$(id).textContent='';$('paypal').removeAttribute('href');hasData=false;}
 function loadError(error){if(error.name==='OperationError')return 'Dieser Zugang kann den aktuellen Deckel nicht öffnen. Bitte deinen QR-Code am Gerätehaus-iPad erneut scannen.';if(error.name==='AbortError')return 'Die Verbindung dauert zu lange. Bitte erneut aktualisieren.';if(error.name==='TypeError')return 'Keine Internetverbindung zum Deckel. Bitte Verbindung prüfen und erneut aktualisieren.';return error.message||'Keine Verbindung. Bitte erneut versuchen.';}
 async function load(options={}){
+ if(options.startup&&await globalThis.DeckelUpdate?.startup?.())return;
+ if(globalThis.AppRelease?.pending&&await globalThis.AppRelease.ready)return;
  if(options.checkUpdate!==false)globalThis.DeckelUpdate?.check();
  const number=++generation,startupToken=(!hasData||globalThis.DeckelStartup?.isActive?.())?globalThis.DeckelStartup?.begin():undefined;let startupPending=false;currentRequest?.abort();if($('deckel-load-retry'))$('deckel-load-retry').hidden=true;loading=true;$('status').setAttribute?.('data-state','loading');hideThanks();$('status').textContent=hasData?'Kontostand wird geprüft …':'Kontostand wird geladen …';
  try{
@@ -35,5 +37,5 @@ async function load(options={}){
 }
 globalThis.DeckelReload=load;load.isLoading=()=>loading;const refreshView=()=>globalThis.DeckelUpdate?.refresh?globalThis.DeckelUpdate.refresh():load();$('deckel-load-retry')?.addEventListener('click',refreshView);
 globalThis.addEventListener('hashchange',()=>{generation++;currentRequest?.abort();currentAccess='';lastUpdated='';clear();load();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){globalThis.DeckelStartup?.begin();generation++;currentRequest?.abort();clear();loading=false;}else load();});
-globalThis.addEventListener('pageshow',event=>{if(event.persisted)load();});load();
+document.addEventListener('visibilitychange',()=>{if(document.hidden){globalThis.DeckelStartup?.begin();generation++;currentRequest?.abort();clear();loading=false;}else load({startup:true});});
+globalThis.addEventListener('pageshow',event=>{if(event.persisted)load({startup:true});});load();
