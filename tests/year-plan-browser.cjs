@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..');
   const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.stack));
   let publicRequests=0;
   await page.route('**/*',async route=>{const url=new URL(route.request().url());if(url.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,url.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file))return route.fulfill({path:file});}if(url.pathname==='/calendar/public')publicRequests++;return route.abort();});
-  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
+  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   assert.deepEqual(errors,[]);
   assert.deepEqual(await page.locator('[id]').evaluateAll(nodes=>{const seen=new Set();return nodes.map(n=>n.id).filter(id=>seen.has(id)||!seen.add(id));}),[],'unique DOM identifiers');
   await page.locator('#menuToggleButton').click();assert.deepEqual(await page.locator('#compactMenu button').allTextContents(),['Historie','Statistik','Jahresplan','Pläne & Pegel','Veranstaltungen','🔒 Verwaltung','Infos']);

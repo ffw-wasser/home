@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 (async()=>{const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:1180,height:900},serviceWorkers:'block'}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.stack));
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});return route.abort();});
- async function ready(){await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});await page.evaluate(()=>{PortalAdmin.refreshAttendance=async()=>{};});}
+ async function ready(){await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});await page.evaluate(()=>{PortalAdmin.refreshAttendance=async()=>{};});}
  await page.goto('https://ffw-wasser.github.io/home/index.html');await ready();
  await page.evaluate(()=>{members=[{id:'draft-a',firstName:'Anna',lastName:'Muster',roles:['GF'],committeeMember:true},{id:'draft-b',firstName:'Ben',lastName:'Beispiel',roles:[]}];safeStorage.setItem(KEYS.members,JSON.stringify(members));chooseSessionType('Unterricht');continueToAttendance();saveQuickMemberStatus('draft-a','Anwesend');commitPendingMemberStatuses();saveQuickMemberStatus('draft-b','Entschuldigt');});
  await page.locator('#attendanceOptions>summary').click();await page.locator('#probeDateInput').fill('2026-12-10');await page.locator('#probeDateInput').dispatchEvent('change');

@@ -18,7 +18,7 @@ const root=path.resolve(__dirname,'..');
    if(u.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});}
    return route.abort();
   });
-  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
+  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(({members,token})=>{window.requireAdmin=()=>true;window.members=members;adminUnlocked=true;resetAdminTimeout();oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;oneDriveReadState=async()=>({members});DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev',source:'test-source',token});DrinksStore.sourceKey=()=> 'test-source';showView('settingsPortalView');},{members,token:f.env.ADMIN_TOKEN});
   const panel=page.locator('#portal-subscriptions'),status=page.locator('#portal-subscriptions-status'),items=panel.locator('.portal-subscription-item');
   await page.waitForFunction(()=>document.querySelectorAll('.portal-subscription-item').length===5);

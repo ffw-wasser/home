@@ -9,7 +9,7 @@ const root=path.resolve(__dirname,'..');
   await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin==='https://ffw-wasser.github.io'){
    const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});
   }return route.abort();});
-  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
+  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(()=>{
    window.requireAdmin=()=>true;oneDriveAdministrationReady=()=>true;adminUnlocked=true;resetAdminTimeout();
    window.Drinks.loadPinStatus=()=>{};

@@ -21,7 +21,7 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
    }
    return route.fulfill({path:file});
   });
-  await page.goto('http://localhost/index.html');await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
+  await page.goto('http://localhost/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   assert.equal(await page.locator('#app-update-banner').isVisible(),false);
   await page.locator('#menuToggleButton').click();await page.locator('#helpTab').click();await page.locator('[data-info-view="privacyHelpView"]').click();await page.locator('#app-update-check').click();
   await page.waitForFunction(()=>document.querySelector('#app-update-message').textContent.includes('neuesten Stand'));
@@ -39,7 +39,7 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
   await page.locator('#app-update-now').click();assert.match(await page.locator('#app-update-message').textContent(),/offene Änderungen/);
   await page.evaluate(()=>window.removeEventListener('beforeunload',qaUpdateGuard));
   await page.locator('#app-update-now').click();await page.waitForURL(/_ffw_refresh=/);
-  await page.evaluate(()=>AppStartup.update({ready:true}));await page.locator('#appStartup').waitFor({state:'hidden'});
+  await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   assert.equal(await page.locator('meta[name="ffw-build"]').getAttribute('content'),next);
   assert.equal(await page.locator('#app-update-banner').isVisible(),false);
   assert.deepEqual(errors,[]);
