@@ -1,7 +1,7 @@
 > Aktueller Bedienweg (29.10.2026): Persönliche Handyzugänge ausschließlich unter
 > Verwaltung → H₂O Portal einrichten und wiederherstellen. Die gemeinsame technische
-> Verbindung liegt ebenfalls dort. Getränke → Konto verwaltet nur die freiwillige iPad-PIN.
-> Sicherungen und Zurücksetzen liegen unter Verwaltung → Getränke → Sichern & Zurücksetzen.
+> Verbindung liegt unter Verwaltung → Einstellungen → H₂O-Dienst. Getränke → Konto verwaltet nur die freiwillige iPad-PIN.
+> Alle Sicherungen und Zurücksetzen liegen unter Verwaltung → Einstellungen → Datensicherung.
 > Die folgende Dokumentation beschreibt ältere technische Betriebswege für bestehende
 > Links; sie ist keine Anleitung zur Neueinrichtung.
 

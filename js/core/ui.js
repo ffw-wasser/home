@@ -26,7 +26,7 @@ function lockAdministration(){
   const theaterReturn=window.TheaterAdmin?.route?.();
   if(byId('pushAdminToken'))byId('pushAdminToken').value='';
   if(byId('deckel-token'))byId('deckel-token').value='';
-  window.TheaterAdmin?.lock();window.PortalAdmin?.lock();window.DrinksAdminBookings?.lock();
+  window.TheaterAdmin?.lock();window.PortalAdmin?.lock();window.PortalEvidenceAdmin?.clear();window.DrinksAdminBookings?.lock();
   window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();window.DrinksBirthdaySettings?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
   window.SmartWorkflow?.settings();
@@ -37,6 +37,7 @@ function lockAdministration(){
   renderOneDriveDialog?.();
 }
 function showView(viewId) {
+  if(viewId==="settingsBackupView")viewId="settingsFilesView";
   if(window.H2OFeatures?.rewards===false&&["settingsRewardsView","settingsQuizQuestionsView"].includes(viewId))viewId="settingsBacklogView";
   const requestedView=viewId;
   const theaterMode=({theaterCashView:"cash",theaterStatsView:"stats",theaterManageView:"manage"})[viewId];
@@ -68,7 +69,9 @@ function showView(viewId) {
   if(viewId!=="yearPlanView")window.scrollTo({ top: 0, behavior: "smooth" });window.WorkflowUX?.afterView(viewId);
   if(viewId==="settingsView")window.SmartWorkflow?.settings();
   if(viewId==="theaterView")window.TheaterAdmin?.load();
-  if(viewId==="settingsBackupView")window.DrinksCentral?.load?.();
+  if(viewId==="settingsFilesView"){window.DrinksCentral?.load?.();window.updateQualityStatusCard?.();}
+  if(viewId==="settingsPushView")window.DrinksPush?.loadSetup();
+  if(viewId==="settingsMembersView")window.PortalEvidenceAdmin?.open?.();
   if(viewId==="settingsPortalView")window.PortalAdmin?.load();
   if(viewId==="settingsCalendarView"&&adminUnlocked&&oneDriveAdministrationReady())window.PortalAdmin?.loadCalendar();
   if(viewId==="settingsQuizQuestionsView")window.DrinksQuizQuestions?.load();
