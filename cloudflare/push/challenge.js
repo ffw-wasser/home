@@ -2,7 +2,7 @@
 (function(g){
  'use strict';const L=g.CentralLedger,M=g.DrinksModel,Q=g.DrinksQuizModel;
  const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v),fail=(s,status=409,code='rejected')=>{throw Object.assign(Error(s),{status,code});},copy=v=>JSON.parse(JSON.stringify(v)),checks=new WeakMap();
- async function ready(env){const old=checks.get(env.DB);if(old&&old.until>Date.now())return old.ready;let ok=false;try{await env.DB.prepare('SELECT id FROM challenge_pool LIMIT 1').first();await env.DB.prepare('SELECT id FROM challenge_games LIMIT 1').first();ok=true;}catch{}checks.set(env.DB,{ready:ok,until:Date.now()+(ok?60000:5000)});return ok;}
+ async function ready(env){if(g.H2OFeatures?.challenge===false)return false;const old=checks.get(env.DB);if(old&&old.until>Date.now())return old.ready;let ok=false;try{await env.DB.prepare('SELECT id FROM challenge_pool LIMIT 1').first();await env.DB.prepare('SELECT id FROM challenge_games LIMIT 1').first();ok=true;}catch{}checks.set(env.DB,{ready:ok,until:Date.now()+(ok?60000:5000)});return ok;}
  async function actor(env,data,auth){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Handyzugang.',400);
   const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(data.alias,data.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(data.alias).first();
@@ -66,6 +66,7 @@
   if(next.month!==month()||next.expiresAt<Date.now())fail('Monat oder Spielzeit ist abgelaufen. Bitte aktualisieren.');await commit(env,meta,found.row,next,affected);return soloView(next);
  }
  async function route(path,data,env,auth){
+  if(g.H2OFeatures?.challenge===false)fail('Die Challenge ist im Backlog und vorerst pausiert.',409);
   if(!await ready(env))fail('Die Challenge benötigt das Worker-Update und challenge.sql in der bestehenden D1-Datenbank.',503);
   const meta=await L.meta(env);L.active(meta);
   if(path.startsWith('/admin/challenge/')){

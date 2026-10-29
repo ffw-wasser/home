@@ -230,6 +230,7 @@
  let berlinDayFormatter;
  const berlinDay=ms=>(berlinDayFormatter??=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'})).format(new Date(ms));
  async function awardBirthdays(env,cal){
+  if(g.H2OFeatures?.rewards===false)return 0;
   const today=berlinDay(Date.now()),birthdays=cal.events.filter(e=>e.kind==='birthday'&&e.memberId&&berlinDay(e.start)===today);
   if(!birthdays.length)return 0; // Ordinary minutes need no birthday database reads or decryption.
   const year=Number(today.slice(0,4)),rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster'),ruleRow=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();if(!roster||!ruleRow)return 0;
@@ -465,7 +466,7 @@
     return path.endsWith('/review')?g.PortalEvidence.write(env,member,roster,data,true,m):g.PortalEvidence.read(env,member,roster);
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
-  if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path==='/admin/portal/birthday-policy'){if(g.H2OFeatures?.rewards===false)fail('Treuepunkte sind vorerst pausiert.');return saveBirthdayPolicy(env,data);}
   if(path.startsWith('/admin/portal/google-oauth/'))return g.GoogleCalendarOAuth.route(path.slice('/admin/portal/google-oauth/'.length),data,env,m.source);
   if(path.startsWith('/admin/portal/google-api/')){
    const action=path.slice('/admin/portal/google-api/'.length);

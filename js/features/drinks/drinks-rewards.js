@@ -7,6 +7,7 @@
   function beforeView(id){if(id==='settingsRewardsView'||byId('settingsRewardsView')?.hidden!==false||!dirty)return true;if(busy){showToast('Bitte die Speicherung der Treuepunkte-Einstellungen abwarten.','error');return false;}if(!confirm('Ungespeicherte Treuepunkte-Einstellungen verwerfen?'))return false;dirty=false;return true;}
   const description=p=>`${euro(M.threshold(p))} Einzahlung → ${points(M.award(p))}. Bier: ${M.pointText(M.pointCost(p,'beer'))} Punkte · Wein: ${M.pointText(M.pointCost(p,'wine'))} Punkte.`;
   async function load(force=false){
+    if(globalThis.H2OFeatures?.rewards===false)return;
     globalThis.DrinksChallengeSettings?.load(force);globalThis.DrinksBirthdaySettings?.load(force);
     if(!requireAdmin('settingsRewardsView')||busy||(!force&&dirty))return;if(force&&dirty&&!confirm('Eingaben verwerfen und neu aus OneDrive laden?'))return;
     const status=byId('bonusSettingsStatus');busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden geladen …';
@@ -14,7 +15,7 @@
     catch(error){status.textContent=error.message||'Einstellungen konnten nicht geladen werden.';}finally{busy=false;byId('bonusSettingsSave').disabled=!policy;}
   }
   async function save(event){
-    event.preventDefault();if(!requireAdmin('settingsRewardsView')||busy||!policy)return;const status=byId('bonusSettingsStatus');
+    event.preventDefault();if(globalThis.H2OFeatures?.rewards===false)return;if(!requireAdmin('settingsRewardsView')||busy||!policy)return;const status=byId('bonusSettingsStatus');
     const settings={thresholdCents:M.parseEuro(byId('bonusCount').value),awardUnits:Number(byId('bonusEuro').value)*M.POINT_UNIT,beerUnits:Number(byId('bonusBeer').value)*M.POINT_UNIT,wineUnits:Number(byId('bonusWine').value)*M.POINT_UNIT};
     try{M.validateRewardSettings({...policy,...settings});}catch(error){status.textContent=error.message;return;}
     busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden gespeichert …';
@@ -24,7 +25,7 @@
   function render(account){
     const p=DrinksStore.cachedRewards(),state=M.rewardState(account||M.empty(''),p);
     byId('dr-program').textContent=p?'Treuepunkte: '+description(p)+' Nur bestätigte Geldzahlungen zählen; Einlösen erzeugt keine neuen Punkte.':'Treuepunkte werden geladen …';
-    const box=byId('dr-bonus');box.hidden=!account||!p;
+    const paused=globalThis.H2OFeatures?.rewards===false;byId('dr-program').hidden=paused;const box=byId('dr-bonus');box.hidden=paused||!account||!p;
     if(p){byId('dr-bonus-progress').max=state.threshold;byId('dr-bonus-progress').value=Math.min(state.progress,state.threshold);byId('dr-bonus-text').textContent=points(state.pointUnits)+' · '+remainingText(state,p);}
     byId('dr-credit').hidden=!state.prepaid;byId('dr-credit').textContent='Eingezahlter Betrag: '+euro(state.prepaid)+' · Für spätere Getränke.';return state;
   }

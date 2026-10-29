@@ -12,13 +12,13 @@ test('Flacher Bierdeckel und Betrag stehen getrennt; Hilfetexte bleiben außerha
  for(const id of ['updated','thanks','deckel-quote'])assert.doesNotMatch(face,new RegExp('id="'+id+'"'),'kein '+id+' auf dem Deckel');
  assert.match(face,/FEUERWEHR WASSER/);
  assert.match(face,/preserveAspectRatio="none"/);
- for(const id of ['updated','thanks','deckel-quote','deckel-tap-hint'])assert.match(html.slice(end),new RegExp('id="'+id+'"'));
+ for(const id of ['updated','thanks'])assert.match(html.slice(end),new RegExp('id="'+id+'"'));
  assert.match(view,/data\.balance===0\?'Bezahlt':'Offen'/);
 });
-test('Sprüche bleiben unterhalb des Deckels, Betrag bleibt beim Antippen sichtbar',()=>{
- assert.match(html.slice(end),/<p id="deckel-quote"/);
- assert.doesNotMatch(view,/for\(const id of \['balance','balanceLabel','updated'\]\)\$\(id\)\.hidden=true/);
- assert.match(view,/\$\('coaster'\)\.setAttribute\?\.\('aria-describedby','updated deckel-tap-hint deckel-quote'\)/);
+test('Deckel enthält keine Sprüche und ist kein Bedienelement',()=>{
+ assert.doesNotMatch(html,/id="(?:deckel-quote|deckel-tap-hint|deckel-laugh)"/);
+ assert.doesNotMatch(face,/role="button"|tabindex=/);
+ assert.doesNotMatch(view,/nudgeDeckel|sayings|is-nudged/);
 });
 test('Portalnavigation bleibt erreichbar und passt ohne horizontales Scrollen auf den Bildschirm',()=>{
  const nav=html.slice(html.indexOf('<nav id="deckel-nav"'),html.indexOf('</nav>',html.indexOf('<nav id="deckel-nav"')));

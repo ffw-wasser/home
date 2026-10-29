@@ -72,7 +72,7 @@ test('Bildschirmtastatur verkleinert den Inhaltsbereich; nach Schließen kehrt d
 });
 
 test('Meine Nachweise öffnet eine eigene Seite und erhält den privaten Zugang beim Wechsel zum Deckel',()=>{
- const dom=nodes(),buttons=['portal-section','portal-evidence','account','portal-points','deckel-more'].map(id=>{const n=new Node('button');n.dataset.deckelTarget=id;return n;});dom['deckel-nav'].querySelectorAll=()=>buttons;
+ const dom=nodes(),buttons=['portal-section','portal-evidence','account','more-training','deckel-more'].map(id=>{const n=new Node('button');n.dataset.deckelTarget=id;return n;});dom['deckel-nav'].querySelectorAll=()=>buttons;
  const hash='#test-private-access',ctx=vm.createContext({location:{hash},innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);ctx.DeckelMobile.jump('portal-evidence');assert.equal(dom['portal-page-evidence'].hidden,false);assert.equal(dom['portal-page-terms'].hidden,true);assert.equal(dom['portal-page-deckel'].hidden,true);assert.equal(buttons[1].attributes['aria-current'],'page');assert.equal(dom['portal-page-evidence'].focused,true);
  ctx.DeckelMobile.jump('account');assert.equal(dom['portal-page-evidence'].hidden,true);assert.equal(dom['portal-page-deckel'].hidden,false);assert.equal(ctx.location.hash,hash);
 });
@@ -83,7 +83,7 @@ test('Monats-Challenge hat eigene Ansicht mit Zurück-Taste ohne Veränderung de
  const ctx=vm.createContext({location:{hash},history,innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);
  ctx.DeckelMobile.show(true);
- ctx.DeckelMobile.jump('portal-points');
+ ctx.DeckelMobile.jump('more-training');
  dom['challenge-open'].click();
  assert.equal(dom['portal-page-challenge'].hidden,false);
  assert.equal(dom['portal-page-points'].hidden,true);
@@ -151,7 +151,7 @@ test('Mehr-Kacheln öffnen eigene Rubriken und Rückkehr hält Mehr im Menü aus
 function layoutFixture(storage=new Map()){
  const dom=nodes(),main=dom['deckel-main'],nav=dom['deckel-nav'],grid=dom['portal-more-grid'];
  nav.id='deckel-nav';grid.id='portal-more-grid';
- const mainIds=['portal-section','portal-evidence','account','portal-points'],moreIds=['more-training','more-year-plan','more-hydrants','more-regulations','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-contacts','more-help'];
+ const mainIds=['portal-section','portal-evidence','account','more-training'],moreIds=['more-year-plan','more-hydrants','more-regulations','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-contacts','more-help'];
  for(const [ids,parent] of [[mainIds,nav],[moreIds,grid]])for(const id of ids){const tile=new Node('button');tile.dataset.portalTile=id;tile.dataset.portalTitle=id;tile.dataset.deckelTarget=mainIds.includes(id)?id:'';if(moreIds.includes(id)&&id!=='theater-phone-section')tile.dataset.moreTarget=id;parent.append(tile);}
  const pinned=new Node('button');pinned.dataset.portalPinned='more';pinned.dataset.deckelTarget='deckel-more';nav.append(pinned);main.append(grid);
  const timers=new Map();let timerId=0,under=null;const ctx=vm.createContext({history:{state:{},replaceState(s){this.state=s;},pushState(s){this.state=s;}},innerWidth:390,innerHeight:844,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],createElement:tag=>new Node(tag),addEventListener(){},elementFromPoint:()=>under}});
@@ -172,11 +172,11 @@ test('Portal-Kacheln lassen sich verschieben, sortieren, kompakt anzeigen und zu
  dom['portal-layout-item'].value='account';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
  assert.equal(dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').find(tile=>tile.dataset.portalTile==='account').dataset.portalCompact,'true','kompakte Menükacheln bleiben auch unter Mehr kompakt');
  dom['portal-layout-reset'].click();
- assert.deepEqual(dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','portal-evidence','account','portal-points'],'die Menüverwaltung stellt die Standardnavigation wieder her');
+ assert.deepEqual(dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','portal-evidence','account','more-training'],'die Menüverwaltung stellt die Standardnavigation wieder her');
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-water'));
  const restored=layoutFixture(storage),restoredNav=restored.dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
- assert.deepEqual(restoredNav,['portal-section','portal-evidence','account','portal-points']);
- assert.equal(restored.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').at(-1).dataset.portalTile,'more-security');
+ assert.deepEqual(restoredNav,['portal-section','portal-evidence','account','more-training']);
+ assert.equal(restored.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').at(-1).dataset.portalTile,'more-bundesliga');
  assert.equal(restored.dom['deckel-nav'].querySelector('[data-portal-pinned="more"]')!==null,true,'Mehr bleibt als Rückweg angeheftet');
 });
 test('Langes Drücken verschiebt Kacheln ohne Scrollen und Wischnavigation',()=>{
@@ -202,7 +202,7 @@ test('Kopfbereich zeigt die gewählte Rubrik bei Menüwechsel, Unterseite und Ak
  const dom=nodes(),ctx=vm.createContext({innerWidth:390,innerHeight:844,addEventListener(){},document:{readyState:'complete',body:new Node(),getElementById:id=>dom[id],addEventListener(){}}});
  vm.runInContext(read('js/features/drinks/deckel-mobile.js'),ctx);ctx.DeckelMobile.show(true);
  assert.equal(dom['portal-menu-title'].textContent,'Termine');
- for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['portal-points','Treuepunkte'],['deckel-more','Mehr'],['more-help','Datenschutz & Hilfe'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
+ for(const [id,title] of [['account','Mein Deckel'],['portal-evidence','Nachweise'],['more-training','Ausbildung'],['deckel-more','Mehr'],['more-help','Datenschutz & Hilfe'],['portal-challenge','Monats-Challenge']]){ctx.DeckelMobile.jump(id);assert.equal(dom['portal-menu-title'].textContent,title);ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,title);}
  ctx.DeckelMobile.show(false);assert.equal(dom['portal-menu-title'].textContent,'H₂O Portal');ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,'Termine');
 });
 
@@ -213,17 +213,17 @@ test('Wischen folgt verschobenen Hauptkacheln auch nach erneutem Laden',()=>{
  select('more-water');dom['portal-layout-transfer'].click();dom['portal-layout-earlier'].click();
  const check=f=>{
   const main=f.dom['deckel-main'],base={pointerId:1,pointerType:'touch',isPrimary:true,clientX:250,clientY:200,timeStamp:0,target:{closest:()=>null}};
-  for(const id of ['account','more-water','portal-points','deckel-more']){
+  for(const id of ['account','more-water','more-training','deckel-more']){
    main.dispatch('pointerdown',base);main.dispatch('pointerup',{...base,clientX:100,timeStamp:200});
    assert.equal(f.ctx.history.state.portalPage,id);
    const active=f.dom['deckel-nav'].querySelectorAll('[data-deckel-target]').filter(tile=>tile.attributes['aria-current']==='page');
    assert.equal(active.length,1);assert.equal(active[0].dataset.deckelTarget,id);
   }
   main.dispatch('pointerdown',{...base,clientX:100});main.dispatch('pointerup',{...base,timeStamp:200});
-  assert.equal(f.ctx.history.state.portalPage,'portal-points');
+  assert.equal(f.ctx.history.state.portalPage,'more-training');
  };
  check(f);const restored=layoutFixture(storage);check(restored);
- assert.deepEqual(restored.dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','account','more-water','portal-points']);
+ assert.deepEqual(restored.dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile),['portal-section','account','more-water','more-training']);
 });
 test('Einfügemarkierungen verschwinden nach Ablegen, Abbruch und Ablegen außerhalb',()=>{
  for(const finish of ['drop','cancel','outside']){
@@ -241,18 +241,18 @@ test('Einfügemarkierungen verschwinden nach Ablegen, Abbruch und Ablegen außer
 });
 
 test('Hauptnavigation hat höchstens vier freie Kacheln plus Mehr, auch mit altem Speicherstand',()=>{
- const storage=new Map([['h2o_portal_layout_v1',JSON.stringify({main:['portal-section','account','more-water','more-help','portal-evidence','portal-points'],more:[]})]]);
+ const storage=new Map([['h2o_portal_layout_v1',JSON.stringify({main:['portal-section','account','more-water','more-help','portal-evidence','more-training'],more:[]})]]);
  const f=layoutFixture(storage),{dom}=f;
  const navIds=()=>dom['deckel-nav'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile);
  assert.deepEqual(navIds(),['portal-section','account','more-water','more-help']);
  assert.equal(dom['deckel-nav'].children.length,5);
  const saved=JSON.parse(storage.get('h2o_portal_layout_v1'));
- assert.ok(saved.more.includes('portal-evidence'));assert.ok(saved.more.includes('portal-points'));
+ assert.ok(saved.more.includes('portal-evidence'));assert.ok(saved.more.includes('more-training'));
  dom['portal-layout-item'].value='portal-evidence';dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();
  assert.deepEqual(navIds(),['portal-section','account','more-water','portal-evidence']);
  assert.ok(JSON.parse(storage.get('h2o_portal_layout_v1')).more.includes('more-help'));
  const all=[...navIds(),...dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(tile=>tile.dataset.portalTile)];
- assert.equal(all.length,15);assert.equal(new Set(all).size,15);
+ assert.equal(all.length,14);assert.equal(new Set(all).size,14);
 });
 
 test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellung',()=>{
@@ -270,7 +270,7 @@ test('Rückweg zu Mehr folgt der Kachelposition sofort und nach Wiederherstellun
 
 test('Ursprüngliche Hauptkacheln erhalten unter Mehr ebenfalls einen Rückweg',()=>{
  const f=layoutFixture(),{dom}=f;
- for(const [id,page] of [['portal-section','terms'],['portal-evidence','evidence'],['account','deckel'],['portal-points','points']]){
+ for(const [id,page] of [['portal-section','terms'],['portal-evidence','evidence'],['account','deckel'],['more-training','more-training']]){
   const back=new Node('button');back.classList.add('portal-more-back');dom['portal-page-'+page].append(back);
   f.ctx.DeckelMobile.jump(id);assert.equal(back.hidden,true);
   dom['portal-layout-item'].value=id;dom['portal-layout-item'].change();dom['portal-layout-transfer'].click();assert.equal(back.hidden,false,id);
@@ -278,11 +278,11 @@ test('Ursprüngliche Hauptkacheln erhalten unter Mehr ebenfalls einen Rückweg',
  }
 });
 
-test('Neue Standardreihenfolge: Feuerwehr zuerst, gespeicherter alter Standard wird aktualisiert, persönliche Reihenfolge bleibt',()=>{
- const expected=['more-training','more-year-plan','more-breathing','more-hydrants','more-regulations','more-water','more-contacts','more-help','theater-phone-section','more-bundesliga','more-security'],main=['portal-section','portal-evidence','account','portal-points'],old=['more-year-plan','more-hydrants','more-water','theater-phone-section','more-security','more-breathing','more-bundesliga','more-help'],key='h2o_portal_layout_v1',order=f=>f.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(t=>t.dataset.portalTile);
+test('Neue Standardreihenfolge: Feuerwehr zuerst, alter Standard wird aktualisiert, persönliche Reihenfolge bleibt',()=>{
+ const expected=['more-year-plan','more-breathing','more-hydrants','more-water','more-regulations','more-contacts','more-help','more-security','theater-phone-section','more-bundesliga'],main=['portal-section','portal-evidence','account','more-training'],oldMain=['portal-section','portal-evidence','account','portal-points'],oldMore=['more-training','more-year-plan','more-breathing','more-hydrants','more-regulations','more-water','more-contacts','more-help','theater-phone-section','more-bundesliga','more-security'],key='h2o_portal_layout_v1',order=f=>f.dom['portal-more-grid'].querySelectorAll('[data-portal-tile]').map(t=>t.dataset.portalTile);
  assert.deepEqual(order(layoutFixture()),expected);
- const recent=new Map([[key,JSON.stringify({main,more:expected.filter(id=>!['more-training','more-contacts'].includes(id))})]]);assert.deepEqual(order(layoutFixture(recent)),expected);
- const storage=new Map([[key,JSON.stringify({main,more:old})]]),migrated=layoutFixture(storage);assert.deepEqual(order(migrated),expected);assert.deepEqual(JSON.parse(storage.get(key)),{main,more:expected});
- const custom={main,more:[old[3],...old.filter(id=>id!==old[3])]},customStorage=new Map([[key,JSON.stringify(custom)]]),personal=layoutFixture(customStorage);assert.deepEqual(order(personal),[...custom.more,'more-training','more-regulations','more-contacts']);assert.deepEqual(JSON.parse(customStorage.get(key)),custom);
- personal.dom['portal-layout-reset'].click();assert.deepEqual(order(personal),expected);assert.deepEqual(JSON.parse(customStorage.get(key)),{main,more:expected});
+ const storage=new Map([[key,JSON.stringify({main:oldMain,more:oldMore})]]),migrated=layoutFixture(storage);assert.deepEqual(order(migrated),expected);assert.deepEqual(JSON.parse(storage.get(key)),{main,more:expected});
+ const customMore=['theater-phone-section',...oldMore.filter(id=>id!=='theater-phone-section')],customStorage=new Map([[key,JSON.stringify({main:oldMain,more:customMore})]]),personal=layoutFixture(customStorage);
+ assert.deepEqual(order(personal),customMore.filter(id=>id!=='more-training'));assert.deepEqual(JSON.parse(customStorage.get(key)),{main,more:customMore.filter(id=>id!=='more-training')});
+ personal.dom['portal-layout-reset'].click();assert.deepEqual(order(personal),expected);
 });

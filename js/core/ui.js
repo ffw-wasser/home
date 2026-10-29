@@ -30,17 +30,18 @@ function lockAdministration(){
   window.DrinksQuizQuestions?.lock();window.DrinksChallengeSettings?.lock();window.DrinksBirthdaySettings?.lock();
   adminUnlocked=false;if(typeof adminUnlockUntil!=='undefined')adminUnlockUntil=0;window.oneDriveCancelAdminReturn?.();clearTimeout(adminTimeoutId);adminTimeoutId=null;
   window.SmartWorkflow?.settings();
-  for(const id of ['settingsView','settingsOptionsView','theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView','settingsCalendarView']){
+  for(const id of ['settingsView','settingsBacklogView','settingsOptionsView','theaterView','settingsQuizQuestionsView','settingsBookingsView','settingsPushView','settingsDrinksView','settingsMembersView','settingsGoalsView','settingsSecurityView','settingsFilesView','settingsRemindersView','settingsRewardsView','settingsMobileView','settingsPortalView','settingsCalendarView']){
     if(byId(id)?.hidden===false){byId(id).hidden=true;pendingSettingsTarget=id==='theaterView'?(theaterReturn||'eventsView'):id;showView('adminLoginView');break;}
   }
   for(const id of ['reminderDraftDialog','adminPaypalDialog','cloudSyncDialog'])byId(id)?.close();
   renderOneDriveDialog?.();
 }
 function showView(viewId) {
+  if(window.H2OFeatures?.rewards===false&&["settingsRewardsView","settingsQuizQuestionsView"].includes(viewId))viewId="settingsBacklogView";
   const requestedView=viewId;
   const theaterMode=({theaterCashView:"cash",theaterStatsView:"stats",theaterManageView:"manage"})[viewId];
   if(theaterMode)viewId="theaterView";
-  if(["settingsView","settingsOptionsView"].includes(viewId)&&!requireAdmin(requestedView,{allowDisconnected:true}))return false;
+  if(["settingsView","settingsOptionsView","settingsBacklogView"].includes(viewId)&&!requireAdmin(requestedView,{allowDisconnected:true}))return false;
   if(["theaterView","settingsQuizQuestionsView","settingsBookingsView","settingsPushView","settingsDrinksView","settingsMembersView","settingsGoalsView","settingsSecurityView","settingsFilesView","settingsRemindersView","settingsRewardsView","settingsMobileView","settingsPortalView","settingsCalendarView"].includes(viewId)&&!requireAdmin(requestedView))return false;
   if(window.PortalEvidenceAdmin?.beforeView(viewId)===false)return false;
   if(window.PortalAdmin?.beforeView(viewId)===false)return false;
