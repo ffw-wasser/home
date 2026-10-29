@@ -1,10 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-function fixture(reduced=false){
+function fixture(reduced=false,release=null){
  const classes=()=>{const values=new Set();return {values,add:(...items)=>items.forEach(item=>values.add(item)),remove:(...items)=>items.forEach(item=>values.delete(item))};};
  const node=()=>({hidden:false,textContent:'',inert:false,classList:classes(),setAttribute(key,value){this[key]=value;},removeAttribute(key){delete this[key];},addEventListener(event,callback){this[event]=callback;}});
  const nodes=new Map(['h2oStartup','h2oStartupStatus','h2oStartupRetry','deckel-main','deckel-nav','header'].map(id=>[id,node()])),timers=new Map(),events={};let id=0,reloads=0;
  const document={hidden:false,body:{classList:classes()},getElementById:id=>nodes.get(id),querySelector:()=>nodes.get('header')};
- const c=vm.createContext({document,location:{reload(){reloads++;}},matchMedia:()=>({matches:reduced}),addEventListener:(type,callback)=>events[type]=callback,setTimeout:(callback,delay)=>{timers.set(++id,{callback,delay});return id;},clearTimeout:id=>timers.delete(id)});
+ const c=vm.createContext({AppRelease:release,document,location:{reload(){reloads++;}},matchMedia:()=>({matches:reduced}),addEventListener:(type,callback)=>events[type]=callback,setTimeout:(callback,delay)=>{timers.set(++id,{callback,delay});return id;},clearTimeout:id=>timers.delete(id)});
  vm.runInContext(fs.readFileSync('js/features/drinks/deckel-startup.js','utf8'),c);
  return {c,nodes,document,events,reloads:()=>reloads,advance(delay){for(const [id,timer] of [...timers])if(timer.delay<=delay){timers.delete(id);timer.callback();}}};
 }
@@ -14,3 +14,5 @@ test('Auch bei unterbrochener Ausblendung oder verborgenem Dokument räumt die H
 test('Veraltete Ladeantworten und laufende Ausblendung können eine neue Ladephase nicht beenden',()=>{const f=fixture(),api=f.c.DeckelStartup,old=api.begin();api.finish(old);const current=api.begin();api.finish(old);f.advance(180);assert.equal(f.nodes.get('h2oStartup').hidden,false);assert.equal(f.nodes.get('deckel-main').inert,true);api.finish(current);f.advance(180);assert.equal(f.nodes.get('h2oStartup').hidden,true);});
 test('Im Hintergrund bleiben Inhalte verdeckt; reduzierte Bewegung blendet ohne Animation um',()=>{const f=fixture(true),api=f.c.DeckelStartup,token=api.begin();f.document.hidden=true;api.finish(token);assert.equal(f.nodes.get('deckel-main').inert,true);f.document.hidden=false;api.finish(token);assert.equal(f.nodes.get('h2oStartup').hidden,true);assert.equal(f.nodes.get('deckel-main').inert,false);});
 test('Fehlende Skriptdateien führen zu einer sichtbaren Wiederholungsmöglichkeit',()=>{const f=fixture();f.events.error({target:{tagName:'SCRIPT'}});assert.match(f.nodes.get('h2oStartupStatus').textContent,/nicht vollständig geladen/);assert.equal(f.nodes.get('h2oStartupRetry').hidden,false);});
+
+test('H2O gibt während der Start-Versionsprüfung auch fertige Daten nicht frei',async()=>{let resolve;const release={pending:true,ready:new Promise(r=>resolve=r)},f=fixture(false,release),token=f.c.DeckelStartup.begin();f.c.DeckelStartup.finish(token);assert.equal(f.nodes.get('deckel-main').inert,true);assert.match(f.nodes.get('h2oStartupStatus').textContent,/Updates/);release.pending=false;resolve(false);await new Promise(r=>setImmediate(r));f.advance(180);assert.equal(f.nodes.get('deckel-main').inert,false);});

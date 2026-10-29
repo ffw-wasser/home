@@ -23,7 +23,7 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Theater / Veranstaltungen | `js/features/theater/` | Cloudflare `theater.js`, `css/features/` |
 | Synchronisierung, Microsoft-Zugriff | `js/core/onedrive-sync.js`, `database.js` | Cloudflare-Schnittstellen, geschützte Zustände |
 | Native Mitglieder-App (archiviert; nicht weitergeführt) | `native/README.md`, `native/ios/`, `native/android/` | `scripts/prepare-native-association.cjs`, Cloudflare `passkeys.js`, Build-/TestFlight-Workflows entfernt; aktive Lösung ist die bestehende Web-App. Native Signatur-/Brücken-/Zuordnungstests sind aus der aktiven Testsuite entfernt; iPhone-Web-App, Web-Passkeys und Browser-PDF bleiben geprüft |
-| PWA, Offline/Cache, Installationsicons | `service-worker.js`, `js/core/connection-status.js`, `manifest.webmanifest`, `deckel*.webmanifest` | `scripts/update-release.cjs`, `app-release.json`; öffentliche Unterlagen in separatem Cache, private Serverantworten bleiben ausgeschlossen; `tests/portal-offline-browser.cjs` prüft echten Offline-Neustart |
+| PWA, Offline/Cache, Installationsicons | `js/core/app-release.js` (gemeinsame automatische Startprüfung), `service-worker.js`, `js/core/connection-status.js`, `manifest.webmanifest`, `deckel*.webmanifest` | `scripts/update-release.cjs`, `app-release.json`; öffentliche Unterlagen in separatem Cache, private Serverantworten bleiben ausgeschlossen; `tests/portal-offline-browser.cjs` prüft echten Offline-Neustart |
 | Cloudflare Worker, Push, D1 | `cloudflare/push/worker.js` und die Fachmodule im gleichen Ordner | `build.cjs`, `wrangler.jsonc`, `*.sql` |
 | Standardisierte Prüfungen | `tests/`, `scripts/check-syntax.cjs` | `.github/workflows/application-tests.yml` |
 

@@ -204,3 +204,9 @@ test('Abgelaufener Ordnerlink erhält die Historie und erklärt die Verbindungse
   assert.match(status.textContent,/Ordneradresse/);assert.doesNotMatch(status.textContent,/verschoben oder gelöscht/);
 });
 
+
+for(const reloading of [false,true])test(`Versionsprüfung beendet sich vor jedem OneDrive-Zugriff, Versionswechsel=${reloading}`,async()=>{
+ const {context,calls}=await app();let resolve;context.window.AppRelease={ready:new Promise(r=>resolve=r)};
+ const started=context.initCloudSync();await new Promise(r=>setImmediate(r));assert.equal(calls.callback,0);assert.equal(calls.read,0);assert.equal(calls.write,0);
+ resolve(reloading);await started;assert.equal(calls.callback,reloading?0:1);assert.equal(calls.read,reloading?0:1);assert.equal(calls.write,0);
+});
