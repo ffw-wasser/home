@@ -210,5 +210,13 @@
   "geraetehaus-sicherung": {
     "width": 984,
     "height": 1420
+  },
+  "h2o-atemschutz-ausbildung": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-mayday": {
+    "width": 390,
+    "height": 780
   }
 }
