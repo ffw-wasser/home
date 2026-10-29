@@ -573,3 +573,6 @@
 
 /* Deferred optional features; their ledger/history remains intact. */
 html[data-loyalty="paused"] #portal-page-points,html[data-loyalty="paused"] #portal-page-challenge,html[data-loyalty="paused"] [data-portal-tile="portal-points"],html[data-loyalty="paused"] .phone-rewards,html[data-loyalty="paused"] #portal-birthday,html[data-loyalty="paused"] #drinksSettingsRewardsCard,html[data-loyalty="paused"] #drinksSettingsQuizCard,html[data-loyalty="paused"] #dr-program,html[data-loyalty="paused"] #dr-bonus,html[data-loyalty="paused"] #dr-paid-bonus,html[data-loyalty="paused"] .dr-member-points,html[data-loyalty="paused"] .dr-redeem-actions,html[data-loyalty="paused"] .dr-card-bonus,html[data-loyalty="paused"] .dr-card-progress{display:none!important}
+
+/* The cap stays readable against the dark navigation rail. */
+#deckel-nav button:not([aria-current="page"]) .portal-icon-training{filter:brightness(2)}

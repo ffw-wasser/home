@@ -7698,3 +7698,5 @@ html[data-loyalty="paused"] #portal-page-points,html[data-loyalty="paused"] #por
 html[data-loyalty="paused"] [data-rewards-feature]{display:none!important}
 
 html[data-loyalty="paused"] [data-thanks-bonus]{display:none!important}
+
+.backlog-state{display:inline-block;padding:5px 10px;margin-bottom:8px;border-radius:8px;background:#fff2c7;color:#5b4307;font-weight:800;line-height:1.3;white-space:nowrap}

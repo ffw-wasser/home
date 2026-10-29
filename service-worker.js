@@ -172,6 +172,7 @@ const PUBLIC_FILES=[
   "./assets/regulations/fwdv-007.pdf",
   "./assets/regulations/fwdv-010.pdf",
   "./assets/regulations/fwdv-100.pdf",
+  "./assets/help/guide/geraetehaus-backlog.jpg",
   "./assets/help/guide/geraetehaus-abschluss.jpg",
   "./assets/help/guide/geraetehaus-anwesenheit.jpg",
   "./assets/help/guide/geraetehaus-auswertungen.jpg",

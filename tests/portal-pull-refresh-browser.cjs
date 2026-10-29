@@ -35,7 +35,7 @@ const root=path.resolve(__dirname,'..'),engine=process.env.BROWSER_ENGINE||'chro
  await page.evaluate(()=>{window.holdRefresh=false;DeckelMobile.jump('portal-section');});await swipe(170,320);assert.equal(await count(),1,'recent refresh is throttled');assert.match(await page.locator('#deckel-pull-refresh').innerText(),/Bitte kurz warten/);await page.evaluate(()=>qaClock+=11000);await swipe(170,320);await page.waitForFunction(()=>refreshLoads===2);assert.equal(await page.locator('#portal-page-terms').isVisible(),true,'refresh does not change the current page');
  if(engine==='chromium'){
   await page.evaluate(()=>{qaClock+=11000;DeckelMobile.jump('deckel-more');document.getElementById('deckel-main').scrollTo({top:0,behavior:'instant'});});
-  const tile=await page.locator('[data-portal-tile="more-training"]').boundingBox(),x=tile.x+tile.width/2,y=tile.y+20;
+  const tile=await page.locator('#portal-more-grid [data-portal-tile="more-year-plan"]').boundingBox(),x=tile.x+tile.width/2,y=tile.y+20;
   const cdp=await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
   for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+i*25}]});

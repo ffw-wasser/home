@@ -25,7 +25,7 @@
   },
   "h2o-termine": {
     "width": 390,
-    "height": 844
+    "height": 780
   },
   "h2o-nachweise": {
     "width": 390,
@@ -69,7 +69,7 @@
   },
   "h2o-aktualisieren": {
     "width": 390,
-    "height": 844
+    "height": 616
   },
   "geraetehaus-statistik": {
     "width": 1280,
@@ -77,7 +77,7 @@
   },
   "geraetehaus-auswertungen": {
     "width": 1240,
-    "height": 2170
+    "height": 1780
   },
   "geraetehaus-statistik-pdf": {
     "width": 366,
@@ -125,11 +125,11 @@
   },
   "h2o-install-iphone": {
     "width": 354,
-    "height": 922
+    "height": 1090
   },
   "h2o-install-android": {
     "width": 354,
-    "height": 483
+    "height": 536
   },
   "geraetehaus-google-verbindung": {
     "width": 370,
@@ -194,5 +194,13 @@
   "h2o-wettkampf-bronze": {
     "width": 390,
     "height": 780
+  },
+  "geraetehaus-backlog": {
+    "width": 1366,
+    "height": 900
+  },
+  "geraetehaus-getraenkeverwaltung": {
+    "width": 1366,
+    "height": 900
   }
 }

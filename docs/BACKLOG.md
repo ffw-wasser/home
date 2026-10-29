@@ -16,6 +16,6 @@ Vorläufig pausiert: Spielstart, Fortsetzung, Fragenverwaltung und Bonusvergabe.
 
 Die gemeinsame Auslieferungsrichtlinie liegt in `js/core/optional-features.js` und wird vor den Fachmodulen in beiden HTML-Einstiegen sowie im Worker-Bundle geladen. Browsernavigation, Buchungsmodell und serverseitige Schreib-/Spieldienste beachten diese Richtlinie. Kein lokaler oder mitgliederbezogener Aktivierungsschalter ist eingebaut. Eine spätere freiwillige Pilotgruppe benötigt serverseitige Freigaben und Tests, keinen reinen UI-Schalter.
 
-Relevante Module: `drinks-model.js`, `drinks-rewards.js`, `deckel-challenge.js`, `drinks-birthday-settings.js`, `drinks-challenge-settings.js`, `drinks-quiz-questions.js`, `cloudflare/push/challenge.js`, Geburtstagsvergabe in `portal.js`. Bestehende Funktionsprüfungen bleiben als Tests der späteren Funktionen erhalten. Produktionsprüfungen prüfen zusätzlich die Pause.
+Relevante Module: `drinks-model.js`, `drinks-rewards.js`, `deckel-challenge.js`, `drinks-birthday-settings.js`, `drinks-challenge-settings.js`, `drinks-quiz-admin.js`, `cloudflare/push/challenge.js`, Geburtstagsvergabe in `portal.js`. Bestehende Funktionsprüfungen bleiben als Tests der späteren Funktionen erhalten. Produktionsprüfungen prüfen zusätzlich die Pause.
 
 Vor Veröffentlichung beide Oberflächen und Navigation, Zahlungen ohne Bonus, normale Vorauszahlung, gesperrte Punkte-/Challenge-Aufrufe und historische Daten prüfen. Wiederaufnahme erfordert eine neue bewusste Veröffentlichung von Webseite und Worker.
