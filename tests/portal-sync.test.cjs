@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../js/features/portal/member-evidence.js');
 function fixture(){const node={textContent:'',dataset:{}},button={hidden:true,disabled:false},store=new Map(),requests=[];let fail=false,ready=true,people=[{id:'test-1',lastName:'Fiktiv',firstName:'Test',roles:[],g263ValidUntil:''}];
- const c=vm.createContext({console,Date,TypeError,navigator:{onLine:true},oneDriveStateConfirmed:true,oneDriveAdministrationReady:()=>ready,MemberEvidence:E,document:{readyState:'loading',getElementById:id=>id==='memberEvidenceSyncStatus'?node:id==='memberEvidenceSync'?button:{hidden:true},addEventListener(){}},localStorage:{getItem:k=>store.get(k)||'',setItem:(k,v)=>store.set(k,v)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(c,path,data)=>{requests.push({path,data});if(fail)throw new TypeError('Load failed');return {evidenceVersion:1};}},oneDriveReadState:async()=>({members:people})});
+ const c=vm.createContext({console,Date,TypeError,navigator:{onLine:true},oneDriveStateConfirmed:true,oneDriveAdministrationReady:()=>ready,MemberEvidence:E,document:{readyState:'loading',getElementById:id=>id==='memberEvidenceSyncStatus'?node:id==='memberEvidenceSync'?button:{hidden:true},addEventListener(){}},localStorage:{getItem:k=>store.get(k)||'',setItem:(k,v)=>store.set(k,v)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(c,path,data)=>{requests.push({path,data});if(fail)throw new TypeError('Load failed');return {evidenceVersion:1,replyFunctionsVersion:1};}},oneDriveReadState:async()=>({members:people})});
  for(const path of ['js/core/connection-status.js','js/features/portal/portal-admin.js'])vm.runInContext(fs.readFileSync(path,'utf8'),c);
  return {c,node,button,requests,fail:v=>fail=v,ready:v=>ready=v,people:v=>people=v};
 }
@@ -23,4 +23,13 @@ test('Atemschutzabgleich übernimmt alte angezeigte Häkchen, aber ein gespeiche
  await f.c.PortalAdmin.syncRoster(true);
  assert.equal(f.requests[0].data.agtSource,'member-checkbox');
  assert.deepEqual(Array.from(f.requests[0].data.members,m=>m.agt),[true,false,true,true]);
+});
+
+test('Funktionsübersicht überträgt ATF und Fahrzeugfreigaben getrennt von GF-Rechten',async()=>{
+ const f=fixture();f.people([{id:'multi',roles:['GF','ATF'],machinistVehicles:['LF']},{id:'legacy',roles:['Maschinist']},{id:'tsf',roles:[],machinistVehicles:['TSF']},{id:'none',roles:['ATM'],machinistVehicles:['other']}]);await f.c.PortalAdmin.syncRoster(true);
+ const data=f.requests[0].data;assert.equal(data.replyFunctionsVersion,1);assert.deepEqual(Array.from(data.members,m=>Array.from(m.replyRoles)),[['ATF','Maschinist'],[],['Maschinist'],[]]);assert.deepEqual(Array.from(data.members,m=>m.leader),[true,false,false,false]);
+});
+
+test('Alter Dienst bestätigt Funktionsabgleich nicht fälschlich; erneuter Versuch überträgt den ganzen Stand',async()=>{
+ const f=fixture(),request=f.c.DrinksPush.request;f.c.DrinksPush.request=async()=>({evidenceVersion:1});await assert.rejects(f.c.PortalAdmin.syncRoster(),/H₂O-Dienst/);assert.equal(f.node.dataset.state,'error');f.c.DrinksPush.request=request;assert.equal(await f.c.PortalAdmin.syncRoster(),true);assert.equal(f.requests.length,1);assert.equal(f.requests[0].data.replyFunctionsVersion,1);
 });

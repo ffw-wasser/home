@@ -121,11 +121,11 @@
   if(!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){storageChanged();return false;}
   rosterBusy=true;syncStatus('syncing','In OneDrive gespeichert · Handyportal wird abgeglichen …');
   try{
-   const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),firstName:m.firstName||'',ageDepartment:m.ageDepartment===true,committeeMember:m.committeeMember===true,leader:Array.isArray(m.roles)&&m.roles.includes('GF'),agt:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m),evidence:g.MemberEvidence.project({...m,breathingQualified:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m)})})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
+   const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),firstName:m.firstName||'',ageDepartment:m.ageDepartment===true,committeeMember:m.committeeMember===true,leader:Array.isArray(m.roles)&&m.roles.includes('GF'),replyRoles:[...(Array.isArray(m.roles)&&m.roles.includes('ATF')?['ATF']:[]),...(Array.isArray(m.machinistVehicles)&&m.machinistVehicles.some(v=>['LF','TSF'].includes(v))?['Maschinist']:[])],agt:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m),evidence:g.MemberEvidence.project({...m,breathingQualified:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m)})})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
    if(key!==rosterKey||force){
     if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert.');
-    const saved=await g.DrinksPush.request(c,'/admin/portal/roster',{source:c.source,members:people,agtSource:'member-checkbox'});
-    if(saved.evidenceVersion!==1)throw Error('Für persönliche Nachweise bitte den aktuellen Cloudflare-Worker veröffentlichen.');
+    const saved=await g.DrinksPush.request(c,'/admin/portal/roster',{source:c.source,members:people,agtSource:'member-checkbox',replyFunctionsVersion:1});
+    if(saved.evidenceVersion!==1||saved.replyFunctionsVersion!==1)throw Error('Der H₂O-Dienst muss für Nachweise und Funktionsgruppen aktualisiert werden. Danach erneut abgleichen.');
     if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert. Bitte erneut abgleichen.');
     rosterKey=key;rosterSyncedAt=Date.now();
    }

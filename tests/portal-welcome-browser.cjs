@@ -12,7 +12,7 @@ const root=path.resolve(__dirname,'..');
   oneDriveReadState=async()=>({members});adminUnlocked=true;resetAdminTimeout();
   DrinksStore.sourceKey=()=> 'welcome-source';DrinksCentral.connection=async()=>({origin:'https://synthetic.example.workers.dev',source:'welcome-source'});
   DrinksMobile.preparePortalAccess=async()=>({alias:'a'.repeat(32),revision:'welcome-revision'});
-  DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?{code:'t'.repeat(43),expiresAt:Date.now()+600000}:p.endsWith('/evidence/overview')?{items:[],count:0,memberCount:0,servedAt:Date.now()}:{evidenceVersion:1,items:[],members:[]};
+  DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?{code:'t'.repeat(43),expiresAt:Date.now()+600000}:p.endsWith('/evidence/overview')?{items:[],count:0,memberCount:0,servedAt:Date.now()}:{evidenceVersion:1,replyFunctionsVersion:1,items:[],members:[]};
   showView('settingsPortalView');
  });
  await page.locator('#portal-admin-member option').nth(1).waitFor({state:'attached'});await page.locator('#portal-admin-member').selectOption('welcome-a');
