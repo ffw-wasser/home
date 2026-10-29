@@ -5,7 +5,7 @@ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..');
  const page=await browser.newPage({serviceWorkers:'block'}),errors=[],missing=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,'.'+u.pathname);if(u.hostname!=='localhost'||!file.startsWith(root+path.sep))return route.abort();if(!fs.existsSync(file)||fs.statSync(file).isDirectory()){missing.push(u.pathname);return route.fulfill({status:404,body:'Missing'});}return route.fulfill({path:file,contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.json':'application/json'}[path.extname(file)]||'application/octet-stream'});});
- await page.goto('http://localhost/index.html');
+ await page.goto('http://localhost/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
  await page.evaluate(async()=>{
   oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();
   const people=[{id:'qa-1',firstName:'Anna',lastName:'Test',roles:[]},{id:'qa-2',firstName:'Bert',lastName:'Fiktiv',roles:[]}];
