@@ -34,8 +34,8 @@ const root=path.resolve(__dirname,'..');
  if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await wizard.screenshot({path:path.join(process.env.QA_OUTPUT,'installation-schritt.jpg')});}
  assert.match(await wizard.innerText(),/waagerechten Striche/);assert.match(await wizard.innerText(),/Teilen/);assert.equal(await wizard.locator('#installNext').isVisible(),false,'only one navigation');
  assert.equal(await wizard.locator('#installPlatform').isVisible(),false,'device controls stay out of the guided flow');
- assert.equal(await wizard.locator('#installSteps li:visible').count(),4,'Safari guide stays together when its share menu covers the page');
- assert.equal(await wizard.locator('#installIllustration').isVisible(),true);assert.match(await wizard.innerText(),/nach unten scrollen/i);assert.match(await wizard.innerText(),/Zu Home-Bildschirm hinzufügen/);
+ assert.equal(await wizard.locator('.onboarding-install-list li:visible').count(),4,'Safari guide stays together when its share menu covers the page');
+ assert.equal(await wizard.locator('.onboarding-install-image').isVisible(),true);assert.match(await wizard.innerText(),/nach unten scrollen/i);assert.match(await wizard.innerText(),/Zu Home-Bildschirm hinzufügen/);
  assert.equal(await wizard.getByRole('button',{name:'Weiter',exact:true}).count(),0,'no instruction to return to the wizard between Safari actions');
  for(const width of [320,390,768])for(const scale of [100,200]){await page.setViewportSize({width,height:844});await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);assert.equal(await wizard.evaluate(n=>n.scrollWidth>n.clientWidth+1),false);}
  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.style.fontSize='100%');

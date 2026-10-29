@@ -186,5 +186,13 @@
   "h2o-home-anmeldung": {
     "width": 367,
     "height": 395
+  },
+  "h2o-wettkampf": {
+    "width": 390,
+    "height": 780
+  },
+  "h2o-wettkampf-bronze": {
+    "width": 390,
+    "height": 780
   }
 }
