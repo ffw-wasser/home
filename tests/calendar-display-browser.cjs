@@ -16,7 +16,7 @@ const root=path.resolve(__dirname,'..');
    if(u.hostname.endsWith('workers.dev')){const response=await f.c.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),...(req.method()==='POST'?{body:req.postData()}: {})}),f.env);return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});}
    if(u.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});}return route.abort();
   });
-  await page.goto('https://ffw-wasser.github.io/home/index.html?editEvent=iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii');await page.locator('#appStartup').waitFor({state:'detached'});
+  await page.goto('https://ffw-wasser.github.io/home/index.html?editEvent=iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(({members,token})=>{
    window.requireAdmin=()=>true;oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();
    window.oneDriveReadState=async()=>({members});DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev',source:'test-source',token});DrinksStore.sourceKey=()=> 'test-source';showView('settingsCalendarView');

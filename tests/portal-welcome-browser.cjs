@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'..');
  const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];
  page.on('pageerror',error=>errors.push(error.message));
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();});
- await page.goto('https://ffw-wasser.github.io/home/index.html');await page.locator('#appStartup').waitFor({state:'detached'});
+ await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
  await page.evaluate(()=>{
   members=[{id:'welcome-a',firstName:'Anna',lastName:'Beispiel',roles:[]}];
   oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;oneDriveLocalRevision=oneDriveSyncedRevision;

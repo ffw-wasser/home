@@ -59,7 +59,7 @@ const root=path.resolve(__dirname,'..');
   let result=(await f.call('evidence')).value;assert.equal(result.entries.driver.status,'pending');assert.equal(result.evidence.driver.checkedOn,'2020-01-01');
   for(const width of [320,390,768]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'self evidence fits '+width);}
   await page.screenshot({path:'/tmp/h2o-self-evidence.png',fullPage:true});
-  await page.goto(url+'index.html');await page.locator('#appStartup').waitFor({state:'detached'});
+  await page.goto(url+'index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(({adminToken,id})=>{
    window.requireAdmin=()=>true;oneDriveAdministrationReady=()=>true;adminUnlocked=true;resetAdminTimeout();
    window.oneDriveReadState=async()=>({members:[{id,firstName:'Testperson',lastName:'1'}]});

@@ -46,3 +46,32 @@ test('Verlorene PUT-Antwort wird anhand identischen Inhalts bestätigt, ohne zwe
  f.c.scheduleCloudSync();await f.c.syncOneDrive();assert.equal(f.c.getAppStorageState().kind,'error');assert.equal(writes,1);
  await f.c.syncOneDrive();assert.equal(f.c.getAppStorageState().kind,'cloud');assert.equal(writes,1);assert.equal(f.store.get('fw_onedrive_state_dirty'),'0');
 });
+
+
+test('Startfreigabe wartet auf Daten UND Historie und bleibt bei Fehler gesperrt',async()=>{
+ for(const historyOk of [false,true]){
+  const f=fixture(),states=[];let finish;
+  f.c.window.AppStartup={update:state=>states.push({...state})};
+  f.c.applyOneDrivePayload=()=>{};
+  f.c.window.loadOneDriveHistory=()=>new Promise(resolve=>{finish=()=>resolve(historyOk);});
+  const syncing=f.c.syncOneDrive({refreshHistory:true});
+  while(!finish)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(states.at(-1).ready,false,'data alone is insufficient');
+  finish();await syncing;
+  assert.equal(states.at(-1).ready,historyOk);
+  if(historyOk){f.c.scheduleCloudSync();assert.equal(states.at(-1).ready,true,'editing does not reopen the start screen');}
+ }
+});
+test('Ein späterer erfolgreicher vollständiger Abruf gibt die Startansicht frei',async()=>{
+ const f=fixture(),states=[];f.c.window.AppStartup={update:state=>states.push({...state})};f.c.applyOneDrivePayload=()=>{};
+ f.c.window.loadOneDriveHistory=async()=>false;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,false);
+ f.c.window.loadOneDriveHistory=async()=>true;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);
+});
+
+test('Startstatus verwendet die tatsächlichen OneDrive-Phasen',()=>{
+ const states=[],c=vm.createContext({window:{AppStartup:{update:state=>states.push(state)}},navigator:{onLine:true},localStorage:{getItem:()=>'{"access_token":"synthetic"}'},byId:()=>null});
+ vm.runInContext(source,c);
+ for(const [label,expected] of [['Verbindet','OneDrive-Anmeldung'],['Synchronisiert','Gemeinsame Daten'],['Lädt Historie','Berichte und Historie']]){
+  c.oneDriveStatus(label,'syncing');assert.ok(states.at(-1).stage.startsWith(expected));assert.equal(states.at(-1).ready,false);
+ }
+});
