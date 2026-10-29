@@ -44,10 +44,6 @@
   if(event.defaultPrevented)return 'Bitte offene Änderungen zuerst speichern oder verwerfen. Bei unbestätigter Speicherung zuerst das Ergebnis prüfen.';
   return '';
  }
- function refreshHome(){
-  if(applying)return false;const reason=blocked();if(reason){g.showToast?.(reason,'warning');return false;}
-  const url=new URL(g.location.href);url.searchParams.set('_ffw_refresh',String(Date.now()));g.location.replace(url.href);return true;
- }
  async function apply(){
   if(applying)return;
   let reason=blocked();if(reason){message(reason);return;}
@@ -74,6 +70,6 @@
   document.addEventListener('visibilitychange',resume);
   g.addEventListener('pageshow',resume);g.addEventListener('online',resume);
  }
- g.FFWUpdate={check,apply,refreshHome};
+ g.FFWUpdate={check,apply};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
