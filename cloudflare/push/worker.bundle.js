@@ -20361,6 +20361,15 @@ ${strMDSAlgs}`);
   return __toCommonJS(stdin_exports);
 })();
 
+/* Product rollout policy, shared by the shipped pages and Worker. See docs/BACKLOG.md.
+ * Pure model tests can omit this policy to exercise retained future functionality.
+ * Production entry points must load this file before any feature module. */
+(function(g){
+ 'use strict';
+ g.H2OFeatures=Object.freeze({rewards:false,challenge:false});
+ if(typeof document!=='undefined')document.documentElement.dataset.loyalty='paused';
+})(globalThis);
+
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -20708,6 +20717,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
     validate(account,account.memberId);
     const found=account.bookings.find(b=>b.id===booking.id);
     if(found){if(JSON.stringify(found)!==JSON.stringify(booking))throw new Error('Buchungsnummer bereits anders verwendet.');return account;}
+    if(global.H2OFeatures?.rewards===false&&(booking.pointUnits||booking.type==='drinks'&&booking.loyaltyVersion!==2))throw Object.assign(Error('Treuepunkte sind vorerst pausiert.'),{code:'pointsChanged'});
     if(['challenge','challenge-reward','birthday-reward'].includes(booking.type))throw Error('Challenge-Buchungen entstehen ausschließlich im Spieldienst.');
     if(booking.type==='correction'&&booking.confirmation!=='admin')assertCorrectable(ledger(account),booking);
     if(booking.type==='payment'&&!booking.prepay&&booking.cents>totals(account).balance)throw Object.assign(new Error('Der offene Betrag wurde inzwischen geändert. Bitte den Zahlungsbetrag neu wählen.'),{code:'balanceChanged'});
@@ -20719,7 +20729,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
     const existing=new Map(account.bookings.map(b=>[b.id,b])),ids=new Set(),added=[],s=ledger(account);
     for(const b of bookings){
       if(ids.has(b.id))throw new Error('Doppelte Buchungsnummer in der Sammlung.');ids.add(b.id);
-      const old=existing.get(b.id);if(old){if(JSON.stringify(old)!==JSON.stringify(b))throw new Error('Buchungsnummer bereits anders verwendet.');}else{if(b.type==='correction')assertCorrectable(s,b);applyEntry(s,b);added.push({...b});}
+      const old=existing.get(b.id);if(old){if(JSON.stringify(old)!==JSON.stringify(b))throw new Error('Buchungsnummer bereits anders verwendet.');}else{if(global.H2OFeatures?.rewards===false&&(b.pointUnits||b.type==='drinks'&&b.loyaltyVersion!==2))throw Object.assign(Error('Treuepunkte sind vorerst pausiert.'),{code:'pointsChanged'});if(b.type==='correction')assertCorrectable(s,b);applyEntry(s,b);added.push({...b});}
     }
     if(!added.length)return account;
     return validate({...account,schemaVersion:Math.max(2,account.schemaVersion,added.some(b=>b.loyaltyVersion===2)?6:added.some(b=>b.drink)?4:added.some(b=>b.type==='correction')?3:1),bookings:[...account.bookings,...added]},account.memberId);
@@ -20734,19 +20744,23 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   function appendChallenge(account,booking){
     validate(account,account.memberId);if(booking.type!=='challenge')throw Error('Ungültige Challenge-Buchung.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Challenge bereits anders gebucht.');return account;}
+    if(global.H2OFeatures?.rewards===false)throw Object.assign(Error('Treuepunkte und Challenge sind vorerst pausiert.'),{status:409,code:'featurePaused'});
     return validate({...account,schemaVersion:Math.max(8,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendChallengeReward(account,booking){
     validate(account,account.memberId);if(booking.type!=='challenge-reward')throw Error('Ungültiger Monatsbonus.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Monatsbonus bereits anders gebucht.');return account;}
+    if(global.H2OFeatures?.rewards===false)throw Object.assign(Error('Treuepunkte und Challenge sind vorerst pausiert.'),{status:409,code:'featurePaused'});
     return validate({...account,schemaVersion:Math.max(9,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendBirthdayReward(account,booking){
     validate(account,account.memberId);if(booking.type!=='birthday-reward')throw Error('Ungültiger Geburtstagsbonus.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Geburtstagsbonus bereits anders gebucht.');return account;}
+    if(global.H2OFeatures?.rewards===false)throw Object.assign(Error('Treuepunkte und Challenge sind vorerst pausiert.'),{status:409,code:'featurePaused'});
     return validate({...account,schemaVersion:Math.max(10,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendWithReward(account,booking,policy){
+    if(global.H2OFeatures?.rewards===false)return append(account,booking);
     validateRewardSettings(policy);
     // Both entries are one conditional OneDrive write; retries never grant twice.
     if(account.bookings.some(b=>b.id===booking.id))return append(account,booking);
@@ -21012,6 +21026,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   if(path==='/admin/central/read')return {...await read(env,member(data.memberId)),seq:m.seq};
   if(path==='/admin/central/policy')return {policy:await open(env,m.policy,'policy'),seq:m.seq};
   if(path==='/admin/central/policy-write'){
+   if(g.H2OFeatures?.rewards===false)fail('Treuepunkte sind im Backlog und vorerst pausiert.');
    const p=M.validateRewardSettings(data.policy),old=await open(env,m.policy,'policy');if(old.revision!==data.expectedRevision)fail('Treuepunkte-Einstellungen wurden geändert.');
    const result=await env.DB.prepare('UPDATE ledger_meta SET policy=?,seq=seq+1 WHERE id=1 AND seq=?').bind(await seal(env,p,'policy'),m.seq).run();if(!result.meta.changes)fail('Konten wurden gleichzeitig geändert.');return {ok:true};
   }
@@ -21019,6 +21034,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
    const a=M.validate(data.account,member(data.memberId)),current=await read(env,data.memberId);
    if(current.version!==data.version)fail('Das Konto wurde gleichzeitig geändert.');
    const additions=a.bookings.slice(current.account.bookings.length),policy=await open(env,m.policy,'policy');
+   if(g.H2OFeatures?.rewards===false&&additions.some(b=>b.type==='bonus'||b.pointUnits))fail('Treuepunkte sind vorerst pausiert.');
    if(additions.some(b=>['challenge','challenge-reward','birthday-reward'].includes(b.type)))fail('Challenge-Buchungen entstehen ausschließlich im Spieldienst.',400);
    if((data.policyRevision&&data.policyRevision!==policy.revision)||(!data.policyRevision&&additions.some(b=>b.type==='payment'||b.type==='bonus'||b.pointUnits)))fail('Die Treuepunkte-Einstellungen wurden geändert. Bitte neu laden.');
    // Ordinary writes must preserve the reset barrier and every existing entry.
@@ -21052,7 +21068,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
 (function(g){
  'use strict';const L=g.CentralLedger,M=g.DrinksModel,Q=g.DrinksQuizModel;
  const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v),fail=(s,status=409,code='rejected')=>{throw Object.assign(Error(s),{status,code});},copy=v=>JSON.parse(JSON.stringify(v)),checks=new WeakMap();
- async function ready(env){const old=checks.get(env.DB);if(old&&old.until>Date.now())return old.ready;let ok=false;try{await env.DB.prepare('SELECT id FROM challenge_pool LIMIT 1').first();await env.DB.prepare('SELECT id FROM challenge_games LIMIT 1').first();ok=true;}catch{}checks.set(env.DB,{ready:ok,until:Date.now()+(ok?60000:5000)});return ok;}
+ async function ready(env){if(g.H2OFeatures?.challenge===false)return false;const old=checks.get(env.DB);if(old&&old.until>Date.now())return old.ready;let ok=false;try{await env.DB.prepare('SELECT id FROM challenge_pool LIMIT 1').first();await env.DB.prepare('SELECT id FROM challenge_games LIMIT 1').first();ok=true;}catch{}checks.set(env.DB,{ready:ok,until:Date.now()+(ok?60000:5000)});return ok;}
  async function actor(env,data,auth){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Handyzugang.',400);
   const row=await env.DB.prepare('SELECT * FROM ledger_access WHERE alias=? AND revision=?').bind(data.alias,data.revision).first(),current=await env.DB.prepare('SELECT revision FROM accounts WHERE alias=?').bind(data.alias).first();
@@ -21116,6 +21132,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   if(next.month!==month()||next.expiresAt<Date.now())fail('Monat oder Spielzeit ist abgelaufen. Bitte aktualisieren.');await commit(env,meta,found.row,next,affected);return soloView(next);
  }
  async function route(path,data,env,auth){
+  if(g.H2OFeatures?.challenge===false)fail('Die Challenge ist im Backlog und vorerst pausiert.',409);
   if(!await ready(env))fail('Die Challenge benötigt das Worker-Update und challenge.sql in der bestehenden D1-Datenbank.',503);
   const meta=await L.meta(env);L.active(meta);
   if(path.startsWith('/admin/challenge/')){
@@ -22324,6 +22341,7 @@ g.PortalHydrants={schema,route};
  let berlinDayFormatter;
  const berlinDay=ms=>(berlinDayFormatter??=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'})).format(new Date(ms));
  async function awardBirthdays(env,cal){
+  if(g.H2OFeatures?.rewards===false)return 0;
   const today=berlinDay(Date.now()),birthdays=cal.events.filter(e=>e.kind==='birthday'&&e.memberId&&berlinDay(e.start)===today);
   if(!birthdays.length)return 0; // Ordinary minutes need no birthday database reads or decryption.
   const year=Number(today.slice(0,4)),rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster'),ruleRow=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first();if(!roster||!ruleRow)return 0;
@@ -22559,7 +22577,7 @@ g.PortalHydrants={schema,route};
     return path.endsWith('/review')?g.PortalEvidence.write(env,member,roster,data,true,m):g.PortalEvidence.read(env,member,roster);
    }
   if(path==='/admin/portal/birthday-status')return {birthdayPolicy:(await birthdayPolicy(env)).value};
-  if(path==='/admin/portal/birthday-policy')return saveBirthdayPolicy(env,data);
+  if(path==='/admin/portal/birthday-policy'){if(g.H2OFeatures?.rewards===false)fail('Treuepunkte sind vorerst pausiert.');return saveBirthdayPolicy(env,data);}
   if(path.startsWith('/admin/portal/google-oauth/'))return g.GoogleCalendarOAuth.route(path.slice('/admin/portal/google-oauth/'.length),data,env,m.source);
   if(path.startsWith('/admin/portal/google-api/')){
    const action=path.slice('/admin/portal/google-api/'.length);
@@ -22730,7 +22748,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"40c7ca7824d7d14e82f529856c22eb7fd2f5303a77163df5c15ea1d6f81eb05b",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"c600c28d0b3b08c47fc99ac25b1a3fb5306a37d6543a190955ae45c8d2d919d1",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

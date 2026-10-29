@@ -25,6 +25,7 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
  await page.getByRole('button',{name:'Erfassung starten',exact:true}).click();await page.evaluate(()=>{saveQuickMemberStatus('help-a','Anwesend');saveQuickMemberStatus('help-b','Entschuldigt');});await shot('geraetehaus-anwesenheit','#attendanceSelectionWorkspace .members-panel');await shot('geraetehaus-uebernehmen','#desktopSaveButtonDock');
  await page.evaluate(()=>{commitPendingMemberStatuses();window.SmartWorkflow.confirm('Termin abschließen',[['Terminart','Allgemeine Probe'],['Datum',today()],['Thema','Technische Hilfe'],['Ablage','OneDrive · Berichte / Terminpakete'],['Anwesend','1'],['Entschuldigt','1'],['Als Fehlt exportiert','2']],[],{people:['Beispiel, Clara','Muster, Daniel']});});await page.setViewportSize({width:1366,height:960});await shot('geraetehaus-abschluss');await page.setViewportSize({width:1366,height:900});await page.locator('#smartCompletionDialog [data-smart-cancel]').first().click();
  await page.evaluate(()=>{adminUnlocked=true;resetAdminTimeout();showView('attendanceView');});await page.locator('#menuToggleButton').click();await shot('geraetehaus-verwaltung');await page.locator('#menuToggleButton').click();
+ if(only?.split(',').includes('geraetehaus-backlog')){await page.evaluate(()=>{adminUnlocked=true;resetAdminTimeout();showView('settingsBacklogView');});await shot('geraetehaus-backlog');await page.evaluate(()=>showView('settingsDrinksView'));await shot('geraetehaus-getraenkeverwaltung');await page.evaluate(()=>showView('attendanceView'));}
  if(!only||only.split(',').some(name=>['geraetehaus-statistik','geraetehaus-auswertungen','geraetehaus-statistik-pdf'].includes(name))){
   await page.evaluate(()=>{
    window.helpStatisticsOriginal={members,csvArchive,load:window.loadOneDriveHistory};window.loadOneDriveHistory=async()=>true;
@@ -128,7 +129,7 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
   });
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(async()=>{DeckelDevice.readChallenge=async()=>null;await DeckelChallenge.render({actions:{central:true,origin:'https://help.example.workers.dev',revision:'help',capability:'a'.repeat(43),challengeSoloVersion:1,challengeLevel:'TM'}});});
-  for(const [target,name] of [['portal-section','termine'],['portal-evidence','status'],['account','deckel'],['portal-points','punkte'],['portal-challenge','challenge'],['deckel-more','mehr'],['more-security','konto'],['more-breathing','atemschutz'],['more-regulations','dienstvorschriften'],['more-water','elz'],['more-contacts','kontakte'],['more-help','hilfe'],['more-hydrants','hydranten'],['theater-phone-section','theater']]){
+  for(const [target,name] of [['portal-section','termine'],['portal-evidence','status'],['account','deckel'],['more-training','ausbildung'],['training-competition','wettkampf'],['deckel-more','mehr'],['more-security','konto'],['more-breathing','atemschutz'],['more-regulations','dienstvorschriften'],['more-water','elz'],['more-contacts','kontakte'],['more-help','hilfe'],['more-hydrants','hydranten'],['theater-phone-section','theater']]){
    await page.evaluate(id=>DeckelMobile.jump(id),target);
    if(target==='portal-section')await page.locator('#portal-events h3').first().filter({hasText:'GF + Ausschuss'}).waitFor();
    if(target==='more-breathing')await page.locator('.gf-breathing-person').first().waitFor();
@@ -138,9 +139,9 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
   }
   page.once('dialog',dialog=>dialog.accept());await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).first().click();await page.locator('.portal-overview-dialog').getByText('Anna Beispiel',{exact:false}).waitFor();await capture('rueckmeldungen');await page.locator('.portal-overview-close').click();
   empty=true;await page.evaluate(()=>H2OPortal.render({actions:{central:true,origin:'https://help.example.workers.dev',capability:'a'.repeat(43),revision:'help'}}));await capture('termine-leer');
-  for(const width of [320,768]){await page.setViewportSize({width,height:900});for(const target of ['portal-evidence','account','portal-points','deckel-more','more-security']){await page.evaluate(id=>DeckelMobile.jump(id),target);await capture(target+'-'+width);}}
+  for(const width of [320,768]){await page.setViewportSize({width,height:900});for(const target of ['portal-evidence','account','more-training','deckel-more','more-security']){await page.evaluate(id=>DeckelMobile.jump(id),target);await capture(target+'-'+width);}}
   await page.evaluate(()=>DeckelMobile.jump('deckel-more'));await page.locator('#portal-layout-open').click();
-  for(const id of ['portal-section','portal-evidence','account','portal-points','more-year-plan','more-breathing','more-hydrants','more-security']){await page.locator('#portal-layout-item').selectOption(id);await page.locator('#portal-layout-transfer').click();}
+  for(const id of ['portal-section','portal-evidence','account','more-training','more-year-plan','more-breathing','more-hydrants','more-security']){await page.locator('#portal-layout-item').selectOption(id);await page.locator('#portal-layout-transfer').click();}
   await page.locator('#portal-layout-close').click();await page.evaluate(()=>DeckelMobile.jump('more-breathing'));
   for(const width of [320,390]){await page.setViewportSize({width,height:900});await capture('navigation-kurznamen-'+width);}
  }

@@ -34,7 +34,7 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#portal-priority-text p').first().waitFor({state:'attached'});
   assert.match(await page.locator('#portal-priority-text').textContent(),/Abgelaufen|Nachweis fehlt/);
   assert.equal(await page.locator('#portal-priority').isVisible(),false,'evidence warnings stay hidden on the initial appointment page');
-  for(const target of ['portal-evidence','portal-section','account','portal-points','deckel-more']){await page.evaluate(target=>DeckelMobile.jump(target),target);assert.equal(await page.locator('#portal-priority').isVisible(),target==='portal-evidence','evidence warning visibility follows its own page: '+target);}
+  for(const target of ['portal-evidence','portal-section','account','more-training','deckel-more']){await page.evaluate(target=>DeckelMobile.jump(target),target);assert.equal(await page.locator('#portal-priority').isVisible(),target==='portal-evidence','evidence warning visibility follows its own page: '+target);}
   await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.evaluate(()=>H2OPortal.refreshEvidence());assert.equal(await page.locator('#portal-priority').isVisible(),false,'background evidence refresh cannot reveal warnings over appointments');
   await page.evaluate(()=>DeckelMobile.jump('portal-evidence'));
   await page.waitForFunction(()=>document.querySelector('#portal-evidence-status').textContent.includes('Vorwarnung:'));

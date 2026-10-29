@@ -103,6 +103,7 @@
   if(path==='/admin/central/read')return {...await read(env,member(data.memberId)),seq:m.seq};
   if(path==='/admin/central/policy')return {policy:await open(env,m.policy,'policy'),seq:m.seq};
   if(path==='/admin/central/policy-write'){
+   if(g.H2OFeatures?.rewards===false)fail('Treuepunkte sind im Backlog und vorerst pausiert.');
    const p=M.validateRewardSettings(data.policy),old=await open(env,m.policy,'policy');if(old.revision!==data.expectedRevision)fail('Treuepunkte-Einstellungen wurden geändert.');
    const result=await env.DB.prepare('UPDATE ledger_meta SET policy=?,seq=seq+1 WHERE id=1 AND seq=?').bind(await seal(env,p,'policy'),m.seq).run();if(!result.meta.changes)fail('Konten wurden gleichzeitig geändert.');return {ok:true};
   }
@@ -110,6 +111,7 @@
    const a=M.validate(data.account,member(data.memberId)),current=await read(env,data.memberId);
    if(current.version!==data.version)fail('Das Konto wurde gleichzeitig geändert.');
    const additions=a.bookings.slice(current.account.bookings.length),policy=await open(env,m.policy,'policy');
+   if(g.H2OFeatures?.rewards===false&&additions.some(b=>b.type==='bonus'||b.pointUnits))fail('Treuepunkte sind vorerst pausiert.');
    if(additions.some(b=>['challenge','challenge-reward','birthday-reward'].includes(b.type)))fail('Challenge-Buchungen entstehen ausschließlich im Spieldienst.',400);
    if((data.policyRevision&&data.policyRevision!==policy.revision)||(!data.policyRevision&&additions.some(b=>b.type==='payment'||b.type==='bonus'||b.pointUnits)))fail('Die Treuepunkte-Einstellungen wurden geändert. Bitte neu laden.');
    // Ordinary writes must preserve the reset barrier and every existing entry.

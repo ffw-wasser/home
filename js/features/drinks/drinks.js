@@ -106,7 +106,7 @@
   function renderCards(){
     for(const [id,n] of cardNodes){
       n.card.hidden=menuMemberId!==id;n.tile.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length);n.tile.dataset.draft=String(cardDrafts.has(id));n.tile.setAttribute('aria-label',name(id)+(cardDrafts.has(id)?' · Noch nicht gespeicherte Einträge':' · Eingabemenü öffnen'));
-      const value=S.cached(id),unlocked=cardUnlocked(id,value),state=M.ledger?.(value),balance=state?.balance??M.totals(value).balance,policy=S.cachedRewards?.(),reward=policy?M.rewardState(value,policy,state):null,credit=(reward||M.rewardState?.(value,policy,state))?.prepaid||0;
+      const value=S.cached(id),unlocked=cardUnlocked(id,value),state=M.ledger?.(value),balance=state?.balance??M.totals(value).balance,policy=S.cachedRewards?.(),reward=policy&&global.H2OFeatures?.rewards!==false?M.rewardState(value,policy,state):null,credit=(reward||M.rewardState?.(value,policy,state))?.prepaid||0;
       n.card.hidden=menuMemberId!==id||Boolean(value.pin&&!unlocked);
       n.balance.textContent=euro(balance);n.card.dataset.paid=String(balance===0);n.credit.hidden=!credit;n.credit.textContent=credit?'Eingezahlter Betrag: '+euro(credit):'';
       n.bonus.hidden=n.progress.hidden=!reward;if(reward){n.bonus.textContent=global.DrinksRewards?.remainingText(reward,policy)||'Noch '+euro(reward.needed)+' bezahlen bis zu den nächsten Treuepunkten.';n.progress.max=reward.threshold;n.progress.value=Math.min(reward.progress,reward.threshold);}
@@ -130,6 +130,7 @@
     if(el('staged-only')){el('staged-only').setAttribute('aria-pressed',String(stagedOnly));el('staged-only').textContent=stagedOnly?'Alle Mitglieder anzeigen':'Vorgemerkte anzeigen'+(cardDrafts.size?' ('+cardDrafts.size+')':'');}
   }
   function queueDrink(id,sig,wine=false,usePoints=false){
+    if(usePoints&&global.H2OFeatures?.rewards===false)return;
     const staged=stagedFor(id);if(staged.entries.length+staged.corrections.length>=1000){showToast('Bitte diese Sammlung zuerst mit OK speichern.','error');return;}
     const drink=wine?'wine':'beer';if(usePoints){const policy=S.cachedRewards?.(),cost=policy?M.pointCost(policy,drink):0,available=M.rewardState(S.cached(id),policy).pointUnits-staged.entries.reduce((n,x)=>n+(x.pointUnits||0),0);if(!cost||available<cost){if(!staged.entries.length&&!staged.corrections.length)cardDrafts.delete(id);showToast('Nicht genügend Treuepunkte.','error');return;}staged.entries.push({drink,pointUnits:cost});}else staged.entries.push(drink);staged.signature=sig;render();if(!menuMemberId)focusCard(id);
   }

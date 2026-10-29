@@ -7691,3 +7691,12 @@ html body .participant-command-header .compact-menu {
 
 .checkin-scanner-dialog{box-sizing:border-box}
 @media(min-width:768px){.checkin-scanner-dialog{margin-left:auto;margin-right:max(16px,env(safe-area-inset-right,0px))}}
+
+/* Deferred optional features; their ledger/history remains intact. */
+html[data-loyalty="paused"] #portal-page-points,html[data-loyalty="paused"] #portal-page-challenge,html[data-loyalty="paused"] [data-portal-tile="portal-points"],html[data-loyalty="paused"] .phone-rewards,html[data-loyalty="paused"] #portal-birthday,html[data-loyalty="paused"] #drinksSettingsRewardsCard,html[data-loyalty="paused"] #drinksSettingsQuizCard,html[data-loyalty="paused"] #dr-program,html[data-loyalty="paused"] #dr-bonus,html[data-loyalty="paused"] #dr-paid-bonus,html[data-loyalty="paused"] .dr-member-points,html[data-loyalty="paused"] .dr-redeem-actions,html[data-loyalty="paused"] .dr-card-bonus,html[data-loyalty="paused"] .dr-card-progress{display:none!important}
+
+html[data-loyalty="paused"] [data-rewards-feature]{display:none!important}
+
+html[data-loyalty="paused"] [data-thanks-bonus]{display:none!important}
+
+.backlog-state{display:inline-block;padding:5px 10px;margin-bottom:8px;border-radius:8px;background:#fff2c7;color:#5b4307;font-weight:800;line-height:1.3;white-space:nowrap}

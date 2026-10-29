@@ -159,6 +159,7 @@
     validate(account,account.memberId);
     const found=account.bookings.find(b=>b.id===booking.id);
     if(found){if(JSON.stringify(found)!==JSON.stringify(booking))throw new Error('Buchungsnummer bereits anders verwendet.');return account;}
+    if(global.H2OFeatures?.rewards===false&&(booking.pointUnits||booking.type==='drinks'&&booking.loyaltyVersion!==2))throw Object.assign(Error('Treuepunkte sind vorerst pausiert.'),{code:'pointsChanged'});
     if(['challenge','challenge-reward','birthday-reward'].includes(booking.type))throw Error('Challenge-Buchungen entstehen ausschließlich im Spieldienst.');
     if(booking.type==='correction'&&booking.confirmation!=='admin')assertCorrectable(ledger(account),booking);
     if(booking.type==='payment'&&!booking.prepay&&booking.cents>totals(account).balance)throw Object.assign(new Error('Der offene Betrag wurde inzwischen geändert. Bitte den Zahlungsbetrag neu wählen.'),{code:'balanceChanged'});
@@ -170,7 +171,7 @@
     const existing=new Map(account.bookings.map(b=>[b.id,b])),ids=new Set(),added=[],s=ledger(account);
     for(const b of bookings){
       if(ids.has(b.id))throw new Error('Doppelte Buchungsnummer in der Sammlung.');ids.add(b.id);
-      const old=existing.get(b.id);if(old){if(JSON.stringify(old)!==JSON.stringify(b))throw new Error('Buchungsnummer bereits anders verwendet.');}else{if(b.type==='correction')assertCorrectable(s,b);applyEntry(s,b);added.push({...b});}
+      const old=existing.get(b.id);if(old){if(JSON.stringify(old)!==JSON.stringify(b))throw new Error('Buchungsnummer bereits anders verwendet.');}else{if(global.H2OFeatures?.rewards===false&&(b.pointUnits||b.type==='drinks'&&b.loyaltyVersion!==2))throw Object.assign(Error('Treuepunkte sind vorerst pausiert.'),{code:'pointsChanged'});if(b.type==='correction')assertCorrectable(s,b);applyEntry(s,b);added.push({...b});}
     }
     if(!added.length)return account;
     return validate({...account,schemaVersion:Math.max(2,account.schemaVersion,added.some(b=>b.loyaltyVersion===2)?6:added.some(b=>b.drink)?4:added.some(b=>b.type==='correction')?3:1),bookings:[...account.bookings,...added]},account.memberId);
@@ -185,19 +186,23 @@
   function appendChallenge(account,booking){
     validate(account,account.memberId);if(booking.type!=='challenge')throw Error('Ungültige Challenge-Buchung.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Challenge bereits anders gebucht.');return account;}
+    if(global.H2OFeatures?.rewards===false)throw Object.assign(Error('Treuepunkte und Challenge sind vorerst pausiert.'),{status:409,code:'featurePaused'});
     return validate({...account,schemaVersion:Math.max(8,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendChallengeReward(account,booking){
     validate(account,account.memberId);if(booking.type!=='challenge-reward')throw Error('Ungültiger Monatsbonus.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Monatsbonus bereits anders gebucht.');return account;}
+    if(global.H2OFeatures?.rewards===false)throw Object.assign(Error('Treuepunkte und Challenge sind vorerst pausiert.'),{status:409,code:'featurePaused'});
     return validate({...account,schemaVersion:Math.max(9,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendBirthdayReward(account,booking){
     validate(account,account.memberId);if(booking.type!=='birthday-reward')throw Error('Ungültiger Geburtstagsbonus.');const old=account.bookings.find(b=>b.id===booking.id);
     if(old){if(JSON.stringify(old)!==JSON.stringify(booking))throw Error('Geburtstagsbonus bereits anders gebucht.');return account;}
+    if(global.H2OFeatures?.rewards===false)throw Object.assign(Error('Treuepunkte und Challenge sind vorerst pausiert.'),{status:409,code:'featurePaused'});
     return validate({...account,schemaVersion:Math.max(10,account.schemaVersion),bookings:[...account.bookings,{...booking}]},account.memberId);
   }
   function appendWithReward(account,booking,policy){
+    if(global.H2OFeatures?.rewards===false)return append(account,booking);
     validateRewardSettings(policy);
     // Both entries are one conditional OneDrive write; retries never grant twice.
     if(account.bookings.some(b=>b.id===booking.id))return append(account,booking);

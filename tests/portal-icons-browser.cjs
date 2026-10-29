@@ -14,7 +14,10 @@ const root=path.resolve(__dirname,'..');
    const versionBox=await version.boundingBox(),arrangeBox=await page.locator('#portal-layout-open').boundingBox();assert.ok(versionBox.x>=arrangeBox.x+arrangeBox.width,'version sits beside Anordnen');assert.ok(versionBox.y<arrangeBox.y+arrangeBox.height,'same toolbar row');
    for(const scale of [100,200]){await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await page.locator('.portal-more-toolbar').evaluate(n=>n.scrollWidth>n.clientWidth+1),false,'toolbar fits '+width+'/'+scale);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
    await page.evaluate(()=>document.documentElement.style.fontSize='');
-   assert.deepEqual(await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['more-training','more-year-plan','more-breathing','more-hydrants','more-regulations','more-water','more-contacts','more-help','theater-phone-section','more-bundesliga','more-security'],'fire brigade topics precede leisure and account');
+   assert.deepEqual(await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['more-year-plan','more-breathing','more-hydrants','more-water','more-regulations','more-contacts','more-help','more-security','theater-phone-section','more-bundesliga'],'fire brigade topics precede leisure and account');
+   assert.deepEqual(await page.locator('#deckel-nav [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile)),['portal-section','portal-evidence','account','more-training']);
+   assert.equal(await page.locator('[data-portal-tile="portal-points"]').count(),0);
+   for(const retired of ['portal-points','portal-challenge'])assert.equal(await page.evaluate(id=>DeckelMobile.jump(id),retired),false);
    await page.locator('[data-portal-tile="more-training"]').click();
    assert.equal(await page.locator('#more-training').isVisible(),true);
    await page.locator('#more-training [data-more-target="training-radio"]').click();
@@ -50,12 +53,12 @@ const root=path.resolve(__dirname,'..');
    }
    await page.locator('#radio-examples [data-more-target="training-radio"]').click();
    await page.locator('#training-radio [data-more-target="more-training"]').click();
-   await page.locator('#more-training .portal-more-back').click();
+   await page.evaluate(()=>DeckelMobile.jump('deckel-more'));
    const accessible=await page.locator('#deckel-nav button').evaluateAll(buttons=>buttons.map(b=>({name:b.getAttribute('aria-label'),title:b.title,hiddenLabel:getComputedStyle(b.querySelector('strong')).display})));assert.ok(accessible.every(b=>b.name&&b.title&&b.hiddenLabel!=='none'),'bottom navigation shows short labels with accessible names and tooltips');
    const compactLabels=await page.locator('#deckel-nav button>strong').evaluateAll(ns=>ns.map(n=>({text:n.textContent,height:n.getBoundingClientRect().height,line:parseFloat(getComputedStyle(n).lineHeight),scroll:n.scrollWidth,width:n.clientWidth})));assert.ok(compactLabels.every(n=>n.height<=n.line+1&&n.scroll<=n.width+1),'default labels remain complete on one line: '+JSON.stringify(compactLabels));
    const headings=await page.locator('#portal-more-grid [data-portal-tile]:not([hidden])').evaluateAll(tiles=>tiles.map(tile=>{const i=tile.querySelector('.portal-more-icon,.portal-nav-symbol'),h=tile.querySelector('strong'),d=tile.querySelector('.portal-tile-description'),a=i.getBoundingClientRect(),b=h.getBoundingClientRect(),c=d.getBoundingClientRect();return {id:tile.dataset.portalTile,iconRight:a.right,titleLeft:b.left,iconTop:a.top,iconBottom:a.bottom,titleTop:b.top,titleBottom:b.bottom,contentBottom:Math.max(a.bottom,b.bottom),descriptionTop:c.top,descriptionLeft:c.left,iconLeft:a.left,background:getComputedStyle(i).backgroundColor};}));
    for(const h of headings){assert.ok(h.titleLeft>=h.iconRight+6&&Math.abs((h.titleTop+h.titleBottom)/2-(h.iconTop+h.iconBottom)/2)<=1,'icon is centered beside the complete heading: '+JSON.stringify(h));assert.ok(h.descriptionTop>=h.contentBottom+4&&Math.abs(h.descriptionLeft-h.iconLeft)<1,'description starts below the heading at the left edge: '+JSON.stringify(h));assert.equal(h.background,'rgba(0, 0, 0, 0)','no separate icon badge');}
-   assert.equal(await page.locator('[data-portal-tile] .portal-icon-art').count(),15,'every movable tile has a shared illustrated symbol');assert.equal(await page.locator('[data-portal-pinned=more] .portal-icon-art').count(),1);
+   assert.equal(await page.locator('[data-portal-tile] .portal-icon-art').count(),14,'every movable tile has a shared illustrated symbol');assert.equal(await page.locator('[data-portal-pinned=more] .portal-icon-art').count(),1);
    const originalLabels=await page.locator('[data-portal-tile]').evaluateAll(ns=>Object.fromEntries(ns.map(n=>[n.dataset.portalTile,n.querySelector('strong').innerHTML])));
    // Reproduce the original drag-and-drop of the hydrant tile into the bottom menu.
    const from=await page.locator('[data-portal-tile="more-hydrants"]').boundingBox(),nav=await page.locator('#deckel-nav').boundingBox();
@@ -80,13 +83,13 @@ const root=path.resolve(__dirname,'..');
     if(id==='portal-section'){assert.equal(await page.locator('#portal-response-count').isVisible(),true);assert.match(await page.locator('[data-portal-tile="portal-section"]').getAttribute('aria-label'),/2 Rückmeldungen/);const fits=await page.locator('#portal-response-count').evaluate(b=>{const badge=b.getBoundingClientRect(),tile=b.parentElement.getBoundingClientRect();return badge.left>=tile.left&&badge.right<=tile.right&&badge.top>=tile.top&&badge.bottom<=tile.bottom;});assert.equal(fits,true,'response badge stays within the moved tile');}
     await verify('#deckel-nav',32,30);await verify('#portal-more-grid',32,30);
     const labelMetrics=await page.locator('#deckel-nav button>strong').evaluateAll(ns=>ns.map(n=>({text:n.textContent,h:n.getBoundingClientRect().height,line:parseFloat(getComputedStyle(n).lineHeight),width:n.clientWidth,scroll:n.scrollWidth})));assert.ok(labelMetrics.every(n=>n.h<=n.line+1&&n.scroll<=n.width+1),'every moved tile has a complete one-line name: '+JSON.stringify(labelMetrics));
-    if(target==='#portal-more-grid')assert.equal(await page.locator(target+' [data-portal-tile="'+id+'"] strong').innerHTML(),originalLabels[id],'More restores the complete original title and word breaks');
+    if(target==='#portal-more-grid')assert.equal(await page.locator(target+' [data-portal-tile="'+id+'"] strong').innerHTML(),id==='more-training'?'Ausbildung':originalLabels[id],'More restores the complete original title and word breaks');
     if(target==='#deckel-nav'&&['more-year-plan','more-breathing','more-hydrants','more-water','more-bundesliga','more-security'].includes(id))assert.ok(await page.locator(target+' [data-portal-tile="'+id+'"]').getAttribute('aria-label'),'short names keep their complete accessible title');
     await page.locator('#portal-layout-transfer').click();
    }
    await page.locator('#portal-layout-close').click();
    // Raised selection stays outside the rail and above its reserved content gap.
-   for(const target of ['portal-section','portal-evidence','account','portal-points','deckel-more']){
+   for(const target of ['portal-section','portal-evidence','account','more-training','deckel-more']){
     await page.evaluate(id=>DeckelMobile.jump(id),target);
     const geometry=await page.evaluate(()=>{const nav=document.getElementById('deckel-nav'),active=nav.querySelector('[aria-current=page]'),main=document.getElementById('deckel-main'),n=nav.getBoundingClientRect(),a=active.getBoundingClientRect(),m=main.getBoundingClientRect();return {rail:n.top,active:a.top,content:m.bottom,left:a.left,right:a.right,width:innerWidth,overflow:getComputedStyle(nav).overflowY};});
     assert.ok(geometry.active<geometry.rail&&geometry.active>=geometry.content-1,'raised selection has its own space: '+JSON.stringify(geometry));

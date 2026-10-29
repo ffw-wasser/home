@@ -37,6 +37,7 @@ const root=path.resolve(__dirname,'..');
  assert.equal(await page.locator('#statisticsFurtherDetails .drinks-consumption-panel').count(),0);
  assert.equal(await page.locator('#statisticsFellowshipDetails>summary').textContent(),'Kameradschaftspflege');
  await page.locator('#statisticsFellowshipDetails>summary').click();assert.equal(await page.locator('.drinks-consumption-panel').isVisible(),true);
+ const activeDrinkExport=await page.evaluate(()=>JSON.stringify(StatisticsPdf.collect(document.querySelector('.drinks-consumption-panel'))));assert.doesNotMatch(activeDrinkExport,/Treuepunkte|Challenge/,'paused points stay out of active statistics PDFs');
  assert.match(await page.locator('[data-fellowship-summary]').textContent(),/3 Veranstaltungen · 5 Teilnahmen/);
  assert.equal(await page.locator('[data-fellowship-chart] .statistics-bar-row').filter({hasText:'Sommerfest'}).locator('strong').textContent(),'2');
  assert.doesNotMatch(await page.locator('#probeTypes').textContent(),/Veranstaltung|Kameradschaft/);

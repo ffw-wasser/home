@@ -17,7 +17,7 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#settingsTab').click();assert.equal(await page.locator('#adminLoginView').isVisible(),true);assert.equal(await page.locator('#settingsView').isVisible(),false);
   await page.locator('#cancelLoginButton').click();
   await page.evaluate(()=>{oneDriveAdministrationReady=()=>true;adminUnlocked=true;resetAdminTimeout();showView('settingsView');});
-  assert.equal(await page.locator('#settingsView .administration-card').count(),5);
+  assert.equal(await page.locator('#settingsView .administration-card').count(),6);assert.equal(await page.locator('#settingsView [data-settings-page="settingsBacklogView"]').count(),1);
   for(const width of [320,390,768,1024]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'administration overflow '+width);}
   await page.evaluate(()=>{
    window.oneDriveReadState=async()=>({members:[]});DrinksCentral.connection=async()=>({origin:'https://test.example.workers.dev',source:'test-source'});DrinksStore.sourceKey=()=> 'test-source';window.qaYearCalls=[];window.qaYearFailures=1;
@@ -49,6 +49,12 @@ const root=path.resolve(__dirname,'..');
   await page.evaluate(()=>{oneDriveAdministrationReady=()=>false;});await page.locator('#year-plan-reload').click();await page.locator('#year-plan-status').filter({hasText:'Eine Verwaltungs-PIN ist nicht erforderlich'}).waitFor();assert.equal(publicRequests,0);assert.equal(await page.locator('#adminLoginView').isVisible(),false);
   await page.evaluate(()=>{oneDriveAdministrationReady=()=>true;});
   await page.evaluate(()=>{showView('settingsView');});assert.equal(await page.locator('#settingsView').isVisible(),false);
+  // Production is paused: the old entry opens the protected backlog, not the bonus form.
+  await page.evaluate(()=>{adminUnlocked=true;resetAdminTimeout();showView('settingsRewardsView');});
+  assert.equal(await page.locator('#settingsBacklogView').isVisible(),true);
+  assert.equal(await page.locator('#birthday-assignments-load').isVisible(),false);
+  // Isolated synthetic future-rollout scenario keeps the retained birthday editor covered.
+  await page.evaluate(()=>{globalThis.H2OFeatures=Object.freeze({rewards:true,challenge:true});delete document.documentElement.dataset.loyalty;});
   await page.evaluate(()=>{
    adminUnlocked=true;resetAdminTimeout();window.qaBirthday={id:'birthday-test',seriesId:'series-test',title:'Geburtstag Testperson',start:Date.now()+86400000,end:Date.now()+90000000,kind:'birthday',memberId:null};window.qaBirthday2={...qaBirthday,id:'birthday-second',seriesId:'series-second',title:'Geburtstag Zweite Testperson'};window.qaBirthdayVersion=0;
    window.oneDriveReadState=async()=>({members:[{id:'test-person',lastName:'Testperson',firstName:'Anna'}]});
