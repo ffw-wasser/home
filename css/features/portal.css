@@ -565,3 +565,8 @@
 .deckel-pull-refresh[hidden]{display:none!important}
 
 .portal-icon-art.portal-icon-contacts{background:none;color:#075baf}
+
+/* Official training documents remain easy to tap, including long German titles. */
+.training-document-list{padding-inline-start:1.35rem}
+.training-document-list li{margin-block:8px}
+.training-document-list a{display:inline-block;padding-block:10px;overflow-wrap:anywhere;line-height:1.45}
