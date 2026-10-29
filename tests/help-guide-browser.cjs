@@ -18,17 +18,17 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.locator('#portal-more-grid [data-more-target="more-help"]').click();assert.equal(await page.locator('#contacts-list').isVisible(),false);assert.equal(await page.evaluate(()=>contactLoads),0,'opening help does not request private contacts');
    assert.equal(await page.locator('#portal-menu-title').innerText(),'Datenschutz & Hilfe');
   }
-  const guide=page.locator('#help-guide');assert.equal(await guide.isVisible(),true);assert.equal(await guide.locator('.guide-privacy-grid>section').count(),6);assert.equal(await guide.locator('.guide-lesson').count(),file==='index.html'?7:6);
+  const guide=page.locator('#help-guide');assert.equal(await guide.isVisible(),true);assert.equal(await guide.locator('.guide-privacy-grid>section').count(),6);assert.equal(await guide.locator('.guide-lesson').count(),7);
   assert.equal(await guide.locator('.contacts-pane').count(),0);assert.equal(await guide.locator('a[href^="#"]').count(),0);
   assert.match(await guide.locator('.guide-privacy').innerText(),/Passkey|Passwort/);assert.match(await guide.locator('.guide-privacy').innerText(),/OneDrive/);assert.match(await guide.locator('.guide-privacy').innerText(),/Cloudflare/);assert.match(await guide.locator('.guide-privacy').innerText(),/keine bestätigten Feuerwehrdaten/);
   if(file==='index.html')assert.equal(await guide.locator('img[src="assets/help/guide/geraetehaus-backlog.jpg"]').count(),1,'Backlog is illustrated in the main administration guide');
   const before=await page.evaluate(()=>location.hash);
   for(const width of [320,390,768,1280])for(const scale of [100,200]){
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
-   assert.ok((await guide.locator('.guide-manual').innerText()).length<4500,'daily instructions remain concise alongside the explicit data inventory');
+   const manualLength=(await guide.locator('.guide-manual').innerText()).length;assert.ok(manualLength<4500,'daily instructions remain concise alongside the explicit data inventory: '+manualLength);
    assert.ok(await guide.locator('.guide-data-fields dt').count()>=6,'privacy enumerates the actual data fields');
    assert.doesNotMatch(await guide.innerText(),/TestFlight|Google-Gruppenschnittstelle|zertifiziert|APK/);
-   assert.equal(await guide.locator('img').count(),file==='index.html'?9:8);
+   assert.equal(await guide.locator('img').count(),file==='index.html'?9:10);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' overflow '+width+'/'+scale);
    assert.deepEqual(await guide.locator('.guide-lesson-body,.guide-privacy-grid').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[]);
