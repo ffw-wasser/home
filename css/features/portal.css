@@ -260,23 +260,23 @@
  #portal-events .portal-next-heading{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 }
 
-/* Practical details on the left, a three-position reply switch on the right. */
-#portal-events .portal-event-details{display:grid;grid-template-columns:minmax(0,1fr) minmax(148px,.8fr);align-items:center;gap:12px;margin-top:10px}
+/* Practical details on the left, poll-style reply rows on the right. */
+#portal-events .portal-event-details{display:grid;grid-template-columns:minmax(0,1fr) minmax(164px,.8fr);align-items:center;gap:12px;margin-top:10px}
 #portal-events .portal-event-practical{min-width:0}
 #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:0}
-#portal-events .portal-reply-switch{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(48px,1fr));gap:6px;margin:0;padding:0 0 0 10px;border:0;border-left:1px solid #bdcec5;border-radius:0;background:transparent;align-self:stretch}
-#portal-events .portal-reply-switch button{position:relative;z-index:1;grid-column:1;min-height:48px;margin:0;padding:9px 7px;border:2px solid;border-radius:10px;font-size:1rem;font-weight:850;text-align:left;line-height:1.2;hyphens:auto;word-break:normal;overflow-wrap:anywhere;box-shadow:0 2px 4px #10223c12}
-#portal-events .portal-reply-switch button[data-reply=yes]{background:#dcf1e3;color:#175631;border-color:#6aab7e}
-#portal-events .portal-reply-switch button[data-reply=excused]{background:#ffecd4;color:#70450e;border-color:#c3924e}
-#portal-events .portal-reply-switch button[data-reply=maybe]{background:#eee4f6;color:#55316f;border-color:#ac8cc4}
-#portal-events .portal-reply-switch button[data-reply=yes][aria-pressed=true]{background:#216a3c;border-color:#124a27;color:#fff}
-#portal-events .portal-reply-switch button[data-reply=excused][aria-pressed=true]{background:#805018;border-color:#57320b;color:#fff}
-#portal-events .portal-reply-switch button[data-reply=maybe][aria-pressed=true]{background:#68418b;border-color:#45265f;color:#fff}
-#portal-events .portal-reply-switch button[aria-pressed=true]{box-shadow:0 0 0 2px #fff,0 0 0 4px #243c50;font-weight:900}
-#portal-events .portal-event:is([data-status=yes],[data-status=excused],[data-status=maybe]) .portal-reply-switch button[aria-pressed=false]{background:#f3f6f4;color:#52645b;border-color:#c1ccc5;box-shadow:none;font-weight:650}
+#portal-events .portal-reply-switch{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(48px,1fr));gap:2px;margin:0;padding:0 0 0 8px;border:0;border-left:1px solid #bdcec5;border-radius:0;background:transparent;align-self:stretch}
+#portal-events .portal-reply-switch button{position:relative;z-index:1;display:flex;align-items:center;gap:8px;grid-column:1;min-height:48px;margin:0;padding:9px 4px;border:0;border-radius:6px;background:transparent;color:var(--reply-ink);font-size:1rem;font-weight:650;text-align:left;line-height:1.25;hyphens:auto;word-break:normal;overflow-wrap:anywhere;box-shadow:none}
+#portal-events .portal-reply-switch button[data-reply=yes]{--reply-ink:#175631;--reply-color:#216a3c;--reply-surface:#dcf1e3}
+#portal-events .portal-reply-switch button[data-reply=excused]{--reply-ink:#70450e;--reply-color:#805018;--reply-surface:#ffecd4}
+#portal-events .portal-reply-switch button[data-reply=maybe]{--reply-ink:#55316f;--reply-color:#68418b;--reply-surface:#eee4f6}
+#portal-events .portal-reply-switch button::before{content:"";box-sizing:border-box;flex:0 0 24px;width:24px;height:24px;border:2px solid var(--reply-color);border-radius:50%;background:transparent;pointer-events:none}
+#portal-events .portal-reply-switch button[aria-pressed=true]{background:var(--reply-surface);color:var(--reply-ink);font-weight:850;box-shadow:none}
+#portal-events .portal-reply-switch button[aria-pressed=true]::before{background:var(--reply-color)}
+#portal-events .portal-reply-switch button[aria-pressed=true]::after{content:"";position:absolute;left:12px;top:calc(50% - 7px);width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);pointer-events:none}
+#portal-events .portal-reply-switch button:focus-visible{outline:3px solid #075baf;outline-offset:2px}
 #portal-events .portal-choice-hint{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media(max-width:360px){#portal-events .portal-event-details{gap:8px;grid-template-columns:minmax(0,1fr) 148px}#portal-events .portal-reply-switch button{font-size:1rem}}
-@media(min-width:601px){#portal-events .portal-event-details{grid-template-columns:minmax(0,1fr) 144px}}
+@media(min-width:601px){#portal-events .portal-event-details{grid-template-columns:minmax(0,1fr) 164px}}
 
 /* Kalenderverwaltung: gemeinsame Gestaltung innerhalb der FFW-Einstellungen. */
 #settingsCalendarView{max-width:1040px;margin-inline:auto}
