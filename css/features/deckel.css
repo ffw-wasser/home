@@ -320,13 +320,6 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 
 .portal-resources-only :is(#status,#deckel-load-retry){display:none!important}
 
-#training-reader[open]{grid-template-areas:"heading" "status" "page" "turn" "zoom" "original";grid-template-rows:auto auto minmax(120px,1fr) auto auto auto}
-#training-reader-map{width:100%;height:auto;min-height:120px;max-height:none;margin:0;border:1px solid var(--line);border-radius:8px;background:white}
-#training-reader-status{margin:0;line-height:1.3}
-#training-page{text-align:center}
-
-#training-reader-status{grid-area:status}#training-reader-map{grid-area:page}#training-reader .regulations-page-controls{grid-area:turn}#training-reader .regulations-zoom-controls{grid-area:zoom}#training-reader>a{grid-area:original}
-
 #portal-resource-menu>summary{padding:8px 115px 8px 0}
 #portal-resource-close{position:absolute;right:8px;top:8px;width:auto;min-height:44px;padding:8px 12px}
 

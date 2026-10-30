@@ -1,9 +1,21 @@
-# Motorola-Taschenkarte Baden-Württemberg
+# Motorola MXP600 · Funkausbildung
 
-Die unveränderte allgemeine Taschenkarte ist eine optionale Ergänzung; ihre Gerätevarianten müssen nicht mit der Ausstattung in Wasser übereinstimmen.
+Grundlage sind die sieben vom Anwender am 30.10.2026 bereitgestellten Fotos der
+aktuellen Motorola-MXP600-Kurzübersicht. Daraus wurden die Lerntexte in
+`deckel.html` unter Ausbildung → Funk → Funkgerät neu formuliert. Fotos werden
+nicht als Fotogalerie verwendet. Die Kurzbedienung steht am Anfang, Details zu
+Bedienelementen, Displaysymbolen, Funknotruf, Einzelrufen, Status senden und
+Pflege lassen sich aufklappen. Die Texte sind mit der App offline verfügbar.
 
-Quelle: https://www.lfs-bw.de/fileadmin/LFS-BW/themen/technik/funk/digitalfunk/bedienhinweise/dokumente/Taschenkarte_Digitalfunk_Motorola_A6_2025_editierbar.pdf
+Die zuvor nur angenommene allgemeine BW-Taschenkarte und ihr PDF-Leser sind
+auf Wunsch entfernt. Die beiden bestätigten selbst erstellten Gerätebilder
+bleiben als schematische Beispiele erhalten (HRT und Fahrzeug-Bedienhörer). FMS-Bedeutungen bleiben
+unter FMS-Status, Mayday unter Atemschutz; die Geräteabschnitte verweisen dorthin.
+Funkbeispiele für LF10, TSF und Gerätehaus bleiben erhalten. Funktionen hängen von
+Programmierung und örtlicher Einweisung ab; Geräte-PINs werden nicht vorgegeben.
+Fünfstellige Hersteller-Statusnummern werden nicht mit FMS 0–9 gleichgesetzt.
 
-SHA-256: `30d1b99bb1c48f58b73ea7fee71b9203c72a5b4e0560cdd3b65b925097b57d36`.
-
-Die Geräteansichten werden als HTML/CSS-Schemata in deckel.html dargestellt. Die vom Anwender bereitgestellten Fotos dienen ausschließlich als Referenz. Sichtbare Displayzeilen: Handfunkgerät „BWFW EM EMM 5 / HRT 1 / DMO FW / 309_F*“; Fahrzeug-Bedienhörer „BWFW EM EMM 5 / LF10 1 / EM LKr / FW EM BG“. Keine Transceiver-Modellnummer wird aus dem Bedienhörer abgeleitet. Die Beispielgruppen sind keine Einsatzanweisung.
+Ergänzende Herstellerquelle, insbesondere für Ein-/Ausschalten durch Gedrückthalten:
+Motorola MXP600 Quick Start Guide MN006359A01-AA,
+https://docs-be.motorolasolutions.com/bundle/62697/raw/resource/enus/MN006359A01-AA_enus_MXP600_Quick_Start_Guide.pdf
+(Englisch; Original-Link benötigt Internet).
