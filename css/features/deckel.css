@@ -295,6 +295,13 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 .training-radio-steps{padding-left:1.4em;margin:0}
 .training-radio-steps li{margin:10px 0}
 .training-radio-steps li::marker{color:#762c3a;font-weight:800}
+#radio-device .radio-daily-steps{list-style:none;padding:0;margin:0}
+#radio-device .radio-daily-steps li{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;align-items:center;margin:0;padding:12px 0;border-bottom:1px solid #c9d8d2;line-height:1.5}
+#radio-device .radio-daily-steps li:last-child{border-bottom:0}
+#radio-device .radio-daily-picture{display:block;width:84px;height:auto;max-width:100%}
+#radio-device .radio-daily-steps li>span{min-width:0;overflow-wrap:anywhere}
+@media(max-width:360px){#radio-device .radio-daily-steps li{grid-template-columns:64px minmax(0,1fr);gap:10px}#radio-device .radio-daily-picture{width:64px}}
+
 .training-device summary{padding:0 0 12px;font-size:1.1rem}
 .training-device summary small,.training-dialogue summary small{display:block;font-weight:400}
 .training-image-button{padding:0;background:white;border:1px solid var(--line);border-radius:8px;overflow:hidden}
