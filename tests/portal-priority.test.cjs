@@ -102,7 +102,7 @@ test('Terminkarte ordnet Thema vor Datum an und zeigt Ort und Kleidung kompakt',
  const f=fixture();f.c.paint({events:[{...event('test',Date.now()+60000),title:'Technische Hilfe',location:'GH Wasser',clothing:'Einsatz'}]});
  const info=f.events.querySelector('article').children[0];
  assert.equal(info.children[0].className,'portal-event-badges');assert.equal(info.children[1].tagName,'h3');assert.equal(info.children[1].textContent,'Technische Hilfe');assert.equal(info.children[2].className,'portal-event-date');
- const rows=info.querySelectorAll('p').filter(n=>n.className==='portal-event-meta');assert.deepEqual(rows.map(n=>n.children[1].textContent),['GH Wasser','Einsatzkleidung']);
+ const rows=info.querySelectorAll('p').filter(n=>n.className==='portal-event-meta');assert.deepEqual(rows.map(n=>n.children[1].children[0]?.textContent||n.children[1].textContent),['GH Wasser','Einsatzkleidung']);
 });
 test('Rückmeldungsdialog bleibt getrennt und verwirft verspätete Antworten nach Schließen',async()=>{
  const body=new Node(),make=(tag,text)=>{const n=new Node(tag,text);n.addEventListener=()=>{};n.showModal=()=>{n.open=true;};n.close=()=>{n.open=false;};return n;};

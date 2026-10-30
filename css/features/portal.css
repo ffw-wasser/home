@@ -262,7 +262,11 @@
 
 /* Practical details on the left, poll-style reply rows on the right. */
 #portal-events .portal-event-details{display:grid;grid-template-columns:minmax(0,1fr) minmax(164px,.8fr);align-items:center;gap:12px;margin-top:10px}
-#portal-events .portal-event-practical{min-width:0}
+#portal-events .portal-event-practical{min-width:0;container-type:inline-size;container-name:portal-practical}
+#portal-events .portal-clothing-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#portal-events .portal-clothing-short{display:none}
+@container portal-practical (max-width:20ch){#portal-events [data-clothing="Einsatzkleidung"] .portal-clothing-full{display:none}#portal-events [data-clothing="Einsatzkleidung"] .portal-clothing-short{display:inline}}
+@container portal-practical (max-width:17ch){#portal-events [data-clothing="Tagesdienst"] .portal-clothing-full{display:none}#portal-events [data-clothing="Tagesdienst"] .portal-clothing-short{display:inline}}
 #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:0}
 #portal-events .portal-reply-switch{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(48px,1fr));gap:2px;margin:0;padding:0 0 0 8px;border:0;border-left:1px solid #bdcec5;border-radius:0;background:transparent;align-self:stretch}
 #portal-events .portal-reply-switch button{position:relative;z-index:1;display:flex;align-items:center;gap:8px;grid-column:1;min-height:48px;margin:0;padding:9px 4px;border:0;border-radius:6px;background:transparent;color:var(--reply-ink);font-size:1rem;font-weight:650;text-align:left;line-height:1.25;hyphens:auto;word-break:normal;overflow-wrap:anywhere;box-shadow:none}
