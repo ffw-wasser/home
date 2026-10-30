@@ -38,7 +38,7 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#breathing-emergency').isVisible(),true);
    await page.evaluate(()=>DeckelMobile.jump('radio-device'));
 
-   assert.match(await page.locator('.training-source-card a').getAttribute('href'),/^https:\/\/www\.lfs-bw\.de\/.*Motorola.*\.pdf$/);
+   assert.match(await page.locator('.training-source-card a').first().getAttribute('href'),/^https:\/\/www\.lfs-bw\.de\/.*Motorola.*\.pdf$/);
    assert.equal(await page.locator('#radio-device .radio-illustration').count(),2);
    assert.equal(await page.locator('#radio-device img').count(),0,'photos and wrong model drawings are not used');
    assert.deepEqual(await page.locator('#radio-device .radio-screen strong').allTextContents(),['309_F*','FW EM BG']);
