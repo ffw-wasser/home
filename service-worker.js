@@ -5,8 +5,6 @@ const CORE=[
   "./js/features/portal/portal-onboarding.js?v=20261030.4",
   "./assets/help/iphone-home.svg?v=20261030.4",
 
-  "./js/features/portal/portal-training.js?v=20261030.4",
-  "./assets/training/motorola-bw-2025.pdf",
 
   "./assets/portal/portal-symbols.webp",
   "./assets/portal/training.svg",

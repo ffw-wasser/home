@@ -38,10 +38,11 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#breathing-emergency').isVisible(),true);
    await page.evaluate(()=>DeckelMobile.jump('radio-device'));
 
-   assert.match(await page.locator('.training-source-card a').first().getAttribute('href'),/^https:\/\/www\.lfs-bw\.de\/.*Motorola.*\.pdf$/);
-   assert.equal(await page.locator('#radio-device .radio-illustration').count(),2);
-   assert.equal(await page.locator('#radio-device img').count(),0,'photos and wrong model drawings are not used');
+   assert.match(await page.locator('.training-source-card a').getAttribute('href'),/^https:\/\/docs-be\.motorolasolutions\.com\/.*MXP600_Quick_Start_Guide\.pdf$/);
+   assert.equal(await page.locator('#training-reader, [data-training-reader]').count(),0,'old guide and reader are removed');
+   assert.equal(await page.locator('#radio-device .radio-illustration').count(),2,'both approved device illustrations remain');
    assert.deepEqual(await page.locator('#radio-device .radio-screen strong').allTextContents(),['309_F*','FW EM BG']);
+   assert.equal(await page.locator('#radio-device img').count(),0,'source photos are not reproduced');
    await page.locator('#radio-device').evaluate(n=>n.style.fontSize='200%');
    assert.equal(await page.locator('#radio-device').evaluate(n=>n.scrollWidth>n.clientWidth+1),false,'training remains within mobile viewport at enlarged text');
    await page.locator('#radio-device').evaluate(n=>n.style.fontSize='');
