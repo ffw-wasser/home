@@ -38,7 +38,8 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#breathing-emergency').isVisible(),true);
    await page.evaluate(()=>DeckelMobile.jump('radio-device'));
 
-   assert.match(await page.locator('.training-source-card a').getAttribute('href'),/^https:\/\/docs-be\.motorolasolutions\.com\/.*MXP600_Quick_Start_Guide\.pdf$/);
+   assert.equal(await page.locator('.training-source-card a').getAttribute('href'),'https://kbi-mil.de/wp-content/uploads/2024/03/Kurzanleitung_MXP600.pdf');
+   assert.match(await page.locator('.training-source-card a').textContent(),/Deutsch, PDF/);
    assert.equal(await page.locator('#training-reader, [data-training-reader]').count(),0,'old guide and reader are removed');
    assert.equal(await page.locator('#radio-device .radio-illustration').count(),2,'both approved device illustrations remain');
    assert.deepEqual(await page.locator('#radio-device .radio-screen strong').allTextContents(),['309_F*','FW EM BG']);

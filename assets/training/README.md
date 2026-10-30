@@ -15,7 +15,9 @@ Funkbeispiele für LF10, TSF und Gerätehaus bleiben erhalten. Funktionen hänge
 Programmierung und örtlicher Einweisung ab; Geräte-PINs werden nicht vorgegeben.
 Fünfstellige Hersteller-Statusnummern werden nicht mit FMS 0–9 gleichgesetzt.
 
-Ergänzende Herstellerquelle, insbesondere für Ein-/Ausschalten durch Gedrückthalten:
-Motorola MXP600 Quick Start Guide MN006359A01-AA,
-https://docs-be.motorolasolutions.com/bundle/62697/raw/resource/enus/MN006359A01-AA_enus_MXP600_Quick_Start_Guide.pdf
-(Englisch; Original-Link benötigt Internet).
+Ergänzende Quelle: deutsche Motorola-MXP600-Kurzanleitung (Autor laut PDF:
+Motorola Solutions Inc.), bereitgestellt unter
+https://kbi-mil.de/wp-content/uploads/2024/03/Kurzanleitung_MXP600.pdf
+Der vollständige Download wurde am 30.10.2026 geprüft: gültiges PDF, zwei Seiten,
+passende MXP600-Bedienung und Geräteübersicht. Der PDF-Link benötigt Internet.
+Der frühere englische Direktlink wurde wegen HTTP 404 entfernt.
