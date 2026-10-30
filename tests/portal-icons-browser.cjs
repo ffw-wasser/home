@@ -26,6 +26,18 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#training-radio .portal-more-tile').count(),3);
    await page.locator('#training-radio [data-more-target="radio-device"]').click();
    assert.equal(await page.locator('#radio-device .training-radio-steps li').count(),4);
+   assert.equal(await page.locator('#radio-device article').first().locator('h3').textContent(),'Die wichtigsten Handgriffe');
+   // Expanded device instructions must fit phones too; links reuse existing topics.
+   await page.locator('#radio-device > details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
+   assert.equal(await page.locator('#radio-device > details[open]').count(),6);
+   assert.equal(await page.locator('#radio-device .training-status-list').count(),0);
+   await page.locator('#radio-device [data-more-target="radio-status"]').click();
+   assert.equal(await page.locator('#radio-status').isVisible(),true);
+   await page.evaluate(()=>DeckelMobile.jump('radio-device'));
+   await page.locator('#radio-device [data-more-target="breathing-emergency"]').click();
+   assert.equal(await page.locator('#breathing-emergency').isVisible(),true);
+   await page.evaluate(()=>DeckelMobile.jump('radio-device'));
+
    assert.match(await page.locator('.training-source-card a').getAttribute('href'),/^https:\/\/www\.lfs-bw\.de\/.*Motorola.*\.pdf$/);
    assert.equal(await page.locator('#radio-device .radio-illustration').count(),2);
    assert.equal(await page.locator('#radio-device img').count(),0,'photos and wrong model drawings are not used');
