@@ -21264,7 +21264,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
    const current=await event(env,data.eventId);if(!current||!current.open)fail('Die Veranstaltung ist geschlossen.');if(current.version!==data.version)fail('Die Preisliste wurde geändert. Bitte neu laden und Bestellung prüfen.');
    let lines;try{lines=M.lines(current.items,data.lines);}catch(e){fail(e.message,400);}const name=roster?.members.find(m=>m.id===record.memberId)?.name;if(!name)fail('Mitglied ist nicht freigegeben.',403);
    const payload=await L.seal(env,{name,lines,fingerprint},'theater-order:'+data.requestId);
-   const result=await env.DB.prepare('INSERT OR IGNORE INTO theater_orders(id,event,member,payload,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM theater_events WHERE id=? AND version=? AND open=1)').bind(data.requestId,data.eventId,record.memberId,payload,Date.now(),data.eventId,data.version).run();
+   const result=await env.DB.prepare('INSERT OR IGNORE INTO theater_orders(id,event,member,payload,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM theater_events WHERE id=? AND version=? AND open=1) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)').bind(data.requestId,data.eventId,record.memberId,payload,Date.now(),data.eventId,data.version,record.alias,record.revision).run();
    if(!result.meta.changes){const duplicate=await env.DB.prepare('SELECT * FROM theater_orders WHERE id=?').bind(data.requestId).first();if(!duplicate||duplicate.member!==record.memberId||(await L.open(env,duplicate.payload,'theater-order:'+duplicate.id)).fingerprint!==fingerprint)fail('Bestellung nicht gespeichert. Preise oder Veranstaltung wurden geändert.');}return {ok:true,id:data.requestId};
   }
   if(!admin)fail('Nur die Kassenverwaltung darf diese Ansicht öffnen.',403);
@@ -21395,6 +21395,32 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   return {...row,record:await owner(env,row.alias,row.revision)};
  }
  function recent(active){if(!active||active.row.created_at<Date.now()-TTL)fail('Bitte für diese Sicherheitsänderung erneut anmelden.',401);}
+ async function deletePortalAccount(env,active,data){
+  recent(active);
+  if(data.confirm!==true)fail('Bitte die Löschung des persönlichen Portal-Kontos ausdrücklich bestätigen.',400);
+  const L=g.CentralLedger,{record,row}=active,meta=await L.meta(env);L.active(meta);
+  const linked=(await env.DB.prepare('SELECT a.alias,a.revision,a.payload FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision').all()).results,own=[];
+  for(const link of linked){const owner=await L.open(env,link.payload,'access:'+link.alias);if(owner.memberId===record.memberId)own.push(link);}
+  const caller=own.find(link=>link.alias===record.alias&&link.revision===record.revision);if(!caller)fail();
+  const aliases=JSON.stringify(own.map(link=>link.alias)),receipt=random(),now=Date.now();
+  // A transaction-local, unguessable marker guards every deletion. A revoked
+  // session, concurrent recovery or a changed data source makes the whole batch a no-op.
+  const guard='EXISTS(SELECT 1 FROM portal_passkey_challenges WHERE id=? AND kind=\'account-delete\')';
+  const statements=[env.DB.prepare("INSERT INTO portal_passkey_challenges(id,challenge,kind,alias,revision,generation,expires_at) SELECT ?,'','account-delete','','',0,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND seq=? AND state='active') AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND alias=? AND revision=? AND created_at>=? AND expires_at>?) AND EXISTS(SELECT 1 FROM ledger_access WHERE alias=? AND revision=? AND payload=?)").bind(receipt,now+TTL,meta.source,meta.seq,row.token_hash,record.alias,record.revision,now-TTL,now,caller.alias,caller.revision,caller.payload)];
+  statements.push(env.DB.prepare('INSERT OR IGNORE INTO portal_identity_members(member) SELECT ? WHERE '+guard).bind(record.memberId,receipt));
+  for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
+  statements.push(env.DB.prepare('DELETE FROM portal_devices WHERE id IN (SELECT id FROM devices WHERE alias IN (SELECT value FROM json_each(?))) AND '+guard).bind(aliases,receipt));
+  for(const table of ['portal_calendar_usage','portal_calendar_subscriptions','portal_replies','portal_sends','portal_calendar_profiles'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE member=? AND '+guard).bind(record.memberId,receipt));
+  // The membership roster, evidence records, central beverage ledger, orders
+  // and independent OneDrive files are administration records, not portal credentials.
+  for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_browser_sessions','portal_browser_pairs','devices','commands','sends','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
+  statements.push(env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) SELECT value,1 FROM json_each(?) WHERE '+guard+' ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(aliases,receipt));
+  statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND '+guard).bind(receipt));
+  statements.push(env.DB.prepare('DELETE FROM portal_passkey_challenges WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
+  statements.push(env.DB.prepare("DELETE FROM portal_passkey_challenges WHERE id=? AND kind='account-delete'").bind(receipt));
+  const result=await env.DB.batch(statements);if(!result[0].meta.changes)fail('Zugang oder Datenstand wurde inzwischen geändert. Bitte erneut anmelden und prüfen.',409);
+  return {ok:true,deleted:true};
+ }
  async function admin(env,data){
   const record=await owner(env,data.alias,data.revision);
   if(data.reset===true)await revoke(env,record); // Enrollment marker intentionally survives recovery.
@@ -21418,6 +21444,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   if(!active)fail('Sitzung abgelaufen. Bitte erneut anmelden.',401);
   const {record,row}=active;
   if(data.alias&&data.alias!==record.alias)fail();
+  if(path==='account/delete')return deletePortalAccount(env,active,data);
   if(path==='session')return {alias:record.alias,revision:record.revision,key:record.key,expiresAt:row.expires_at,method:row.credential.startsWith('password:')?'password':'passkey'};
   if(path==='logout'){await env.DB.prepare('DELETE FROM portal_identity_sessions WHERE token_hash=?').bind(row.token_hash).run();return {ok:true};}
   if(path==='devices'){
@@ -22415,7 +22442,7 @@ g.PortalHydrants={schema,route};
    if(statuses.get(member)==='excused'){excused++;continue;}if(processed>=2){remaining++;continue;}processed++;
    const id=await hash('portal-send:'+event.id+':'+member+':'+requestId),now=Date.now(),payload=await L.seal(env,{event:memberEvent(event),status:'reminder'},'portal-send:'+id);
    // Claim before delivery: ambiguous network responses are never sent a second time.
-   const claim=await env.DB.prepare("INSERT OR IGNORE INTO portal_sends(id,event,member,payload,status,campaign,created_at) SELECT ?,?,?,?,'pending',?,? WHERE NOT EXISTS(SELECT 1 FROM portal_sends WHERE member=? AND created_at>?)").bind(id,event.id,member,payload,campaign,now,member,now-60000).run();if(!claim.meta.changes){duplicate++;continue;}
+   const claim=await env.DB.prepare("INSERT OR IGNORE INTO portal_sends(id,event,member,payload,status,campaign,created_at) SELECT ?,?,?,?,'pending',?,? WHERE NOT EXISTS(SELECT 1 FROM portal_sends WHERE member=? AND created_at>?) AND EXISTS(SELECT 1 FROM accounts WHERE alias IN (SELECT value FROM json_each(?)))").bind(id,event.id,member,payload,campaign,now,member,now-60000,JSON.stringify(records.map(record=>record.alias))).run();if(!claim.meta.changes){duplicate++;continue;}
    let a=0,f=0;
    for(const record of records){const devices=(await env.DB.prepare('SELECT d.id,d.endpoint FROM devices d JOIN portal_devices p ON p.id=d.id WHERE alias=? AND revision=? LIMIT 5').bind(record.alias,record.revision).all()).results;
     for(const device of devices){
@@ -22467,7 +22494,7 @@ g.PortalHydrants={schema,route};
  async function route(path,data,env,auth,clientIP='unknown',ctx){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
    if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
-   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path)||path.includes('/password/'))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||action.startsWith('password/')||['session','logout','devices','remove','sessions/revoke'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
+   if(path.startsWith('/portal/passkey/')){if(/\/(options|verify)$/.test(path)||path.includes('/password/'))await g.WhatsAppPasskeys.limit(env,clientIP);const action=path.slice('/portal/passkey/'.length);if(action.startsWith('portal/')||action.startsWith('enroll/')||action.startsWith('password/')||['session','logout','devices','remove','sessions/revoke','account/delete'].includes(action))return g.WhatsAppPasskeys.identity(action,data,env,auth);fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);}
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    if(path.startsWith('/portal/calendar-bridge/'))return g.CalendarInvitations.bridge(path.slice('/portal/calendar-bridge/'.length),data,env,auth);
    if(path==='/portal/calendar-addon/groups')return g.CalendarGroupAccess.route(env,data,auth,m.source);
@@ -22679,7 +22706,7 @@ g.PortalHydrants={schema,route};
     if(old&&old.alias!==record.alias)fail('Auf diesem iPhone zuerst die Mitteilungen des anderen Mitglieds deaktivieren.');
     const result=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,record.alias,record.revision,url,record.alias,record.revision,record.alias,id,record.alias).run();
     if(!result.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');
-    await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();
+    await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) SELECT ? WHERE EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=? AND revision=?)').bind(id,id,record.alias,record.revision).run();
    }
    const registered=!!(id&&await env.DB.prepare('SELECT id FROM devices WHERE id=? AND alias=? AND revision=?').bind(id,record.alias,record.revision).first());
    return {ok:true,ready:!!transport?.ready(env),registered};
@@ -22699,7 +22726,7 @@ g.PortalHydrants={schema,route};
   if(path==='/portal/subscribe'||path==='/portal/unsubscribe'){
    const url=endpoint(data.endpoint),id=await hash(url);if(path.endsWith('/unsubscribe')){await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,data.alias).run();return {ok:true};}
    const old=await env.DB.prepare('SELECT alias FROM devices WHERE id=?').bind(id).first();if(old&&old.alias!==data.alias)fail('Auf diesem Handy zuerst die Erinnerungen des anderen Mitglieds deaktivieren.');
-   const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,data.alias,data.revision,url,data.alias,data.revision,data.alias,id,data.alias).run();if(!saved.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();return {ok:true};
+   const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,data.alias,data.revision,url,data.alias,data.revision,data.alias,id,data.alias).run();if(!saved.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) SELECT ? WHERE EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=? AND revision=?)').bind(id,id,record.alias,record.revision).run();return {ok:true};
   }
   if(path==='/portal/notification'){
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&e.approved&&e.kind==='probe'&&isRecipient(e,record.memberId));
@@ -22737,7 +22764,8 @@ g.PortalHydrants={schema,route};
    if(previous?.requestId===data.requestId){if(previous.status!==data.status)fail('Vorgangsnummer wurde bereits anders verwendet.');return {ok:true,status:previous.status,version:old.version,updatedAt:old.updated_at||null};}
    if((old?.version||0)!==data.expectedVersion)fail('Deine Rückmeldung wurde inzwischen geändert. Bitte aktualisieren.');
    const updatedAt=Date.now(),payload=await L.seal(env,{status:data.status,source:'h2o',requestId:data.requestId,updatedAt},'portal-reply:'+event.id+':'+record.memberId);
-   const result=old?await env.DB.prepare('UPDATE portal_replies SET payload=?,updated_at=?,version=version+1 WHERE event=? AND member=? AND version=?').bind(payload,updatedAt,event.id,record.memberId,old.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_replies(event,member,payload,updated_at) VALUES(?,?,?,?)').bind(event.id,record.memberId,payload,updatedAt).run();if(!result.meta.changes)fail('Rückmeldung wurde gleichzeitig geändert. Bitte aktualisieren.');return {ok:true,status:data.status,version:data.expectedVersion+1,updatedAt};
+   const guard='EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)',proof=[record.alias,record.revision];
+   const result=old?await env.DB.prepare('UPDATE portal_replies SET payload=?,updated_at=?,version=version+1 WHERE event=? AND member=? AND version=? AND '+guard).bind(payload,updatedAt,event.id,record.memberId,old.version,...proof).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_replies(event,member,payload,updated_at) SELECT ?,?,?,? WHERE '+guard).bind(event.id,record.memberId,payload,updatedAt,...proof).run();if(!result.meta.changes)fail('Rückmeldung wurde gleichzeitig geändert. Bitte aktualisieren.');return {ok:true,status:data.status,version:data.expectedVersion+1,updatedAt};
   }
   fail('Nicht gefunden.',404);
  }
@@ -22802,7 +22830,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"da8d97db3c7b1b19b7d55785dc692ccef7610e796ff7cdf8d070d98c026dd8db",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"cf09f9c783cc58dfc85f5caeba764acdc1b0bf4b6974c387add959e2ad900e72",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

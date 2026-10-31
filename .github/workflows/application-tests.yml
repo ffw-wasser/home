@@ -52,6 +52,12 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
+      - name: Test calendar information, colors and combined start card
+        run: node tests/calendar-display-browser.cjs
+      - name: Test privacy-first illustrated instructions on tablet and phone
+        run: |
+          node tests/contacts-browser.cjs
+          node tests/help-guide-browser.cjs
       - name: Check common installation page and prepare Apple store screenshots
         run: |
           node tests/ios-install-browser.cjs
@@ -65,6 +71,8 @@ jobs:
         env:
           PORTAL_REVIEW_OUTPUT: qa/portal-review
         run: node scripts/capture-help-screens.cjs --only=geraetehaus-backlog,geraetehaus-getraenkeverwaltung,geraetehaus-getraenke,geraetehaus-statistik,geraetehaus-auswertungen,h2o-install-iphone,h2o-install-android,h2o-anmeldung,h2o-jahresplan-laden,h2o-atemschutz,h2o-ausbildung,h2o-wettkampf,h2o-wettkampf-bronze,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+      - name: Capture account deletion with synthetic credentials
+        run: node scripts/capture-help-screens.cjs --only=h2o-konto-loeschen
       - name: Keep refreshed portal help screens for visual review
         uses: actions/upload-artifact@v4
         with:
@@ -147,8 +155,6 @@ jobs:
           H2O_TEST_BROWSER=webkit node tests/portal-year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
         run: node tests/calendar-groups-browser.cjs
-      - name: Test calendar information, colors and combined start card
-        run: node tests/calendar-display-browser.cjs
       - name: Test calendar selection, incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
       - name: Test football favorites, cups and responsive views
@@ -159,10 +165,6 @@ jobs:
         run: node tests/workflow-drafts-browser.cjs
       - name: Test QR attendance and full appointment layout
         run: node tests/qr-checkin-browser.cjs
-      - name: Test privacy-first illustrated instructions on tablet and phone
-        run: |
-          node tests/contacts-browser.cjs
-          node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: |
           node tests/navigation-settings-browser.cjs

@@ -97,10 +97,10 @@
      const value=deleting?null:{summary:title.value,location:locationInput.value,description:body,start:allDay.checked?{date:start.value}:time(start,source?.start),end:allDay.checked?{date:end.value}:time(end,source?.end)};
      await api(deleting?'delete':'update',{googleEventId:source.id,etag:source.etag,...(!deleting?{event:value}:{})});
      if(version!==epoch||editor!==dialog)return;
-     editing=false;form.remove();close.disabled=false;status.textContent=deleting?'Termin in Google Kalender gelöscht.':'In Google Kalender gespeichert.';
+     editing=false;form.remove();status.textContent=deleting?'Termin in Google Kalender gelöscht.':'In Google Kalender gespeichert.';
      try{const synced=await request('list',{force:true});g.CalendarSidebar?.clear();await reload?.();if(synced.stale)throw Error('Import noch nicht bestätigt');status.textContent+=' H₂O wurde neu geladen; Änderungen aus Google können beim Import verzögert erscheinen.';}catch{status.textContent+=' Die H₂O-Anzeige konnte noch nicht aktualisiert werden. Bitte den Kalender erneut laden; die Google-Änderung ist gespeichert.';}
-    }catch(e){if(version===epoch&&editor===dialog){status.textContent=e.message;for(const control of form.elements)control.disabled=false;close.disabled=false;}}
-    finally{sending=false;if(version===epoch&&editor===dialog)saving=false;}
+    }catch(e){if(version===epoch&&editor===dialog){status.textContent=e.message;for(const control of form.elements)control.disabled=false;}}
+    finally{sending=false;if(version===epoch&&editor===dialog){saving=false;close.disabled=false;}}
    };
    form.onsubmit=e=>{e.preventDefault();submit(false);};
    if(source){const remove=node('button','Google-Termin löschen');remove.type='button';remove.className='outline-button';remove.onclick=()=>submit(true);controls.append(remove);}
