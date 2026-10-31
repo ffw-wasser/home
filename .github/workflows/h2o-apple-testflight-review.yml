@@ -24,7 +24,12 @@ jobs:
     timeout-minutes: 50
     environment: apple-testflight-review
     steps:
+      # This workflow is registered on main but builds only this previously reviewed
+      # immutable demo source revision. No unreviewed main/site changes are merged.
       - uses: actions/checkout@v4
+        with:
+          ref: 41dacad39386bf769c362b445b4dc68a0e6ffc6b
+          persist-credentials: false
       - name: Confirm Xcode and review export configuration
         shell: bash
         run: |
