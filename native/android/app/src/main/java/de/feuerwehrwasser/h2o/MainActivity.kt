@@ -111,7 +111,7 @@ class MainActivity : ComponentActivity() {
     }
     private fun openIntent(value: Intent?) {
         if (value?.action == OPEN_TERMS || PortalLinks.widgetLink(value?.dataString ?: "")) {
-            if (PortalLinks.trusted(web.url ?: "") && !web.progress.let { it < 100 }) web.evaluateJavascript("window.DeckelMobile?.jump('portal-section')", null)
+            if (PortalLinks.trusted(web.url ?: "") && web.progress >= 100) web.evaluateJavascript("window.DeckelMobile?.jump('portal-section')", null)
             else web.loadUrl(PortalLinks.HOME + "?nativePage=terms")
         } else {
             val address = value?.dataString?.takeIf { PortalLinks.trusted(it) && (!Uri.parse(it).fragment.orEmpty().startsWith("setup=") || PortalLinks.setupLink(it)) }

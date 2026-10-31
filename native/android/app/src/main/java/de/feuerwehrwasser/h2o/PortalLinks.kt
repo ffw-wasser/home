@@ -22,6 +22,6 @@ object PortalLinks {
 
     fun calendarSubscription(value: String): Boolean = runCatching {
         val url = URI(value)
-        url.scheme == "webcal" && url.rawAuthority == "ffw-wasser.github.io" && url.rawPath.startsWith("/home/") && url.userInfo == null
+        url.scheme == "webcal" && url.rawAuthority == "feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev" && Regex("/calendar/member/[A-Za-z0-9_-]{43}\\.ics").matches(url.rawPath) && url.rawQuery == null && url.rawFragment == null && url.userInfo == null
     }.getOrDefault(false)
 }
