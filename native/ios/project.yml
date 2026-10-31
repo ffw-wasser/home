@@ -10,7 +10,7 @@ settings:
     CURRENT_PROJECT_VERSION: 2
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: VKL57X3H6F
-    H2O_REVIEW_HOST: h2o-review.example.invalid
+    # Review is opt-in with H2O_REVIEW_FLAG=H2O_APP_REVIEW at build time.
 targets:
   H2OPortal:
     type: application
