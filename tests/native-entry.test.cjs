@@ -10,3 +10,8 @@ test('Normal native login requires no scanner controls or extra Home installatio
 test('Native entry rejects unrelated hosts and pages',()=>{
  for(const url of ['https://evil.test/home/deckel.html?nativePage=terms','https://ffw-wasser.github.io/home/index.html?nativePage=terms'])assert.deepEqual(run(url),{changes:[],jumps:[]});
 });
+
+test('Native calendar destination preserves event focus while opening complete portal navigation',()=>{
+ const event='a'.repeat(43),f=run('https://ffw-wasser.github.io/home/deckel.html?nativePage=terms&event='+event);
+ assert.deepEqual(f.jumps,['portal-section']);assert.deepEqual(f.changes,['/home/deckel.html?event='+event]);
+});

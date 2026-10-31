@@ -15,6 +15,19 @@ enum PortalLinks {
         return parts.scheme == "https" && parts.host == host && parts.port == nil &&
             parts.user == nil && parts.password == nil && ["/home/deckel.html", "/home/termin.html"].contains(parts.percentEncodedPath)
     }
+    // Calendar response links use a standalone browser page. Inside the native
+    // container keep full portal navigation and its authenticated widget bridge.
+    static func destination(_ url: URL) -> URL? {
+        guard trusted(url) else { return nil }
+        guard url.path == "/home/termin.html" else { return url }
+        var parts = URLComponents(url: terms, resolvingAgainstBaseURL: false)!
+        if let event = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "event" })?.value,
+           event.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil {
+            parts.queryItems?.append(URLQueryItem(name: "event", value: event))
+        }
+        return parts.url
+    }
+
     // A widget opens the signed native container, never a website or token-bearing URL.
     static func isWidgetTermine(_ url: URL) -> Bool {
         guard let p = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
