@@ -15,6 +15,19 @@ final class PortalLinksTests: XCTestCase {
         XCTAssertFalse(PortalLinks.trusted(URL(string: "http://ffw-wasser.github.io/home/deckel.html")!))
         XCTAssertFalse(PortalLinks.trusted(URL(string: "https://ffw-wasser.github.io.evil.example/home/deckel.html")!))
     }
+    func testCalendarResponseOpensFullPortalAndKeepsOnlyValidatedEvent() throws {
+        let event = String(repeating: "a", count: 43)
+        let response = PortalLinks.home.deletingLastPathComponent().appendingPathComponent("termin.html")
+        let destination = try XCTUnwrap(PortalLinks.destination(URL(string: response.absoluteString + "?event=" + event + "&token=discard#pair=discard")!))
+        XCTAssertEqual(destination.path, PortalLinks.home.path)
+        let parts = try XCTUnwrap(URLComponents(url: destination, resolvingAgainstBaseURL: false))
+        XCTAssertEqual(parts.queryItems, [URLQueryItem(name: "nativePage", value: "terms"), URLQueryItem(name: "event", value: event)])
+        XCTAssertNil(parts.fragment)
+        XCTAssertEqual(PortalLinks.destination(URL(string: response.absoluteString + "?event=invalid")!), PortalLinks.terms)
+        XCTAssertEqual(PortalLinks.destination(PortalLinks.home), PortalLinks.home)
+        XCTAssertNil(PortalLinks.destination(URL(string: "https://evil.example/home/termin.html?event=" + event)!))
+    }
+
     func testWidgetLinkOnlyOpensTheNativePortal() {
         XCTAssertTrue(PortalLinks.trusted(PortalLinks.terms))
         XCTAssertEqual(URLComponents(url: PortalLinks.terms, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "terms")

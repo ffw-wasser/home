@@ -24,7 +24,21 @@ const root=path.resolve(__dirname,'..');
    const file=path.resolve(root,url.pathname.replace(/^\/home\//,''));
    return url.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();
   });
-  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
+  const eventId=(await f.call('list')).value.events[0].id;
+  await page.goto('https://ffw-wasser.github.io/home/deckel.html?nativePage=terms&event='+eventId);await page.locator('#h2oStartup').waitFor({state:'hidden'});
+  // Native Swift maps the Calendar URL to this destination; inject the actual
+  // bundled entry script and exercise navigation, reply and widget together.
+  await page.addScriptTag({url:'https://ffw-wasser.github.io/home/native/shared/ios-entry.js'});
+  assert.equal(new URL(page.url()).searchParams.get('event'),eventId);
+  assert.equal(new URL(page.url()).searchParams.has('nativePage'),false);
+  const card=page.locator('#portal-event-'+eventId);
+  await card.getByRole('button',{name:'Bin dabei',exact:true}).click();
+  await page.waitForFunction(()=>widgetMessages.at(-1)?.event?.status==='yes');
+  assert.equal((await f.call('list')).value.events[0].status,'yes');
+  await page.evaluate(()=>DeckelMobile.jump('deckel-more'));
+  await page.locator('#portal-page-more').waitFor({state:'visible'});
+  await page.evaluate(()=>DeckelMobile.jump('portal-section'));
+  await card.waitFor({state:'visible'});
   await page.waitForFunction(()=>widgetMessages.at(-1)?.action==='update');
   await page.evaluate(()=>DeckelMobile.jump('more-security'));
   await page.getByRole('button',{name:'Mitteilungen erlauben',exact:true}).click();await page.locator('#portal-push-state').filter({hasText:'Aktiv'}).waitFor();
@@ -47,6 +61,6 @@ const root=path.resolve(__dirname,'..');
   await page.waitForFunction(()=>localStorage.getItem('h2o-native-push-opt-in:'+H2OIdentity.session().alias)!=='yes');
   assert.ok(nativeCalls.filter(x=>x==='unsubscribe').length>unsubscribed,'explicit identity clearing still unregisters native push');
   assert.deepEqual(errors,[]);assert.equal(f.sends.length,0,'no real push is sent');
-  console.log('PASS native background: widget and push survive Home-screen switch; private UI clears; foreground refreshes; explicit logout still clears and unsubscribes.');
+  console.log('PASS native calendar reply preserves portal navigation and updates widget; widget and push survive Home-screen switch; private UI clears; foreground refreshes; explicit logout still clears and unsubscribes.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

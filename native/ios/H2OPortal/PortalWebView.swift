@@ -50,7 +50,13 @@ struct PortalWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard action.targetFrame?.isMainFrame != false else { decisionHandler(.allow); return }
             guard let url = action.request.url else { decisionHandler(.cancel); return }
-            if PortalLinks.trusted(url) { decisionHandler(.allow); return }
+            if PortalLinks.trusted(url) {
+                if let destination = PortalLinks.destination(url), destination != url {
+                    decisionHandler(.cancel)
+                    model.open(url)
+                } else { decisionHandler(.allow) }
+                return
+            }
             if action.navigationType == .linkActivated && PortalLinks.calendarSubscription(url) {
                 UIApplication.shared.open(url); decisionHandler(.cancel); return
             }

@@ -27,9 +27,9 @@ struct H2OPortalApp: App {
         web.isInspectable = false
     }
     func open(_ url: URL) {
-        guard PortalLinks.trusted(url), !(url.fragment?.hasPrefix("setup=") == true) || PortalLinks.setupLink(url) else { message = "Dieser Link gehört nicht zum Mitgliederportal."; return }
+        guard let destination = PortalLinks.destination(url), !(url.fragment?.hasPrefix("setup=") == true) || PortalLinks.setupLink(url) else { message = "Dieser Link gehört nicht zum Mitgliederportal."; return }
         hasOpened = true
-        web.load(URLRequest(url: url))
+        web.load(URLRequest(url: destination))
     }
 }
 
@@ -57,7 +57,7 @@ struct PortalScreen: View {
         }
         .onOpenURL { url in
             if PortalLinks.isWidgetTermine(url) {
-                if model.hasOpened, !model.web.isLoading, model.web.url.map(PortalLinks.trusted) == true {
+                if model.hasOpened, !model.web.isLoading, model.web.url?.path == PortalLinks.home.path, model.web.url.map(PortalLinks.trusted) == true {
                     model.web.evaluateJavaScript("window.DeckelMobile?.jump('portal-section')")
                 } else {
                     model.open(PortalLinks.terms)
