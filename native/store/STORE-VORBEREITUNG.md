@@ -64,7 +64,7 @@ Keine Werbe- oder Analyse-SDKs im nativen Projekt. Kein werbliches Tracking im C
 
 ## Gemeinsamen QR-Code freischalten
 
-Die QR-Grafik `assets/install/h2o-install.svg` enthält ausschließlich die öffentliche Installationsseite, keine Einladung, kein Token und keine Mitgliedsnummer. Die Seite erkennt das Gerät lokal; auf unbekannten Geräten zeigt sie beide Wege. Die Kamera-App des Handys genügt.
+Die QR-Grafik `assets/install/h2o-install.svg` enthält ausschließlich die öffentliche Installationsseite, keine Einladung, kein Token und keine Mitgliedsnummer. Die Seite erkennt das Gerät lokal; auf unbekannten Geräten zeigt sie beide Wege. Der QR wird ausschließlich in der entsperrten Gerätehaus-Oberfläche unter Verwaltung → H₂O Portal angezeigt, beim Sperren ausgeblendet und von der öffentlichen Installationsseite nicht dargestellt. Die zugrundeliegende allgemeine Installationsadresse und QR-Datei sind nicht geheim und können weitergegeben werden; sie berechtigen nicht zum Mitgliederzugriff. Die Kamera-App des Handys genügt.
 
 Wenn der echte Apple-Link im Konto verfügbar und auf dem iPhone geprüft ist, `native/store/install-links.json` unter `ios` mit dem vollständigen offiziellen `https://apps.apple.com/.../id...`-Link ergänzen. Für einen gewünschten externen Test stattdessen den echten öffentlichen `https://testflight.apple.com/join/...`-Link verwenden. Keinen Gruppenverwaltungslink oder persönlichen E-Mail-Einladungslink eintragen. Der gemeinsame QR bleibt bei diesem Wechsel gleich.
 

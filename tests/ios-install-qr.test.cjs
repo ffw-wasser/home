@@ -12,3 +12,5 @@ test('Installation card encodes the complete official Apple link with a quiet zo
 test('Installation QR rejects member invitations, credentials and unverified destinations',()=>{
  for(const url of ['http://apps.apple.com/app/id1','https://apps.apple.com.evil.test/app/id1','https://user:secret@apps.apple.com/app/id1','https://testflight.apple.com/join/Ab12Cd34#setup=secret','https://apps.apple.com/app/id1?token=secret','https://ffw-wasser.github.io/home/deckel.html#setup=secret','https://testflight.apple.com/join/missing','https://apps.apple.com:444/app/id1'])assert.throws(()=>installURL(url));
 });
+
+test('Published general QR matches the non-secret installation address',()=>{const fs=require('node:fs'),path=require('node:path');assert.equal(fs.readFileSync(path.join(__dirname,'../assets/install/h2o-install.svg'),'utf8').trim(),generate('https://ffw-wasser.github.io/home/install.html').svg);});
