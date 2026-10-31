@@ -31,6 +31,7 @@ targets:
         TARGETED_DEVICE_FAMILY: '1,2'
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: '$(inherited) $(H2O_REVIEW_FLAG)'
+        PROVISIONING_PROFILE_SPECIFIER: '$(H2O_APP_PROFILE_NAME)'
     dependencies:
       - target: H2OPortalWidget
         embed: true
@@ -45,6 +46,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: de.feuerwehrwasser.h2o.widget
         INFOPLIST_FILE: H2OPortalWidget/Info.plist
         CODE_SIGN_ENTITLEMENTS: H2OPortalWidget/H2OPortalWidget.entitlements
+        PROVISIONING_PROFILE_SPECIFIER: '$(H2O_WIDGET_PROFILE_NAME)'
         TARGETED_DEVICE_FAMILY: '1,2'
   H2OPortalTests:
     type: bundle.unit-test
