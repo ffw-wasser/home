@@ -1,3 +1,20 @@
+# iPhone-Pilot: H₂O mit Widget (31.10.2026)
+
+**Entwicklungszweig; keine TestFlight- oder Store-Freigabe erfolgt.** Die laufende H₂O-PWA bleibt unangetastet.
+
+- Start mit iPhone: Vorhandene SwiftUI/WKWebView-App wird mit einem WidgetKit-Widget (klein und mittel) ergänzt.
+- Widget zeigt nach einem **erfolgreichen persönlichen Terminabruf in der nativen H₂O-App** den nächsten passenden Termin, Ort, Kleidung, Uhrzeit und eigenen Rückmeldestatus. Beim Tippen öffnet `h2oportal://termine` die native H₂O-App auf der Terminstartseite.
+- Das Widget kann **nicht selbst im Hintergrund** auf den Kalender zugreifen. Beim Öffnen/Aktualisieren der nativen App wird der letzte bestätigte Stand übernommen; spätestens **12 Stunden** danach werden persönliche Inhalte nicht mehr angezeigt, bis H₂O neu geöffnet wird. Änderungen sind nicht sekundengenau.
+- `group.de.feuerwehrwasser.h2o` muss in deinem **persönlichen Apple-Entwicklerkonto** für **beide App-IDs** eingerichtet und die Provisioning-Profile neu erstellt werden: `de.feuerwehrwasser.h2o` (Haupt-App), `de.feuerwehrwasser.h2o.widget` (Widget). Es werden **keine Zugangstoken, Einladungslinks, Passkeys, Kalender-Abos oder Namen** in die Widget-Gruppe übertragen; nur die minimale eigene Terminkarte.
+- Swift/iOS-Build: `xcodegen generate --spec native/ios/project.yml`, dann in Xcode die Scheme `H2OPortal` auf einem echten iPhone mit deiner Apple-Team-Signierung testen. Der separate GitHub-Workflow `h2o-ios-widget.yml` kompiliert beide Targets **ohne Signierung** für den Simulator, erzeugt aber **keine installierbare iPhone-Datei**.
+- Erster Gerätetest: Passwort- und Passkey-Anmeldung, Einladungs-QR, Widget hinzufügen, Termin laden, Rückmeldung ändern, Widget aktualisieren, App antippen, abmelden, 12-Stunden-Ablauf, fehlende Verbindung. Für echte Passkeys/Universal Links müssen die vormals deaktivierten öffentlichen Associated-Domain-Dateien kontrolliert wieder eingerichtet und vollständig geprüft werden. Bis dahin keine Zusage, dass die alte native Passkey-Anmeldung funktioniert.
+- Keine produktive D1-/Cloudflare-Änderung; die vorhandene authentifizierte `/portal/list`-Antwort wird ausschließlich im geöffneten, bereits angemeldeten Portal zum Widget reduziert.
+- Eine Mitgliedersperrung wird bei nächstem erfolgreichen App-Aufruf erkannt; der zuletzt vorhandene Widget-Stand kann bis zur lokalen Zeitbegrenzung sichtbar bleiben. **Vor einem flächendeckenden Rollout** den Widerruf/Verlustfall und optionale sofortige Bereinigung prüfen.
+
+**Nicht erledigt:** erfolgreiche Simulator-Kompilierung, Codesignierung, Apple-Gerätetest, TestFlight-Einladung, App-Store-Review und öffentliche/unge­listete Verteilung. Android bleibt noch archiviert und folgt später.
+
+---
+
 # Archivierte native App-Vorbereitung
 
 Seit 27.10.2026 wird die native iPhone-App nicht weitergeführt. Android-Store-Veröffentlichung ist zurückgestellt.
