@@ -123,7 +123,7 @@
   catch(error){if(version===generation)$('status').textContent=error.message;}
   finally{busy=false;buttons();if(access&&version===generation)void prepare();}
  }
- function clear(){if(native()&&nativeActive&&access)void nativeDisable().catch(()=>{});nativeActive=false;nativeReady=false;nativeToken='';generation++;$('status').textContent='';access=null;prepared=null;pushConfigured=pushActive=otherAccount=deviceLimit=prepareFailed=false;buttons();}
+ function clear({unsubscribeNative=true}={}){if(unsubscribeNative&&native()&&nativeActive&&access)void nativeDisable().catch(()=>{});nativeActive=false;nativeReady=false;nativeToken='';generation++;$('status').textContent='';access=null;prepared=null;pushConfigured=pushActive=otherAccount=deviceLimit=prepareFailed=false;buttons();}
  function init(){if($('enable'))$('enable').onclick=()=>native()?nativeEnable():enable();if($('disable'))$('disable').onclick=()=>native()?nativeDisable().catch(error=>{$('status').textContent=error.message;}):disable();if($('reset'))$('reset').onclick=resetDevices;document.addEventListener('visibilitychange',()=>{if(!document.hidden&&access&&!busy)void render(access);});g.addEventListener?.('portal-pagechange',event=>{if(event.detail?.page==='more-security'&&access&&!busy)void prepare();});buttons();}
  g.H2ONativePush={disable:nativeDisable};g.DeckelPush={markRead,render,clear};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

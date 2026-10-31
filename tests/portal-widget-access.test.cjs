@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('js/features/portal/portal-member.js','utf8');
-function fixture(status,{replaceAccess=false,network=false}={}){
+function fixture(status,{replaceAccess=false,network=false,background=false,otherIdentity=false}={}){
  const messages=[],access={origin:'https://synthetic.invalid',capability:'synthetic',alias:'synthetic',revision:'synthetic'};
- const c=vm.createContext({access,AbortSignal,syncNativeWidget:value=>messages.push(value),fetch:async()=>{if(replaceAccess)c.access={...access};if(network)throw new TypeError('Load failed');return {ok:false,status,json:async()=>({error:'Synthetic failure'})};}});
+ const c=vm.createContext({access,AbortSignal,H2OIdentity:{session:()=>({...access,...(otherIdentity?{alias:'other-identity'}:{})})},syncNativeWidget:value=>messages.push(value),fetch:async()=>{if(replaceAccess)c.access={...access};if(background)c.access=null;if(network)throw new TypeError('Load failed');return {ok:false,status,json:async()=>({error:'Synthetic failure'})};}});
  vm.runInContext(source.slice(source.indexOf(' async function api('),source.indexOf(' function controls(')),c);
  return {c,messages};
 }
@@ -17,4 +17,11 @@ test('Eine alte fehlgeschlagene Anfrage löscht keine neue Mitgliedersitzung',as
 });
 test('Ein Netzfehler bewahrt den zeitlich begrenzten Widgetstand',async()=>{
  const f=fixture(0,{network:true});await assert.rejects(f.c.api('list'));assert.deepEqual(f.messages,[]);
+});
+
+for(const status of [401,403])test('Zugriffsverlust nach Home-Wechsel löscht den Stand derselben Identität: '+status,async()=>{
+ const f=fixture(status,{background:true});await assert.rejects(f.c.api('list'));assert.deepEqual(f.messages,[null]);
+});
+test('Verspäteter Zugriffsverlust überschreibt keine andere Identität im Hintergrund',async()=>{
+ const f=fixture(401,{background:true,otherIdentity:true});await assert.rejects(f.c.api('list'));assert.deepEqual(f.messages,[]);
 });

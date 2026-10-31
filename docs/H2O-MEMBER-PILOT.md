@@ -5,6 +5,10 @@ Der Mitglieder-Build öffnet das echte H₂O-Portal unter
 `H2O_APP_REVIEW` und ihrer eigenen Domain getrennt erhalten. Zugang, Passwort,
 Passkeys und Mitgliedsrechte verwenden die bestehende Portalprüfung.
 
+## Widgetkorrektur im Portal 2026.10.31.3
+
+Der Wechsel zum Home-Bildschirm leert weiterhin die geschützten Ansichten, erhält aber den bestätigten Widgetstand und die freiwillige Push-Registrierung. Zuvor wurde beim Ausblenden versehentlich derselbe Ablauf wie bei einer Abmeldung ausgeführt. Abmeldung, Kontowechsel und erkannter Zugriffsverlust löschen die Widgetdaten weiterhin. Die Korrektur benötigt keinen neuen nativen Build; Build 1015 lädt das aktualisierte Portal. Der Browser-Regressionslauf prüft App → Home → App sowie das anschließende ausdrückliche Löschen der Identität mit künstlichen Daten.
+
 ## Umgesetzter Stand
 
 - Original-Icon als kleines Bild; zweizeilige Kopfzeile mit festem Platz für beide Widgetgrößen.
