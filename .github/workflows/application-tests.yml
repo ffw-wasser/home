@@ -52,6 +52,15 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
+      - name: Check common installation page and prepare Apple store screenshots
+        run: |
+          node tests/ios-install-browser.cjs
+          node scripts/capture-ios-store-screens.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2o-apple-store-preparation
+          path: qa/ios-store
+          if-no-files-found: error
       - name: Capture and review all H2O portal screens
         env:
           PORTAL_REVIEW_OUTPUT: qa/portal-review
