@@ -85,29 +85,43 @@ struct NextEventView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 6) {
+        HStack(spacing: 6) {
             brandLogo
-                .frame(width: 28, height: 28)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 6))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .fixedSize()
+                .frame(width: 22, height: 22)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Feuerwehr")
-                Text("Wasser")
+            Text("Feuerwehr Wasser")
+                .font(.system(size: family == .systemSmall ? 10 : 12, weight: .bold))
+                .foregroundStyle(ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
+            if family != .systemSmall, event != nil {
+                statusBadge
             }
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(ink)
+        }
+        .frame(height: 22)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var statusBadge: some View {
+        Text(statusTitle)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(statusColor)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 30)
-        .fixedSize(horizontal: false, vertical: true)
-        .layoutPriority(2)
-        .accessibilityElement(children: .combine)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(statusColor.opacity(0.12), in: Capsule())
+            .accessibilityLabel("Rückmeldung: " + statusTitle)
+    }
+
+    private func eventDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone(identifier: "Europe/Berlin")
+        formatter.dateFormat = "EEE, d. MMM"
+        return formatter.string(from: date)
     }
 
     private var noEvent: some View {
@@ -122,82 +136,73 @@ struct NextEventView: View {
     }
 
     private var smallLayout: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             header
             if let event {
-                HStack(spacing: 3) {
-                    Text("TERMIN").font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                    Text(statusTitle).font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(statusColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
                 Text(event.title)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(ink)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.75)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
                     .layoutPriority(1)
-                Spacer(minLength: 0)
-                Text(event.start, format: .dateTime.weekday(.abbreviated).day().month(.twoDigits))
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(1)
-                Text(event.allDay ? "Ganztägig" : berlinTime(event.start) + " Uhr")
-                    .font(.system(size: 11))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(eventDate(event.start))
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(event.allDay ? "Ganztägig" : berlinTime(event.start) + " Uhr")
+                        .font(.system(size: 18, weight: .bold))
+                        .monospacedDigit()
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                statusBadge
             } else {
                 noEvent
             }
         }
+        .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var mediumLayout: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             header
             if let event {
-                // Two columns avoid squeezing six or more full-width rows
-                // into the fixed height of an iPhone medium widget.
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("NÄCHSTER TERMIN")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.secondary)
-                        Text(event.title)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(ink)
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.75)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .layoutPriority(1)
-                        Spacer(minLength: 0)
-                        Text(event.start, format: .dateTime.weekday(.abbreviated).day().month(.twoDigits))
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(event.allDay ? "Ganztägig" : berlinTime(event.start) + " Uhr")
-                            .font(.system(size: 11))
+                        Text(eventDate(event.start))
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(event.allDay ? "Ganztägig" : berlinTime(event.start))
+                            .font(.system(size: event.allDay ? 17 : 25, weight: .bold))
+                            .monospacedDigit()
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .frame(width: 94, alignment: .leading)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 8)
+                    .background(statusColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(statusTitle)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(statusColor)
-                            .lineLimit(1)
-                        Label(event.location.isEmpty ? "GH Wasser" : event.location, systemImage: "mappin")
-                            .font(.system(size: 11))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(event.title)
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(ink)
                             .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .layoutPriority(1)
+                        Label(event.location.isEmpty ? "GH Wasser" : event.location, systemImage: "mappin.and.ellipse")
+                            .font(.system(size: 11))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                         if !event.clothing.isEmpty {
                             Label(event.clothing, systemImage: "tshirt")
                                 .font(.system(size: 11))
-                                .lineLimit(2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
                         }
                         if entry.snapshot?.stale == true {
                             Text("Kalenderstand prüfen")
                                 .font(.system(size: 9))
                                 .foregroundStyle(.secondary)
-                                .lineLimit(2)
+                                .lineLimit(1)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)

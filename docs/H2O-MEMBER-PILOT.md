@@ -1,4 +1,4 @@
-# Privater iPhone-Mitgliederpilot · Build 1015
+# Privater iPhone-Mitgliederpilot · Build 1016
 
 Der Mitglieder-Build öffnet das echte H₂O-Portal unter
 `https://ffw-wasser.github.io/home/deckel.html`. Die Apple-Demo bleibt mit
@@ -11,7 +11,7 @@ Der Wechsel zum Home-Bildschirm leert weiterhin die geschützten Ansichten, erh�
 
 ## Umgesetzter Stand
 
-- Original-Icon als kleines Bild; zweizeilige Kopfzeile mit festem Platz für beide Widgetgrößen.
+- Build 1016: kompakte einzeilige Kopfzeile mit Original-Wappen. Im kleinen Widget folgen Termin, Datum, große Uhrzeit und farbige Rückmeldeplakette direkt aufeinander. Im mittleren Widget stehen Datum und Uhrzeit links in einer eigenen Fläche, Termin, Ort und Kleidung rechts; der Status steht oben. Keine flexible Leerfläche zwischen Titel und Datum.
 - Ein Widget-Tipp öffnet Termine; die bereits geöffnete App behält ihre Sitzung und wird nicht unnötig neu geladen.
 - Übertragen werden nur Termin, Zeit, Ort, Kleidung und Rückmeldestatus aus der bereits persönlich gefilterten Portalantwort. Keine Namen, Zugangstoken, Passkeys, Einladungen oder Kalender-Abos.
 - Widerruf mit HTTP 401/403, Abmeldung und Verlust der Identität leeren das Widget. Eine verspätete Fehlerantwort einer alten Sitzung löscht keine neu angemeldete Sitzung.
