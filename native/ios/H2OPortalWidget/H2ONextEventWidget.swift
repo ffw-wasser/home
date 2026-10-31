@@ -73,25 +73,44 @@ private struct NextEventView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 4 : 7) {
             HStack(spacing: 6) {
-                Image(systemName: "flame.fill").foregroundStyle(.white)
-                    .frame(width: 26, height: 26)
-                    .background(Color(red: 0.49, green: 0.15, blue: 0.24), in: RoundedRectangle(cornerRadius: 7))
-                Text("Feuerwehr Wasser").font(.system(size: family == .systemSmall ? 12 : 14, weight: .bold))
-                    .foregroundStyle(Color(red: 0.10, green: 0.17, blue: 0.25)).lineLimit(1)
+                // The same original flame-and-water artwork used for the H2O app icon.
+                Image("AppIcon", bundle: .main)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: family == .systemSmall ? 26 : 30,
+                           height: family == .systemSmall ? 26 : 30)
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+                    .accessibilityHidden(true)
+                Text("Feuerwehr Wasser")
+                    .font(.system(size: family == .systemSmall ? 12 : 14, weight: .bold))
+                    .foregroundStyle(Color(red: 0.10, green: 0.17, blue: 0.25))
+                    .lineLimit(family == .systemSmall ? 2 : 1)
+                    .minimumScaleFactor(0.82)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
                 Spacer(minLength: 0)
             }
             if let event {
-                HStack {
-                    Text("NÄCHSTER TERMIN")
-                        .font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(family == .systemSmall ? "TERMIN" : "NÄCHSTER TERMIN")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                     Spacer(minLength: 0)
-                    Text(statusTitle).font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(statusColor).lineLimit(1)
+                    Text(statusTitle)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(statusColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.80)
                 }
-                Text(event.title).font(.system(size: 16, weight: .bold))
-                    .lineLimit(family == .systemSmall ? 1 : 2)
+                Text(event.title)
+                    .font(.system(size: family == .systemSmall ? 14 : 16, weight: .bold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(Color(red: 0.10, green: 0.17, blue: 0.25))
                 Text(event.start, format: .dateTime.weekday(.abbreviated).day().month(.twoDigits))
                     .font(.system(size: 13, weight: .semibold))
@@ -116,9 +135,11 @@ private struct NextEventView: View {
                 Spacer(minLength: 4)
             }
             Spacer(minLength: 0)
-            Text("H₂O öffnen").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            if family != .systemSmall {
+                Text("H₂O öffnen").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            }
         }
-        .padding(10)
+        .padding(family == .systemSmall ? 8 : 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(Color(red: 0.94, green: 0.97, blue: 0.95), for: .widget)
         .widgetURL(URL(string: "h2oportal://termine"))
