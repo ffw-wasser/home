@@ -34,7 +34,7 @@ struct PortalWebView: UIViewRepresentable {
         init(_ model: PortalModel) { self.model = model }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
-            guard ["h2oPdf", "h2oInvitation", "h2oWidget"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == "ffw-wasser.github.io", [0,443].contains(origin.port),
+            guard ["h2oPdf", "h2oInvitation", "h2oWidget"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == PortalLinks.host, [0,443].contains(origin.port),
                   let frameURL = message.frameInfo.request.url, PortalLinks.trusted(frameURL),
                   let webView = message.webView, let url = webView.url, PortalLinks.trusted(url) else { return }
             if message.name == "h2oWidget" {
