@@ -1,5 +1,8 @@
 # iPhone-Pilot: H₂O mit Widget (31.10.2026)
 
+**Widget-Korrektur (nächster TestFlight-Build 1013, noch nicht veröffentlicht):** Im Widget das originale H₂O-App-Icon mit Flamme/Wassertropfen verwenden statt SF-Symbol. „Feuerwehr Wasser“ darf bei kleinen Widgets zweizeilig sein; auch lange Termintitel werden bis zu zwei Zeilen groß genug dargestellt. Im kleinen Widget entfällt die redundante Fußzeile, um Platz zu sparen. Vor dem neuen Upload den festen Checkout-Commit im gesonderten Signierworkflow nach vollständiger Prüfung ausdrücklich aktualisieren. Build 1009 ist davon nicht betroffen. GitHub-CI kontrolliert zusätzlich, dass AppIcon.png tatsächlich in der Widget-Erweiterung enthalten ist.
+
+
 **Entwicklungszweig; keine TestFlight- oder Store-Freigabe erfolgt.** Die laufende H₂O-PWA bleibt unangetastet.
 
 - Start mit iPhone: Vorhandene SwiftUI/WKWebView-App wird mit einem WidgetKit-Widget (klein und mittel) ergänzt.
