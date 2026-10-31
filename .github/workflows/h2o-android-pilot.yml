@@ -47,12 +47,12 @@ jobs:
           arch: x86_64
           profile: pixel_5
           working-directory: native/android
-          script: gradle --no-daemon connectedDebugAndroidTest
-      - name: Retrieve widget previews
-        if: success()
-        run: |
-          mkdir -p android-preview
-          for name in small medium empty; do adb exec-out run-as de.feuerwehrwasser.h2o cat files/widget-$name.png > android-preview/widget-$name.png; done
+          script: |
+            gradle --no-daemon connectedDebugAndroidTest
+            mkdir -p ../../android-preview
+            adb exec-out run-as de.feuerwehrwasser.h2o cat files/widget-small.png > ../../android-preview/widget-small.png
+            adb exec-out run-as de.feuerwehrwasser.h2o cat files/widget-medium.png > ../../android-preview/widget-medium.png
+            adb exec-out run-as de.feuerwehrwasser.h2o cat files/widget-empty.png > ../../android-preview/widget-empty.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:

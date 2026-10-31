@@ -35,15 +35,16 @@ class MainActivity : ComponentActivity() {
     private lateinit var errorBar: LinearLayout
     private var pageFailed = false
     private var navigationEpoch = 0
+    private var pushEpoch = 0
     private lateinit var pdfExport: NativePdfExport
     private var pdfScript = ""
     private var entryScript = ""
-    private data class Pending(val id: String, val epoch: Int)
+    private data class Pending(val id: String, val epoch: Int, val pushEpoch: Int)
     private var waiting: Pending? = null
     private val pushPrefs get() = getSharedPreferences("h2o.push", Context.MODE_PRIVATE)
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         val job = waiting; waiting = null
-        if (job != null) { if (allowed) registerPush(job) else respond(job, "denied") }
+        if (job != null && job.pushEpoch == pushEpoch && job.epoch == navigationEpoch) { if (allowed) registerPush(job) else respond(job, "denied") }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -128,7 +129,8 @@ class MainActivity : ComponentActivity() {
         runCatching {
             val value = JSONObject(raw); val id = value.getString("id"); val action = value.getString("action")
             if (!Regex("[a-f0-9-]{36}").matches(id)) return
-            val job = Pending(id, navigationEpoch)
+            if (action == "disable") pushEpoch++
+            val job = Pending(id, navigationEpoch, pushEpoch)
             if (action == "disable") {
                 pushPrefs.edit().putBoolean("optIn", false).apply(); getSystemService(NotificationManager::class.java).cancelAll()
                 if (FirebaseSetup.initialize(this)) { val messaging = FirebaseMessaging.getInstance(); messaging.isAutoInitEnabled = false; messaging.deleteToken() }
@@ -143,14 +145,16 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun registerPush(job: Pending) {
+        if (job.pushEpoch != pushEpoch || job.epoch != navigationEpoch || isDestroyed) return
         val messaging = FirebaseMessaging.getInstance(); messaging.isAutoInitEnabled = true
         messaging.token.addOnCompleteListener { result ->
+            if (job.pushEpoch != pushEpoch || job.epoch != navigationEpoch || isDestroyed) return@addOnCompleteListener
             if (result.isSuccessful && !result.result.isNullOrBlank()) { pushPrefs.edit().putBoolean("optIn", true).apply(); respond(job, "granted", result.result) }
             else respond(job, "unavailable")
         }
     }
     private fun respond(job: Pending, permission: String, token: String? = null) {
-        if (isDestroyed || job.epoch != navigationEpoch || !PortalLinks.trusted(web.url ?: "")) return
+        if (isDestroyed || job.epoch != navigationEpoch || job.pushEpoch != pushEpoch || !PortalLinks.trusted(web.url ?: "")) return
         val value = JSONObject().put("id", job.id).put("permission", permission); if (token != null) value.put("deviceToken", token)
         web.evaluateJavascript("window.dispatchEvent(new CustomEvent('h2o-native-notifications',{detail:$value}))", null)
     }

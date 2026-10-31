@@ -16,7 +16,8 @@ Gerätetest stehen in [H2O-MEMBER-PILOT.md](../docs/H2O-MEMBER-PILOT.md).
   und passende Associated-Domains-Profile. Erfolgreiche Browser-Passkeys beweisen
   keine Anmeldung in der nativen App.
 - Kein automatischer TestFlight-Upload, keine öffentliche Store-Veröffentlichung
-  und keine Änderungen an OneDrive-Nutzerdaten. Android folgt nach dem iPhone-Pilot.
+  und keine Änderungen an OneDrive-Nutzerdaten.
+- Android Build 3 ist auf eigenem Entwicklungszweig vorbereitet: [Android-Pilot](../docs/H2O-ANDROID-PILOT.md). Bestehende Mitgliedszugänge werden weiterverwendet.
 
 Die folgenden Abschnitte sind historische Dokumentation. Bei Widersprüchen gilt
 für diesen Pilot der oben verlinkte aktuelle Stand.

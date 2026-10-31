@@ -6,7 +6,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();});
  await page.addInitScript(android=>{
   Object.defineProperty(navigator,'userAgent',{value:android?'Mozilla/5.0 (Android) H2ONative/1 Android':'Mozilla/5.0 (iPhone) H2ONative/1 iOS H2OMemberPilot/1'});
-  window.nativeRequests=[];window.webkit={messageHandlers:{h2oNotifications:{postMessage(message){nativeRequests.push(message.action);setTimeout(()=>dispatchEvent(new CustomEvent('h2o-native-notifications',{detail:{id:message.id,permission:message.action==='request'?'granted':'default',...(message.action==='request'?{deviceToken:'a'.repeat(64)}:{})}})),0);}}}};
+  window.nativeRequests=[];window.webkit={messageHandlers:{h2oNotifications:{postMessage(message){nativeRequests.push(message.action);setTimeout(()=>dispatchEvent(new CustomEvent('h2o-native-notifications',{detail:{id:message.id,permission:window.nativeUnavailable?'unavailable':message.action==='request'?'granted':'default',...(message.action==='request'?{deviceToken:'a'.repeat(64)}:{})}})),0);}}}};
   if(android){const handler=window.webkit.messageHandlers.h2oNotifications;delete window.webkit;window.H2ONotifications={postMessage:value=>handler.postMessage(JSON.parse(value))};}
  },android);
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
@@ -31,5 +31,6 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  if(process.env.QA_OUTPUT)await wizard.screenshot({path:path.join(process.env.QA_OUTPUT,'native-mitteilungen.png')});
  await capture('h2o-native-mitteilungen');
  await wizard.getByRole('button',{name:'Einrichtung abschließen',exact:true}).click();await wizard.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await page.evaluate(()=>H2OOnboarding.offerOptions());assert.equal(await wizard.isVisible(),false);
+ if(android){await page.evaluate(()=>H2ONativePush.disable());assert.equal(await page.evaluate(()=>nativeRequests.at(-1)),'disable');await page.evaluate(async()=>{window.nativeUnavailable=true;await DeckelPush.render({origin:'https://synthetic.invalid',alias:'a'.repeat(32),revision:'synthetic',capability:'synthetic'});});assert.equal(await page.locator('#portal-push-enable').isDisabled(),true);assert.equal(await page.locator('#portal-push-state').innerText(),'Noch nicht eingerichtet');}
  assert.deepEqual(errors,[]);console.log('PASS native setup: no home-install instruction; calendar then notifications; no permission request before click; repeat login does not repeat setup; responsive layout.');
 await page.close();}}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

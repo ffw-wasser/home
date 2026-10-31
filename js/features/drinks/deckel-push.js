@@ -48,12 +48,13 @@
    if(device.permission!=='granted'||!device.deviceToken)throw Error(device.permission==='denied'?'Mitteilungen wurden nicht erlaubt. Du kannst das später in den Geräteeinstellungen ändern.':'Das Gerät konnte sich noch nicht für Mitteilungen registrieren.');
    nativeToken=device.deviceToken;const saved=await nativeApi({action:'subscribe',deviceToken:nativeToken});if(version!==generation)return;
    if(!saved.registered)throw Error('Mitteilungen wurden vom Dienst noch nicht bestätigt.');nativeConsent(true);nativeActive=true;$('status').textContent=nativeAndroid()?'Mitteilungen auf diesem Handy aktiviert.':'Mitteilungen auf diesem iPhone aktiviert.';
-  }catch(error){if(version===generation)$('status').textContent=error.message;}finally{if(version===generation){busy=false;nativeButtons();}}
+  }catch(error){if(version===generation){if(nativeAndroid())await nativeRequest('disable').catch(()=>{});nativeActive=false;$('status').textContent=error.message;}}finally{if(version===generation){busy=false;nativeButtons();}}
  }
  async function nativeDisable(){
   const version=generation;
   nativeConsent(false);
-  try{if(nativeToken&&access)await nativeApi({action:'unsubscribe',deviceToken:nativeToken});}finally{if(nativeAndroid())await nativeRequest('disable');}
+  const stopping=nativeAndroid()?nativeRequest('disable'):Promise.resolve();
+  try{if(nativeToken&&access)await nativeApi({action:'unsubscribe',deviceToken:nativeToken});}finally{await stopping;nativeToken='';nativeActive=false;}
   if(version!==generation)return;nativeActive=false;if($('status'))$('status').textContent='Mitteilungen für dieses Mitglied deaktiviert.';nativeButtons();
  }
  function timeout(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}
