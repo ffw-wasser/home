@@ -26,6 +26,12 @@ enum PortalLinks {
         parts.queryItems = [URLQueryItem(name: "nativePage", value: "terms")]
         return parts.url!
     }
+    static func calendarSubscription(_ url: URL) -> Bool {
+        guard let p = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
+        return p.scheme == "webcal" && p.host == "feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev" &&
+            p.port == nil && p.user == nil && p.password == nil && p.query == nil && p.fragment == nil &&
+            p.percentEncodedPath.range(of: "^/calendar/member/[A-Za-z0-9_-]{43}\\.ics$", options: .regularExpression) != nil
+    }
     static func invitation(_ url: URL) -> Bool {
         guard trusted(url), let parts = URLComponents(url: url, resolvingAgainstBaseURL: false), parts.percentEncodedPath == "/home/deckel.html", parts.query == nil, let fragment = parts.percentEncodedFragment else { return false }
         return fragment.range(of: "^setup=[A-Za-z0-9_-]{16,128}$", options: .regularExpression) != nil

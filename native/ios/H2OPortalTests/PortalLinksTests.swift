@@ -23,6 +23,13 @@ final class PortalLinksTests: XCTestCase {
             XCTAssertFalse(PortalLinks.isWidgetTermine(URL(string: value)!))
         }
     }
+    func testOnlyPersonalCalendarSubscriptionCanLeaveTheWebView() {
+        let valid = "webcal://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/calendar/member/" + String(repeating: "a", count: 43) + ".ics"
+        XCTAssertTrue(PortalLinks.calendarSubscription(URL(string: valid)!))
+        for value in [valid + "?x=1", valid + "#x", valid.replacingOccurrences(of: "webcal://", with: "https://"), valid.replacingOccurrences(of: ".workers.dev", with: ".workers.dev.evil.test")] {
+            XCTAssertFalse(PortalLinks.calendarSubscription(URL(string: value)!))
+        }
+    }
     func testInvitationRejectsQueriesAndExtraKeys() {
         let base = PortalLinks.home.absoluteString
         XCTAssertTrue(PortalLinks.invitation(URL(string: base + "#setup=" + String(repeating: "a", count: 43))!))

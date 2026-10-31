@@ -201,6 +201,8 @@ const PUBLIC_FILES=[
   "./assets/help/guide/geraetehaus-kalender-rueckmeldung.jpg",
   "./assets/help/guide/h2o-anmeldung.jpg",
   "./assets/help/guide/h2o-home-anmeldung.jpg",
+  "./assets/help/guide/h2o-native-kalender.jpg",
+  "./assets/help/guide/h2o-native-mitteilungen.jpg",
   "./assets/help/guide/h2o-gf-erinnerung.jpg",
   "./assets/help/guide/h2o-qr-einrichtung.jpg",
   "./assets/help/guide/h2o-install-iphone.jpg",

@@ -218,5 +218,13 @@
   "h2o-mayday": {
     "width": 390,
     "height": 780
+  },
+  "h2o-native-kalender": {
+    "width": 367,
+    "height": 608
+  },
+  "h2o-native-mitteilungen": {
+    "width": 367,
+    "height": 776
   }
 }

@@ -14,6 +14,7 @@ final class WidgetLayoutTests: XCTestCase {
                 let snapshot = H2OWidgetSnapshot(updatedAt: now, event: empty ? nil : event, stale: false)
                 let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot), familyOverride: family)
                     .frame(width: width, height: 155)
+                    .background(Color(red: 0.94, green: 0.97, blue: 0.95))
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 3
                 let image: UIImage = try XCTUnwrap(renderer.uiImage)

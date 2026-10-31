@@ -23,6 +23,8 @@ def validate(directory):
             profile = plistlib.load(stream)
         signing.BUNDLE = bundle
         _, certificate = signing.validate_profile(profile, identities, required_domains)
+        if label == "app" and profile.get("Entitlements", {}).get("aps-environment") != "production":
+            raise ValueError("Push Notifications fehlen im App-Store-Profil. Bei Apple für die App-ID aktivieren und das Haupt-App-Profil neu erzeugen.")
         if "group.de.feuerwehrwasser.h2o" not in profile.get("Entitlements", {}).get("com.apple.security.application-groups", []):
             raise ValueError(f"App Group fehlt im {label}-Profil. Profil nach Aktivierung bei Apple neu erzeugen.")
         certificates.append(certificate)

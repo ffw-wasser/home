@@ -12,6 +12,7 @@ struct NextEventEntry: TimelineEntry {
 struct NextEventView: View {
     let entry: NextEventEntry
     @Environment(\.widgetFamily) private var widgetFamily
+    @Environment(\.widgetRenderingMode) private var renderingMode
     var familyOverride: WidgetFamily? = nil
     private var family: WidgetFamily { familyOverride ?? widgetFamily }
 
@@ -47,7 +48,7 @@ struct NextEventView: View {
     }
 
     private var ink: Color {
-        Color(red: 0.10, green: 0.17, blue: 0.25)
+        renderingMode == .fullColor ? Color(red: 0.10, green: 0.17, blue: 0.25) : .primary
     }
 
     // Keep the original logo, but decode only the pixels needed by WidgetKit.
@@ -79,7 +80,7 @@ struct NextEventView: View {
         } else {
             Text("H₂O")
                 .font(.system(size: 10, weight: .heavy))
-                .foregroundStyle(.primary)
+                .foregroundStyle(ink)
         }
     }
 
@@ -96,7 +97,7 @@ struct NextEventView: View {
                 Text("Wasser")
             }
             .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(.primary)
+            .foregroundStyle(ink)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .fixedSize(horizontal: false, vertical: true)
@@ -218,6 +219,7 @@ struct NextEventView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .foregroundStyle(ink)
         .containerBackground(Color(red: 0.94, green: 0.97, blue: 0.95), for: .widget)
         .widgetURL(URL(string: "h2oportal://termine"))
         .environment(\.locale, Locale(identifier: "de_DE"))

@@ -14,6 +14,8 @@ struct PortalWebView: UIViewRepresentable {
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oInvitation")
         controller.removeScriptMessageHandler(forName: "h2oWidget")
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oWidget")
+        controller.removeScriptMessageHandler(forName: "h2oNotifications")
+        controller.add(WeakPdfHandler(context.coordinator), name: "h2oNotifications")
         if let url = Bundle.main.url(forResource: "ios-entry", withExtension: "js"), let script = try? String(contentsOf: url, encoding: .utf8) {
             controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
@@ -34,11 +36,15 @@ struct PortalWebView: UIViewRepresentable {
         init(_ model: PortalModel) { self.model = model }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
-            guard ["h2oPdf", "h2oInvitation", "h2oWidget"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == PortalLinks.host, [0,443].contains(origin.port),
+            guard ["h2oPdf", "h2oInvitation", "h2oWidget", "h2oNotifications"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == PortalLinks.host, [0,443].contains(origin.port),
                   let frameURL = message.frameInfo.request.url, PortalLinks.trusted(frameURL),
                   let webView = message.webView, let url = webView.url, PortalLinks.trusted(url) else { return }
             if message.name == "h2oWidget" {
                 H2OWidgetBridge.accept(message.body)
+                return
+            }
+            if message.name == "h2oNotifications" {
+                NativeNotifications.handle(message.body, web: webView)
                 return
             }
             if message.name == "h2oInvitation" {
@@ -56,6 +62,9 @@ struct PortalWebView: UIViewRepresentable {
             guard action.targetFrame?.isMainFrame != false else { decisionHandler(.allow); return }
             guard let url = action.request.url else { decisionHandler(.cancel); return }
             if PortalLinks.trusted(url) { decisionHandler(.allow); return }
+            if action.navigationType == .linkActivated && PortalLinks.calendarSubscription(url) {
+                UIApplication.shared.open(url); decisionHandler(.cancel); return
+            }
             if action.navigationType == .linkActivated && ["https", "mailto", "tel"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
             decisionHandler(.cancel)
         }

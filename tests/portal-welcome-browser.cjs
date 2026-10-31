@@ -39,8 +39,9 @@ const root=path.resolve(__dirname,'..');
  assert.equal(await wizard.getByRole('button',{name:'Weiter',exact:true}).count(),0,'no instruction to return to the wizard between Safari actions');
  for(const width of [320,390,768])for(const scale of [100,200]){await page.setViewportSize({width,height:844});await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);assert.equal(await wizard.evaluate(n=>n.scrollWidth>n.clientWidth+1),false);}
  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.style.fontSize='100%');
- await wizard.getByRole('button',{name:'Symbol ist hinzugefügt',exact:true}).click();assert.equal(await wizard.getByRole('button',{name:'H₂O öffnen',exact:true}).count(),1);
- assert.equal(await wizard.locator('#portal-push-enable').count(),0,'optional settings are deferred');
+ await wizard.getByRole('button',{name:'Symbol ist hinzugefügt',exact:true}).click();assert.match(await wizard.innerText(),/Feuerwehrkalender einrichten/);
+ await wizard.getByRole('button',{name:'Jetzt nicht',exact:true}).click();assert.equal(await wizard.locator('#portal-push-enable').count(),1,'notifications are offered during initial setup');
+ await wizard.getByRole('button',{name:'Jetzt nicht',exact:true}).click();assert.equal(await wizard.getByRole('button',{name:'H₂O öffnen',exact:true}).count(),1);
  await wizard.getByRole('button',{name:'H₂O öffnen',exact:true}).click();
  await page.evaluate(()=>Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 Chrome/140.0 Safari/537.36'}));
 

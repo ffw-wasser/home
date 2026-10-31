@@ -38,3 +38,31 @@ Auch QR-Login, Passkey, Passwort, PDF, fehlende Verbindung und große Schrift pr
 Die isolierte Demo kann diese echten Anmeldungstests nicht ersetzen. Signatur,
 Upload und abgeschlossene Apple-Verarbeitung sind jeweils eigene Nachweise.
 Keine App-Store-Einreichung und keine Verteilung an weitere Mitglieder erfolgen automatisch.
+
+## Ersteinrichtung und echte iPhone-Mitteilungen
+
+Nach persönlicher Anmeldung bietet die native App zuerst das persönliche Kalenderabo
+und danach Mitteilungen an. Beide Schritte sind freiwillig und überspringbar.
+Die Browser-Anleitung zum Home-Symbol erscheint in der nativen App nicht mehr.
+Kalenderabos werden über den geprüften persönlichen webcal-Link in Apple Kalender
+bestätigt; ein Vollzugriff auf den iPhone-Kalender wird dafür nicht angefordert.
+
+Native Mitteilungen sind mit UNUserNotificationCenter und APNs vorbereitet. Eine
+Systemfreigabe wird erst nach Tippen auf „Mitteilungen erlauben“ angefordert.
+„Aktiv“ erscheint erst nach bestätigter Registrierung beim geschützten Portaldienst.
+Die bestehende Empfänger-/Mitgliederprüfung, Gerätebegrenzung und Widerruf gelten
+weiter. Apple-Pushs enthalten nur einen allgemeinen Hinweis ohne Termin-/Mitgliedsdaten.
+
+Vor echter Zustellung noch erforderlich:
+- In Apple Developer Push Notifications für de.feuerwehrwasser.h2o aktivieren und
+  das Haupt-App-Store-Profil mit aps-environment=production sowie Associated Domains neu erzeugen.
+- Einen APNs-Schlüssel (.p8) im Apple-Konto anlegen. Im Cloudflare-Worker ausschließlich
+  als Secret H2O_APNS_PRIVATE_KEY hinterlegen; H2O_APNS_KEY_ID und H2O_APNS_TEAM_ID=VKL57X3H6F
+  konfigurieren. Schlüssel weder in den Chat noch ins Repository kopieren.
+- Den geprüften Worker-Kandidaten erst nach Freigabe bereitstellen und mit dem
+  eigenen iPhone die echte Zustellung, Ablehnung, spätere Aktivierung und Abmeldung testen.
+
+Der Signierversuch vom Entwicklungszweig wurde durch die bestehenden GitHub-Regeln
+für apple-testflight-review vor Beginn des Jobs abgelehnt: Nur freigegebene Zweige
+können dieses Environment benutzen. Die Schutzregel wurde nicht verändert.
+Ein signiertes Mitgliederpaket liegt deshalb noch nicht vor.

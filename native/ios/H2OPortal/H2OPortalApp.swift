@@ -4,6 +4,7 @@ import UserNotifications
 
 @main
 struct H2OPortalApp: App {
+    @UIApplicationDelegateAdaptor(PortalAppDelegate.self) private var appDelegate
     var body: some Scene { WindowGroup { PortalScreen() } }
 }
 
@@ -52,7 +53,10 @@ struct PortalScreen: View {
         }
         // Continue the navy footer behind the iPhone home indicator.
         .background(Color(red: 16.0 / 255, green: 28.0 / 255, blue: 44.0 / 255).ignoresSafeArea(.container, edges: .bottom))
-        .onAppear { if !model.hasOpened { model.open(PortalLinks.home) } }
+        .onAppear {
+            // Snapshot/unit-test hosts must not contact the production portal.
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil && !model.hasOpened { model.open(PortalLinks.home) }
+        }
         .onOpenURL { url in
             if PortalLinks.isWidgetTermine(url) {
                 if model.hasOpened, !model.web.isLoading, model.web.url.map(PortalLinks.trusted) == true {

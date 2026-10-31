@@ -22109,6 +22109,37 @@ g.PortalHydrants={schema,route};
  g.CalendarGroupAccess={schema,admin,route};
 })(globalThis);
 
+/* Native APNs transport. No member data is placed in lock-screen payloads. */
+(function(g){
+ 'use strict';
+ const token=value=>typeof value==='string'&&/^[a-f0-9]{32,512}$/.test(value)&&value.length%2===0;
+ const endpoint=value=>token(value)?'https://api.push.apple.com/3/device/'+value:null;
+ const isEndpoint=value=>typeof value==='string'&&value.startsWith('https://api.push.apple.com/3/device/')&&endpoint(value.slice(36))===value;
+ const ready=env=>/^[A-Z0-9]{10}$/.test(env.H2O_APNS_KEY_ID||'')&&env.H2O_APNS_TEAM_ID==='VKL57X3H6F'&&typeof env.H2O_APNS_PRIVATE_KEY==='string'&&env.H2O_APNS_PRIVATE_KEY.includes('BEGIN PRIVATE KEY');
+ const bytes=new TextEncoder(),b64=value=>btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+ let cached=null,pending=null;
+ async function authorization(env){
+  if(!ready(env))throw Error('Apple-Mitteilungsdienst noch nicht eingerichtet.');
+  const id=env.H2O_APNS_TEAM_ID+':'+env.H2O_APNS_KEY_ID,now=Date.now();
+  if(cached?.id===id&&now>=cached.createdAt&&now-cached.createdAt<45*60*1000)return cached.value;
+  if(pending?.id===id)return pending.promise;
+  const promise=mint(env).then(value=>{cached={id,createdAt:now,value};return value;}).finally(()=>{pending=null;});
+  pending={id,promise};return promise;
+ }
+ async function mint(env){
+  if(!ready(env))throw Error('Apple-Mitteilungsdienst noch nicht eingerichtet.');
+  const pem=env.H2O_APNS_PRIVATE_KEY.replace(/-----[A-Z ]+-----/g,'').replace(/\s/g,''),data=Uint8Array.from(atob(pem),x=>x.charCodeAt(0));
+  const key=await crypto.subtle.importKey('pkcs8',data,{name:'ECDSA',namedCurve:'P-256'},false,['sign']);
+  const jwt=b64(bytes.encode(JSON.stringify({alg:'ES256',kid:env.H2O_APNS_KEY_ID})))+'.'+b64(bytes.encode(JSON.stringify({iss:env.H2O_APNS_TEAM_ID,iat:Math.floor(Date.now()/1000)})));
+  return 'bearer '+jwt+'.'+b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,bytes.encode(jwt)));
+ }
+ async function send(env,url){
+  if(!isEndpoint(url))throw Error('Ungültiges Apple-Mitteilungsgerät.');
+  return fetch(url,{method:'POST',headers:{authorization:await authorization(env),'apns-topic':'de.feuerwehrwasser.h2o','apns-push-type':'alert','apns-priority':'10','apns-expiration':String(Math.floor(Date.now()/1000)+3600),'content-type':'application/json'},body:JSON.stringify({aps:{alert:{title:'H₂O · Feuerwehr Wasser',body:'Eine Mitteilung liegt vor. Bitte H₂O öffnen.'},sound:'default'}}),redirect:'error',signal:AbortSignal.timeout(8000)});
+ }
+ g.NativePush={endpoint,isEndpoint,ready,send};
+})(globalThis);
+
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
@@ -22353,7 +22384,7 @@ g.PortalHydrants={schema,route};
    const results=await env.DB.batch([first,write,env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND '+guard).bind(e.memberId,year,marker)]);if(results[0].meta.changes){processed++;awarded.add(e.memberId);}
   }return processed;
  }
- 
+
   async function assertMember(env,record){
    await ready(env);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
@@ -22389,7 +22420,7 @@ g.PortalHydrants={schema,route};
    for(const record of records){const devices=(await env.DB.prepare('SELECT d.id,d.endpoint FROM devices d JOIN portal_devices p ON p.id=d.id WHERE alias=? AND revision=? LIMIT 5').bind(record.alias,record.revision).all()).results;
     for(const device of devices){
      if((await replyFor(env,event.id,member)).status==='excused')continue;
-     try{const url=endpoint(device.endpoint),res=await fetch(url,{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch{f++;}
+     try{const url=device.endpoint,res=g.NativePush?.isEndpoint(url)?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch{f++;}
     }
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
@@ -22631,6 +22662,28 @@ g.PortalHydrants={schema,route};
    const row=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),old=await open(env,row,'portal-config');if(old&&old.calendarUrl!==url)fail('Ein Kalenderwechsel würde die Terminzuordnung ändern. Bitte den vorhandenen Kalender weiterverwenden.');
    const c={...old,calendarUrl:url,reminders:false,leadHours:data.leadHours},events=await sourceProjection(c);return saveCalendarConnection(env,row,c,events);
   }
+  if(path==='/portal/native-push'){
+   const transport=g.NativePush,action=data.action||'status';
+   if(!['status','subscribe','unsubscribe'].includes(action))fail('Ungültige Mitteilungsaktion.',400);
+   const url=data.deviceToken===undefined?null:transport?.endpoint(data.deviceToken);
+   if(data.deviceToken!==undefined&&!url)fail('Ungültiges Apple-Mitteilungsgerät.',400);
+   if(action!=='status'&&!url)fail('Apple-Mitteilungsgerät fehlt.',400);
+   const id=url?await hash(url):null;
+   if(action==='unsubscribe')await env.DB.batch([
+    env.DB.prepare('DELETE FROM portal_devices WHERE id=? AND EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)').bind(id,id,record.alias),
+    env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,record.alias)
+   ]);
+   if(action==='subscribe'){
+    if(!transport?.ready(env))fail('Apple-Mitteilungsdienst noch nicht eingerichtet.',503);
+    const old=await env.DB.prepare('SELECT alias FROM devices WHERE id=?').bind(id).first();
+    if(old&&old.alias!==record.alias)fail('Auf diesem iPhone zuerst die Mitteilungen des anderen Mitglieds deaktivieren.');
+    const result=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,record.alias,record.revision,url,record.alias,record.revision,record.alias,id,record.alias).run();
+    if(!result.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');
+    await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();
+   }
+   const registered=!!(id&&await env.DB.prepare('SELECT id FROM devices WHERE id=? AND alias=? AND revision=?').bind(id,record.alias,record.revision).first());
+   return {ok:true,ready:!!transport?.ready(env),registered};
+  }
   if(path==='/portal/push-devices'){
    const deviceURL=data.endpoint===undefined?null:endpoint(data.endpoint);
    if(data.reset!==undefined&&typeof data.reset!=='boolean')fail('Ungültige Geräteaktion.',400);
@@ -22749,7 +22802,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"e78913042764e216ba44a56abd4370d3021e9df538911fd10cdb7b7c074a31e5",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"01560c46cf112e697cebc41102e271811ce2fd7da73615bd57b882ada980bff2",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
@@ -22838,7 +22891,7 @@ export default {
     await env.DB.prepare("INSERT INTO sends(id,alias,status,accepted,failed,created_at) VALUES(?,?,'pending',0,0,?)").bind(data.requestId,data.alias,now).run();
     let accepted=0,failed=0;
     for(const device of devices){
-     try{const url=endpoint(device.endpoint);const response=await fetch(url,{method:'POST',headers:{Authorization:await vapid(env,url),TTL:'86400',Urgency:'normal',Topic:'deckel-reminder'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});
+     try{const url=device.endpoint;const response=globalThis.NativePush?.isEndpoint(url)?await globalThis.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:'86400',Urgency:'normal',Topic:'deckel-reminder'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});
       if(response.ok)accepted++;else {
        failed++;
        // Only protocol errors, never endpoints, account IDs or credentials.
