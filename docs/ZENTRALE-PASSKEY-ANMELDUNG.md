@@ -107,7 +107,7 @@ angebunden. Personalisierte Daten werden nicht im Service-Worker-Cache abgelegt.
 1. Verantwortliche Verwaltung entsperrt im Gerätehaus die bestehende Administration,
    wählt unter Portalzugänge das Mitglied und prüft seine Identität persönlich.
 2. „Passkey-Einrichtung freigeben“ erstellt einen zufälligen, einmaligen 256-Bit-Code,
-   an Alias, Zugangsrevision und Widerrufsgeneration gebunden; zehn Minuten gültig.
+   an Alias, Zugangsrevision und Widerrufsgeneration gebunden; 30 Minuten gültig.
    QR-Link trägt den Code ausschließlich im Fragment, das der Client sofort entfernt.
    Alternativ Eingabe unter Konto → Sicherheit. Nicht in Gruppen teilen.
 3. Mit vorhandenem WhatsApp-Passkey: Code + frische Passkey-Anmeldung bestätigen.

@@ -36,7 +36,7 @@ test('Password: password change needs recent authentication, invalidates old ses
 test('Password: recovery, expired ticket, member removal and revision rotation cannot resurrect access',async()=>{
  const {f,s}=await enrolled(),code=await ticket(f,0,true);assert.equal(await list(f,s),401);assert.equal((await login(f)).status,401);
  assert.equal((await set(f,code)).status,200);const fresh=(await login(f)).value;f.sql.prepare('UPDATE accounts SET revision=? WHERE alias=?').run('changed-revision',fresh.alias);assert.equal(await list(f,fresh),401);assert.equal((await login(f)).status,401);
- const f2=await setup(),expired=await ticket(f2);f2.clock.now+=600001;assert.equal((await set(f2,expired)).status,403);
+ const f2=await setup(),expired=await ticket(f2);f2.clock.now+=30*60000+1;assert.equal((await set(f2,expired)).status,403);
  const {f:f3,s:s3}=await enrolled();await f3.call('roster',{members:f3.people.slice(1).map(p=>({id:p.memberId,name:'Synthetic',leader:false}))},null,true);assert.equal(await list(f3,s3),401);assert.equal(f3.sql.prepare('SELECT COUNT(*) AS n FROM portal_passwords').get().n,0);
 });
 test('Password: input policy, duplicate names, fail-closed missing pepper and failed batch',async()=>{
@@ -70,4 +70,8 @@ test('Password: concurrent admin reset cannot be undone by an in-flight enrollme
  for(const password of ['a','1234','111111111111111','passwortpasswort',' ']){
   const f=await setup(),code=await ticket(f);assert.equal((await set(f,code,'free.user',password)).status,200);assert.equal((await login(f,'free.user',password)).status,200);
  }
+});
+
+test('Password: member approval remains valid after 29 minutes',async()=>{
+ const f=await setup(),code=await ticket(f);f.clock.now+=29*60000;assert.equal((await set(f,code)).status,200);
 });

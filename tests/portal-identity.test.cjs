@@ -80,7 +80,7 @@ test('Portal: key removal, logout and account rotation revoke server-side access
  assert.equal((await signin(f,second)).status,401);
 });
 test('Portal: expired ticket and failed transaction cannot consume admission or partially migrate',async()=>{
- const f=await setup(),code=await ticket(f);f.clock.now+=600001;assert.equal((await f.call('passkey/enroll/options',{code})).status,403);
+ const f=await setup(),code=await ticket(f);f.clock.now+=30*60000+1;assert.equal((await f.call('passkey/enroll/options',{code})).status,403);
  const fresh=await ticket(f),p=await passkey(f);f.failBatch();assert.equal((await signin(f,p,fresh)).status,503);
  assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_identity_members').get().n,0);
  assert.equal((await signin(f,p,fresh)).status,200);
@@ -135,4 +135,13 @@ test('Native Android-Passkeys akzeptieren nur ausdrücklich hinterlegte App-Sign
   f.env.H2O_ANDROID_APP_ORIGINS=configuration;
   assert.equal((await f.call('passkey/portal/login/verify',await p.login({portal:true,origin}))).status,401);
  }
+});
+
+test('Portal: administrative enrollment approval lasts exactly 30 minutes',async()=>{
+ const f=await setup(),person=f.people[0],issued=await f.originalCall('identity-ticket',{alias:person.alias,revision:person.revision},null,true);
+ assert.equal(issued.status,200);assert.equal(issued.value.expiresAt,f.clock.now+30*60000);
+ const code=issued.value.code;f.clock.now+=11*60000;
+ assert.equal((await f.call('passkey/enroll/options',{code})).status,200,'still usable after the previous ten-minute limit');
+ f.clock.now+=19*60000-1;assert.equal((await f.call('passkey/enroll/options',{code})).status,200,'valid immediately before expiry');
+ f.clock.now+=1;assert.equal((await f.call('passkey/enroll/options',{code})).status,403,'rejected exactly at expiry');
 });
