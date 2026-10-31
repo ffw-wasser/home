@@ -29,3 +29,17 @@ Apple konnte den alten TestFlight-Build 1.0.0 (1008.1) wegen eines fehlenden Dem
 > This is an invitation-only member portal. A dedicated demo QR code and synthetic test data are provided for review. Scan the demo QR code, complete sign-in, open the appointments screen, and add the H2O next-appointment widget to the iPhone home screen. The demo account does not access real member data.
 
 Diesen Text erst mit einem tatsächlich funktionierenden Demo-Zugang an Apple senden. Der bisherige Simulator-Build ist nicht signiert und kann nicht auf dem iPhone installiert werden.
+
+## Einrichtung in Cloudflare – manuelle Freigabeschritte
+
+Die folgende Einrichtung ist **noch nicht ausgeführt**. Der bestehende Worker `feuerwehr-wasser-deckel-push` und seine produktive D1-Datenbank bleiben unberührt.
+
+1. In Cloudflare unter **Workers & Pages** einen **neuen** Worker `h2o-apple-review` anlegen, nicht den produktiven Worker kopieren oder ersetzen.
+2. Unter **D1** eine **neue** Datenbank `h2o-apple-review` anlegen. Ausschließlich die Struktur des vorhandenen Schemas, niemals den Inhalt oder einen Export der Produktivdaten importieren.
+3. Beim neuen Worker ausschließlich diese D1-Datenbank als `DB` binden. Keine bestehenden produktiven Variablen, Tokens, OneDrive- oder Google-Zugangsdaten übernehmen. Eigene Demo-Secrets erst bei konkreter Implementierung erstellen.
+4. Separaten Demo-Web-Host mit einer eigens konfigurierten Origin vorsehen. Die im iOS-Code verwendete Domain `h2o-review.example.invalid` ist **absichtlich nicht erreichbar** und darf nicht als funktionierender Endpunkt ausgegeben werden.
+5. Demo-Backend muss die normalen Mitglieds-/Rollenprüfungen behalten. Demo-Mitglieder, -Termine und -Rückmeldungen ausschließlich künstlich erzeugen.
+6. Erst nach Integration und Sicherheitsprüfung den Review-Build mit `H2O_REVIEW_FLAG=H2O_APP_REVIEW` kompilieren. Ohne diesen Flag bleibt die produktive H2O-Adresse fest eingestellt.
+7. Auf dem iPhone QR-Login, Widget, Rückmeldung, Abmeldung und Zugriffsentzug durchtesten. Erst danach Apple-Prüfungsnotizen ergänzen.
+
+**Nächster Blocker:** Für das tatsächliche Anlegen von Cloudflare Worker/D1 wird Zugriff auf das Cloudflare-Dashboard benötigt. Es wurde bisher **kein** Worker und **keine** Datenbank angelegt. Ein reiner Cloudflare-Worker genügt noch nicht als statischer Demo-Web-Host; die getrennte Bereitstellung der Portaloberfläche muss zusätzlich implementiert werden.
