@@ -1,10 +1,18 @@
 import Foundation
 
 enum PortalLinks {
+    // Review builds must be explicitly compiled with a separate, isolated demo host.
+    // Production remains pinned to the original GitHub Pages origin.
+    #if H2O_APP_REVIEW
+    static let home = URL(string: "https://h2o-review.example.invalid/home/deckel.html")!
+    static let host = "h2o-review.example.invalid"
+    #else
     static let home = URL(string: "https://ffw-wasser.github.io/home/deckel.html")!
+    static let host = "ffw-wasser.github.io"
+    #endif
     static func trusted(_ url: URL) -> Bool {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
-        return parts.scheme == "https" && parts.host == "ffw-wasser.github.io" && parts.port == nil &&
+        return parts.scheme == "https" && parts.host == host && parts.port == nil &&
             parts.user == nil && parts.password == nil && ["/home/deckel.html", "/home/termin.html"].contains(parts.percentEncodedPath)
     }
     // A widget opens the signed native container, never a website or token-bearing URL.
