@@ -2,6 +2,11 @@ name: H2O member pilot - signed TestFlight build
 
 # Runs only on explicit request, with separate Apple review signing secrets.
 on:
+  workflow_call:
+    inputs:
+      upload_to_testflight:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       upload_to_testflight:
@@ -34,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/h2o-member-pilot.test.cjs
+          node --test tests/h2o-apple-review.test.cjs
 
       - name: Verify both Swift URL policies
         shell: bash

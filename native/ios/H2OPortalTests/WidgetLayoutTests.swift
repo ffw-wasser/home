@@ -2,6 +2,7 @@
 import XCTest
 import SwiftUI
 import WidgetKit
+import UIKit
 @testable import H2OPortal
 
 final class WidgetLayoutTests: XCTestCase {
@@ -11,12 +12,11 @@ final class WidgetLayoutTests: XCTestCase {
         for (name, family, width) in [("small", WidgetFamily.systemSmall, 155.0), ("medium", WidgetFamily.systemMedium, 329.0)] {
             for empty in [false, true] {
                 let snapshot = H2OWidgetSnapshot(updatedAt: now, event: empty ? nil : event, stale: false)
-                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot))
-                    .environment(\.widgetFamily, family)
+                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot), familyOverride: family)
                     .frame(width: width, height: 155)
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 3
-                let image = try XCTUnwrap(renderer.uiImage)
+                let image: UIImage = try XCTUnwrap(renderer.uiImage)
                 XCTAssertEqual(image.size.width, width)
                 XCTAssertEqual(image.size.height, 155)
                 let attachment = XCTAttachment(image: image)

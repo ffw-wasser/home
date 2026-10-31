@@ -1,20 +1,24 @@
-# iPhone-Pilot: H₂O mit Widget (31.10.2026)
+# Privater iPhone-Mitgliederpilot mit Widget
 
-**Widget-Korrektur (Build 1014, noch nicht veröffentlicht):** Nach dem echten iPhone-Test war im Build 1013 das H₂O-Logo im Widget leer und die Überschrift wurde weiterhin gekürzt. Deshalb wird das originale H₂O-Icon nun direkt als `UIImage(contentsOfFile:)` über `Bundle.main.url(forResource:withExtension:)` aus dem Widget-Bundle geladen; bei nicht auffindbarer Datei erscheint wenigstens ein Fallbacksymbol. Die Widget-Konfiguration deaktiviert die zusätzlichen automatischen Systemränder; die kleine Ansicht hat eine bewusst zweizeilige Kopfzeile, und die mittlere Ansicht teilt Termininfos und Status/Ort/Kleidung auf zwei Spalten auf. Der CI-Test prüft nun **Bundle-Auflösung plus PNG-Dekodierung**, nicht nur Existenz. Das Ergebnis muss mit dem echten iPhone verifiziert werden; Build 1013 bleibt unverändert, bis 1014 erfolgreich signiert, hochgeladen und installiert wurde.
+Aktueller Kandidat: **Build 1015** für das echte H₂O-Portal. Die bisher installierte
+Demo 1014 ist davon getrennt. Anleitung, Signierung, Domainvoraussetzungen und
+Gerätetest stehen in [H2O-MEMBER-PILOT.md](../docs/H2O-MEMBER-PILOT.md).
 
+- Logo und Kopfzeile sind für beide Widgetgrößen überarbeitet. Simulator-Bilder und
+  der echte iPhone-Test entscheiden über die Abnahme; Kompilierung allein genügt nicht.
+- Die App übernimmt ausschließlich den persönlich freigegebenen nächsten Termin.
+  Abmeldung und erkannter Zugriffsverlust leeren das Widget; auch leere Kalender
+  verfallen nach zwölf Stunden.
+- Die Produktionsvariante wird ohne H2O_APP_REVIEW gebaut und öffnet das echte Portal.
+  Die Demo bleibt für Apple-Prüfungen auf ihrer isolierten Domain.
+- Native Passkeys benötigen die noch zu veröffentlichende Apple-Domainzuordnung
+  und passende Associated-Domains-Profile. Erfolgreiche Browser-Passkeys beweisen
+  keine Anmeldung in der nativen App.
+- Kein automatischer TestFlight-Upload, keine öffentliche Store-Veröffentlichung
+  und keine Änderungen an OneDrive-Nutzerdaten. Android folgt nach dem iPhone-Pilot.
 
-**Entwicklungszweig; keine TestFlight- oder Store-Freigabe erfolgt.** Die laufende H₂O-PWA bleibt unangetastet.
-
-- Start mit iPhone: Vorhandene SwiftUI/WKWebView-App wird mit einem WidgetKit-Widget (klein und mittel) ergänzt.
-- Widget zeigt nach einem **erfolgreichen persönlichen Terminabruf in der nativen H₂O-App** den nächsten passenden Termin, Ort, Kleidung, Uhrzeit und eigenen Rückmeldestatus. Beim Tippen öffnet `h2oportal://termine` die native H₂O-App auf der Terminstartseite.
-- Das Widget kann **nicht selbst im Hintergrund** auf den Kalender zugreifen. Beim Öffnen/Aktualisieren der nativen App wird der letzte bestätigte Stand übernommen; spätestens **12 Stunden** danach werden persönliche Inhalte nicht mehr angezeigt, bis H₂O neu geöffnet wird. Änderungen sind nicht sekundengenau.
-- `group.de.feuerwehrwasser.h2o` muss in deinem **persönlichen Apple-Entwicklerkonto** für **beide App-IDs** eingerichtet und die Provisioning-Profile neu erstellt werden: `de.feuerwehrwasser.h2o` (Haupt-App), `de.feuerwehrwasser.h2o.widget` (Widget). Es werden **keine Zugangstoken, Einladungslinks, Passkeys, Kalender-Abos oder Namen** in die Widget-Gruppe übertragen; nur die minimale eigene Terminkarte.
-- Swift/iOS-Build: `xcodegen generate --spec native/ios/project.yml`, dann in Xcode die Scheme `H2OPortal` auf einem echten iPhone mit deiner Apple-Team-Signierung testen. Der separate GitHub-Workflow `h2o-ios-widget.yml` kompiliert beide Targets **ohne Signierung** für den Simulator, erzeugt aber **keine installierbare iPhone-Datei**.
-- Erster Gerätetest: Passwort- und Passkey-Anmeldung, Einladungs-QR, Widget hinzufügen, Termin laden, Rückmeldung ändern, Widget aktualisieren, App antippen, abmelden, 12-Stunden-Ablauf, fehlende Verbindung. Für echte Passkeys/Universal Links müssen die vormals deaktivierten öffentlichen Associated-Domain-Dateien kontrolliert wieder eingerichtet und vollständig geprüft werden. Bis dahin keine Zusage, dass die alte native Passkey-Anmeldung funktioniert.
-- Keine produktive D1-/Cloudflare-Änderung; die vorhandene authentifizierte `/portal/list`-Antwort wird ausschließlich im geöffneten, bereits angemeldeten Portal zum Widget reduziert.
-- Eine Mitgliedersperrung wird bei nächstem erfolgreichen App-Aufruf erkannt; der zuletzt vorhandene Widget-Stand kann bis zur lokalen Zeitbegrenzung sichtbar bleiben. **Vor einem flächendeckenden Rollout** den Widerruf/Verlustfall und optionale sofortige Bereinigung prüfen.
-
-**Nicht erledigt:** erfolgreiche Simulator-Kompilierung, Codesignierung, Apple-Gerätetest, TestFlight-Einladung, App-Store-Review und öffentliche/unge­listete Verteilung. Android bleibt noch archiviert und folgt später.
+Die folgenden Abschnitte sind historische Dokumentation. Bei Widersprüchen gilt
+für diesen Pilot der oben verlinkte aktuelle Stand.
 
 ---
 

@@ -11,7 +11,9 @@ struct NextEventEntry: TimelineEntry {
 
 struct NextEventView: View {
     let entry: NextEventEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var widgetFamily
+    var familyOverride: WidgetFamily? = nil
+    private var family: WidgetFamily { familyOverride ?? widgetFamily }
 
     private func berlinTime(_ date: Date) -> String {
         let formatter = DateFormatter()
