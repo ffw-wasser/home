@@ -5,6 +5,9 @@ on:
     paths:
       - "native/ios/**"
       - "native/Package.swift"
+      - "native/shared/ios-entry.js"
+      - "cloudflare/review/**"
+      - "tests/h2o-apple-review.test.cjs"
       - ".github/workflows/h2o-ios-widget.yml"
   workflow_dispatch:
 
@@ -18,8 +21,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Check synthetic review worker and QR login
+        run: node --test tests/h2o-apple-review.test.cjs
       - name: Check shared native URL policy on macOS
         run: swift test --package-path native
+      - name: Check URL policy in isolated Apple review build
+        run: swift test --package-path native -Xswiftc -DH2O_APP_REVIEW
       - name: Generate iOS app and widget project
         run: xcodegen generate --spec native/ios/project.yml
       - name: Compile both targets without Apple signing
@@ -28,3 +35,9 @@ jobs:
             -scheme H2OPortal -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      - name: Compile the isolated Apple review variant without signing
+        run: |
+          xcodebuild -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug H2O_REVIEW_FLAG=H2O_APP_REVIEW CODE_SIGNING_ALLOWED=NO build
