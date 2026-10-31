@@ -1,45 +1,44 @@
-# Apple Review: isolierter H2O-Demozugang
+# Apple Review – getrennte H₂O-Demo
 
-Stand: 31.10.2026. Planung, noch nicht eingerichtet oder veröffentlicht.
+Stand: 31.10.2026. **Cloudflare-Testsystem eingerichtet; App noch nicht in TestFlight.**
 
-## Anlass
+## Bestätigter Stand
 
-Apple konnte den alten TestFlight-Build 1.0.0 (1008.1) wegen eines fehlenden Demo-QR-Codes nicht vollständig prüfen (Guideline 2.1). Für den neuen Widget-Build wird ein separater, überprüfbarer Demo-Zugang benötigt.
+- Cloudflare-Worker: `h2o-apple-review`
+- URL: `https://h2o-apple-review.522dn4fc5f.workers.dev/home/deckel.html`
+- Eigene D1-Datenbank: `h2o-apple-review` mit `DB`-Bindung und Tabelle `review_replies`.
+- Beide Cloudflare-Secrets `H2O_REVIEW_INVITE_CODE` und `H2O_REVIEW_SESSION_KEY` vom Projektbetreiber eingerichtet. Geheimwerte **nicht** im Repository oder Chat.
+- `/health` vom Betreiber mit `ok: true`, `environment: synthetic-review`, `configured: true` bestätigt.
+- Der Betreiber hat Demo-Login, Beispieltermine und das Speichern einer Rückmeldung im Browser erfolgreich getestet.
+- Der Demo-Worker enthält nur drei synthetische Termine; keine Anbindung an das Produktions-D1, OneDrive oder den produktiven Google-Kalender.
+- Die iOS-Review-Variante ist per `H2O_REVIEW_FLAG=H2O_APP_REVIEW` explizit opt-in, lädt nur die exakte Demo-Adresse und verwendet `H2OPortalReview.entitlements`, damit keine Produktions-Associated-Domains freigeschaltet werden. Normale Builds verwenden unverändert die produktive H₂O-Adresse.
+- Das iPhone-Widget und die native Review-QR-Integration sind **nur im Simulator kompiliert**, nicht auf einem echten iPhone geprüft.
+- Bereits vorhandener TestFlight-Build 1.0.0 (1008.1) war wegen fehlenden Demo-QR-Codes zurückgestellt; der neue Code trägt Buildnummer 1009 und ist noch nicht signiert oder hochgeladen.
 
-## Sicherheitsregeln
+## Apple Developer: nächste Schritte
 
-- Kein echter Mitgliederzugang und keine produktiven QR-Einladungen für Apple.
-- Keine echten Namen, Termine, Telefonnummern, Nachweise, OneDrive-Dokumente oder Google-Kalenderdaten in der Demo.
-- Demo mit eigenem Cloudflare-Worker, eigener D1-Datenbank, eigenen Zugangsdaten und synthetischen Terminen; keine produktiven Secrets kopieren.
-- Kein allgemeiner Demo-Schalter, der die normale H2O-Authentisierung umgeht.
-- Die vorhandene native iOS-App akzeptiert derzeit nur die reguläre H2O-Webadresse. Für einen Review-Build muss eine gesonderte, fest eingetragene Demo-Adresse vorgesehen und mit denselben Sicherheitsprüfungen behandelt werden.
-- Den Demo-QR-Code erst nach vollständigem Test erzeugen und ausschließlich über die vorgesehenen App-Store-Connect-Prüfungsinformationen teilen.
+1. Unter **Certificates, Identifiers & Profiles > Identifiers** die App Group `group.de.feuerwehrwasser.h2o` registrieren.
+2. App-ID `de.feuerwehrwasser.h2o` kontrollieren, **App Groups** einschalten und `group.de.feuerwehrwasser.h2o` zuordnen.
+3. App-ID `de.feuerwehrwasser.h2o.widget` registrieren (falls nicht vorhanden), **App Groups** einschalten und **dieselbe Gruppe** zuordnen.
+4. Anschließend die Apple-Distribution-Zertifikate und **zwei App-Store-Connect-Provisioning-Profile** (je Ziel eines) für das vorhandene persönliche Apple-Team `VKL57X3H6F` vorbereiten. Private Schlüssel, Zertifikat-Passwörter und API-Keys niemals in den Chat oder ins Repository kopieren.
+5. Ein manueller signierter Build über einen gesicherten GitHub-macOS-Workflow ist erst nach diesen Berechtigungen/Signaturprofilen möglich.
 
-## Umsetzungsschritte
+## Geräte-Pilot vor externer Beta-App-Review
 
-1. Getrennte Demo-Umgebung mit synthetischen Mitgliedern und Terminen anlegen.
-2. Review-Build-Konfiguration und feste Demo-Domain ergänzen, ohne die Produktivversion zu verändern.
-3. Einmalige Apple-App-Group- und Signing-Konfiguration für App und Widget einrichten.
-4. Signiertes iPhone-Paket auf GitHub Actions macOS erstellen und nach App Store Connect hochladen.
-5. QR-Anmeldung, Termine, Rückmeldungen, Widget und Widerruf auf einem echten iPhone prüfen.
-6. Gültigen Demo-QR-Code und genaue Anleitung in TestFlight > Testinformationen > Beta-App-Prüfungsinformationen hinterlegen und Apple antworten.
+Der Kontoinhaber kann über eine **interne TestFlight-Gruppe** zunächst selbst testen. Interne Tester müssen Benutzer von App Store Connect sein. Die Apple-Beta-Prüfung für externe Tester ist dafür nicht nötig; **ein signierter und zu App Store Connect hochgeladener Build ist trotzdem Voraussetzung**.
 
-## Vorbereiteter englischer Review-Hinweis
+## Demo-QR-Code (später für externe Apple-Prüfung)
 
-> This is an invitation-only member portal. A dedicated demo QR code and synthetic test data are provided for review. Scan the demo QR code, complete sign-in, open the appointments screen, and add the H2O next-appointment widget to the iPhone home screen. The demo account does not access real member data.
+Der QR-Inhalt enthält das Geheimnis aus `H2O_REVIEW_INVITE_CODE` und lautet:
 
-Diesen Text erst mit einem tatsächlich funktionierenden Demo-Zugang an Apple senden. Der bisherige Simulator-Build ist nicht signiert und kann nicht auf dem iPhone installiert werden.
+```text
+https://h2o-apple-review.522dn4fc5f.workers.dev/home/deckel.html#setup=HIER_ERSTER_GEHEIMER_DEMO_CODE
+```
 
-## Einrichtung in Cloudflare – manuelle Freigabeschritte
+Den echten Code **nur lokal** in einem QR-Generator erstellen, der keine Drittanbieter-Übertragung verursacht, und danach ausschließlich in App Store Connect mit Apple teilen. Den zweiten geheimen Wert (Session Key) niemals in einen QR-Code aufnehmen. Bis der QR-Code geprüft ist, nicht als vorhanden ausgeben.
 
-Die folgende Einrichtung ist **noch nicht ausgeführt**. Der bestehende Worker `feuerwehr-wasser-deckel-push` und seine produktive D1-Datenbank bleiben unberührt.
+Die isolierte Demo zeigt die Terminfunktionen und das Widget, **nicht** die vollständige produktive Mitgliederverwaltung. Vor einer Freigabe für externe Tester prüfen, ob Apple mit diesen eingeschränkten Testfunktionen die App ausreichend beurteilen kann. Keinesfalls einen allgemeinen Demo-Zugriff in die produktive H₂O-App einbauen.
 
-1. In Cloudflare unter **Workers & Pages** einen **neuen** Worker `h2o-apple-review` anlegen, nicht den produktiven Worker kopieren oder ersetzen.
-2. Unter **D1** eine **neue** Datenbank `h2o-apple-review` anlegen. Ausschließlich die Struktur des vorhandenen Schemas, niemals den Inhalt oder einen Export der Produktivdaten importieren.
-3. Beim neuen Worker ausschließlich diese D1-Datenbank als `DB` binden. Keine bestehenden produktiven Variablen, Tokens, OneDrive- oder Google-Zugangsdaten übernehmen. Eigene Demo-Secrets erst bei konkreter Implementierung erstellen.
-4. Separaten Demo-Web-Host mit einer eigens konfigurierten Origin vorsehen. Die im iOS-Code verwendete Domain `h2o-review.example.invalid` ist **absichtlich nicht erreichbar** und darf nicht als funktionierender Endpunkt ausgegeben werden.
-5. Demo-Backend muss die normalen Mitglieds-/Rollenprüfungen behalten. Demo-Mitglieder, -Termine und -Rückmeldungen ausschließlich künstlich erzeugen.
-6. Erst nach Integration und Sicherheitsprüfung den Review-Build mit `H2O_REVIEW_FLAG=H2O_APP_REVIEW` kompilieren. Ohne diesen Flag bleibt die produktive H2O-Adresse fest eingestellt.
-7. Auf dem iPhone QR-Login, Widget, Rückmeldung, Abmeldung und Zugriffsentzug durchtesten. Erst danach Apple-Prüfungsnotizen ergänzen.
+## Widerruf
 
-**Nächster Blocker:** Für das tatsächliche Anlegen von Cloudflare Worker/D1 wird Zugriff auf das Cloudflare-Dashboard benötigt. Es wurde bisher **kein** Worker und **keine** Datenbank angelegt. Ein reiner Cloudflare-Worker genügt noch nicht als statischer Demo-Web-Host; die getrennte Bereitstellung der Portaloberfläche muss zusätzlich implementiert werden.
+Nach Abschluss des Apple-Reviews die zwei Demo-Secrets bei Bedarf rotieren; Rotation von `H2O_REVIEW_SESSION_KEY` entwertet bestehende Sitzungen. Die Demo kann deaktiviert werden, ohne das Produktivsystem zu beeinflussen.
