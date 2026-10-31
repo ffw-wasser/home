@@ -1,4 +1,4 @@
-# Privater iPhone-Mitgliederpilot · Build 1016
+# Privater iPhone-Mitgliederpilot · Build 1017
 
 Der Mitglieder-Build öffnet das echte H₂O-Portal unter
 `https://ffw-wasser.github.io/home/deckel.html`. Die Apple-Demo bleibt mit
@@ -10,6 +10,9 @@ Passkeys und Mitgliedsrechte verwenden die bestehende Portalprüfung.
 Der Wechsel zum Home-Bildschirm leert weiterhin die geschützten Ansichten, erhält aber den bestätigten Widgetstand und die freiwillige Push-Registrierung. Zuvor wurde beim Ausblenden versehentlich derselbe Ablauf wie bei einer Abmeldung ausgeführt. Abmeldung, Kontowechsel und erkannter Zugriffsverlust löschen die Widgetdaten weiterhin. Die Korrektur benötigt keinen neuen nativen Build; Build 1015 lädt das aktualisierte Portal. Der Browser-Regressionslauf prüft App → Home → App sowie das anschließende ausdrückliche Löschen der Identität mit künstlichen Daten.
 
 ## Umgesetzter Stand
+
+- Build 1017: freigegebene Feuerwehr-Dienstkarte mit bordeauxroter Kante und schmalem gelbem Reflexstreifen. Beide Größen zeigen das Datum als rotes Kalenderfeld und die Uhrzeit besonders groß. Im kleinen Widget stehen Kalender und Termin nebeneinander; unten Rückmeldung und Ort. Im mittleren Widget stehen Kalender links, Termin/Uhrzeit/Ort/Kleidung rechts und die ausgeschriebene Datumszeile unten. Nur ein tatsächlicher Termin „Probe“ erhält die Überschrift „Nächste Probe“; andere Titel bleiben erhalten. Leere und veraltete Kalenderstände bleiben gekennzeichnet.
+- Ab Build 1017 ist die Verschlüsselungsangabe aus PR #243 im Paket enthalten; der bereits hochgeladene Build 1016 benötigt noch die einmalige manuelle Antwort.
 
 - Build 1016: kompakte einzeilige Kopfzeile mit Original-Wappen. Im kleinen Widget folgen Termin, Datum, große Uhrzeit und farbige Rückmeldeplakette direkt aufeinander. Im mittleren Widget stehen Datum und Uhrzeit links in einer eigenen Fläche, Termin, Ort und Kleidung rechts; der Status steht oben. Keine flexible Leerfläche zwischen Titel und Datum.
 - Kalender-Rückmeldungslinks öffnen in Build 1016 direkt den betreffenden Termin im vollständigen Portal mit Navigation und Widget-Aktualisierung. Die separate Browser-Rückmeldeseite ersetzt die App-Ansicht nicht mehr. Nur eine gültige Termin-ID wird übernommen.
