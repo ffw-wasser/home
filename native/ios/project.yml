@@ -10,6 +10,7 @@ settings:
     CURRENT_PROJECT_VERSION: 2
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: VKL57X3H6F
+    H2O_REVIEW_HOST: h2o-review.example.invalid
 targets:
   H2OPortal:
     type: application
@@ -28,6 +29,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: H2OPortal/H2OPortal.entitlements
         TARGETED_DEVICE_FAMILY: '1,2'
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: '$(inherited) $(H2O_REVIEW_FLAG)'
     dependencies:
       - target: H2OPortalWidget
         embed: true
