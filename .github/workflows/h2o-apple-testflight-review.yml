@@ -28,7 +28,7 @@ jobs:
       # immutable demo source revision. No unreviewed main/site changes are merged.
       - uses: actions/checkout@v4
         with:
-          ref: 6cfa5e7b2867dbba91647b21c967482d621c351f
+          ref: 1a6565e2260b36e65d63addff52a9ec9c394bc36
           persist-credentials: false
       - name: Verify isolated demo logic and Berlin clock tests
         shell: bash
@@ -68,7 +68,15 @@ jobs:
             exit 1
           fi
           file "$widget_logo"
-          echo "Preflight passed: widget includes original H2O logo."
+          swift -e 'import AppKit; import Foundation
+          let bundle = Bundle(url: URL(fileURLWithPath: CommandLine.arguments[1]))!
+          guard let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
+                let image = NSImage(contentsOf: url),
+                image.size.width > 0 && image.size.height > 0 else {
+            fatalError("Widget cannot locate or decode original H2O icon from its own bundle")
+          }
+          print("Widget logo resolved and decoded successfully")' "$(dirname "$widget_logo")"
+          echo "Preflight passed: original H2O widget logo can be loaded."
 
       - name: Confirm Xcode and review export configuration
         shell: bash
