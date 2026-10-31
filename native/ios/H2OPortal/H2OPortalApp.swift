@@ -17,6 +17,10 @@ struct H2OPortalApp: App {
         let notifications = UNUserNotificationCenter.current()
         notifications.removePendingNotificationRequests(withIdentifiers: ["h2o-reminder"])
         notifications.removeDeliveredNotifications(withIdentifiers: ["h2o-reminder"])
+        #if H2O_APP_REVIEW
+        // Installing a review build must not surface a previously cached live event.
+        H2OWidgetBridge.accept(["action": "clear"])
+        #endif
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.applicationNameForUserAgent = "H2ONative/1 iOS"
