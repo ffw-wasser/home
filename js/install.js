@@ -2,7 +2,6 @@
  'use strict';
  // Public installation only. Never copy an invitation or membership token here.
  const ua=navigator.userAgent||'',apple=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),android=/Android/.test(ua);
- if(apple||android)document.querySelector('.qr').hidden=true;
  if(apple)document.getElementById('android-install').hidden=true;
  if(android)document.getElementById('apple-install').hidden=true;
  async function load(){
