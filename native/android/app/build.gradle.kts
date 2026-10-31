@@ -21,9 +21,13 @@ android {
         applicationId = "de.feuerwehrwasser.h2o"
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
+        versionCode = 3
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        for (name in listOf("H2O_FIREBASE_PROJECT_ID", "H2O_FIREBASE_APP_ID", "H2O_FIREBASE_SENDER_ID", "H2O_FIREBASE_API_KEY")) {
+            val value = providers.environmentVariable(name).orElse(providers.gradleProperty(name)).orNull.orEmpty()
+            buildConfigField("String", name, "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
+        }
     }
     buildTypes {
         release {
@@ -33,6 +37,7 @@ android {
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
+    buildFeatures { buildConfig = true }
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.16.0")
@@ -41,6 +46,10 @@ dependencies {
     implementation("androidx.credentials:credentials:1.5.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("androidx.work:work-runtime-ktx:2.10.1")
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation(platform("com.google.firebase:firebase-bom:35.0.2"))
+    implementation("com.google.firebase:firebase-messaging")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
 }
