@@ -53,17 +53,31 @@ async function readBody(request) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw Error("invalid body");
   return obj;
 }
+function berlinEventStart(daysFromToday, hour) {
+  const timeZone = "Europe/Berlin";
+  const day = new Intl.DateTimeFormat("sv-SE", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
+  const [year, month, date] = day.split("-").map(Number);
+  // Interpret 18:00 as 18:00 Germany local time, not 18:00 UTC.
+  const naive = Date.UTC(year, month - 1, date + daysFromToday, hour);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+  }).formatToParts(new Date(naive)).map(p => [p.type, p.value]));
+  const offset = Date.UTC(Number(parts.year), Number(parts.month) - 1,
+    Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second)) - naive;
+  return naive - offset;
+}
 function syntheticEvents(rows) {
-  const now = new Date();
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const data = [
     { id: "demo-probe", title: "Probe · Fahrzeugkunde", days: 2, hour: 18, clothing: "Einsatzkleidung" },
     { id: "demo-unterricht", title: "Unterricht · Digitalfunk", days: 6, hour: 18, clothing: "Tagesdienst" },
     { id: "demo-sonderprobe", title: "Sonderprobe · Wasserentnahme", days: 13, hour: 17, clothing: "Einsatzkleidung" }
   ];
   return data.map(e => ({
-    id: e.id, title: e.title, start: today + (e.days * 24 + e.hour) * 3600000,
-    end: today + (e.days * 24 + e.hour + 2) * 3600000,
+    id: e.id, title: e.title, start: berlinEventStart(e.days, e.hour),
+    end: berlinEventStart(e.days, e.hour) + 2 * 3600000,
     location: "Gerätehaus Wasser (Demo)", clothing: e.clothing,
     status: rows.get(e.id) || "open"
   }));
