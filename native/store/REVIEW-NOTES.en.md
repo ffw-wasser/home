@@ -12,7 +12,7 @@ Before submission, complete the secure App Review account fields and verify:
 
 - All relevant member features are accessible to the reviewer without private hardware or a real member account.
 - Any restrictions and role-dependent features are explained accurately.
-- Account deletion is available as required, including clear treatment of legally retained service records.
+- Account deletion: More → Account & Security → Account → Delete portal account. The member confirms the action and authenticates again. Portal credentials, sessions, push registrations, calendar subscription and attendance responses are removed in one server transaction. Independently administered membership, evidence records, documents, orders and the beverage ledger remain. The retention purposes and legal basis still need confirmation; do not describe all remaining data as legally required without that confirmation.
 - The privacy policy and support URLs are public and functional.
 - The final version has been tested on the actual devices and OS versions listed in the submission.
 
