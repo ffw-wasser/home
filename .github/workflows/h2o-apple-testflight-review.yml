@@ -78,9 +78,15 @@ jobs:
             uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$plist")
             team=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$plist")
             identifier=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$plist")
-            group=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:0' "$plist")
-            if [[ "$name" != "$expected_name" || "$team" != 'VKL57X3H6F' || "$identifier" != "VKL57X3H6F.$expected_bundle" || "$group" != 'group.de.feuerwehrwasser.h2o' ]]; then
-              echo "::error::The $label profile does not match the expected team, bundle, name, or app group."
+            # Apple can generate a profile without App Groups if it was created
+            # before the capability was assigned to this exact App ID.
+            group=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:0' "$plist" 2>/dev/null || true)
+            if [[ "$group" != 'group.de.feuerwehrwasser.h2o' ]]; then
+              echo "::error::The $label provisioning profile is missing App Group group.de.feuerwehrwasser.h2o. In Apple Developer > Identifiers, assign the group to $expected_bundle; then regenerate its App Store Connect profile and replace the matching GitHub Environment secret."
+              exit 1
+            fi
+            if [[ "$name" != "$expected_name" || "$team" != 'VKL57X3H6F' || "$identifier" != "VKL57X3H6F.$expected_bundle" ]]; then
+              echo "::error::The $label profile does not match the expected team, bundle ID or profile name."
               exit 1
             fi
             cp "$file" "$profile_dir/$uuid.mobileprovision"
