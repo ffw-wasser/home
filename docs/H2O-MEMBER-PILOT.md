@@ -19,6 +19,14 @@ Der Wechsel zum Home-Bildschirm leert weiterhin die geschützten Ansichten, erh�
 - Terminende und Zwölfstunden-Ablauf stehen als echte zukünftige Widgeteinträge fest. Auch ein leerer Kalender läuft ab. Bei Netzfehlern bleibt ausschließlich der zeitlich begrenzte letzte Stand.
 - Uhrzeiten bleiben in Europe/Berlin. Ohne neuen App-Abruf gibt es keine Hintergrundabfrage und keine garantierte Sofortaktualisierung nach einer Änderung durch andere Mitglieder.
 
+## Verschlüsselungsangabe für TestFlight
+
+In `H2OPortal/Info.plist` ist `ITSAppUsesNonExemptEncryption` als Boolean `false` hinterlegt. Die native App verwendet Apples Systemfunktionen (WebKit/HTTPS und Systemanmeldung), keine eigene Verschlüsselungsimplementierung oder eingebundene Kryptobibliothek. Damit wird die Angabe bei künftig erzeugten Builds mitgeliefert, statt sie bei jedem Upload erneut abzufragen. Bei neuen Kryptobibliotheken oder eigener Verschlüsselung muss diese Einstufung erneut geprüft werden.
+
+Der bereits hochgeladene Build 1016 enthält die Angabe noch nicht und benötigt einmalig die Auswahl „Keinen der oben genannten Algorithmen“ unter „Fehlende Compliance → Verwalten“. Ein bestehender Upload wird durch die Quelltextänderung nicht nachträglich verändert.
+
+Apple-Referenz: https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption
+
 ## Bauen und Signieren
 
 1. Der Workflow `h2o-ios-widget.yml` prüft Swift-Richtlinien, kompiliert echte und Demo-Variante und rendert kleine/mittlere Widgetbilder mit künstlichen Daten. Die Bilder liegen im Artefakt `h2o-member-widget-layouts`.
