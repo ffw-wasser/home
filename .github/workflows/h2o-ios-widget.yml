@@ -1,0 +1,30 @@
+name: Build iPhone H2O widget prototype
+
+on:
+  pull_request:
+    paths:
+      - "native/ios/**"
+      - "native/Package.swift"
+      - ".github/workflows/h2o-ios-widget.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Check shared native URL policy on macOS
+        run: swift test --package-path native
+      - name: Generate iOS app and widget project
+        run: xcodegen generate --spec native/ios/project.yml
+      - name: Compile both targets without Apple signing
+        run: |
+          xcodebuild -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build
