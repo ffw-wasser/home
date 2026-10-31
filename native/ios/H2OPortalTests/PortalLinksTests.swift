@@ -9,6 +9,12 @@ final class PortalLinksTests: XCTestCase {
         XCTAssertTrue(PortalLinks.trusted(PortalLinks.home))
         for value in ["http://ffw-wasser.github.io/home/deckel.html", "https://ffw-wasser.github.io.evil.test/home/deckel.html", "https://user@ffw-wasser.github.io/home/deckel.html", "https://ffw-wasser.github.io:443/home/deckel.html", "https://ffw-wasser.github.io/home/index.html", "https://ffw-wasser.github.io/home/%64eckel.html"] { XCTAssertFalse(PortalLinks.trusted(URL(string: value)!)) }
     }
+    func testWidgetLinkOnlyOpensTheNativePortal() {
+        XCTAssertTrue(PortalLinks.isWidgetTermine(URL(string: "h2oportal://termine")!))
+        for value in ["h2oportal://termine?token=x", "h2oportal://anders", "https://termine", "h2oportal://termine/#setup=x"] {
+            XCTAssertFalse(PortalLinks.isWidgetTermine(URL(string: value)!))
+        }
+    }
     func testInvitationRejectsQueriesAndExtraKeys() {
         let base = PortalLinks.home.absoluteString
         XCTAssertTrue(PortalLinks.invitation(URL(string: base + "#setup=" + String(repeating: "a", count: 43))!))
