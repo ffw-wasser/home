@@ -59,7 +59,7 @@ Offizielle Grundlagen:
 ## Vorgehen in abgrenzbaren Schritten
 
 1. **Bestandscheck (noch offen)**: native Projekte, Portal-Login, Release-Prozess, Associated Domains, Android-App-Signatur, Stand der Cloudflare-Routen und Abgleich der zwei Plattformen. Alle Risiken dokumentieren.
-2. **Technischer Widget-Prototyp (noch offen)**: lokaler/demonstrativer Termin- und Statusdatensatz für iOS und Android, korrekte Darstellung und Tipp auf H2O Termine; keine echten Mitgliederdaten.
+2. **Technischer Widget-Prototyp (iOS-Code vorhanden; Gerätetest offen)**: lokaler/demonstrativer Termin- und Statusdatensatz für iOS und Android, korrekte Darstellung und Tipp auf H2O Termine; keine echten Mitgliederdaten.
 3. **Geschützte Schnittstelle (noch offen)**: begrenzter Read-only-Endpunkt für eigenes Widget, Session-/Gerätebindung, Server-Autorisierung, Entzug, Datenschutz-Tests.
 4. **Echte Geräteprüfung (noch offen)**: iPhone und Android mindestens je ein Testgerät; Login/Passkey, QR, Kalender-Rückmeldung, Terminwechsel, Widget-Neuladen, Offline, Sperrung/Austritt und App-Update.
 5. **Geschlossene Verteilung (noch offen)**: wenige Pilotmitglieder pro Plattform, Installation/Update dokumentieren. Danach erst Entscheidungen zu Apple Unlisted und Android-Dauerverteilung.
@@ -74,4 +74,4 @@ Offizielle Grundlagen:
 - Portal-Web-App funktioniert unverändert auf iPhone, Android und Gerätehaus-iPad; bisherige H2O-Daten bleiben erhalten.
 - Erst nach realen Gerätetests und separater Freigabe in die Stores / Produktion.
 
-**Status:** Nur Anforderungsklärung und Architekturplan, noch **kein** natives Widget implementiert oder veröffentlicht.
+**Status 31.10.2026:** iOS-WidgetKit-Prototyp mit geschützter Datenübernahme beim Öffnen der H₂O-App im **Draft-PR #238** implementiert; App-Signierung, reales iPhone, TestFlight und Veröffentlichung fehlen. Für iOS ist ein eigenständiger read-only Widget-Endpunkt zunächst **nicht** eingerichtet – es wird die bereits authentifiziert geladene Portalantwort minimal gespiegelt. Widgetdaten verfallen nach 12 Stunden. Android bleibt in der Planung.
