@@ -51,7 +51,7 @@ struct PortalScreen: View {
         // Continue the navy footer behind the iPhone home indicator.
         .background(Color(red: 16.0 / 255, green: 28.0 / 255, blue: 44.0 / 255).ignoresSafeArea(.container, edges: .bottom))
         .onAppear { if !model.hasOpened { model.open(PortalLinks.home) } }
-        .onOpenURL { model.open($0) }
+        .onOpenURL { model.open(PortalLinks.isWidgetTermine($0) ? PortalLinks.home : $0) }
         .onChange(of: scenePhase) { _, phase in if phase == .background { model.showScanner = false } }
         .sheet(isPresented: $model.showScanner) {
             ScannerView { value in
