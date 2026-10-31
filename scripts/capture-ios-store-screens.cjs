@@ -10,7 +10,7 @@ const root=path.resolve(__dirname,'..'),out=path.resolve(process.env.IOS_STORE_O
  try{
   for(const device of [{name:'iphone',width:402,height:874,scale:3},{name:'ipad',width:1032,height:1376,scale:2}]){
    const f=await fixture({features:{rewards:false,challenge:false}}),person=f.people[0],token=randomBytes(32).toString('base64url');
-   f.sql.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) VALUES(?,?,?,?,?,?)').run(createHash('sha256').update('portal-session:'+token).digest('base64url'),person.alias,person.revision,'store-synthetic',Date.now(),Date.now()+86400000);
+   f.sql.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) VALUES(?,?,?,?,?,?)').run(createHash('sha256').update('portal-session:'+token).digest('base64url'),person.alias,person.revision,'fixture-'+person.alias,Date.now(),Date.now()+86400000);
    const context=await browser.newContext({viewport:{width:device.width,height:device.height},deviceScaleFactor:device.scale,serviceWorkers:'block',userAgent:'Mozilla/5.0 (iPhone) H2ONative/1 iOS'});
    const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);
    await page.addInitScript(session=>{
