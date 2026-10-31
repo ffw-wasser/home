@@ -12,6 +12,8 @@ struct PortalWebView: UIViewRepresentable {
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oPdf")
         controller.removeScriptMessageHandler(forName: "h2oInvitation")
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oInvitation")
+        controller.removeScriptMessageHandler(forName: "h2oWidget")
+        controller.add(WeakPdfHandler(context.coordinator), name: "h2oWidget")
         if let url = Bundle.main.url(forResource: "ios-entry", withExtension: "js"), let script = try? String(contentsOf: url, encoding: .utf8) {
             controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
@@ -32,9 +34,13 @@ struct PortalWebView: UIViewRepresentable {
         init(_ model: PortalModel) { self.model = model }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
-            guard ["h2oPdf", "h2oInvitation"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == "ffw-wasser.github.io", [0,443].contains(origin.port),
+            guard ["h2oPdf", "h2oInvitation", "h2oWidget"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == "ffw-wasser.github.io", [0,443].contains(origin.port),
                   let frameURL = message.frameInfo.request.url, PortalLinks.trusted(frameURL),
                   let webView = message.webView, let url = webView.url, PortalLinks.trusted(url) else { return }
+            if message.name == "h2oWidget" {
+                H2OWidgetBridge.accept(message.body)
+                return
+            }
             if message.name == "h2oInvitation" {
                 guard message.body as? String == "scan" else { return }
                 // Only an explicit action in the visible, signed-out setup can open the camera.
