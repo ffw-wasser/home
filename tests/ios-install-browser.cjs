@@ -14,6 +14,7 @@ const root=path.resolve(__dirname,'..');
    });
    await page.goto('https://ffw-wasser.github.io/home/install.html');
    assert.equal(await page.locator('#apple-install').isVisible(),device!=='android');assert.equal(await page.locator('#android-install').isVisible(),device!=='apple');assert.equal(await page.locator('#apple-store').isVisible(),false);
+   assert.equal(await page.locator('.qr').isVisible(),device==='desktop');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    const out=path.join(root,'qa/ios-store');fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'installation-'+device+'.png'),animations:'disabled'});
    ios='https://evil.example/install';await page.reload();assert.equal(await page.locator('#apple-store').getAttribute('href'),null);
