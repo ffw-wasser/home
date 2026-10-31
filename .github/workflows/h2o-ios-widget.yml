@@ -40,4 +40,6 @@ jobs:
           xcodebuild -project native/ios/H2OPortal.xcodeproj \
             -scheme H2OPortal -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
-            -configuration Debug H2O_REVIEW_FLAG=H2O_APP_REVIEW CODE_SIGNING_ALLOWED=NO build
+            -configuration Debug H2O_REVIEW_FLAG=H2O_APP_REVIEW \
+            H2O_APP_ENTITLEMENTS=H2OPortal/H2OPortalReview.entitlements \
+            CODE_SIGNING_ALLOWED=NO build
