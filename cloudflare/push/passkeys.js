@@ -78,6 +78,32 @@
   return {...row,record:await owner(env,row.alias,row.revision)};
  }
  function recent(active){if(!active||active.row.created_at<Date.now()-TTL)fail('Bitte für diese Sicherheitsänderung erneut anmelden.',401);}
+ async function deletePortalAccount(env,active,data){
+  recent(active);
+  if(data.confirm!==true)fail('Bitte die Löschung des persönlichen Portal-Kontos ausdrücklich bestätigen.',400);
+  const L=g.CentralLedger,{record,row}=active,meta=await L.meta(env);L.active(meta);
+  const linked=(await env.DB.prepare('SELECT a.alias,a.revision,a.payload FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision').all()).results,own=[];
+  for(const link of linked){const owner=await L.open(env,link.payload,'access:'+link.alias);if(owner.memberId===record.memberId)own.push(link);}
+  const caller=own.find(link=>link.alias===record.alias&&link.revision===record.revision);if(!caller)fail();
+  const aliases=JSON.stringify(own.map(link=>link.alias)),receipt=random(),now=Date.now();
+  // A transaction-local, unguessable marker guards every deletion. A revoked
+  // session, concurrent recovery or a changed data source makes the whole batch a no-op.
+  const guard='EXISTS(SELECT 1 FROM portal_passkey_challenges WHERE id=? AND kind=\'account-delete\')';
+  const statements=[env.DB.prepare("INSERT INTO portal_passkey_challenges(id,challenge,kind,alias,revision,generation,expires_at) SELECT ?,'','account-delete','','',0,? WHERE EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND seq=? AND state='active') AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND alias=? AND revision=? AND created_at>=? AND expires_at>?) AND EXISTS(SELECT 1 FROM ledger_access WHERE alias=? AND revision=? AND payload=?)").bind(receipt,now+TTL,meta.source,meta.seq,row.token_hash,record.alias,record.revision,now-TTL,now,caller.alias,caller.revision,caller.payload)];
+  statements.push(env.DB.prepare('INSERT OR IGNORE INTO portal_identity_members(member) SELECT ? WHERE '+guard).bind(record.memberId,receipt));
+  for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
+  statements.push(env.DB.prepare('DELETE FROM portal_devices WHERE id IN (SELECT id FROM devices WHERE alias IN (SELECT value FROM json_each(?))) AND '+guard).bind(aliases,receipt));
+  for(const table of ['portal_calendar_usage','portal_calendar_subscriptions','portal_replies','portal_sends','portal_calendar_profiles'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE member=? AND '+guard).bind(record.memberId,receipt));
+  // The membership roster, evidence records, central beverage ledger, orders
+  // and independent OneDrive files are administration records, not portal credentials.
+  for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_browser_sessions','portal_browser_pairs','devices','commands','sends','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
+  statements.push(env.DB.prepare('INSERT INTO portal_passkey_state(alias,generation) SELECT value,1 FROM json_each(?) WHERE '+guard+' ON CONFLICT(alias) DO UPDATE SET generation=generation+1').bind(aliases,receipt));
+  statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND '+guard).bind(receipt));
+  statements.push(env.DB.prepare('DELETE FROM portal_passkey_challenges WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
+  statements.push(env.DB.prepare("DELETE FROM portal_passkey_challenges WHERE id=? AND kind='account-delete'").bind(receipt));
+  const result=await env.DB.batch(statements);if(!result[0].meta.changes)fail('Zugang oder Datenstand wurde inzwischen geändert. Bitte erneut anmelden und prüfen.',409);
+  return {ok:true,deleted:true};
+ }
  async function admin(env,data){
   const record=await owner(env,data.alias,data.revision);
   if(data.reset===true)await revoke(env,record); // Enrollment marker intentionally survives recovery.
@@ -101,6 +127,7 @@
   if(!active)fail('Sitzung abgelaufen. Bitte erneut anmelden.',401);
   const {record,row}=active;
   if(data.alias&&data.alias!==record.alias)fail();
+  if(path==='account/delete')return deletePortalAccount(env,active,data);
   if(path==='session')return {alias:record.alias,revision:record.revision,key:record.key,expiresAt:row.expires_at,method:row.credential.startsWith('password:')?'password':'passkey'};
   if(path==='logout'){await env.DB.prepare('DELETE FROM portal_identity_sessions WHERE token_hash=?').bind(row.token_hash).run();return {ok:true};}
   if(path==='devices'){

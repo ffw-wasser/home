@@ -27,7 +27,7 @@
    const current=await event(env,data.eventId);if(!current||!current.open)fail('Die Veranstaltung ist geschlossen.');if(current.version!==data.version)fail('Die Preisliste wurde geändert. Bitte neu laden und Bestellung prüfen.');
    let lines;try{lines=M.lines(current.items,data.lines);}catch(e){fail(e.message,400);}const name=roster?.members.find(m=>m.id===record.memberId)?.name;if(!name)fail('Mitglied ist nicht freigegeben.',403);
    const payload=await L.seal(env,{name,lines,fingerprint},'theater-order:'+data.requestId);
-   const result=await env.DB.prepare('INSERT OR IGNORE INTO theater_orders(id,event,member,payload,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM theater_events WHERE id=? AND version=? AND open=1)').bind(data.requestId,data.eventId,record.memberId,payload,Date.now(),data.eventId,data.version).run();
+   const result=await env.DB.prepare('INSERT OR IGNORE INTO theater_orders(id,event,member,payload,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM theater_events WHERE id=? AND version=? AND open=1) AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)').bind(data.requestId,data.eventId,record.memberId,payload,Date.now(),data.eventId,data.version,record.alias,record.revision).run();
    if(!result.meta.changes){const duplicate=await env.DB.prepare('SELECT * FROM theater_orders WHERE id=?').bind(data.requestId).first();if(!duplicate||duplicate.member!==record.memberId||(await L.open(env,duplicate.payload,'theater-order:'+duplicate.id)).fingerprint!==fingerprint)fail('Bestellung nicht gespeichert. Preise oder Veranstaltung wurden geändert.');}return {ok:true,id:data.requestId};
   }
   if(!admin)fail('Nur die Kassenverwaltung darf diese Ansicht öffnen.',403);
