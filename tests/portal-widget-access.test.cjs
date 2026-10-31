@@ -18,3 +18,14 @@ test('Eine alte fehlgeschlagene Anfrage löscht keine neue Mitgliedersitzung',as
 test('Ein Netzfehler bewahrt den zeitlich begrenzten Widgetstand',async()=>{
  const f=fixture(0,{network:true});await assert.rejects(f.c.api('list'));assert.deepEqual(f.messages,[]);
 });
+
+test('Android widget bridge transfers only the authorized next event as JSON',()=>{
+ const sent=[],next={title:'Synthetische Übung',start:123,end:456,status:'yes',location:'GH Wasser',clothing:'Einsatz',memberName:'PRIVATE',capability:'SECRET'};
+ const c=vm.createContext({H2OWidget:{postMessage:raw=>sent.push(JSON.parse(raw))},eventSections:()=>({next})});
+ vm.runInContext(source.slice(source.indexOf(' function syncNativeWidget('),source.indexOf(' function paint(')),c);
+ c.syncNativeWidget({events:[next],stale:false,memberName:'PRIVATE',capability:'SECRET'});
+ assert.deepEqual(sent,[{action:'update',stale:false,event:{title:next.title,start:123,end:456,allDay:false,location:'GH Wasser',clothing:'Einsatzkleidung',status:'yes'}}]);
+ c.syncNativeWidget(null);assert.deepEqual(sent.at(-1),{action:'clear'});
+ c.eventSections=()=>({next:null});c.syncNativeWidget({events:[],stale:true});assert.deepEqual(sent.at(-1),{action:'empty',stale:true});
+ assert.doesNotMatch(JSON.stringify(sent),/PRIVATE|SECRET|capability|memberName/);
+});

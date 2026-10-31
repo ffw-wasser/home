@@ -9,7 +9,8 @@ class PortalLinksTest {
     }
     @Test fun invitationsRequireOneSetupCode() {
         val url = PortalLinks.HOME + "#setup=" + "a".repeat(43)
-        assertTrue(PortalLinks.invitation(url))
-        for (value in listOf(PortalLinks.HOME, url + "&k=secret", PortalLinks.HOME + "?next=evil#setup=" + "a".repeat(43), PortalLinks.HOME + "#setup=short")) assertFalse(PortalLinks.invitation(value))
+        assertTrue(PortalLinks.setupLink(url))
+        for (value in listOf(PortalLinks.HOME, url + "&k=secret", PortalLinks.HOME + "?next=evil#setup=" + "a".repeat(43), PortalLinks.HOME + "#setup=short")) assertFalse(PortalLinks.setupLink(value))
     }
 }
+

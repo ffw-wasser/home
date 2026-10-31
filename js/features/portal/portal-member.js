@@ -160,7 +160,7 @@
  // Only already authorized, member-filtered list data is mirrored to the iOS widget.
  // No capability, token, calendar subscription URL, member name or birthday crosses this bridge.
  function syncNativeWidget(result){
-  const bridge=globalThis.webkit?.messageHandlers?.h2oWidget;if(!bridge)return;
+  const bridge=globalThis.webkit?.messageHandlers?.h2oWidget||(globalThis.H2OWidget?{postMessage:value=>globalThis.H2OWidget.postMessage(JSON.stringify(value))}:null);if(!bridge)return;
   if(!result){bridge.postMessage({action:'clear'});return;}
   const event=eventSections(Array.isArray(result.events)?result.events:[]).next;
   if(!event){bridge.postMessage({action:'empty',stale:!!result.stale});return;}

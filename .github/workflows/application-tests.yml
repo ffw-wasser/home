@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - main
+      - feature/h2o-native-member-pilot
   workflow_dispatch:
     inputs:
       build_member_pilot:

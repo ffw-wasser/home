@@ -65,17 +65,18 @@
  async function devices(){const value=await post('devices');el('list').replaceChildren();for(const [i,key] of value.keys.entries()){const row=document.createElement('p');row.textContent='Passkey '+(i+1)+(key.current?' · aktuell verwendet':'');if(!key.current){const button=document.createElement('button');button.type='button';button.textContent='Sperren';button.onclick=()=>run(async()=>{await login();await post('remove',{credential:key.id});await devices();el('message').textContent='Passkey und zugehörige Sitzungen gesperrt.';await g.DeckelReload?.();});row.append(' ',button);}el('list').append(row);}}
  function calendarSettings(){
   const host=document.getElementById('more-security');if(!host||document.getElementById('identity-calendar-settings'))return;
+  const android=/H2ONative\/1.*Android/.test(navigator.userAgent);
   const section=document.createElement('section');section.id='identity-calendar-settings';section.className='portal-setting';
   const heading=document.createElement('h3');heading.textContent='Meine Feuerwehrtermine';
   const intro=document.createElement('p');intro.textContent='Dein persönliches Abo enthält nur die kommenden Termine, die dir in H₂O angezeigt werden.';
   const cleanup=document.createElement('details');cleanup.id='identity-calendar-cleanup';
-  const cleanupTitle=document.createElement('summary');cleanupTitle.textContent='Altes H₂O-Abo auf iPhone/iPad entfernen';
+  const cleanupTitle=document.createElement('summary');cleanupTitle.textContent=android?'Altes H₂O-Abo in Google Kalender entfernen':'Altes H₂O-Abo auf iPhone/iPad entfernen';
   const cleanupIntro=document.createElement('p');cleanupIntro.textContent='Nach einer Sperrung, Wiederherstellung oder einem Link-Reset kann das alte Abo in deiner Kalender-App stehen bleiben. Entferne es dort, bevor du den neuen Link abonnierst.';
-  const cleanupSteps=document.createElement('ol');for(const text of ['Apple Kalender öffnen und auf „Kalender“ tippen.','Neben dem bisherigen H₂O-Kalender auf ⓘ tippen.','„Abo beenden“ oder „Kalender löschen“ wählen und bestätigen.']){const li=document.createElement('li');li.textContent=text;cleanupSteps.append(li);}
+  const cleanupSteps=document.createElement('ol');for(const text of (android?['Google Kalender am Computer öffnen.','Unter Einstellungen den bisherigen H₂O-Kalender auswählen.','Unter „Kalender entfernen“ das Abo beenden.']:['Apple Kalender öffnen und auf „Kalender“ tippen.','Neben dem bisherigen H₂O-Kalender auf ⓘ tippen.','„Abo beenden“ oder „Kalender löschen“ wählen und bestätigen.'])){const li=document.createElement('li');li.textContent=text;cleanupSteps.append(li);}
   const cleanupNote=document.createElement('p');cleanupNote.textContent='Die Webseite kann das Abo nicht auf deinem Gerät löschen. Nur den bisherigen H₂O-Kalender entfernen. Eine normale erneute Anmeldung ändert deinen Abo-Link nicht.';
   cleanup.append(cleanupTitle,cleanupIntro,cleanupSteps,cleanupNote);
   const subscribe=document.createElement('details'),summary=document.createElement('summary');subscribe.id='identity-calendar-subscribe';summary.textContent='Feuerwehrkalender abonnieren';subscribe.hidden=true;subscribe.append(summary);
-  const apple=document.createElement('a');apple.className='button secondary';apple.textContent='In Apple Kalender abonnieren';apple.referrerPolicy='no-referrer';
+  const apple=document.createElement('a');apple.className='button secondary';apple.hidden=android;apple.textContent='In Apple Kalender abonnieren';apple.referrerPolicy='no-referrer';
   const google=document.createElement('a');google.className='button secondary';google.textContent='In Google Kalender abonnieren';google.target='_blank';google.rel='noopener noreferrer';google.referrerPolicy='no-referrer';
   const copy=document.createElement('button');copy.type='button';copy.className='secondary';copy.textContent='Abo-Link kopieren';
   const help=document.createElement('p');help.textContent='Schon ein H₂O-Abo vorhanden? Vor einem neuen Abo das bisherige entfernen – die Anleitung steht oben. Dann einmal in deiner Kalender-App bestätigen. Google bei Bedarf am Computer: Weitere Kalender → + → Per URL.';

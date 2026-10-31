@@ -2,7 +2,8 @@ package de.feuerwehrwasser.h2o
 
 import android.Manifest
 import android.app.AlertDialog
-import android.app.TimePickerDialog
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -15,6 +16,7 @@ import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -22,87 +24,83 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
-import androidx.work.*
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
-import java.time.Duration
-import java.time.ZonedDateTime
-import java.util.concurrent.TimeUnit
+import androidx.work.WorkManager
+import com.google.firebase.messaging.FirebaseMessaging
+import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
+    companion object { const val OPEN_TERMS = "de.feuerwehrwasser.h2o.OPEN_TERMS" }
     private lateinit var web: WebView
     private lateinit var status: TextView
+    private lateinit var errorBar: LinearLayout
     private var pageFailed = false
-    private var passkeysSupported = false
     private var navigationEpoch = 0
+    private var pushEpoch = 0
     private lateinit var pdfExport: NativePdfExport
     private var pdfScript = ""
+    private var entryScript = ""
+    private data class Pending(val id: String, val epoch: Int, val pushEpoch: Int)
+    private var waiting: Pending? = null
+    private val pushPrefs get() = getSharedPreferences("h2o.push", Context.MODE_PRIVATE)
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
-        if (allowed) reminderTime() else notice("Mitteilungen sind nicht freigegeben. Die App bleibt nutzbar.")
-    }
-    private val scanner = registerForActivityResult(ScanContract()) { result ->
-        result.contents?.let { value ->
-            if (PortalLinks.invitation(value)) web.loadUrl(value)
-            else notice("Bitte den einmaligen Einladungs-QR der Feuerwehrverwaltung scannen.")
-        }
+        val job = waiting; waiting = null
+        if (job != null && job.pushEpoch == pushEpoch && job.epoch == navigationEpoch) { if (allowed) registerPush(job) else respond(job, "denied") }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WorkManager.getInstance(this).cancelUniqueWork("h2o-reminder")
+        WidgetStore.clear(this)
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val tools = LinearLayout(this)
-        fun action(label: String, click: () -> Unit) { tools.addView(Button(this).apply { text = label; minHeight = 56.dp; setPadding(4.dp, 8.dp, 4.dp, 8.dp); setOnClickListener { click() } }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
-        action("QR scannen") { scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Persönliche H₂O-Einladung scannen").setBeepEnabled(false)) }
-        action("Erinnerung") { reminders() }
-        action("Hilfe") { help() }
-        status = TextView(this).apply { setPadding(12.dp, 8.dp, 12.dp, 8.dp); visibility = View.GONE }
+        errorBar = LinearLayout(this).apply { visibility = View.GONE; gravity = android.view.Gravity.CENTER_VERTICAL }
+        status = TextView(this).apply { setPadding(12.dp, 8.dp, 8.dp, 8.dp) }
+        errorBar.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
         web = WebView(this)
+        errorBar.addView(Button(this).apply { text = "Erneut laden"; setOnClickListener { web.reload() } })
         pdfExport = NativePdfExport(this, { !isDestroyed && PortalLinks.trusted(web.url ?: "") }, { navigationEpoch }, ::notice)
         pdfScript = assets.open("pdf-export.js").bufferedReader().use { it.readText() }
+        entryScript = assets.open("ios-entry.js").bufferedReader().use { it.readText() }
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-            WebViewCompat.addWebMessageListener(web, "H2OPdf", setOf("https://ffw-wasser.github.io")) { view, message, origin, mainFrame, _ ->
-                if (mainFrame && message.type == WebMessageCompat.TYPE_STRING && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1,443) && PortalLinks.trusted(view.url ?: "")) message.data?.let(pdfExport::receive)
+            for (name in listOf("H2OPdf", "H2OWidget", "H2ONotifications")) {
+                WebViewCompat.addWebMessageListener(web, name, setOf("https://ffw-wasser.github.io")) { view, message, origin, mainFrame, _ ->
+                    if (mainFrame && message.type == WebMessageCompat.TYPE_STRING && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1, 443) && PortalLinks.trusted(view.url ?: "")) {
+                        message.data?.let { value -> when (name) {
+                            "H2OPdf" -> pdfExport.receive(value)
+                            "H2OWidget" -> WidgetStore.accept(this, value)
+                            "H2ONotifications" -> notificationRequest(value)
+                        } }
+                    }
+                }
             }
-        }
-        column.addView(tools); column.addView(status); column.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(column)
+        } else notice("Bitte Android System WebView aktualisieren, um Widget und Mitteilungen zu verbinden.")
+        column.addView(errorBar); column.addView(web, LinearLayout.LayoutParams(-1, 0, 1f)); setContentView(column)
         ViewCompat.setOnApplyWindowInsetsListener(column) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom); insets
         }
         with(web.settings) {
             javaScriptEnabled = true; domStorageEnabled = true
-            allowFileAccess = false; allowContentAccess = false
-            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            userAgentString += " H2ONative/1 Android"
-            setSupportMultipleWindows(true)
+            allowFileAccess = false; allowContentAccess = false; mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            userAgentString += " H2ONative/1 Android"; setSupportMultipleWindows(true)
         }
-        passkeysSupported = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)
-        if (passkeysSupported) {
-            WebSettingsCompat.setWebAuthenticationSupport(web.settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
-        } else notice("Diese Android-WebView-Version unterstützt keine Passkeys. Bitte Android System WebView aktualisieren oder das Portal im Browser öffnen.")
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)) WebSettingsCompat.setWebAuthenticationSupport(web.settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false)
         web.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageFailed = false; navigationEpoch++ }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 if (!request.isForMainFrame) return false
-                val value = request.url.toString()
-                if (PortalLinks.trusted(value)) return false
+                if (PortalLinks.trusted(request.url.toString())) return false
                 if (request.hasGesture()) external(request.url); return true
             }
             override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) { handler.cancel(); pageFailed = true; notice("Die sichere Verbindung ist fehlgeschlagen. Bitte später erneut versuchen.") }
-            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) { pageFailed = true; notice("Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen.") }
-            }
-            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) { if (request.isForMainFrame) { pageFailed = true; notice("Portal nicht erreichbar. Bitte die Internetverbindung prüfen.") } }
+            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); web.evaluateJavascript(entryScript, null); errorBar.visibility = View.GONE } }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
                 if (!isUserGesture) return false
                 val popup = WebView(this@MainActivity)
                 popup.webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(v: WebView, request: WebResourceRequest): Boolean {
-                        if (request.isForMainFrame) { external(request.url); popup.destroy() }; return true
-                    }
+                    override fun shouldOverrideUrlLoading(v: WebView, request: WebResourceRequest): Boolean { if (request.isForMainFrame) { external(request.url); popup.destroy() }; return true }
                 }
                 (resultMsg.obj as WebView.WebViewTransport).webView = popup; resultMsg.sendToTarget(); return true
             }
@@ -110,34 +108,59 @@ class MainActivity : ComponentActivity() {
             override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult): Boolean { if (!PortalLinks.trusted(url)) { result.cancel(); return true }; AlertDialog.Builder(this@MainActivity).setMessage(message).setPositiveButton("OK") { _, _ -> result.confirm() }.setNegativeButton("Abbrechen") { _, _ -> result.cancel() }.setOnCancelListener { result.cancel() }.show(); return true }
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) { override fun handleOnBackPressed() { if (web.canGoBack()) web.goBack() else { isEnabled = false; onBackPressedDispatcher.onBackPressed() } } })
-        // A cold start always resolves a trusted page; no session tokens enter intents or logs.
-        web.loadUrl(intent?.dataString?.takeIf(PortalLinks::trusted) ?: PortalLinks.HOME)
+        openIntent(intent)
     }
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); intent.dataString?.takeIf(PortalLinks::trusted)?.let(web::loadUrl) }
+    private fun openIntent(value: Intent?) {
+        if (value?.action == OPEN_TERMS || PortalLinks.widgetLink(value?.dataString ?: "")) {
+            if (PortalLinks.trusted(web.url ?: "") && web.progress >= 100) web.evaluateJavascript("window.DeckelMobile?.jump('portal-section')", null)
+            else web.loadUrl(PortalLinks.HOME + "?nativePage=terms")
+        } else {
+            val address = value?.dataString?.takeIf { PortalLinks.trusted(it) && (!Uri.parse(it).fragment.orEmpty().startsWith("setup=") || PortalLinks.setupLink(it)) }
+            web.loadUrl(address ?: PortalLinks.HOME)
+        }
+    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); openIntent(intent) }
     private fun external(uri: Uri) {
-        if (uri.scheme !in setOf("https", "mailto", "tel")) return
+        if (uri.scheme !in setOf("https", "mailto", "tel") && !PortalLinks.calendarSubscription(uri.toString())) return
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { notice("Für diesen Link ist keine passende Anwendung verfügbar.") }
     }
-    private fun reminders() {
-        AlertDialog.Builder(this).setTitle("Tägliche App-Erinnerung").setMessage("Eine allgemeine Erinnerung, das Portal zu prüfen. Keine automatische Erinnerung an einzelne Termine. Android kann die Zustellung verzögern.")
-            .setPositiveButton("Uhrzeit wählen") { _, _ ->
-                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else reminderTime()
-            }.setNegativeButton("Ausschalten") { _, _ -> WorkManager.getInstance(this).cancelUniqueWork("h2o-reminder"); notice("App-Erinnerung ausgeschaltet.") }.setNeutralButton("Schließen", null).show()
+    private fun notificationRequest(raw: String) {
+        if (raw.length > 1000) return
+        runCatching {
+            val value = JSONObject(raw); val id = value.getString("id"); val action = value.getString("action")
+            if (!Regex("[a-f0-9-]{36}").matches(id)) return
+            if (action == "disable") pushEpoch++
+            val job = Pending(id, navigationEpoch, pushEpoch)
+            if (action == "disable") {
+                pushPrefs.edit().putBoolean("optIn", false).apply(); getSystemService(NotificationManager::class.java).cancelAll()
+                if (FirebaseSetup.initialize(this)) { val messaging = FirebaseMessaging.getInstance(); messaging.isAutoInitEnabled = false; messaging.deleteToken() }
+                respond(job, "disabled"); return
+            }
+            if (action !in setOf("status", "request")) return
+            if (!FirebaseSetup.initialize(this)) { respond(job, "unavailable"); return }
+            val permitted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            if (action == "request" && !permitted) { if (waiting == null) { waiting = job; pushPrefs.edit().putBoolean("asked", true).apply(); permission.launch(Manifest.permission.POST_NOTIFICATIONS) }; return }
+            if (!permitted || !NotificationManagerCompat.from(this).areNotificationsEnabled()) { respond(job, if (pushPrefs.getBoolean("asked", false)) "denied" else "default"); return }
+            if (action == "request" || pushPrefs.getBoolean("optIn", false)) registerPush(job) else respond(job, "default")
+        }
     }
-    private fun reminderTime() {
-        TimePickerDialog(this, { _, hour, minute ->
-            val now = ZonedDateTime.now(); var first = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
-            if (!first.isAfter(now)) first = first.plusDays(1)
-            val job = PeriodicWorkRequestBuilder<PortalReminderWorker>(1, TimeUnit.DAYS).setInitialDelay(Duration.between(now, first)).build()
-            WorkManager.getInstance(this).enqueueUniquePeriodicWork("h2o-reminder", ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, job)
-            notice("Tägliche App-Erinnerung eingerichtet. Die Uhrzeit ist ungefähr.")
-        }, 18, 0, true).show()
+    private fun registerPush(job: Pending) {
+        if (job.pushEpoch != pushEpoch || job.epoch != navigationEpoch || isDestroyed) return
+        val messaging = FirebaseMessaging.getInstance(); messaging.isAutoInitEnabled = true
+        messaging.token.addOnCompleteListener { result ->
+            if (job.pushEpoch != pushEpoch || job.epoch != navigationEpoch || isDestroyed) return@addOnCompleteListener
+            if (result.isSuccessful && !result.result.isNullOrBlank()) { pushPrefs.edit().putBoolean("optIn", true).apply(); respond(job, "granted", result.result) }
+            else respond(job, "unavailable")
+        }
     }
-    private fun help() {
-        AlertDialog.Builder(this).setTitle("H₂O · Hilfe").setMessage("1. Bei der Verwaltung eine persönliche Einladung holen.\n2. Oben QR scannen wählen und den QR-Code scannen.\n3. Den Passkey auf dem eigenen Handy einrichten.\n\nTermine, Status und Mein Deckel bleiben im Portal. Deine Browser-Anmeldung wird nicht automatisch übernommen. Bei Verlust hilft die Verwaltung.\n\nServer-Push ist in dieser Entwicklungsversion noch nicht eingerichtet. Die tägliche App-Erinnerung funktioniert unabhängig davon.")
-            .setPositiveButton("Erneut laden") { _, _ -> web.reload() }.setNeutralButton("Im Browser") { _, _ -> external(Uri.parse(PortalLinks.HOME)) }.setNegativeButton("Schließen", null).show()
+    private fun respond(job: Pending, permission: String, token: String? = null) {
+        if (isDestroyed || job.epoch != navigationEpoch || job.pushEpoch != pushEpoch || !PortalLinks.trusted(web.url ?: "")) return
+        val value = JSONObject().put("id", job.id).put("permission", permission); if (token != null) value.put("deviceToken", token)
+        web.evaluateJavascript("window.dispatchEvent(new CustomEvent('h2o-native-notifications',{detail:$value}))", null)
     }
-    private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE } }
-    override fun onDestroy() { pdfExport.close(); web.destroy(); super.onDestroy() }
+    private fun notice(message: String) { if (::status.isInitialized) { status.text = message; errorBar.visibility = View.VISIBLE } }
+    override fun onResume() { super.onResume(); if (::web.isInitialized) { web.onResume(); if (PortalLinks.trusted(web.url ?: "")) web.evaluateJavascript("document.dispatchEvent(new Event('visibilitychange'))", null) } }
+    override fun onPause() { if (::web.isInitialized) web.onPause(); super.onPause() }
+    override fun onDestroy() { if (::pdfExport.isInitialized) pdfExport.close(); if (::web.isInitialized) web.destroy(); waiting = null; super.onDestroy() }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 }

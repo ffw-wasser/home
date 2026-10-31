@@ -22,7 +22,7 @@
  function personal(){if(globalThis.H2OIdentity?.session?.())return true;try{const p=new URLSearchParams(location.hash.slice(1)),repo=p.get('r');return /^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo||'')&&repo!=='ffw-wasser/home'&&/^[a-f0-9]{32}$/.test(p.get('a')||'')&&/^[a-f0-9]{64}$/.test(p.get('k')||'');}catch{return false;}}
  function steps(values){const list=by('installSteps');list.replaceChildren();for(const value of values){const li=document.createElement('li');li.textContent=value;list.append(li);}}
  function refresh(){
-  const retired=by('nativeRetired');if(retired)retired.hidden=!native()||Boolean(globalThis.webkit?.messageHandlers?.h2oNotifications);
+  const retired=by('nativeRetired');if(retired)retired.hidden=!native()||Boolean(globalThis.webkit?.messageHandlers?.h2oNotifications||globalThis.H2ONotifications);
   if(native()){by('installSection').hidden=true;return;}
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
   const show=!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;

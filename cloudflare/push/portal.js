@@ -521,26 +521,27 @@
    const c={...old,calendarUrl:url,reminders:false,leadHours:data.leadHours},events=await sourceProjection(c);return saveCalendarConnection(env,row,c,events);
   }
   if(path==='/portal/native-push'){
-   const transport=g.NativePush,action=data.action||'status';
+   const transport=g.NativePush,action=data.action||'status',platform=data.platform||'ios';
+   if(!['ios','android'].includes(platform))fail('Ungültige Geräteplattform.',400);
    if(!['status','subscribe','unsubscribe'].includes(action))fail('Ungültige Mitteilungsaktion.',400);
-   const url=data.deviceToken===undefined?null:transport?.endpoint(data.deviceToken);
-   if(data.deviceToken!==undefined&&!url)fail('Ungültiges Apple-Mitteilungsgerät.',400);
-   if(action!=='status'&&!url)fail('Apple-Mitteilungsgerät fehlt.',400);
+   const url=data.deviceToken===undefined?null:transport?.endpoint(data.deviceToken,platform);
+   if(data.deviceToken!==undefined&&!url)fail('Ungültiges Mitteilungsgerät.',400);
+   if(action!=='status'&&!url)fail('Mitteilungsgerät fehlt.',400);
    const id=url?await hash(url):null;
    if(action==='unsubscribe')await env.DB.batch([
     env.DB.prepare('DELETE FROM portal_devices WHERE id=? AND EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)').bind(id,id,record.alias),
     env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,record.alias)
    ]);
    if(action==='subscribe'){
-    if(!transport?.ready(env))fail('Apple-Mitteilungsdienst noch nicht eingerichtet.',503);
+    if(!transport?.ready(env,platform))fail('Mitteilungsdienst noch nicht eingerichtet.',503);
     const old=await env.DB.prepare('SELECT alias FROM devices WHERE id=?').bind(id).first();
-    if(old&&old.alias!==record.alias)fail('Auf diesem iPhone zuerst die Mitteilungen des anderen Mitglieds deaktivieren.');
+    if(old&&old.alias!==record.alias)fail('Auf diesem Gerät zuerst die Mitteilungen des anderen Mitglieds deaktivieren.');
     const result=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,record.alias,record.revision,url,record.alias,record.revision,record.alias,id,record.alias).run();
     if(!result.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');
     await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) VALUES(?)').bind(id).run();
    }
    const registered=!!(id&&await env.DB.prepare('SELECT id FROM devices WHERE id=? AND alias=? AND revision=?').bind(id,record.alias,record.revision).first());
-   return {ok:true,ready:!!transport?.ready(env),registered};
+   return {ok:true,ready:!!transport?.ready(env,platform),registered};
   }
   if(path==='/portal/push-devices'){
    const deviceURL=data.endpoint===undefined?null:endpoint(data.endpoint);
