@@ -294,7 +294,7 @@ Die obere Terminkarte wartet beim Aktualisieren nicht auf die privaten Rückmeld
 
 ## Alternative Passwortanmeldung (vorbereitet, nicht produktiv eingerichtet)
 
-Eine identitätsgeprüfte, zehn Minuten gültige Verwaltungsfreigabe kann wahlweise
+Eine identitätsgeprüfte, 30 Minuten gültige Verwaltungsfreigabe kann wahlweise
 für einen Passkey oder einen Passwortzugang verwendet werden. Mitgliedschaft,
 Rollenprüfung, Portalberechtigungen und Sitzungen gelten für beide Anmeldearten.
 Es gibt keine offene Registrierung und keinen Zugang über die Getränke-PIN.

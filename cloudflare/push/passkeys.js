@@ -81,7 +81,7 @@
  async function admin(env,data){
   const record=await owner(env,data.alias,data.revision);
   if(data.reset===true)await revoke(env,record); // Enrollment marker intentionally survives recovery.
-  const code=random(),id=await hash('portal-ticket:'+code),expiresAt=Date.now()+10*60000,epoch=await generation(env,record.alias);
+  const code=random(),id=await hash('portal-ticket:'+code),expiresAt=Date.now()+30*60000,epoch=await generation(env,record.alias);
   await env.DB.batch([env.DB.prepare('DELETE FROM portal_identity_tickets WHERE alias=? OR expires_at<?').bind(record.alias,Date.now()),env.DB.prepare('INSERT INTO portal_identity_tickets(id,alias,revision,generation,expires_at) VALUES(?,?,?,?,?)').bind(id,record.alias,record.revision,epoch,expiresAt)]);
   return {code,expiresAt};
  }

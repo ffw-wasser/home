@@ -12,14 +12,14 @@ const root=path.resolve(__dirname,'..');
   oneDriveReadState=async()=>({members});adminUnlocked=true;resetAdminTimeout();
   DrinksStore.sourceKey=()=> 'welcome-source';DrinksCentral.connection=async()=>({origin:'https://synthetic.example.workers.dev',source:'welcome-source'});
   DrinksMobile.preparePortalAccess=async()=>({alias:'a'.repeat(32),revision:'welcome-revision'});
-  DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?{code:'t'.repeat(43),expiresAt:Date.now()+600000}:p.endsWith('/evidence/overview')?{items:[],count:0,memberCount:0,servedAt:Date.now()}:{evidenceVersion:1,replyFunctionsVersion:1,items:[],members:[]};
+  DrinksPush.request=async(c,p)=>p.endsWith('/identity-ticket')?{code:'t'.repeat(43),expiresAt:Date.now()+30*60000}:p.endsWith('/evidence/overview')?{items:[],count:0,memberCount:0,servedAt:Date.now()}:{evidenceVersion:1,replyFunctionsVersion:1,items:[],members:[]};
   showView('settingsPortalView');
  });
  await page.locator('#portal-admin-member option').nth(1).waitFor({state:'attached'});await page.locator('#portal-admin-member').selectOption('welcome-a');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#portal-admin-show-qr').click();
  const email=page.locator('#portal-admin-identity-email');await email.waitFor({state:'visible'});
  const href=await email.getAttribute('href'),mail=new URL(href),body=mail.searchParams.get('body');
- assert.equal(mail.protocol,'mailto:');assert.equal(mail.pathname,'');assert.match(body,/Anna/);assert.match(body,/10 Minuten/);assert.match(body,/nicht weiterleiten/);assert.ok(body.includes('#setup='+'t'.repeat(43)));assert.doesNotMatch(body,/[?&]k=/);
+ assert.equal(mail.protocol,'mailto:');assert.equal(mail.pathname,'');assert.match(body,/Anna/);assert.match(body,/30 Minuten/);assert.match(body,/nicht weiterleiten/);assert.ok(body.includes('#setup='+'t'.repeat(43)));assert.doesNotMatch(body,/[?&]k=/);
  await page.locator('#portal-admin-member').selectOption('');assert.equal(await email.isVisible(),false);assert.equal(await email.getAttribute('href'),null);
  // The link lands in the existing one-use-ticket flow, erasing the secret from the address bar.
  await page.goto('https://ffw-wasser.github.io/home/deckel.html#setup='+'t'.repeat(43));await page.locator('#h2oStartup').waitFor({state:'hidden'});
