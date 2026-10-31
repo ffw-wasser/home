@@ -46,6 +46,16 @@ jobs:
             exit 1
           fi
           file "$widget_logo"
+          # Validate the *same bundle lookup* as the iOS widget, rather than
+          # merely checking that Xcode copied some PNG file into the appex.
+          swift -e 'import AppKit; import Foundation
+          let bundle = Bundle(url: URL(fileURLWithPath: CommandLine.arguments[1]))!
+          guard let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
+                let image = NSImage(contentsOf: url),
+                image.size.width > 0 && image.size.height > 0 else {
+            fatalError("Widget extension cannot resolve and decode H2O AppIcon.png")
+          }
+          print("Widget logo bundle lookup and PNG decode passed")' "$(dirname "$widget_logo")"
       - name: Compile the isolated Apple review variant without signing
         run: |
           xcodebuild -project native/ios/H2OPortal.xcodeproj \
