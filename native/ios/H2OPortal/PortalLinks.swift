@@ -4,8 +4,8 @@ enum PortalLinks {
     // Review builds must be explicitly compiled with a separate, isolated demo host.
     // Production remains pinned to the original GitHub Pages origin.
     #if H2O_APP_REVIEW
-    static let home = URL(string: "https://h2o-review.example.invalid/home/deckel.html")!
-    static let host = "h2o-review.example.invalid"
+    static let home = URL(string: "https://h2o-apple-review.522dn4fc5f.workers.dev/home/deckel.html")!
+    static let host = "h2o-apple-review.522dn4fc5f.workers.dev"
     #else
     static let home = URL(string: "https://ffw-wasser.github.io/home/deckel.html")!
     static let host = "ffw-wasser.github.io"
