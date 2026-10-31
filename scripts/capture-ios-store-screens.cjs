@@ -14,6 +14,7 @@ const root=path.resolve(__dirname,'..'),out=path.resolve(process.env.IOS_STORE_O
    const context=await browser.newContext({viewport:{width:device.width,height:device.height},deviceScaleFactor:device.scale,serviceWorkers:'block',userAgent:'Mozilla/5.0 (iPhone) H2ONative/1 iOS'});
    const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);
    await page.addInitScript(session=>{
+    window.webkit={messageHandlers:{h2oWidget:{postMessage(){}},h2oPdf:{postMessage(){}},h2oNotifications:{postMessage(message){setTimeout(()=>dispatchEvent(new CustomEvent('h2o-native-notifications',{detail:{id:message.id,permission:'notDetermined'}})),0);}}}};
     localStorage.setItem('h2o-portal-identity-v1',JSON.stringify(session));localStorage.setItem('h2o-portal-identity-mode','1');localStorage.setItem('h2o_onboarding_complete','1');localStorage.setItem('h2o-first-options-v1:native:'+session.alias,'done');
    },{scope:'portal',alias:person.alias,revision:person.revision,token,expiresAt:Date.now()+86400000});
    await page.route('**/*',async route=>{
@@ -29,6 +30,7 @@ const root=path.resolve(__dirname,'..'),out=path.resolve(process.env.IOS_STORE_O
    await page.goto('https://ffw-wasser.github.io/home/deckel.html?nativePage=terms');await page.locator('#h2oStartup').waitFor({state:'hidden'});
    await page.addScriptTag({url:'https://ffw-wasser.github.io/home/native/shared/ios-entry.js'});
    await page.locator('.portal-event').first().waitFor({state:'visible'});
+   assert.equal(await page.locator('#nativeRetired').isVisible(),false,'current native bridge must not show an obsolete-app notice');
    for(const target of ['portal-section','more-training','deckel-more']){
     await page.evaluate(id=>DeckelMobile.jump(id),target);
     await page.evaluate(()=>{document.getElementById('deckel-main')?.scrollTo(0,0);window.scrollTo(0,0);});
