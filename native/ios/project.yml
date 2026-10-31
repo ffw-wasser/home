@@ -16,6 +16,7 @@ targets:
     platform: iOS
     sources:
       - H2OPortal
+      - Shared/WidgetSnapshot.swift
       - path: ../shared/ios-entry.js
         buildPhase: resources
       - path: ../shared/pdf-export.js
@@ -27,6 +28,21 @@ targets:
         CODE_SIGN_ENTITLEMENTS: H2OPortal/H2OPortal.entitlements
         TARGETED_DEVICE_FAMILY: '1,2'
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - target: H2OPortalWidget
+        embed: true
+  H2OPortalWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - H2OPortalWidget
+      - Shared/WidgetSnapshot.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.feuerwehrwasser.h2o.widget
+        INFOPLIST_FILE: H2OPortalWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: H2OPortalWidget/H2OPortalWidget.entitlements
+        TARGETED_DEVICE_FAMILY: '1,2'
   H2OPortalTests:
     type: bundle.unit-test
     platform: iOS
