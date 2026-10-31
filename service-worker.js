@@ -201,6 +201,7 @@ const PUBLIC_FILES=[
   "./assets/help/guide/geraetehaus-infos.jpg",
   "./assets/help/guide/h2o-aktualisieren.jpg",
   "./assets/help/guide/h2o-konto-sicherheit.jpg",
+  "./assets/help/guide/h2o-konto-loeschen.jpg",
   "./assets/help/guide/h2o-kalenderkonto.jpg",
   "./assets/help/guide/geraetehaus-kalender-rueckmeldung.jpg",
   "./assets/help/guide/h2o-anmeldung.jpg",

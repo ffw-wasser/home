@@ -1,6 +1,6 @@
 # H₂O Portal – Datenschutztext zur Vervollständigung
 
-**Entwurf, noch nicht veröffentlichen.** Die technische Beschreibung folgt dem Programmstand. Verantwortliche Stelle, Rechtsgrundlagen, Aufbewahrung der Verwaltungsunterlagen und vertragliche Regelungen mit Dienstleistern sind vor Veröffentlichung zu bestätigen. Die persönliche Apple-Mitgliedschaft bestimmt nicht automatisch, wer datenschutzrechtlich für Feuerwehrdaten verantwortlich ist.
+**Entwurf, noch nicht veröffentlichen.** Die technische Beschreibung folgt dem Programmstand. Verantwortliche Stelle, Rechtsgrundlagen, Aufbewahrung der Finanzdaten und vertragliche Regelungen mit Dienstleistern sind vor Veröffentlichung zu bestätigen. Die persönliche Apple-Mitgliedschaft bestimmt nicht automatisch, wer datenschutzrechtlich für Feuerwehrdaten verantwortlich ist.
 
 ## Verantwortliche Stelle und Kontakt
 
@@ -36,9 +36,9 @@ Anmeldesitzung und persönliche Einstellungen werden auf dem Gerät gespeichert.
 
 Unter **Konto & Sicherheit → Konto → Portal-Konto löschen** kann das persönliche Portal-Konto nach erneuter Anmeldung und ausdrücklicher Bestätigung gelöscht werden. Servergespeicherte persönliche Anmeldedaten, Portal-Sitzungen, Push-Verbindungen, Kalenderabo-Links und Portal-Rückmeldungen werden gemeinsam entfernt. Die alten Zugänge funktionieren anschließend nicht mehr. Für einen späteren Zugang ist eine erneute Freigabe durch die Verwaltung erforderlich. Bereits im Passwortmanager gespeicherte Passkeys und im Kalender gespeicherte Kopien können dort selbst entfernt werden.
 
-Die unabhängig geführte Feuerwehrmitgliedschaft, Nachweise und Unterlagen sowie das zentrale Getränkekonto und Bestellungen werden dadurch nicht gelöscht. Anfragen zu diesen Verwaltungsdaten sind an die verantwortliche Stelle zu richten. Die Kontolöschung beendet nicht die Feuerwehrmitgliedschaft.
+Die unabhängig geführte Feuerwehrmitgliedschaft, Nachweise und Unterlagen sowie das zentrale Getränkekonto und Bestellungen werden dadurch nicht gelöscht. Die Feuerwehrunterlagen werden für die Dauer der Feuerwehrmitgliedschaft geführt. Bei Beendigung der Mitgliedschaft werden diese Unterlagen durch die Verwaltung gelöscht. Die Löschung des Portal-Kontos beendet die Mitgliedschaft nicht. Anfragen zu Verwaltungsdaten sind an die verantwortliche Stelle zu richten.
 
-[Für jede verbleibende Datenart Zweck, Rechtsgrundlage und Aufbewahrungsfrist oder überprüfbare Kriterien bestätigen. Insbesondere eigene noch nicht bestätigte Nachweisangaben von aufbewahrungspflichtigen Verwaltungsunterlagen abgrenzen. Die technische Trennung allein belegt keine gesetzliche Aufbewahrungspflicht.]
+[Die Aufbewahrungsregel für Feuerwehrunterlagen wurde vom Betreiber bestätigt. Rechtsgrundlagen sowie die Behandlung von Getränkeabrechnungen und Bestellungen gesondert bestätigen. Keine gesetzliche Aufbewahrungspflicht allein aus der technischen Trennung ableiten.]
 
 ## Rechte
 

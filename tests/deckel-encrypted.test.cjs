@@ -110,3 +110,12 @@ test('Passkey-Einladung verweigert fremde Zugänge und unbestätigte Registrieru
  f.files.set('handy-member-test.json',{data:record});await assert.rejects(f.ctx.DrinksMobile.preparePortalAccess('member-test'),/anderen Konto/);assert.equal(f.registrations.length,0);
  f.files.clear();f.ctx.DrinksCentral.register=async()=>{throw Error('Dienst nicht erreichbar');};await assert.rejects(f.ctx.DrinksMobile.preparePortalAccess('member-test'),/Dienst nicht erreichbar/);
 });
+
+test('Nur ausdrücklich bestätigte Portal-Wiederherstellung erneuert Schlüssel und Zugangsrevision',async()=>{
+ const f=portalApp(),old=await f.ctx.DrinksMobile.preparePortalAccess('member-test');
+ const next=await f.ctx.DrinksMobile.preparePortalAccess('member-test',()=>true,true);
+ assert.equal(next.alias,old.alias);assert.equal(next.memberId,old.memberId);assert.notEqual(next.key,old.key);assert.notEqual(next.revision,old.revision);
+ assert.equal(f.files.get('handy-member-test.json').data.revision,next.revision);assert.equal(f.registrations.at(-1).revision,next.revision);
+ const again=await f.ctx.DrinksMobile.preparePortalAccess('member-test');assert.equal(again.revision,next.revision);
+ const bad={...next,memberId:'foreign-member'};f.files.set('handy-member-test.json',{data:bad});await assert.rejects(f.ctx.DrinksMobile.preparePortalAccess('member-test',()=>true,true),/anderen Konto/);
+});

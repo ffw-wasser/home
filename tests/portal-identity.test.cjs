@@ -145,3 +145,15 @@ test('Portal: administrative enrollment approval lasts exactly 30 minutes',async
  f.clock.now+=19*60000-1;assert.equal((await f.call('passkey/enroll/options',{code})).status,200,'valid immediately before expiry');
  f.clock.now+=1;assert.equal((await f.call('passkey/enroll/options',{code})).status,403,'rejected exactly at expiry');
 });
+
+test('Portal: account deletion needs the same member and a new real passkey assertion; old signatures cannot restore it',async()=>{
+ const {f,p,s}=await enrolled();
+ assert.equal((await f.call('passkey/account/delete',{alias:f.people[1].alias,confirm:true},s.token)).status,401);
+ f.clock.now+=300001;assert.equal((await f.call('passkey/account/delete',{confirm:true},s.token)).status,401);
+ const fresh=await signin(f,p);assert.equal(fresh.status,200);
+ assert.equal((await f.call('passkey/account/delete',{confirm:true},fresh.value.token)).status,200);
+ assert.equal((await f.call('passkey/session',{},s.token)).status,401);
+ assert.equal((await f.call('passkey/session',{},fresh.value.token)).status,401);
+ assert.equal((await signin(f,p)).status,401,'removed credential cannot recreate the deleted account');
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_identity_members WHERE member=?').get(f.people[0].memberId).n,1,'security cutover marker prevents legacy fallback');
+});

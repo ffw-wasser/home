@@ -370,7 +370,7 @@ continue;}
   if(!confirm((reset?'Alle Passkeys, Passwortzugänge und Sitzungen von '+name+' jetzt sperren und Zugang neu freigeben?':'Zugangseinrichtung für '+name+' freigeben?')+' Nur fortfahren, wenn du die Identität persönlich geprüft hast.')){$('qr-status').textContent='';return;}
   clearInvitation();invitationLoading(true);$('qr-status').textContent='Persönlicher Zugang wird vorbereitet …';
   await syncRoster();admin();if(version!==generation)return;
-  const record=await g.DrinksMobile.preparePortalAccess(id,()=>version===generation);admin();
+  const record=await g.DrinksMobile.preparePortalAccess(id,()=>version===generation,reset);admin();
   if(version!==generation)return;admin();
   const result=await request('identity-ticket',{alias:record.alias,revision:record.revision,reset});
   if(version!==generation)return;admin();

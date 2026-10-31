@@ -59,16 +59,19 @@
     linkCache.set(String(id),{revision:record.revision,key:record.key,sourceKey,url:url.href,until:Date.now()+300000});
     if(!created)queue(id);return url.href;
   }
-  async function preparePortalAccess(id,isCurrent=()=>true){
+  async function preparePortalAccess(id,isCurrent=()=>true,renew=false){
     id=String(id);
     const guard=()=>{if(!isCurrent()||!requireAdmin('settingsPortalView')||!adminUnlocked)throw Error('Freigabe wurde geändert. Bitte das Mitglied erneut auswählen.');};
     guard();const connection=await global.DrinksCentral.connection();guard();
     if(!connection)throw Error('Bitte den zentralen Kontodienst verbinden.');
     const source=connection.source,current=()=>{guard();if(S.sourceKey()!==source)throw Error('Der Datenordner wurde geändert. Bitte erneut öffnen.');};
     current();const filename=await S.mobileFileName(id),saved=await S.readMobileFile(filename);current();
-    const record=saved?.data||{...C.create(),memberId:id,revision:crypto.randomUUID()};
+    let record=saved?.data||{...C.create(),memberId:id,revision:crypto.randomUUID()};
     C.access(record);if(record.memberId!==id)throw Error('Handyzugang gehört zu einem anderen Konto.');
-    if(!saved){await S.writeMobileFile(filename,record);current();}
+    // Explicit administrative recovery renews the retired revision after self-deletion.
+    // Ordinary roster synchronization and invitations must never revive an old access.
+    if(renew&&saved)record={...C.create(),alias:record.alias,memberId:id,revision:crypto.randomUUID()};
+    if(!saved||renew){await S.writeMobileFile(filename,record,saved?.item?.eTag);current();}
     // Passkey enrollment uses the central service, without publishing a legacy
     // GitHub snapshot or creating a permanent link containing the member key.
     await global.DrinksCentral.register(connection,record);current();
