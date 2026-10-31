@@ -34,7 +34,18 @@ jobs:
           xcodebuild -project native/ios/H2OPortal.xcodeproj \
             -scheme H2OPortal -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/h2o-ios-widget-build" \
             -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      - name: Verify original H2O logo is present in widget extension
+        run: |
+          set -euo pipefail
+          widget_logo=$(find "$RUNNER_TEMP/h2o-ios-widget-build/Build/Products" \
+            -path '*/H2OPortalWidget.appex/AppIcon.png' -print -quit)
+          if [[ -z "$widget_logo" ]]; then
+            echo "::error::The original H2O AppIcon.png is missing from the compiled widget extension."
+            exit 1
+          fi
+          file "$widget_logo"
       - name: Compile the isolated Apple review variant without signing
         run: |
           xcodebuild -project native/ios/H2OPortal.xcodeproj \
