@@ -75,3 +75,25 @@ Offizielle Grundlagen:
 - Erst nach realen Gerätetests und separater Freigabe in die Stores / Produktion.
 
 **Status 31.10.2026:** iOS-WidgetKit-Prototyp mit geschützter Datenübernahme beim Öffnen der H₂O-App im **Draft-PR #238** implementiert; App-Signierung, reales iPhone, TestFlight und Veröffentlichung fehlen. Für iOS ist ein eigenständiger read-only Widget-Endpunkt zunächst **nicht** eingerichtet – es wird die bereits authentifiziert geladene Portalantwort minimal gespiegelt. Widgetdaten verfallen nach 12 Stunden. Android bleibt in der Planung.
+
+
+## Nachprüfung Build 1014: Logo und Kopfzeile
+
+Am 31.10.2026 meldet der Anwender auch für Build **1014** ein fehlendes Logo
+und eine abgeschnittene Überschrift in beiden Widget-Größen (Geräteangabe: „16“;
+genaue iOS-Version noch nicht bekannt). Der bestandene Ressourcen-/Kompilierungstest
+hat diese Darstellungsfehler auf dem Gerät nicht ausgeschlossen.
+
+Vorbereitet für Build **1015**, noch nicht signiert oder nach TestFlight geladen:
+- Dasselbe originale AppIcon.png wird mit ImageIO auf maximal 96 Pixel dekodiert.
+  Die Widgetdarstellung benötigt keine 1024-Pixel-UIImage.
+- Unter iOS 18+ bleibt das Logo auch bei getönter Widgetdarstellung im Vollfarbmodus.
+- Logo und zweizeilige Kopfzeile bekommen feste Höhe und höhere Layoutpriorität
+  als der Termintext. Beide Größen verwenden dieselbe geschützte Kopfzeile.
+- Ohne ladbares Bild bleibt „H₂O“ als sichtbarer Ersatz.
+
+Abnahme noch offen: tatsächlichen Build 1015 kompilieren, kleine und mittlere
+Widgetdarstellung mit langen Termintiteln sowie leerem Kalender auf iPhone prüfen,
+einschließlich getönter/heller/dunkler Darstellung. Screenshot des gemeldeten
+Fehlers zur eindeutigen Zuordnung von Kopfzeile und Termintitel nachreichen.
+Eine erfolgreiche Kompilierung allein gilt nicht als erfolgreiche Sichtprüfung.

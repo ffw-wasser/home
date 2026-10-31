@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 import UIKit
+import ImageIO
 
 private struct NextEventEntry: TimelineEntry {
     let date: Date
@@ -77,43 +78,62 @@ private struct NextEventView: View {
         Color(red: 0.10, green: 0.17, blue: 0.25)
     }
 
-    // The AppIcon.png is copied as a *raw resource* into the widget extension.
-    // Asset-catalog app icons are not normal named images. In particular,
-    // Image("AppIcon", bundle: .main) can be empty even when the PNG exists.
+    // Keep the original logo, but decode only the pixels needed by WidgetKit.
+    private static let logo: UIImage? = {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 96
+              ] as CFDictionary) else { return nil }
+        return UIImage(cgImage: thumbnail)
+    }()
+
     @ViewBuilder private var brandLogo: some View {
-        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
-           let image = UIImage(contentsOfFile: url.path) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
+        if let image = Self.logo {
+            if #available(iOS 18.0, *) {
+                Image(uiImage: image)
+                    .renderingMode(.original)
+                    .resizable()
+                    .widgetAccentedRenderingMode(.fullColor)
+                    .scaledToFit()
+            } else {
+                Image(uiImage: image)
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+            }
         } else {
-            // An explicit fallback avoids an invisible header on unexpected
-            // iOS resource-bundle changes.
-            Image(systemName: "flame.fill")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(Color(red: 0.49, green: 0.15, blue: 0.24))
+            Text("H₂O")
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundStyle(.primary)
         }
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 7) {
+        HStack(alignment: .center, spacing: 6) {
             brandLogo
-                .frame(width: family == .systemSmall ? 26 : 28,
-                       height: family == .systemSmall ? 26 : 28)
+                .frame(width: 28, height: 28)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 6))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .fixedSize()
                 .accessibilityHidden(true)
-            // Small widgets have little horizontal space. A deliberate line
-            // break is more reliable than asking SwiftUI to shrink or clip.
-            Text(family == .systemSmall ? "Feuerwehr\nWasser" : "Feuerwehr Wasser")
-                .font(.system(size: family == .systemSmall ? 11 : 14, weight: .bold))
-                .foregroundStyle(ink)
-                .lineLimit(family == .systemSmall ? 2 : 1)
-                .minimumScaleFactor(0.75)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Feuerwehr")
+                Text("Wasser")
+            }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 30)
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(2)
         .accessibilityElement(children: .combine)
     }
 
@@ -142,7 +162,7 @@ private struct NextEventView: View {
                         .minimumScaleFactor(0.8)
                 }
                 Text(event.title)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(ink)
                     .lineLimit(3)
                     .minimumScaleFactor(0.75)
@@ -173,7 +193,7 @@ private struct NextEventView: View {
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.secondary)
                         Text(event.title)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(ink)
                             .lineLimit(3)
                             .minimumScaleFactor(0.75)
