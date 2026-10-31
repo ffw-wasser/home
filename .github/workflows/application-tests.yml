@@ -52,6 +52,12 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
+      - name: Test calendar information, colors and combined start card
+        run: node tests/calendar-display-browser.cjs
+      - name: Test privacy-first illustrated instructions on tablet and phone
+        run: |
+          node tests/contacts-browser.cjs
+          node tests/help-guide-browser.cjs
       - name: Check common installation page and prepare Apple store screenshots
         run: |
           node tests/ios-install-browser.cjs
@@ -149,8 +155,6 @@ jobs:
           H2O_TEST_BROWSER=webkit node tests/portal-year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
         run: node tests/calendar-groups-browser.cjs
-      - name: Test calendar information, colors and combined start card
-        run: node tests/calendar-display-browser.cjs
       - name: Test calendar selection, incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
       - name: Test football favorites, cups and responsive views
@@ -161,10 +165,6 @@ jobs:
         run: node tests/workflow-drafts-browser.cjs
       - name: Test QR attendance and full appointment layout
         run: node tests/qr-checkin-browser.cjs
-      - name: Test privacy-first illustrated instructions on tablet and phone
-        run: |
-          node tests/contacts-browser.cjs
-          node tests/help-guide-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: |
           node tests/navigation-settings-browser.cjs
