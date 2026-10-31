@@ -7,6 +7,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      build_member_pilot:
+        description: Create signed member pilot artifact after tests (no TestFlight upload)
+        type: boolean
+        default: false
 permissions:
   contents: read
 # Cancel superseded PR checks; keep every main-branch check intact.
@@ -105,6 +110,7 @@ jobs:
           node tests/portal-notifications-browser.cjs
           node tests/portal-pull-refresh-browser.cjs
           node tests/portal-welcome-browser.cjs
+          node tests/native-onboarding-browser.cjs
           BROWSER_ENGINE=webkit node tests/portal-pull-refresh-browser.cjs
 
       - name: Test movable portal icon sizes
@@ -155,7 +161,7 @@ jobs:
       - name: Test auxiliary navigation, portal access, touch and event flows
         run: |
           node scripts/check-browser.cjs
-          node scripts/check-portal-qr.cjs
+          node scripts/check-portal-invitation.cjs
           node scripts/check-portal-gestures.cjs
           node scripts/check-theater.cjs
           node scripts/check-theater-controls.cjs
@@ -166,3 +172,11 @@ jobs:
           node scripts/check-readability.cjs
           QA_TEXT_SCALE=200 node scripts/check-readability.cjs
 
+
+  member-pilot:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_member_pilot
+    needs: tests
+    uses: ./.github/workflows/h2o-ios-member-pilot.yml
+    with:
+      upload_to_testflight: false
+    secrets: inherit

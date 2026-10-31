@@ -44,7 +44,7 @@ const {chromium}=require('playwright');
  console.log('Browser: signing in');
  await page.locator('#identity-login').click();
  await page.waitForFunction(()=>document.querySelector('#identity-state').textContent==='Mit Passkey angemeldet');
- await page.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await page.getByRole('button',{name:'H₂O öffnen',exact:true}).click();
+ await page.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await page.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await page.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await page.getByRole('button',{name:'H₂O öffnen',exact:true}).click();
  await page.waitForFunction(()=>!document.querySelector('#portal-section').hidden);
  assert.equal(await page.evaluate(()=>location.hash),'');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

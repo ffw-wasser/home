@@ -6,7 +6,7 @@
  const isAndroid=()=>/Android/i.test(navigator.userAgent);
  let pending=null,busy=false,installed=false,registered=false,step=0,override='';
  function profile(){
-  const ua=navigator.userAgent,ios=isIos(),android=isAndroid(),app=standalone();
+  const ua=navigator.userAgent,ios=isIos(),android=isAndroid(),app=standalone()||native();
   const browser=ios&&app?'Safari':/Edg\//.test(ua)?'Edge':/SamsungBrowser/.test(ua)?'Samsung Internet':/Firefox|FxiOS/.test(ua)?'Firefox':/Chrome|CriOS/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':'Browser';
   const embedded=!app&&(/FBAN|FBAV|Instagram|GSA\/|; wv\)|WebView|Outlook/i.test(ua)||(ios&&!/Safari|CriOS|FxiOS|EdgiOS/.test(ua)));
   return {platform:override||(ios?'ios':android?'android':'desktop'),browser,embedded,label:(ios?'iPhone / iPad':android?'Android':/Macintosh/.test(ua)?'Mac':'Computer')+' · '+browser};
@@ -22,7 +22,7 @@
  function personal(){if(globalThis.H2OIdentity?.session?.())return true;try{const p=new URLSearchParams(location.hash.slice(1)),repo=p.get('r');return /^ffw-wasser\/[A-Za-z0-9_.-]+$/.test(repo||'')&&repo!=='ffw-wasser/home'&&/^[a-f0-9]{32}$/.test(p.get('a')||'')&&/^[a-f0-9]{64}$/.test(p.get('k')||'');}catch{return false;}}
  function steps(values){const list=by('installSteps');list.replaceChildren();for(const value of values){const li=document.createElement('li');li.textContent=value;list.append(li);}}
  function refresh(){
-  const retired=by('nativeRetired');if(retired)retired.hidden=!native();
+  const retired=by('nativeRetired');if(retired)retired.hidden=!native()||Boolean(globalThis.webkit?.messageHandlers?.h2oNotifications);
   if(native()){by('installSection').hidden=true;return;}
   if(!registered&&'serviceWorker' in navigator){registered=true;navigator.serviceWorker.register('service-worker.js').catch(()=>{registered=false;});}
   const show=!standalone()&&!installed;by('installSection').hidden=!show;if(!show)return;
@@ -57,5 +57,5 @@
  function moveStep(direction){step=Math.max(0,Math.min(instructions(profile()).length-1,step+direction));refresh();}
  if(by('installBack'))by('installBack').onclick=()=>moveStep(-1);
  if(by('installNext'))by('installNext').onclick=()=>moveStep(1);
- window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep,isStandalone:standalone,canInstall:()=>Boolean(pending&&!busy&&!standalone()&&personal()),install};refresh();
+ window.DeckelInstall={refresh,profile,instructions,currentStep,moveStep,isStandalone:()=>native()||standalone(),canInstall:()=>Boolean(pending&&!busy&&!standalone()&&personal()),install};refresh();
 })();

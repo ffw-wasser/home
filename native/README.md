@@ -1,3 +1,28 @@
+# Privater iPhone-Mitgliederpilot mit Widget
+
+Aktueller Kandidat: **Build 1015** für das echte H₂O-Portal. Die bisher installierte
+Demo 1014 ist davon getrennt. Anleitung, Signierung, Domainvoraussetzungen und
+Gerätetest stehen in [H2O-MEMBER-PILOT.md](../docs/H2O-MEMBER-PILOT.md).
+
+- Logo und Kopfzeile sind für beide Widgetgrößen überarbeitet. Simulator-Bilder und
+  der echte iPhone-Test entscheiden über die Abnahme; Kompilierung allein genügt nicht.
+- Der neue Installationsweg nutzt für den persönlichen Pilot TestFlight; kein nativer Einladungs-QR-Scanner und keine zusätzliche Safari-Home-Installation.
+- Die App übernimmt ausschließlich den persönlich freigegebenen nächsten Termin.
+  Abmeldung und erkannter Zugriffsverlust leeren das Widget; auch leere Kalender
+  verfallen nach zwölf Stunden.
+- Die Produktionsvariante wird ohne H2O_APP_REVIEW gebaut und öffnet das echte Portal.
+  Die Demo bleibt für Apple-Prüfungen auf ihrer isolierten Domain.
+- Native Passkeys benötigen die noch zu veröffentlichende Apple-Domainzuordnung
+  und passende Associated-Domains-Profile. Erfolgreiche Browser-Passkeys beweisen
+  keine Anmeldung in der nativen App.
+- Kein automatischer TestFlight-Upload, keine öffentliche Store-Veröffentlichung
+  und keine Änderungen an OneDrive-Nutzerdaten. Android folgt nach dem iPhone-Pilot.
+
+Die folgenden Abschnitte sind historische Dokumentation. Bei Widersprüchen gilt
+für diesen Pilot der oben verlinkte aktuelle Stand.
+
+---
+
 # Archivierte native App-Vorbereitung
 
 Seit 27.10.2026 wird die native iPhone-App nicht weitergeführt. Android-Store-Veröffentlichung ist zurückgestellt.

@@ -1,4 +1,4 @@
-// Real invitation UI, QR encoder/decoder and Worker; synthetic OneDrive only.
+// Real account invitation UI and Worker; synthetic OneDrive only.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require('playwright'),{fixture}=require('./helpers/portal-fixture.cjs');
 const root=path.resolve(__dirname,'..');
@@ -40,19 +40,19 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#portal-admin-member option').nth(2).waitFor({state:'attached'});
   async function invite(id){
    await page.locator('#portal-admin-member').selectOption(id);page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();
-   await page.locator('#portal-admin-qr').waitFor({state:'visible'}).catch(async e=>{console.error(await page.locator('#portal-admin-qr-status').innerText(),await page.locator('#portal-admin-status').innerText(),errors);throw e;});
-   const result=await page.evaluate(()=>{const canvas=document.getElementById('portal-admin-qr'),pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);return {decoded:jsQR(pixels.data,pixels.width,pixels.height)?.data,href:document.getElementById('portal-admin-link').href,code:document.getElementById('portal-admin-identity-code').value};});
-   assert.equal(result.decoded,result.href,'QR is scannable');assert.equal(new URL(result.href).hash,'#setup='+result.code);assert.equal(new URL(result.href).search,'');
+   await page.locator('#portal-admin-link').waitFor({state:'visible'}).catch(async e=>{console.error(await page.locator('#portal-admin-qr-status').innerText(),await page.locator('#portal-admin-status').innerText(),errors);throw e;});
+   const result=await page.evaluate(()=>({href:document.getElementById('portal-admin-link').href,code:document.getElementById('portal-admin-identity-code').value}));
+   assert.equal(new URL(result.href).hash,'#setup='+result.code);assert.equal(new URL(result.href).search,'');assert.equal(await page.locator('#portal-admin-qr').isVisible(),false,'installation QR is retired');
    assert.doesNotMatch(result.href,/github_pat_|[?#&]k=/);assert.equal(await page.locator('#portal-admin-show-qr').isEnabled(),true);
    return result;
   }
   await invite(f.people[0].memberId);await invite('new-member');assert.equal(github.length,0,'Passkey invitation never needs legacy GitHub publishing');
   assert.equal(await page.evaluate(()=>qaFiles.has('handy-verbindung.json')),false);
-  for(const width of [320,390,768,1024]){await page.setViewportSize({width,height:900});await page.locator('#portal-admin-qr').scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const r=await page.locator('#portal-admin-qr').boundingBox();assert.ok(r.width>=240&&r.width<=360);}
+  for(const width of [320,390,768,1024]){await page.setViewportSize({width,height:900});await page.locator('#portal-admin-link').scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.equal(await page.locator('#portal-admin-link').isVisible(),true);}
   if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.setViewportSize({width:1024,height:900});await page.screenshot({path:path.join(process.env.QA_OUTPUT,'mitglied-einladung.png')});}
   await page.locator('#portal-admin-member').selectOption(f.people[0].memberId);assert.equal(await page.locator('#portal-admin-qr').isVisible(),false,'member change clears the invitation');
   await page.evaluate(()=>{DrinksCentral.register=async()=>{throw Error('Synthetischer Dienstfehler');};});page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();
   await page.locator('#portal-admin-qr-status').filter({hasText:'Synthetischer Dienstfehler'}).waitFor();assert.equal(await page.locator('#portal-admin-qr').isVisible(),false);assert.equal(await page.locator('#portal-admin-show-qr').isEnabled(),true);assert.equal(await page.locator('#portal-admin-show-qr').getAttribute('aria-busy'),'false');
-  assert.deepEqual(errors,[]);console.log('PASS existing/new member invitation without legacy config, real Store/connection and uppercase Graph ID, calendar, real Worker ticket, decoded QR, visible errors, member switch and 320–1024 px');
+  assert.deepEqual(errors,[]);console.log('PASS existing/new member invitation without legacy config, real Store/connection and uppercase Graph ID, calendar, real Worker ticket, personal link, no installation QR, visible errors, member switch and 320–1024 px');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

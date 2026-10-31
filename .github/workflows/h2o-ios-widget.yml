@@ -1,0 +1,87 @@
+name: Build iPhone H2O widget prototype
+
+on:
+  push:
+    branches: [feature/h2o-native-member-pilot]
+  pull_request:
+    paths:
+      - "native/ios/**"
+      - "native/Package.swift"
+      - "native/widget-tests/**"
+      - "native/shared/ios-entry.js"
+      - "cloudflare/review/**"
+      - "tests/h2o-apple-review.test.cjs"
+      - ".github/workflows/h2o-ios-widget.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Check synthetic review worker and QR login
+        run: node --test tests/h2o-apple-review.test.cjs
+      - name: Check shared native URL policy on macOS
+        run: swift test --package-path native
+      - name: Check URL policy in isolated Apple review build
+        run: swift test --package-path native -Xswiftc -DH2O_APP_REVIEW
+      - name: Generate iOS app and widget project
+        run: xcodegen generate --spec native/ios/project.yml
+      - name: Compile both targets without Apple signing
+        run: |
+          xcodebuild -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/h2o-ios-widget-build" \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      - name: Verify original H2O logo is present in widget extension
+        run: |
+          set -euo pipefail
+          widget_logo=$(find "$RUNNER_TEMP/h2o-ios-widget-build/Build/Products" \
+            -path '*/H2OPortalWidget.appex/AppIcon.png' -print -quit)
+          if [[ -z "$widget_logo" ]]; then
+            echo "::error::The original H2O AppIcon.png is missing from the compiled widget extension."
+            exit 1
+          fi
+          file "$widget_logo"
+          # Validate the *same bundle lookup* as the iOS widget, rather than
+          # merely checking that Xcode copied some PNG file into the appex.
+          swift -e 'import AppKit; import Foundation
+          let bundle = Bundle(url: URL(fileURLWithPath: CommandLine.arguments[1]))!
+          guard let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
+                let image = NSImage(contentsOf: url),
+                image.size.width > 0 && image.size.height > 0 else {
+            fatalError("Widget extension cannot resolve and decode H2O AppIcon.png")
+          }
+          print("Widget logo bundle lookup and PNG decode passed")' "$(dirname "$widget_logo")"
+      - name: Compile the isolated Apple review variant without signing
+        run: |
+          xcodebuild -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug H2O_REVIEW_FLAG=H2O_APP_REVIEW \
+            H2O_APP_ENTITLEMENTS=H2OPortal/H2OPortalReview.entitlements \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Render production widget layouts on iPhone simulator
+        run: |
+          set -euo pipefail
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
+          xcodebuild -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal \
+            -destination "platform=iOS Simulator,id=$device" \
+            -resultBundlePath "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
+            -configuration Debug H2O_REVIEW_FLAG= \
+            CODE_SIGNING_ALLOWED=NO test
+          mkdir -p "$RUNNER_TEMP/h2o-widget-screens"
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
+            --output-path "$RUNNER_TEMP/h2o-widget-screens"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-member-widget-layouts
+          path: ${{ runner.temp }}/h2o-widget-screens
+          if-no-files-found: warn

@@ -21,6 +21,6 @@ const root=path.resolve(__dirname,'..');
   assert.equal(await page.locator('#portal-page-more-security').evaluate(n=>n.scrollWidth>n.clientWidth+1),false);
  }
  await page.evaluate(async()=>{Object.defineProperty(navigator,'userAgent',{get:()=> 'iPhone H2ONative/1 iOS',configurable:true});DeckelInstall.refresh();await DeckelPush.render({alias:'a'.repeat(32),revision:'synthetic-revision',capability:'b'.repeat(43),origin:'https://push.example.workers.dev'});});
- assert.equal(await page.locator('#nativeRetired').isVisible(),true);assert.equal(await page.locator('#installSection').isVisible(),false);assert.equal(await page.locator('#portal-push-enable').isVisible(),false);assert.equal(await page.locator('#portal-push-disable').isVisible(),false);assert.match(await page.locator('#portal-push-note').innerText(),/TestFlight-App wird nicht weitergeführt/);
+ assert.equal(await page.locator('#nativeRetired').isVisible(),true);assert.equal(await page.locator('#installSection').isVisible(),false);assert.equal(await page.locator('#portal-push-enable').isVisible(),false);assert.equal(await page.locator('#portal-push-disable').isVisible(),false);assert.match(await page.locator('#portal-push-note').innerText(),/aktuelle iPhone-App verwenden/);
  assert.deepEqual(errors,[]);console.log('PASS direct-click push activation and passkey-safe deactivation; settings card at 320/390/768 px and 100/200%.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

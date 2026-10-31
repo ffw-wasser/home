@@ -20,7 +20,7 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  assert.match(await safari.p.locator('#h2o-onboarding .onboarding-install-list').innerText(),/Teilen/);
  // The illustration loads independently of the instruction list.
  await safari.p.locator('#h2o-onboarding .onboarding-install-image').waitFor({state:'visible'});
- await safari.p.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await safari.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await safari.p.locator('#portal-section').waitFor({state:'visible'});
+ await safari.p.getByRole('button',{name:'Später · im Browser weiter',exact:true}).click();await safari.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await safari.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await safari.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await safari.p.locator('#portal-section').waitFor({state:'visible'});
  let credential=(await safari.client.send('WebAuthn.getCredentials',{authenticatorId:safari.authenticatorId})).credentials[0];assert.ok(credential);
  await safari.c.close();
  // Each app launch starts with EMPTY storage; only the device's existing passkey is present.
@@ -45,7 +45,7 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  const newPerson=f.people[1],newTicket=(await f.call('identity-ticket',{alias:newPerson.alias,revision:newPerson.revision},null,true)).value,firstHome=await context(true);
  await firstHome.p.goto(base+'#setup='+newTicket.code);await firstHome.p.locator('#h2oStartup').waitFor({state:'hidden'});
  await firstHome.p.getByText('Brauchst du Hilfe?',{exact:true}).click();await firstHome.p.getByRole('button',{name:'Mit Einladung erstmals einrichten',exact:true}).click();
- assert.equal(await firstHome.p.locator('#h2o-onboarding-title').innerText(),'Zugang einrichten');await firstHome.p.locator('#identity-register').click();await firstHome.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await firstHome.p.locator('#identity-login').click();await firstHome.p.getByRole('button',{name:'Weiter',exact:true}).click();await firstHome.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await firstHome.p.locator('#portal-section').waitFor({state:'visible'});await firstHome.c.close();
+ assert.equal(await firstHome.p.locator('#h2o-onboarding-title').innerText(),'Zugang einrichten');await firstHome.p.locator('#identity-register').click();await firstHome.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await firstHome.p.locator('#identity-login').click();await firstHome.p.getByRole('button',{name:'Weiter',exact:true}).click();await firstHome.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await firstHome.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await firstHome.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await firstHome.p.locator('#portal-section').waitFor({state:'visible'});await firstHome.c.close();
  // Android setup: screen unlock pattern and all Home Screen steps must be visible.
  const androidPerson=f.people[2],androidTicket=(await f.call('identity-ticket',{alias:androidPerson.alias,revision:androidPerson.revision},null,true)).value,android=await context(false,'android');
  await android.p.goto(base+'#setup='+androidTicket.code);await android.p.locator('#h2oStartup').waitFor({state:'hidden'});
@@ -56,6 +56,8 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  assert.equal(await android.p.locator('#h2o-onboarding .onboarding-install-list li:visible').count(),4,'Android displays all four steps without opening a hidden card');
  assert.match(await android.p.locator('#h2o-onboarding .onboarding-install-list').innerText(),/Startbildschirm/);
  await android.p.getByRole('button',{name:'Symbol ist hinzugefügt',exact:true}).click();
+ await android.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();
+ await android.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();
  assert.equal(await android.p.locator('#h2o-onboarding-title').innerText(),'Fertig!');
  await android.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await android.p.locator('#portal-section').waitFor({state:'visible'});await android.c.close();
  assert.deepEqual(errors,[]);console.log('PASS: Safari and Android enrollment, visible Home installation steps, existing-passkey login and fresh invitations');
