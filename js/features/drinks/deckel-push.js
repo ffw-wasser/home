@@ -19,6 +19,11 @@
   g.addEventListener('h2o-native-notifications',done);bridge.postMessage({id,action});
  });}
  function nativeButtons(){
+  if(!g.webkit?.messageHandlers?.h2oNotifications){
+   $('enable').hidden=$('disable').hidden=$('reset').hidden=true;
+   state($('state'),'Bitte App aktualisieren');
+   $('note').textContent='Diese TestFlight-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle iPhone-App verwenden.';return;
+  }
   $('enable').hidden=nativeActive;$('disable').hidden=!nativeActive;$('reset').hidden=true;
   $('enable').disabled=busy||!access||!nativeReady;$('disable').disabled=busy;
   $('enable').textContent='Mitteilungen erlauben';
