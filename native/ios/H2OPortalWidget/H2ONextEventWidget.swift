@@ -24,13 +24,24 @@ private struct NextEventProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<NextEventEntry>) -> Void) {
         let now = Date()
         let snapshot = H2OWidgetStorage.read(now: now)
-        let expiration = snapshot?.updatedAt.addingTimeInterval(H2OWidgetStorage.maxAge)
-        let eventEnd = snapshot?.event?.end
-        let next = [now.addingTimeInterval(60 * 60), expiration, eventEnd]
-            .compactMap { $0 }.filter { $0 > now.addingTimeInterval(60) }.min()
-            ?? now.addingTimeInterval(15 * 60)
-        completion(Timeline(entries: [NextEventEntry(date: now, snapshot: snapshot)],
-                            policy: .after(next)))
+        var entries = [NextEventEntry(date: now, snapshot: snapshot)]
+
+        // Schedule actual future view entries, not just a requested reload.
+        // iOS may delay timeline reloads; an already rendered event must still
+        // disappear when it ends or its 12-hour member-data lifetime expires.
+        if let snapshot, let event = snapshot.event, event.end > now {
+            let expiry = snapshot.updatedAt.addingTimeInterval(H2OWidgetStorage.maxAge)
+            if event.end < expiry {
+                let noEvent = H2OWidgetSnapshot(updatedAt: snapshot.updatedAt,
+                                                event: nil, stale: snapshot.stale)
+                entries.append(NextEventEntry(date: event.end, snapshot: noEvent))
+            }
+            entries.append(NextEventEntry(date: expiry, snapshot: nil))
+        }
+
+        // A successful app refresh or logout explicitly reloads the widget.
+        // No background network access is needed, and no 15-minute polling.
+        completion(Timeline(entries: entries, policy: .never))
     }
 }
 
