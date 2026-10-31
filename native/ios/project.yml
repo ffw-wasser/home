@@ -41,6 +41,9 @@ targets:
     sources:
       - H2OPortalWidget
       - Shared/WidgetSnapshot.swift
+      # Reuse the exact original H2O app icon (fire and water) as the widget logo.
+      - path: H2OPortal/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.feuerwehrwasser.h2o.widget
