@@ -75,6 +75,11 @@ test('authorized review session returns only fake events and persists reply in d
   assert.equal(events[0].id,'demo-probe');
   assert.equal(events[0].status,'open');
   assert.ok(events.every(e=>e.location==='Gerätehaus Wasser (Demo)'));
+  const berlinHour = ms => new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23'
+  }).format(new Date(ms));
+  assert.deepEqual(events.map(e => berlinHour(e.start)), ['18', '18', '17']);
+  assert.ok(events.every(e => e.end - e.start === 2 * 3600000));
   const post=await call('/api/reply',env,'POST',{id:'demo-probe',status:'yes'},token);
   assert.equal(post.status,200);
   assert.equal((await post.json()).events[0].status,'yes');
