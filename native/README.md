@@ -6,6 +6,7 @@ Gerätetest stehen in [H2O-MEMBER-PILOT.md](../docs/H2O-MEMBER-PILOT.md).
 
 - Logo und Kopfzeile sind für beide Widgetgrößen überarbeitet. Simulator-Bilder und
   der echte iPhone-Test entscheiden über die Abnahme; Kompilierung allein genügt nicht.
+- Der neue Installationsweg nutzt für den persönlichen Pilot TestFlight; kein nativer Einladungs-QR-Scanner und keine zusätzliche Safari-Home-Installation.
 - Die App übernimmt ausschließlich den persönlich freigegebenen nächsten Termin.
   Abmeldung und erkannter Zugriffsverlust leeren das Widget; auch leere Kalender
   verfallen nach zwölf Stunden.

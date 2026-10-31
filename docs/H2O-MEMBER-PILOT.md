@@ -33,7 +33,7 @@ Termine laden, beide Widgetgrößen hinzufügen und Logo sowie vollständige Kop
 bei normaler und getönter Darstellung kontrollieren. Einen Status ändern und das
 Widget erneut ansehen. Das Widget aus einer anderen geöffneten Portalansicht antippen;
 es muss Termine öffnen. Anschließend abmelden: persönliche Widgetdaten müssen verschwinden.
-Auch QR-Login, Passkey, Passwort, PDF, fehlende Verbindung und große Schrift prüfen.
+Auch persönliche Zugangseinladung, Passkey, Passwort, PDF, fehlende Verbindung und große Schrift prüfen.
 
 Die isolierte Demo kann diese echten Anmeldungstests nicht ersetzen. Signatur,
 Upload und abgeschlossene Apple-Verarbeitung sind jeweils eigene Nachweise.
@@ -66,3 +66,25 @@ Der Signierversuch vom Entwicklungszweig wurde durch die bestehenden GitHub-Rege
 für apple-testflight-review vor Beginn des Jobs abgelehnt: Nur freigegebene Zweige
 können dieses Environment benutzen. Die Schutzregel wurde nicht verändert.
 Ein signiertes Mitgliederpaket liegt deshalb noch nicht vor.
+
+## Aktueller Installationsweg: nur der Kontoinhaber testet
+
+1. Auf dem eigenen iPhone TestFlight verwenden und den freigegebenen H₂O-Testbuild installieren.
+2. H₂O über das installierte App-Symbol öffnen und den vorhandenen Passkey oder das Passwort verwenden.
+3. Kalenderabo und Mitteilungen bei der ersten Einrichtung auswählen oder überspringen.
+4. Das optionale Widget zum Home-Bildschirm hinzufügen. Das ist keine zweite App-Installation.
+
+Der frühere Installations-QR in der Verwaltung wird nicht mehr erzeugt. Persönliche Freigaben werden als Link angeboten. Der native Scanner für Zugangseinladungen, sein JavaScript-Aufruf und die zugehörige
+Kameraberechtigung sind entfernt. Ein persönlicher Einladungslink kann weiterhin
+nach Identitätsprüfung einen neuen Zugang freigeben. Er ist kein Downloadlink.
+Der Anwesenheits-QR am Gerätehaus hat einen anderen Zweck und bleibt erhalten.
+
+Für weitere Mitglieder wird jetzt kein TestFlight-Link eingerichtet. Nach der
+späteren Apple-Freigabe kann ein App-Store-Link geteilt werden; eine nicht gelistete
+Verteilung muss Apple gesondert genehmigen. Dann brauchen Mitglieder kein TestFlight.
+Browserzugänge bestehender Mitglieder und deren gespeicherte Anmeldungen bleiben
+kompatibel; die native App führt keine Safari-Home-Installation mehr durch.
+
+Apple-Grundlagen:
+https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/
+https://developer.apple.com/support/unlisted-app-distribution/

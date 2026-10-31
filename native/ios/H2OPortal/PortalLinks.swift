@@ -32,8 +32,8 @@ enum PortalLinks {
             p.port == nil && p.user == nil && p.password == nil && p.query == nil && p.fragment == nil &&
             p.percentEncodedPath.range(of: "^/calendar/member/[A-Za-z0-9_-]{43}\\.ics$", options: .regularExpression) != nil
     }
-    static func invitation(_ url: URL) -> Bool {
+    static func setupLink(_ url: URL) -> Bool {
         guard trusted(url), let parts = URLComponents(url: url, resolvingAgainstBaseURL: false), parts.percentEncodedPath == "/home/deckel.html", parts.query == nil, let fragment = parts.percentEncodedFragment else { return false }
-        return fragment.range(of: "^setup=[A-Za-z0-9_-]{16,128}$", options: .regularExpression) != nil
+        return fragment.range(of: "^setup=[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil
     }
 }

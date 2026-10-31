@@ -30,9 +30,9 @@ final class PortalLinksTests: XCTestCase {
             XCTAssertFalse(PortalLinks.calendarSubscription(URL(string: value)!))
         }
     }
-    func testInvitationRejectsQueriesAndExtraKeys() {
+    func testAccountSetupLinkRejectsQueriesAndExtraKeys() {
         let base = PortalLinks.home.absoluteString
-        XCTAssertTrue(PortalLinks.invitation(URL(string: base + "#setup=" + String(repeating: "a", count: 43))!))
-        for value in [base, base + "#setup=short", base + "#setup=" + String(repeating: "a", count: 43) + "&k=secret"] { XCTAssertFalse(PortalLinks.invitation(URL(string: value)!)) }
+        XCTAssertTrue(PortalLinks.setupLink(URL(string: base + "#setup=" + String(repeating: "a", count: 43))!))
+        for value in [base, base + "#setup=short", base + "#setup=" + String(repeating: "a", count: 43) + "&k=secret"] { XCTAssertFalse(PortalLinks.setupLink(URL(string: value)!)) }
     }
 }

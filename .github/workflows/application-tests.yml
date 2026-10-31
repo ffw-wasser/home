@@ -161,7 +161,7 @@ jobs:
       - name: Test auxiliary navigation, portal access, touch and event flows
         run: |
           node scripts/check-browser.cjs
-          node scripts/check-portal-qr.cjs
+          node scripts/check-portal-invitation.cjs
           node scripts/check-portal-gestures.cjs
           node scripts/check-theater.cjs
           node scripts/check-theater-controls.cjs

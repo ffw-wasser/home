@@ -1,5 +1,7 @@
 # Apple Review – getrennte H₂O-Demo
 
+> Historischer Demo-Stand. Für den aktuellen persönlichen iPhone-Test gilt [H2O-MEMBER-PILOT.md](H2O-MEMBER-PILOT.md). Der native Einladungs-QR-Scanner wurde entfernt; die Installation erfolgt getrennt von der Kontofreigabe.
+
 Stand: 31.10.2026. **Cloudflare-Testsystem eingerichtet; App noch nicht in TestFlight.**
 
 ## Bestätigter Stand

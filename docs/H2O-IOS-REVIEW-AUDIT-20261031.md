@@ -1,5 +1,7 @@
 # H₂O iOS / TestFlight / Widget – Gesamtprüfung
 
+> Historischer Demo-Stand. Für den aktuellen persönlichen iPhone-Test gilt [H2O-MEMBER-PILOT.md](H2O-MEMBER-PILOT.md). Der native Einladungs-QR-Scanner wurde entfernt; die Installation erfolgt getrennt von der Kontofreigabe.
+
 Stand: **31.10.2026**. Code- und Konfigurationsprüfung; kein physischer iPhone-Gerätetest und kein Livezugriff auf das persönliche App-Store-Connect-Konto.
 
 ## Bestätigt

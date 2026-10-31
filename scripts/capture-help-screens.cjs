@@ -67,7 +67,7 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
    showView('settingsPortalView');
   });
   await page.locator('#portal-admin-member option').nth(1).waitFor({state:'attached'});await page.locator('#portal-admin-member').selectOption('help-a');
-  page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();await page.locator('#portal-admin-qr').waitFor({state:'visible'});
+  page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();await page.locator('#portal-admin-link').waitFor({state:'visible'});
   await shot('geraetehaus-h2o-einladung','#settingsPortalView');
  }
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.setViewportSize({width:390,height:780});await page.waitForFunction(()=>globalThis.H2OPortal&&globalThis.DeckelReload);await page.locator('#h2oStartup').waitFor({state:'hidden'});if(!only||only.split(',').includes('h2o-start')){await page.evaluate(()=>{window.helpStartupToken=DeckelStartup.begin();DeckelStartup.stage(helpStartupToken,'Die App wird geöffnet …');});await shot('h2o-start');await page.evaluate(()=>DeckelStartup.finish(helpStartupToken));await page.locator('#h2oStartup').waitFor({state:'hidden'});}if(!only||only.split(',').includes('h2o-anmeldung')){await page.setViewportSize({width:390,height:844});await shot('h2o-anmeldung');await page.setViewportSize({width:390,height:780});}if(process.env.PORTAL_REVIEW_OUTPUT){fs.mkdirSync(process.env.PORTAL_REVIEW_OUTPUT,{recursive:true});await page.screenshot({path:path.join(process.env.PORTAL_REVIEW_OUTPUT,'anmeldung.jpg'),type:'jpeg',quality:85});}

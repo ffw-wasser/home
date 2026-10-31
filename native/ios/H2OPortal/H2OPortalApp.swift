@@ -10,7 +10,6 @@ struct H2OPortalApp: App {
 
 @MainActor final class PortalModel: ObservableObject {
     @Published var message = ""
-    @Published var showScanner = false
     let web: WKWebView
     private(set) var hasOpened = false
     init() {
@@ -28,7 +27,7 @@ struct H2OPortalApp: App {
         web.isInspectable = false
     }
     func open(_ url: URL) {
-        guard PortalLinks.trusted(url) else { message = "Dieser Link gehört nicht zum Mitgliederportal."; return }
+        guard PortalLinks.trusted(url), !(url.fragment?.hasPrefix("setup=") == true) || PortalLinks.setupLink(url) else { message = "Dieser Link gehört nicht zum Mitgliederportal."; return }
         hasOpened = true
         web.load(URLRequest(url: url))
     }
@@ -36,7 +35,6 @@ struct H2OPortalApp: App {
 
 struct PortalScreen: View {
     @StateObject private var model = PortalModel()
-    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         VStack(spacing: 0) {
             if !model.message.isEmpty {
@@ -66,13 +64,6 @@ struct PortalScreen: View {
                 }
             } else { model.open(url) }
         }
-        .onChange(of: scenePhase) { _, phase in if phase == .background { model.showScanner = false } }
-        .sheet(isPresented: $model.showScanner) {
-            ScannerView { value in
-                model.showScanner = false
-                if let url = URL(string: value), PortalLinks.invitation(url) { model.open(url) }
-                else { model.message = "Bitte den einmaligen Einladungs-QR der Feuerwehrverwaltung scannen." }
-            }.ignoresSafeArea().overlay(alignment: .topTrailing) { Button("Schließen") { model.showScanner = false }.padding().background(.regularMaterial) }
-        }
+
     }
 }
