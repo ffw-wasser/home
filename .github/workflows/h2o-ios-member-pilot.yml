@@ -1,0 +1,216 @@
+name: H2O member pilot - signed TestFlight build
+
+# Runs only on explicit request, with separate Apple review signing secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      upload_to_testflight:
+        description: Upload signed member pilot to App Store Connect after export
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: h2o-member-pilot
+  cancel-in-progress: false
+
+jobs:
+  sign-and-possibly-upload:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/h2o-native-member-pilot'
+    runs-on: macos-26
+    timeout-minutes: 50
+    environment: apple-testflight-review
+    steps:
+      # Build the exact manually selected revision; never follow another branch.
+      # Production portal mode: no H2O_APP_REVIEW compilation flag.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify isolated demo logic and Berlin clock tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/h2o-member-pilot.test.cjs
+
+      - name: Verify both Swift URL policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift test --package-path native
+          swift test --package-path native -Xswiftc -DH2O_APP_REVIEW
+
+      - name: Generate native Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          xcodegen generate --spec native/ios/project.yml
+
+      - name: Compile unsigned iPhone simulator app and verify original widget icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/h2o-member-preflight" \
+            -configuration Debug H2O_REVIEW_FLAG= \
+            H2O_APP_ENTITLEMENTS=H2OPortal/H2OPortal.entitlements \
+            CODE_SIGNING_ALLOWED=NO build
+          widget_logo=$(find "$RUNNER_TEMP/h2o-member-preflight/Build/Products" \
+            -path '*/H2OPortalWidget.appex/AppIcon.png' -print -quit)
+          if [[ -z "$widget_logo" ]]; then
+            echo "::error::Original H2O logo missing from the compiled widget."
+            exit 1
+          fi
+          file "$widget_logo"
+          swift -e 'import AppKit; import Foundation
+          let bundle = Bundle(url: URL(fileURLWithPath: CommandLine.arguments[1]))!
+          guard let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
+                let image = NSImage(contentsOf: url),
+                image.size.width > 0 && image.size.height > 0 else {
+            fatalError("Widget cannot locate or decode original H2O icon from its own bundle")
+          }
+          print("Widget logo resolved and decoded successfully")' "$(dirname "$widget_logo")"
+          echo "Preflight passed: original H2O widget logo can be loaded."
+
+      - name: Confirm Xcode and review export configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          test "$(xcodebuild -version | awk '/^Xcode /{split($2,a,"."); print a[1]}')" -ge 26
+          plutil -lint native/ios/ExportOptionsMember.plist
+          plutil -lint native/ios/H2OPortal/H2OPortal.entitlements
+
+      - name: Import temporary signing certificate and verify both profiles
+        shell: bash
+        env:
+          P12_BASE64: ${{ secrets.H2O_IOS_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.H2O_IOS_P12_PASSWORD }}
+          APP_PROFILE_BASE64: ${{ secrets.H2O_IOS_APP_PROFILE_BASE64 }}
+          WIDGET_PROFILE_BASE64: ${{ secrets.H2O_IOS_WIDGET_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ -z "$P12_BASE64" || -z "$P12_PASSWORD" || -z "$APP_PROFILE_BASE64" || -z "$WIDGET_PROFILE_BASE64" ]]; then
+            echo "::error::Missing Apple signing secrets. See docs/APPLE-TESTFLIGHT-SIGNING.md."
+            exit 1
+          fi
+          keychain="$RUNNER_TEMP/h2o-member.keychain-db"
+          keychain_password=$(openssl rand -hex 24)
+          printf '%s' "$P12_BASE64" | base64 -D > "$RUNNER_TEMP/h2o-signing.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/h2o-signing.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security find-identity -v -p codesigning "$keychain" | grep -F 'Apple Distribution' >/dev/null
+          rm -f "$RUNNER_TEMP/h2o-signing.p12"
+          profile_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$profile_dir"
+          install_profile() {
+            local encoded="$1" label="$2" expected_name="$3" expected_bundle="$4"
+            local file="$RUNNER_TEMP/h2o-$label.mobileprovision"
+            local plist="$RUNNER_TEMP/h2o-$label.plist"
+            printf '%s' "$encoded" | base64 -D > "$file"
+            security cms -D -i "$file" > "$plist"
+            local name uuid team identifier group
+            name=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$plist")
+            uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$plist")
+            team=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$plist")
+            identifier=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$plist")
+            # Apple can generate a profile without App Groups if it was created
+            # before the capability was assigned to this exact App ID.
+            group=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:0' "$plist" 2>/dev/null || true)
+            if [[ "$group" != 'group.de.feuerwehrwasser.h2o' ]]; then
+              echo "::error::The $label provisioning profile is missing App Group group.de.feuerwehrwasser.h2o. In Apple Developer > Identifiers, assign the group to $expected_bundle; then regenerate its App Store Connect profile and replace the matching GitHub Environment secret."
+              exit 1
+            fi
+            if [[ "$name" != "$expected_name" || "$team" != 'VKL57X3H6F' || "$identifier" != "VKL57X3H6F.$expected_bundle" ]]; then
+              echo "::error::The $label profile does not match the expected team, bundle ID or profile name."
+              exit 1
+            fi
+            cp "$file" "$profile_dir/$uuid.mobileprovision"
+            echo "Validated provisioning profile: $label"
+          }
+          install_profile "$APP_PROFILE_BASE64" app 'H2O Portal AppStore' 'de.feuerwehrwasser.h2o'
+          install_profile "$WIDGET_PROFILE_BASE64" widget 'H2O Widget AppStore' 'de.feuerwehrwasser.h2o.widget'
+
+      - name: Verify member profile expiry, certificate and Associated Domains
+        run: python3 scripts/check-ios-member-profiles.py "${{ runner.temp }}"
+
+      - name: Create signed app and widget archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/H2OPortalMember.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Distribution' \
+            DEVELOPMENT_TEAM=VKL57X3H6F \
+            H2O_REVIEW_FLAG= \
+            H2O_APP_ENTITLEMENTS=H2OPortal/H2OPortal.entitlements \
+            H2O_APP_PROFILE_NAME='H2O Portal AppStore' \
+            H2O_WIDGET_PROFILE_NAME='H2O Widget AppStore' \
+            archive
+
+      - name: Export App Store Connect IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/H2OMemberExport"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/H2OPortalMember.xcarchive" \
+            -exportOptionsPlist native/ios/ExportOptionsMember.plist \
+            -exportPath "$RUNNER_TEMP/H2OMemberExport"
+          ls "$RUNNER_TEMP/H2OMemberExport/"*.ipa >/dev/null
+
+      - name: Retain signed IPA briefly in restricted repo artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-member-signed-ipa
+          path: ${{ runner.temp }}/H2OMemberExport/*.ipa
+          retention-days: 3
+          if-no-files-found: error
+
+      - name: Upload to TestFlight only if explicitly enabled
+        if: ${{ inputs.upload_to_testflight == true }}
+        shell: bash
+        env:
+          API_KEY_BASE64: ${{ secrets.H2O_APPSTORE_API_KEY_BASE64 }}
+          API_KEY_ID: ${{ secrets.H2O_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.H2O_APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$API_KEY_BASE64" || -z "$API_KEY_ID" || -z "$API_ISSUER_ID" ]]; then
+            echo "::error::Missing App Store Connect API key secrets."
+            exit 1
+          fi
+          umask 077
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          keyfile="$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
+          printf '%s' "$API_KEY_BASE64" | base64 -D > "$keyfile"
+          ipa=$(find "$RUNNER_TEMP/H2OMemberExport" -maxdepth 1 -type f -name '*.ipa' -print -quit)
+          xcrun altool --upload-app --type ios --file "$ipa" \
+            --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+          rm -f "$keyfile"
+
+      - name: Remove temporary signing material
+        if: always()
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/h2o-member.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/h2o-signing.p12" "$RUNNER_TEMP/h2o-"*.mobileprovision "$RUNNER_TEMP/h2o-"*.plist
+          rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_"*.p8

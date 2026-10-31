@@ -3,6 +3,12 @@
   'use strict';
   if (window.top !== window || !['https://ffw-wasser.github.io', 'https://h2o-apple-review.522dn4fc5f.workers.dev'].includes(location.origin) ||
       !['/home/deckel.html', '/home/termin.html'].includes(location.pathname)) return;
+  const entry = new URL(location.href);
+  if (entry.searchParams.get('nativePage') === 'terms') {
+    entry.searchParams.delete('nativePage');
+    history.replaceState(null, '', entry.pathname + entry.search + entry.hash);
+    window.DeckelMobile?.jump('portal-section');
+  }
   const setup = document.getElementById('identity-setup');
   if (!setup || document.getElementById('h2o-ios-invitation-scan')) return;
   const button = document.createElement('button');

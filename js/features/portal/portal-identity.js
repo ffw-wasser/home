@@ -8,7 +8,7 @@
  function takeSetupCode(){const m=/^#setup=([\w-]{43})$/.exec(location.hash);if(m||/(?:^#|&)[rak]=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);return m?.[1]||'';}
  let setupCode=takeSetupCode();
  function read(){try{const s=JSON.parse(localStorage.getItem(STORAGE));return s?.scope==='portal'&&/^[\w-]{43}$/.test(s.token)&&/^[a-f0-9]{32}$/.test(s.alias)&&s.expiresAt>Date.now()?s:null;}catch{return null;}}
- function save(s){for(const id of ['login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else localStorage.removeItem(STORAGE);current=s;record=null;el('list')?.replaceChildren();setMemberName('');}
+ function save(s){for(const id of ['login-password','new-password','repeat-password','confirm-password','change-password'])if(el(id))el(id).value='';if(s){localStorage.setItem(STORAGE,JSON.stringify(s));localStorage.setItem('h2o-portal-identity-mode','1');}else{localStorage.removeItem(STORAGE);g.H2OPortal?.clear();}current=s;record=null;el('list')?.replaceChildren();setMemberName('');}
  async function post(path,data={},token=current?.token||read()?.token){
   const response=await fetch(ORIGIN+'/portal/passkey/'+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',signal:AbortSignal.timeout(20000)});
   const value=await response.json();if(!response.ok)throw Object.assign(Error(value.error||'Anmeldung nicht bestätigt.'),{status:response.status});return value;

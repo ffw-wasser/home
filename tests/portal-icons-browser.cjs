@@ -25,20 +25,13 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#portal-menu-title').textContent(),'Funk');
    assert.equal(await page.locator('#training-radio .portal-more-tile').count(),3);
    await page.locator('#training-radio [data-more-target="radio-device"]').click();
-   assert.equal(await page.locator('#radio-device .training-radio-steps li').count(),4);
-   assert.equal(await page.locator('#radio-device article').first().locator('h3').textContent(),'Die wichtigsten Handgriffe');
-   // Expanded device instructions must fit phones too; links reuse existing topics.
-   await page.locator('#radio-device > details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
-   assert.equal(await page.locator('#radio-device > details[open]').count(),6);
+   assert.equal(await page.locator('#radio-device .training-radio-steps li').count(),6);
+   assert.equal(await page.locator('#radio-device article').first().locator('h3').textContent(),'Im Einsatz & bei der Probe');
+   assert.equal(await page.locator('#radio-device > details').count(),0,'daily routine omits advanced device explanations');
+   assert.equal(await page.locator('#radio-device .radio-daily-picture[role=img]').count(),6,'each daily action has its own control illustration');
    assert.equal(await page.locator('#radio-device .training-status-list').count(),0);
-   await page.locator('#radio-device [data-more-target="radio-status"]').click();
-   assert.equal(await page.locator('#radio-status').isVisible(),true);
-   await page.evaluate(()=>DeckelMobile.jump('radio-device'));
-   await page.locator('#radio-device [data-more-target="breathing-emergency"]').click();
-   assert.equal(await page.locator('#breathing-emergency').isVisible(),true);
-   await page.evaluate(()=>DeckelMobile.jump('radio-device'));
-
-   assert.match(await page.locator('.training-source-card a').getAttribute('href'),/^https:\/\/docs-be\.motorolasolutions\.com\/.*MXP600_Quick_Start_Guide\.pdf$/);
+   assert.equal(await page.locator('.training-source-card a').getAttribute('href'),'https://kbi-mil.de/wp-content/uploads/2024/03/Kurzanleitung_MXP600.pdf');
+   assert.match(await page.locator('.training-source-card a').textContent(),/Deutsch, PDF/);
    assert.equal(await page.locator('#training-reader, [data-training-reader]').count(),0,'old guide and reader are removed');
    assert.equal(await page.locator('#radio-device .radio-illustration').count(),2,'both approved device illustrations remain');
    assert.deepEqual(await page.locator('#radio-device .radio-screen strong').allTextContents(),['309_F*','FW EM BG']);

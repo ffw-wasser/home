@@ -28,8 +28,56 @@ jobs:
       # immutable demo source revision. No unreviewed main/site changes are merged.
       - uses: actions/checkout@v4
         with:
-          ref: 41dacad39386bf769c362b445b4dc68a0e6ffc6b
+          ref: 1a6565e2260b36e65d63addff52a9ec9c394bc36
           persist-credentials: false
+      - name: Verify isolated demo logic and Berlin clock tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/h2o-apple-review.test.cjs
+
+      - name: Verify both Swift URL policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift test --package-path native
+          swift test --package-path native -Xswiftc -DH2O_APP_REVIEW
+
+      - name: Generate native Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          xcodegen generate --spec native/ios/project.yml
+
+      - name: Compile unsigned iPhone simulator app and verify original widget icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project native/ios/H2OPortal.xcodeproj \
+            -scheme H2OPortal -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/h2o-review-preflight" \
+            -configuration Debug H2O_REVIEW_FLAG=H2O_APP_REVIEW \
+            H2O_APP_ENTITLEMENTS=H2OPortal/H2OPortalReview.entitlements \
+            CODE_SIGNING_ALLOWED=NO build
+          widget_logo=$(find "$RUNNER_TEMP/h2o-review-preflight/Build/Products" \
+            -path '*/H2OPortalWidget.appex/AppIcon.png' -print -quit)
+          if [[ -z "$widget_logo" ]]; then
+            echo "::error::Original H2O logo missing from the compiled widget."
+            exit 1
+          fi
+          file "$widget_logo"
+          swift -e 'import AppKit; import Foundation
+          let bundle = Bundle(url: URL(fileURLWithPath: CommandLine.arguments[1]))!
+          guard let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
+                let image = NSImage(contentsOf: url),
+                image.size.width > 0 && image.size.height > 0 else {
+            fatalError("Widget cannot locate or decode original H2O icon from its own bundle")
+          }
+          print("Widget logo resolved and decoded successfully")' "$(dirname "$widget_logo")"
+          echo "Preflight passed: original H2O widget logo can be loaded."
+
       - name: Confirm Xcode and review export configuration
         shell: bash
         run: |
@@ -78,9 +126,15 @@ jobs:
             uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$plist")
             team=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$plist")
             identifier=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$plist")
-            group=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:0' "$plist")
-            if [[ "$name" != "$expected_name" || "$team" != 'VKL57X3H6F' || "$identifier" != "VKL57X3H6F.$expected_bundle" || "$group" != 'group.de.feuerwehrwasser.h2o' ]]; then
-              echo "::error::The $label profile does not match the expected team, bundle, name, or app group."
+            # Apple can generate a profile without App Groups if it was created
+            # before the capability was assigned to this exact App ID.
+            group=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:0' "$plist" 2>/dev/null || true)
+            if [[ "$group" != 'group.de.feuerwehrwasser.h2o' ]]; then
+              echo "::error::The $label provisioning profile is missing App Group group.de.feuerwehrwasser.h2o. In Apple Developer > Identifiers, assign the group to $expected_bundle; then regenerate its App Store Connect profile and replace the matching GitHub Environment secret."
+              exit 1
+            fi
+            if [[ "$name" != "$expected_name" || "$team" != 'VKL57X3H6F' || "$identifier" != "VKL57X3H6F.$expected_bundle" ]]; then
+              echo "::error::The $label profile does not match the expected team, bundle ID or profile name."
               exit 1
             fi
             cp "$file" "$profile_dir/$uuid.mobileprovision"
@@ -88,13 +142,6 @@ jobs:
           }
           install_profile "$APP_PROFILE_BASE64" app 'H2O Portal AppStore' 'de.feuerwehrwasser.h2o'
           install_profile "$WIDGET_PROFILE_BASE64" widget 'H2O Widget AppStore' 'de.feuerwehrwasser.h2o.widget'
-
-      - name: Generate Xcode project
-        shell: bash
-        run: |
-          set -euo pipefail
-          brew install xcodegen
-          xcodegen generate --spec native/ios/project.yml
 
       - name: Create signed app and widget archive
         shell: bash

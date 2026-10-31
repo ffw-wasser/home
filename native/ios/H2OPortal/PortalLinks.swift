@@ -21,6 +21,11 @@ enum PortalLinks {
         return p.scheme == "h2oportal" && p.host == "termine" && p.path.isEmpty &&
             p.user == nil && p.password == nil && p.port == nil && p.query == nil && p.fragment == nil
     }
+    static var terms: URL {
+        var parts = URLComponents(url: home, resolvingAgainstBaseURL: false)!
+        parts.queryItems = [URLQueryItem(name: "nativePage", value: "terms")]
+        return parts.url!
+    }
     static func invitation(_ url: URL) -> Bool {
         guard trusted(url), let parts = URLComponents(url: url, resolvingAgainstBaseURL: false), parts.percentEncodedPath == "/home/deckel.html", parts.query == nil, let fragment = parts.percentEncodedFragment else { return false }
         return fragment.range(of: "^setup=[A-Za-z0-9_-]{16,128}$", options: .regularExpression) != nil

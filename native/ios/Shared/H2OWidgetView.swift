@@ -1,0 +1,227 @@
+#if canImport(UIKit)
+import SwiftUI
+import WidgetKit
+import UIKit
+import ImageIO
+
+struct NextEventEntry: TimelineEntry {
+    let date: Date
+    let snapshot: H2OWidgetSnapshot?
+}
+
+struct NextEventView: View {
+    let entry: NextEventEntry
+    @Environment(\.widgetFamily) private var family
+
+    private func berlinTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone(identifier: "Europe/Berlin")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private var event: H2OWidgetEvent? {
+        guard let event = entry.snapshot?.event, event.end > entry.date else { return nil }
+        return event
+    }
+
+    private var statusTitle: String {
+        switch event?.status {
+        case "yes": return "Dabei"
+        case "excused": return "Entschuldigt"
+        case "maybe": return "Unsicher"
+        default: return "Offen"
+        }
+    }
+
+    private var statusColor: Color {
+        switch event?.status {
+        case "yes": return Color(red: 0.12, green: 0.47, blue: 0.28)
+        case "excused": return Color(red: 0.70, green: 0.19, blue: 0.23)
+        case "maybe": return Color(red: 0.56, green: 0.38, blue: 0.10)
+        default: return Color(red: 0.36, green: 0.41, blue: 0.48)
+        }
+    }
+
+    private var ink: Color {
+        Color(red: 0.10, green: 0.17, blue: 0.25)
+    }
+
+    // Keep the original logo, but decode only the pixels needed by WidgetKit.
+    private static let logo: UIImage? = {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 96
+              ] as CFDictionary) else { return nil }
+        return UIImage(cgImage: thumbnail)
+    }()
+
+    @ViewBuilder private var brandLogo: some View {
+        if let image = Self.logo {
+            if #available(iOS 18.0, *) {
+                Image(uiImage: image)
+                    .renderingMode(.original)
+                    .resizable()
+                    .widgetAccentedRenderingMode(.fullColor)
+                    .scaledToFit()
+            } else {
+                Image(uiImage: image)
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+            }
+        } else {
+            Text("H₂O")
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundStyle(.primary)
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 6) {
+            brandLogo
+                .frame(width: 28, height: 28)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .fixedSize()
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Feuerwehr")
+                Text("Wasser")
+            }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 30)
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(2)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var noEvent: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Spacer(minLength: 2)
+            Text(entry.snapshot == nil ? "H₂O öffnen, um Termine zu laden." : "Keine kommenden Termine")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 2)
+        }
+    }
+
+    private var smallLayout: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            header
+            if let event {
+                HStack(spacing: 3) {
+                    Text("TERMIN").font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Text(statusTitle).font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(statusColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                Text(event.title)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(ink)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.75)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+                Spacer(minLength: 0)
+                Text(event.start, format: .dateTime.weekday(.abbreviated).day().month(.twoDigits))
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1)
+                Text(event.allDay ? "Ganztägig" : berlinTime(event.start) + " Uhr")
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+            } else {
+                noEvent
+            }
+        }
+    }
+
+    private var mediumLayout: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            header
+            if let event {
+                // Two columns avoid squeezing six or more full-width rows
+                // into the fixed height of an iPhone medium widget.
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("NÄCHSTER TERMIN")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        Text(event.title)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(ink)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.75)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
+                        Spacer(minLength: 0)
+                        Text(event.start, format: .dateTime.weekday(.abbreviated).day().month(.twoDigits))
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(event.allDay ? "Ganztägig" : berlinTime(event.start) + " Uhr")
+                            .font(.system(size: 11))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(statusTitle)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(statusColor)
+                            .lineLimit(1)
+                        Label(event.location.isEmpty ? "GH Wasser" : event.location, systemImage: "mappin")
+                            .font(.system(size: 11))
+                            .lineLimit(2)
+                        if !event.clothing.isEmpty {
+                            Label(event.clothing, systemImage: "tshirt")
+                                .font(.system(size: 11))
+                                .lineLimit(2)
+                        }
+                        if entry.snapshot?.stale == true {
+                            Text("Kalenderstand prüfen")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            } else {
+                noEvent
+            }
+        }
+    }
+
+    var body: some View {
+        Group {
+            if family == .systemSmall {
+                smallLayout
+            } else {
+                mediumLayout
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .containerBackground(Color(red: 0.94, green: 0.97, blue: 0.95), for: .widget)
+        .widgetURL(URL(string: "h2oportal://termine"))
+        .environment(\.locale, Locale(identifier: "de_DE"))
+        .environment(\.timeZone, TimeZone(identifier: "Europe/Berlin")!)
+    }
+}
+
+
+#endif

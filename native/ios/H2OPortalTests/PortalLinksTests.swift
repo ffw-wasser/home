@@ -16,6 +16,8 @@ final class PortalLinksTests: XCTestCase {
         XCTAssertFalse(PortalLinks.trusted(URL(string: "https://ffw-wasser.github.io.evil.example/home/deckel.html")!))
     }
     func testWidgetLinkOnlyOpensTheNativePortal() {
+        XCTAssertTrue(PortalLinks.trusted(PortalLinks.terms))
+        XCTAssertEqual(URLComponents(url: PortalLinks.terms, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "terms")
         XCTAssertTrue(PortalLinks.isWidgetTermine(URL(string: "h2oportal://termine")!))
         for value in ["h2oportal://termine?token=x", "h2oportal://anders", "https://termine", "h2oportal://termine/#setup=x"] {
             XCTAssertFalse(PortalLinks.isWidgetTermine(URL(string: value)!))

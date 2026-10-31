@@ -1,10 +1,13 @@
 name: Build iPhone H2O widget prototype
 
 on:
+  push:
+    branches: [feature/h2o-native-member-pilot]
   pull_request:
     paths:
       - "native/ios/**"
       - "native/Package.swift"
+      - "native/widget-tests/**"
       - "native/shared/ios-entry.js"
       - "cloudflare/review/**"
       - "tests/h2o-apple-review.test.cjs"
@@ -64,3 +67,21 @@ jobs:
             -configuration Debug H2O_REVIEW_FLAG=H2O_APP_REVIEW \
             H2O_APP_ENTITLEMENTS=H2OPortal/H2OPortalReview.entitlements \
             CODE_SIGNING_ALLOWED=NO build
+      - name: Render production widget layouts on iPhone simulator
+        run: |
+          set -euo pipefail
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
+          xcodebuild -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal \
+            -destination "platform=iOS Simulator,id=$device" \
+            -resultBundlePath "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
+            -configuration Debug H2O_REVIEW_FLAG= \
+            CODE_SIGNING_ALLOWED=NO test
+          mkdir -p "$RUNNER_TEMP/h2o-widget-screens"
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
+            --output-path "$RUNNER_TEMP/h2o-widget-screens"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-member-widget-layouts
+          path: ${{ runner.temp }}/h2o-widget-screens
+          if-no-files-found: warn

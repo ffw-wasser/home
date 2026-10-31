@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>destination</key><string>export</string>
+  <key>teamID</key><string>VKL57X3H6F</string>
+  <key>signingStyle</key><string>manual</string>
+  <key>signingCertificate</key><string>Apple Distribution</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>de.feuerwehrwasser.h2o</key><string>H2O Portal AppStore</string>
+    <key>de.feuerwehrwasser.h2o.widget</key><string>H2O Widget AppStore</string>
+  </dict>
+</dict>
+</plist>

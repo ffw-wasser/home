@@ -17,7 +17,9 @@ targets:
     platform: iOS
     sources:
       - H2OPortal
-      - Shared/WidgetSnapshot.swift
+      - Shared
+      - path: H2OPortal/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+        buildPhase: resources
       - path: ../shared/ios-entry.js
         buildPhase: resources
       - path: ../shared/pdf-export.js
@@ -40,7 +42,7 @@ targets:
     platform: iOS
     sources:
       - H2OPortalWidget
-      - Shared/WidgetSnapshot.swift
+      - Shared
       # Reuse the exact original H2O app icon (fire and water) as the widget logo.
       - path: H2OPortal/Assets.xcassets/AppIcon.appiconset/AppIcon.png
         buildPhase: resources

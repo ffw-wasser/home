@@ -17,10 +17,8 @@ struct H2OPortalApp: App {
         let notifications = UNUserNotificationCenter.current()
         notifications.removePendingNotificationRequests(withIdentifiers: ["h2o-reminder"])
         notifications.removeDeliveredNotifications(withIdentifiers: ["h2o-reminder"])
-        #if H2O_APP_REVIEW
-        // Installing a review build must not surface a previously cached live event.
+        // Require a fresh authenticated response after a build or session switch.
         H2OWidgetBridge.accept(["action": "clear"])
-        #endif
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.applicationNameForUserAgent = "H2ONative/1 iOS"
@@ -55,7 +53,15 @@ struct PortalScreen: View {
         // Continue the navy footer behind the iPhone home indicator.
         .background(Color(red: 16.0 / 255, green: 28.0 / 255, blue: 44.0 / 255).ignoresSafeArea(.container, edges: .bottom))
         .onAppear { if !model.hasOpened { model.open(PortalLinks.home) } }
-        .onOpenURL { model.open(PortalLinks.isWidgetTermine($0) ? PortalLinks.home : $0) }
+        .onOpenURL { url in
+            if PortalLinks.isWidgetTermine(url) {
+                if model.hasOpened, !model.web.isLoading, model.web.url.map(PortalLinks.trusted) == true {
+                    model.web.evaluateJavaScript("window.DeckelMobile?.jump('portal-section')")
+                } else {
+                    model.open(PortalLinks.terms)
+                }
+            } else { model.open(url) }
+        }
         .onChange(of: scenePhase) { _, phase in if phase == .background { model.showScanner = false } }
         .sheet(isPresented: $model.showScanner) {
             ScannerView { value in

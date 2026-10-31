@@ -8,6 +8,8 @@ let package = Package(
     products: [.library(name: "PortalLinkPolicy", targets: ["PortalLinkPolicy"])],
     targets: [
         .target(name: "PortalLinkPolicy", path: "ios/H2OPortal", exclude: ["H2OPortalApp.swift", "H2OWidgetBridge.swift", "NativePdfPresenter.swift", "PortalWebView.swift", "ScannerView.swift", "Assets.xcassets", "Info.plist", "H2OPortal.entitlements"], sources: ["PortalLinks.swift", "PortalPdfPolicy.swift"]),
-        .testTarget(name: "PortalLinkPolicyTests", dependencies: ["PortalLinkPolicy"], path: "ios/H2OPortalTests")
+        .testTarget(name: "PortalLinkPolicyTests", dependencies: ["PortalLinkPolicy"], path: "ios/H2OPortalTests"),
+        .target(name: "WidgetPolicy", path: "ios/Shared", exclude: ["H2OWidgetView.swift"]),
+        .testTarget(name: "WidgetPolicyTests", dependencies: ["WidgetPolicy"], path: "widget-tests")
     ]
 )
