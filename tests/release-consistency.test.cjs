@@ -9,7 +9,7 @@ test('Release, geladene Dateien und Offline-Cache gehören zum selben Build',()=
  vm.runInContext(read('service-worker.js'),context);
  assert.equal(vm.runInContext('CACHE_NAME',context),'ffw-wasser-'+release.build);
  const core=Array.from(vm.runInContext('CORE',context));
- for(const name of ['index.html','deckel.html']){
+ for(const name of ['index.html','deckel.html','install.html']){
   for(const match of read(name).matchAll(/(?:src|href)="([^"\s]+\?v=([^"\s]+))"/g)){
    assert.equal(match[2],release.build,match[1]);
    assert.ok(core.includes('./'+match[1]),'Datei fehlt im Offline-Cache: '+match[1]);
@@ -31,4 +31,9 @@ test('Dynamisch geladenes Handy-Manifest verwendet denselben Release wie HTML un
 test('Persönliche Terminseite lädt die Korrektur mit der aktuellen Buildkennung',()=>{
  const release=JSON.parse(read('app-release.json')),html=read('termin.html');
  for(const file of ['js/features/portal/portal-whatsapp.js','css/features/portal-whatsapp.css'])assert.ok(html.includes(file+'?v='+release.build),file);
+});
+
+test('Public installation uses versioned entry assets so cached old scripts cannot hide store buttons',()=>{
+ const release=JSON.parse(read('app-release.json')),html=read('install.html');
+ for(const file of ['js/install.js','css/install.css'])assert.ok(html.includes(file+'?v='+release.build),file);
 });

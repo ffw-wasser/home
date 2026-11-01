@@ -10,6 +10,8 @@ const root=path.resolve(__dirname,'..');
     const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));
     if(['apps.apple.com','play.google.com'].includes(u.hostname))return route.fulfill({contentType:'text/html',body:'<p>Synthetic store destination</p>'});
     if(u.origin!=='https://ffw-wasser.github.io')return route.abort();
+    // A stale browser cache entry must not replace the versioned installation script.
+    if(u.pathname.endsWith('/js/install.js')&&!u.search)return route.fulfill({contentType:'text/javascript',body:'/* Synthetic old cached script */'});
     if(u.pathname.endsWith('/native/store/install-links.json'))return route.fulfill({json:{ios,android}});
     return file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();
    });
