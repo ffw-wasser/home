@@ -102,7 +102,7 @@ struct NextEventView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .accessibilityHidden(true)
             Text("Feuerwehr Wasser")
-                .font(.system(size: (family == .systemSmall ? 10 : 11) * scale, weight: .semibold))
+                .font(.system(size: (family == .systemSmall ? 11 : 12) * scale, weight: .semibold))
                 .foregroundStyle(renderingMode == .fullColor ? burgundy : ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -139,7 +139,7 @@ struct NextEventView: View {
     private func calendarTile(_ date: Date, small: Bool, scale: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(datePart(date, "EEEE"))
-                .font(.system(size: 11 * scale, weight: .medium))
+                .font(.system(size: 12 * scale, weight: .medium))
                 .foregroundStyle(ink.opacity(0.72))
                 .lineLimit(1)
             if let relative = H2OWidgetDateLabel.relativeDay(for: date, comparedTo: entry.date) {
@@ -162,13 +162,13 @@ struct NextEventView: View {
                     .font(.system(size: 48 * scale, weight: .bold))
                     .monospacedDigit()
                 Text(datePart(date, "MMMM").uppercased())
-                    .font(.system(size: 12 * scale, weight: .semibold))
+                    .font(.system(size: 13 * scale, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
         }
         .frame(maxWidth: small ? .infinity : nil, alignment: .leading)
-        .frame(width: small ? nil : 92 * scale, height: (small ? 70 : 86) * scale, alignment: .leading)
+        .frame(width: small ? nil : 92 * scale, height: (small ? 70 : 88) * scale, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(datePart(date, "EEEE, d. MMMM"))
     }
@@ -180,7 +180,7 @@ struct NextEventView: View {
 
     private func clock(_ event: H2OWidgetEvent, small: Bool, scale: CGFloat) -> some View {
         Text(event.allDay ? "Ganztägig" : berlinTime(event.start) + (small ? "" : " Uhr"))
-            .font(.system(size: (small ? 10 : 12) * scale, weight: .medium))
+            .font(.system(size: (small ? 12 : 14) * scale, weight: .medium))
             .monospacedDigit()
             .lineLimit(1)
             .foregroundStyle(ink.opacity(0.72))
@@ -188,7 +188,7 @@ struct NextEventView: View {
 
     private var noEvent: some View {
         Text(entry.snapshot == nil ? "H₂O öffnen, um Termine zu laden." : "Keine kommenden Termine")
-            .font(.system(size: 12, weight: .medium))
+            .font(.system(size: 13, weight: .medium))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
@@ -203,7 +203,7 @@ struct NextEventView: View {
                     .accessibilityHidden(true)
                 HStack(spacing: 5 * scale) {
                     Text(title(event, small: true))
-                        .font(.system(size: 11 * scale, weight: .semibold))
+                        .font(.system(size: 12 * scale, weight: .semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .accessibilityLabel(event.title)
@@ -211,7 +211,7 @@ struct NextEventView: View {
                     clock(event, small: true, scale: scale)
                         .fixedSize(horizontal: true, vertical: false)
                 }
-                .frame(height: 14 * scale)
+                .frame(height: 16 * scale)
             } else { noEvent }
         }
     }
@@ -220,7 +220,7 @@ struct NextEventView: View {
         VStack(alignment: .leading, spacing: 0) {
             header(scale)
             if let event {
-                Spacer(minLength: 3 * scale)
+                Spacer(minLength: 1 * scale)
                 HStack(alignment: .center, spacing: 12 * scale) {
                     calendarTile(event.start, small: false, scale: scale)
                     Rectangle().fill(ink.opacity(0.16))
@@ -233,13 +233,13 @@ struct NextEventView: View {
                             .minimumScaleFactor(0.8)
                             .accessibilityLabel(event.title)
                         Text(event.location.isEmpty ? "GH Wasser" : event.location)
-                            .font(.system(size: 12 * scale))
+                            .font(.system(size: 14 * scale))
                             .foregroundStyle(ink.opacity(0.85))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                         if !event.clothing.isEmpty {
                             Text(event.clothing)
-                                .font(.system(size: 11 * scale))
+                                .font(.system(size: 13 * scale))
                                 .foregroundStyle(ink.opacity(0.72))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.85)
@@ -257,7 +257,7 @@ struct NextEventView: View {
             Spacer(minLength: 0)
             if entry.snapshot?.stale == true {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 10 * scale))
+                    .font(.system(size: 12 * scale))
                     .accessibilityLabel("Kalenderstand prüfen")
             }
             if family != .systemSmall, let event {
