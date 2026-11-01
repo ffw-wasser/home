@@ -5,17 +5,20 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();});
  await page.addInitScript(()=>{
-  Object.defineProperty(navigator,'userAgent',{value:'Mozilla/5.0 (iPhone) H2ONative/1 iOS H2OMemberPilot/1'});
+  Object.defineProperty(navigator,'userAgent',{value:'Mozilla/5.0 (iPhone) H2ONative/1 iOS H2OMemberPilot/1 H2OReviewHelp/1'});
   window.nativeRequests=[];window.webkit={messageHandlers:{h2oNotifications:{postMessage(message){nativeRequests.push(message.action);setTimeout(()=>dispatchEvent(new CustomEvent('h2o-native-notifications',{detail:{id:message.id,permission:message.action==='request'?'granted':'default',...(message.action==='request'?{deviceToken:'a'.repeat(64)}:{})}})),0);}}}};
  });
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
+ await page.locator('#h2o-onboarding summary').click();
+ const reviewLink=page.getByRole('link',{name:'Apple-Prüfdemo öffnen',exact:true});
+ assert.equal(await reviewLink.isVisible(),true);assert.equal(await reviewLink.getAttribute('href'),'https://ffw-wasser.github.io/home/review.html');
  await page.evaluate(async()=>{
   H2OIdentity.session=()=>({alias:'a'.repeat(32)});H2OIdentity.credentials=()=>({alias:'a'.repeat(32),key:'a'.repeat(64)});
   H2OPortal.api=async(_,body)=>({ok:true,ready:true,registered:body.action==='subscribe'});
   await DeckelPush.render({origin:'https://synthetic.invalid',alias:'a'.repeat(32),revision:'synthetic',capability:'synthetic'});
   H2OOnboarding.signedIn();DeckelInstall.refresh();
  });
- const wizard=page.locator('#h2o-onboarding');await wizard.getByRole('heading',{name:'Feuerwehrkalender einrichten?',exact:true}).waitFor();
+ const wizard=page.locator('#h2o-onboarding');assert.equal(await wizard.getByRole('link',{name:'Apple-Prüfdemo öffnen',exact:true}).count(),0,'review entry disappears after sign-in');await wizard.getByRole('heading',{name:'Feuerwehrkalender einrichten?',exact:true}).waitFor();
  async function capture(name){
   if(process.env.CAPTURE_NATIVE_HELP){const folder=path.join(root,'assets/help/guide'),box=await wizard.boundingBox(),sizes=JSON.parse(fs.readFileSync(path.join(folder,'screens.json'),'utf8'));await wizard.screenshot({path:path.join(folder,name+'.jpg'),type:'jpeg',quality:80});sizes[name]={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(path.join(folder,'screens.json'),JSON.stringify(sizes,null,2)+'\n');}
  }

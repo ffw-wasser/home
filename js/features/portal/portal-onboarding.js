@@ -13,7 +13,7 @@
  function place(id){const item=$(id);if(!item)return;if(!homes.has(item)){const home=document.createComment('onboarding home');item.before(home);homes.set(item,home);}item.hidden=false;content.append(item);return item;}
  function say(text){content.append(node('p',text));}
  function choice(text,action,parent=content){const b=node('button',text);b.type='button';b.className='onboarding-secondary';b.onclick=action;parent.append(b);return b;}
- function help(){const details=node('details'),summary=node('summary','Brauchst du Hilfe?');details.append(summary);content.append(details);return details;}
+ function help(){const details=node('details'),summary=node('summary','Brauchst du Hilfe?');details.append(summary);if(/\bH2OReviewHelp\/1\b/.test(navigator.userAgent)&&!g.H2OIdentity?.credentials()){const link=node('a','Apple-Prüfdemo öffnen');link.href='https://ffw-wasser.github.io/home/review.html';link.className='onboarding-review-link';details.append(link);}content.append(details);return details;}
  function go(value){step=value;render();}
  function close(){restore();dialog.close();g.H2OIdentity?.refresh();g.DeckelMobile?.jump('portal-section');}
  function release(){ticketFromLink=false;$('identity-code').value='';$('identity-message').textContent='';first=true;go('release');}
