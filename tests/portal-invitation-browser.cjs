@@ -53,6 +53,6 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#portal-admin-member').selectOption(f.people[0].memberId);assert.equal(await page.locator('#portal-admin-qr').isVisible(),false,'member change clears the invitation');
   await page.evaluate(()=>{DrinksCentral.register=async()=>{throw Error('Synthetischer Dienstfehler');};});page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();
   await page.locator('#portal-admin-qr-status').filter({hasText:'Synthetischer Dienstfehler'}).waitFor();assert.equal(await page.locator('#portal-admin-qr').isVisible(),false);assert.equal(await page.locator('#portal-admin-show-qr').isEnabled(),true);assert.equal(await page.locator('#portal-admin-show-qr').getAttribute('aria-busy'),'false');
-  assert.deepEqual(errors,[]);console.log('PASS existing/new member invitation without legacy config, real Store/connection and uppercase Graph ID, calendar, real Worker ticket, personal link, no installation QR, visible errors, member switch and 320–1024 px');
+  assert.deepEqual(errors,[]);console.log('PASS existing/new member invitation without legacy config, real Store/connection and uppercase Graph ID, calendar, real Worker ticket, personal one-use QR and link, visible errors, member switch and 320–1024 px');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

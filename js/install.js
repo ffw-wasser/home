@@ -23,6 +23,7 @@
     document.getElementById('apple-pending').textContent=beta?'TestFlight installieren, die Einladung annehmen und anschließend H₂O Portal installieren.':'H₂O Portal direkt im App Store laden und anschließend persönlich anmelden.';
    }
    if(play){const button=document.getElementById('android-store');button.href=play.href;button.hidden=false;document.getElementById('android-pending').hidden=true;}
+   else document.getElementById('android-pending').textContent='Der Google-Play-Link ist gerade nicht verfügbar. Bitte die Verwaltung fragen.';
    const target=apple?ios:android?play:null;
    if(target){document.getElementById('install-state').textContent='Der passende Store wird geöffnet. Falls nötig, tippe auf den Installationsbutton.';location.replace(target.href);}
   }catch{document.getElementById('install-state').textContent='Der Store-Link ist gerade nicht verfügbar. Bitte später erneut versuchen oder H₂O im Browser öffnen.';}

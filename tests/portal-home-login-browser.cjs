@@ -31,7 +31,7 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
   assert.equal(await home.p.evaluate(()=>location.hash),'');assert.equal(await home.p.locator('#h2o-onboarding-title').innerText(),'Anmelden');
   assert.equal(await home.p.locator('#h2o-onboarding #identity-login').isVisible(),true);assert.equal(await home.p.locator('#h2o-onboarding #identity-register').count(),0);
   assert.equal(await home.p.getByRole('button',{name:'Zurück',exact:true}).isVisible(),false,'the Home start does not lead back into the setup chooser');
-  assert.equal(await home.p.getByRole('button',{name:'Einladungslink kopieren',exact:true}).count(),0,'Home app is never sent back to Safari');
+  assert.equal(await home.p.getByRole('button',{name:'Freigabelink kopieren',exact:true}).count(),0,'Home app is never sent back to Safari');
   if(process.env.CAPTURE_HOME_LOGIN_HELP&&!fragment){const folder=path.join(root,'assets/help/guide'),target=home.p.locator('#h2o-onboarding');await target.screenshot({path:path.join(folder,'h2o-home-anmeldung.jpg'),type:'jpeg',quality:80});const box=await target.boundingBox(),sizes=JSON.parse(fs.readFileSync(path.join(folder,'screens.json'),'utf8'));sizes['h2o-home-anmeldung']={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(path.join(folder,'screens.json'),JSON.stringify(sizes,null,2)+'\n');}
   await home.p.locator('#identity-login').click();await home.p.locator('#portal-section').waitFor({state:'visible'});
   assert.equal(await home.p.locator('#h2o-onboarding').evaluate(n=>n.open),false);assert.equal(await home.p.locator('#installSection').isVisible(),false);
@@ -44,7 +44,7 @@ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/60
  // A genuinely new member can still deliberately use a fresh invitation in the installed app.
  const newPerson=f.people[1],newTicket=(await f.call('identity-ticket',{alias:newPerson.alias,revision:newPerson.revision},null,true)).value,firstHome=await context(true);
  await firstHome.p.goto(base+'#setup='+newTicket.code);await firstHome.p.locator('#h2oStartup').waitFor({state:'hidden'});
- await firstHome.p.getByText('Brauchst du Hilfe?',{exact:true}).click();await firstHome.p.getByRole('button',{name:'Mit Einladung erstmals einrichten',exact:true}).click();
+ await firstHome.p.getByText('Brauchst du Hilfe?',{exact:true}).click();await firstHome.p.getByRole('button',{name:'Mit Freigabe erstmals einrichten',exact:true}).click();
  assert.equal(await firstHome.p.locator('#h2o-onboarding-title').innerText(),'Zugang einrichten');await firstHome.p.locator('#identity-register').click();await firstHome.p.locator('#identity-message').filter({hasText:'Passkey gespeichert'}).waitFor();await firstHome.p.locator('#identity-login').click();await firstHome.p.getByRole('button',{name:'Weiter',exact:true}).click();await firstHome.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await firstHome.p.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await firstHome.p.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await firstHome.p.locator('#portal-section').waitFor({state:'visible'});await firstHome.c.close();
  // Android setup: screen unlock pattern and all Home Screen steps must be visible.
  const androidPerson=f.people[2],androidTicket=(await f.call('identity-ticket',{alias:androidPerson.alias,revision:androidPerson.revision},null,true)).value,android=await context(false,'android');
