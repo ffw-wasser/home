@@ -1,4 +1,5 @@
 import XCTest
+#if canImport(H2OPortal)
 @testable import H2OPortal
 
 final class ReviewEntryTests: XCTestCase {
@@ -27,3 +28,4 @@ final class ReviewEntryTests: XCTestCase {
         XCTAssertFalse(demo.web.configuration.websiteDataStore.isPersistent)
     }
 }
+#endif
