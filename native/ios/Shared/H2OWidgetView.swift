@@ -142,7 +142,12 @@ struct NextEventView: View {
                 .font(.system(size: 11 * scale, weight: .medium))
                 .foregroundStyle(ink.opacity(0.72))
                 .lineLimit(1)
-            if small {
+            if let relative = H2OWidgetDateLabel.relativeDay(for: date, comparedTo: entry.date) {
+                Text(relative)
+                    .font(.system(size: (small ? 34 : 25) * scale, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            } else if small {
                 HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
                     Text(datePart(date, "dd"))
                         .font(.system(size: 46 * scale, weight: .bold))

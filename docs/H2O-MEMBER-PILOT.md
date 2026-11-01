@@ -133,3 +133,7 @@ Prüfungen: `tests/review-portal.test.cjs`, `tests/review-portal-browser.cjs`, S
 Unter Meine Nachweise steht eine eigene, nicht vorausgewählte Checkbox mit Zweck, Gesundheitsbezug, Datenquelle, berechtigten Empfängern, Betreiberkontakt und Widerrufshinweis. Erst das Häkchen und „Einwilligung speichern“ geben die Fristen zusätzlich im Portal frei. „G26-Einwilligung widerrufen“ sperrt die Freigabe wieder. Die GF-Übersicht kennzeichnet fehlende Einwilligungen neutral; sie erklärt die Person nicht für ungeeignet. Die medizinische Fristenanzeige und Eingabe werden serverseitig geschützt. Primäre Verwaltungsunterlagen werden nicht gelöscht. Konto-Löschung und Mitgliedsentfernung verwerfen die Portal-Einwilligung; ein Wechsel der Datenquelle macht sie ungültig.
 
 Die öffentliche Datenschutzseite ist `privacy.html`, mit Betreiberanschrift, Datenquellen, G26-Einwilligung, Diensten, Aufbewahrung und Rechten. Technische Prüfungen sind kein Nachweis einer rückwirkenden Rechtsgrundlage früherer Verwaltungsdatenübernahmen.
+
+## Relative Termintage – Build 1021
+
+Im kleinen und mittleren Widget ersetzt „Heute“ bzw. „Morgen“ den numerischen Tag und Monat. Für spätere Termine bleibt das Datum sichtbar. Maßgeblich ist der Kalendertag in Europe/Berlin, auch bei Zeitumstellungen. Ein geplanter Timeline-Eintrag um Mitternacht aktualisiert die Beschriftung; Terminende und die bestehende Ablaufgrenze von zwölf Stunden gelten weiterhin. Die Simulatorbilder enthalten zusätzliche Fälle für heute und morgen in allen unterstützten Größen.

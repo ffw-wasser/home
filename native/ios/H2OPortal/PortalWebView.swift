@@ -59,6 +59,7 @@ struct PortalWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard action.targetFrame?.isMainFrame != false else { decisionHandler(.allow); return }
             guard let url = action.request.url else { decisionHandler(.cancel); return }
+            if model.review && PortalLinks.isPublicPrivacy(url) { UIApplication.shared.open(url); decisionHandler(.cancel); return }
             if model.review && !PortalLinks.isReview(url) {
                 model.message = "Prüfdemo: Externe Aufrufe, Zahlungen und Kalenderinstallationen sind gesperrt."
                 decisionHandler(.cancel); return
@@ -79,6 +80,7 @@ struct PortalWebView: UIViewRepresentable {
         }
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
             if action.targetFrame == nil, let url = action.request.url {
+                if model.review && PortalLinks.isPublicPrivacy(url) { UIApplication.shared.open(url); return nil }
                 if model.review { model.message = "Prüfdemo: Externe Aufrufe sind gesperrt."; return nil }
                 if PortalLinks.trusted(url) { model.open(url) }
                 else if ["https", "mailto", "tel"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
