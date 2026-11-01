@@ -52,6 +52,7 @@ class WidgetPreviewTest {
                     if (fixture == "future" && width < 240 && height >= 160) {
                         assertTrue("Month gets its own visible row", activity.findViewById<TextView>(R.id.widget_month).isShown)
                         assertTrue("Day is readable on its own", activity.findViewById<TextView>(R.id.widget_day).text.matches(Regex("\\d{2}")))
+                        assertTrue("The day stays more prominent than the month with enlarged system fonts", activity.findViewById<TextView>(R.id.widget_day).textSize >= 1.25f * activity.findViewById<TextView>(R.id.widget_month).textSize)
                     }
                     if (isEvent && width >= 450 && height >= 250) {
                         assertTrue("Large widgets use larger event headings", title.textSize / activity.resources.displayMetrics.scaledDensity >= 24f)

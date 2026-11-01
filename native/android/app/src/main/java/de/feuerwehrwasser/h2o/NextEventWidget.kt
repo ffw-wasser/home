@@ -81,10 +81,10 @@ open class NextEventWidget : AppWidgetProvider() {
             val metrics = context.resources.displayMetrics
             val fontScale = metrics.scaledDensity / metrics.density
             val scale = minOf(width / (if (compact) 170f else 330f), height / (if (flat) 48f else 170f)).coerceIn(1f, 1.6f)
-            val showWeekday = event != null && height >= 160
+            val showWeekday = event != null && height >= 160 && (!compact || height / fontScale >= 150)
             val showMonth = event != null && separateMonth && !relative
             val titleSize = if (flat) 12f * scale else if (compact) (if (short) 11f else 12f * scale).coerceAtMost(16f) else (if (short) 15f else 18f * scale).coerceAtMost(26f)
-            val titleLines = if (event == null && !flat) 3 else if (!flat && ((compact && height >= 160) || (!compact && height >= 200))) 2 else 1
+            val titleLines = if (event == null && !flat) 3 else if (!flat && ((compact && height >= 160) || (!compact && height / fontScale >= 160))) 2 else 1
             val baseDaySize = when { flat -> (if (compact) 13f else 19f) * scale; compact -> if (short) 24f else if (height < 160) 28f else 44f * scale; relative -> if (short) 22f else 30f * scale; else -> if (height < 170) 28f else 48f * scale }
             // Reserve actual rows before enlarging the date, including enlarged system fonts.
             val dateHeight = height - (if (compact) 54f else 56f) - (if (short) 0f else if (compact) maxOf(16f, 13f * fontScale) else maxOf(18f, 15f * fontScale)) -
