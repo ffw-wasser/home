@@ -42,6 +42,15 @@ struct PortalWebView: UIViewRepresentable {
                 return
             }
             if message.name == "h2oNotifications" {
+                if model.review {
+                    guard let body = message.body as? [String: String], let id = body["id"],
+                          id.range(of: "^[a-f0-9-]{36}$", options: .regularExpression) != nil else { return }
+                    let reply = ["id": id, "permission": "unavailable"]
+                    if let data = try? JSONSerialization.data(withJSONObject: reply), let json = String(data: data, encoding: .utf8) {
+                        webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('h2o-native-notifications', {detail: \(json)}))")
+                    }
+                    return
+                }
                 NativeNotifications.handle(message.body, web: webView)
                 return
             }
@@ -50,6 +59,11 @@ struct PortalWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard action.targetFrame?.isMainFrame != false else { decisionHandler(.allow); return }
             guard let url = action.request.url else { decisionHandler(.cancel); return }
+            if model.review && !PortalLinks.isReview(url) {
+                model.message = "Prüfdemo: Externe Aufrufe, Zahlungen und Kalenderinstallationen sind gesperrt."
+                decisionHandler(.cancel); return
+            }
+            if !model.review && PortalLinks.isReview(url) { decisionHandler(.cancel); return }
             if PortalLinks.trusted(url) {
                 if let destination = PortalLinks.destination(url), destination != url {
                     decisionHandler(.cancel)
@@ -65,6 +79,7 @@ struct PortalWebView: UIViewRepresentable {
         }
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
             if action.targetFrame == nil, let url = action.request.url {
+                if model.review { model.message = "Prüfdemo: Externe Aufrufe sind gesperrt."; return nil }
                 if PortalLinks.trusted(url) { model.open(url) }
                 else if ["https", "mailto", "tel"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
             }; return nil

@@ -118,3 +118,12 @@ Die bestehenden Simulatorfälle prüfen beide Größen auf den kleinsten und gr�
 ## Bestätigtes Kalenderblatt – Build 1020
 
 Die bestätigte Gestaltung verwendet einen warmen Papiergrund, eine schmale bordeauxrote Oberkante und eine integrierte Statuszeile am unteren Rand. Tag und Monat bleiben die Hauptinformation. Das kleine Widget zeigt eine kompakte Monatsangabe neben dem zweistelligen Tag; im breiten Widget steht der ausgeschriebene Monat darunter. Die Uhrzeit bleibt klein. Ort und Kleidung erscheinen im breiten Widget als Text. Datenumfang, Zugriff und Ablauf bleiben unverändert.
+
+
+## Vollständige Prüfdemo – Build 1021
+
+„Apple-Prüfdemo öffnen“ am unteren Rand startet im gleichen Binärpaket `review.html` in einem neuen `WKWebsiteDataStore.nonPersistent()`. „Demo verlassen · Mitgliederanmeldung“ verwirft diese Webansicht und öffnet den normalen, getrennten Mitgliederspeicher. Ein Demolink kann nicht in der normalen Mitglieder-Webansicht geöffnet werden. Externe Navigationen und native Mitteilungsregistrierung sind in der Demo gesperrt.
+
+Die Prüfseite wird mit `node scripts/build-review-portal.cjs` aus der echten Portaloberfläche erzeugt. Nur der eindeutig gekennzeichnete Adapter unter `native/review/` ersetzt die API-Antworten durch erfundene Daten. Er liest keine Mitgliederanmeldung. Rückmeldungen, Nachweise, Buchungen, Theaterbestellungen, Kontakte und Jahresplan sind prüfbar. Öffentliche Dienstvorschriften verwenden die vorhandenen PDF-Dateien; echte Zahlungen, Erinnerungsnachrichten, Pushregistrierung und Kalenderinstallation werden nicht ausgelöst. Die Selbstbedienungs-Löschung entfernt nur den Demo-Zugang; „Demo zurücksetzen“ stellt den Ausgangsstand her. Erneute Demo-Anmeldung bzw. Bestätigung: Benutzername `demo`, Passwort `demo`. Diese Werte berechtigen zu keinem Produktivzugriff.
+
+Prüfungen: `tests/review-portal.test.cjs`, `tests/review-portal-browser.cjs`, Swift-URL-Tests und iOS-Kompilierung in der CI. Der synthetische Adapter ist kein Nachweis eines produktiven Passkey-, Push- oder Löschtests auf einem physischen Gerät. Die öffentliche Datenschutzseite und ihre offenen Pflichtangaben bleiben ein eigener Einreichungspunkt.

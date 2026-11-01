@@ -52,6 +52,16 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
+      - name: Verify isolated review portal uses actual member UI
+        run: |
+          node scripts/build-review-portal.cjs --check
+          node tests/review-portal-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-review-portal
+          path: qa/review-portal
+          if-no-files-found: warn
       - name: Test calendar information, colors and combined start card
         run: node tests/calendar-display-browser.cjs
       - name: Test privacy-first illustrated instructions on tablet and phone

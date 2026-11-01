@@ -6,7 +6,11 @@ Member features include appointments and attendance responses, personal evidence
 
 The app is intended for unlisted App Store distribution to this limited audience. We will submit the separate unlisted distribution request. The app still enforces individual membership authentication for anyone who obtains the installation link.
 
-Review access must be provided for this same production app binary using synthetic data. The earlier separate calendar-only demo is insufficient to demonstrate all member features. Do not enter a real member's credentials in these notes.
+Build 1021 adds an integrated demonstration using the same member interface and an isolated ephemeral WebKit store. Tap “Apple-Prüfdemo öffnen” at the bottom of the app. No invitation, real member account or private hardware is needed. The demo starts signed in as Alex Beispiel (Demo). For password confirmation, use “demo”; after signing out, the synthetic username and password are both “demo”. These values grant no access to any production service.
+
+The demo supports appointments and responses, evidence dates and self-reported updates, the beverage ledger and synthetic bookings, training, public PDF regulations, contacts, the annual plan and sample theatre orders. “Demo zurücksetzen” restores its initial data. To test deletion: More → Account & Security → Account → Delete portal account, enter the demo password and confirm. Only synthetic local state changes. “Demo verlassen · Mitgliederanmeldung” returns to the normal membership login using a separate WebKit store.
+
+No real PayPal payment, push registration, reminder delivery or calendar subscription is performed in demo mode. Public regulations are loaded from the app's existing public assets. The isolated historical calendar-only Worker is no longer the required review entry.
 
 Before submission, complete the secure App Review account fields and verify:
 
@@ -16,4 +20,4 @@ Before submission, complete the secure App Review account fields and verify:
 - The privacy policy and support URLs are public and functional.
 - The final version has been tested on the actual devices and OS versions listed in the submission.
 
-No functioning review account has yet been entered or tested in App Store Connect in this work session. Do not submit this draft as evidence that those steps are complete.
+The integrated demo must pass its browser and iOS CI checks and be verified in the final signed build before these notes are submitted. App Store Connect is currently signed out; these revised notes have not been saved there.

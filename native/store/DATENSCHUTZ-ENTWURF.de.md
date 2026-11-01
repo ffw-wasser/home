@@ -4,7 +4,9 @@
 
 ## Verantwortliche Stelle und Kontakt
 
-[Name und Kontaktdaten der verantwortlichen Stelle bestätigen; gegebenenfalls Datenschutzbeauftragten ergänzen.]
+Für den persönlich betriebenen Portalzugang: Markus Bürklin, m.b.1982@web.de (vom Betreiber bestätigt).
+
+[Postanschrift ergänzen. Für die unabhängig geführten Feuerwehrunterlagen die datenschutzrechtlich verantwortliche Stelle und gegebenenfalls deren Datenschutzbeauftragten bestätigen.]
 
 Technischer Support: Markus Bürklin, m.b.1982@web.de.
 
@@ -28,6 +30,10 @@ GitHub Pages liefert die Weboberfläche aus. Cloudflare betreibt den geschützte
 
 Die native App enthält keine Werbe- oder Analyse-SDKs. Im nativen Projekt ist kein werbliches Tracking eingerichtet.
 
+## Apple-Prüfdemo
+
+Die im gleichen App-Build angebotene Prüfdemo verwendet ausschließlich erfundene Mitglieder-, Termin-, Nachweis- und Kontodaten. Sie nutzt einen getrennten, nicht dauerhaften Webspeicher und keine produktiven Schnittstellen. Öffentliche Ausbildungsdateien können ohne Anmeldung aus dem vorhandenen Webangebot geladen werden. Zahlungen, echte Kalenderabos und Mitteilungsregistrierungen sind dort gesperrt. Die Demo gibt keinen Mitgliederzugang frei.
+
 ## Speicherung auf dem Gerät
 
 Anmeldesitzung und persönliche Einstellungen werden auf dem Gerät gespeichert. Der native Widget-Speicher enthält nur den nächsten persönlich freigegebenen Termin mit Zeit, Ort, Kleidung und Rückmeldestatus, höchstens zwölf Stunden. Namen und Zugangstoken werden nicht an das Widget übergeben. Bei Abmeldung oder erkanntem Zugriffsverlust wird der Widget-Stand geleert. Ein bereits geöffneter Kalender oder ein anderes Gerät kann zuvor geladene Angaben zwischengespeichert haben.
@@ -46,6 +52,6 @@ Im Rahmen der gesetzlichen Voraussetzungen bestehen Rechte auf Auskunft, Bericht
 
 [Zuständige Aufsichtsbehörde und gegebenenfalls Pflicht zur Bereitstellung bestimmter Daten sowie Folgen einer Nichtbereitstellung ergänzen.]
 
-Stand: 31. Oktober 2026.
+Stand des technischen Entwurfs: 1. November 2026.
 
 Grundlage für die offenen Pflichtangaben: Artikel 13 DSGVO, https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=de.
