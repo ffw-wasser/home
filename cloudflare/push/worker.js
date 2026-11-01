@@ -108,7 +108,7 @@ export default {
     await env.DB.prepare("INSERT INTO sends(id,alias,status,accepted,failed,created_at) VALUES(?,?,'pending',0,0,?)").bind(data.requestId,data.alias,now).run();
     let accepted=0,failed=0;
     for(const device of devices){
-     try{const url=device.endpoint;const response=globalThis.NativePush?.isEndpoint(url)?await globalThis.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:'86400',Urgency:'normal',Topic:'deckel-reminder'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});
+     try{const url=device.endpoint;const response=globalThis.AndroidPush?.isEndpoint(url)?await globalThis.AndroidPush.send(env,url):globalThis.NativePush?.isEndpoint(url)?await globalThis.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:'86400',Urgency:'normal',Topic:'deckel-reminder'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});
       if(response.ok)accepted++;else {
        failed++;
        // Only protocol errors, never endpoints, account IDs or credentials.

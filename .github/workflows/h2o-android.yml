@@ -1,0 +1,110 @@
+name: Build Android H2O app and widget
+on:
+  pull_request:
+    paths: ["native/android/**", "native/shared/**", "cloudflare/push/android-push.js", ".github/workflows/h2o-android.yml"]
+  workflow_dispatch:
+    inputs:
+      signed_internal_candidate:
+        description: Build a signed candidate for manual internal-track upload (no upload)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      H2O_FIREBASE_APP_ID: ${{ vars.H2O_FIREBASE_APP_ID }}
+      H2O_FIREBASE_API_KEY: ${{ vars.H2O_FIREBASE_API_KEY }}
+      H2O_FIREBASE_PROJECT_ID: ${{ vars.H2O_FIREBASE_PROJECT_ID }}
+      H2O_FIREBASE_SENDER_ID: ${{ vars.H2O_FIREBASE_SENDER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Install pinned Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Test and build development APK and unsigned store bundle
+        run: gradle -p native/android :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:bundleRelease
+      - name: Enable emulator KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Render synthetic widgets in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            gradle -p native/android :app:assembleDebugAndroidTest
+            adb install -r native/android/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r native/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w de.feuerwehrwasser.h2o.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/h2o-instrumentation.txt"
+            grep -q 'OK (1 test)' "$RUNNER_TEMP/h2o-instrumentation.txt"
+            adb pull /sdcard/Android/data/de.feuerwehrwasser.h2o/files/widget-previews native/android/app/build/widget-previews
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-android-build-and-tests
+          path: |
+            native/android/app/build/outputs/apk/debug/*.apk
+            native/android/app/build/outputs/bundle/release/*.aab
+            native/android/app/build/reports/
+            native/android/app/build/widget-previews/
+          retention-days: 14
+
+  signed-internal-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.signed_internal_candidate
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      H2O_FIREBASE_APP_ID: ${{ vars.H2O_FIREBASE_APP_ID }}
+      H2O_FIREBASE_API_KEY: ${{ vars.H2O_FIREBASE_API_KEY }}
+      H2O_FIREBASE_PROJECT_ID: ${{ vars.H2O_FIREBASE_PROJECT_ID }}
+      H2O_FIREBASE_SENDER_ID: ${{ vars.H2O_FIREBASE_SENDER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Build signed internal candidate without store upload
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.H2O_ANDROID_KEYSTORE_BASE64 }}
+          H2O_ANDROID_STORE_PASSWORD: ${{ secrets.H2O_ANDROID_STORE_PASSWORD }}
+          H2O_ANDROID_KEY_ALIAS: ${{ secrets.H2O_ANDROID_KEY_ALIAS }}
+          H2O_ANDROID_KEY_PASSWORD: ${{ secrets.H2O_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          candidate_keystore="$RUNNER_TEMP/h2o-android-upload.jks"
+          trap 'rm -f "$candidate_keystore"' EXIT
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$candidate_keystore"
+          H2O_ANDROID_KEYSTORE="$candidate_keystore" H2O_REQUIRE_RELEASE_SIGNING=true gradle -p native/android :app:bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2o-android-signed-internal-candidate
+          path: native/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 7

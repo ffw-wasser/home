@@ -1,3 +1,12 @@
+# Aktuelle Android-Vorbereitung
+
+Die native Android-App wird seit 01.11.2026 wieder für den internen Mitglieder-Test
+vorbereitet: Portal, passendes Android-Widget und FCM-Mitteilungen. Aktueller
+Android-Build: **1023**. Einrichtung, notwendige Kontokonfiguration und noch offene
+Gerätetests: [Android-Mitgliederpilot](../docs/H2O-ANDROID-MEMBER-PILOT.md).
+Die folgenden historischen Archivhinweise beschreiben frühere Entscheidungen;
+sie setzen diesen erneuten Android-Auftrag nicht außer Kraft.
+
 # Privater iPhone-Mitgliederpilot mit Widget
 
 Aktueller Kandidat: **Build 1015** für das echte H₂O-Portal. Die bisher installierte

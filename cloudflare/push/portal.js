@@ -278,7 +278,7 @@
    for(const record of records){const devices=(await env.DB.prepare('SELECT d.id,d.endpoint FROM devices d JOIN portal_devices p ON p.id=d.id WHERE alias=? AND revision=? LIMIT 5').bind(record.alias,record.revision).all()).results;
     for(const device of devices){
      if((await replyFor(env,event.id,member)).status==='excused')continue;
-     try{const url=device.endpoint,res=g.NativePush?.isEndpoint(url)?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch{f++;}
+     try{const url=device.endpoint,res=g.AndroidPush?.isEndpoint(url)?await g.AndroidPush.send(env,url):g.NativePush?.isEndpoint(url)?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch{f++;}
     }
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
@@ -526,20 +526,22 @@
    const c={...old,calendarUrl:url,reminders:false,leadHours:data.leadHours},events=await sourceProjection(c);return saveCalendarConnection(env,row,c,events);
   }
   if(path==='/portal/native-push'){
-   const transport=g.NativePush,action=data.action||'status';
+   const platform=data.platform||'ios';
+   if(!['ios','android'].includes(platform))fail('Ungültige Geräteplattform.',400);
+   const transport=platform==='android'?g.AndroidPush:g.NativePush,action=data.action||'status';
    if(!['status','subscribe','unsubscribe'].includes(action))fail('Ungültige Mitteilungsaktion.',400);
    const url=data.deviceToken===undefined?null:transport?.endpoint(data.deviceToken);
-   if(data.deviceToken!==undefined&&!url)fail('Ungültiges Apple-Mitteilungsgerät.',400);
-   if(action!=='status'&&!url)fail('Apple-Mitteilungsgerät fehlt.',400);
+   if(data.deviceToken!==undefined&&!url)fail('Ungültiges Mitteilungsgerät.',400);
+   if(action!=='status'&&!url)fail('Mitteilungsgerät fehlt.',400);
    const id=url?await hash(url):null;
    if(action==='unsubscribe')await env.DB.batch([
     env.DB.prepare('DELETE FROM portal_devices WHERE id=? AND EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)').bind(id,id,record.alias),
     env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(id,record.alias)
    ]);
    if(action==='subscribe'){
-    if(!transport?.ready(env))fail('Apple-Mitteilungsdienst noch nicht eingerichtet.',503);
+    if(!transport?.ready(env))fail('Mitteilungsdienst noch nicht eingerichtet.',503);
     const old=await env.DB.prepare('SELECT alias FROM devices WHERE id=?').bind(id).first();
-    if(old&&old.alias!==record.alias)fail('Auf diesem iPhone zuerst die Mitteilungen des anderen Mitglieds deaktivieren.');
+    if(old&&old.alias!==record.alias)fail('Auf diesem Gerät zuerst die Mitteilungen des anderen Mitglieds deaktivieren.');
     const result=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,record.alias,record.revision,url,record.alias,record.revision,record.alias,id,record.alias).run();
     if(!result.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');
     await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) SELECT ? WHERE EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=? AND revision=?)').bind(id,id,record.alias,record.revision).run();
