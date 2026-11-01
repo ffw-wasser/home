@@ -20,7 +20,8 @@ for(const [name,date,before,due] of [
  f.clock.now=Date.parse(due);await Promise.all([f.c.PortalService.scheduled(f.env),f.c.PortalService.scheduled(f.env)]);assert.equal(new Set(f.sends.map(s=>s.url)).size,f.sends.length,'concurrent Cron ticks do not duplicate devices');
  for(let i=0;i<4;i++){f.clock.now+=60000;await f.c.PortalService.scheduled(f.env);}
  assert.equal(f.sends.length,5);assert.equal(new Set(f.sends.map(s=>s.url)).size,5);
- f.clock.now+=60000;await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5,'completed campaign stays complete');
+ const stamp=f.sql.prepare('SELECT reminded_at FROM portal_event_reminders').get().reminded_at;
+ f.clock.now+=60000;await f.c.PortalService.scheduled(f.env);assert.equal(f.sends.length,5,'completed campaign stays complete');assert.equal(f.sql.prepare('SELECT reminded_at FROM portal_event_reminders').get().reminded_at,stamp,'an idle Cron tick never claims a fresh reminder was sent');
 });
 test('Only current recipients receive reminders; excused members are skipped',async()=>{
  const f=await fixture({now:Date.parse('2026-11-01T12:00:00Z')}),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];await subscribe(f);
