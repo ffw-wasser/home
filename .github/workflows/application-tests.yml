@@ -140,6 +140,13 @@ jobs:
           node tests/calendar-invitations-browser.cjs
           BROWSER_ENGINE=webkit node tests/calendar-invitations-browser.cjs
 
+      - name: Keep push failure feedback for visual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-push-failure-feedback
+          path: qa/push-failure-feedback
+          if-no-files-found: error
+
       - name: Test direct notification activation and settings layout
         run: |
           node tests/portal-notifications-browser.cjs

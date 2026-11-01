@@ -397,3 +397,9 @@ Berechtigungsabfrage ist nötig. Fremde Konten und abgelehnte Anmeldungen werden
 übernommen; ein Schreibfehler darf den Zustand nicht als aktiv bestätigen.
 Der Server akzeptiert weiterhin ausschließlich gültige Portal-Sitzungen. Bei einem
 401 beim Detailabruf zeigt der Service Worker weiterhin nur die allgemeine Erinnerung.
+
+Manuelle Erinnerungsantworten enthalten bei Fehlern außerdem `failures`: nach Transport,
+HTTP-Status und freigegebenem Fehlercode zusammengefasste Geräteanzahlen. Es werden keine
+Geräte- oder Mitgliederkennungen ausgegeben. Portal und Gerätehaus zeigen diese Angaben
+direkt in der Versandrückmeldung. Die Daten werden nicht zusätzlich gespeichert; die
+Zugriffsprüfung für Gruppenführer, Verwaltung und Fitnesstrainer bleibt unverändert.

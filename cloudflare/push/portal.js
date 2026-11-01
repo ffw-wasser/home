@@ -285,11 +285,15 @@
   }else{
    const known=['Error','TypeError','SyntaxError','DataError','OperationError','InvalidAccessError','NotSupportedError','TimeoutError','AbortError'];
    diagnostic.error=known.includes(error?.name)?error.name:'unknown';
+   if(['Apple-Mitteilungsdienst noch nicht eingerichtet.','Android-Mitteilungsdienst noch nicht eingerichtet.'].includes(error?.message))diagnostic.reason='NotConfigured';
+   if(error?.message==='Android-Mitteilungsdienst konnte sich nicht anmelden.')diagnostic.reason='AuthorizationFailed';
   }
   console.warn('H2O-Push fehlgeschlagen',JSON.stringify(diagnostic));
+  return diagnostic;
  }
  async function send(env,event,requestId,automatic=false){
   const remindedAt=Date.now();let marked=false;const mark=async()=>{if(marked)return;await env.DB.prepare('INSERT INTO portal_event_reminders(event,reminded_at) VALUES(?,?) ON CONFLICT(event) DO UPDATE SET reminded_at=excluded.reminded_at').bind(event.id,remindedAt).run();marked=true;};if(!automatic)await mark();
+  const failures=new Map(),rememberFailure=detail=>{const key=JSON.stringify(detail),old=failures.get(key);if(old)old.count++;else failures.set(key,{...detail,count:1});};
   let accepted=0,failed=0,excused=0,duplicate=0,processed=0;const people=await recipients(env),campaign=requestId,already=new Set((await env.DB.prepare('SELECT member FROM portal_sends WHERE event=? AND campaign=?').bind(event.id,campaign).all()).results.map(r=>r.member)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');let remaining=0;const replyRows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of replyRows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
   for(const [member,records] of people){
    if(roster&&!roster.members.some(m=>m.id===member))continue;if(roster?.members.find(m=>m.id===member)?.fitnessTrainer===true){const assigned=(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(member));if(event.attendanceType!=='Fitness'||!event.groupIds?.length||!Array.isArray(event.recipientIds)||!event.groupIds.every(id=>assigned.some(group=>group.id===id))||!event.recipientIds.every(id=>assigned.some(group=>g.PortalGroups.members(group,roster).includes(id))))continue;}if(!isRecipient(event,member))continue;if(already.has(member)){duplicate++;continue;}
@@ -302,13 +306,13 @@
     for(const device of devices){
      if((await replyFor(env,event.id,member)).status==='excused')continue;
      const url=device.endpoint,transport=g.AndroidPush?.isEndpoint(url)?'android':g.NativePush?.isEndpoint(url)?'ios':'web';
-     try{const res=transport==='android'?await g.AndroidPush.send(env,url):transport==='ios'?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;await pushFailure(transport,res);if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch(error){f++;await pushFailure(transport,null,error);}
+     try{const res=transport==='android'?await g.AndroidPush.send(env,url):transport==='ios'?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;rememberFailure(await pushFailure(transport,res));if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch(error){f++;rememberFailure(await pushFailure(transport,null,error));}
     }
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
   }
   if(processed)console.info('H2O-Push Versandlauf',JSON.stringify({automatic,accepted,failed,excused,remaining}));
-  return {accepted,failed,excused,duplicate,remaining,remindedAt,...(automatic?{processed}:{})};
+  return {accepted,failed,excused,duplicate,remaining,remindedAt,...(failures.size?{failures:[...failures.values()]}:{}),...(automatic?{processed}:{})};
  }
  // Completed calendar events are no longer managed in H₂O. Keep their replies
  // for six hours after the end so an ongoing iPad attendance session can
