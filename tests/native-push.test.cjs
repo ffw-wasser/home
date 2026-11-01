@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{webcrypto}=require('node:crypto');
-function fixture(){const sent=[],c=vm.createContext({crypto:webcrypto,TextEncoder,Uint8Array,Date,atob,btoa,AbortSignal,fetch:async(url,options)=>{sent.push({url,options});return new Response(null,{status:200});}});vm.runInContext(fs.readFileSync('cloudflare/push/native-push.js','utf8'),c);return {api:c.NativePush,sent};}
+function fixture({status=200}={}){const sent=[],c=vm.createContext({crypto:webcrypto,TextEncoder,Uint8Array,Date,atob,btoa,AbortSignal,fetch:async(url,options)=>{if(options.redirect==='error')throw TypeError('Workers does not implement redirect mode error');assert.equal(options.redirect,'manual','never follow redirects with provider authorization');sent.push({url,options});return new Response(null,{status,headers:status===302?{Location:'https://evil.invalid'}:{}});}});vm.runInContext(fs.readFileSync('cloudflare/push/native-push.js','utf8'),c);return {api:c.NativePush,sent};}
 test('APNs accepts only canonical production Apple device endpoints',()=>{
  const f=fixture(),url=f.api.endpoint('a'.repeat(64));assert.equal(f.api.isEndpoint(url),true);
  for(const address of [url+'?x=1',url+'#x',url.replace('api.push.apple.com','api.push.apple.com.evil.test'),url.replace('https:','http:'),url.replace('/3/device/','/other/')])assert.equal(f.api.isEndpoint(address),false);
@@ -15,6 +15,10 @@ test('APNs signs the expected team and topic and sends no member or event detail
  assert.equal(await webcrypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},keys.publicKey,Buffer.from(parts[2],'base64url'),Buffer.from(parts[0]+'.'+parts[1])),true);
  assert.equal(options.headers['apns-topic'],'de.feuerwehrwasser.h2o');assert.equal(options.headers['apns-push-type'],'alert');
  const payload=JSON.parse(options.body);assert.deepEqual(Object.keys(payload),['aps']);assert.doesNotMatch(options.body,/memberId|eventId|capability|password|calendar/);
+});
+test('APNs returns a redirect as a failed response without forwarding authorization',async()=>{
+ const f=fixture({status:302}),keys=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']),der=Buffer.from(await webcrypto.subtle.exportKey('pkcs8',keys.privateKey)),env={H2O_APNS_TEAM_ID:'VKL57X3H6F',H2O_APNS_KEY_ID:'SYNTHKEY01',H2O_APNS_PRIVATE_KEY:'-----BEGIN PRIVATE KEY-----\n'+der.toString('base64')+'\n-----END PRIVATE KEY-----'};
+ const response=await f.api.send(env,f.api.endpoint('a'.repeat(64)));assert.equal(response.ok,false);assert.equal(response.status,302);assert.equal(f.sent.length,1);assert.match(f.sent[0].url,/^https:\/\/api\.push\.apple\.com\//);
 });
 
 const {fixture:portalFixture}=require('./helpers/portal-fixture.cjs');

@@ -403,3 +403,11 @@ HTTP-Status und freigegebenem Fehlercode zusammengefasste Geräteanzahlen. Es we
 Geräte- oder Mitgliederkennungen ausgegeben. Portal und Gerätehaus zeigen diese Angaben
 direkt in der Versandrückmeldung. Die Daten werden nicht zusätzlich gespeichert; die
 Zugriffsprüfung für Gruppenführer, Verwaltung und Fitnesstrainer bleibt unverändert.
+
+Native Push-Aufrufe und der FCM-OAuth-Austausch verwenden `redirect: 'manual'`.
+Workers unterstützt `redirect: 'error'` nicht und wirft dafür bereits vor dem
+Netzwerkaufruf einen TypeError. 3xx-Antworten bleiben Fehler; Zugangsdaten werden
+nicht an ein Weiterleitungsziel gesendet. Dokumentation:
+https://developers.cloudflare.com/workers/runtime-apis/request/#properties
+Die Transporttests bilden diese Workers-Einschränkung ab und prüfen 3xx sowohl
+bei APNs als auch beim Google-Tokenaustausch und beim FCM-Versand.

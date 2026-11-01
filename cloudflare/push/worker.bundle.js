@@ -22218,7 +22218,7 @@ g.PortalHydrants={schema,route};
  }
  async function send(env,url){
   if(!isEndpoint(url))throw Error('Ungültiges Apple-Mitteilungsgerät.');
-  return fetch(url,{method:'POST',headers:{authorization:await authorization(env),'apns-topic':'de.feuerwehrwasser.h2o','apns-push-type':'alert','apns-priority':'10','apns-expiration':String(Math.floor(Date.now()/1000)+3600),'content-type':'application/json'},body:JSON.stringify({aps:{alert:{title:'H₂O · Feuerwehr Wasser',body:'Eine Mitteilung liegt vor. Bitte H₂O öffnen.'},sound:'default'}}),redirect:'error',signal:AbortSignal.timeout(8000)});
+  return fetch(url,{method:'POST',headers:{authorization:await authorization(env),'apns-topic':'de.feuerwehrwasser.h2o','apns-push-type':'alert','apns-priority':'10','apns-expiration':String(Math.floor(Date.now()/1000)+3600),'content-type':'application/json'},body:JSON.stringify({aps:{alert:{title:'H₂O · Feuerwehr Wasser',body:'Eine Mitteilung liegt vor. Bitte H₂O öffnen.'},sound:'default'}}),redirect:'manual',signal:AbortSignal.timeout(8000)});
  }
  g.NativePush={endpoint,isEndpoint,ready,send};
 })(globalThis);
@@ -22252,7 +22252,7 @@ g.PortalHydrants={schema,route};
   const key=await crypto.subtle.importKey('pkcs8',Uint8Array.from(atob(pem),x=>x.charCodeAt(0)),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
   const iat=Math.floor(now/1000),head=b64(bytes.encode(JSON.stringify({alg:'RS256',typ:'JWT'}))),body=b64(bytes.encode(JSON.stringify({iss:env.H2O_FCM_CLIENT_EMAIL,scope:'https://www.googleapis.com/auth/firebase.messaging',aud:'https://oauth2.googleapis.com/token',iat,exp:iat+3600})));
   const jwt=head+'.'+body+'.'+b64(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,bytes.encode(head+'.'+body)));
-  const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:jwt}).toString(),redirect:'error',signal:AbortSignal.timeout(8000)});
+  const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:jwt}).toString(),redirect:'manual',signal:AbortSignal.timeout(8000)});
   const result=await response.json();
   if(!response.ok||typeof result.access_token!=='string'||!/^[A-Za-z0-9._~-]{20,4096}$/.test(result.access_token)||!Number.isFinite(result.expires_in)||result.expires_in<120)throw Error('Android-Mitteilungsdienst konnte sich nicht anmelden.');
   cached={id,createdAt:now,expiresAt:now+Math.min(result.expires_in-60,3300)*1000,value:'Bearer '+result.access_token};return cached.value;
@@ -22260,7 +22260,7 @@ g.PortalHydrants={schema,route};
  async function send(source,url){
   const env=configuration(source);
   if(!isEndpoint(url))throw Error('Ungültiges Android-Mitteilungsgerät.');
-  return fetch('https://fcm.googleapis.com/v1/projects/'+env.H2O_FCM_PROJECT_ID+'/messages:send',{method:'POST',headers:{authorization:await authorization(env),'content-type':'application/json'},body:JSON.stringify({message:{token:url.slice(prefix.length),data:{type:'portal-reminder'},android:{priority:'high',ttl:'3600s',collapse_key:'h2o-portal'}}}),redirect:'error',signal:AbortSignal.timeout(8000)});
+  return fetch('https://fcm.googleapis.com/v1/projects/'+env.H2O_FCM_PROJECT_ID+'/messages:send',{method:'POST',headers:{authorization:await authorization(env),'content-type':'application/json'},body:JSON.stringify({message:{token:url.slice(prefix.length),data:{type:'portal-reminder'},android:{priority:'high',ttl:'3600s',collapse_key:'h2o-portal'}}}),redirect:'manual',signal:AbortSignal.timeout(8000)});
  }
  g.AndroidPush={endpoint,isEndpoint,ready,send};
 })(globalThis);
@@ -23020,7 +23020,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"348c58376b458afa979d5c015c2aed537c88cecaef3f0a95b91cc7571fc2c251",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"6e7f222a78bd0611fb097714ab7b3b2f9b6d64e0ad4f2dd9437965aa26809ea4",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
