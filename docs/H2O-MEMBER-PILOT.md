@@ -113,3 +113,8 @@ https://developer.apple.com/support/unlisted-app-distribution/
 Die kleine und mittlere Ansicht verwenden einen gemeinsamen ruhigen Aufbau: Originalwappen und dezente Wortmarke, ein helles Grundfeld, Datum als Hauptinformation und Rückmeldung als farbige Textzeile mit eindeutigem Symbol. Gefüllte Datums-/Statuskästen und die rot-gelbe Kopfleiste entfallen. Die Uhrzeit steht kleiner; Ort und Kleidung erscheinen zusätzlich im mittleren Widget. Im kleinen Widget bleibt der Terminname in der unteren Zeile erkennbar.
 
 Die bestehenden Simulatorfälle prüfen beide Größen auf den kleinsten und größeren unterstützten Flächen, lange Titel, den langen Monatsnamen September, alle Rückmeldungen, Ganztägigkeit, veralteten Stand und einen leeren Kalender. Die Bilder werden aus dem echten SwiftUI-Code erzeugt. Die native Buildnummer ist in `native/ios/project.yml` hinterlegt; eine reine Widgetdarstellung ändert keine Webdateien oder Portaldaten.
+
+
+## Bestätigtes Kalenderblatt – Build 1020
+
+Die bestätigte Gestaltung verwendet einen warmen Papiergrund, eine schmale bordeauxrote Oberkante und eine integrierte Statuszeile am unteren Rand. Tag und Monat bleiben die Hauptinformation. Das kleine Widget zeigt eine kompakte Monatsangabe neben dem zweistelligen Tag; im breiten Widget steht der ausgeschriebene Monat darunter. Die Uhrzeit bleibt klein. Ort und Kleidung erscheinen im breiten Widget als Text. Datenumfang, Zugriff und Ablauf bleiben unverändert.
