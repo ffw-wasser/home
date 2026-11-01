@@ -4,10 +4,10 @@
  const types=[['general','Allgemeine Probe','#326A9B'],['special','Sonderprobe','#82559C'],['lesson','Unterricht','#39765A'],['committee','Ausschusssitzung','#96652E'],['other','Weitere Termine','#566773'],['info','Kalenderinformation','#66717A'],['birthday','Geburtstag','#AF526F']].map(([id,label,color])=>({id,label,color}));
  const defaults=()=>Object.fromEntries(types.map(t=>[t.id,t.color]));
  function validate(colors){if(!colors||typeof colors!=='object'||Array.isArray(colors)||Object.keys(colors).length!==types.length||types.some(t=>!/^#[0-9a-f]{6}$/i.test(colors[t.id]||'')))throw Error('Bitte für jede Terminart eine gültige Farbe wählen.');return Object.fromEntries(types.map(t=>[t.id,colors[t.id].toUpperCase()]));}
- function key(e){return e.kind==='birthday'?'birthday':e.kind==='info'?'info':e.kind!=='probe'?'other':e.attendanceType==='Unterricht'?'lesson':e.attendanceType==='Ausschuss Sitzung'?'committee':e.attendanceType==='Allgemeine Probe'?'general':e.attendanceType==='Sonderprobe'?'special':e.sessionType==='Probe'?'general':'special';}
+ function key(e){return e.kind==='birthday'?'birthday':e.kind==='info'?'info':e.kind!=='probe'||e.attendanceType==='Fitness'?'other':e.attendanceType==='Unterricht'?'lesson':e.attendanceType==='Ausschuss Sitzung'?'committee':e.attendanceType==='Allgemeine Probe'?'general':e.attendanceType==='Sonderprobe'?'special':e.sessionType==='Probe'?'general':'special';}
  function style(e,colors=defaults()){
   const color=/^#[0-9a-f]{6}$/i.test(e.googleColor||'')?e.googleColor:colors[key(e)]||defaults()[key(e)],v=color.slice(1).match(/../g).map(s=>parseInt(s,16)),hex=values=>'#'+values.map(n=>Math.round(n).toString(16).padStart(2,'0')).join('');
-  return {accent:e.googleColor?color.toUpperCase():hex(v.map(n=>Math.min(n,175))),background:hex(v.map(n=>255*.9+n*.1)),text:'#18344C',label:types.find(t=>t.id===key(e)).label};
+  return {accent:e.googleColor?color.toUpperCase():hex(v.map(n=>Math.min(n,175))),background:hex(v.map(n=>255*.9+n*.1)),text:'#18344C',label:e.attendanceType==='Fitness'?'Fitness':types.find(t=>t.id===key(e)).label};
  }
  function plain(value,max=4000){
   const entities={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' '};
@@ -23,7 +23,7 @@
    if(Object.hasOwn(fields,key))issues.push('Die Angabe '+match[1]+' ist mehrfach vorhanden.');
    fields[key]=match[2];if(!match[2])issues.push('Die Angabe '+match[1]+' ist leer.');
   }
-  const names={'probe':'Allgemeine Probe','allgemeine probe':'Allgemeine Probe','sonderprobe':'Sonderprobe','unterricht':'Unterricht','ausschusssitzung':'Ausschuss Sitzung','ausschuss sitzung':'Ausschuss Sitzung','veranstaltung':'other','weitere termine':'other','sonstiges':'other','information':'info','info':'info'};
+  const names={'fitness':'Fitness','probe':'Allgemeine Probe','allgemeine probe':'Allgemeine Probe','sonderprobe':'Sonderprobe','unterricht':'Unterricht','ausschusssitzung':'Ausschuss Sitzung','ausschuss sitzung':'Ausschuss Sitzung','veranstaltung':'other','weitere termine':'other','sonstiges':'other','information':'info','info':'info'};
   if(fields.type!==undefined){const type=names[fields.type.toLocaleLowerCase('de')];if(!type)issues.push('Unbekannte Terminart: '+fields.type);fields.type=type||null;}
   if(fields.clothing?.length>120)issues.push('Kleidung darf höchstens 120 Zeichen enthalten.');
   if(fields.release!==undefined){const word=fields.release.toLocaleLowerCase('de');if(!['ja','nein'].includes(word))issues.push('Freigabe muss Ja oder Nein sein.');fields.release=word==='ja';}

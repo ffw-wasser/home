@@ -1,5 +1,5 @@
 let selectedStatisticsYear=String(new Date().getFullYear());
-function availableStatisticsYears(){const years=new Set([String(new Date().getFullYear()),...(globalThis.DrinksConsumption?.years()||[])]);statisticsArchiveData().forEach(data=>{const year=data.date.slice(0,4);if(/^\d{4}$/.test(year))years.add(year);});return [...years].sort((a,b)=>b.localeCompare(a));}
+function availableStatisticsYears(){const years=new Set([String(new Date().getFullYear()),...(globalThis.DrinksConsumption?.years()||[])]);csvArchive.forEach(item=>{for(const row of parseCsvRows(item.content)){const year=String(row.date||'').slice(0,4);if(/^\d{4}$/.test(year))years.add(year);}});statisticsArchiveData().forEach(data=>{const year=data.date.slice(0,4);if(/^\d{4}$/.test(year))years.add(year);});return [...years].sort((a,b)=>b.localeCompare(a));}
 function renderStatisticsYearSelect(){const select=byId("statisticsYearSelect");if(!select)return;const years=availableStatisticsYears();if(!years.includes(selectedStatisticsYear))selectedStatisticsYear=years[0];select.innerHTML=years.map(year=>`<option value="${year}"${year===selectedStatisticsYear?" selected":""}>${year}</option>`).join("");}
 function parseCsvRows(content) { return CsvEngine.parse(content); }
 function statisticsRolesFromValue(value){
@@ -93,7 +93,7 @@ function renderFellowshipStatistics(yearData){
   root.querySelector("[data-fellowship-chart]").innerHTML=events.length?renderBarChart([...grouped.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,"de")).map(item=>[item.label,item.count]),"Veranstaltungen nach Thema","#65439b"):'<p class="empty-state">Keine abgeschlossenen Veranstaltungsberichte im gewählten Jahr geladen.</p>';
 }
 function statisticsArchiveData() {
-  return csvArchive.map(item => {
+  return csvArchive.filter(item=>String(item.sessionType||'')!=='Fitness'&&!parseCsvRows(item.content).some(row=>row.sessionType==='Fitness')).map(item => {
     const operationRows=statisticsOperationRows(item);
     const rows=operationRows.length?operationRows:parseCsvRows(item.content);
     const headers=statisticsParseCsvMatrix(item.content)[0]||[];
@@ -131,7 +131,7 @@ const STATISTICS_FUNCTION_GROUPS=Object.freeze([
 ]);
 function statisticsIsDrill(data){return ["Allgemeine Probe","Probe","Sonderprobe","Unterricht"].includes(data.rows[0]?.sessionType||data.item.sessionType);}
 function statisticsParticipation(yearData,roster=members){
-  const active=roster.filter(member=>!member.ageDepartment),drills=yearData.filter(statisticsIsDrill),rows=[];
+  const active=roster.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true),drills=yearData.filter(statisticsIsDrill),rows=[];
   const people=active.map(member=>{
     const relevant=drills.flatMap(data=>{
       const row=data.rows.find(row=>statisticsRowMatchesMember(row,member));
@@ -144,7 +144,7 @@ function statisticsParticipation(yearData,roster=members){
   return {active,drills,rows,people,present:rows.filter(row=>row.status==="Anwesend").length,excused:rows.filter(row=>row.status==="Entschuldigt").length,missing:rows.filter(row=>row.status==="Fehlt").length};
 }
 function statisticsCurrentReadiness(roster=members,date=MemberEvidence.day(Date.now())){
-  const active=roster.filter(member=>!member.ageDepartment),valid=state=>["valid","soon"].includes(state);
+  const active=roster.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true),valid=state=>["valid","soon"].includes(state);
   const breathing=[],drivers=[];
   active.forEach(member=>{
     const groups=MemberEvidence.assess(MemberEvidence.project(member),Date.parse(date+"T12:00:00Z"));
@@ -337,8 +337,28 @@ function arrangeStatisticsPage(){
   let events=byId("statisticsFellowshipEvents");if(!events){events=document.createElement("section");events.id="statisticsFellowshipEvents";events.innerHTML='<h3>Veranstaltungen</h3><p data-fellowship-summary></p><div data-fellowship-chart></div><button class="outline-button" type="button">Veranstaltungen öffnen</button>';events.querySelector("button").addEventListener("click",()=>showView("eventsView"));fellowship.querySelector(".commander-fellowship-content").prepend(events);}
   const drinks=view.querySelector(".drinks-consumption-panel");if(drinks)fellowship.querySelector(".commander-fellowship-content").append(drinks);
 }
+
+let fitnessStatisticsGeneration=0;
+function clearFitnessStatistics(){fitnessStatisticsGeneration++;byId('fitnessStatistics')?.replaceChildren();}
+function renderFitnessStatistics(){
+  const host=byId('statisticsView')||byId('settingsStatisticsView');if(!host)return;
+  let panel=byId('fitnessStatistics');if(!panel){panel=document.createElement('section');panel.id='fitnessStatistics';panel.className='panel statistics-panel';host.append(panel);}
+  panel.replaceChildren();const heading=document.createElement('h3');heading.textContent='Fitness';const note=document.createElement('p');note.textContent='Eigene Kategorie · keine Feuerwehrdienststatistik. Zusagen sind keine bestätigten Anwesenheiten.';const load=document.createElement('button');load.type='button';load.className='outline-button';load.textContent='Fitnessstatistik laden (Verwaltung)';const result=document.createElement('div');result.setAttribute('role','status');panel.append(heading,note,load,result);
+  const generation=++fitnessStatisticsGeneration,year=Number(selectedStatisticsYear);
+  load.onclick=async()=>{load.disabled=true;result.textContent='Fitnessstatistik wird geladen …';try{const data=await globalThis.PortalAdmin.fitnessStatistics(year);if(generation!==fitnessStatisticsGeneration||!adminUnlocked)return;const totals=data.totals,format=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:1});
+   result.replaceChildren();const metrics=[['Angebotene Termine',totals.offered],['Zusagen',totals.yes],['Entschuldigungen',totals.excused],['Ohne Rückmeldung',totals.open],['Unsicher',totals.maybe],['Ø Zusagequote pro Termin',totals.quoteEvents?format(100*totals.quoteSum/totals.quoteEvents)+' %':'–'],['Ø zugesagte Teilnehmer pro auswertbarem Termin',totals.evaluated?format(totals.yes/totals.evaluated):'–'],['Termine mit verfügbaren Rückmeldedaten',totals.evaluated]];
+   for(const [label,value] of metrics){const p=document.createElement('p');p.textContent=label+': '+value;result.append(p);}
+   const table=document.createElement('table'),caption=document.createElement('caption');caption.textContent='Beteiligung nach Monaten · '+year;table.append(caption);const header=document.createElement('tr');for(const label of ['Monat','Termine','Zusagen','Entschuldigt','Unsicher','Offen','Ø Zusagequote']){const th=document.createElement('th');th.scope='col';th.textContent=label;header.append(th);}const thead=document.createElement('thead');thead.append(header);table.append(thead);const tbody=document.createElement('tbody');for(const month of data.months){const tr=document.createElement('tr');for(const value of [new Intl.DateTimeFormat('de-DE',{month:'short',timeZone:'UTC'}).format(new Date(Date.UTC(year,month.month-1,1))),month.offered,month.yes,month.excused,month.maybe,month.open,month.quoteEvents?format(100*month.quoteSum/month.quoteEvents)+' %':'–']){const td=document.createElement('td');td.textContent=String(value);tr.append(td);}tbody.append(tr);}table.append(tbody);const scroll=document.createElement('div');scroll.style.overflowX='auto';scroll.append(table);result.append(scroll);
+   // Existing attendance reports remain authoritative. Keep them separate from responses.
+   const reports=csvArchive.filter(item=>item.sessionType==='Fitness').map(item=>({item,rows:parseCsvRows(item.content)})).filter(report=>report.rows.some(row=>String(row.date).startsWith(String(year))));
+   const actual=document.createElement('p');actual.textContent=reports.length?'Tatsächlich erfasst: '+reports.length+' Termine · Ø '+format(reports.reduce((sum,report)=>sum+new Set(report.rows.filter(row=>row.status==='Anwesend').map(row=>statisticsMemberNameKey(row.name))).size,0)/reports.length)+' Teilnehmer pro erfasstem Termin. „Betrifft nicht“ zählt nicht als Fehlzeit.':'Tatsächliche Anwesenheit: keine abgeschlossenen Fitnessberichte für dieses Jahr geladen.';result.append(actual);
+   const basis=document.createElement('p');basis.textContent='Abgesagte Termine werden nicht gezählt. Quote = Zusagen / zugeordnete Personen; „Unsicher“ bleibt separat. Der Durchschnitt gewichtet jeden Termin gleich. Vergangene Rückmeldungen werden ab Einführung gesichert.';result.append(basis);
+  }catch(e){if(generation===fitnessStatisticsGeneration)result.textContent=e.message;}finally{if(generation===fitnessStatisticsGeneration)load.disabled=false;}};
+}
+
 function renderStatistics({refreshDrinks=true}={}) {
   renderStatisticsYearSelect();
+  renderFitnessStatistics();
   populateIndividualMemberSelect();
   const year = selectedStatisticsYear || String(new Date().getFullYear());
   if(refreshDrinks)globalThis.DrinksConsumption?.load(year);
@@ -352,7 +372,7 @@ function renderStatistics({refreshDrinks=true}={}) {
   // In der AS-Statistik nur Personen anzeigen, bei denen Atemschutz
   // tatsächlich hinterlegt beziehungsweise vorgesehen ist. Nicht eingesetzte
   // Personen ohne Atemschutzbezug werden nicht als "nicht dokumentiert" geführt.
-  const breathingStates=members.filter(member=>!member.ageDepartment&&isAtmOrAtgQualified(member)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
+  const breathingStates=members.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true&&isAtmOrAtgQualified(member)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
   const clearanceLabel={valid:"Gültig bis",soon:"Fällig bis",expired:"Überfällig seit",none:"Nicht dokumentiert"};
   const clearanceTone={valid:"green",soon:"gold",expired:"red",none:"gray"},clearanceOrder={expired:0,none:1,soon:2,valid:3};
   byId("breathingClearanceList").innerHTML=breathingStates.sort((a,b)=>clearanceOrder[a.state]-clearanceOrder[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>renderMetric("",nameForTile(item.member),item.state==="none"?clearanceLabel[item.state]:`${clearanceLabel[item.state]} ${breathingClearanceDates(item.member).filter(Boolean).sort()[0]||""}`,clearanceTone[item.state])).join("");
@@ -448,7 +468,7 @@ function ensureDriverLicenseStatisticsPanel(){
 }
 function renderDriverLicenseStatistics(){
   const panel=ensureDriverLicenseStatisticsPanel();if(!panel)return;
-  const items=members.filter(member=>!member.ageDepartment&&Array.isArray(member.machinistVehicles)&&member.machinistVehicles.length).map(member=>({member,state:driverLicenseControlDue(member,systemToday())}));
+  const items=members.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true&&Array.isArray(member.machinistVehicles)&&member.machinistVehicles.length).map(member=>({member,state:driverLicenseControlDue(member,systemToday())}));
   const order={overdue:0,missing:1,soon:2,valid:3},tone={overdue:"red",missing:"gray",soon:"gold",valid:"green"};
   panel.querySelector("[data-driver-list]").innerHTML=items.sort((a,b)=>order[a.state]-order[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>{const date=driverLicenseDueDate(item.member);const label=item.state==="missing"?"Nicht dokumentiert":item.state==="overdue"?`Überfällig seit ${date}`:item.state==="soon"?`Fällig bis ${date}`:`Gültig bis ${date}`;return renderMetric("",nameForTile(item.member),label,tone[item.state]);}).join("");
 }
@@ -466,7 +486,7 @@ function normalizeStatisticsRole(role) {
 function populateIndividualMemberSelect() {
   const select = byId("individualMemberSelect");
   const current = select.value;
-  const groups=[["Einsatzabteilung",members.filter(member=>!member.ageDepartment)],["Alterskameraden",members.filter(member=>member.ageDepartment)]];
+  const groups=[["Einsatzabteilung",members.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true)],["Alterskameraden",members.filter(member=>member.ageDepartment)]];
   select.innerHTML = `<option value="">Bitte auswählen</option>${groups.filter(([,items])=>items.length).map(([label,items])=>`<optgroup label="${label}">${items.map(member=>`<option value="${escapeHtml(member.id)}">${escapeHtml(nameForTile(member))}</option>`).join("")}</optgroup>`).join("")}`;
   if (members.some(member => member.id === current)) select.value = current;
 }

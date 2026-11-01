@@ -66,6 +66,8 @@ jobs:
             qa/review-portal
             qa/g26-consent
           if-no-files-found: warn
+      - name: Test Fitness trainer assignment and private statistics
+        run: node tests/fitness-browser.cjs
       - name: Test calendar information, colors and combined start card
         run: node tests/calendar-display-browser.cjs
       - name: Test privacy-first illustrated instructions on tablet and phone

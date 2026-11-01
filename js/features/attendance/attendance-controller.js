@@ -21,7 +21,7 @@ function restoreAttendanceDraft(){
     if(!id)return;
     if(saved?.id===id){attendanceDraftSession=id;attendanceDraftScope=saved.source;}
     const rows=entries.filter(e=>e.operationId===id||e.sessionId===id);
-    if(saved&&saved.id===id&&saved.source===attendanceDraftSource()&&saved.version===1&&['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Einsatz'].includes(saved.type)){
+    if(saved&&saved.id===id&&saved.source===attendanceDraftSource()&&saved.version===1&&['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Einsatz'].includes(saved.type)){
       if(saved.type==='Einsatz'&&!currentOperationId||saved.type!=='Einsatz'&&currentOperationId)return;
       sessionType=saved.type;if(!currentOperationId)currentSessionId=id;
       if(/^\d{4}-\d{2}-\d{2}$/.test(saved.date)&&!Number.isNaN(Date.parse(saved.date)))currentProbeDate=saved.date;
@@ -73,11 +73,11 @@ function renderMembers() {
     : sessionType === "Einsatz"
       ? members.filter(member => !member.ageDepartment)
       : members;
-  const availableMembers = eligibleMembers.filter(member => !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
+  const availableMembers = eligibleMembers.filter(member => (sessionType==="Fitness"||member.fitnessTrainer!==true)&&!recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
   if (!availableMembers.some(member => member.id === chosenMemberId)) chosenMemberId = "";
   chosenMemberIds = new Set([...chosenMemberIds].filter(id => availableMembers.some(member => member.id === id)));
   const multiMode = (sessionType === "Allgemeine Probe" && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Orga")) ||
-    (sessionType === "Sonderprobe" && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Betrifft nicht")) ||
+    (["Sonderprobe","Fitness"].includes(sessionType) && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Betrifft nicht")) ||
     ((sessionType === "Unterricht" || sessionType === "Ausschuss Sitzung") && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt")) ||
     (sessionType === "Einsatz" && chosenRole === "Anwesend");
   const renderMemberButton = member => {
@@ -85,7 +85,7 @@ function renderMembers() {
     if(recorded) return window.AttendanceSmart?.recordedCard(member,current)||"";
     const selected = multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId;
     const organizationSelected = selected && chosenRole === "Orga";
-    const extra=sessionType==="Sonderprobe"?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
+    const extra=["Sonderprobe","Fitness"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
     const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
     return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""} "><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
   };
@@ -95,7 +95,7 @@ function renderMembers() {
     ? `<span><b class="legend-a">✓</b>Anwesend</span>`
     : sessionType==="Allgemeine Probe"
       ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
-      : sessionType==="Sonderprobe"
+      : ["Sonderprobe","Fitness"].includes(sessionType)
         ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
         : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
   let headingLegend=byId("stage2StatusLegend");
@@ -176,7 +176,7 @@ function updateSelection() {
   persistAttendanceDraft();
   const selected = members.find(member => member.id === chosenMemberId);
   const isStandard = sessionType === "Allgemeine Probe";
-  const isSpecial = sessionType === "Sonderprobe";
+  const isSpecial = ["Sonderprobe","Fitness"].includes(sessionType);
   const isTraining = sessionType === "Unterricht";
   const isCommittee = sessionType === "Ausschuss Sitzung";
   const isOperation = sessionType === "Einsatz";
@@ -220,7 +220,7 @@ function todayEntries() {
 function renderEntries() {
   const allCurrent = todayEntries();
   const committee=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
-  const exportMembers=committee?members.filter(member=>member.committeeMember):members;
+  const exportMembers=(committee?members.filter(member=>member.committeeMember):members).filter(member=>sessionType==="Fitness"||member.fitnessTrainer!==true);
   const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
   const current=committee?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   byId("entries").innerHTML = current.map(entry => `
@@ -256,7 +256,7 @@ function renderAdmin() {
     const health=MemberEvidence.assess(MemberEvidence.project({...member,breathingQualified:member.breathingQualified===true||typeof member.breathingQualified!=="boolean"&&MemberEvidence.breathingRelevant(member)})).find(group=>["Atemschutz","Feuerwehrmedizinische Eignung"].includes(group.title)),agt=member.breathingQualified===true||typeof member.breathingQualified!=="boolean"&&MemberEvidence.breathingRelevant(member);
     const machinistVehicles = Array.isArray(member.machinistVehicles) ? member.machinistVehicles : [];
     const vehicleOptions = member.ageDepartment ? "" : `<fieldset class="admin-role-group role-theme-vehicles machinist-vehicle-group"><legend>Maschinistenberechtigung</legend><p>LF10 und/oder TSF auswählen. Dadurch wird die Person automatisch als Maschinist freigeschaltet.</p><div class="admin-role-options"><label class="role-checkbox"><input type="checkbox" data-machinist-vehicle="LF" ${machinistVehicles.includes("LF") ? "checked" : ""}><span>LF</span></label><label class="role-checkbox"><input type="checkbox" data-machinist-vehicle="TSF" ${machinistVehicles.includes("TSF") ? "checked" : ""}><span>TSF</span></label></div><div class="driver-license-control"><label><span>Letzte Führerscheinkontrolle</span><input type="date" data-driver-license-checked value="${escapeHtml(member.driverLicenseCheckedOn||"")}"></label><label><span>Kontrollintervall in Monaten</span><input type="number" min="1" max="36" step="1" data-driver-license-interval value="${MemberEvidence.months(member.driverLicenseIntervalMonths)}"></label><small>${member.driverLicenseCheckedOn?`Nächste Kontrolle bis ${escapeHtml(driverLicenseDueDate(member))}`:"Bei Maschinisten jährlich dokumentieren."}</small></div></fieldset>`;
-    return `<article class="admin-row member-card member-card-${index % 3}" data-member-id="${escapeHtml(member.id)}"><header class="member-card-header"><span class="member-card-number">${index + 1}</span><strong>${escapeHtml(nameForTile(member))}</strong>${member.ageDepartment ? '<span class="age-department-badge">Altersabteilung</span>' : ''}</header><div class="member-name-fields"><label><span>Nachname</span><input class="text-input" data-last-name value="${escapeHtml(member.lastName)}"></label><label><span>Vorname</span><input class="text-input" data-first-name value="${escapeHtml(member.firstName)}"></label></div><div class="member-whatsapp-settings"><strong>WhatsApp-Erinnerungen</strong><p>Handynummer und persönliche Freigabe verwaltet das Mitglied selbst im H₂O Portal unter Mehr → Konto &amp; Sicherheit.</p></div><label class="age-department-toggle"><input type="checkbox" data-age-department ${member.ageDepartment ? "checked" : ""}><span><strong>Altersabteilung</strong><small>Kennzeichnet die Person als Mitglied der Altersmannschaft; die Anwesenheit wird bei der Erfassung separat ausgewählt.</small></span></label><label class="committee-member-toggle"><input type="checkbox" data-committee-member ${member.committeeMember ? "checked" : ""}><span><strong>Mitglied des Ausschusses</strong><small>Wird bei der Terminart Ausschuss Sitzung zur Auswahl angeboten.</small></span></label><div class="member-safety-settings"><fieldset class="admin-role-group breathing-clearance-card"><legend>Untersuchungen &amp; Atemschutznachweise</legend><label class="role-checkbox"><input type="checkbox" data-breathing-qualified ${member.breathingQualified===true||typeof member.breathingQualified!=="boolean"&&MemberEvidence.breathingRelevant(member)?"checked":""}><span>Aktiv im Atemschutz (Atemschutzgeräteträger)</span></label><p>Nur aktivieren, wenn die Person weiterhin Atemschutz macht. Bei ehemaligen Atemschutzgeräteträgern ausschalten; vorhandene Untersuchungsdaten bleiben erhalten. Ohne aktiven Atemschutz zählt eine gültige G26.3 weiterhin als Ersatz für G26.2. Unterweisung AGT und FFI werden dann nicht verlangt.</p><div class="breathing-clearance-grid"><label><span>G26.2 gültig bis</span><input class="text-input" type="month" data-g262-valid-until value="${escapeHtml(MemberEvidence.monthInput(member.g262ValidUntil))}"></label><label><span>G26.3 gültig bis</span><input class="text-input" type="month" data-g263-valid-until value="${escapeHtml(MemberEvidence.monthInput(MemberEvidence.g263Date(member)))}"></label><label><span>Unterweisung AGT gültig bis</span><input class="text-input" type="month" data-agt-instruction-valid-until value="${escapeHtml(MemberEvidence.monthInput(member.agtInstructionValidUntil))}"></label><label><span>FFI gültig bis</span><input class="text-input" type="month" data-ffi-valid-until value="${escapeHtml(MemberEvidence.monthInput(member.ffiValidUntil))}"></label></div><div class="breathing-clearance-result is-${health.status==="missing"?"none":health.status}"><strong>${agt?(hasValidBreathingClearance(member,systemToday())?"Alle Atemschutznachweise gültig":"Atemschutznachweise prüfen"):(["valid","soon"].includes(health.status)?"Ohne aktiven Atemschutz · G26.2-Anforderung erfüllt":"Ohne aktiven Atemschutz · Untersuchungsnachweis fehlt oder ist abgelaufen")}</strong><small>${escapeHtml(agt?breathingClearanceSummary(member):(health.items[0].until?health.items[0].label+" gültig bis "+MemberEvidence.displayMonth(health.items[0].until):"G26.2 oder gültige G26.3 nicht hinterlegt"))}</small></div></fieldset></div>${member.ageDepartment ? '<div class="age-no-role-note">Für Mitglieder der Altersabteilung ist keine Funktionsauswahl erforderlich.</div>' : `<div class="member-role-editor">${roleGroups}${vehicleOptions}</div>`}${window.Drinks?.adminFields(member)||""}<div class="member-card-actions"><button type="button" class="danger-button" data-delete-member="${escapeHtml(member.id)}">Mitglied löschen</button></div></article>`;
+    return `<article class="admin-row member-card member-card-${index % 3}" data-member-id="${escapeHtml(member.id)}"><header class="member-card-header"><span class="member-card-number">${index + 1}</span><strong>${escapeHtml(nameForTile(member))}</strong>${member.ageDepartment ? '<span class="age-department-badge">Altersabteilung</span>' : ''}</header><div class="member-name-fields"><label><span>Nachname</span><input class="text-input" data-last-name value="${escapeHtml(member.lastName)}"></label><label><span>Vorname</span><input class="text-input" data-first-name value="${escapeHtml(member.firstName)}"></label></div><div class="member-whatsapp-settings"><strong>WhatsApp-Erinnerungen</strong><p>Handynummer und persönliche Freigabe verwaltet das Mitglied selbst im H₂O Portal unter Mehr → Konto &amp; Sicherheit.</p></div><label class="age-department-toggle"><input type="checkbox" data-age-department ${member.ageDepartment ? "checked" : ""}><span><strong>Altersabteilung</strong><small>Kennzeichnet die Person als Mitglied der Altersmannschaft; die Anwesenheit wird bei der Erfassung separat ausgewählt.</small></span></label><label class="committee-member-toggle"><input type="checkbox" data-committee-member ${member.committeeMember ? "checked" : ""}><span><strong>Mitglied des Ausschusses</strong><small>Wird bei der Terminart Ausschuss Sitzung zur Auswahl angeboten.</small></span></label><label class="committee-member-toggle"><input type="checkbox" data-fitness-trainer ${member.fitnessTrainer ? "checked" : ""}><span><strong>Fitnesstrainer</strong><small>Nur zugeordnete Fitnessgruppe: Rückmeldungen und Erinnerungen. Keine Feuerwehrrechte im Portal.</small></span></label><div class="member-safety-settings"><fieldset class="admin-role-group breathing-clearance-card"><legend>Untersuchungen &amp; Atemschutznachweise</legend><label class="role-checkbox"><input type="checkbox" data-breathing-qualified ${member.breathingQualified===true||typeof member.breathingQualified!=="boolean"&&MemberEvidence.breathingRelevant(member)?"checked":""}><span>Aktiv im Atemschutz (Atemschutzgeräteträger)</span></label><p>Nur aktivieren, wenn die Person weiterhin Atemschutz macht. Bei ehemaligen Atemschutzgeräteträgern ausschalten; vorhandene Untersuchungsdaten bleiben erhalten. Ohne aktiven Atemschutz zählt eine gültige G26.3 weiterhin als Ersatz für G26.2. Unterweisung AGT und FFI werden dann nicht verlangt.</p><div class="breathing-clearance-grid"><label><span>G26.2 gültig bis</span><input class="text-input" type="month" data-g262-valid-until value="${escapeHtml(MemberEvidence.monthInput(member.g262ValidUntil))}"></label><label><span>G26.3 gültig bis</span><input class="text-input" type="month" data-g263-valid-until value="${escapeHtml(MemberEvidence.monthInput(MemberEvidence.g263Date(member)))}"></label><label><span>Unterweisung AGT gültig bis</span><input class="text-input" type="month" data-agt-instruction-valid-until value="${escapeHtml(MemberEvidence.monthInput(member.agtInstructionValidUntil))}"></label><label><span>FFI gültig bis</span><input class="text-input" type="month" data-ffi-valid-until value="${escapeHtml(MemberEvidence.monthInput(member.ffiValidUntil))}"></label></div><div class="breathing-clearance-result is-${health.status==="missing"?"none":health.status}"><strong>${agt?(hasValidBreathingClearance(member,systemToday())?"Alle Atemschutznachweise gültig":"Atemschutznachweise prüfen"):(["valid","soon"].includes(health.status)?"Ohne aktiven Atemschutz · G26.2-Anforderung erfüllt":"Ohne aktiven Atemschutz · Untersuchungsnachweis fehlt oder ist abgelaufen")}</strong><small>${escapeHtml(agt?breathingClearanceSummary(member):(health.items[0].until?health.items[0].label+" gültig bis "+MemberEvidence.displayMonth(health.items[0].until):"G26.2 oder gültige G26.3 nicht hinterlegt"))}</small></div></fieldset></div>${member.ageDepartment ? '<div class="age-no-role-note">Für Mitglieder der Altersabteilung ist keine Funktionsauswahl erforderlich.</div>' : `<div class="member-role-editor">${roleGroups}${vehicleOptions}</div>`}${window.Drinks?.adminFields(member)||""}<div class="member-card-actions"><button type="button" class="danger-button" data-delete-member="${escapeHtml(member.id)}">Mitglied löschen</button></div></article>`;
   };
   const activeMembers = members.filter(member => !member.ageDepartment);
   const ageMembers = members.filter(member => member.ageDepartment);
@@ -292,7 +292,7 @@ function saveDirectGeneralAttendance(member, status = "Anwesend") {
 function saveQuickMemberStatus(id,status){
   const member=members.find(item=>item.id===id);if(!member)return false;
   const already=todayEntries().some(entry=>entry.storedName===nameForStorage(member)||entry.displayName===nameForTile(member));if(already)return false;
-  const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
+  const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!allowed.includes(status))return false;
   window.WorkflowUX?.beforeSelection();
   if(pendingMemberStatuses.get(id)===status)pendingMemberStatuses.delete(id);else pendingMemberStatuses.set(id,status);
@@ -310,7 +310,7 @@ function saveQuickMemberStatus(id,status){
   if(count){
     const recordedNames=new Set(todayEntries().flatMap(entry=>[entry.storedName,entry.displayName].filter(Boolean)));
     const eligible=sessionType==="Ausschuss Sitzung"?members.filter(item=>item.committeeMember):sessionType==="Einsatz"?members.filter(item=>!item.ageDepartment):members;
-    const open=eligible.filter(item=>!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
+    const open=eligible.filter(item=>(sessionType==="Fitness"||item.fitnessTrainer!==true)&&!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
     count.textContent=`${chosenMemberIds.size} ausgewählt · ${open} offen`;
   }
   updateSelection();updateProbeWorkflow();
@@ -344,7 +344,7 @@ function chooseMember(id) {
   const clickedMember=members.find(member=>member.id===id);
   if(!clickedMember || !chosenRole) return;
   const allowed=(sessionType==="Allgemeine Probe" && ["Anwesend","Entschuldigt","Orga"].includes(chosenRole)) ||
-    (sessionType==="Sonderprobe" && ["Anwesend","Entschuldigt","Betrifft nicht"].includes(chosenRole)) ||
+    (["Sonderprobe","Fitness"].includes(sessionType) && ["Anwesend","Entschuldigt","Betrifft nicht"].includes(chosenRole)) ||
     ((sessionType==="Unterricht" || sessionType==="Ausschuss Sitzung") && ["Anwesend","Entschuldigt"].includes(chosenRole)) ||
     (sessionType==="Einsatz" && chosenRole==="Anwesend");
   if(!allowed) return;
@@ -361,7 +361,7 @@ function chooseRole(role) {
 function saveAttendance() {
   if(pendingMemberStatuses.size){commitPendingMemberStatuses();return;} 
   const isStandard = sessionType === "Allgemeine Probe";
-  const isSpecial = sessionType === "Sonderprobe";
+  const isSpecial = ["Sonderprobe","Fitness"].includes(sessionType);
   const isTraining = sessionType === "Unterricht";
   const isCommittee = sessionType === "Ausschuss Sitzung";
   const isOperation = sessionType === "Einsatz";
@@ -510,7 +510,7 @@ function removeLegacyStatusRails(){
   const panel=byId("rolesPanel");if(panel){panel.hidden=true;panel.style.setProperty("display","none","important");panel.setAttribute("aria-hidden","true");}
 }
 function updateProbeWorkflow(){
-  const standard=sessionType==="Allgemeine Probe",special=sessionType==="Sonderprobe",training=sessionType==="Unterricht",committee=sessionType==="Ausschuss Sitzung",operation=sessionType==="Einsatz";
+  const standard=sessionType==="Allgemeine Probe",special=["Sonderprobe","Fitness"].includes(sessionType),training=sessionType==="Unterricht",committee=sessionType==="Ausschuss Sitzung",operation=sessionType==="Einsatz";
   const hasStatus=Boolean(chosenRole);
   const membersPanel=document.querySelector(".members-panel"),rolesPanel=byId("rolesPanel");
   if(membersPanel)membersPanel.hidden=false;if(rolesPanel){rolesPanel.hidden=true;rolesPanel.style.setProperty("display","none","important");rolesPanel.setAttribute("aria-hidden","true");}
@@ -530,7 +530,7 @@ function updateProbeWorkflow(){
 
 function renderRoles(){
   removeLegacyStatusRails();
-  const statuses=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:sessionType==="Sonderprobe"?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
+  const statuses=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!statuses.includes(chosenRole)) chosenRole="Anwesend";
   const workspace=byId("attendanceSelectionWorkspace"),sheet=document.querySelector(".orga-sheet");
   const statusClass=chosenRole==="Entschuldigt"?"status-excused":chosenRole==="Betrifft nicht"?"status-not-applicable":chosenRole==="Orga"?"status-organization":"status-present";

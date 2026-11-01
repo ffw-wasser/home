@@ -1,8 +1,8 @@
 /* Pure selection/description model. No accounts, network, member lists or tokens. */
 var H2OCalendarAddonModel = (function () {
   'use strict';
-  const types = ['Probe', 'Sonderprobe', 'Unterricht', 'Ausschusssitzung', 'Veranstaltung', 'Information'];
-  const outfits = ['Einsatzkleidung', 'Tagesdienst', 'Uniform', 'T-Shirt/Fest', 'Zivil'];
+  const types = ['Probe', 'Sonderprobe', 'Unterricht', 'Ausschusssitzung', 'Fitness', 'Veranstaltung', 'Information'];
+  const outfits = ['Einsatzkleidung', 'Tagesdienst', 'Uniform', 'T-Shirt/Fest', 'Zivil', 'Sportkleidung'];
   const property = 'h2oDescriptionSuffixV1';
   const control = /^\s*(Terminart|Gruppen?|Kleidung|Freigabe)\s*:\s*(.*?)\s*$/i;
   function fail(text) { throw Error(text); }
@@ -35,14 +35,14 @@ var H2OCalendarAddonModel = (function () {
       fields[key] = match[2];
     });
     const aliases = {'allgemeine probe':'Probe', 'ausschuss sitzung':'Ausschusssitzung', 'weitere termine':'Veranstaltung', 'sonstiges':'Veranstaltung', 'info':'Information'};
-    const fallback = /^\s*INFO\s*:/i.test(title || '') ? 'Information' : /(?:^|[\s:-])unterricht(?:$|[\s:,-])/i.test(title || '') ? 'Unterricht' : /ausschuss[\s-]*sitzung/i.test(title || '') ? 'Ausschusssitzung' : !/sonderprobe/i.test(title || '') && /(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(title || '') ? 'Probe' : 'Sonderprobe';
+    const fallback = /(?:^|[\s:-])fitness(?:$|[\s:,-])/i.test(title || '') ? 'Fitness' : /^\s*INFO\s*:/i.test(title || '') ? 'Information' : /(?:^|[\s:-])unterricht(?:$|[\s:,-])/i.test(title || '') ? 'Unterricht' : /ausschuss[\s-]*sitzung/i.test(title || '') ? 'Ausschusssitzung' : !/sonderprobe/i.test(title || '') && /(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(title || '') ? 'Probe' : 'Sonderprobe';
     const raw = fields.terminart || fallback, type = types.find(function (t) { return t.toLocaleLowerCase('de') === raw.toLocaleLowerCase('de'); }) || aliases[raw.toLocaleLowerCase('de')];
     if (!type) fail('Unbekannte Terminart bitte zuerst in der Google-Beschreibung korrigieren.');
     const selected = fields.group === undefined ? [] : (knownGroups.includes(fields.group) ? [fields.group] : fields.group.split(';').map(function (x) { return x.trim(); }));
     if (selected.some(function (name) { return !knownGroups.includes(name); })) fail('Vorhandene Gruppe fehlt in der Gruppenliste. Bitte die Gruppenliste aktualisieren und den Termin erneut öffnen.');
     if (fields.freigabe !== undefined && !/^(ja|nein)$/i.test(fields.freigabe)) fail('Freigabe muss Ja oder Nein sein.');
     if ((fields.kleidung || '').length > 120) fail('Kleidung ist zu lang.');
-    return {type:type, clothing:fields.kleidung || (type === 'Probe' ? 'Einsatzkleidung' : 'Tagesdienst'), mode:fields.group === undefined ? 'automatic' : 'selected', groups:selected, release:/^ja$/i.test(fields.freigabe || '')};
+    return {type:type, clothing:fields.kleidung || (type === 'Fitness' ? 'Sportkleidung' : type === 'Probe' ? 'Einsatzkleidung' : 'Tagesdienst'), mode:fields.group === undefined ? 'automatic' : 'selected', groups:selected, release:/^ja$/i.test(fields.freigabe || '')};
   }
   function build(event, selection, knownGroups) {
     if (!types.includes(selection.type) || !['automatic', 'selected'].includes(selection.mode) || typeof selection.release !== 'boolean') fail('Bitte Terminart, Gruppenauswahl und Freigabe prüfen.');

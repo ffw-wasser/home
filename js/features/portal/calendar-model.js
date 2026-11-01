@@ -67,6 +67,7 @@
   {id:'agt',name:'Atemschutz',keywords:['Atemschutz','AGT','AS-Probe'],source:'agt',memberIds:[],enabled:true,general:false},
   {id:'gf',name:'Gruppenführer',keywords:['Gruppenführer','GF'],source:'leader',memberIds:[],enabled:true,general:false},
   {id:'committee',name:'Ausschuss',keywords:['Ausschuss','Ausschusssitzung'],source:'committee',memberIds:[],enabled:true,general:false},
+  {id:'fitness',name:'Fitness',keywords:['Fitness'],source:'manual',memberIds:[],trainerIds:[],enabled:true,general:false},
   {id:'age',name:'Alterskameraden',keywords:['Alterskameraden','Altersabteilung'],source:'age',memberIds:[],enabled:true,general:false}
  ];
  function validate(groups){
@@ -75,13 +76,15 @@
   const ids=new Set(),words=new Set(),names=new Set();let total=0;
   return groups.map(group=>{
    if(!group||!safe(group.id,80)||ids.has(group.id)||!safe(group.name,80)||names.has(normalize(group.name))||!['active','agt','leader','age','committee','manual'].includes(group.source)||typeof group.enabled!=='boolean'||typeof group.general!=='boolean'||!Array.isArray(group.keywords)||group.keywords.length>200||!Array.isArray(group.memberIds)||group.memberIds.length>500||group.memberIds.some(id=>!safe(id,200))||new Set(group.memberIds).size!==group.memberIds.length)throw Error('Gruppenname, Kennzeichen oder Mitgliederauswahl ungültig oder doppelt.');
+   if(group.trainerIds!==undefined&&(!Array.isArray(group.trainerIds)||group.trainerIds.length>50||new Set(group.trainerIds).size!==group.trainerIds.length||group.trainerIds.some(id=>!safe(id,200))))throw Error('Ungültige Fitnesstrainer-Zuordnung.');
+   if(group.trainerIds?.length&&normalize(group.name)!=='fitness')throw Error('Fitnesstrainer sind ausschließlich der Fitnessgruppe zugeordnet.');
    ids.add(group.id);names.add(normalize(group.name));
    const keywords=group.keywords.map(word=>{const key=normalize(word);if(!safe(word,80)||!key||words.has(key))throw Error('Schlagwort ungültig oder mehrfach vergeben: '+String(word).slice(0,80));words.add(key);return word.trim();});
    total+=keywords.length;if(total>2000)throw Error('Höchstens 2000 Schlagwörter insgesamt erlaubt.');
-   return {id:group.id,name:group.name.trim(),source:group.source,enabled:group.enabled,general:group.general,keywords,memberIds:[...group.memberIds]};
+   return {id:group.id,name:group.name.trim(),source:group.source,enabled:group.enabled,general:group.general,keywords,memberIds:[...group.memberIds],...(group.trainerIds!==undefined?{trainerIds:[...group.trainerIds]}:{})};
   });
  }
- function members(group,roster){const selected=group.source==='manual'?new Set(group.memberIds):null;return (roster?.members||[]).filter(m=>group.source==='manual'?selected.has(m.id):group.source==='agt'?m.agt===true:group.source==='leader'?m.leader===true:group.source==='committee'?m.committeeMember===true:group.source==='age'?m.ageDepartment===true:m.ageDepartment!==true).map(m=>m.id);}
+ function members(group,roster){const selected=group.source==='manual'?new Set(group.memberIds):null;return (roster?.members||[]).filter(m=>group.source==='manual'?selected.has(m.id):m.fitnessTrainer===true?false:group.source==='agt'?m.agt===true:group.source==='leader'?m.leader===true:group.source==='committee'?m.committeeMember===true:group.source==='age'?m.ageDepartment===true:m.ageDepartment!==true).map(m=>m.id);}
  function selection(groupIds,includeIds,excludeIds,groups,roster){
   const valid=(ids,known)=>Array.isArray(ids)&&ids.length<=500&&new Set(ids).size===ids.length&&ids.every(id=>typeof id==='string'&&known.has(id));
   const enabled=new Map(groups.filter(group=>group.enabled).map(group=>[group.id,group])),people=new Set((roster?.members||[]).map(m=>m.id));
@@ -90,7 +93,7 @@
   return [...result];
  }
  function resolver(groups,roster){
-  const index=new Map(),cache=new Map(),people=new Map(),fallback=(roster?.members||[]).filter(m=>m.ageDepartment!==true).map(m=>m.id);let longest=1;
+  const index=new Map(),cache=new Map(),people=new Map(),fallback=(roster?.members||[]).filter(m=>m.ageDepartment!==true&&m.fitnessTrainer!==true).map(m=>m.id);let longest=1;
   const add=(word,group)=>{if(!index.has(word))index.set(word,new Set());index.get(word).add(group);};
   for(const group of groups){if(!group.enabled)continue;people.set(group.id,members(group,roster));for(const keyword of group.keywords){const key=normalize(keyword);add(key,group);longest=Math.max(longest,key.split(' ').length);
    if(!key.includes(' ')&&key.length>2)for(const word of [key+'probe',key+'ubung',key+'ausbildung','sonderprobe'+key,'probe'+key])add(word,group);
@@ -100,6 +103,7 @@
    const words=normalized.split(' '),hits=new Set();
    for(let i=0;i<words.length;i++){let phrase='';for(let j=i;j<Math.min(words.length,i+longest);j++){phrase+=(j===i?'':' ')+words[j];for(const group of index.get(phrase)||[])hits.add(group);}}
    const specific=[...hits].filter(group=>!group.general),selected=specific.length?specific:[...hits];
+   if(/(?:^| )fitness(?:$| )/.test(normalized)&&!selected.length){const result={recipientIds:[],groupIds:[]};cache.set(normalized,result);return result;}
    const result={recipientIds:[...new Set(selected.length?selected.flatMap(group=>people.get(group.id)):fallback)],groupIds:selected.map(group=>group.id)};cache.set(normalized,result);return result;
   };
  }

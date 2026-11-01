@@ -56,7 +56,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   topic=String(topic||"").trim();if(!topic){openProbeTopicDialog();return;}
   const allCurrent=[...todayEntries()];
   const committeeExport=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
-  const exportMembers=committeeExport?members.filter(member=>member.committeeMember):members;
+  const exportMembers=(committeeExport?members.filter(member=>member.committeeMember):members).filter(member=>sessionType==="Fitness"||member.fitnessTrainer!==true);
   const audience=window.PortalAdmin?.attendanceAudience?.();
   if(audience?.pending)return showToast("Bitte die eingeladenen Personen des Kalendertermins erneut laden. Der Termin bleibt geöffnet.","error");
   const invited=Array.isArray(audience?.recipientIds)?new Set(audience.recipientIds.map(String)):null;
@@ -85,6 +85,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   const csv="\ufeff"+[csvHeader,...rows.map(row=>(includeFunction?[...row,topic]:[...row.slice(0,5),topic]).map(csvCell).join(";"))].join("\r\n"),base=terminPackageBase(today(),exportType,packageSessionId),csvName=`${base}.csv`,pdfName=`${base}.pdf`,pdfRows=rows.map(r=>({time:r[1],name:r[2],status:r[4],role:includeFunction?r[5]:""})),notApplicable=rows.filter(r=>r[4]==="Betrifft nicht").length,pdf=probePdfBlob(pdfRows,exportType,{present:present+organizers,excused,missing,notApplicable},topic);
   const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Probe"}),result=await saveTerminPackage(`${base}.zip`,packageResult.zipBlob);
   if(result!=="saved")return;
+  if(exportType==="Fitness")try{await window.PortalAdmin?.finalizeFitnessAudience?.(current.filter(entry=>entry.status==="Betrifft nicht").flatMap(entry=>[entry.storedName,entry.displayName].filter(Boolean)));}catch(error){showToast("Fitnessbericht gespeichert, Beteiligungsquote noch nicht abgeglichen: "+error.message+" Abschluss erneut prüfen.","error");return;}
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
   window.PortalAdmin?.discard();const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");window.WorkflowUX?.terminCompleted(result);
   }finally{closingDay=false;}
