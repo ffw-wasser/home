@@ -62,12 +62,12 @@ legen. Die Gerätehaus-Verwaltung mit OneDrive bleibt in der Hauptanwendung.
 | --- | --- |
 | iPhone/iPad | SwiftUI, WKWebView, dauerhaftes geräteeigenes Web-Datenprofil |
 | Android | Kotlin, Android WebView mit expliziter Credential-Manager-Unterstützung |
-| Einladung | iOS: Scanner auf der Anmeldeseite unter „Erste Einrichtung oder Zugang verloren“, nur ohne angemeldete Sitzung; Android: Scanner in der nativen Leiste. Nur exakte H₂O-Einladungsadresse mit Einmalcode |
+| Einladung | iOS: Scanner auf der Anmeldeseite unter „Erste Einrichtung oder Zugang verloren“, nur ohne angemeldete Sitzung; Android: persönlicher Freigabelink/-code; keine zusätzliche Scannerleiste |
 | Links aus WhatsApp | Universal Links/App Links für deckel.html und termin.html vorbereitet |
 | Anmeldung | Passkey oder Benutzername/Passwort; explizite Android-Zertifikatsbindung für Passkeys im Worker vorbereitet |
-| Erinnerung | iOS: entfernt; frühere tägliche App-Erinnerungen werden beim ersten Start des Updates beendet. Android: freiwillige tägliche lokale Erinnerung |
+| Erinnerung | iOS: entfernt; frühere tägliche App-Erinnerungen werden beim ersten Start des Updates beendet. Android: freiwillige FCM-Mitteilungen; alte Pauschalerinnerung entfernt |
 | PDF-Export | Native Speichern-/Teilen-Dialoge für bestätigte Portal-PDFs bis 10 MB; Gerätetest noch offen |
-| Ohne Internet | iOS: bei Ladefehler direkt „Erneut laden“; Hilfe über die vorhandenen Portal-Infos. Android: native Einstiegshilfe. Private Serverdaten brauchen Internet |
+| Ohne Internet | iOS: bei Ladefehler direkt „Erneut laden“; Hilfe über die vorhandenen Portal-Infos. Android: Erneut laden / Im Browser öffnen nur bei Ladefehlern; Hilfe unter Mehr. Private Serverdaten brauchen Internet |
 | Build-Prüfung | GitHub Actions: Android-Debug-APK mit Unit-Tests, iOS-Simulator-Build, dieselben Link-Sicherheitstests separat mit Apple Foundation |
 | Datenschutz | HTTPS, keine Geheimnisse im Projekt, keine privaten URLs in Logs/Analytics, Android-Backup aus |
 
@@ -77,11 +77,7 @@ wird hinter dem unteren iPhone-Sicherheitsabstand bis zum Home-Indikator fortgef
 auf der Anmeldeseite „Erste Einrichtung oder Zugang verloren“ öffnen und dort
 „Einladung scannen“ wählen. Passkey-/Passwortanmeldung bleiben unverändert.
 
-Die lokale Erinnerung auf Android heißt bewusst **App-Erinnerung**. Sie ist keine Synchronisierung
-der Termine, ersetzt keine Zu-/Absagen und wird auf Android ungefähr zugestellt.
-Server-Push (APNs/FCM) ist **noch nicht implementiert**. Die App blendet deshalb die
-Browser-Push-Aktivierung und den Home-Bildschirm-Installationshinweis aus. Es wird
-keine funktionsfähige Serverbenachrichtigung vorgetäuscht.
+Die Android-App zeigt das Portal ohne zusätzliche QR-/Hilfe-Kopfleiste. Die beiden Widgets Termin kompakt (2×2) und Termin breit (4×2) folgen der iPhone-Darstellung und lassen sich am Rahmen vergrößern und verkleinern. Die Statuszeile bleibt im Vordergrund; die breite Ansicht ergänzt Ort und Kleidung. FCM-Mitteilungen benötigen die eingerichtete Serverkonfiguration und die freiwillige Freigabe am Gerät.
 
 ## Was vor der ersten Anmeldung nötig ist
 
@@ -276,7 +272,7 @@ Vor einer Store-Einreichung sind noch offen:
 - Gerätetest: Passkey erstellen/anmelden/wiederherstellen, Einladung und WhatsApp-Link,
   neuer Zugang nach Gerätewechsel, Abmelden, QR-Kamera bei Ablehnung/Abbruch/Hintergrund,
   Termine/Rückmeldungen, Zahlungen, PDF-Buch und PDF-Export, Offline-/Wiederanlauf,
-  Android: lokale Erinnerung mit gesperrtem Bildschirm; iOS: keine Kopfleiste nach Anmeldung,
+  Android: beide Widgetformate und Größenänderung, FCM mit gesperrtem Bildschirm; iOS: keine Kopfleiste nach Anmeldung,
   Scanner nur vor Anmeldung, Entfernung früherer Erinnerungen; große Schrift und Screenreader.
 - Speziell prüfen: Die neue PDF-Übergabe ist automatisiert geprüft und nativ kompiliert;
   Speichern/Teilen mit den tatsächlichen iPhone-/Android-Datei-Apps bleibt ein Gerätetest.
@@ -285,8 +281,7 @@ Vor einer Store-Einreichung sind noch offen:
 - Entscheidung zum Ablauf eines Löschwunsches und zu den Store-Anforderungen an
   Kontolöschung. Es wird nicht stillschweigend eine Löschfunktion für Vereinsdaten gebaut.
 - Store-Prüfung: Apple beurteilt den Mehrwert über eine umverpackte Website hinaus.
-  Nativer QR-Scanner sowie auf Android lokale Erinnerungen und Offline-Hilfe sind vorhanden, garantieren
-  aber keine Zulassung. Gegenstand der Einreichung muss der tatsächliche Funktionsstand sein.
+  Android ergänzt ein größenveränderbares Widget und freiwillige FCM-Mitteilungen; daraus folgt keine Zusage einer Store-Zulassung. Gegenstand der Einreichung muss der tatsächliche Funktionsstand sein.
 
 Die Vorbereitung registriert keine kostenpflichtigen Konten, veröffentlicht keine
 App und ändert keine produktiven OneDrive-Dateien oder Worker-Einstellungen.
