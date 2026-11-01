@@ -49,8 +49,11 @@ test('Cache- und HTML-Build stimmen überein, Schutzdaten unverändert',()=>{
 
 
 test('Startwappen verwendet dieselbe Originalform ohne weiße Außenfläche',()=>{
- const png=fs.readFileSync(path.join(__dirname,'..','assets/branding/ffw-crest-transparent.png'));
- assert.equal(png[25],6,'RGBA-PNG erhält einen transparenten Außenbereich');
- assert.match(main,/<div id="appStartup"[\s\S]*?<img src="assets\/branding\/ffw-crest-transparent\.png\?v=/);
- assert.ok(service.includes('./assets/branding/ffw-crest-transparent.png?v='+release.build));
+ const svg=read('assets/branding/ffw-startup-crest.svg');
+ const artwork=svg.match(/href="data:image\/png;base64,([A-Za-z0-9+/=]+)"/);
+ assert.ok(artwork,'Originalwappen bleibt in der eigenständig ladbaren SVG eingebettet');
+ assert.deepEqual(Buffer.from(artwork[1],'base64'),fs.readFileSync(path.join(__dirname,'..','icon-512.png')),'Wappenmotiv bleibt unverändert');
+ assert.match(svg,/<clipPath id="crest">/);
+ assert.match(main,/<div id="appStartup"[\s\S]*?<img src="assets\/branding\/ffw-startup-crest\.svg\?v=/);
+ assert.ok(service.includes('./assets/branding/ffw-startup-crest.svg?v='+release.build));
 });
