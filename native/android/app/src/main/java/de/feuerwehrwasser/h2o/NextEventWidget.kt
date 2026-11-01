@@ -88,17 +88,16 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_location, if (event != null && !compact) View.VISIBLE else View.GONE)
             views.setViewVisibility(R.id.widget_clothing, if (event != null && !compact && !short && event.clothing.isNotEmpty()) View.VISIBLE else View.GONE)
             val response = when (event?.status) {
-                "yes" -> WidgetResponse("Dabei", "✓", 0xFF1F7847.toInt(), 0xFFE3EDE4.toInt(), R.drawable.widget_status_yes)
-                "excused" -> WidgetResponse("Entschuldigt", "×", 0xFFB3313B.toInt(), 0xFFF2E1DE.toInt(), R.drawable.widget_status_excused)
-                "maybe" -> WidgetResponse("Unsicher", "?", 0xFF8F611A.toInt(), 0xFFF1E9D9.toInt(), R.drawable.widget_status_maybe)
-                else -> WidgetResponse("Offen", "○", 0xFF5C697A.toInt(), 0xFFE8E9E7.toInt(), R.drawable.widget_status_open)
+                "yes" -> WidgetResponse("Dabei", 0xFF1F7847.toInt(), 0xFFE3EDE4.toInt(), R.drawable.widget_status_yes)
+                "excused" -> WidgetResponse("Entschuldigt", 0xFFB3313B.toInt(), 0xFFF2E1DE.toInt(), R.drawable.widget_status_excused)
+                "maybe" -> WidgetResponse("Unsicher", 0xFF8F611A.toInt(), 0xFFF1E9D9.toInt(), R.drawable.widget_status_maybe)
+                else -> WidgetResponse("Offen", 0xFF5C697A.toInt(), 0xFFE8E9E7.toInt(), R.drawable.widget_status_open)
             }
             views.setViewVisibility(R.id.widget_footer, if (event != null) View.VISIBLE else View.GONE)
             views.setInt(R.id.widget_footer, "setBackgroundColor", response.background)
             views.setTextViewText(R.id.widget_status, response.title)
             views.setTextColor(R.id.widget_status, response.color)
-            views.setTextViewText(R.id.widget_status_icon, response.symbol)
-            views.setInt(R.id.widget_status_icon, "setBackgroundResource", response.icon)
+            views.setImageViewResource(R.id.widget_status_icon, response.icon)
             views.setViewVisibility(R.id.widget_note, if (snapshot?.stale == true && event != null) View.VISIBLE else View.GONE)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
             views.setContentDescription(R.id.widget_root, if (event != null) listOfNotNull(day, event.title, time, event.location, event.clothing, response.title, if (snapshot?.stale == true) "Gespeicherter Stand, H₂O öffnen" else null).filter { it.isNotEmpty() }.joinToString(". ") else title)
@@ -106,7 +105,7 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 42, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             return views
         }
-        private data class WidgetResponse(val title: String, val symbol: String, val color: Int, val background: Int, val icon: Int)
+        private data class WidgetResponse(val title: String, val color: Int, val background: Int, val icon: Int)
 
     }
 }
