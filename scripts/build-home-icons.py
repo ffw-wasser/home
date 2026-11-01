@@ -6,6 +6,7 @@ Only its outer white canvas is removed, preserving enclosed white heraldic detai
 H2O uses the fire/water shield selected for the personal portal.
 """
 from collections import deque
+from base64 import b64encode
 from pathlib import Path
 from PIL import Image
 
@@ -74,8 +75,19 @@ def build_blue_h2o_icons():
             DRINKS / f"h2o-symbol-blue-{size}.png", optimize=True)
 
 def build_startup_crest():
-    # Use the same original, unframed crest as the existing Home icons.
-    unframe_crest().save(BRANDING / "ffw-crest-transparent.png", optimize=True)
+    # Keep the exact original heraldry; only its outer contour is vector-drawn.
+    # Coordinates refer to the fixed 512px municipal source used above.
+    artwork = b64encode((ROOT / "icon-512.png").read_bytes()).decode("ascii")
+    outline = "M4 4H180V118C180 172 150 210 92 210C34 210 4 172 4 118Z"
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="185" height="214" viewBox="0 0 185 214">'
+        '<defs><clipPath id="crest"><path d="' + outline + '"/></clipPath></defs>'
+        '<image x="-165" y="-150" width="512" height="512" clip-path="url(#crest)" '
+        'href="data:image/png;base64,' + artwork + '"/>'
+        '<path d="' + outline + '" fill="none" stroke="#111" stroke-width="3.5" stroke-linejoin="round"/>'
+        '</svg>\n'
+    )
+    (BRANDING / "ffw-startup-crest.svg").write_text(svg, encoding="utf-8")
 
 def main():
     crest = unframe_crest()
