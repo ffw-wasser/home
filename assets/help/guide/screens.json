@@ -221,14 +221,22 @@
   },
   "h2o-native-kalender": {
     "width": 367,
-    "height": 608
+    "height": 472
   },
   "h2o-native-mitteilungen": {
     "width": 367,
-    "height": 776
+    "height": 711
   },
   "h2o-konto-loeschen": {
     "width": 320,
     "height": 785
+  },
+  "h2o-android-kalender": {
+    "width": 367,
+    "height": 472
+  },
+  "h2o-android-mitteilungen": {
+    "width": 367,
+    "height": 711
   }
 }

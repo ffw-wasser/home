@@ -43,7 +43,7 @@
  }
  const el=id=>document.getElementById('identity-'+id);
  function setPortalVisible(visible){const panel=el('panel'),target=el(visible?'security-slot':'entry');if(panel&&target&&panel.parentElement!==target){target.append(panel);el('account').open=!visible||!(current&&record);}const install=document.getElementById('installSection');if(install&&target&&install.parentElement!==target)target.append(install);g.DeckelInstall?.refresh();}
- function setMemberName(name){const member=el('member');if(member){member.textContent=name?'Angemeldet als '+name:'';member.hidden=!name;}}
+ function setMemberName(name){for(const id of ['identity-member','portal-member-name']){const member=document.getElementById(id);if(member){member.textContent=name?'Angemeldet als '+name:'';member.hidden=!name;}}}
  function paint(){
   if(!el('state'))return;
   g.H2OOnboarding?.refresh();

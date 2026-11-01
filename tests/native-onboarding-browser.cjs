@@ -23,12 +23,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(await page.locator('#nativeRetired').isVisible(),false);assert.equal(await page.locator('#installSection').isVisible(),false);
  assert.doesNotMatch(await wizard.innerText(),/Zum Home-Bildschirm hinzufügen/);assert.deepEqual(await page.evaluate(()=>nativeRequests),['status']);
  if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await wizard.screenshot({path:path.join(process.env.QA_OUTPUT,'native-kalender.png')});}
- await wizard.getByRole('button',{name:'Jetzt nicht',exact:true}).click();await wizard.getByRole('button',{name:'Mitteilungen erlauben',exact:true}).click();
+ await wizard.getByRole('button',{name:'Ohne Kalender weiter',exact:true}).click();await wizard.getByRole('button',{name:'Mitteilungen erlauben',exact:true}).click();
  await wizard.getByText('Mitteilungen auf diesem iPhone aktiviert.',{exact:true}).waitFor();assert.deepEqual(await page.evaluate(()=>nativeRequests),['status','request']);
  for(const width of [320,390,768])for(const scale of [100,200]){await page.setViewportSize({width,height:1000});await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);assert.equal(await wizard.evaluate(n=>n.scrollWidth<=n.clientWidth+1),true);}
  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.style.fontSize='100%');
  if(process.env.QA_OUTPUT)await wizard.screenshot({path:path.join(process.env.QA_OUTPUT,'native-mitteilungen.png')});
  await capture('h2o-native-mitteilungen');
- await wizard.getByRole('button',{name:'Einrichtung abschließen',exact:true}).click();await wizard.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await page.evaluate(()=>H2OOnboarding.offerOptions());assert.equal(await wizard.isVisible(),false);
+ await wizard.getByRole('button',{name:'H₂O öffnen',exact:true}).click();await page.evaluate(()=>H2OOnboarding.offerOptions());assert.equal(await wizard.isVisible(),false);
  assert.deepEqual(errors,[]);console.log('PASS native setup: no home-install instruction; calendar then notifications; no permission request before click; repeat login does not repeat setup; responsive layout.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
