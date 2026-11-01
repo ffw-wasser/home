@@ -7,6 +7,24 @@ Produktionsveröffentlichung. Bis zu 100 eingeladene Google-Konten; Nutzerziel m
 50 Geräte. Google bezeichnet die App weiterhin als Testversion. Der Testlink allein
 berechtigt nicht zum Mitgliederzugang. Die Android-Web-App bleibt verfügbar.
 
+## Installation und persönliche Verifizierung
+
+1. In Google Play einmal die Google-Konto-Adresse des Mitglieds in die interne
+   Testerliste aufnehmen. Keine E-Mail versenden.
+2. In Verwaltung → H₂O Portal den gemeinsamen Installations-QR anzeigen. Das Mitglied
+   scannt mit der normalen Handykamera, nimmt mit genau seinem freigegebenen eigenen
+   Google-Konto am internen Test teil und installiert über Google Play.
+3. Bei einem neuen H₂O-Zugang vor Ort die Identität prüfen, das richtige Mitglied
+   auswählen und Zugangseinrichtung freigeben. Den persönlichen QR mit der normalen
+   Handykamera außerhalb der App scannen, Link öffnen und Passkey oder Benutzername
+   und Passwort einrichten. Das Einmalticket gilt 30 Minuten.
+4. Bestehende Konten direkt anmelden, auch auf weiteren Geräten. Eine Play-Testfreigabe
+   gewährt keinen Zugang zu persönlichen Feuerwehrdaten.
+
+Die Store-Verknüpfung und QR-Anleitung werden mit dem Webportal aktualisiert; dafür
+ist kein neuer Android-Build nötig. Echte Kamera-/App-Übergabe und Play-Kontowechsel
+müssen auf einem Mitgliedsgerät geprüft werden.
+
 ## Bereits implementiert
 
 - Bestehendes Portal mit Passkey oder Passwort, geschütztem PDF-Export. Keine zusätzliche QR-/Hilfe-Leiste beim App-Start; Hilfe unter Mehr. Neue Zugänge werden über den persönlichen Freigabelink oder Freigabecode eingerichtet.
