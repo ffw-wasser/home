@@ -28,6 +28,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 
 class MainActivity : ComponentActivity() {
     private lateinit var web: WebView
+    private lateinit var tools: LinearLayout
     private lateinit var status: TextView
     private var pageFailed = false
     private var passkeysSupported = false
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val tools = LinearLayout(this)
+        tools = LinearLayout(this)
         fun action(label: String, click: () -> Unit) { tools.addView(Button(this).apply { text = label; minHeight = 56.dp; setPadding(4.dp, 8.dp, 4.dp, 8.dp); setOnClickListener { click() } }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
         action("QR scannen") { scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Persönliche H₂O-Einladung scannen").setBeepEnabled(false)) }
         action("Hilfe") { help() }
@@ -64,7 +65,13 @@ class MainActivity : ComponentActivity() {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             fun trusted(view: WebView, origin: Uri, main: Boolean) = main && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1, 443) && PortalLinks.trusted(view.url ?: "")
             WebViewCompat.addWebMessageListener(web, "H2OWidget", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, _ ->
-                if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) message.data?.let { WidgetStore.accept(this, it) }
+                if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) message.data?.let {
+                    WidgetStore.accept(this, it)
+                    runCatching { when (JSONObject(it).getString("action")) {
+                        "clear" -> tools.visibility = View.VISIBLE
+                        "update", "empty" -> tools.visibility = View.GONE
+                    } }
+                }
             }
             WebViewCompat.addWebMessageListener(web, "H2ONotifications", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, reply ->
                 if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) runCatching {
@@ -75,6 +82,7 @@ class MainActivity : ComponentActivity() {
                     val epoch = navigationEpoch
                     val done: (String) -> Unit = { value -> runOnUiThread { if (!isDestroyed && epoch == navigationEpoch && PortalLinks.trusted(web.url ?: "")) runCatching { reply.postMessage(value) } } }
                     if (action == "disable") { AndroidNotifications.disable(this); done(JSONObject().put("id", id).put("permission", "default").toString()) }
+                    else if (!AndroidNotifications.configured(this)) AndroidNotifications.status(this, id, false, done)
                     else if (action == "request" && Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                         if (permissionReply != null) return@addWebMessageListener
                         permissionReply = { _ -> if (epoch == navigationEpoch) AndroidNotifications.status(this, id, true, done) }
@@ -100,7 +108,7 @@ class MainActivity : ComponentActivity() {
         passkeysSupported = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)
         if (passkeysSupported) {
             WebSettingsCompat.setWebAuthenticationSupport(web.settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
-        } else notice("Diese Android-WebView-Version unterstützt keine Passkeys. Bitte Android System WebView aktualisieren oder das Portal im Browser öffnen.")
+        } else notice("Diese Android-WebView-Version unterstützt keine Passkeys. Bitte Android System WebView aktualisieren oder Benutzername und Passwort verwenden.")
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false)
         web.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageFailed = false; navigationEpoch++ }
@@ -114,7 +122,7 @@ class MainActivity : ComponentActivity() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) { pageFailed = true; notice("Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen.") }
             }
-            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); web.evaluateJavascript(assets.open("ios-entry.js").bufferedReader().use { it.readText() }, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
+            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); web.evaluateJavascript(assets.open("ios-entry.js").bufferedReader().use { it.readText() }, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder Benutzername und Passwort verwenden.") } }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
@@ -143,7 +151,7 @@ class MainActivity : ComponentActivity() {
         AlertDialog.Builder(this).setTitle("H₂O · Hilfe").setMessage("1. Bei der Verwaltung eine persönliche Einladung holen.\n2. Oben QR scannen wählen und den QR-Code scannen.\n3. Passkey oder Benutzername und Passwort einrichten.\n\nTermine, Status und Mein Deckel bleiben im Portal. Deine Browser-Anmeldung wird nicht automatisch übernommen. Bei Verlust hilft die Verwaltung.\n\nDein nächster Termin erscheint im Android-Widget, nachdem du das Portal geöffnet hast. Mitteilungen kannst du unter Mehr → Konto & Sicherheit aktivieren, sobald der Dienst eingerichtet ist.")
             .setPositiveButton("Erneut laden") { _, _ -> web.reload() }.setNeutralButton("Im Browser") { _, _ -> external(Uri.parse(PortalLinks.HOME)) }.setNegativeButton("Schließen", null).show()
     }
-    private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE } }
+    private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE; if (::tools.isInitialized) tools.visibility = View.VISIBLE } }
     override fun onDestroy() { pdfExport.close(); web.destroy(); super.onDestroy() }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 }

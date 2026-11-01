@@ -32,12 +32,13 @@ object AndroidNotifications {
     fun disable(context: Context) { prefs(context).edit().putBoolean("enabled", false).apply(); context.getSystemService(NotificationManager::class.java).cancel(42) }
     fun status(context: Context, id: String, request: Boolean, done: (String) -> Unit) {
         fun reply(token: String? = null, error: String? = null) {
-            val value = JSONObject().put("id", id).put("permission", if (allowed(context)) "granted" else "denied")
+            val value = JSONObject().put("id", id).put("permission", if (allowed(context)) "granted" else if (prefs(context).getBoolean("asked", false)) "denied" else "default")
             if (token != null) value.put("deviceToken", token)
             if (error != null) value.put("error", error)
             done(value.toString())
         }
         if (!configured(context)) { reply(error = "Android-Mitteilungen sind noch nicht eingerichtet."); return }
+        if (request) prefs(context).edit().putBoolean("asked", true).apply()
         if (!allowed(context)) { reply(); return }
         if (!request && !prefs(context).getBoolean("enabled", false)) { reply(); return }
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
