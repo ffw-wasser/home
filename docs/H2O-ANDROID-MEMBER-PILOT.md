@@ -9,7 +9,8 @@ berechtigt nicht zum Mitgliederzugang. Die Android-Web-App bleibt verfügbar.
 
 ## Bereits implementiert
 
-- Bestehendes Portal mit Passkey oder Passwort, geschütztem PDF-Export und Einladungs-QR.
+- Bestehendes Portal mit Passkey oder Passwort, geschütztem PDF-Export. Keine zusätzliche QR-/Hilfe-Leiste beim App-Start; Hilfe unter Mehr. Neue Zugänge werden über den persönlichen Freigabelink oder Freigabecode eingerichtet.
+- Zwei im Widget-Menü auswählbare Formate im Stil des iPhone-Widgets: **Termin kompakt (2×2)** und **Termin breit (4×2)**. Beide lassen sich horizontal und vertikal am Rahmen ändern; die Darstellung passt sich dem Platz an. Die bisherige breite Providerkennung bleibt für eingerichtete Widgets erhalten. Cremefarbene Karte, bordeauxrote Kopfkante, Datum/Heute/Morgen und farbige Rückmeldezeile.
 - Größenveränderbares Startbildschirm-Widget: nächster persönlich freigegebener Termin,
   Heute/Morgen nach Berliner Ortszeit, Uhrzeit, Ort, Kleidung und Rückmeldung.
   Antippen öffnet Termine in der App. Das Widget führt keine Netzwerkabrufe aus.
@@ -72,13 +73,12 @@ Android Lint, Debug-APK und unsigniertes Release-AAB aus. APK, AAB und Berichte
 werden als Artefakt bereitgestellt. Der separate App-Workflow prüft die Web- und
 Worker-Änderungen. Ohne bestandenes CI und Gerätetest keine Installationsfreigabe.
 
-Auf einem echten Gerät: Einladung/QR, Passwort und Passkey, Wiederanmeldung,
-G26-Einwilligung, PDF-Speichern, App-Link, kleiner/großer Widgetbereich mit langem
-Titel und größerer Schrift, Heute/Morgen über Mitternacht, Antwortänderung,
+Auf einem echten Gerät: persönlicher Freigabelink/-code, Passwort und Passkey, Wiederanmeldung,
+G26-Einwilligung, PDF-Speichern, App-Link, beide Widget-Einträge, Größenänderung in beiden Richtungen, langer Titel und größere Schrift, Heute/Morgen über Mitternacht, Antwortänderung,
 Abmeldung/Kontowechsel/Austritt, abgelaufener Cache, FCM im Vorder-/Hintergrund,
 verweigerte Benachrichtigung und Offline-Neustart. Nur synthetische Konten für
 Bilder und automatisierte Prüfungen verwenden. Erfolgreiche Builds ersetzen diese
-Gerätetests nicht.
+Gerätetests nicht. Die Emulatorprüfung rendert beide Formate, die minimale Größe, flache und hohe Widgets sowie 130 % Schrift mit synthetischen Daten. Bei Ladefehlern erscheinen ausschließlich die Aktionen Erneut laden und Im Browser öffnen.
 
 Offizielle Vorgaben:
 - https://support.google.com/googleplay/android-developer/answer/9845334

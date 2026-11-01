@@ -1,13 +1,26 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="14dp" android:background="@drawable/widget_background">
- <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-  <ImageView android:layout_width="26dp" android:layout_height="26dp" android:src="@mipmap/ic_launcher" android:contentDescription="H₂O Portal"/>
-  <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:paddingStart="8dp" android:text="Feuerwehr Wasser" android:textSize="12sp" android:textStyle="bold" android:textColor="#34465B" android:maxLines="1" android:ellipsize="end"/>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_background" android:clipToOutline="true">
+ <View android:layout_width="match_parent" android:layout_height="4dp" android:background="#9E0A1F"/>
+ <LinearLayout android:id="@+id/widget_body" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="10dp" android:orientation="vertical">
+  <LinearLayout android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+   <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@mipmap/ic_launcher" android:contentDescription="H₂O Portal"/>
+   <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:paddingStart="5dp" android:text="Feuerwehr Wasser" android:textSize="11sp" android:textStyle="bold" android:textColor="#9E0A1F" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
+  </LinearLayout>
+  <LinearLayout android:id="@+id/widget_date" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical" android:orientation="vertical">
+   <TextView android:id="@+id/widget_weekday" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#5B6571" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
+   <TextView android:id="@+id/widget_day" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Morgen" android:textColor="#192B40" android:textSize="34sp" android:textStyle="bold" android:maxLines="1" android:includeFontPadding="false"/>
+   <TextView android:id="@+id/widget_month" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+  </LinearLayout>
+  <View android:id="@+id/widget_separator" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginBottom="4dp" android:background="#D4D2CC"/>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+   <TextView android:id="@+id/widget_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Nächste Probe" android:textColor="#192B40" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
+   <TextView android:id="@+id/widget_time" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:textColor="#5B6571" android:textSize="12sp" android:maxLines="1" android:includeFontPadding="false"/>
+  </LinearLayout>
+  <TextView android:id="@+id/widget_location" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+  <TextView android:id="@+id/widget_clothing" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
  </LinearLayout>
- <TextView android:id="@+id/widget_day" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="#8A243C" android:textSize="20sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end"/>
- <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#172A40" android:textSize="16sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end"/>
- <TextView android:id="@+id/widget_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#172A40" android:textSize="14sp" android:maxLines="1"/>
- <TextView android:id="@+id/widget_location" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#34465B" android:textSize="14sp" android:maxLines="1" android:ellipsize="end"/>
- <TextView android:id="@+id/widget_clothing" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#34465B" android:textSize="13sp" android:maxLines="1" android:ellipsize="end"/>
- <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end"/>
- <TextView android:id="@+id/widget_note" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#5B6571" android:textSize="11sp" android:maxLines="1" android:ellipsize="end"/>
+ <LinearLayout android:id="@+id/widget_footer" android:layout_width="match_parent" android:layout_height="30dp" android:paddingHorizontal="10dp" android:gravity="center_vertical" android:background="#E5ECE5">
+  <TextView android:id="@+id/widget_status_icon" android:layout_width="18dp" android:layout_height="18dp" android:gravity="center" android:text="✓" android:textSize="13sp" android:textStyle="bold" android:textColor="#FFFFFF" android:includeFontPadding="false" android:background="@drawable/widget_status_yes"/>
+  <TextView android:id="@+id/widget_status" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:text="Dabei" android:textSize="14sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
+  <TextView android:id="@+id/widget_note" android:layout_width="14dp" android:layout_height="wrap_content" android:text="!" android:textColor="#6B530A" android:textStyle="bold" android:gravity="center" android:visibility="gone"/>
+ </LinearLayout>
 </LinearLayout>
