@@ -24,7 +24,7 @@
  }
  async function send(env,url){
   if(!isEndpoint(url))throw Error('Ungültiges Apple-Mitteilungsgerät.');
-  return fetch(url,{method:'POST',headers:{authorization:await authorization(env),'apns-topic':'de.feuerwehrwasser.h2o','apns-push-type':'alert','apns-priority':'10','apns-expiration':String(Math.floor(Date.now()/1000)+3600),'content-type':'application/json'},body:JSON.stringify({aps:{alert:{title:'H₂O · Feuerwehr Wasser',body:'Eine Mitteilung liegt vor. Bitte H₂O öffnen.'},sound:'default'}}),redirect:'error',signal:AbortSignal.timeout(8000)});
+  return fetch(url,{method:'POST',headers:{authorization:await authorization(env),'apns-topic':'de.feuerwehrwasser.h2o','apns-push-type':'alert','apns-priority':'10','apns-expiration':String(Math.floor(Date.now()/1000)+3600),'content-type':'application/json'},body:JSON.stringify({aps:{alert:{title:'H₂O · Feuerwehr Wasser',body:'Eine Mitteilung liegt vor. Bitte H₂O öffnen.'},sound:'default'}}),redirect:'manual',signal:AbortSignal.timeout(8000)});
  }
  g.NativePush={endpoint,isEndpoint,ready,send};
 })(globalThis);

@@ -27,7 +27,7 @@
   const key=await crypto.subtle.importKey('pkcs8',Uint8Array.from(atob(pem),x=>x.charCodeAt(0)),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
   const iat=Math.floor(now/1000),head=b64(bytes.encode(JSON.stringify({alg:'RS256',typ:'JWT'}))),body=b64(bytes.encode(JSON.stringify({iss:env.H2O_FCM_CLIENT_EMAIL,scope:'https://www.googleapis.com/auth/firebase.messaging',aud:'https://oauth2.googleapis.com/token',iat,exp:iat+3600})));
   const jwt=head+'.'+body+'.'+b64(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,bytes.encode(head+'.'+body)));
-  const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:jwt}).toString(),redirect:'error',signal:AbortSignal.timeout(8000)});
+  const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:jwt}).toString(),redirect:'manual',signal:AbortSignal.timeout(8000)});
   const result=await response.json();
   if(!response.ok||typeof result.access_token!=='string'||!/^[A-Za-z0-9._~-]{20,4096}$/.test(result.access_token)||!Number.isFinite(result.expires_in)||result.expires_in<120)throw Error('Android-Mitteilungsdienst konnte sich nicht anmelden.');
   cached={id,createdAt:now,expiresAt:now+Math.min(result.expires_in-60,3300)*1000,value:'Bearer '+result.access_token};return cached.value;
@@ -35,7 +35,7 @@
  async function send(source,url){
   const env=configuration(source);
   if(!isEndpoint(url))throw Error('Ungültiges Android-Mitteilungsgerät.');
-  return fetch('https://fcm.googleapis.com/v1/projects/'+env.H2O_FCM_PROJECT_ID+'/messages:send',{method:'POST',headers:{authorization:await authorization(env),'content-type':'application/json'},body:JSON.stringify({message:{token:url.slice(prefix.length),data:{type:'portal-reminder'},android:{priority:'high',ttl:'3600s',collapse_key:'h2o-portal'}}}),redirect:'error',signal:AbortSignal.timeout(8000)});
+  return fetch('https://fcm.googleapis.com/v1/projects/'+env.H2O_FCM_PROJECT_ID+'/messages:send',{method:'POST',headers:{authorization:await authorization(env),'content-type':'application/json'},body:JSON.stringify({message:{token:url.slice(prefix.length),data:{type:'portal-reminder'},android:{priority:'high',ttl:'3600s',collapse_key:'h2o-portal'}}}),redirect:'manual',signal:AbortSignal.timeout(8000)});
  }
  g.AndroidPush={endpoint,isEndpoint,ready,send};
 })(globalThis);
