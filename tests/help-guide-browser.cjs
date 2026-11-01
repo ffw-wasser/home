@@ -18,15 +18,15 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.locator('#portal-more-grid [data-more-target="more-help"]').click();assert.equal(await page.locator('#contacts-list').isVisible(),false);assert.equal(await page.evaluate(()=>contactLoads),0,'opening help does not request private contacts');
    assert.equal(await page.locator('#portal-menu-title').innerText(),'Datenschutz & Hilfe');
   }
-  const guide=page.locator('#help-guide');assert.equal(await guide.isVisible(),true);assert.equal(await guide.locator('.guide-privacy-grid>section').count(),6);assert.equal(await guide.locator('.guide-lesson').count(),file==='deckel.html'?9:7);
+  const guide=page.locator('#help-guide');assert.equal(await guide.isVisible(),true);assert.equal(await guide.locator('.guide-privacy-grid,.guide-data-fields').count(),0);assert.equal(await guide.locator('.guide-lesson').count(),file==='deckel.html'?9:7);
   assert.equal(await guide.locator('.contacts-pane').count(),0);assert.equal(await guide.locator('a[href^="#"]').count(),0);
-  assert.match(await guide.locator('.guide-privacy').innerText(),/Passkey|Passwort/);assert.match(await guide.locator('.guide-privacy').innerText(),/OneDrive/);assert.match(await guide.locator('.guide-privacy').innerText(),/Cloudflare/);const privacyText=await guide.locator('.guide-privacy').innerText();if(file==='deckel.html'){assert.match(privacyText,/Portal-Konto löschen/);assert.match(privacyText,/Dauer der Mitgliedschaft/);assert.equal(await guide.locator('img[src="assets/help/guide/h2o-konto-loeschen.jpg"]').count(),1);}else assert.match(privacyText,/keine bestätigten Feuerwehrdaten/);
+  const policy=guide.locator('a[href="privacy.html"]');assert.equal(await policy.count(),1);assert.equal(await policy.getAttribute('target'),'_blank');assert.match(await policy.innerText(),/Datenschutzerklärung/);assert.doesNotMatch(await guide.locator('.guide-privacy').innerText(),/G26|OneDrive|Cloudflare/);
+  if(file==='deckel.html')assert.equal(await guide.locator('img[src="assets/help/guide/h2o-konto-loeschen.jpg"]').count(),1);
   if(file==='index.html')assert.equal(await guide.locator('img[src="assets/help/guide/geraetehaus-backlog.jpg"]').count(),1,'Backlog is illustrated in the main administration guide');
   const before=await page.evaluate(()=>location.hash);
   for(const width of [320,390,768,1280])for(const scale of [100,200]){
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
-   const manualLength=(await guide.locator('.guide-manual').innerText()).length;assert.ok(manualLength<4500,'daily instructions remain concise alongside the explicit data inventory: '+manualLength);
-   assert.ok(await guide.locator('.guide-data-fields dt').count()>=6,'privacy enumerates the actual data fields');
+   const manualLength=(await guide.locator('.guide-manual').innerText()).length;assert.ok(manualLength<4500,'daily instructions remain concise: '+manualLength);
    assert.doesNotMatch(await guide.innerText(),/TestFlight|Google-Gruppenschnittstelle|zertifiziert|APK/);
    assert.equal(await guide.locator('img').count(),file==='index.html'?9:13);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
@@ -37,6 +37,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   }
   assert.equal(await page.evaluate(()=>location.hash),before);assert.equal(await guide.locator('a[target="_blank"]').evaluateAll(ns=>ns.every(n=>n.rel.includes('noopener'))),true);
   if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.setViewportSize({width:file==='index.html'?1180:390,height:900});await page.evaluate(()=>{document.documentElement.style.fontSize='100%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=false);});await guide.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.QA_OUTPUT,file+'-help.png')});}
+  await page.goto('https://ffw-wasser.github.io/home/privacy.html');const fullPrivacy=await page.locator('body').innerText();for(const text of ['Markus Bürklin','Hirtenweg 1','Vorname, Nachname','G26.3','Gerätehaus-Anwendung','Berichte und Anlagen','sechs Stunden','400 Tagen'])assert.ok(fullPrivacy.includes(text),text);
  }
  assert.deepEqual(errors,[]);console.log('PASS separate contacts/help, Infos parent retained, no private contact request from help, concise current content, safe images and 320–1280 px at 100/200%');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

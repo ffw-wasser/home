@@ -57,7 +57,7 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#installBack').click();assert.equal(await page.locator('#installProgress').innerText(),'Schritt '+(total-1)+' von '+total);
  }
  await page.evaluate(()=>DeckelMobile.jump('more-help'));
- const privacy=page.locator('.guide-data-fields');assert.match(await privacy.innerText(),/Vorname, Nachname/);assert.match(await privacy.innerText(),/G26.3/);assert.doesNotMatch(await privacy.innerText(),/Mitgliedsdaten/);
+ assert.equal(await page.locator('#help-guide a[href="privacy.html"]').count(),1);assert.equal(await page.locator('#help-guide .guide-data-fields').count(),0);
  for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
  assert.deepEqual(errors,[]);console.log('PASS: email preparation/cleanup, ticket handoff, three platform guides, concrete privacy fields and responsive layout');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
