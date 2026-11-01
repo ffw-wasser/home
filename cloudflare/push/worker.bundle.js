@@ -22216,7 +22216,18 @@ g.PortalHydrants={schema,route};
  const token=value=>typeof value==='string'&&/^[A-Za-z0-9_:-]{20,4096}$/.test(value);
  const endpoint=value=>token(value)?prefix+value:null;
  const isEndpoint=value=>typeof value==='string'&&value.startsWith(prefix)&&endpoint(value.slice(prefix.length))===value;
- const ready=env=>/^[a-z][a-z0-9-]{4,62}$/.test(env.H2O_FCM_PROJECT_ID||'')&&/^[A-Za-z0-9._-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/.test(env.H2O_FCM_CLIENT_EMAIL||'')&&typeof env.H2O_FCM_PRIVATE_KEY==='string'&&env.H2O_FCM_PRIVATE_KEY.includes('BEGIN PRIVATE KEY');
+ function configuration(env){
+  if(env.H2O_FCM_SERVICE_ACCOUNT_JSON===undefined)return env;
+  try{
+   const raw=env.H2O_FCM_SERVICE_ACCOUNT_JSON;
+   if(typeof raw!=='string'||raw.length>20000) return {};
+   const value=JSON.parse(raw);
+   if(value?.type!=='service_account'||env.H2O_FCM_PROJECT_ID&&env.H2O_FCM_PROJECT_ID!==value.project_id)return {};
+   // Only use these three fields. Never trust URLs or endpoints supplied by a key file.
+   return {H2O_FCM_PROJECT_ID:value.project_id,H2O_FCM_CLIENT_EMAIL:value.client_email,H2O_FCM_PRIVATE_KEY:value.private_key};
+  }catch{return {};}
+ }
+ const ready=source=>{const env=configuration(source);return/^[a-z][a-z0-9-]{4,62}$/.test(env.H2O_FCM_PROJECT_ID||'')&&/^[A-Za-z0-9._-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/.test(env.H2O_FCM_CLIENT_EMAIL||'')&&typeof env.H2O_FCM_PRIVATE_KEY==='string'&&env.H2O_FCM_PRIVATE_KEY.includes('BEGIN PRIVATE KEY');};
  const bytes=new TextEncoder(),b64=value=>btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
  let cached=null;
  async function authorization(env){
@@ -22232,7 +22243,8 @@ g.PortalHydrants={schema,route};
   if(!response.ok||typeof result.access_token!=='string'||!/^[A-Za-z0-9._~-]{20,4096}$/.test(result.access_token)||!Number.isFinite(result.expires_in)||result.expires_in<120)throw Error('Android-Mitteilungsdienst konnte sich nicht anmelden.');
   cached={id,createdAt:now,expiresAt:now+Math.min(result.expires_in-60,3300)*1000,value:'Bearer '+result.access_token};return cached.value;
  }
- async function send(env,url){
+ async function send(source,url){
+  const env=configuration(source);
   if(!isEndpoint(url))throw Error('Ungültiges Android-Mitteilungsgerät.');
   return fetch('https://fcm.googleapis.com/v1/projects/'+env.H2O_FCM_PROJECT_ID+'/messages:send',{method:'POST',headers:{authorization:await authorization(env),'content-type':'application/json'},body:JSON.stringify({message:{token:url.slice(prefix.length),data:{type:'portal-reminder'},android:{priority:'high',ttl:'3600s',collapse_key:'h2o-portal'}}}),redirect:'error',signal:AbortSignal.timeout(8000)});
  }
@@ -22909,7 +22921,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"ac9b268502c8194fe279f83424ef5d1060e96a4c020ee60a720a01a11aa9425b",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"a705332d890e4f898c38274b3994ec56e87fe681046c3100c027a2b7059fc9ed",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

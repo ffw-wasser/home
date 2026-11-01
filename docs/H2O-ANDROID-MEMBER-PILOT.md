@@ -36,8 +36,15 @@ berechtigt nicht zum Mitgliederzugang. Die Android-Web-App bleibt verfügbar.
    als GitHub-Actions-Variablen hinterlegen:
    `H2O_FIREBASE_APP_ID`, `H2O_FIREBASE_API_KEY`, `H2O_FIREBASE_PROJECT_ID`,
    `H2O_FIREBASE_SENDER_ID`. Diese Werte werden in den Android-Build aufgenommen.
-4. Auf dem Worker das passende FCM-Projekt konfigurieren: `H2O_FCM_PROJECT_ID`,
-   `H2O_FCM_CLIENT_EMAIL`, **Secret** `H2O_FCM_PRIVATE_KEY`.
+4. Im eigenen Projekt ein Dienstkonto `h2o-push` ausschließlich mit der Rolle
+   `roles/firebasecloudmessaging.admin` einrichten. Dort einen JSON-Schlüssel erzeugen.
+   Auf dem bestehenden Worker `feuerwehr-wasser-deckel-push` unter Einstellungen →
+   Variablen und Secrets → Hinzufügen den Typ **Secret** wählen, Name
+   `H2O_FCM_SERVICE_ACCOUNT_JSON`, und den vollständigen JSON-Dateiinhalt einfügen.
+   Direkt in Cloudflare eingeben; niemals im Chat oder Repository ablegen.
+   Es sind keine weiteren FCM-Variablen erforderlich. Bestehende Konfiguration mit
+   `H2O_FCM_PROJECT_ID`, `H2O_FCM_CLIENT_EMAIL`, `H2O_FCM_PRIVATE_KEY` bleibt unterstützt.
+   Ein vorhandenes ungültiges JSON-Secret wird nicht durch Altwerte umgangen.
    Dienstkonto auf das nötige FCM-Senden beschränken. Private Schlüssel und
    Zugangsdaten nie in Chat, Git oder Workflow-Ausgabe kopieren.
 5. Bestehende Release-Signierung über die vier Android-Signierungsvariablen
