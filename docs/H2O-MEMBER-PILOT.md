@@ -137,3 +137,7 @@ Die öffentliche Datenschutzseite ist `privacy.html`, mit Betreiberanschrift, Da
 ## Relative Termintage – Build 1021
 
 Im kleinen und mittleren Widget ersetzt „Heute“ bzw. „Morgen“ den numerischen Tag und Monat. Für spätere Termine bleibt das Datum sichtbar. Maßgeblich ist der Kalendertag in Europe/Berlin, auch bei Zeitumstellungen. Ein geplanter Timeline-Eintrag um Mitternacht aktualisiert die Beschriftung; Terminende und die bestehende Ablaufgrenze von zwölf Stunden gelten weiterhin. Die Simulatorbilder enthalten zusätzliche Fälle für heute und morgen in allen unterstützten Größen.
+
+## Besser lesbare Begleittexte – Build 1022
+
+Kopfzeile und Wochentag sind einen Punkt größer. Uhrzeit, Ort und Kleidung sind zwei Punkte größer, die Monatsangabe im mittleren Widget einen Punkt. Im kleinen Widget wächst die Zeile mit Terminname und Uhrzeit passend mit. Der vertikale Abstand im mittleren Widget wird entsprechend angepasst. Datum, Heute/Morgen und Rückmeldestatus behalten ihre Gewichtung. Die bestehenden Simulatorfälle prüfen beide Größen einschließlich langer Texte, September, Ganztägigkeit und leerem Kalender.
