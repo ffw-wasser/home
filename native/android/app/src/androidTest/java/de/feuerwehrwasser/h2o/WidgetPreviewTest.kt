@@ -20,13 +20,17 @@ class WidgetPreviewTest {
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("compact", compact).putExtra("fixture", fixture)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
                 instrumentation.waitForIdleSync()
+                var rendered: Bitmap? = null
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
                     assertTrue(title.isShown)
                     assertEquals(if (fixture == "clear") "H₂O öffnen und aktualisieren" else if (fixture == "empty") "Keine kommenden Termine" else "Probe · Technische Hilfeleistung", title.text.toString())
+                    val root = activity.findViewById<android.view.View>(android.R.id.content)
+                    assertTrue(root.width > 0 && root.height > 0)
+                    rendered = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888).also { root.draw(android.graphics.Canvas(it)) }
                     if (fixture in listOf("today", "tomorrow")) assertEquals(if (fixture == "today") "Heute" else "Morgen", activity.findViewById<android.widget.TextView>(R.id.widget_day).text.toString())
                 }
-                val bitmap = instrumentation.uiAutomation.takeScreenshot()
+                val bitmap = requireNotNull(rendered)
                 assertNotNull(bitmap)
                 File(folder, (if (compact) "small" else "medium") + "-" + fixture + ".png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
