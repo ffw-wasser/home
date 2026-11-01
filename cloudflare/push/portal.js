@@ -284,7 +284,7 @@
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
   }
-  return {accepted,failed,excused,duplicate,remaining,remindedAt};
+  return {accepted,failed,excused,duplicate,remaining,remindedAt,...(automatic?{processed}:{})};
  }
  // Completed calendar events are no longer managed in H₂O. Keep their replies
  // for six hours after the end so an ongoing iPad attendance session can
@@ -328,7 +328,7 @@
    const day=new Date(Date.parse(berlinDay(event.start)+'T12:00:00Z')-policy.daysBefore*DAY).toISOString().slice(0,10),due=day+'T'+policy.time;
    // Never backfill past dates or reminders already due when the policy was changed.
    if(day!==now.slice(0,10)||due>now||due<enabled)continue;
-   await send(env,event,'automatic:'+event.id,true);
+   const result=await send(env,event,'automatic:'+event.id,true);if(result.processed)break;
   }
  }
  async function scheduled(env){
