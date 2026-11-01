@@ -20,7 +20,7 @@ class WidgetPreviewActivity : Activity() {
         val date = java.time.Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(when (action) { "tomorrow" -> 1; "future" -> 3; else -> 0 })
         val start = date.atTime(23, 58).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
-            .put("stale", action == "stale").put("event", JSONObject().put("title", "Probe · Technische Hilfeleistung")
+            .put("stale", action == "stale").put("event", JSONObject().put("title", "Technische Hilfeleistung")
                 .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", "Gerätehaus Wasser")
                 .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else "yes"))
         WidgetStore.accept(this, input.toString())
@@ -30,6 +30,14 @@ class WidgetPreviewActivity : Activity() {
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height)
+            if (android.os.Build.VERSION.SDK_INT >= 31 && intent.getBooleanExtra("exactSize", false)) {
+                // Deliberately disagreeing legacy ranges prove the exact launcher sizes win.
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 110)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 110)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 48)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 48)
+                putParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, arrayListOf(android.util.SizeF(width.toFloat(), height.toFloat())))
+            }
         }
         val view = NextEventWidget.viewsForOptions(previewContext, options, width < 240, now).apply(previewContext, layout)
         val density = resources.displayMetrics.density

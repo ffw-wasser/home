@@ -84,6 +84,10 @@ müssen auf einem Mitgliedsgerät geprüft werden.
    Nie Mitgliederlisten ins Repository aufnehmen. Der geschlossene 12-Personen-Test
    ist nur für einen späteren Produktionszugriff nötig.
 
+Build 1026 zeigt das konkrete Terminthema statt „Nächste Probe“. Der Portalstand 2026.11.01.17 entfernt einen wiederholten Terminart-Präfix wie „Probe ·“; ohne Thema bleibt die Terminart erhalten. Kompakte Widgets ab 160 dp und breite Widgets ab 160 dp bei normaler Systemschrift erlauben zweizeilige Themen.
+
+Build 1026 nutzt ab Android 12 die vom Startbildschirm gemeldeten tatsächlichen Widget-Größen. Datum und Überschrift wachsen bei größeren Widgets mit; die breite Datumsspalte nutzt ein Drittel des verfügbaren Inhaltsbereichs. Bei hohen kompakten Widgets steht der Monat unter dem größeren Tagesdatum, bei mehr Höhe können breite Widgets längere Titel mehrzeilig zeigen. Größere Systemschrift wird bei der verfügbaren Datumshöhe berücksichtigt. Ältere Android-Versionen und Launcher ohne Größenliste verwenden weiterhin die Hoch-/Querformatangaben. Zum Ändern der Größe das Widget auf dem Startbildschirm gedrückt halten und die Rahmenpunkte ziehen. Dafür ist ein Android-App-Update erforderlich; eingerichtete Widgets bleiben erhalten.
+
 Build 1025 ergänzt die flache Darstellung unter 100 dp. Schmale flache Widgets zeigen Datum, Uhrzeit und Rückmeldung; der Titel bleibt in der Vorlesebeschreibung und in der geöffneten App. Ab 100 dp bleiben die bisherigen ausführlichen Ansichten erhalten. Bestehende Widgets behalten ihre Providerkennung.
 
 Google-Play-Texte, Datenschutz-, Support- und Kontolöschungslink: `native/store/GOOGLE-PLAY-ANGABEN.md`. Konto-Checkliste oben beschreibt Voraussetzungen; sie ist kein aktueller Live-Nachweis noch fehlender Konfiguration.

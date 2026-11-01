@@ -150,7 +150,7 @@ struct NextEventView: View {
             } else if small {
                 HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
                     Text(datePart(date, "dd"))
-                        .font(.system(size: 46 * scale, weight: .bold))
+                        .font(.system(size: 38 * scale, weight: .bold))
                         .monospacedDigit()
                     Text(datePart(date, "MMM").replacingOccurrences(of: ".", with: "").uppercased())
                         .font(.system(size: 20 * scale, weight: .bold))
@@ -168,14 +168,9 @@ struct NextEventView: View {
             }
         }
         .frame(maxWidth: small ? .infinity : nil, alignment: .leading)
-        .frame(width: small ? nil : 92 * scale, height: (small ? 70 : 88) * scale, alignment: .leading)
+        .frame(width: small ? nil : 92 * scale, height: (small ? 60 : 88) * scale, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(datePart(date, "EEEE, d. MMMM"))
-    }
-
-    private func title(_ event: H2OWidgetEvent, small: Bool) -> String {
-        event.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "probe"
-            ? "Nächste Probe" : event.title
     }
 
     private func clock(_ event: H2OWidgetEvent, small: Bool, scale: CGFloat) -> some View {
@@ -202,16 +197,16 @@ struct NextEventView: View {
                     .padding(.bottom, 3 * scale)
                     .accessibilityHidden(true)
                 HStack(spacing: 5 * scale) {
-                    Text(title(event, small: true))
+                    Text(event.title)
                         .font(.system(size: 12 * scale, weight: .semibold))
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.8)
                         .accessibilityLabel(event.title)
                     Spacer(minLength: 0)
                     clock(event, small: true, scale: scale)
                         .fixedSize(horizontal: true, vertical: false)
                 }
-                .frame(height: 16 * scale)
+                .frame(height: 26 * scale, alignment: .leading)
             } else { noEvent }
         }
     }
@@ -227,9 +222,9 @@ struct NextEventView: View {
                         .frame(width: 0.5 * scale, height: 76 * scale)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 5 * scale) {
-                        Text(title(event, small: false))
+                        Text(event.title)
                             .font(.system(size: 18 * scale, weight: .semibold))
-                            .lineLimit(1)
+                            .lineLimit(2)
                             .minimumScaleFactor(0.8)
                             .accessibilityLabel(event.title)
                         Text(event.location.isEmpty ? "GH Wasser" : event.location)
