@@ -52,8 +52,8 @@ jobs:
             adb install -r native/android/app/build/outputs/apk/debug/app-debug.apk
             adb install -r native/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w de.feuerwehrwasser.h2o.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/h2o-instrumentation.txt"
-            grep -q 'OK (1 test)' "$RUNNER_TEMP/h2o-instrumentation.txt"
             adb pull /sdcard/Android/data/de.feuerwehrwasser.h2o/files/widget-previews native/android/app/build/widget-previews
+            grep -q 'OK (1 test)' "$RUNNER_TEMP/h2o-instrumentation.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

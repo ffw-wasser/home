@@ -40,6 +40,7 @@ class WidgetPreviewTest {
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
                     rendered = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888).also { root.draw(android.graphics.Canvas(it)) }
+                    File(folder, "${width}x${height}-font${fontScale}-${fixture}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val widget = activity.findViewById<View>(R.id.widget_root)
                     val isEvent = fixture !in listOf("clear", "empty")
                     assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
@@ -50,7 +51,6 @@ class WidgetPreviewTest {
                 }
                 val bitmap = requireNotNull(rendered)
                 assertNotNull(bitmap)
-                File(folder, "${width}x${height}-font${fontScale}-${fixture}.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
         }
         WidgetStore.clear(context)

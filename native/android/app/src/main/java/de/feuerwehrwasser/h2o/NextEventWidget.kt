@@ -81,7 +81,8 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_title, title)
             views.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, if (compact) (if (short) 11f else 12f) else (if (short) 15f else 18f))
             views.setInt(R.id.widget_title, "setMaxLines", if (event == null) 3 else 1)
-            views.setTextViewText(R.id.widget_time, event?.let { if (it.allDay) "Ganztägig" else Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone).format(DateTimeFormatter.ofPattern("HH:mm")) + if (compact) "" else " Uhr" } ?: "")
+            val time = event?.let { if (it.allDay) "Ganztägig" else Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone).format(DateTimeFormatter.ofPattern("HH:mm")) + if (compact) "" else " Uhr" } ?: ""
+            views.setTextViewText(R.id.widget_time, time)
             views.setTextViewText(R.id.widget_location, event?.location?.ifEmpty { "GH Wasser" } ?: "")
             views.setTextViewText(R.id.widget_clothing, event?.clothing ?: "")
             views.setViewVisibility(R.id.widget_location, if (event != null && !compact) View.VISIBLE else View.GONE)
@@ -100,7 +101,7 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setInt(R.id.widget_status_icon, "setBackgroundResource", response.icon)
             views.setViewVisibility(R.id.widget_note, if (snapshot?.stale == true && event != null) View.VISIBLE else View.GONE)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
-            views.setContentDescription(R.id.widget_root, if (event != null) listOfNotNull(day, event.title, event.location, event.clothing, response.title, if (snapshot?.stale == true) "Gespeicherter Stand, H₂O öffnen" else null).filter { it.isNotEmpty() }.joinToString(". ") else title)
+            views.setContentDescription(R.id.widget_root, if (event != null) listOfNotNull(day, event.title, time, event.location, event.clothing, response.title, if (snapshot?.stale == true) "Gespeicherter Stand, H₂O öffnen" else null).filter { it.isNotEmpty() }.joinToString(". ") else title)
             val open = Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData(android.net.Uri.parse(PortalLinks.HOME + "?nativePage=terms"))
             views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 42, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             return views
