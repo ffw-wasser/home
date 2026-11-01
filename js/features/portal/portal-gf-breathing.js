@@ -46,7 +46,9 @@
   const rest=$('uncertain');rest.replaceChildren();
   if(snapshot.uncertain.length){
    rest.hidden=false;
-   rest.append(node('strong','AGT-Zuordnung prüfen ('+snapshot.uncertain.length+')'),node('p','Bitte die AGT-Zuordnung in der Mitgliederverwaltung prüfen: '+snapshot.uncertain.map(x=>x.name).join(' · ')+'.'));
+   const withheld=snapshot.uncertain.filter(x=>x.reason==='g26-consent'),assignment=snapshot.uncertain.filter(x=>x.reason!=='g26-consent');
+   if(withheld.length)rest.append(node('strong','G26 im Portal nicht freigegeben ('+withheld.length+')'),node('p',withheld.map(x=>x.name).join(' · ')),node('p','Keine Aussage über die Eignung. Die freiwillige Einwilligung ist nicht hinterlegt.'));
+   if(assignment.length)rest.append(node('strong','AGT-Zuordnung prüfen ('+assignment.length+')'),node('p','Bitte die AGT-Zuordnung in der Mitgliederverwaltung prüfen: '+assignment.map(x=>x.name).join(' · ')+'.'));
   }else rest.hidden=true;
  }
  async function refresh(){

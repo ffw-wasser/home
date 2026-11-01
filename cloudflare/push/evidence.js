@@ -5,9 +5,47 @@
  const fields=['g262','g263','instruction','ffi','driver'];
  const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
  const schema=[
+  'CREATE TABLE IF NOT EXISTS portal_evidence_consents(member TEXT PRIMARY KEY,version INTEGER NOT NULL,payload TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_evidence_entries(member TEXT NOT NULL,field TEXT NOT NULL,version INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(member,field))',
   'CREATE TABLE IF NOT EXISTS portal_evidence_audit(member TEXT NOT NULL,id TEXT NOT NULL,payload TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(member,id))'
  ];
+ async function consent(env,member){
+  const row=await env.DB.prepare('SELECT version,payload FROM portal_evidence_consents WHERE member=?').bind(member).first();
+  const value=row?await L.open(env,row.payload,'g26-consent:'+member):null,meta=await L.meta(env);
+  return {version:row?.version||0,textVersion:g.G26Consent.version,granted:value?.source===meta.source&&value?.granted===true&&value.textVersion===g.G26Consent.version,updatedAt:value?.updatedAt||null,grantedAt:value?.grantedAt||null};
+ }
+ async function consents(env){
+  const records=(await env.DB.prepare('SELECT member,version,payload FROM portal_evidence_consents').all()).results,meta=await L.meta(env),result=new Map();
+  for(const row of records){const value=await L.open(env,row.payload,'g26-consent:'+row.member);result.set(row.member,{version:row.version,granted:value.source===meta.source&&value.granted===true&&value.textVersion===g.G26Consent.version});}
+  return result;
+ }
+ async function setConsent(env,record,roster,data,meta,sessionHash){
+  if(typeof sessionHash!=='string'||!sessionHash)fail('Bitte persönlich anmelden.',401);
+  if(Object.keys(data).some(k=>!['alias','revision','granted','textVersion','expectedVersion'].includes(k))||typeof data.granted!=='boolean'||data.textVersion!==g.G26Consent.version||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Bitte die aktuelle G26-Einwilligung ausdrücklich bestätigen.',400);
+  if(!roster?.members?.some(m=>m.id===record.memberId))fail('Mitglied nicht mehr freigegeben.',403);
+  const previous=await consent(env,record.memberId);
+  if(previous.version!==data.expectedVersion)fail('Die Einwilligung wurde inzwischen geändert. Bitte neu laden.',409);
+  const now=Date.now(),value={source:meta.source,granted:data.granted,textVersion:g.G26Consent.version,updatedAt:now,grantedAt:data.granted?now:previous.grantedAt,withdrawnAt:data.granted?null:now};
+  const payload=await L.seal(env,value,'g26-consent:'+record.memberId),next=previous.version+1;
+  const guard="EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND seq=? AND state='active') AND EXISTS(SELECT 1 FROM ledger_access a JOIN accounts c ON a.alias=c.alias AND a.revision=c.revision WHERE a.alias=? AND a.revision=?) AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND alias=? AND revision=? AND expires_at>?)";
+  const versionGuard=previous.version?'EXISTS(SELECT 1 FROM portal_evidence_consents WHERE member=? AND version=?)':'NOT EXISTS(SELECT 1 FROM portal_evidence_consents WHERE member=?)';
+  const result=await env.DB.batch([
+   env.DB.prepare('INSERT INTO portal_evidence_consents(member,version,payload) SELECT ?,?,? WHERE '+guard+' AND '+versionGuard+' ON CONFLICT(member) DO UPDATE SET version=excluded.version,payload=excluded.payload').bind(record.memberId,next,payload,meta.source,meta.seq,record.alias,record.revision,sessionHash,record.alias,record.revision,now,record.memberId,...(previous.version?[previous.version]:[])),
+   env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND EXISTS(SELECT 1 FROM portal_evidence_consents WHERE member=? AND payload=?)').bind(meta.seq,record.memberId,payload)
+  ]);
+  if(!result[0].meta.changes)fail('Zugang oder Einwilligung wurde gleichzeitig geändert. Bitte neu laden.',409);
+  return {ok:true,consent:await consent(env,record.memberId)};
+ }
+ async function portalRead(env,member,roster){
+  if(!member)fail('Mitglied nicht mehr freigegeben.',403);
+  const approval=await consent(env,member.id),result=await read(env,member,roster),latest=await consent(env,member.id);
+  if(!latest.granted||latest.version!==approval.version){
+   if(result.evidence){result.evidence.medical={g262:'',g263:''};if(result.evidence.breathing)result.evidence.breathing.g263='';}
+   for(const field of ['g262','g263'])result.entries[field]={version:0,source:'withheld',status:'withheld',checkedOn:'',until:'',controller:'',updatedAt:null};
+   result.history=result.history.filter(entry=>!['g262','g263'].includes(entry.field));
+  }
+  return {...result,consent:latest};
+ }
  const allowed=(member,field,source)=>field==='driver'?!!member?.evidence?.driver:source==='member-checkbox'&&member?.agt===true&&!!member?.evidence?.breathing;
  function baseValue(member,field){
   if(field==='driver')return member?.evidence?.driver?.checkedOn||'';
@@ -70,6 +108,7 @@
  async function write(env,member,roster,data,admin,meta){
   if(!member)fail('Mitglied nicht mehr freigegeben.',403);
   const field=data.field;
+  if(!admin&&['g262','g263'].includes(field)&&!(await consent(env,member.id)).granted)fail('Für G26-Angaben bitte zuerst freiwillig einwilligen.',403);
   if(!fields.includes(field)||!allowed(member,field,roster.agtSource))fail('Dieser Nachweis ist für das Mitglied nicht zur Eingabe freigegeben.',403);
   const allowedKeys=['alias','revision','source','memberId','field','requestId','expectedVersion','action','checkedOn','validMonth','controller','responsibility'];
   if(Object.keys(data).some(k=>!allowedKeys.includes(k)))fail('Nicht unterstützte Nachweisangabe.');
@@ -79,7 +118,7 @@
   if(admin&&!['confirm','reject','correct'].includes(action)||!admin&&(data.action&&data.action!=='report'||data.responsibility!==true))fail('Bitte die Richtigkeit der eigenen Angaben bestätigen.');
   const signature=JSON.stringify({field,action,expectedVersion:data.expectedVersion,checkedOn:data.checkedOn||'',validMonth:data.validMonth||'',controller:data.controller||'',responsibility:!admin});
   const previous=await env.DB.prepare('SELECT payload FROM portal_evidence_audit WHERE member=? AND id=?').bind(member.id,data.requestId).first();
-  if(previous){const saved=await L.open(env,previous.payload,'evidence-audit:'+member.id);if(saved.signature!==signature||saved.entry.source!==(admin?'admin':'self'))fail('Diese Speichernummer gehört zu einer anderen Änderung.',409);return {ok:true,receipt:data.requestId,...await read(env,member,roster)};}
+  if(previous){const saved=await L.open(env,previous.payload,'evidence-audit:'+member.id);if(saved.signature!==signature||saved.entry.source!==(admin?'admin':'self'))fail('Diese Speichernummer gehört zu einer anderen Änderung.',409);return {ok:true,receipt:data.requestId,...await (admin?read(env,member,roster):portalRead(env,member,roster))};}
   if(!admin){const count=await env.DB.prepare('SELECT COUNT(*) AS total FROM portal_evidence_audit WHERE member=? AND created_at>?').bind(member.id,Date.now()-86400000).first();if(count.total>=20)fail('Zu viele Nachweisänderungen. Bitte später erneut versuchen oder die Verwaltung kontaktieren.',429);}
   const row=await env.DB.prepare('SELECT member,field,version,payload FROM portal_evidence_entries WHERE member=? AND field=?').bind(member.id,field).first();
   if((row?.version||0)!==data.expectedVersion)fail('Der Nachweis wurde inzwischen geändert. Bitte neu laden und die aktuelle Angabe prüfen.',409);
@@ -102,7 +141,7 @@
    env.DB.prepare('INSERT INTO portal_evidence_audit(member,id,payload,created_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM portal_evidence_entries WHERE member=? AND field=? AND payload=?)').bind(member.id,data.requestId,audit,entry.updatedAt,member.id,field,payload)];
   const result=await env.DB.batch(statements);
   if(!result[0].meta.changes)fail('Nachweis oder Mitgliederfreigabe wurde gleichzeitig geändert. Bitte neu laden.',409);
-  return {ok:true,receipt:data.requestId,...await read(env,member,roster)};
+  return {ok:true,receipt:data.requestId,...await (admin?read(env,member,roster):portalRead(env,member,roster))};
  }
- g.PortalEvidence={schema,fields,revisions,rows,view,read,overview,write};
+ g.PortalEvidence={schema,fields,consent,consents,setConsent,portalRead,revisions,rows,view,read,overview,write};
 })(globalThis);

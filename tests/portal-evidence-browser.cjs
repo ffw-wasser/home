@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'..');
 (async()=>{
  const f=await fixture(),person=f.people[0],now=Date.now(),token=randomBytes(32).toString('base64url'),credential='synthetic-evidence-browser';
  f.env.ADMIN_TOKEN='b'.repeat(64);
- const roster=await f.call('roster',{agtSource:'member-checkbox',members:f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===0,evidence:E.project({breathingQualified:i===0,machinistVehicles:i===0?['LF']:[],driverLicenseCheckedOn:'2020-01-01',driverLicenseIntervalMonths:12})}))},null,true);assert.equal(roster.status,200);
+ const roster=await f.call('roster',{agtSource:'member-checkbox',members:f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===0,evidence:E.project({breathingQualified:i===0,machinistVehicles:i===0?['LF']:[],driverLicenseCheckedOn:'2020-01-01',driverLicenseIntervalMonths:12})}))},null,true);assert.equal(roster.status,200);assert.equal((await f.call('evidence/consent',{granted:true,textVersion:f.c.G26Consent.version,expectedVersion:0})).status,200);
  f.sql.prepare('INSERT INTO portal_passkeys(id,alias,revision,public_key,counter,user_id) VALUES(?,?,?,?,0,?)').run(credential,person.alias,person.revision,'synthetic-public-key',credential);
  f.sql.prepare('INSERT INTO portal_identity_grants(id,alias) VALUES(?,?)').run(credential,person.alias);
  f.sql.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) VALUES(?,?,?,?,?,?)').run(createHash('sha256').update('portal-session:'+token).digest('base64url'),person.alias,person.revision,credential,now,now+30*86400000);

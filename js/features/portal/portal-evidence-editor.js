@@ -7,10 +7,23 @@
  const date=value=>value?new Date(value+'T12:00:00Z').toLocaleDateString('de-DE'):'';
  function source(entry){if(!entry)return 'Verwaltung';const name=entry.source==='self'?'Eigenangabe':'Verwaltung';return name+(entry.status==='pending'?' · Bestätigung ausstehend':entry.status==='rejected'?' · abgelehnt':'')+(entry.updatedAt?' · '+new Date(entry.updatedAt).toLocaleString('de-DE'):'');}
  function clear(){epoch++;snapshot=null;editing=false;pending=null;busy=false;}
+ function consent(result,root){
+  const model=g.G26Consent,approval=result.consent;
+  if(!model)return;
+  const section=node('section');section.className='portal-evidence-editor';section.id='g26-consent';section.append(node('h3',model.title),node('p','Freiwillig: G26-Fristen anzeigen und den Nachweisstatus berechtigten Führungskräften bereitstellen. Keine Befunde oder Diagnosen.'));const explanation=node('details'),summary=node('summary','Datennutzung und Widerruf');explanation.append(summary,node('p',model.controller),node('p',model.text),node('p',model.notice));section.append(explanation);
+  const policy=node('a','Datenschutzhinweise');policy.href='privacy.html';policy.target='_blank';policy.rel='noopener noreferrer';explanation.append(policy);
+  const status=node('p');status.setAttribute('role','status');
+  if(!approval||approval.textVersion!==model.version){section.append(node('p','Die Einwilligung benötigt das aktuelle Portal-Update. G26-Fristen werden bis dahin nicht angezeigt.'));root.append(section);return;}
+  const granted=approval.granted===true,button=node('button',granted?'G26-Einwilligung widerrufen':'Einwilligung speichern');button.type='button';button.id='g26-consent-save';let checkbox;
+  if(!granted){const label=node('label');checkbox=node('input');checkbox.type='checkbox';checkbox.id='g26-consent-check';checkbox.checked=false;label.append(checkbox,node('span',model.label));section.append(label);button.disabled=true;checkbox.onchange=()=>button.disabled=!checkbox.checked;}
+  else section.append(node('p','Einwilligung erteilt am '+new Date(approval.grantedAt||approval.updatedAt).toLocaleString('de-DE')));
+  button.onclick=async()=>{if(busy||editing||pending){status.textContent='Bitte zuerst offene Nachweiseingaben speichern oder abbrechen.';return;}if(!granted&&!checkbox.checked)return;busy=true;button.disabled=true;if(checkbox)checkbox.disabled=true;status.textContent=granted?'Widerruf wird gespeichert …':'Einwilligung wird gespeichert …';try{const reply=await g.H2OPortal.api('evidence/consent',{granted:!granted,textVersion:model.version,expectedVersion:approval.version});if(reply.ok!==true||reply.consent?.granted!==!granted)throw Error('Einwilligung nicht eindeutig bestätigt. Bitte neu laden.');busy=false;await g.H2OPortal.refreshEvidence();}catch(e){status.textContent=e.message;button.disabled=false;if(checkbox)checkbox.disabled=false;}finally{busy=false;}};
+  section.append(button,status);root.append(section);
+ }
  function render(result,root){
   snapshot=result;
   if(!result.entries||!result.eligibility)return;
-  const fields=Object.keys(labels).filter(field=>field==='driver'?result.eligibility.driver:result.eligibility.agt);
+  const fields=Object.keys(labels).filter(field=>!['g262','g263'].includes(field)||result.consent?.granted===true&&result.consent.textVersion===g.G26Consent?.version).filter(field=>field==='driver'?result.eligibility.driver:result.eligibility.agt);
   if(!fields.length)return;
   const section=node('section');section.className='portal-evidence-editor';section.append(node('h3','Nachweise selbst aktualisieren'),node('p','Trage nur tatsächlich erbrachte Nachweise ein. Eigenangaben bleiben erkennbar. Eine Führerscheinkontrolle gilt erst nach Bestätigung durch die Verwaltung als kontrolliert.'));
   const slot=node('div');slot.className='evidence-edit-slot';
@@ -52,6 +65,6 @@
   };
   form.append(status,save,cancel);slot.append(form);checked.focus();
  }
- g.PortalEvidenceEditor={render,source,clear,hasUnsaved:()=>editing||!!pending||busy};
+ g.PortalEvidenceEditor={render,consent,source,clear,hasUnsaved:()=>editing||!!pending||busy};
  g.addEventListener('beforeunload',event=>{if(editing||pending||busy){event.preventDefault();event.returnValue='';}});
 })(globalThis);

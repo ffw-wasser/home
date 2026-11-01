@@ -92,11 +92,13 @@
   const next=upcoming[0];
   return {next,ordered:upcoming};
  }
+ let evidenceRequest=0;
  async function refreshEvidence(version){
-  if(!$('evidence')||globalThis.PortalEvidenceEditor?.hasUnsaved())return;const box=$('evidence'),status=$('evidence-status'),details=$('evidence-details');box.hidden=false;status.textContent='Nachweise werden aktualisiert …';
-  try{const result=await api('evidence');if(version!==generation)return;
-   if(!result.evidence){details.replaceChildren();evidencePriority([],'Noch keine persönlichen Nachweisdaten übertragen. Bitte die Verwaltung um einen Mitgliederabgleich bitten.');status.textContent='Noch keine persönlichen Nachweisdaten übertragen. Bitte die Verwaltung um einen Mitgliederabgleich bitten.';return;}
-   const groups=evidenceGroups(result.evidence).sort((a,b)=>evidenceOrder[a.status]-evidenceOrder[b.status]);evidencePriority(groups);details.replaceChildren();
+  if(!$('evidence')||globalThis.PortalEvidenceEditor?.hasUnsaved())return;const request=++evidenceRequest,box=$('evidence'),status=$('evidence-status'),details=$('evidence-details');box.hidden=false;status.textContent='Nachweise werden aktualisiert …';
+  try{const result=await api('evidence');if(version!==generation||request!==evidenceRequest)return;
+   if(!result.evidence){details.replaceChildren();globalThis.PortalEvidenceEditor?.consent?.(result,details);evidencePriority([],'Noch keine persönlichen Nachweisdaten übertragen. Bitte die Verwaltung um einen Mitgliederabgleich bitten.');status.textContent='Noch keine persönlichen Nachweisdaten übertragen. Bitte die Verwaltung um einen Mitgliederabgleich bitten.';return;}
+   const medicalAllowed=result.consent?.granted===true&&result.consent.textVersion===globalThis.G26Consent?.version;
+   const groups=evidenceGroups(result.evidence).map(group=>{if(medicalAllowed)return group;const items=group.items.filter(item=>!/^G26/.test(item.label));return {...group,items,status:items.some(item=>item.status==='expired')?'expired':items.some(item=>item.status==='missing')?'missing':items.some(item=>item.status==='soon')?'soon':'valid'};}).filter(group=>group.items.length).sort((a,b)=>evidenceOrder[a.status]-evidenceOrder[b.status]);evidencePriority(groups);details.replaceChildren();globalThis.PortalEvidenceEditor?.consent?.(result,details);
    for(const group of groups){
     const section=node('section');section.className='portal-evidence-group';section.dataset.group=group.title;section.dataset.state=group.status;
     const heading=node('header'),title=node('h3',group.title),badge=node('p',group.title==='Führerscheinkontrolle'&&group.status==='valid'?'✓ Kontrolle dokumentiert':evidenceLabel[group.status]);badge.className='portal-evidence-group-status';heading.append(title);if(group.items.length>1)heading.append(badge);section.append(heading);
@@ -114,7 +116,7 @@
     details.append(section);
    }
    globalThis.PortalEvidenceEditor?.render(result,details);
-   if(!groups.length)details.append(node('p','Für dich sind derzeit weder Atemschutz noch Fahrzeugberechtigungen hinterlegt.'));
+   if(!groups.length)details.append(node('p',medicalAllowed?'Für dich sind derzeit weder Atemschutz noch Fahrzeugberechtigungen hinterlegt.':'G26-Fristen werden erst nach deiner freiwilligen Einwilligung angezeigt.'));
    status.textContent='Datenstand: '+(result.syncedAt?new Date(result.syncedAt).toLocaleString('de-DE',{timeZone:'Europe/Berlin'}):'nicht hinterlegt')+'\nVorwarnung: 60 Tage.';
    if(groups.some(group=>group.title==='Atemschutz'))details.append(node('p','Angezeigt werden die hinterlegten Nachweise. Die konkrete Einsatzfreigabe prüft die verantwortliche Führungskraft.'));
   }catch(e){if(version===generation){evidencePriority([],'Nachweise konnten nicht aktuell geprüft werden. Bitte den Datenstand unter „Meine Nachweise“ beachten.');status.textContent=e.status===404?'Die Nachweisanzeige benötigt das aktuelle Portal-Update. Bitte die Verwaltung informieren.':(navigator.onLine===false?'Offline. ':'')+'Nachweise konnten nicht aktuell geprüft werden. '+(details.children.length?'Angezeigt bleibt der zuletzt geladene Stand.':'Bitte erneut aktualisieren.');}}
