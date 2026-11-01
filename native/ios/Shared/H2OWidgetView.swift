@@ -150,7 +150,7 @@ struct NextEventView: View {
             } else if small {
                 HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
                     Text(datePart(date, "dd"))
-                        .font(.system(size: 46 * scale, weight: .bold))
+                        .font(.system(size: 38 * scale, weight: .bold))
                         .monospacedDigit()
                     Text(datePart(date, "MMM").replacingOccurrences(of: ".", with: "").uppercased())
                         .font(.system(size: 20 * scale, weight: .bold))
