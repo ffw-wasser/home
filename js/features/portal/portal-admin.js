@@ -363,6 +363,15 @@ continue;}
 
   }catch(e){if(version===calendarGeneration){if(reviewSnapshot)reviewSnapshot.stale=true;$('review-status').textContent=e.message;$('review-auto').disabled=true;$('review-load').hidden=false;}}finally{if(version===calendarGeneration){reviewLoading=false;reviewControls();}}
  }
+ let invitationTimer=null;
+ function drawPersonalQR(value){
+  const qr=g.qrcode(0,'M');qr.addData(value);qr.make();
+  const canvas=$('qr'),count=qr.getModuleCount(),unit=5,quiet=4;
+  canvas.width=canvas.height=(count+quiet*2)*unit;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#000';
+  for(let row=0;row<count;row++)for(let col=0;col<count;col++)if(qr.isDark(row,col))ctx.fillRect((col+quiet)*unit,(row+quiet)*unit,unit,unit);
+  canvas.hidden=false;
+ }
  async function identityTicket(reset=false){return run(async()=>{
   admin();const id=$('member').value,version=generation;
   if(!id)throw Error('Bitte zuerst ein Mitglied auswählen.');
@@ -374,22 +383,17 @@ continue;}
   if(version!==generation)return;admin();
   const result=await request('identity-ticket',{alias:record.alias,revision:record.revision,reset});
   if(version!==generation)return;admin();
+  if(!/^[\w-]{43}$/.test(result.code||'')||!Number.isFinite(result.expiresAt)||result.expiresAt<=Date.now()||result.expiresAt>Date.now()+31*60000)throw Error('Keine gültige Freigabe erhalten. Bitte erneut versuchen.');
+  const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+result.code;drawPersonalQR(url.href);
   $('qr-status').textContent='';
   $('identity-code').value=result.code;$('identity-result').hidden=false;
-  const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+result.code;$('link').href=url.href;$('link').hidden=false;
+  $('link').href=url.href;$('link').hidden=false;
   $('install-guide').hidden=false;
-  const email=$('identity-email');
-  if(email){
-   const expires=new Date(result.expiresAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-   const body='Hallo '+name+',\n\nwillkommen im H₂O Portal der Feuerwehr Wasser! Hier findest du Termine, Rückmeldungen, deine Nachweise und deinen Deckel.\n\nÖffne deinen persönlichen Willkommenslink auf dem Gerät, auf dem du H₂O nutzen möchtest:\n'+url.href+'\n\nDieser Link gibt deinen persönlichen Zugang frei; er installiert keine App. Wenn H₂O bereits auf deinem Handy installiert ist, öffne den Link dort. Für einen vorhandenen Zugang kannst du dich mit deinem bisherigen Passkey oder Passwort anmelden.\n\nDie einmalige Freigabe gilt bis '+expires+' Uhr (30 Minuten ab Erstellung). Danach bitte eine neue Freigabe bei der Verwaltung anfordern. Der Link ist nur für dich bestimmt. Bitte nicht weiterleiten.\n\nDeine Feuerwehr Wasser';
-   email.href='mailto:?subject='+encodeURIComponent('Dein persönlicher Zugang zum H₂O Portal')+'&body='+encodeURIComponent(body);email.hidden=false;
-   email.onclick=event=>{try{admin();if(version!==generation||Date.now()>=result.expiresAt){event.preventDefault();clearInvitation();$('qr-status').textContent='Freigabe abgelaufen. Bitte eine neue Freigabe erstellen.';}}catch{event.preventDefault();clearInvitation();}};
-  }
-  $('identity-status').textContent='Nur für '+name+'. Den persönlichen Freigabelink auf dessen Gerät öffnen oder per E-Mail übergeben. Er installiert keine App. '+(reset?'Bisherige Passkeys, Passwortzugänge und Sitzungen sind gesperrt.':'Passkey oder Benutzername und Passwort einrichten.');
-  setTimeout(()=>{if($('identity-code').value===result.code){clearInvitation();}},Math.max(0,result.expiresAt-Date.now()));
+  $('identity-status').textContent='Nur für '+name+'. Mit der normalen Handykamera scannen und den Link öffnen. Einmalig 30 Minuten gültig; nur diesem Mitglied zeigen. '+(reset?'Bisherige Passkeys, Passwortzugänge und Sitzungen sind gesperrt.':'Danach Passkey oder Benutzername und Passwort einrichten.');
+  invitationTimer=setTimeout(()=>{if($('identity-code').value===result.code){clearInvitation();$('qr-status').textContent='Freigabe abgelaufen. Bitte eine neue Freigabe erstellen.';}},Math.max(0,result.expiresAt-Date.now()));
  },$('qr-status')).finally(()=>invitationLoading(false));}
  function invitationLoading(active){const button=$('show-qr');button.disabled=active||busy;button.classList.toggle('is-loading',active);button.setAttribute('aria-busy',String(active));button.textContent=active?'Portal-Code wird vorbereitet …':'Zugangseinrichtung freigeben';}
- function clearInvitation(){if($('identity-email')){$('identity-email').hidden=true;$('identity-email').removeAttribute('href');$('identity-email').onclick=null;}if($('identity-code')){$('identity-code').value='';$('identity-result').hidden=true;$('identity-status').textContent='';}invitationLoading(false);$('qr-status').textContent='';$('install-guide').hidden=true;const canvas=$('qr');canvas.hidden=true;canvas.width=canvas.height=0;$('link').hidden=true;$('link').removeAttribute('href');}
+ function clearInvitation(){if(invitationTimer!==null){clearTimeout(invitationTimer);invitationTimer=null;}if($('identity-code')){$('identity-code').value='';$('identity-result').hidden=true;$('identity-status').textContent='';}invitationLoading(false);$('qr-status').textContent='';$('install-guide').hidden=true;const canvas=$('qr');canvas.hidden=true;canvas.width=canvas.height=0;$('link').hidden=true;$('link').removeAttribute('href');}
  async function load(){return run(async()=>{const version=generation;clearInstallation();clearInvitation();const state=await g.oneDriveReadState();if(version!==generation)return;admin();$('member').replaceChildren(node('option','Bitte Mitglied auswählen'));$('member').firstChild.value='';for(const member of state.members){const opt=node('option',[member.lastName,member.firstName].filter(Boolean).join(' '));opt.value=String(member.id);$('member').append(opt);}if($('installation'))$('installation').hidden=false;$('status').textContent='Mitglied auswählen und Zugangseinrichtung freigeben.';void g.PortalSubscriptionAdmin?.load();});}
  async function loadCalendar(){if(reviewEdited.size||groupsDirty||g.CalendarDisplayAdmin?.dirty()||g.GoogleCalendarAdmin?.dirty()||g.CalendarPrivateSourceAdmin?.dirty())return;return run(async()=>{const version=generation;document.getElementById('portal-calendar-administration').hidden=false;document.getElementById('portal-calendar-admin-open').hidden=true;await syncRoster();const state=await g.oneDriveReadState();if(version!==generation)return;admin();const savedMember=$('member').value;$('member').replaceChildren();const placeholder=node('option','Bitte Mitglied auswählen');placeholder.value='';$('member').append(placeholder);for(const member of state.members||[]){const opt=node('option',[member.lastName,member.firstName].filter(Boolean).join(' '));opt.value=String(member.id);$('member').append(opt);}if([...$('member').children].some(opt=>opt.value===savedMember))$('member').value=savedMember;const result=await request('config');if(version!==generation)return;admin();showCalendarSection(result.configured?'events':'connection',true);await reviewCalendar();if(editEvent&&!editOpened)$('review-status').textContent='Der verlinkte Termin ist nicht mehr verfügbar oder bereits beendet.';await g.CalendarPrivateSourceAdmin?.mount(request,async()=>{lastLoad=0;await reviewCalendar();await refreshAttendance(true);});await g.GoogleCalendarAdmin?.mount(request);await g.CalendarGroupAccessAdmin?.mount(request);if(reviewSnapshot?.googleInstructionVersion===1)await g.CalendarDisplayAdmin?.googleColors(request);if(version!==generation)return;$('status').textContent=result.configured?'':'Bitte im Bereich Verbindung den privaten Google-Kalender einrichten.';});}
  function createInvitation(){return identityTicket(false);}

@@ -42,7 +42,7 @@ const root=path.resolve(__dirname,'..');
    await page.locator('#portal-admin-member').selectOption(id);page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();
    await page.locator('#portal-admin-link').waitFor({state:'visible'}).catch(async e=>{console.error(await page.locator('#portal-admin-qr-status').innerText(),await page.locator('#portal-admin-status').innerText(),errors);throw e;});
    const result=await page.evaluate(()=>({href:document.getElementById('portal-admin-link').href,code:document.getElementById('portal-admin-identity-code').value}));
-   assert.equal(new URL(result.href).hash,'#setup='+result.code);assert.equal(new URL(result.href).search,'');assert.equal(await page.locator('#portal-admin-qr').isVisible(),false,'installation QR is retired');
+   assert.equal(new URL(result.href).hash,'#setup='+result.code);assert.equal(new URL(result.href).search,'');assert.equal(await page.locator('#portal-admin-qr').isVisible(),true,'personal one-use QR is displayed');
    assert.doesNotMatch(result.href,/github_pat_|[?#&]k=/);assert.equal(await page.locator('#portal-admin-show-qr').isEnabled(),true);
    return result;
   }

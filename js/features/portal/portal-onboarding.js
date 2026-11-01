@@ -21,7 +21,7 @@
   if(!mounted||!dialog.open)return;
   restore();content.replaceChildren();dialog.dataset.step=step;
   progress.textContent=first||setupFinished?'Dein Zugang':'H₂O Portal';
-  title.textContent={welcome:'Willkommen',release:'Einladung öffnen',method:first?'Zugang einrichten':'Anmelden',access:first?'Passwort wählen':'Jetzt anmelden',install:'App-Symbol hinzufügen',calendar:'Feuerwehrkalender einrichten?',notifications:'Mitteilungen erlauben?',finish:'Fertig!'}[step];
+  title.textContent={welcome:'Willkommen',release:'Persönliche Freigabe',method:first?'Zugang einrichten':'Anmelden',access:first?'Passwort wählen':'Jetzt anmelden',install:'App-Symbol hinzufügen',calendar:'Feuerwehrkalender einrichten?',notifications:'Mitteilungen erlauben?',finish:'Fertig!'}[step];
   back.hidden=step==='welcome'||step==='finish'||step==='install'||step==='method'&&(first&&ticketFromLink||!first&&g.DeckelInstall?.isStandalone());next.hidden=later.hidden=true;
   if(step==='welcome'){
    say('Wie möchtest du starten?');
@@ -29,19 +29,19 @@
    choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
    const more=help();choice('Zugang verloren',release,more);choice('Ausbildung & Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();},more);
   }else if(step==='release'){
-   say('Öffne den Einladungslink der Verwaltung. Oder gib deine Freigabe ein.');
+   say('Die Verwaltung prüft deine Identität vor Ort. Scanne den persönlichen QR mit der normalen Handykamera und öffne den Link. Oder gib die einmalige Freigabe hier ein.');
    const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-code');
    next.hidden=false;next.textContent='Weiter';next.onclick=()=>{if(!hasRelease()){$('identity-message').textContent='Bitte die gültige Freigabe eingeben.';return;}$('identity-message').textContent='';go('method');};
   }else if(step==='method'){
    const device=g.DeckelInstall?.profile();
    if(!native()&&first&&hasRelease()&&(device?.embedded||device?.platform==='ios'&&device.browser!=='Safari')){
-    say(device.platform==='ios'?'Öffne die Einladung zuerst in Safari.':'Öffne die Einladung zuerst im normalen Browser.');
-    const copy=choice('Einladungslink kopieren',async()=>{const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+$('identity-code').value.trim();try{await navigator.clipboard.writeText(url.href);$('identity-message').textContent='Kopiert. Im Browser einfügen.';}catch{$('identity-message').textContent='Öffne den Link über das Menü deiner E-Mail-App im Browser.';}});copy.className='';back.hidden=true;place('identity-message');title.focus();return;
+    say(device.platform==='ios'?'Öffne die persönliche Freigabe zuerst in Safari.':'Öffne die persönliche Freigabe zuerst im normalen Browser.');
+    const copy=choice('Freigabelink kopieren',async()=>{const url=new URL('deckel.html',location.href);url.search='';url.hash='setup='+$('identity-code').value.trim();try{await navigator.clipboard.writeText(url.href);$('identity-message').textContent='Kopiert. Im Browser einfügen.';}catch{$('identity-message').textContent='Scanne den persönlichen QR erneut mit der normalen Handykamera.';}});copy.className='';back.hidden=true;place('identity-message');title.focus();return;
    }
    say(first?(device?.platform==='android'?'Nutze Fingerabdruck, Gesichtserkennung, Geräte-PIN oder Entsperrmuster.':device?.platform==='ios'?'Nutze Face ID, Touch ID oder deinen Gerätecode.':'Nutze die Entsperrung deines Geräts.'):(g.DeckelInstall?.isStandalone()?'Melde dich mit deinem vorhandenen Zugang an.':'Entsperre deinen Zugang mit deinem Gerät.'));
    method='passkey';place(first?'identity-register':'identity-login').textContent=first?'Zugang einrichten':'Anmelden';
    choice('Benutzername und Passwort',()=>{method='password';go('access');});
-   const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else{choice('Zugang verloren',release,more);if(!first){if(hasRelease())choice('Mit Einladung erstmals einrichten',()=>{first=true;ticketFromLink=true;go('method');},more);else choice('Erstmals einrichten',()=>{first=true;go('release');},more);}}
+   const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else{choice('Zugang verloren',release,more);if(!first){if(hasRelease())choice('Mit Freigabe erstmals einrichten',()=>{first=true;ticketFromLink=true;go('method');},more);else choice('Erstmals einrichten',()=>{first=true;go('release');},more);}}
   }else if(step==='access'){
    if(first){say('Wähle deinen Benutzernamen und dein Passwort.');place('identity-password-set-form');}
    else if(method==='passkey'){say('Bestätige deinen neuen Zugang.');place('identity-login').textContent='Anmelden';}

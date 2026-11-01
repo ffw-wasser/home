@@ -17,10 +17,13 @@ const root=path.resolve(__dirname,'..');
  });
  await page.locator('#portal-admin-member option').nth(1).waitFor({state:'attached'});await page.locator('#portal-admin-member').selectOption('welcome-a');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#portal-admin-show-qr').click();
- const email=page.locator('#portal-admin-identity-email');await email.waitFor({state:'visible'});
- const href=await email.getAttribute('href'),mail=new URL(href),body=mail.searchParams.get('body');
- assert.equal(mail.protocol,'mailto:');assert.equal(mail.pathname,'');assert.match(body,/Anna/);assert.match(body,/30 Minuten/);assert.match(body,/nicht weiterleiten/);assert.ok(body.includes('#setup='+'t'.repeat(43)));assert.doesNotMatch(body,/[?&]k=/);
- await page.locator('#portal-admin-member').selectOption('');assert.equal(await email.isVisible(),false);assert.equal(await email.getAttribute('href'),null);
+ const qr=page.locator('#portal-admin-qr');await qr.waitFor({state:'visible'});
+ const personal=await page.locator('#portal-admin-link').getAttribute('href');
+ assert.equal(new URL(personal).hash,'#setup='+'t'.repeat(43));assert.equal(new URL(personal).search,'');
+ const pixels=await qr.evaluate(c=>({data:[...c.getContext('2d').getImageData(0,0,c.width,c.height).data],width:c.width,height:c.height}));
+ const jsQR=require('../js/vendor/jsqr.js');assert.equal(jsQR(new Uint8ClampedArray(pixels.data),pixels.width,pixels.height).data,personal);
+ assert.equal(await page.locator('#portal-admin-identity-email').count(),0);assert.match(await page.locator('#portal-admin-identity-status').innerText(),/normalen Handykamera/);
+ await page.locator('#portal-admin-member').selectOption('');assert.equal(await qr.isVisible(),false);assert.equal(await qr.getAttribute('width'),'0');assert.equal(await page.locator('#portal-admin-link').getAttribute('href'),null);
  // The link lands in the existing one-use-ticket flow, erasing the secret from the address bar.
  await page.goto('https://ffw-wasser.github.io/home/deckel.html#setup='+'t'.repeat(43));await page.locator('#h2oStartup').waitFor({state:'hidden'});
  assert.equal(await page.evaluate(()=>location.hash),'');assert.equal(await page.locator('#identity-code').inputValue(),'t'.repeat(43));
@@ -59,5 +62,5 @@ const root=path.resolve(__dirname,'..');
  await page.evaluate(()=>DeckelMobile.jump('more-help'));
  assert.equal(await page.locator('#help-guide a[href="privacy.html"]').count(),1);assert.equal(await page.locator('#help-guide .guide-data-fields').count(),0);
  for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
- assert.deepEqual(errors,[]);console.log('PASS: email preparation/cleanup, ticket handoff, three platform guides, concrete privacy fields and responsive layout');
+ assert.deepEqual(errors,[]);console.log('PASS: local personal QR/cleanup without mail, ticket handoff, three platform guides, concrete privacy fields and responsive layout');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
