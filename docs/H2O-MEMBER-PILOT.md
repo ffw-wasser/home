@@ -127,3 +127,13 @@ Die bestätigte Gestaltung verwendet einen warmen Papiergrund, eine schmale bord
 Die Prüfseite wird mit `node scripts/build-review-portal.cjs` aus der echten Portaloberfläche erzeugt. Nur der eindeutig gekennzeichnete Adapter unter `native/review/` ersetzt die API-Antworten durch erfundene Daten. Er liest keine Mitgliederanmeldung. Rückmeldungen, Nachweise, Buchungen, Theaterbestellungen, Kontakte und Jahresplan sind prüfbar. Öffentliche Dienstvorschriften verwenden die vorhandenen PDF-Dateien; echte Zahlungen, Erinnerungsnachrichten, Pushregistrierung und Kalenderinstallation werden nicht ausgelöst. Die Selbstbedienungs-Löschung entfernt nur den Demo-Zugang; „Demo zurücksetzen“ stellt den Ausgangsstand her. Erneute Demo-Anmeldung bzw. Bestätigung: Benutzername `demo`, Passwort `demo`. Diese Werte berechtigen zu keinem Produktivzugriff.
 
 Prüfungen: `tests/review-portal.test.cjs`, `tests/review-portal-browser.cjs`, Swift-URL-Tests und iOS-Kompilierung in der CI. Der synthetische Adapter ist kein Nachweis eines produktiven Passkey-, Push- oder Löschtests auf einem physischen Gerät. Die öffentliche Datenschutzseite und ihre offenen Pflichtangaben bleiben ein eigener Einreichungspunkt.
+
+## G26-Einwilligung
+
+Unter Meine Nachweise steht eine eigene, nicht vorausgewählte Checkbox mit Zweck, Gesundheitsbezug, Datenquelle, berechtigten Empfängern, Betreiberkontakt und Widerrufshinweis. Erst das Häkchen und „Einwilligung speichern“ geben die Fristen zusätzlich im Portal frei. „G26-Einwilligung widerrufen“ sperrt die Freigabe wieder. Die GF-Übersicht kennzeichnet fehlende Einwilligungen neutral; sie erklärt die Person nicht für ungeeignet. Die medizinische Fristenanzeige und Eingabe werden serverseitig geschützt. Primäre Verwaltungsunterlagen werden nicht gelöscht. Konto-Löschung und Mitgliedsentfernung verwerfen die Portal-Einwilligung; ein Wechsel der Datenquelle macht sie ungültig.
+
+Die öffentliche Datenschutzseite ist `privacy.html`, mit Betreiberanschrift, Datenquellen, G26-Einwilligung, Diensten, Aufbewahrung und Rechten. Technische Prüfungen sind kein Nachweis einer rückwirkenden Rechtsgrundlage früherer Verwaltungsdatenübernahmen.
+
+## Relative Termintage – Build 1021
+
+Im kleinen und mittleren Widget ersetzt „Heute“ bzw. „Morgen“ den numerischen Tag und Monat. Für spätere Termine bleibt das Datum sichtbar. Maßgeblich ist der Kalendertag in Europe/Berlin, auch bei Zeitumstellungen. Ein geplanter Timeline-Eintrag um Mitternacht aktualisiert die Beschriftung; Terminende und die bestehende Ablaufgrenze von zwölf Stunden gelten weiterhin. Die Simulatorbilder enthalten zusätzliche Fälle für heute und morgen in allen unterstützten Größen.

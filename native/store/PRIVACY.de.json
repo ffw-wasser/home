@@ -1,0 +1,103 @@
+{
+  "title": "Datenschutz · H₂O Portal",
+  "updated": "1. November 2026",
+  "sections": [
+    {
+      "title": "Verantwortlicher und Kontakt",
+      "paragraphs": [
+        "Markus Bürklin · Hirtenweg 1 · 79312 Emmendingen · Deutschland",
+        "E-Mail: m.b.1982@web.de",
+        "Das H₂O Portal wird eigenständig betrieben. Der Betreiber entscheidet über die Verarbeitung im Portal und verwendet dabei auch Informationen der Feuerwehrverwaltung. Seine persönliche Feuerwehrmitgliedschaft bestimmt nicht die datenschutzrechtliche Verantwortung."
+      ]
+    },
+    {
+      "title": "Wofür welche Daten verwendet werden",
+      "paragraphs": [
+        "Das Portal bietet freigegebenen Personen Termine, Rückmeldungen, persönliche Nachweisfristen, ein Getränkekonto, Kontakte und Ausbildungsunterlagen. Es verarbeitet dafür Namen und Mitgliedszuordnungen, Zugangskennungen, Terminantworten, freigegebene Nachweisfristen, Getränke und Bestellungen sowie Zahlungen und offene Beträge. Mitglieder tragen ihre Nachweisfristen und Kontrolldaten selbst ein. Die Verwaltung prüft die Angaben und kann sie bestätigen oder korrigieren. Bereits vorhandene Verwaltungsangaben können zum Abgleich oder zur Ergänzung übernommen werden.",
+        "Die Bereitstellung und der Schutz dieser gewünschten Organisations- und Kontofunktionen erfolgen auf Grundlage berechtigter Interessen nach Artikel 6 Absatz 1 Buchstabe f DSGVO: persönliche Zuordnung, verlässliche Dienstorganisation, richtige Abrechnung und Schutz vor unberechtigten Zugriffen. Du kannst aus Gründen deiner besonderen Situation widersprechen. Medizinisch bezogene G26-Angaben unterliegen der gesonderten Einwilligung im nächsten Abschnitt.",
+        "Für den persönlichen Zugang sind Name und Zuordnung sowie eine Anmeldekennung nötig. Ohne sie ist kein zugeordnetes Portal-Konto möglich. Die Portal-Kontolöschung beendet keine Feuerwehrmitgliedschaft."
+      ]
+    },
+    {
+      "title": "Freiwillige G26-Einwilligung",
+      "paragraphs": [
+        "Für die zusätzliche Nutzung von G26.2-/G26.3-Gültigkeits- und Fälligkeitsangaben im persönlichen Portal wird eine eigene, nicht vorausgewählte Einwilligung eingeholt. Diese Angaben haben Gesundheitsbezug. Grundlage sind Artikel 6 Absatz 1 Buchstabe a und Artikel 9 Absatz 2 Buchstabe a DSGVO.",
+        "Die Einwilligung umfasst die Fristenanzeige und Erinnerungsfunktion sowie die Anzeige der freigegebenen G26-Fristen und des daraus abgeleiteten Status an berechtigte Verwaltungs- und Führungskräfte im Portal. Du trägst die Angaben selbst ein; die Verwaltung prüft sie. Vorhandene Verwaltungsangaben können abgeglichen oder ergänzt werden. Ärztliche Befunde, Diagnosen und Atteste werden in diesem Ablauf nicht übernommen.",
+        "Ohne Zustimmung bleiben Termine, Getränkekonto und andere Portalbereiche nutzbar. Unter Meine Nachweise → G26-Fristen im Portal kannst du die Einwilligung für die Zukunft widerrufen. Danach gibt der Server G26-Werte weder für dein persönliches Portal noch für die GF-Übersicht frei. Bis dahin rechtmäßig erfolgte Verarbeitungen werden durch den Widerruf nicht rückwirkend geändert.",
+        "Die Zustimmung wird mit Textversion und Zeitpunkt verschlüsselt gespeichert. Sie betrifft die zusätzliche Portalnutzung. Eigenständig geführte Verwaltungsunterlagen haben einen eigenen Verarbeitungszweck und werden durch diesen Widerruf nicht gelöscht. Die Einwilligung ist keine nachträgliche Bestätigung für frühere Datenübernahmen."
+      ]
+    },
+    {
+      "title": "Anmeldung und lokale Speicherung",
+      "paragraphs": [
+        "Bei Passkeys erhält der Portaldienst öffentliche Schlüssel und Kennungen. Private Passkey-Schlüssel und biometrische Merkmale verbleiben beim Authentifikator. Ein eingerichtetes Passwort wird serverseitig als Prüfwert gespeichert. Neue persönliche Einrichtungsfreigaben sind einmalig und 30 Minuten gültig.",
+        "Sitzungen und Einstellungen werden auf deinem Gerät gespeichert. Das native iPhone-Widget enthält nur den nächsten freigegebenen Termin mit Zeit, Ort, Kleidung und Rückmeldestatus, höchstens zwölf Stunden. Namen und Zugangstoken werden nicht an das Widget übergeben. Bei Abmeldung oder erkanntem Zugriffsverlust wird der Widget-Stand geleert.",
+        "Die Apple-Prüfdemo arbeitet mit erfundenen Daten in einem getrennten, nicht dauerhaften WebKit-Speicher. Ihre Änderungen betreffen keine echten Mitgliederdaten. Öffentliche Ausbildungsdateien können aus dem bestehenden Webangebot geladen werden."
+      ]
+    },
+    {
+      "title": "Dienste und Empfänger",
+      "paragraphs": [
+        "GitHub Pages liefert die öffentlichen Programmdateien. Cloudflare betreibt den geschützten Portaldienst und die Datenbank. Microsoft OneDrive/SharePoint dient der getrennten Verwaltung gemeinsamer Dateien und Berichte. Google liefert die eingerichteten Kalendertermine. Berechtigte Verwaltungs- und Führungskräfte erhalten nur die für ihre Funktionen freigegebenen Informationen.",
+        "Push-Mitteilungen sind freiwillig. Dafür werden eine Gerätekennung und der Freigabestatus verarbeitet; auf dem Sperrbildschirm steht ein allgemeiner Hinweis. Ein Kalenderabo verwendet einen persönlichen, zurücksetzbaren Nur-Lese-Link. Beim Kalenderabruf werden die für dich freigegebenen Termine an deinen Kalenderdienst übertragen. Kalender und Mitteilungen lassen sich unter Konto & Sicherheit verwalten.",
+        "PayPal wird erst beim Öffnen des Zahlungslinks aufgerufen. OpenLigaDB liefert Daten bei Nutzung des Fußballbereichs. Beim Öffnen externer Unterlagen erhält der jeweilige Anbieter die für den Abruf nötigen Verbindungsdaten. Technische Verbindungsdaten können auch bei den Hostinganbietern anfallen.",
+        "Die App enthält keine eigenen Werbe- oder Analyse-SDKs. Eine Nutzung zum Werbetracking ist nicht eingerichtet. Die genutzten internationalen Dienste können Daten außerhalb der EU bzw. des EWR verarbeiten, insbesondere in den USA; eine ausschließlich deutsche Speicherung wird nicht zugesagt. Angaben der Anbieter zu Datenstandorten, Angemessenheitsbeschlüssen und vertraglichen Schutzmechanismen stehen unter den folgenden Links."
+      ],
+      "links": [
+        [
+          "GitHub – Datenschutz",
+          "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+        ],
+        [
+          "Cloudflare – Datenschutz",
+          "https://www.cloudflare.com/privacypolicy/"
+        ],
+        [
+          "Cloudflare – Datenverarbeitungsbedingungen und Standardvertragsklauseln",
+          "https://www.cloudflare.com/cloudflare-customer-dpa/"
+        ],
+        [
+          "Microsoft – Datenschutz",
+          "https://privacy.microsoft.com/de-de/privacystatement"
+        ],
+        [
+          "Google – Datenschutz",
+          "https://policies.google.com/privacy?hl=de"
+        ],
+        [
+          "Apple – Datenschutz",
+          "https://www.apple.com/legal/privacy/de-ww/"
+        ],
+        [
+          "PayPal – Datenschutz",
+          "https://www.paypal.com/de/legalhub/paypal/privacy-full"
+        ],
+        [
+          "OpenLigaDB",
+          "https://www.openligadb.de/"
+        ]
+      ]
+    },
+    {
+      "title": "Aufbewahrung und Kontolöschung",
+      "paragraphs": [
+        "Unter Konto & Sicherheit → Konto → Portal-Konto löschen entfernst du nach erneuter Anmeldung deine Portalzugänge, Sitzungen, Push-Verbindungen, Kalenderabo-Links, Portal-Rückmeldungen und die hinterlegte Portal-Einwilligung. Alte Zugänge werden ungültig. Für einen späteren Zugang ist eine neue Freigabe erforderlich.",
+        "Unabhängig verwaltete Feuerwehrunterlagen und Nachweise bleiben während der Mitgliedschaft erhalten. Bei deren Beendigung veranlasst die Verwaltung die Löschung. Das getrennt geführte Getränkekonto und Bestellungen werden durch die Portal-Kontolöschung nicht entfernt; offene Abrechnungen und sonstige Löschwünsche klärt der Betreiber mit der Verwaltung. Es wird keine pauschale gesetzliche Aufbewahrungsfrist für sämtliche Daten behauptet.",
+        "Portal-Sitzungen und persönliche Links bestehen bis zu ihrem Ablauf, ihrer Sperrung oder Löschung. Für Terminantworten sieht der Dienst eine Bereinigung nach 400 Tagen vor. Der persönliche Kalender-Abrufstatus enthält nur den letzten erfolgreichen Abruf und keinen Nutzungsverlauf. Kopien in Kalender-Apps und Passkeys im Passwortmanager können dort selbst entfernt werden."
+      ]
+    },
+    {
+      "title": "Deine Rechte",
+      "paragraphs": [
+        "Bei Vorliegen der gesetzlichen Voraussetzungen hast du Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung und Datenübertragbarkeit. Gegen eine Verarbeitung aufgrund berechtigter Interessen kannst du aus Gründen deiner besonderen Situation Widerspruch einlegen. Freiwillige Einwilligungen kannst du für die Zukunft widerrufen. Wende dich dafür an m.b.1982@web.de.",
+        "Du kannst dich außerdem beim Landesbeauftragten für den Datenschutz und die Informationsfreiheit Baden-Württemberg beschweren. Es findet keine ausschließlich automatisierte Entscheidung mit rechtlicher oder vergleichbar erheblicher Wirkung statt. Die Fristenanzeige ersetzt keine ärztliche Untersuchung; die konkrete Einsatzfreigabe beurteilt die verantwortliche Führungskraft."
+      ],
+      "links": [
+        [
+          "Datenschutzaufsicht Baden-Württemberg",
+          "https://www.baden-wuerttemberg.datenschutz.de/"
+        ]
+      ]
+    }
+  ]
+}

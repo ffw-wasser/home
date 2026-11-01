@@ -5,6 +5,13 @@ import XCTest
 @testable import H2OPortal
 #endif
 final class PortalLinksTests: XCTestCase {
+    func testPublicPrivacyCanOpenExternallyWithoutReceivingMemberTokens() {
+        XCTAssertTrue(PortalLinks.isPublicPrivacy(PortalLinks.privacy))
+        XCTAssertFalse(PortalLinks.trusted(PortalLinks.privacy))
+        for suffix in ["?token=secret", "#setup=secret", "/"] {
+            XCTAssertFalse(PortalLinks.isPublicPrivacy(URL(string: PortalLinks.privacy.absoluteString + suffix)!))
+        }
+    }
     func testReviewEntryIsExactAndNeverCarriesMemberTokens() {
         XCTAssertTrue(PortalLinks.isReview(PortalLinks.review))
         XCTAssertTrue(PortalLinks.trusted(PortalLinks.review))

@@ -4,7 +4,7 @@ async function setup(){
  const f=await fixture({now:Date.parse('2026-10-22T12:00:00Z')});
  f.people=f.people.map((p,i)=>({...p,agt:i===0,evidence:E.project({breathingQualified:i===0,g263ValidUntil:'2026-01-01',agtInstructionValidUntil:'2026-01-01',ffiValidUntil:'2026-01-01',machinistVehicles:i<2?['LF']:[],driverLicenseCheckedOn:'2025-01-01',driverLicenseIntervalMonths:6})}));
  f.roster=async people=>{const result=await f.call('roster',{agtSource:'member-checkbox',members:people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:p.agt,evidence:p.evidence}))},null,true);assert.equal(result.status,200,JSON.stringify(result.value));};
- await f.roster(f.people);return f;
+ await f.roster(f.people);assert.equal((await f.call('evidence/consent',{granted:true,textVersion:f.c.G26Consent.version,expectedVersion:0})).status,200);return f;
 }
 const job=(field='ffi',extra={})=>({field,checkedOn:'2026-10-20',responsibility:true,expectedVersion:0,requestId:randomUUID(),...extra});
 const report=(f,data,p=f.people[0])=>f.call('evidence/report',data,p);

@@ -93,7 +93,7 @@
   statements.push(env.DB.prepare('INSERT OR IGNORE INTO portal_identity_members(member) SELECT ? WHERE '+guard).bind(record.memberId,receipt));
   for(const table of ['accounts','ledger_access'])statements.push(env.DB.prepare('INSERT OR IGNORE INTO retired(alias,revision) SELECT alias,revision FROM '+table+' WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));
   statements.push(env.DB.prepare('DELETE FROM portal_devices WHERE id IN (SELECT id FROM devices WHERE alias IN (SELECT value FROM json_each(?))) AND '+guard).bind(aliases,receipt));
-  for(const table of ['portal_calendar_usage','portal_calendar_subscriptions','portal_replies','portal_sends','portal_calendar_profiles'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE member=? AND '+guard).bind(record.memberId,receipt));
+  for(const table of ['portal_calendar_usage','portal_calendar_subscriptions','portal_replies','portal_sends','portal_calendar_profiles','portal_evidence_consents'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE member=? AND '+guard).bind(record.memberId,receipt));
   // The membership roster, evidence records, central beverage ledger, orders
   // and independent OneDrive files are administration records, not portal credentials.
   for(const table of ['portal_identity_sessions','portal_identity_grants','portal_identity_tickets','portal_passwords','portal_passkeys','portal_browser_sessions','portal_browser_pairs','devices','commands','sends','ledger_access','accounts'])statements.push(env.DB.prepare('DELETE FROM '+table+' WHERE alias IN (SELECT value FROM json_each(?)) AND '+guard).bind(aliases,receipt));

@@ -10,6 +10,8 @@ enum PortalLinks {
     static let home = URL(string: "https://ffw-wasser.github.io/home/deckel.html")!
     static let host = "ffw-wasser.github.io"
     #endif
+    static let privacy = URL(string: "https://ffw-wasser.github.io/home/privacy.html")!
+    static func isPublicPrivacy(_ url: URL) -> Bool { url.absoluteString == privacy.absoluteString }
     static let review = URL(string: "https://ffw-wasser.github.io/home/review.html")!
     static func isReview(_ url: URL) -> Bool { url.absoluteString == review.absoluteString }
 

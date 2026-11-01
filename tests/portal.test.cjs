@@ -196,6 +196,7 @@ test('Nachweise sind verschlüsselt, kalenderunabhängig und nur für das authen
  const f=await fixture(),E=f.c.MemberEvidence;
  const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,evidence:E.project(i===0?{breathingQualified:true,g263ValidUntil:'2030-05-12'}:{machinistVehicles:['TSF'],driverLicenseCheckedOn:'2026-01-17'})}));
  assert.equal((await f.call('roster',{members:people},null,true)).value.evidenceVersion,1);
+ await f.call('evidence/consent',{granted:true,textVersion:f.c.G26Consent.version,expectedVersion:0});
  const first=(await f.call('evidence',{memberId:f.people[1].memberId})).value,second=(await f.call('evidence',{},f.people[1])).value;
  assert.equal(first.evidence.breathing.g263,'2030-05-12');assert.equal(first.evidence.driver,null);assert.equal(second.evidence.breathing,null);assert.equal(second.evidence.driver.checkedOn,'2026-01-17');assert.ok(first.syncedAt);
  const encrypted=f.sql.prepare('SELECT payload FROM portal_roster').get().payload;assert.ok(!encrypted.includes('2030-05-12'));
@@ -218,7 +219,7 @@ test('Ältere Mitgliederabgleiche bewahren Nachweise und deren ursprünglichen D
 test('Mitgliederabgleich mit Nachweisen unterstützt realistische Listen über 6000 Zeichen',async()=>{
  const f=await fixture(),members=Array.from({length:40},(_,i)=>({id:i<5?f.people[i].memberId:'test-member-'+i,name:'Künstliche Testperson '+i,leader:i===0,evidence:f.c.MemberEvidence.project({breathingQualified:i%2===0,g262ValidUntil:'2028-01-01',g263ValidUntil:'2028-02-01',agtInstructionValidUntil:'2028-03-01',ffiValidUntil:'2028-04-01',machinistVehicles:['LF','TSF'],driverLicenseCheckedOn:'2026-01-17'})}));
  assert.ok(JSON.stringify({source:'test-source',members}).length>6000);
- const result=await f.call('roster',{members},null,true);assert.equal(result.status,200,JSON.stringify(result.value));assert.equal(result.value.evidenceVersion,1);assert.equal((await f.call('evidence')).value.evidence.medical.g262,'2028-01-01');
+ const result=await f.call('roster',{members},null,true);assert.equal(result.status,200,JSON.stringify(result.value));assert.equal(result.value.evidenceVersion,1);await f.call('evidence/consent',{granted:true,textVersion:f.c.G26Consent.version,expectedVersion:0});assert.equal((await f.call('evidence')).value.evidence.medical.g262,'2028-01-01');
 });
 
 test('Größere Portal-Anfragen bleiben begrenzt; private Aufrufe behalten die kleine Grenze',async()=>{
@@ -368,8 +369,8 @@ test('Große Mitgliedersperrung bleibt unter dem D1-Free-Abfragelimit',async()=>
  }
  const prepare=f.DB.prepare;let count=0;f.DB.prepare=query=>{assert.ok(++count<=50,'D1 query budget exceeded');return prepare(query);};
  assert.equal((await f.call('roster',{members:[]},null,true)).status,200);
- // Three bulk queries clear old addresses, personal feeds and the last-read status; cost stays constant for 125 accounts.
- assert.ok(count<=22);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,0);
+ // Bulk cleanup also removes portal G26 consents; cost stays constant for 125 accounts.
+ assert.ok(count<=23);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM accounts').get().n,0);
  assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM retired').get().n,125);
 });
 test('Health liefert den reproduzierbaren Fingerabdruck des Worker-Quellstands',async()=>{
@@ -384,6 +385,7 @@ test('GF Atemschutz: Status, eindeutige AGT-Zuordnung und Rollenentzug',async()=
  const people=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+(i+1),leader:i===0,agt:i===4?null:i<3,
   evidence:i===0?make(valid,valid,valid):i===1?make(valid,valid,''):i===2?make(valid,expired,valid):i===3?E.project({breathingQualified:false,g263ValidUntil:valid}):make(valid,valid,valid)}));
  assert.equal((await f.call('roster',{members:people,agtSource:'member-checkbox'},null,true)).status,200);
+ for(const person of f.people.slice(0,3))assert.equal((await f.call('evidence/consent',{granted:true,textVersion:f.c.G26Consent.version,expectedVersion:0},person)).status,200);
  const gf=await f.call('gf-breathing');
  assert.equal(gf.status,200);
  assert.equal(gf.value.people.length,3);
@@ -410,6 +412,7 @@ test('GF Atemschutz: alte Rollenprojektion bleibt bis zum Checkbox-Abgleich gesp
  let result=(await f.call('gf-breathing')).value;
  assert.equal(result.assignmentSyncRequired,true);assert.equal(result.stale,true);assert.equal(result.people.length,0);assert.equal(result.uncertain.length,0);
  await f.call('roster',{members:members.map((m,i)=>({...m,agt:i===1})),agtSource:'member-checkbox'},null,true);
+ await f.call('evidence/consent',{granted:true,textVersion:f.c.G26Consent.version,expectedVersion:0},f.people[1]);
  result=(await f.call('gf-breathing')).value;assert.equal(result.people.length,1);assert.equal(result.people[0].name,'Test 1');assert.equal(result.stale,false);
  await f.call('roster',{members:members.map(m=>({...m,agt:false})),agtSource:'member-checkbox'},null,true);
  result=(await f.call('gf-breathing')).value;assert.equal(result.people.length,0);assert.equal(result.uncertain.length,0);

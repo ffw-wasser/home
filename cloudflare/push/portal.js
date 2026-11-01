@@ -428,6 +428,7 @@
     removed.add(owner.memberId);
     revoked.push(row.alias);
    }
+   if(removed.size)statements.push(env.DB.prepare('DELETE FROM portal_evidence_consents WHERE member IN (SELECT value FROM json_each(?)) AND '+marker).bind(JSON.stringify([...removed]),payload));
    if(revoked.length){
     // One JSON parameter keeps even bulk removals within D1 bind/query limits.
     const aliases=JSON.stringify(revoked),scope='alias IN (SELECT value FROM json_each(?)) AND '+marker;
@@ -443,23 +444,27 @@
   if(path==='/portal/gf-breathing'){
     if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
     const now=Date.now(),people=[],uncertain=[],limit=now-7*DAY;
-    const evidenceRows=await g.PortalEvidence.rows(env);
+    const evidenceRows=await g.PortalEvidence.rows(env),approvals=await g.PortalEvidence.consents(env);
     // Older projections could infer membership from roles. Require a fresh checkbox-only projection.
     if(roster.agtSource!=='member-checkbox')return {people,uncertain,stale:true,assignmentSyncRequired:true,syncedAt:roster.updatedAt||null,servedAt:now};
     for(const member of roster.members){
      if(member.agt!==true)continue;
+     if(!approvals.get(member.id)?.granted){uncertain.push({name:member.name,reason:'g26-consent'});continue;}
      const merged=await g.PortalEvidence.view(env,member,roster,evidenceRows),e=merged.evidence?.breathing,details={version:1,medical:{g262:'',g263:e?.g263||''},breathing:{g263:e?.g263||'',instruction:e?.instruction||'',ffi:e?.ffi||''},driver:null};
      const assessment=g.MemberEvidence.assess(details,now).find(group=>group.title==='Atemschutz');
      const keys=['g263','instruction','ffi'],items=assessment.items.map((item,i)=>({label:item.label,until:item.until,status:item.status,source:merged.entries[keys[i]].source,updatedAt:merged.entries[keys[i]].updatedAt}));
      const status=items.some(item=>['expired','missing'].includes(item.status))?'check':items.some(item=>item.status==='soon')?'soon':'valid';
-     people.push({name:member.name,status,items});
+     people.push({name:member.name,status,items,_member:member.id,_consentVersion:approvals.get(member.id).version});
     }
     const stale=!roster.updatedAt||roster.updatedAt<limit||roster.members.some(member=>member.agt===true&&(!member.evidenceUpdatedAt||member.evidenceUpdatedAt<limit));
-    return {people,uncertain,stale,syncedAt:roster.updatedAt||null,servedAt:now};
+    const latest=await g.PortalEvidence.consents(env),visible=[];
+    for(const person of people){if(!latest.get(person._member)?.granted||latest.get(person._member).version!==person._consentVersion){uncertain.push({name:person.name,reason:'g26-consent'});continue;}const {_member,_consentVersion,...item}=person;visible.push(item);}
+    return {people:visible,uncertain,stale,syncedAt:roster.updatedAt||null,servedAt:now};
    }
+   if(path==='/portal/evidence/consent'){const identity=await g.WhatsAppPasskeys.session(env,auth);return g.PortalEvidence.setConsent(env,record,roster,data,m,identity?.row.token_hash);}
    if(path==='/portal/evidence'||path==='/portal/evidence/report'){
     const own=roster?.members.find(member=>member.id===record.memberId);
-    return path.endsWith('/report')?g.PortalEvidence.write(env,own,roster,data,false,m):g.PortalEvidence.read(env,own,roster);
+    return path.endsWith('/report')?g.PortalEvidence.write(env,own,roster,data,false,m):g.PortalEvidence.portalRead(env,own,roster);
    }
    if(path==='/admin/portal/evidence/overview')return g.PortalEvidence.overview(env,roster);
    if(path==='/admin/portal/evidence'||path==='/admin/portal/evidence/review'){
