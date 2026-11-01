@@ -59,6 +59,12 @@ Keine App-Store-Einreichung und keine Verteilung an weitere Mitglieder erfolgen 
 
 ## Ersteinrichtung und echte iPhone-Mitteilungen
 
+Ab Portalversion 2026.11.01.10 ist bei fünf gespeicherten Mitteilungsgeräten auch
+in der nativen App **Push-Verbindungen zurücksetzen** sichtbar. Erst die Bestätigung
+entfernt die eigenen Mitteilungsverbindungen; andere Mitglieder bleiben unberührt.
+Danach auf den aktuellen Handys erneut Mitteilungen erlauben. Zugang und Kalenderabo
+bleiben erhalten. Dafür ist kein neuer TestFlight-Build nötig.
+
 Nach persönlicher Anmeldung bietet die native App zuerst das persönliche Kalenderabo
 und danach Mitteilungen an. Beide Schritte sind freiwillig und überspringbar.
 Die Browser-Anleitung zum Home-Symbol erscheint in der nativen App nicht mehr.

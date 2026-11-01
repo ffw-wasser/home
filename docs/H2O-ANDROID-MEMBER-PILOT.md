@@ -90,6 +90,13 @@ Google-Play-Texte, Datenschutz-, Support- und Kontolöschungslink: `native/store
 
 ## Prüfungen
 
+Bei „Maximal fünf Geräte pro Mitglied“ bietet das Portal ab 2026.11.01.10 auch
+in beiden nativen Apps **Push-Verbindungen zurücksetzen** an. Nach ausdrücklicher
+Bestätigung werden nur die Mitteilungsverbindungen des angemeldeten Kontos
+entfernt. Anschließend Mitteilungen auf jedem aktuellen Gerät erneut erlauben.
+Anmeldung, Kalenderabo und Mitgliedsdaten bleiben erhalten. Frühere Testinstallationen
+können zum Limit beitragen. Die Korrektur wird als Portalupdate ausgeliefert.
+
 GitHub Actions `Build Android H2O app and widget` führt Kotlin-Unit-Tests,
 Android Lint, Debug-APK und unsigniertes Release-AAB aus. APK, AAB und Berichte
 werden als Artefakt bereitgestellt. Der separate App-Workflow prüft die Web- und
