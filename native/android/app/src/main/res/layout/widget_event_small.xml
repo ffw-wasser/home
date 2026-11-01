@@ -8,7 +8,7 @@
   <LinearLayout android:id="@+id/widget_date" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical" android:orientation="vertical">
    <TextView android:id="@+id/widget_weekday" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#5B6571" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
    <TextView android:id="@+id/widget_day" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Morgen" android:textColor="#192B40" android:textSize="34sp" android:textStyle="bold" android:maxLines="1" android:includeFontPadding="false"/>
-   <TextView android:id="@+id/widget_month" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+   <TextView android:id="@+id/widget_month" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#192B40" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:visibility="gone"/>
   </LinearLayout>
   <ImageView android:contentDescription="@null" android:importantForAccessibility="no" android:id="@+id/widget_separator" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginBottom="4dp" android:background="#D4D2CC"/>
   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">

@@ -30,6 +30,14 @@ class WidgetPreviewActivity : Activity() {
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height)
+            if (android.os.Build.VERSION.SDK_INT >= 31 && intent.getBooleanExtra("exactSize", false)) {
+                // Deliberately disagreeing legacy ranges prove the exact launcher sizes win.
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 110)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 110)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 48)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 48)
+                putParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, arrayListOf(android.util.SizeF(width.toFloat(), height.toFloat())))
+            }
         }
         val view = NextEventWidget.viewsForOptions(previewContext, options, width < 240, now).apply(previewContext, layout)
         val density = resources.displayMetrics.density

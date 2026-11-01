@@ -7,6 +7,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
+import android.util.SizeF
+import androidx.core.os.BundleCompat
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.*
@@ -46,6 +49,14 @@ open class NextEventWidget : AppWidgetProvider() {
             }
         }
         internal fun viewsForOptions(context: Context, options: Bundle, compactDefault: Boolean, now: Long): RemoteViews {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val sizes = BundleCompat.getParcelableArrayList(options, AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java)
+                    ?.filter { it.width.isFinite() && it.height.isFinite() && it.width > 0 && it.height > 0 }
+                    ?.distinct()?.take(16)
+                if (!sizes.isNullOrEmpty()) return RemoteViews(sizes.associateWith {
+                    views(context, it.width.toInt(), it.height.toInt(), now)
+                })
+            }
             val defaultWidth = if (compactDefault) 170 else 330
             // Android supplies portrait as min-width/max-height, landscape as max-width/min-height.
             val portrait = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, defaultWidth), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 170), now)
@@ -62,28 +73,39 @@ open class NextEventWidget : AppWidgetProvider() {
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val day = event?.let { WidgetSnapshot.day(it.start, now) }
             val relative = day == "Heute" || day == "Morgen"
-            val dayText = if (event == null) "" else if (relative) day else date!!.format(DateTimeFormatter.ofPattern(if (compact || flat) "dd MMM" else "dd", Locale.GERMAN)).replace(".", "").uppercase(Locale.GERMAN)
+            val separateMonth = !flat && (!compact || height >= 160)
+            val dayText = if (event == null) "" else if (relative) day else date!!.format(DateTimeFormatter.ofPattern(if (separateMonth) "dd" else "dd MMM", Locale.GERMAN)).replace(".", "").uppercase(Locale.GERMAN)
             views.setTextViewText(R.id.widget_day, dayText)
             views.setTextViewText(R.id.widget_weekday, date?.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)) ?: "")
             views.setTextViewText(R.id.widget_month, date?.format(DateTimeFormatter.ofPattern("MMMM", Locale.GERMAN))?.uppercase(Locale.GERMAN) ?: "")
-            val daySize = when { flat -> if (compact) 13f else 19f; compact -> if (short) 24f else if (height < 160) 28f else 34f; relative -> if (short) 22f else 25f; else -> if (height < 170) 28f else 38f }
             val metrics = context.resources.displayMetrics
+            val fontScale = metrics.scaledDensity / metrics.density
+            val scale = minOf(width / (if (compact) 170f else 330f), height / (if (flat) 48f else 170f)).coerceIn(1f, 1.6f)
+            val showWeekday = event != null && height >= 160
+            val showMonth = event != null && separateMonth && !relative
+            val titleSize = if (flat) 12f * scale else if (compact) (if (short) 11f else 12f * scale).coerceAtMost(16f) else (if (short) 15f else 18f * scale).coerceAtMost(26f)
+            val baseDaySize = when { flat -> (if (compact) 13f else 19f) * scale; compact -> if (short) 24f else if (height < 160) 28f else 44f * scale; relative -> if (short) 22f else 30f * scale; else -> if (height < 170) 28f else 48f * scale }
+            // Reserve actual rows before enlarging the date, including enlarged system fonts.
+            val dateHeight = height - (if (compact) 54f else 56f) - (if (short) 0f else if (compact) maxOf(16f, 13f * fontScale) else maxOf(18f, 15f * fontScale)) -
+                (if (compact) titleSize * fontScale + 5f else 0f) -
+                (if (showWeekday) 14f * fontScale else 0f) - (if (showMonth) 14f * fontScale else 0f)
+            val daySize = if (flat) baseDaySize else minOf(baseDaySize, (dateHeight / fontScale).coerceAtLeast(12f))
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = daySize * metrics.scaledDensity }
             val timePaint = Paint().apply { textSize = 10f * metrics.scaledDensity }
             val timeWidth = timePaint.measureText(if (event?.allDay == true) "Ganztägig" else "23:58") / metrics.density
-            val available = (if (flat) { if (compact) width - 16f - timeWidth else 68f } else if (compact) width - 20f else 88f).coerceAtLeast(1f) * metrics.density
+            val available = (if (flat) { if (compact) width - 16f - timeWidth else 68f } else if (compact) width - 20f else (width - 41f) / 3f).coerceAtLeast(1f) * metrics.density
             val fit = if (dayText.isNullOrEmpty()) 1f else (available / dayPaint.measureText(dayText)).coerceAtMost(1f)
             views.setTextViewTextSize(R.id.widget_day, TypedValue.COMPLEX_UNIT_SP, daySize * fit)
             views.setViewVisibility(R.id.widget_brand, if (short) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_date, if (event == null) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_separator, if (event == null || flat) View.GONE else View.VISIBLE)
-            views.setViewVisibility(R.id.widget_weekday, if (event != null && height >= 160) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_month, if (event != null && !flat && !compact && !relative) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_weekday, if (showWeekday) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_month, if (showMonth) View.VISIBLE else View.GONE)
             val title = event?.title?.let { if (it.trim().equals("Probe", ignoreCase = true)) "Nächste Probe" else it }
                 ?: if (snapshot == null) "H₂O öffnen, um Termine zu laden." else "Keine kommenden Termine"
             views.setTextViewText(R.id.widget_title, title)
-            views.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, if (flat) 12f else if (compact) (if (short) 11f else 12f) else (if (short) 15f else 18f))
-            views.setInt(R.id.widget_title, "setMaxLines", if (event == null && !flat) 3 else 1)
+            views.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, titleSize)
+            views.setInt(R.id.widget_title, "setMaxLines", if (!flat && (event == null || (!compact && height >= 200))) 3 else 1)
             views.setViewVisibility(R.id.widget_title, if (flat && compact && event != null) View.GONE else View.VISIBLE)
             val time = event?.let { if (it.allDay) "Ganztägig" else Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone).format(DateTimeFormatter.ofPattern("HH:mm")) + if (compact) "" else " Uhr" } ?: ""
             views.setTextViewText(R.id.widget_time, time)

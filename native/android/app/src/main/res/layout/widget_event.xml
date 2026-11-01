@@ -6,13 +6,13 @@
    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:paddingStart="5dp" android:text="Feuerwehr Wasser" android:textSize="12sp" android:textStyle="bold" android:textColor="#9E0A1F" android:maxLines="1" android:ellipsize="end"/>
   </LinearLayout>
   <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical">
-   <LinearLayout android:id="@+id/widget_date" android:layout_width="88dp" android:layout_height="wrap_content" android:orientation="vertical">
+   <LinearLayout android:id="@+id/widget_date" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
     <TextView android:id="@+id/widget_weekday" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#5B6571" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
     <TextView android:id="@+id/widget_day" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Morgen" android:textColor="#192B40" android:textSize="25sp" android:textStyle="bold" android:maxLines="1" android:includeFontPadding="false"/>
     <TextView android:id="@+id/widget_month" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#192B40" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
    </LinearLayout>
    <ImageView android:contentDescription="@null" android:importantForAccessibility="no" android:id="@+id/widget_separator" android:layout_width="1dp" android:layout_height="match_parent" android:layout_marginHorizontal="10dp" android:layout_marginVertical="5dp" android:background="#D4D2CC"/>
-   <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+   <LinearLayout android:layout_width="0dp" android:layout_weight="2" android:layout_height="wrap_content" android:orientation="vertical">
     <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Nächste Probe" android:textColor="#192B40" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
     <TextView android:id="@+id/widget_location" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:textColor="#34465B" android:textSize="14sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
     <TextView android:id="@+id/widget_clothing" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:textColor="#5B6571" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
