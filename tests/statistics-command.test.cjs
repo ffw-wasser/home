@@ -44,3 +44,11 @@ test('Veranstaltungen gehören zur Kameradschaftspflege; Einsatz hat Vorrang, Ü
  assert.equal(c.statisticsIsFellowship({item:{sessionType:'Veranstaltung',operationData:{}}}),false);
  assert.equal(c.statisticsAgeEvents([event('Veranstaltung'),event('Kameradschaftspflege'),event('Unterricht')]).length,1);
 });
+
+
+test('Fitnessrolle verändert weder Feuerwehrstärke noch Feuerwehrdienststatistik',()=>{
+ const regular=member('fire'),trainer=member('trainer',{fitnessTrainer:true}),c=fixture([regular,trainer]);
+ assert.equal(c.statisticsParticipation([]).active.length,1);assert.equal(c.statisticsCurrentReadiness().active,1);
+ c.CsvEngine=require('../js/features/reports/csv-engine.js');c.csvArchive=[{sessionType:'Fitness',content:c.CsvEngine.serialize([['2026-11-01','18:00','Beispiel, trainer','Fitness','Anwesend','','Training']])}];
+ assert.equal(c.statisticsArchiveData().length,0);
+});

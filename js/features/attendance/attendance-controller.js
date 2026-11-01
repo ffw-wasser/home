@@ -73,7 +73,7 @@ function renderMembers() {
     : sessionType === "Einsatz"
       ? members.filter(member => !member.ageDepartment)
       : members;
-  const availableMembers = eligibleMembers.filter(member => !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
+  const availableMembers = eligibleMembers.filter(member => (sessionType==="Fitness"||member.fitnessTrainer!==true)&&!recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
   if (!availableMembers.some(member => member.id === chosenMemberId)) chosenMemberId = "";
   chosenMemberIds = new Set([...chosenMemberIds].filter(id => availableMembers.some(member => member.id === id)));
   const multiMode = (sessionType === "Allgemeine Probe" && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Orga")) ||
@@ -220,7 +220,7 @@ function todayEntries() {
 function renderEntries() {
   const allCurrent = todayEntries();
   const committee=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
-  const exportMembers=committee?members.filter(member=>member.committeeMember):members;
+  const exportMembers=(committee?members.filter(member=>member.committeeMember):members).filter(member=>sessionType==="Fitness"||member.fitnessTrainer!==true);
   const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
   const current=committee?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   byId("entries").innerHTML = current.map(entry => `
@@ -310,7 +310,7 @@ function saveQuickMemberStatus(id,status){
   if(count){
     const recordedNames=new Set(todayEntries().flatMap(entry=>[entry.storedName,entry.displayName].filter(Boolean)));
     const eligible=sessionType==="Ausschuss Sitzung"?members.filter(item=>item.committeeMember):sessionType==="Einsatz"?members.filter(item=>!item.ageDepartment):members;
-    const open=eligible.filter(item=>!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
+    const open=eligible.filter(item=>(sessionType==="Fitness"||item.fitnessTrainer!==true)&&!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
     count.textContent=`${chosenMemberIds.size} ausgewählt · ${open} offen`;
   }
   updateSelection();updateProbeWorkflow();

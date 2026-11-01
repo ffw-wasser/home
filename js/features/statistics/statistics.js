@@ -131,7 +131,7 @@ const STATISTICS_FUNCTION_GROUPS=Object.freeze([
 ]);
 function statisticsIsDrill(data){return ["Allgemeine Probe","Probe","Sonderprobe","Unterricht"].includes(data.rows[0]?.sessionType||data.item.sessionType);}
 function statisticsParticipation(yearData,roster=members){
-  const active=roster.filter(member=>!member.ageDepartment),drills=yearData.filter(statisticsIsDrill),rows=[];
+  const active=roster.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true),drills=yearData.filter(statisticsIsDrill),rows=[];
   const people=active.map(member=>{
     const relevant=drills.flatMap(data=>{
       const row=data.rows.find(row=>statisticsRowMatchesMember(row,member));
@@ -144,7 +144,7 @@ function statisticsParticipation(yearData,roster=members){
   return {active,drills,rows,people,present:rows.filter(row=>row.status==="Anwesend").length,excused:rows.filter(row=>row.status==="Entschuldigt").length,missing:rows.filter(row=>row.status==="Fehlt").length};
 }
 function statisticsCurrentReadiness(roster=members,date=MemberEvidence.day(Date.now())){
-  const active=roster.filter(member=>!member.ageDepartment),valid=state=>["valid","soon"].includes(state);
+  const active=roster.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true),valid=state=>["valid","soon"].includes(state);
   const breathing=[],drivers=[];
   active.forEach(member=>{
     const groups=MemberEvidence.assess(MemberEvidence.project(member),Date.parse(date+"T12:00:00Z"));
@@ -372,7 +372,7 @@ function renderStatistics({refreshDrinks=true}={}) {
   // In der AS-Statistik nur Personen anzeigen, bei denen Atemschutz
   // tatsächlich hinterlegt beziehungsweise vorgesehen ist. Nicht eingesetzte
   // Personen ohne Atemschutzbezug werden nicht als "nicht dokumentiert" geführt.
-  const breathingStates=members.filter(member=>!member.ageDepartment&&isAtmOrAtgQualified(member)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
+  const breathingStates=members.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true&&isAtmOrAtgQualified(member)).map(member=>({member,state:breathingClearanceState(member,systemToday())}));
   const clearanceLabel={valid:"Gültig bis",soon:"Fällig bis",expired:"Überfällig seit",none:"Nicht dokumentiert"};
   const clearanceTone={valid:"green",soon:"gold",expired:"red",none:"gray"},clearanceOrder={expired:0,none:1,soon:2,valid:3};
   byId("breathingClearanceList").innerHTML=breathingStates.sort((a,b)=>clearanceOrder[a.state]-clearanceOrder[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>renderMetric("",nameForTile(item.member),item.state==="none"?clearanceLabel[item.state]:`${clearanceLabel[item.state]} ${breathingClearanceDates(item.member).filter(Boolean).sort()[0]||""}`,clearanceTone[item.state])).join("");
@@ -468,7 +468,7 @@ function ensureDriverLicenseStatisticsPanel(){
 }
 function renderDriverLicenseStatistics(){
   const panel=ensureDriverLicenseStatisticsPanel();if(!panel)return;
-  const items=members.filter(member=>!member.ageDepartment&&Array.isArray(member.machinistVehicles)&&member.machinistVehicles.length).map(member=>({member,state:driverLicenseControlDue(member,systemToday())}));
+  const items=members.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true&&Array.isArray(member.machinistVehicles)&&member.machinistVehicles.length).map(member=>({member,state:driverLicenseControlDue(member,systemToday())}));
   const order={overdue:0,missing:1,soon:2,valid:3},tone={overdue:"red",missing:"gray",soon:"gold",valid:"green"};
   panel.querySelector("[data-driver-list]").innerHTML=items.sort((a,b)=>order[a.state]-order[b.state]||nameForTile(a.member).localeCompare(nameForTile(b.member),"de")).map(item=>{const date=driverLicenseDueDate(item.member);const label=item.state==="missing"?"Nicht dokumentiert":item.state==="overdue"?`Überfällig seit ${date}`:item.state==="soon"?`Fällig bis ${date}`:`Gültig bis ${date}`;return renderMetric("",nameForTile(item.member),label,tone[item.state]);}).join("");
 }
@@ -486,7 +486,7 @@ function normalizeStatisticsRole(role) {
 function populateIndividualMemberSelect() {
   const select = byId("individualMemberSelect");
   const current = select.value;
-  const groups=[["Einsatzabteilung",members.filter(member=>!member.ageDepartment)],["Alterskameraden",members.filter(member=>member.ageDepartment)]];
+  const groups=[["Einsatzabteilung",members.filter(member=>!member.ageDepartment&&member.fitnessTrainer!==true)],["Alterskameraden",members.filter(member=>member.ageDepartment)]];
   select.innerHTML = `<option value="">Bitte auswählen</option>${groups.filter(([,items])=>items.length).map(([label,items])=>`<optgroup label="${label}">${items.map(member=>`<option value="${escapeHtml(member.id)}">${escapeHtml(nameForTile(member))}</option>`).join("")}</optgroup>`).join("")}`;
   if (members.some(member => member.id === current)) select.value = current;
 }

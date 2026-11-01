@@ -56,7 +56,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   topic=String(topic||"").trim();if(!topic){openProbeTopicDialog();return;}
   const allCurrent=[...todayEntries()];
   const committeeExport=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
-  const exportMembers=committeeExport?members.filter(member=>member.committeeMember):members;
+  const exportMembers=(committeeExport?members.filter(member=>member.committeeMember):members).filter(member=>sessionType==="Fitness"||member.fitnessTrainer!==true);
   const audience=window.PortalAdmin?.attendanceAudience?.();
   if(audience?.pending)return showToast("Bitte die eingeladenen Personen des Kalendertermins erneut laden. Der Termin bleibt geöffnet.","error");
   const invited=Array.isArray(audience?.recipientIds)?new Set(audience.recipientIds.map(String)):null;
