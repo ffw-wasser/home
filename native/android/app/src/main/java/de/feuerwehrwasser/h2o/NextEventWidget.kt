@@ -88,14 +88,17 @@ open class NextEventWidget : AppWidgetProvider() {
             val baseDaySize = when { flat -> (if (compact) 13f else 19f) * scale; compact -> if (short) 24f else if (height < 160) 28f else 44f * scale; relative -> if (short) 22f else 30f * scale; else -> if (height < 170) 28f else 48f * scale }
             // Reserve actual rows before enlarging the date, including enlarged system fonts.
             val dateHeight = height - (if (compact) 54f else 56f) - (if (short) 0f else if (compact) maxOf(16f, 13f * fontScale) else maxOf(18f, 15f * fontScale)) -
-                (if (compact) titleSize * fontScale * titleLines + 5f else 0f) -
+                (if (compact) titleSize * 1.25f * fontScale * titleLines + 5f else 0f) -
                 (if (showWeekday) 14f * fontScale else 0f) - (if (showMonth) 14f * fontScale else 0f)
             val daySize = if (flat) baseDaySize else minOf(baseDaySize, (dateHeight / fontScale).coerceAtLeast(12f))
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = daySize * metrics.scaledDensity }
             val timePaint = Paint().apply { textSize = 10f * metrics.scaledDensity }
             val timeWidth = timePaint.measureText(if (event?.allDay == true) "Ganztägig" else "23:58") / metrics.density
             val available = (if (flat) { if (compact) width - 16f - timeWidth else 68f } else if (compact) width - 20f else (width - 41f) / 3f).coerceAtLeast(1f) * metrics.density
-            val fit = if (dayText.isNullOrEmpty()) 1f else (available / dayPaint.measureText(dayText)).coerceAtMost(1f)
+            // Leave room for pixel rounding; maxLines alone can wrap a final letter out of view.
+            val widthFit = if (dayText.isNullOrEmpty()) 1f else ((available - 2f * metrics.density).coerceAtLeast(1f) / dayPaint.measureText(dayText)).coerceAtMost(1f)
+            val heightFit = if (flat) 1f else ((dateHeight - 2f).coerceAtLeast(1f) * metrics.density / (dayPaint.fontMetrics.descent - dayPaint.fontMetrics.ascent)).coerceAtMost(1f)
+            val fit = minOf(widthFit, heightFit)
             views.setTextViewTextSize(R.id.widget_day, TypedValue.COMPLEX_UNIT_SP, daySize * fit)
             views.setViewVisibility(R.id.widget_brand, if (short) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_date, if (event == null) View.GONE else View.VISIBLE)
