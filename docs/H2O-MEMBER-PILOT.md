@@ -92,9 +92,18 @@ Ein signiertes Mitgliederpaket liegt deshalb noch nicht vor.
 3. Kalenderabo und Mitteilungen bei der ersten Einrichtung auswählen oder überspringen.
 4. Das optionale Widget zum Home-Bildschirm hinzufügen. Das ist keine zweite App-Installation.
 
-Der frühere Installations-QR in der Verwaltung wird nicht mehr erzeugt. Persönliche Freigaben werden als Link angeboten. Der native Scanner für Zugangseinladungen, sein JavaScript-Aufruf und die zugehörige
-Kameraberechtigung sind entfernt. Ein persönlicher Einladungslink kann weiterhin
-nach Identitätsprüfung einen neuen Zugang freigeben. Er ist kein Downloadlink.
+Der gemeinsame Installations-QR unter Verwaltung → H₂O Portal öffnet `install.html`.
+Die Seite erkennt das Handy: Android öffnet den internen Google-Play-Test; für Apple
+bleibt bis zur Freigabe des Store-Links ein Hinweis mit Browseralternative sichtbar.
+`native/store/install-links.json` enthält nur öffentliche, streng geprüfte Store-URLs.
+
+Neue Mitglieder werden anschließend vor Ort verifiziert: Identität prüfen, Mitglied
+auswählen und Zugangseinrichtung freigeben. Der persönliche QR und Freigabecode
+verwenden das bestehende serverseitig autorisierte Einmalticket (30 Minuten). Mit der
+normalen Handykamera außerhalb der App scannen und den Link öffnen. Der QR wird lokal
+erzeugt und bei Mitgliederwechsel, Sperren und Ablauf gelöscht. Keine E-Mail-Einladung.
+Bestehende Zugänge auf weiteren Geräten direkt anmelden. Der native Scanner und seine
+Kameraberechtigung bleiben entfernt. Installation und persönliche Freigabe sind getrennt.
 Der Anwesenheits-QR am Gerätehaus hat einen anderen Zweck und bleibt erhalten.
 
 Für weitere Mitglieder wird jetzt kein TestFlight-Link eingerichtet. Nach der

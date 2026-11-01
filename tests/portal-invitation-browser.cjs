@@ -42,7 +42,7 @@ const root=path.resolve(__dirname,'..');
    await page.locator('#portal-admin-member').selectOption(id);page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();
    await page.locator('#portal-admin-link').waitFor({state:'visible'}).catch(async e=>{console.error(await page.locator('#portal-admin-qr-status').innerText(),await page.locator('#portal-admin-status').innerText(),errors);throw e;});
    const result=await page.evaluate(()=>({href:document.getElementById('portal-admin-link').href,code:document.getElementById('portal-admin-identity-code').value}));
-   assert.equal(new URL(result.href).hash,'#setup='+result.code);assert.equal(new URL(result.href).search,'');assert.equal(await page.locator('#portal-admin-qr').isVisible(),false,'installation QR is retired');
+   assert.equal(new URL(result.href).hash,'#setup='+result.code);assert.equal(new URL(result.href).search,'');assert.equal(await page.locator('#portal-admin-qr').isVisible(),true,'personal one-use QR is displayed');
    assert.doesNotMatch(result.href,/github_pat_|[?#&]k=/);assert.equal(await page.locator('#portal-admin-show-qr').isEnabled(),true);
    return result;
   }
@@ -53,6 +53,6 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#portal-admin-member').selectOption(f.people[0].memberId);assert.equal(await page.locator('#portal-admin-qr').isVisible(),false,'member change clears the invitation');
   await page.evaluate(()=>{DrinksCentral.register=async()=>{throw Error('Synthetischer Dienstfehler');};});page.once('dialog',d=>d.accept());await page.locator('#portal-admin-show-qr').click();
   await page.locator('#portal-admin-qr-status').filter({hasText:'Synthetischer Dienstfehler'}).waitFor();assert.equal(await page.locator('#portal-admin-qr').isVisible(),false);assert.equal(await page.locator('#portal-admin-show-qr').isEnabled(),true);assert.equal(await page.locator('#portal-admin-show-qr').getAttribute('aria-busy'),'false');
-  assert.deepEqual(errors,[]);console.log('PASS existing/new member invitation without legacy config, real Store/connection and uppercase Graph ID, calendar, real Worker ticket, personal link, no installation QR, visible errors, member switch and 320–1024 px');
+  assert.deepEqual(errors,[]);console.log('PASS existing/new member invitation without legacy config, real Store/connection and uppercase Graph ID, calendar, real Worker ticket, personal one-use QR and link, visible errors, member switch and 320–1024 px');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

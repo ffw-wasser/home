@@ -65,7 +65,7 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
    oneDriveAdministrationReady=()=>true;adminUnlocked=true;resetAdminTimeout();
    const record={...DeckelCrypto.create(),memberId:'help-a',revision:'help-invite-revision'};
    DrinksMobile.preparePortalAccess=async()=>record;
-   const prior=DrinksPush.request;DrinksPush.request=async(c,p,data)=>p.endsWith('/subscriptions')?{version:1,source:'help-source',checkedAt:Date.now(),members:members.map((m,i)=>({memberId:m.id,pushDevices:i===0?1:0,calendarLastFetchedAt:i===0?Date.now():null}))}:p.endsWith('/identity-ticket')?{code:'H2O-DEMO-EINMALCODE',expiresAt:Date.now()+600000}:p.endsWith('/evidence/overview')?{items:[],count:0,memberCount:0,servedAt:Date.now()}:prior(c,p,data);
+   const prior=DrinksPush.request;DrinksPush.request=async(c,p,data)=>p.endsWith('/subscriptions')?{version:1,source:'help-source',checkedAt:Date.now(),members:members.map((m,i)=>({memberId:m.id,pushDevices:i===0?1:0,calendarLastFetchedAt:i===0?Date.now():null}))}:p.endsWith('/identity-ticket')?{code:'d'.repeat(43),expiresAt:Date.now()+600000}:p.endsWith('/evidence/overview')?{items:[],count:0,memberCount:0,servedAt:Date.now()}:prior(c,p,data);
    showView('settingsPortalView');
   });
   await page.locator('#portal-admin-member option').nth(1).waitFor({state:'attached'});await page.locator('#portal-admin-member').selectOption('help-a');
