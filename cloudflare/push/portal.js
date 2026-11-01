@@ -2,6 +2,7 @@
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
  const ddl=[
+  'CREATE TABLE IF NOT EXISTS portal_reminder_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_event_reminders (event TEXT PRIMARY KEY,reminded_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_groups (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   ...g.PortalEvidence.schema,
@@ -314,13 +315,29 @@
   }
   for(const id of obsoleteIds){await env.DB.prepare('DELETE FROM portal_replies WHERE event=?').bind(id).run();await env.DB.prepare('DELETE FROM portal_event_reminders WHERE event=?').bind(id).run();}
  }
+ async function reminderPolicy(env){
+  const row=await env.DB.prepare('SELECT * FROM portal_reminder_policy WHERE id=1').first();
+  return {value:row?await open(env,row,'portal-reminder-policy'):{enabled:false,daysBefore:1,time:'19:30',enabledAt:Date.now()},version:row?.version||0};
+ }
+ const berlinClock=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms)).replace(' ','T');
+ async function automaticReminders(env,cal){
+  const policy=(await reminderPolicy(env)).value;if(!policy.enabled)return;L.active(await L.meta(env));
+  const now=berlinClock(Date.now()),enabled=berlinClock(policy.enabledAt);
+  for(const event of cal.events){
+   if(event.kind!=='probe'||!event.approved||event.start<=Date.now())continue;
+   const day=new Date(Date.parse(berlinDay(event.start)+'T12:00:00Z')-policy.daysBefore*DAY).toISOString().slice(0,10),due=day+'T'+policy.time;
+   // Never backfill past dates or reminders already due when the policy was changed.
+   if(day!==now.slice(0,10)||due>now||due<enabled)continue;
+   await send(env,event,'automatic:'+event.id);
+  }
+ }
  async function scheduled(env){
   await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env,false,c),null);if(cal.stale)return;
   await pruneFinishedEvents(env,cal);
   await env.DB.prepare('DELETE FROM portal_sends WHERE created_at<?').bind(Date.now()-30*DAY).run();
   await env.DB.prepare('DELETE FROM portal_replies WHERE updated_at<?').bind(Date.now()-400*DAY).run();
   await awardBirthdays(env,cal);
-  // Calendar refresh, cleanup and birthday rewards remain automatic. Reminders require /admin/portal/remind.
+  await automaticReminders(env,cal);
  }
  async function route(path,data,env,auth,clientIP='unknown',ctx){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
@@ -331,6 +348,16 @@
    if(path==='/portal/calendar-addon/groups')return g.CalendarGroupAccess.route(env,data,auth,m.source);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
+  if(path==='/admin/portal/reminder-policy'){
+   const policy=await reminderPolicy(env);
+   if(data.enabled===undefined)return policy;
+   if(typeof data.enabled!=='boolean'||!Number.isInteger(data.daysBefore)||data.daysBefore<0||data.daysBefore>7||typeof data.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.time)||!Number.isSafeInteger(data.expectedVersion))fail('Bitte gültige Erinnerungseinstellungen wählen.',400);
+   if(data.expectedVersion!==policy.version)fail('Erinnerungseinstellungen wurden geändert. Bitte neu laden.',409);
+   const value={enabled:data.enabled,daysBefore:data.daysBefore,time:data.time,enabledAt:Date.now()},payload=await L.seal(env,value,'portal-reminder-policy');
+   const saved=policy.version?await env.DB.prepare('UPDATE portal_reminder_policy SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,policy.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_reminder_policy(id,payload,version) VALUES(1,?,1)').bind(payload).run();
+   if(!saved.meta.changes)fail('Erinnerungseinstellungen wurden geändert. Bitte neu laden.',409);
+   return {value,version:policy.version+1};
+  }
   if(path==='/admin/portal/google-group-access')return g.CalendarGroupAccess.admin(env,data,m.source);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);

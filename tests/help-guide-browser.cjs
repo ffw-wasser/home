@@ -28,7 +28,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
    const manualLength=(await guide.locator('.guide-manual').innerText()).length;assert.ok(manualLength<4500,'daily instructions remain concise: '+manualLength);
    assert.doesNotMatch(await guide.innerText(),/TestFlight|Google-Gruppenschnittstelle|zertifiziert|APK/);
-   assert.equal(await guide.locator('img').count(),file==='index.html'?9:13);
+   assert.equal(await guide.locator('img').count(),file==='index.html'?10:13);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' overflow '+width+'/'+scale);
    assert.deepEqual(await guide.locator('.guide-lesson-body,.guide-privacy-grid').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[]);
