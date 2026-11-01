@@ -43,7 +43,7 @@ function controller({role='writer',event={},responseStatus=200,network=false,con
  return {c,context,props,current,calls,widgets,groupState,open,save};
 }
 test('Google add-on cards: dropdowns and multi-selection save description only, use own OAuth and ETag, never follow redirects',()=>{
- const f=controller(),params=f.open();assert.ok(params);assert.equal(f.widgets.find(w=>w.setFieldName==='groups').setType,'checkbox');assert.equal(f.widgets.find(w=>w.setFieldName==='type').items.length,6);
+ const f=controller(),params=f.open();assert.ok(params);assert.equal(f.widgets.find(w=>w.setFieldName==='groups').setType,'checkbox');assert.equal(f.widgets.find(w=>w.setFieldName==='type').items.length,7);
  const result=f.save(params),write=f.calls.find(r=>r.options.method==='patch');assert.ok(write);assert.match(result.setNotification.setText,/In Google gespeichert/);
  assert.equal(write.options.followRedirects,false);assert.equal(write.options.headers['If-Match'],'"v1"');assert.equal(write.options.headers.Authorization,'Bearer SYNTHETIC-TOKEN');assert.match(write.url,/sendUpdates=none/);
  assert.deepEqual(Object.keys(JSON.parse(write.options.payload)).sort(),['description','extendedProperties']);assert.equal(JSON.stringify(result).includes('SYNTHETIC-TOKEN'),false);

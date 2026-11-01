@@ -242,5 +242,21 @@
   "geraetehaus-erinnerung": {
     "width": 984,
     "height": 587
+  },
+  "geraetehaus-fitness-gruppe": {
+    "width": 728,
+    "height": 1169
+  },
+  "geraetehaus-fitness-rolle": {
+    "width": 662,
+    "height": 92
+  },
+  "geraetehaus-fitness-statistik": {
+    "width": 728,
+    "height": 1227
+  },
+  "h2o-fitness": {
+    "width": 352,
+    "height": 552
   }
 }

@@ -19,6 +19,13 @@
       ]
     },
     {
+      "title": "Fitnessgruppe und Trainerrolle",
+      "paragraphs": [
+        "Fitness ist eine eigene Terminart und zählt nicht als Feuerwehrdienst, Einsatz oder feuerwehrdienstliche Ausbildung. Die Verwaltung ordnet Mitglieder und Fitnesstrainer der Fitnessgruppe zu. Trainer sehen ausschließlich ihre zugeordneten Fitnesstermine und Rückmeldungen und können diese Gruppe erinnern. Die Rolle erlaubt keinen Zugriff auf Feuerwehrverwaltung, Nachweise, geschützte Dokumente oder Statistiken.",
+        "Für die getrennte Fitnessstatistik werden Zusagen, Entschuldigungen, Unsicher und offene Antworten pro Termin ausgewertet. Die Verwaltung sieht Jahres- und Monatssummen; tatsächlich erfasste Anwesenheiten bleiben davon getrennt. Abgesagte Termine und ausdrücklich nicht betreffende Personen zählen nicht in die Beteiligungsquote. Ab Einführung werden abgeschlossene Rückmeldungen zusätzlich als verschlüsselte Terminsummen ohne Namen oder Mitgliedskennungen gespeichert. Die persönlichen Fitnessrückmeldungen werden für Korrekturen höchstens 400 Tage aufbewahrt."
+      ]
+    },
+    {
       "title": "Gerätehaus-Anwendung und Verwaltungsunterlagen",
       "paragraphs": [
         "Die Gerätehaus-Anwendung ergänzt das persönliche Portal um Mitgliederverwaltung, Anwesenheit, Termin- und Einsatzberichte, Statistiken und die Getränkeverwaltung. Je nach freigegebener Funktion werden dort folgende Angaben verarbeitet:",

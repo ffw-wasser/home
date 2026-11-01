@@ -23,6 +23,7 @@ function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   return false;
 }
 function lockAdministration(){
+  if(typeof clearFitnessStatistics==='function')clearFitnessStatistics();
   const theaterReturn=window.TheaterAdmin?.route?.();
   if(byId('pushAdminToken'))byId('pushAdminToken').value='';
   if(byId('deckel-token'))byId('deckel-token').value='';
@@ -84,7 +85,7 @@ function showView(viewId) {
 
 function renderSessionType() {
   window.PortalAdmin?.refreshAttendance();
-  const isSpecial = sessionType === "Sonderprobe";
+  const isSpecial = ["Sonderprobe","Fitness"].includes(sessionType);
   const isTraining = sessionType === "Unterricht";
   const isCommittee = sessionType === "Ausschuss Sitzung";
   const isOperation = sessionType === "Einsatz";
@@ -108,7 +109,7 @@ function renderSessionType() {
         : "Personen markieren → Auswahl übernehmen.";
 }
 function chooseSessionType(type,{calendar=false}={}) {
-  const validTypes=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Einsatz"];
+  const validTypes=["Allgemeine Probe","Sonderprobe","Unterricht","Ausschuss Sitzung","Fitness","Einsatz"];
   if(!validTypes.includes(type))return showToast("Unbekannte Terminart.","error");
   if(!calendar&&!currentSessionId&&!currentOperationId)window.PortalAdmin?.useSpontaneous?.();
   pendingSessionType=type;
@@ -119,7 +120,7 @@ function chooseSessionType(type,{calendar=false}={}) {
     button.classList.toggle("selected",selected);
     button.setAttribute("aria-pressed",String(selected));
   });
-  const previewSpecial = type === "Sonderprobe";
+  const previewSpecial = ["Sonderprobe","Fitness"].includes(type);
   const previewTraining = type === "Unterricht";
   const previewCommittee = type === "Ausschuss Sitzung";
   const previewOperation = type === "Einsatz";
