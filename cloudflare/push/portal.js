@@ -351,7 +351,7 @@
   if(path==='/admin/portal/reminder-policy'){
    const policy=await reminderPolicy(env);
    if(data.enabled===undefined)return policy;
-   if(typeof data.enabled!=='boolean'||!Number.isInteger(data.daysBefore)||data.daysBefore<0||data.daysBefore>7||typeof data.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.time)||!Number.isSafeInteger(data.expectedVersion))fail('Bitte gültige Erinnerungseinstellungen wählen.',400);
+   if(typeof data.enabled!=='boolean'||!Number.isInteger(data.daysBefore)||data.daysBefore<0||data.daysBefore>7||typeof data.time!=='string'||data.time.length!==5||!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.time)||!Number.isSafeInteger(data.expectedVersion))fail('Bitte gültige Erinnerungseinstellungen wählen.',400);
    if(data.expectedVersion!==policy.version)fail('Erinnerungseinstellungen wurden geändert. Bitte neu laden.',409);
    const value={enabled:data.enabled,daysBefore:data.daysBefore,time:data.time,enabledAt:Date.now()},payload=await L.seal(env,value,'portal-reminder-policy');
    const saved=policy.version?await env.DB.prepare('UPDATE portal_reminder_policy SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,policy.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_reminder_policy(id,payload,version) VALUES(1,?,1)').bind(payload).run();
