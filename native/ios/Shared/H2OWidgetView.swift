@@ -123,16 +123,15 @@ struct NextEventView: View {
     }
 
     private func statusBadge(_ scale: CGFloat, small: Bool) -> some View {
-        HStack(spacing: 5 * scale) {
+        HStack(spacing: 7 * scale) {
             Image(systemName: statusSymbol)
-                .font(.system(size: (small ? 12 : 13) * scale, weight: .medium))
+                .font(.system(size: (small ? 17 : 18) * scale, weight: .medium))
             Text(statusTitle)
                 .font(.system(size: (small ? 14 : 16) * scale, weight: .semibold))
         }
         .foregroundStyle(statusColor)
         .lineLimit(1)
         .minimumScaleFactor(0.85)
-        .frame(height: 21 * scale, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Rückmeldung: " + statusTitle)
     }
@@ -141,25 +140,30 @@ struct NextEventView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(datePart(date, "EEEE"))
                 .font(.system(size: 11 * scale, weight: .medium))
-                .foregroundStyle(ink.opacity(0.65))
+                .foregroundStyle(ink.opacity(0.72))
                 .lineLimit(1)
             if small {
-                Text(datePart(date, "d. MMM"))
-                    .font(.system(size: 30 * scale, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
+                    Text(datePart(date, "dd"))
+                        .font(.system(size: 46 * scale, weight: .bold))
+                        .monospacedDigit()
+                    Text(datePart(date, "MMM").replacingOccurrences(of: ".", with: "").uppercased())
+                        .font(.system(size: 20 * scale, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
             } else {
-                Text(datePart(date, "d."))
-                    .font(.system(size: 42 * scale, weight: .semibold))
+                Text(datePart(date, "dd"))
+                    .font(.system(size: 48 * scale, weight: .bold))
                     .monospacedDigit()
-                Text(datePart(date, "MMMM"))
-                    .font(.system(size: 14 * scale, weight: .medium))
+                Text(datePart(date, "MMMM").uppercased())
+                    .font(.system(size: 12 * scale, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
         }
         .frame(maxWidth: small ? .infinity : nil, alignment: .leading)
-        .frame(width: small ? nil : 92 * scale, height: (small ? 52 : 82) * scale, alignment: .leading)
+        .frame(width: small ? nil : 92 * scale, height: (small ? 70 : 86) * scale, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(datePart(date, "EEEE, d. MMMM"))
     }
@@ -174,7 +178,7 @@ struct NextEventView: View {
             .font(.system(size: (small ? 10 : 12) * scale, weight: .medium))
             .monospacedDigit()
             .lineLimit(1)
-            .foregroundStyle(ink.opacity(0.65))
+            .foregroundStyle(ink.opacity(0.72))
     }
 
     private var noEvent: some View {
@@ -184,92 +188,103 @@ struct NextEventView: View {
     }
 
     private func smallLayout(_ scale: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 4 * scale) {
+        VStack(alignment: .leading, spacing: 0) {
             header(scale)
             if let event {
-                Spacer(minLength: 4 * scale)
+                Spacer(minLength: 2 * scale)
                 calendarTile(event.start, small: true, scale: scale)
-                statusBadge(scale, small: true)
-                Spacer(minLength: 0)
+                Rectangle().fill(ink.opacity(0.16)).frame(height: 0.5 * scale)
+                    .padding(.bottom, 3 * scale)
+                    .accessibilityHidden(true)
                 HStack(spacing: 5 * scale) {
                     Text(title(event, small: true))
-                        .font(.system(size: 11 * scale, weight: .medium))
-                        .foregroundStyle(ink.opacity(0.65))
+                        .font(.system(size: 11 * scale, weight: .semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .accessibilityLabel(event.title)
                     Spacer(minLength: 0)
-                    if entry.snapshot?.stale == true {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 10 * scale))
-                            .foregroundStyle(ink.opacity(0.65))
-                            .accessibilityLabel("Kalenderstand prüfen")
-                    }
                     clock(event, small: true, scale: scale)
                         .fixedSize(horizontal: true, vertical: false)
                 }
+                .frame(height: 14 * scale)
             } else { noEvent }
         }
     }
 
     private func mediumLayout(_ scale: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 4 * scale) {
+        VStack(alignment: .leading, spacing: 0) {
             header(scale)
             if let event {
-                Spacer(minLength: 5 * scale)
-                HStack(alignment: .center, spacing: 14 * scale) {
+                Spacer(minLength: 3 * scale)
+                HStack(alignment: .center, spacing: 12 * scale) {
                     calendarTile(event.start, small: false, scale: scale)
-                    VStack(alignment: .leading, spacing: 3 * scale) {
+                    Rectangle().fill(ink.opacity(0.16))
+                        .frame(width: 0.5 * scale, height: 76 * scale)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 5 * scale) {
                         Text(title(event, small: false))
-                            .font(.system(size: 14 * scale, weight: .semibold))
+                            .font(.system(size: 18 * scale, weight: .semibold))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.85)
+                            .minimumScaleFactor(0.8)
                             .accessibilityLabel(event.title)
-                        statusBadge(scale, small: false)
-                        HStack(spacing: 5 * scale) {
-                            clock(event, small: false, scale: scale)
-                            if entry.snapshot?.stale == true {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .font(.system(size: 10 * scale))
-                                    .foregroundStyle(ink.opacity(0.65))
-                                    .accessibilityLabel("Kalenderstand prüfen")
-                            }
-                        }
                         Text(event.location.isEmpty ? "GH Wasser" : event.location)
-                            .font(.system(size: 10 * scale))
-                            .foregroundStyle(ink.opacity(0.65))
+                            .font(.system(size: 12 * scale))
+                            .foregroundStyle(ink.opacity(0.85))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                         if !event.clothing.isEmpty {
                             Text(event.clothing)
-                                .font(.system(size: 10 * scale))
-                                .foregroundStyle(ink.opacity(0.65))
+                                .font(.system(size: 11 * scale))
+                                .foregroundStyle(ink.opacity(0.72))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.85)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Spacer(minLength: 0)
             } else { noEvent }
         }
+    }
+
+    private func responseFooter(_ scale: CGFloat) -> some View {
+        HStack(spacing: 6 * scale) {
+            statusBadge(scale, small: family == .systemSmall)
+            Spacer(minLength: 0)
+            if entry.snapshot?.stale == true {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 10 * scale))
+                    .accessibilityLabel("Kalenderstand prüfen")
+            }
+            if family != .systemSmall, let event {
+                clock(event, small: false, scale: scale)
+            }
+        }
+        .padding(.horizontal, 12 * scale)
+        .frame(height: 32 * scale)
+        .background(statusColor.opacity(0.1))
     }
 
     var body: some View {
         GeometryReader { geometry in
             let scale = min(geometry.size.height / 155, 1.15)
-            Group {
-                if family == .systemSmall { smallLayout(scale) }
-                else { mediumLayout(scale) }
+            VStack(spacing: 0) {
+                Group {
+                    if family == .systemSmall { smallLayout(scale) }
+                    else { mediumLayout(scale) }
+                }
+                .padding(.horizontal, 12 * scale)
+                .padding(.top, 9 * scale)
+                .padding(.bottom, 4 * scale)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if event != nil { responseFooter(scale) }
             }
-            .padding(.horizontal, 12 * scale)
-            .padding(.top, 12 * scale)
-            .padding(.bottom, 10 * scale)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+            .background(Color(red: 0.975, green: 0.968, blue: 0.94))
+            .overlay(alignment: .top) {
+                burgundy.frame(height: 4 * scale).accessibilityHidden(true)
+            }
         }
         .foregroundStyle(ink)
-        .containerBackground(Color(red: 0.94, green: 0.97, blue: 0.95), for: .widget)
+        .containerBackground(Color(red: 0.975, green: 0.968, blue: 0.94), for: .widget)
         .widgetURL(URL(string: "h2oportal://termine"))
         .environment(\.locale, Locale(identifier: "de_DE"))
         .environment(\.timeZone, TimeZone(identifier: "Europe/Berlin")!)
