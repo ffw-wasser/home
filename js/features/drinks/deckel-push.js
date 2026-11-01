@@ -6,6 +6,7 @@
  const native=()=>/\bH2ONative\/1\b/.test(navigator.userAgent);
  const supported=()=>!native()&&Boolean(navigator.serviceWorker&&g.PushManager&&g.Notification);
  const same=(a,b)=>Boolean(a&&b&&a.alias===b.alias&&a.revision===b.revision&&a.origin===b.origin&&a.capability===b.capability);
+ const limitError=error=>/Maximal fünf Geräte/.test(error.message||'');
  const current=(c,version)=>{if(version!==generation||!same(c,access))throw Error('Der Portalzugang wurde geändert. Bitte erneut anmelden.');};
  const isIos=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
  const installed=()=>navigator.standalone||g.matchMedia?.('(display-mode: standalone)').matches;
@@ -27,19 +28,20 @@
    state($('state'),'Bitte App aktualisieren');
    $('note').textContent=nativePlatform()==='android'?'Diese App-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle Android-App verwenden.':'Diese TestFlight-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle iPhone-App verwenden.';return;
   }
-  $('enable').hidden=nativeActive;$('disable').hidden=!nativeActive;$('reset').hidden=true;
+  $('enable').hidden=nativeActive||deviceLimit;$('disable').hidden=!nativeActive;$('reset').hidden=!deviceLimit;$('reset').disabled=busy||!access;
   $('enable').disabled=busy||!access||!nativeReady;$('disable').disabled=busy;
   $('enable').textContent='Mitteilungen erlauben';
-  state($('state'),busy?'Wird geprüft':nativeActive?'Aktiv':nativePermission==='denied'?'Nicht erlaubt':nativeReady?'Aus':'Noch nicht eingerichtet',nativeActive);
-  $('note').textContent=!nativeReady?'Der native Mitteilungsdienst muss von der Verwaltung noch eingerichtet werden.':nativePermission==='denied'?'Mitteilungen in den Geräte-Einstellungen für H₂O erlauben.':'Freiwillig: Feuerwehr-Mitteilungen direkt auf diesem '+nativeDevice()+'. Du kannst H₂O auch ohne Mitteilungen nutzen.';
+  state($('state'),busy?'Wird geprüft':deviceLimit?'Gerätelimit erreicht':nativeActive?'Aktiv':nativePermission==='denied'?'Nicht erlaubt':nativeReady?'Aus':'Noch nicht eingerichtet',nativeActive);
+  $('note').textContent=deviceLimit?'Fünf Push-Verbindungen sind für dein Konto gespeichert. Auch frühere Installationen können mitzählen. Setze die Verbindungen zurück und erlaube Mitteilungen danach auf deinen aktuellen Geräten erneut.':!nativeReady?'Der native Mitteilungsdienst muss von der Verwaltung noch eingerichtet werden.':nativePermission==='denied'?'Mitteilungen in den Geräte-Einstellungen für H₂O erlauben.':'Freiwillig: Feuerwehr-Mitteilungen direkt auf diesem '+nativeDevice()+'. Du kannst H₂O auch ohne Mitteilungen nutzen.';
  }
  async function nativeRender(){
   const version=generation;busy=true;nativeButtons();try{
    const result=await g.H2OPortal.api('native-push',nativeData({action:'status',...(nativeToken?{deviceToken:nativeToken}:{})}));
    if(version!==generation)return;nativeReady=result.ready===true;nativeActive=result.registered===true;
    if(nativeReady){const device=await nativeRequest('status');if(version!==generation)return;nativePermission=device.permission;if(device.deviceToken){nativeToken=device.deviceToken;const saved=await g.H2OPortal.api('native-push',nativeData({action:nativeConsent()&&device.permission==='granted'?'subscribe':'status',deviceToken:nativeToken}));if(version!==generation)return;nativeActive=saved.registered===true;}}
-   $('status').textContent='';
-  }catch(error){if(version===generation){nativeReady=false;nativeActive=false;$('status').textContent=error.message;}}
+   if(nativeActive)deviceLimit=false;
+   if(!/^Push-Verbindungen zurückgesetzt/.test($('status').textContent))$('status').textContent='';
+  }catch(error){if(version===generation){deviceLimit=limitError(error);if(!deviceLimit)nativeReady=false;nativeActive=false;$('status').textContent=error.message;}}
   finally{if(version===generation){busy=false;nativeButtons();}}
  }
  async function nativeEnable(){
@@ -47,8 +49,8 @@
   try{const device=await nativeRequest('request');if(version!==generation)return;nativePermission=device.permission;
    if(device.permission!=='granted'||!device.deviceToken)throw Error(device.permission==='denied'?'Mitteilungen wurden nicht erlaubt. Du kannst das später in den Geräte-Einstellungen ändern.':'Dieses Gerät konnte sich noch nicht für Mitteilungen registrieren.');
    nativeToken=device.deviceToken;const saved=await g.H2OPortal.api('native-push',nativeData({action:'subscribe',deviceToken:nativeToken}));if(version!==generation)return;
-   if(!saved.registered)throw Error('Mitteilungen wurden vom Dienst noch nicht bestätigt.');nativeConsent(true);nativeActive=true;$('status').textContent='Mitteilungen auf diesem '+nativeDevice()+' aktiviert.';
-  }catch(error){if(version===generation)$('status').textContent=error.message;}finally{if(version===generation){busy=false;nativeButtons();}}
+   if(!saved.registered)throw Error('Mitteilungen wurden vom Dienst noch nicht bestätigt.');nativeConsent(true);nativeActive=true;deviceLimit=false;$('status').textContent='Mitteilungen auf diesem '+nativeDevice()+' aktiviert.';
+  }catch(error){if(version===generation){deviceLimit=limitError(error);$('status').textContent=error.message;}}finally{if(version===generation){busy=false;nativeButtons();}}
  }
  async function nativeDisable(){
   const version=generation;
@@ -123,9 +125,9 @@
   if(busy||preparing||!access||otherAccount)return;
   if(!confirm('Alle gespeicherten Push-Verbindungen für dein Konto zurücksetzen? Auf deinen anderen Geräten musst du Mitteilungen danach erneut aktivieren. Anmeldung und gespeicherte Daten bleiben erhalten.'))return;
   const c={...access},version=generation;busy=true;phase='Wird zurückgesetzt';buttons();
-  try{const result=await g.H2OPortal.api('push-devices',{reset:true});current(c,version);if(result.ok!==true||result.count!==0)throw Error('Zurücksetzen nicht bestätigt. Bitte erneut prüfen.');await g.DeckelDevice.clear();current(c,version);pushConfigured=pushActive=otherAccount=deviceLimit=prepareFailed=false;prepared=null;$('status').textContent='Push-Verbindungen zurückgesetzt. Dieses Gerät jetzt aktivieren.';}
+  try{const result=await g.H2OPortal.api('push-devices',{reset:true});current(c,version);if(result.ok!==true||result.count!==0)throw Error('Zurücksetzen nicht bestätigt. Bitte erneut prüfen.');if(native()){nativeConsent(false);nativeActive=false;}else await g.DeckelDevice.clear();current(c,version);pushConfigured=pushActive=otherAccount=deviceLimit=prepareFailed=false;prepared=null;$('status').textContent='Push-Verbindungen zurückgesetzt. Dieses Gerät jetzt aktivieren.';}
   catch(error){if(version===generation)$('status').textContent=error.message;}
-  finally{busy=false;buttons();if(access&&version===generation)void prepare();}
+  finally{busy=false;buttons();if(access&&version===generation){if(native())void nativeRender();else void prepare();}}
  }
  function clear({unsubscribeNative=true}={}){if(unsubscribeNative&&native()&&nativeActive&&access)void nativeDisable().catch(()=>{});nativeActive=false;nativeReady=false;nativeToken='';generation++;$('status').textContent='';access=null;prepared=null;pushConfigured=pushActive=otherAccount=deviceLimit=prepareFailed=false;buttons();}
  function init(){if($('enable'))$('enable').onclick=()=>native()?nativeEnable():enable();if($('disable'))$('disable').onclick=()=>native()?nativeDisable().catch(error=>{$('status').textContent=error.message;}):disable();if($('reset'))$('reset').onclick=resetDevices;document.addEventListener('visibilitychange',()=>{if(!document.hidden&&access&&!busy)void render(access);});g.addEventListener?.('portal-pagechange',event=>{if(event.detail?.page==='more-security'&&access&&!busy)void prepare();});buttons();}
