@@ -62,6 +62,15 @@ test('Service Worker zeigt Portal-Erinnerung und öffnet den lokal gespeicherten
  events.push({waitUntil:p=>promise=p});await promise;assert.equal(shown.length,1);assert.match(shown[0].title,/H₂O Portal/);
  events.notificationclick({notification:{close(){}},waitUntil:p=>promise=p});await promise;assert.deepEqual(opened,[url]);
 });
+test('Service Worker zeigt bei abgelaufenem Hintergrundzugang weiterhin eine allgemeine Mitteilung',async()=>{
+ const events={},shown=[],badges=[],saved={portal:true,url:'https://ffw-wasser.github.io/home/deckel.html',origin:'https://test.example.workers.dev',alias:'1'.repeat(32),revision:'revision-test',capability:'b'.repeat(43)};
+ const ctx=vm.createContext({URL,Promise,AbortSignal,importScripts:()=>{},DeckelDevice:{read:async()=>saved},
+  fetch:async(url,options)=>{assert.equal(url,saved.origin+'/portal/notification');assert.equal(options.headers.Authorization,'Bearer '+saved.capability);return {ok:false,status:401};},
+  self:{navigator:{setAppBadge:async value=>badges.push(value)},registration:{scope:'https://ffw-wasser.github.io/home/',showNotification:async(title,options)=>shown.push({title,options})},addEventListener:(name,fn)=>events[name]=fn}});
+ vm.runInContext(fs.readFileSync(require.resolve('../service-worker.js'),'utf8'),ctx);let promise;
+ events.push({waitUntil:p=>promise=p});await promise;
+ assert.equal(shown.length,1);assert.match(shown[0].title,/H₂O Portal/);assert.match(shown[0].options.body,/Termin-Erinnerung/);assert.equal(shown[0].options.data.eventId,null);assert.deepEqual(badges,[1]);
+});
 
 test('Push-Diagnose protokolliert HTTP-Status und bekannte Gründe ohne geheime Werte',async()=>{
  const f=await fixture(),{call,alias,revision,warnings}=f,cap=(await call('/admin/account',{alias,revision})).data.capability;
