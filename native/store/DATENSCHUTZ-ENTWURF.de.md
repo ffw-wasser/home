@@ -1,12 +1,17 @@
 # H₂O Portal – Datenschutztext zur Vervollständigung
 
-**Entwurf, noch nicht veröffentlichen.** Die technische Beschreibung folgt dem Programmstand. Verantwortliche Stelle, Rechtsgrundlagen, Aufbewahrung der Finanzdaten und vertragliche Regelungen mit Dienstleistern sind vor Veröffentlichung zu bestätigen. Die persönliche Apple-Mitgliedschaft bestimmt nicht automatisch, wer datenschutzrechtlich für Feuerwehrdaten verantwortlich ist.
+**Entwurf, noch nicht veröffentlichen.** Die technische Beschreibung folgt dem Programmstand. Betreiber und Kontaktanschrift sind bestätigt. Rechtsgrundlagen (insbesondere für G26-Gültigkeiten), Aufbewahrung der Finanzdaten und vertragliche Regelungen mit Dienstleistern sind vor Veröffentlichung zu klären.
 
 ## Verantwortliche Stelle und Kontakt
 
-[Name und Kontaktdaten der verantwortlichen Stelle bestätigen; gegebenenfalls Datenschutzbeauftragten ergänzen.]
+Verantwortlich für die Datenverarbeitung im eigenständig betriebenen H₂O Portal:
 
-Technischer Support: Markus Bürklin, m.b.1982@web.de.
+Markus Bürklin\
+Hirtenweg 1\
+79312 Emmendingen\
+E-Mail: m.b.1982@web.de
+
+Der Betreiber entscheidet selbst über die Datenverarbeitung im Portal und verwendet dabei auch Informationen der Feuerwehrverwaltung. Die Verantwortung für den Portalbetrieb hängt nicht von seiner persönlichen Feuerwehrmitgliedschaft ab.
 
 ## Zweck und Daten
 
@@ -16,7 +21,7 @@ Verarbeitet werden je nach freigegebener Funktion der Name und die Mitgliedszuor
 
 Passkeys verwenden öffentliche Schlüssel. Private Passkey-Schlüssel und biometrische Daten werden vom Authentifikator verwaltet und nicht an den Portaldienst übertragen. Alternativ eingerichtete Passwörter werden serverseitig als Prüfwerte gespeichert. Freigaben zur erstmaligen Einrichtung sind einmalig und 30 Minuten gültig.
 
-[Rechtsgrundlagen für Mitgliedsverwaltung, Nachweise einschließlich Gesundheitsbezug, Rückmeldungen, Kontoführung und freiwillige Zusatzfunktionen bestätigen. Keine pauschale Einwilligung unterstellen.]
+[Rechtsgrundlagen für Rückmeldungen, Kontoführung und freiwillige Zusatzfunktionen sowie für von der Verwaltung übernommene Angaben festlegen. Für G26-Gültigkeiten ist insbesondere zu klären, ob eine ausdrückliche, freiwillige und widerrufliche Einwilligung der betroffenen Mitglieder für diese Verarbeitung im persönlich betriebenen Portal vorliegt. Die Betreiberbestätigung ersetzt diese Einwilligung nicht.]
 
 ## Zugriff und Dienste
 
@@ -27,6 +32,10 @@ GitHub Pages liefert die Weboberfläche aus. Cloudflare betreibt den geschützte
 [Konkrete Anbieter, Vertragsgrundlagen, mögliche Drittlandübermittlungen und einschlägige Garantien bestätigen. Technische Verbindungsdaten können auch bei Dienstleistern anfallen; deren Aufbewahrung nicht als bereits geprüft darstellen.]
 
 Die native App enthält keine Werbe- oder Analyse-SDKs. Im nativen Projekt ist kein werbliches Tracking eingerichtet.
+
+## Apple-Prüfdemo
+
+Die im gleichen App-Build angebotene Prüfdemo verwendet ausschließlich erfundene Mitglieder-, Termin-, Nachweis- und Kontodaten. Sie nutzt einen getrennten, nicht dauerhaften Webspeicher und keine produktiven Schnittstellen. Öffentliche Ausbildungsdateien können ohne Anmeldung aus dem vorhandenen Webangebot geladen werden. Zahlungen, echte Kalenderabos und Mitteilungsregistrierungen sind dort gesperrt. Die Demo gibt keinen Mitgliederzugang frei.
 
 ## Speicherung auf dem Gerät
 
@@ -44,8 +53,10 @@ Die unabhängig geführte Feuerwehrmitgliedschaft, Nachweise und Unterlagen sowi
 
 Im Rahmen der gesetzlichen Voraussetzungen bestehen Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch und Datenübertragbarkeit. Soweit eine Verarbeitung auf Einwilligung beruht, kann diese für die Zukunft widerrufen werden. Außerdem besteht ein Beschwerderecht bei der zuständigen Datenschutzaufsichtsbehörde.
 
-[Zuständige Aufsichtsbehörde und gegebenenfalls Pflicht zur Bereitstellung bestimmter Daten sowie Folgen einer Nichtbereitstellung ergänzen.]
+Zuständige Aufsichtsbehörde: Der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Baden-Württemberg, https://www.baden-wuerttemberg.datenschutz.de/.
 
-Stand: 31. Oktober 2026.
+[Gegebenenfalls Pflicht zur Bereitstellung bestimmter Daten sowie Folgen einer Nichtbereitstellung ergänzen.]
+
+Stand des technischen Entwurfs: 1. November 2026.
 
 Grundlage für die offenen Pflichtangaben: Artikel 13 DSGVO, https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=de.

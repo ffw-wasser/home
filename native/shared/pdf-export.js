@@ -1,7 +1,7 @@
 /* Bundled native-container adapter. No tokens, arbitrary URLs or file reads. */
 (function () {
   'use strict';
-  if (window !== window.top || window.__h2oPdfExport || location.origin !== 'https://ffw-wasser.github.io' || !['/home/deckel.html','/home/termin.html'].includes(location.pathname)) return;
+  if (window !== window.top || window.__h2oPdfExport || location.origin !== 'https://ffw-wasser.github.io' || !['/home/deckel.html','/home/termin.html','/home/review.html'].includes(location.pathname)) return;
   const post = window.webkit?.messageHandlers?.h2oPdf
     ? value => window.webkit.messageHandlers.h2oPdf.postMessage(value)
     : typeof window.H2OPdf?.postMessage === 'function' ? value => window.H2OPdf.postMessage(JSON.stringify(value)) : null;

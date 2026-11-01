@@ -5,6 +5,14 @@ import XCTest
 @testable import H2OPortal
 #endif
 final class PortalLinksTests: XCTestCase {
+    func testReviewEntryIsExactAndNeverCarriesMemberTokens() {
+        XCTAssertTrue(PortalLinks.isReview(PortalLinks.review))
+        XCTAssertTrue(PortalLinks.trusted(PortalLinks.review))
+        for suffix in ["?token=member", "#setup=member", "/"] {
+            XCTAssertFalse(PortalLinks.trusted(URL(string: PortalLinks.review.absoluteString + suffix)!))
+        }
+        XCTAssertFalse(PortalLinks.isReview(PortalLinks.home))
+    }
     func testOnlyExactPortalEndpointsAreAccepted() {
         XCTAssertTrue(PortalLinks.trusted(PortalLinks.home))
         for value in ["http://ffw-wasser.github.io/home/deckel.html", "https://ffw-wasser.github.io.evil.test/home/deckel.html", "https://user@ffw-wasser.github.io/home/deckel.html", "https://ffw-wasser.github.io:443/home/deckel.html", "https://ffw-wasser.github.io/home/index.html", "https://ffw-wasser.github.io/home/%64eckel.html"] { XCTAssertFalse(PortalLinks.trusted(URL(string: value)!)) }

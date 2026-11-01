@@ -10,7 +10,11 @@ enum PortalLinks {
     static let home = URL(string: "https://ffw-wasser.github.io/home/deckel.html")!
     static let host = "ffw-wasser.github.io"
     #endif
+    static let review = URL(string: "https://ffw-wasser.github.io/home/review.html")!
+    static func isReview(_ url: URL) -> Bool { url.absoluteString == review.absoluteString }
+
     static func trusted(_ url: URL) -> Bool {
+        if isReview(url) { return true }
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
         return parts.scheme == "https" && parts.host == host && parts.port == nil &&
             parts.user == nil && parts.password == nil && ["/home/deckel.html", "/home/termin.html"].contains(parts.percentEncodedPath)

@@ -1,0 +1,2 @@
+// The review page never opens the member's production IndexedDB databases.
+(function(g){'use strict';const state=new Map();const get=k=>Promise.resolve(state.get(k)||null),put=(k,v)=>{state.set(k,v);return Promise.resolve();};g.DeckelDevice={read:()=>get('device'),write:v=>put('device',v),clear:()=>put('device',null),clearLink:()=>put('link',null),readLink:()=>get('link'),saveLink:v=>put('link',v),readCommand:a=>get('command:'+a),saveCommand:(a,v)=>put('command:'+a,v),readChallenge:a=>get('challenge:'+a),saveChallenge:(a,v)=>put('challenge:'+a,v)};})(globalThis);
