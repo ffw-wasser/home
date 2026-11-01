@@ -87,8 +87,13 @@
    if(!Number.isInteger(devices.count)||devices.limit!==5||typeof devices.registered!=='boolean')throw Error('Push-Geräte konnten nicht bestätigt werden. Bitte den Dienst aktualisieren.');
    deviceLimit=devices.count>=devices.limit&&!devices.registered&&devices.renewable!==true;
    if(deviceLimit){$('status').textContent='Vor einer neuen Aktivierung müssen gespeicherte Push-Verbindungen freigegeben werden.';return;}
-   pushActive=pushConfigured&&saved.revision===c.revision&&sub?.endpoint===saved.endpoint&&devices.registered&&g.Notification.permission==='granted';
-   if(pushActive){$('status').textContent='';return;}
+   const registered=pushConfigured&&saved.revision===c.revision&&sub?.endpoint===saved.endpoint&&devices.registered&&g.Notification.permission==='granted';
+   if(registered){
+    // The subscription survives a new login, but its saved session does not.
+    // Only replace it after the server confirmed this member's current access.
+    if(saved.capability!==c.capability){await g.DeckelDevice.write({...saved,capability:c.capability});current(c,version);}
+    pushActive=true;$('status').textContent='';return;
+   }
    const response=await fetch(c.origin+'/health',{cache:'no-store',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)}),health=await response.json();current(c,version);
    if(!response.ok||health.portalVersion!==1||!/^[A-Za-z0-9_-]{87}$/.test(health.publicKey||''))throw Error('Der Mitteilungsdienst ist derzeit nicht bereit. Bitte später erneut prüfen.');
    const key=Uint8Array.from(atob(health.publicKey.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-health.publicKey.length%4)%4)),v=>v.charCodeAt(0));

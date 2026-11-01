@@ -387,3 +387,13 @@ Eine Änderung der Uhrzeit startet bereits versuchte automatische Empfänger des
 Termins nicht erneut; auch bei Fehlern verhindert die bisherige Versandreservierung
 einen zweiten automatischen Versuch. Diese Diagnoseergänzung ändert diese Regel nicht
 und bestätigt keine reale Zustellung auf iOS oder Android.
+
+Bei Web-Push speichert das Gerät den angemeldeten Portalzugang für den Abruf unter
+`/portal/notification`. Eine erneute Anmeldung kann diesen Zugang ersetzen, während
+das Push-Abo erhalten bleibt. Beim Öffnen des angemeldeten Portals erneuert
+`deckel-push.js` deshalb den lokal gespeicherten Hintergrundzugang, sobald der Server
+das eigene bestehende Gerät bestätigt hat. Weder ein neues Push-Abo noch eine neue
+Berechtigungsabfrage ist nötig. Fremde Konten und abgelehnte Anmeldungen werden nicht
+übernommen; ein Schreibfehler darf den Zustand nicht als aktiv bestätigen.
+Der Server akzeptiert weiterhin ausschließlich gültige Portal-Sitzungen. Bei einem
+401 beim Detailabruf zeigt der Service Worker weiterhin nur die allgemeine Erinnerung.
