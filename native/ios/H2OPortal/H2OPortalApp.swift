@@ -38,13 +38,18 @@ struct H2OPortalApp: App {
 
 struct PortalScreen: View {
     @State private var review = false
+    @State private var confirmSwitch = false
     var body: some View {
         VStack(spacing: 0) {
             PortalContent(review: review).id(review)
-            Button(review ? "Demo verlassen · Mitgliederanmeldung" : "Apple-Prüfdemo öffnen") { review.toggle() }
+            Button(review ? "Demo verlassen · Mitgliederanmeldung" : "Apple-Prüfdemo öffnen") { confirmSwitch = true }
                 .font(.caption).padding(8).frame(maxWidth: .infinity)
                 .background(Color(red: 16.0 / 255, green: 28.0 / 255, blue: 44.0 / 255))
                 .foregroundStyle(.white)
+        }
+        .confirmationDialog("Ansicht wechseln? Ungespeicherte Eingaben in der aktuellen Ansicht werden verworfen.", isPresented: $confirmSwitch, titleVisibility: .visible) {
+            Button(review ? "Zur Mitgliederanmeldung" : "Prüfdemo öffnen") { review.toggle() }
+            Button("Abbrechen", role: .cancel) {}
         }
     }
 }
