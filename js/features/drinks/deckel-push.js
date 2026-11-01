@@ -25,7 +25,7 @@
   if(!g.webkit?.messageHandlers?.h2oNotifications){
    $('enable').hidden=$('disable').hidden=$('reset').hidden=true;
    state($('state'),'Bitte App aktualisieren');
-   $('note').textContent='Diese App-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle H₂O-App verwenden.';return;
+   $('note').textContent=nativePlatform()==='android'?'Diese App-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle Android-App verwenden.':'Diese TestFlight-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle iPhone-App verwenden.';return;
   }
   $('enable').hidden=nativeActive;$('disable').hidden=!nativeActive;$('reset').hidden=true;
   $('enable').disabled=busy||!access||!nativeReady;$('disable').disabled=busy;
