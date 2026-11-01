@@ -99,6 +99,13 @@ Worker-Quellcode dieser Anwendung. Für Builds muss ausdrücklich
 `ffw-wasser/home` verbunden sein. Die GitHub-Anmeldung allein stellt diese
 Repository-Verbindung noch nicht her.
 
+Meldet ein Build auf einem Prüfzweig trotz bestandener Tests, dass der Name in
+`wrangler.jsonc` nicht zum Worker passt, zuerst **Builds → Vorschau-Basis →
+Builds für Vorschau-Zweige** prüfen. Diese Option bleibt für dieses Repository
+ausgeschaltet: Der Bereitstellungsbefehl ist für den bestehenden Produktionsworker
+auf `main` vorgesehen. Den Worker dafür nicht umbenennen. GitHub prüft die Pull
+Requests weiterhin mit dem vollständigen Anwendungstestlauf.
+
 Beim Kopieren des Build-Befehls muss der Dateipfad zusammenhängend bleiben:
 `node ../../scripts/prepare-worker.cjs`. Nur nach `node` steht ein Leerzeichen;
 zusätzliche Leerzeichen zwischen `../`, `scripts/` und dem Dateinamen verhindern

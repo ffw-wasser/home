@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const release=JSON.parse(fs.readFileSync(path.join(root,'app-release.json'),'utf8'));
 if(!/^\d{4}\.\d{2}\.\d{2}\.\d+$/.test(release.version)||!/^\d{8}\.\d+$/.test(release.build))throw Error('Ungültige Release-Version');
-for(const name of ['index.html','deckel.html','termin.html','service-worker.js','manifest.webmanifest','deckel.webmanifest','deckel-android.webmanifest','js/features/drinks/deckel-manifest.js']){
+for(const name of ['index.html','deckel.html','install.html','termin.html','service-worker.js','manifest.webmanifest','deckel.webmanifest','deckel-android.webmanifest','js/features/drinks/deckel-manifest.js']){
  const file=path.join(root,name);
  let source=fs.readFileSync(file,'utf8').replace(/\?v=[A-Za-z0-9._-]+/g,'?v='+release.build);
  if(name==='service-worker.js')source=source.replace(/const CACHE_NAME="[^"]+";/,'const CACHE_NAME="ffw-wasser-'+release.build+'";');

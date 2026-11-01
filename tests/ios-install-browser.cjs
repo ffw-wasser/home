@@ -10,6 +10,8 @@ const root=path.resolve(__dirname,'..');
     const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));
     if(['apps.apple.com','play.google.com'].includes(u.hostname))return route.fulfill({contentType:'text/html',body:'<p>Synthetic store destination</p>'});
     if(u.origin!=='https://ffw-wasser.github.io')return route.abort();
+    // A stale browser cache entry must not replace the versioned installation script.
+    if(u.pathname.endsWith('/js/install.js')&&!u.search)return route.fulfill({contentType:'text/javascript',body:'/* Synthetic old cached script */'});
     if(u.pathname.endsWith('/native/store/install-links.json'))return route.fulfill({json:{ios,android}});
     return file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();
    });
@@ -18,7 +20,11 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('img[src="assets/install/h2o-install.svg"]').count(),0,'public installation page does not display the administrative QR');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    const out=path.join(root,'qa/ios-store');fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'installation-'+device+'.png'),animations:'disabled'});
-   ios='https://evil.example/install';await page.reload();assert.equal(await page.locator('#apple-store').getAttribute('href'),null);
+   // Android remains installable while the Apple invitation is still pending.
+   android='https://play.google.com/apps/internaltest/1234567890';await page.reload();
+   if(device==='android')await page.waitForURL(android);
+   else{assert.equal(await page.locator('#android-store').getAttribute('href'),android);assert.equal(await page.locator('#android-store').isVisible(),device==='desktop');}
+   ios='https://evil.example/install';android=null;await page.goto('https://ffw-wasser.github.io/home/install.html');assert.equal(await page.locator('#apple-store').getAttribute('href'),null);
    ios='https://apps.apple.com/de/app/h2o-portal/id1234567890';android='https://play.google.com/apps/internaltest/1234567890';await page.reload();
    if(device==='desktop'){await page.locator('#apple-store[href]').waitFor({state:'attached'});assert.equal(await page.locator('#apple-store').getAttribute('href'),ios);assert.equal(await page.locator('#android-store').getAttribute('href'),android);}
    else await page.waitForURL(device==='apple'?ios:android);
