@@ -293,6 +293,10 @@
 #settingsCalendarView button{min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 #settingsCalendarView .primary-button{margin:0}
 #settingsCalendarView .outline-button{background:var(--white);border:1px solid #a9b0b5;color:var(--black);box-shadow:none}
+#settingsCalendarView #portal-reminder-settings{min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+#portal-reminder-form{display:grid;grid-template-columns:minmax(0,1fr);min-width:0}
+#portal-reminder-form label,#portal-reminder-form button{min-width:0;max-width:100%;box-sizing:border-box;white-space:normal}
+#portal-reminder-form input[type=time],#portal-reminder-form select{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
 #settingsCalendarView .portal-calendar-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:6px 0 28px;padding:5px;border:1px solid var(--line);background:var(--white);border-radius:12px}
 #settingsCalendarView .portal-calendar-nav button{border:0;border-radius:8px;background:transparent;color:var(--muted);font-weight:700;padding:12px 6px}
 #settingsCalendarView .portal-calendar-nav button[aria-pressed=true]{background:var(--red);color:var(--white)}
@@ -302,7 +306,7 @@
 #settingsCalendarView .portal-review-scope{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
 #settingsCalendarView .portal-review-scope button{padding:9px 16px;border:1px solid var(--line);border-radius:24px;background:var(--white);color:var(--black);font-weight:700}
 #settingsCalendarView .portal-review-scope button[aria-pressed=true]{background:var(--black);border-color:var(--black);color:var(--white)}
-#settingsCalendarView .portal-review-filter{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
+#settingsCalendarView .portal-review-filter{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:12px;margin-bottom:12px}
 #settingsCalendarView .portal-review-filter label{margin:0;font-size:.875rem;font-weight:700}
 #settingsCalendarView .portal-review-filter select{display:block;width:100%;max-width:none;min-width:0}
 #settingsCalendarView .text-input{width:100%;max-width:100%;min-width:0;font-size:1rem;min-height:48px;margin-top:5px}

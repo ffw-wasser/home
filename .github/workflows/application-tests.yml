@@ -173,7 +173,10 @@ jobs:
           node tests/portal-year-plan-browser.cjs
           H2O_TEST_BROWSER=webkit node tests/portal-year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
-        run: node tests/calendar-groups-browser.cjs
+        run: |
+          node tests/calendar-groups-browser.cjs
+          node tests/automatic-reminder-settings-browser.cjs
+          BROWSER_ENGINE=webkit node tests/automatic-reminder-settings-browser.cjs
       - name: Test calendar selection, incident tile and responsive home layout
         run: node tests/home-operation-browser.cjs
       - name: Test football favorites, cups and responsive views

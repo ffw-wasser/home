@@ -86,14 +86,22 @@ Termine, unabhängig von ihren H₂O-Gruppen. Einrichtung und Schutz stehen in
   nicht aus einer selbst gewählten Ausbildungsstufe. Nach erfolgreichem
   OneDrive-Abgleich werden Namen und Rollen im Dienst aktualisiert. Änderungen
   können bis zum nächsten erfolgreichen Abgleich verzögert sein.
-- Terminerinnerungen werden ausschließlich auf ausdrücklichen Befehl über
-  `/admin/portal/remind` verschickt. Der Cron aktualisiert Kalender, Bereinigung
-  und Geburtstagsbonus, versendet aber keine Erinnerungen. Alte Clients und
-  gespeicherte Vorlauf-Einstellungen können automatische Erinnerungen nicht
-  einschalten. Empfänger bleiben die freigegebenen Personen mit aktivierten
-  Handy-Mitteilungen; Entschuldigte werden vor dem Versand nochmals geprüft.
-  Derselbe bestätigte Versand kann mit derselben Kennung fortgesetzt werden,
-  bis keine Empfänger mehr offen sind.
+- Automatische Terminerinnerungen werden unter **Verwaltung → Einstellungen →
+  Kalender & Gruppen → Termine → Automatische Probe-Erinnerung** eingeschaltet.
+  Tage vorher (0–7) und Uhrzeit sind einstellbar; Vorgabe 1 Tag vorher, 19:30 Uhr,
+  zunächst ausgeschaltet. Die eigene verschlüsselte Einstellung mit Versionsschutz
+  ist unabhängig von früheren Vorlauf-Feldern in der Kalenderverbindung.
+  Maßgeblich sind Berliner Kalendertage und Ortszeit, einschließlich Zeitumstellung.
+  Der minütliche Cron beginnt zur gewählten Zeit mit dem bestehenden Versand in
+  kleinen Chargen von höchstens zwei Mitgliedern pro Lauf. Größere Gruppen erhalten
+  die Erinnerung daher über mehrere Minuten. Nur freigegebene zukünftige Proben
+  und Sonderproben werden berücksichtigt. Entschuldigte, widerrufene Zugänge und
+  nicht mehr berechtigte Mitglieder bleiben ausgeschlossen. Bei veraltetem Kalender
+  wird nicht versendet. Bereits fällige Erinnerungen werden nach Aktivierung oder
+  Änderung nicht nachgeholt; laufende Chargen stoppen beim Ausschalten.
+  Eine stabile automatische Versandkennung nutzt die vorhandene Claimsperre gegen
+  doppelte Zustellungen. Manuelles Erinnern bleibt separat ausdrücklich möglich.
+  Fehlgeschlagene oder unklare Zustellungen werden nicht automatisch wiederholt.
 - Unklare/fehlgeschlagene Push-Zustellungen werden nicht automatisch ein zweites
   Mal gesendet. „Angenommen“ bestätigt die Annahme beim Push-Anbieter, nicht
   Anzeige oder Lesen. Bereits übergebene Pushs sind nicht zurückrufbar.

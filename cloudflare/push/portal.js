@@ -2,6 +2,7 @@
 (function(g){
  'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
  const ddl=[
+  'CREATE TABLE IF NOT EXISTS portal_reminder_policy (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_event_reminders (event TEXT PRIMARY KEY,reminded_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_groups (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   ...g.PortalEvidence.schema,
@@ -265,8 +266,8 @@
  }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
  async function recipients(env){const rows=(await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE EXISTS(SELECT 1 FROM devices d JOIN portal_devices p ON p.id=d.id WHERE d.alias=a.alias AND d.revision=a.revision)').all()).results,result=new Map();for(const row of rows){const record=await L.open(env,row.payload,'access:'+row.alias);if(!result.has(record.memberId))result.set(record.memberId,[]);result.get(record.memberId).push(record);}return result;}
- async function send(env,event,requestId){
-  const remindedAt=Date.now();await env.DB.prepare('INSERT INTO portal_event_reminders(event,reminded_at) VALUES(?,?) ON CONFLICT(event) DO UPDATE SET reminded_at=excluded.reminded_at').bind(event.id,remindedAt).run();
+ async function send(env,event,requestId,automatic=false){
+  const remindedAt=Date.now();let marked=false;const mark=async()=>{if(marked)return;await env.DB.prepare('INSERT INTO portal_event_reminders(event,reminded_at) VALUES(?,?) ON CONFLICT(event) DO UPDATE SET reminded_at=excluded.reminded_at').bind(event.id,remindedAt).run();marked=true;};if(!automatic)await mark();
   let accepted=0,failed=0,excused=0,duplicate=0,processed=0;const people=await recipients(env),campaign=requestId,already=new Set((await env.DB.prepare('SELECT member FROM portal_sends WHERE event=? AND campaign=?').bind(event.id,campaign).all()).results.map(r=>r.member)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');let remaining=0;const replyRows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of replyRows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
   for(const [member,records] of people){
    if(roster&&!roster.members.some(m=>m.id===member))continue;if(!isRecipient(event,member))continue;if(already.has(member)){duplicate++;continue;}
@@ -274,7 +275,7 @@
    const id=await hash('portal-send:'+event.id+':'+member+':'+requestId),now=Date.now(),payload=await L.seal(env,{event:memberEvent(event),status:'reminder'},'portal-send:'+id);
    // Claim before delivery: ambiguous network responses are never sent a second time.
    const claim=await env.DB.prepare("INSERT OR IGNORE INTO portal_sends(id,event,member,payload,status,campaign,created_at) SELECT ?,?,?,?,'pending',?,? WHERE NOT EXISTS(SELECT 1 FROM portal_sends WHERE member=? AND created_at>?) AND EXISTS(SELECT 1 FROM accounts WHERE alias IN (SELECT value FROM json_each(?)))").bind(id,event.id,member,payload,campaign,now,member,now-60000,JSON.stringify(records.map(record=>record.alias))).run();if(!claim.meta.changes){duplicate++;continue;}
-   let a=0,f=0;
+   if(automatic)await mark();let a=0,f=0;
    for(const record of records){const devices=(await env.DB.prepare('SELECT d.id,d.endpoint FROM devices d JOIN portal_devices p ON p.id=d.id WHERE alias=? AND revision=? LIMIT 5').bind(record.alias,record.revision).all()).results;
     for(const device of devices){
      if((await replyFor(env,event.id,member)).status==='excused')continue;
@@ -283,7 +284,7 @@
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
   }
-  return {accepted,failed,excused,duplicate,remaining,remindedAt};
+  return {accepted,failed,excused,duplicate,remaining,remindedAt,...(automatic?{processed}:{})};
  }
  // Completed calendar events are no longer managed in H₂O. Keep their replies
  // for six hours after the end so an ongoing iPad attendance session can
@@ -314,13 +315,29 @@
   }
   for(const id of obsoleteIds){await env.DB.prepare('DELETE FROM portal_replies WHERE event=?').bind(id).run();await env.DB.prepare('DELETE FROM portal_event_reminders WHERE event=?').bind(id).run();}
  }
+ async function reminderPolicy(env){
+  const row=await env.DB.prepare('SELECT * FROM portal_reminder_policy WHERE id=1').first();
+  return {value:row?await open(env,row,'portal-reminder-policy'):{enabled:false,daysBefore:1,time:'19:30',enabledAt:Date.now()},version:row?.version||0};
+ }
+ const berlinClock=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms)).replace(' ','T');
+ async function automaticReminders(env,cal){
+  const policy=(await reminderPolicy(env)).value;if(!policy.enabled)return;L.active(await L.meta(env));
+  const now=berlinClock(Date.now()),enabled=berlinClock(policy.enabledAt);
+  for(const event of cal.events){
+   if(event.kind!=='probe'||!event.approved||event.start<=Date.now())continue;
+   const day=new Date(Date.parse(berlinDay(event.start)+'T12:00:00Z')-policy.daysBefore*DAY).toISOString().slice(0,10),due=day+'T'+policy.time;
+   // Never backfill past dates or reminders already due when the policy was changed.
+   if(day!==now.slice(0,10)||due>now||due<enabled)continue;
+   const result=await send(env,event,'automatic:'+event.id,true);if(result.processed)break;
+  }
+ }
  async function scheduled(env){
   await ready(env);const c=await config(env);if(!c)return;const cal=await decorate(env,await calendar(env,false,c),null);if(cal.stale)return;
   await pruneFinishedEvents(env,cal);
   await env.DB.prepare('DELETE FROM portal_sends WHERE created_at<?').bind(Date.now()-30*DAY).run();
   await env.DB.prepare('DELETE FROM portal_replies WHERE updated_at<?').bind(Date.now()-400*DAY).run();
   await awardBirthdays(env,cal);
-  // Calendar refresh, cleanup and birthday rewards remain automatic. Reminders require /admin/portal/remind.
+  await automaticReminders(env,cal);
  }
  async function route(path,data,env,auth,clientIP='unknown',ctx){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
@@ -331,6 +348,16 @@
    if(path==='/portal/calendar-addon/groups')return g.CalendarGroupAccess.route(env,data,auth,m.source);
    let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
+  if(path==='/admin/portal/reminder-policy'){
+   const policy=await reminderPolicy(env);
+   if(data.enabled===undefined)return policy;
+   if(typeof data.enabled!=='boolean'||!Number.isInteger(data.daysBefore)||data.daysBefore<0||data.daysBefore>7||typeof data.time!=='string'||data.time.length!==5||!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.time)||!Number.isSafeInteger(data.expectedVersion))fail('Bitte gültige Erinnerungseinstellungen wählen.',400);
+   if(data.expectedVersion!==policy.version)fail('Erinnerungseinstellungen wurden geändert. Bitte neu laden.',409);
+   const value={enabled:data.enabled,daysBefore:data.daysBefore,time:data.time,enabledAt:Date.now()},payload=await L.seal(env,value,'portal-reminder-policy');
+   const saved=policy.version?await env.DB.prepare('UPDATE portal_reminder_policy SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,policy.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_reminder_policy(id,payload,version) VALUES(1,?,1)').bind(payload).run();
+   if(!saved.meta.changes)fail('Erinnerungseinstellungen wurden geändert. Bitte neu laden.',409);
+   return {value,version:policy.version+1};
+  }
   if(path==='/admin/portal/google-group-access')return g.CalendarGroupAccess.admin(env,data,m.source);
   if(path==='/admin/portal/calendar-invitations'||path==='/admin/portal/request-responses')fail('Diese Kalender-Einrichtung ist entfallen. Rückmeldungen sind direkt möglich; Erinnerungen werden am Termin gesendet.',410);
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
