@@ -1,14 +1,17 @@
 # H₂O Portal – Datenschutztext zur Vervollständigung
 
-**Entwurf, noch nicht veröffentlichen.** Die technische Beschreibung folgt dem Programmstand. Verantwortliche Stelle, Rechtsgrundlagen, Aufbewahrung der Finanzdaten und vertragliche Regelungen mit Dienstleistern sind vor Veröffentlichung zu bestätigen. Die persönliche Apple-Mitgliedschaft bestimmt nicht automatisch, wer datenschutzrechtlich für Feuerwehrdaten verantwortlich ist.
+**Entwurf, noch nicht veröffentlichen.** Die technische Beschreibung folgt dem Programmstand. Betreiber und Kontaktanschrift sind bestätigt. Rechtsgrundlagen (insbesondere für G26-Gültigkeiten), Aufbewahrung der Finanzdaten und vertragliche Regelungen mit Dienstleistern sind vor Veröffentlichung zu klären.
 
 ## Verantwortliche Stelle und Kontakt
 
-Für den persönlich betriebenen Portalzugang: Markus Bürklin, m.b.1982@web.de (vom Betreiber bestätigt).
+Verantwortlich für die Datenverarbeitung im eigenständig betriebenen H₂O Portal:
 
-[Postanschrift ergänzen. Für die unabhängig geführten Feuerwehrunterlagen die datenschutzrechtlich verantwortliche Stelle und gegebenenfalls deren Datenschutzbeauftragten bestätigen.]
+Markus Bürklin\
+Hirtenweg 1\
+79312 Emmendingen\
+E-Mail: m.b.1982@web.de
 
-Technischer Support: Markus Bürklin, m.b.1982@web.de.
+Der Betreiber entscheidet selbst über die Datenverarbeitung im Portal und verwendet dabei auch Informationen der Feuerwehrverwaltung. Die Verantwortung für den Portalbetrieb hängt nicht von seiner persönlichen Feuerwehrmitgliedschaft ab.
 
 ## Zweck und Daten
 
@@ -18,7 +21,7 @@ Verarbeitet werden je nach freigegebener Funktion der Name und die Mitgliedszuor
 
 Passkeys verwenden öffentliche Schlüssel. Private Passkey-Schlüssel und biometrische Daten werden vom Authentifikator verwaltet und nicht an den Portaldienst übertragen. Alternativ eingerichtete Passwörter werden serverseitig als Prüfwerte gespeichert. Freigaben zur erstmaligen Einrichtung sind einmalig und 30 Minuten gültig.
 
-[Rechtsgrundlagen für Mitgliedsverwaltung, Nachweise einschließlich Gesundheitsbezug, Rückmeldungen, Kontoführung und freiwillige Zusatzfunktionen bestätigen. Keine pauschale Einwilligung unterstellen.]
+[Rechtsgrundlagen für Rückmeldungen, Kontoführung und freiwillige Zusatzfunktionen sowie für von der Verwaltung übernommene Angaben festlegen. Für G26-Gültigkeiten ist insbesondere zu klären, ob eine ausdrückliche, freiwillige und widerrufliche Einwilligung der betroffenen Mitglieder für diese Verarbeitung im persönlich betriebenen Portal vorliegt. Die Betreiberbestätigung ersetzt diese Einwilligung nicht.]
 
 ## Zugriff und Dienste
 
@@ -50,7 +53,9 @@ Die unabhängig geführte Feuerwehrmitgliedschaft, Nachweise und Unterlagen sowi
 
 Im Rahmen der gesetzlichen Voraussetzungen bestehen Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch und Datenübertragbarkeit. Soweit eine Verarbeitung auf Einwilligung beruht, kann diese für die Zukunft widerrufen werden. Außerdem besteht ein Beschwerderecht bei der zuständigen Datenschutzaufsichtsbehörde.
 
-[Zuständige Aufsichtsbehörde und gegebenenfalls Pflicht zur Bereitstellung bestimmter Daten sowie Folgen einer Nichtbereitstellung ergänzen.]
+Zuständige Aufsichtsbehörde: Der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Baden-Württemberg, https://www.baden-wuerttemberg.datenschutz.de/.
+
+[Gegebenenfalls Pflicht zur Bereitstellung bestimmter Daten sowie Folgen einer Nichtbereitstellung ergänzen.]
 
 Stand des technischen Entwurfs: 1. November 2026.
 
