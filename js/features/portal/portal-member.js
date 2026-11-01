@@ -140,13 +140,13 @@
     }
     summary.append(groups,node('p','Jede Person einmal · Reihenfolge: GF, ATF, Maschinist, weitere Zusagen. Hinterlegte Funktionen, keine feste Einteilung.'));
    }
-   const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false;
+   const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false,total={accepted:0,failed:0,failures:[]};
    remind.disabled=result.stale||event.start<=Date.now();
    remind.onclick=async()=>{
     if(sending)return;
     if(!campaign&&!confirm('Erinnerung für diesen Termin abschicken?\n\n'+event.title+'\n'+date(event)+'\n\nBerechtigte Mitglieder mit aktivierten Handy-Mitteilungen werden erinnert. Entschuldigte erhalten keine Nachricht.'))return;
     campaign=campaign||crypto.randomUUID();sending=true;remind.disabled=true;feedback.textContent='Erinnerungen werden versendet …';
-    try{const sent=await api('remind',{eventId:event.id,requestId:campaign});if(sent.remindedAt){event.remindedAt=sent.remindedAt;responseBadge(latestResult?.events);}if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;feedback.textContent=sent.accepted+' Handy-Mitteilungen angenommen · '+sent.failed+' fehlgeschlagen'+(sent.remaining?' · Versand bitte fortsetzen.':'.');remind.textContent=sent.remaining?'Versand fortsetzen':sent.failed?'Versand beendet · Fehler prüfen':'Erinnerung abgeschickt';remind.disabled=!sent.remaining;}
+    try{const sent=await api('remind',{eventId:event.id,requestId:campaign});total={accepted:total.accepted+sent.accepted,failed:total.failed+sent.failed,failures:[...total.failures,...(sent.failures||[])]};if(sent.remindedAt){event.remindedAt=sent.remindedAt;responseBadge(latestResult?.events);}if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;feedback.textContent=g.CalendarPresentation.reminderResult({...sent,...total});remind.textContent=sent.remaining?'Versand fortsetzen':total.failed?'Versand beendet · Fehler siehe unten':'Erinnerung abgeschickt';remind.disabled=!sent.remaining;}
     catch(e){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;feedback.textContent=(g.ConnectionStatus?.message(e)||e.message)+' Denselben Versand erneut prüfen.';remind.textContent='Versand erneut prüfen';remind.disabled=[401,403,404,409,423].includes(e.status);}
     finally{sending=false;}
    };

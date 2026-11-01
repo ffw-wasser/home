@@ -94,3 +94,15 @@ test('Unknown provider reasons, invalid bodies and exception details cannot ente
  assert.deepEqual(warnings.map(args=>JSON.parse(args[1])),[{transport:'ios',httpStatus:403},{transport:'android',error:'unknown'},{transport:'web',httpStatus:502}]);
  assert.doesNotMatch(JSON.stringify(warnings),/secret|synthetic|https:|member-|abab/);
 });
+test('Manual feedback groups safe provider errors across devices of the same member',async()=>{
+ const f=await fixture(),{person}=await mixedDevices(f);
+ assert.equal((await f.call('native-push',{action:'subscribe',deviceToken:'cd'.repeat(32)},person)).status,200);
+ f.c.NativePush.send=async()=>new Response(JSON.stringify({reason:'InvalidProviderToken',message:'secret-provider-message'}),{status:403});
+ f.c.AndroidPush.send=async()=>{throw Error('Android-Mitteilungsdienst noch nicht eingerichtet.');};
+ const event=(await f.call('list',{},person)).value.events[0],response=await f.call('remind',{eventId:event.id,requestId:crypto.randomUUID()},person);
+ assert.equal(response.status,200);assert.equal(response.value.accepted,1);assert.equal(response.value.failed,3);
+ assert.deepEqual(response.value.failures,[{transport:'ios',httpStatus:403,reason:'InvalidProviderToken',count:2},{transport:'android',error:'Error',reason:'NotConfigured',count:1}]);
+ assert.doesNotMatch(JSON.stringify(response.value),/secret|synthetic|https:|member-|abab|cdcd/);
+ const text=f.c.CalendarPresentation.reminderResult(response.value);
+ assert.match(text,/iPhone-App: HTTP 403 · InvalidProviderToken \(2 Geräte\)/);assert.match(text,/Android-App: Mitteilungsdienst nicht eingerichtet \(1 Gerät\)/);
+});

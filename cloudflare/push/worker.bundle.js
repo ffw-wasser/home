@@ -20444,7 +20444,17 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   if(next.length>4000)throw Error('Die Google-Beschreibung ist für den zusätzlichen Rückmeldelink zu lang. Bitte dort zuerst Platz schaffen.');
   return next;
  }
- g.CalendarPresentation={responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ function reminderResult(result){
+  let text=result.accepted+' Handy-Mitteilungen angenommen · '+result.failed+' fehlgeschlagen'+(result.remaining?' · Versand bitte fortsetzen.':'.');
+  const labels={ios:'iPhone-App',android:'Android-App',web:'Web-App'},reasons={NotConfigured:'Mitteilungsdienst nicht eingerichtet',AuthorizationFailed:'Anmeldung beim Push-Dienst fehlgeschlagen',TimeoutError:'Zeitüberschreitung',AbortError:'Zeitüberschreitung',unknown:'Unbekannter Verbindungsfehler'};
+  for(const failure of Array.isArray(result.failures)?result.failures:[]){
+   if(!labels[failure.transport]||!Number.isSafeInteger(failure.count)||failure.count<1)continue;
+   const code=failure.reason||failure.error,detail=[Number.isInteger(failure.httpStatus)?'HTTP '+failure.httpStatus:'',code?(reasons[code]||code):''].filter(Boolean).join(' · ');
+   text+=' '+labels[failure.transport]+': '+(detail||'Versand fehlgeschlagen')+' ('+failure.count+' '+(failure.count===1?'Gerät':'Geräte')+').';
+  }
+  return text;
+ }
+ g.CalendarPresentation={reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);
 
 /* RFC 5545 calendar projection. Identity follows UID / original recurrence, never title. */
@@ -22542,11 +22552,15 @@ g.PortalHydrants={schema,route};
   }else{
    const known=['Error','TypeError','SyntaxError','DataError','OperationError','InvalidAccessError','NotSupportedError','TimeoutError','AbortError'];
    diagnostic.error=known.includes(error?.name)?error.name:'unknown';
+   if(['Apple-Mitteilungsdienst noch nicht eingerichtet.','Android-Mitteilungsdienst noch nicht eingerichtet.'].includes(error?.message))diagnostic.reason='NotConfigured';
+   if(error?.message==='Android-Mitteilungsdienst konnte sich nicht anmelden.')diagnostic.reason='AuthorizationFailed';
   }
   console.warn('H2O-Push fehlgeschlagen',JSON.stringify(diagnostic));
+  return diagnostic;
  }
  async function send(env,event,requestId,automatic=false){
   const remindedAt=Date.now();let marked=false;const mark=async()=>{if(marked)return;await env.DB.prepare('INSERT INTO portal_event_reminders(event,reminded_at) VALUES(?,?) ON CONFLICT(event) DO UPDATE SET reminded_at=excluded.reminded_at').bind(event.id,remindedAt).run();marked=true;};if(!automatic)await mark();
+  const failures=new Map(),rememberFailure=detail=>{const key=JSON.stringify(detail),old=failures.get(key);if(old)old.count++;else failures.set(key,{...detail,count:1});};
   let accepted=0,failed=0,excused=0,duplicate=0,processed=0;const people=await recipients(env),campaign=requestId,already=new Set((await env.DB.prepare('SELECT member FROM portal_sends WHERE event=? AND campaign=?').bind(event.id,campaign).all()).results.map(r=>r.member)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');let remaining=0;const replyRows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of replyRows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
   for(const [member,records] of people){
    if(roster&&!roster.members.some(m=>m.id===member))continue;if(roster?.members.find(m=>m.id===member)?.fitnessTrainer===true){const assigned=(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(member));if(event.attendanceType!=='Fitness'||!event.groupIds?.length||!Array.isArray(event.recipientIds)||!event.groupIds.every(id=>assigned.some(group=>group.id===id))||!event.recipientIds.every(id=>assigned.some(group=>g.PortalGroups.members(group,roster).includes(id))))continue;}if(!isRecipient(event,member))continue;if(already.has(member)){duplicate++;continue;}
@@ -22559,13 +22573,13 @@ g.PortalHydrants={schema,route};
     for(const device of devices){
      if((await replyFor(env,event.id,member)).status==='excused')continue;
      const url=device.endpoint,transport=g.AndroidPush?.isEndpoint(url)?'android':g.NativePush?.isEndpoint(url)?'ios':'web';
-     try{const res=transport==='android'?await g.AndroidPush.send(env,url):transport==='ios'?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;await pushFailure(transport,res);if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch(error){f++;await pushFailure(transport,null,error);}
+     try{const res=transport==='android'?await g.AndroidPush.send(env,url):transport==='ios'?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;rememberFailure(await pushFailure(transport,res));if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch(error){f++;rememberFailure(await pushFailure(transport,null,error));}
     }
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
   }
   if(processed)console.info('H2O-Push Versandlauf',JSON.stringify({automatic,accepted,failed,excused,remaining}));
-  return {accepted,failed,excused,duplicate,remaining,remindedAt,...(automatic?{processed}:{})};
+  return {accepted,failed,excused,duplicate,remaining,remindedAt,...(failures.size?{failures:[...failures.values()]}:{}),...(automatic?{processed}:{})};
  }
  // Completed calendar events are no longer managed in H₂O. Keep their replies
  // for six hours after the end so an ongoing iPad attendance session can
@@ -23006,7 +23020,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"96ee961290d4cd2449cdf019024aaf3fc1914c806fd5f1dd35dbeb9b5fc80c4c",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"348c58376b458afa979d5c015c2aed537c88cecaef3f0a95b91cc7571fc2c251",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

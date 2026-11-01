@@ -38,5 +38,15 @@
   if(next.length>4000)throw Error('Die Google-Beschreibung ist für den zusätzlichen Rückmeldelink zu lang. Bitte dort zuerst Platz schaffen.');
   return next;
  }
- g.CalendarPresentation={responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ function reminderResult(result){
+  let text=result.accepted+' Handy-Mitteilungen angenommen · '+result.failed+' fehlgeschlagen'+(result.remaining?' · Versand bitte fortsetzen.':'.');
+  const labels={ios:'iPhone-App',android:'Android-App',web:'Web-App'},reasons={NotConfigured:'Mitteilungsdienst nicht eingerichtet',AuthorizationFailed:'Anmeldung beim Push-Dienst fehlgeschlagen',TimeoutError:'Zeitüberschreitung',AbortError:'Zeitüberschreitung',unknown:'Unbekannter Verbindungsfehler'};
+  for(const failure of Array.isArray(result.failures)?result.failures:[]){
+   if(!labels[failure.transport]||!Number.isSafeInteger(failure.count)||failure.count<1)continue;
+   const code=failure.reason||failure.error,detail=[Number.isInteger(failure.httpStatus)?'HTTP '+failure.httpStatus:'',code?(reasons[code]||code):''].filter(Boolean).join(' · ');
+   text+=' '+labels[failure.transport]+': '+(detail||'Versand fehlgeschlagen')+' ('+failure.count+' '+(failure.count===1?'Gerät':'Geräte')+').';
+  }
+  return text;
+ }
+ g.CalendarPresentation={reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);

@@ -35,6 +35,15 @@ const root=path.resolve(__dirname,'..');
  if(process.env.CAPTURE_GF_REMINDER_HELP){await page.setViewportSize({width:390,height:1700});await overview.evaluate(n=>n.scrollTop=0);await overview.screenshot({path:path.join(root,'assets/help/guide/h2o-gf-erinnerung.jpg'),type:'jpeg',quality:80,animations:'disabled'});const box=await overview.boundingBox(),file=path.join(root,'assets/help/guide/screens.json'),sizes=JSON.parse(fs.readFileSync(file,'utf8'));sizes['h2o-gf-erinnerung']={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(file,JSON.stringify(sizes,null,2)+'\n');}
  await overview.getByRole('button',{name:'Schließen',exact:true}).click();
  if(process.env.CAPTURE_INVITATIONS_TERMS_HELP){await card.locator('button[data-reply="maybe"]').click();await page.waitForFunction(id=>document.getElementById('portal-event-'+id)?.dataset.status==='maybe',job.event);await page.screenshot({path:path.join(root,'assets/help/guide/h2o-termine.jpg'),type:'jpeg',quality:80,animations:'disabled'});}
+ // Provider failures must remain visible after a later successful batch.
+ f.clock.now+=61000;f.c.NativePush.ready=()=>true;f.c.NativePush.send=async()=>new Response(JSON.stringify({reason:'InvalidProviderToken'}),{status:403});
+ assert.equal((await f.call('native-push',{action:'subscribe',deviceToken:'ab'.repeat(32)},f.people[2])).status,200);
+ await card.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).click();page.once('dialog',d=>d.accept());await overview.getByRole('button',{name:'Erinnerung abschicken',exact:true}).click();
+ await overview.getByRole('button',{name:'Versand fortsetzen',exact:true}).waitFor();await overview.getByRole('button',{name:'Versand fortsetzen',exact:true}).click();
+ await overview.getByRole('button',{name:'Versand beendet · Fehler siehe unten',exact:true}).waitFor();
+ const feedback=overview.locator('p[role=status]');assert.match(await feedback.innerText(),/3 Handy-Mitteilungen angenommen · 1 fehlgeschlagen/);assert.match(await feedback.innerText(),/iPhone-App: HTTP 403 · InvalidProviderToken/);
+ for(const width of [320,390])for(const scale of [100,200]){await page.setViewportSize({width,height:1100});await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await overview.evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,'failure details fit small screens and doubled text');}
+ await page.setViewportSize({width:390,height:1700});await page.evaluate(()=>document.documentElement.style.fontSize='100%');const out=path.join(root,'qa/push-failure-feedback');fs.mkdirSync(out,{recursive:true});await overview.screenshot({path:path.join(out,'push-failure-feedback.png'),animations:'disabled'});
  assert.deepEqual(errors,[]);console.log('PASS preset Apple/Google subscription, copy/fallback/retry and invalid URL protection, subscription link, no extra consent/address, immediate authorized replies without release, corrections, GF reminders, no new calendar copies and responsive layout.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
