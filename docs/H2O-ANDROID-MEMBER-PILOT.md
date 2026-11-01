@@ -43,6 +43,11 @@ berechtigt nicht zum Mitgliederzugang. Die Android-Web-App bleibt verfügbar.
 5. Bestehende Release-Signierung über die vier Android-Signierungsvariablen
    aus `native/README.md` vollständig konfigurieren. Ein ungeprüftes Debug-APK
    ist kein Google-Play-Upload. Die CI erzeugt zunächst ein unsigniertes AAB.
+   Für den manuell startbaren signierten Kandidaten außerdem
+   `H2O_ANDROID_KEYSTORE_BASE64` als Repository-Secret speichern. Der Workflow
+   dekodiert es nur kurzzeitig, entfernt die Datei wieder und lädt nie selbst
+   bei Google Play hoch. Erst nach den übrigen Prüfungen den Workflow mit
+   `signed_internal_candidate` starten.
 6. Endgültigen **App-Signing**-SHA256-Fingerabdruck aus Play Console verwenden,
    nicht den Upload-Fingerabdruck. Bestehende Apple-Zuordnung erhalten und die
    Android-Zuordnung unter `https://ffw-wasser.github.io/.well-known/assetlinks.json`

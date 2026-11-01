@@ -144,6 +144,12 @@ class MainActivity : ComponentActivity() {
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); intent.dataString?.takeIf(PortalLinks::trusted)?.let(web::loadUrl) }
     private fun external(uri: Uri) {
+        PortalLinks.calendarTime(uri.toString())?.let { time ->
+            val date = java.time.Instant.ofEpochMilli(time).atZone(WidgetSnapshot.zone).toLocalDate()
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("content://com.android.calendar/time/$time"))) }
+                .onFailure { external(Uri.parse("https://calendar.google.com/calendar/u/0/r/day/${date.year}/${date.monthValue}/${date.dayOfMonth}")) }
+            return
+        }
         if (uri.scheme !in setOf("https", "mailto", "tel")) return
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { notice("Für diesen Link ist keine passende Anwendung verfügbar.") }
     }

@@ -3,6 +3,11 @@ on:
   pull_request:
     paths: ["native/android/**", "native/shared/**", "cloudflare/push/android-push.js", ".github/workflows/h2o-android.yml"]
   workflow_dispatch:
+    inputs:
+      signed_internal_candidate:
+        description: Build a signed candidate for manual internal-track upload (no upload)
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -55,3 +60,47 @@ jobs:
             native/android/app/build/reports/
             native/android/app/build/widget-previews/
           retention-days: 14
+
+  signed-internal-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.signed_internal_candidate
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      H2O_FIREBASE_APP_ID: ${{ vars.H2O_FIREBASE_APP_ID }}
+      H2O_FIREBASE_API_KEY: ${{ vars.H2O_FIREBASE_API_KEY }}
+      H2O_FIREBASE_PROJECT_ID: ${{ vars.H2O_FIREBASE_PROJECT_ID }}
+      H2O_FIREBASE_SENDER_ID: ${{ vars.H2O_FIREBASE_SENDER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Build signed internal candidate without store upload
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.H2O_ANDROID_KEYSTORE_BASE64 }}
+          H2O_ANDROID_STORE_PASSWORD: ${{ secrets.H2O_ANDROID_STORE_PASSWORD }}
+          H2O_ANDROID_KEY_ALIAS: ${{ secrets.H2O_ANDROID_KEY_ALIAS }}
+          H2O_ANDROID_KEY_PASSWORD: ${{ secrets.H2O_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          candidate_keystore="$RUNNER_TEMP/h2o-android-upload.jks"
+          trap 'rm -f "$candidate_keystore"' EXIT
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$candidate_keystore"
+          H2O_ANDROID_KEYSTORE="$candidate_keystore" H2O_REQUIRE_RELEASE_SIGNING=true gradle -p native/android :app:bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2o-android-signed-internal-candidate
+          path: native/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 7
