@@ -28,7 +28,7 @@ müssen auf einem Mitgliedsgerät geprüft werden.
 ## Bereits implementiert
 
 - Bestehendes Portal mit Passkey oder Passwort, geschütztem PDF-Export. Keine zusätzliche QR-/Hilfe-Leiste beim App-Start; Hilfe unter Mehr. Neue Zugänge werden über den persönlichen Freigabelink oder Freigabecode eingerichtet.
-- Zwei im Widget-Menü auswählbare Formate im Stil des iPhone-Widgets: **Termin kompakt (2×2)** und **Termin breit (4×2)**. Beide lassen sich horizontal und vertikal am Rahmen ändern; die Darstellung passt sich dem Platz an. Die bisherige breite Providerkennung bleibt für eingerichtete Widgets erhalten. Cremefarbene Karte, bordeauxrote Kopfkante, Datum/Heute/Morgen und farbige Rückmeldezeile.
+- Zwei im Widget-Menü auswählbare Formate im Stil des iPhone-Widgets: **Termin kompakt (2×2)** und **Termin breit (4×1)**. Beide lassen sich bis 48 dp Höhe (eine Rasterzeile, abhängig vom Launcher) horizontal und vertikal am Rahmen ändern; die Darstellung passt sich dem Platz an. Die bisherige breite Providerkennung bleibt für eingerichtete Widgets erhalten. Cremefarbene Karte, bordeauxrote Kopfkante, Datum/Heute/Morgen und farbige Rückmeldezeile.
 - Größenveränderbares Startbildschirm-Widget: nächster persönlich freigegebener Termin,
   Heute/Morgen nach Berliner Ortszeit, Uhrzeit, Ort, Kleidung und Rückmeldung.
   Antippen öffnet Termine in der App. Das Widget führt keine Netzwerkabrufe aus.
@@ -43,7 +43,7 @@ müssen auf einem Mitgliedsgerät geprüft werden.
 - Alte tägliche Pauschal-Erinnerung entfernt; ihr bestehender Auftrag wird beendet.
 - Keine produktiven Android-Debug-Zertifikate freischalten.
 
-## Was im Konto noch fehlt
+## Kontoangaben und weitere Voraussetzungen
 
 1. Als Entwicklerkontoinhaber Geräteprüfung auf einem geliehenen oder eigenen
    echten, nicht gerooteten Android-Gerät ab Android 10 abschließen.
@@ -83,6 +83,10 @@ müssen auf einem Mitgliedsgerät geprüft werden.
    Mitglieder in die interne Testerliste eintragen; Opt-in-Link persönlich verteilen.
    Nie Mitgliederlisten ins Repository aufnehmen. Der geschlossene 12-Personen-Test
    ist nur für einen späteren Produktionszugriff nötig.
+
+Build 1025 ergänzt die flache Darstellung unter 100 dp. Schmale flache Widgets zeigen Datum, Uhrzeit und Rückmeldung; der Titel bleibt in der Vorlesebeschreibung und in der geöffneten App. Ab 100 dp bleiben die bisherigen ausführlichen Ansichten erhalten. Bestehende Widgets behalten ihre Providerkennung.
+
+Google-Play-Texte, Datenschutz-, Support- und Kontolöschungslink: `native/store/GOOGLE-PLAY-ANGABEN.md`. Konto-Checkliste oben beschreibt Voraussetzungen; sie ist kein aktueller Live-Nachweis noch fehlender Konfiguration.
 
 ## Prüfungen
 

@@ -25,17 +25,17 @@ class WidgetPreviewTest {
         assertEquals(setOf(2, 4), providers.map { it.targetCellWidth }.toSet())
         for (provider in providers) {
             assertEquals(AppWidgetProviderResize, provider.resizeMode)
-            assertTrue("Widget can shrink below the old 220dp height", provider.minResizeHeight < 140 * context.resources.displayMetrics.density)
+            assertTrue("Widget can shrink to one launcher row", provider.minResizeHeight <= 48 * context.resources.displayMetrics.density)
         }
-        val sizes = listOf(Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(110, 110, 1f), Triple(330, 110, 1f), Triple(330, 250, 1f), Triple(170, 170, 1.3f), Triple(330, 170, 1.3f))
-        for ((width, height, fontScale) in sizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale")) {
+        val sizes = listOf(Triple(110, 48, 1f), Triple(110, 48, 1.3f), Triple(170, 48, 1.3f), Triple(330, 48, 1.3f), Triple(250, 64, 1f), Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(110, 110, 1f), Triple(330, 110, 1f), Triple(330, 250, 1f), Triple(170, 170, 1.3f), Triple(330, 170, 1.3f))
+        for ((width, height, fontScale) in sizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday")) {
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
                 instrumentation.waitForIdleSync()
                 var rendered: Bitmap? = null
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
-                    assertTrue(title.isShown)
+                    assertEquals(height >= 100 || width >= 240 || fixture in listOf("clear", "empty"), title.isShown)
                     assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else "Probe · Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
@@ -45,7 +45,7 @@ class WidgetPreviewTest {
                     val isEvent = fixture !in listOf("clear", "empty")
                     assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
                     assertEquals(if (fixture == "stale") View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_note).visibility)
-                    if (isEvent) assertEquals("Dabei", activity.findViewById<TextView>(R.id.widget_status).text.toString())
+                    if (isEvent) assertEquals(if (fixture == "excused") "Entschuldigt" else "Dabei", activity.findViewById<TextView>(R.id.widget_status).text.toString())
                     assertTextFits(widget, widget)
                     if (fixture in listOf("today", "tomorrow")) assertEquals(if (fixture == "today") "Heute" else "Morgen", activity.findViewById<android.widget.TextView>(R.id.widget_day).text.toString())
                 }
@@ -64,6 +64,8 @@ class WidgetPreviewTest {
             assertTrue("Visible text ${view.text} extends below widget: ${rect.bottom}/${root.height}", rect.bottom <= root.height + 2)
             assertTrue("Text is inside widget horizontally", rect.left >= -2 && rect.right <= root.width + 2)
             assertTrue("Text has visible height", view.height > 0)
+            val textLayout = view.layout
+            if (textLayout != null && view.text.isNotEmpty()) assertTrue("Text line is not vertically clipped: ${view.text}", textLayout.getLineBottom(textLayout.lineCount - 1) <= view.height - view.compoundPaddingTop - view.compoundPaddingBottom + 2)
         }
         if (view is ViewGroup) for (i in 0 until view.childCount) assertTextFits(root, view.getChildAt(i))
     }

@@ -21,8 +21,8 @@ class WidgetPreviewActivity : Activity() {
         val start = date.atTime(23, 58).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
             .put("stale", action == "stale").put("event", JSONObject().put("title", "Probe · Technische Hilfeleistung")
-                .put("start", start).put("end", start + 3600000).put("allDay", false).put("location", "Gerätehaus Wasser")
-                .put("clothing", "Einsatzkleidung").put("status", "yes"))
+                .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", "Gerätehaus Wasser")
+                .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else "yes"))
         WidgetStore.accept(this, input.toString())
         val layout = FrameLayout(previewContext).apply { setBackgroundColor(0xFF18283C.toInt()) }
         val options = Bundle().apply {

@@ -393,3 +393,10 @@ body.h2o-portal #deckel-main #identity-security-slot>#identity-panel{background:
 #more-security .portal-notifications .portal-setting-help{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
 
 #more-security .portal-setting>h3,#more-security .portal-setting-heading h3{font-size:1.125rem;line-height:1.35;margin:0;color:var(--ink)}
+
+/* Personal assignment is cleared with the existing authenticated portal lifecycle. */
+.deckel-header .deckel-title .portal-member-name{font-size:.75rem;font-weight:400;line-height:1.35;margin:3px 0 0;letter-spacing:normal;text-transform:none;overflow-wrap:anywhere;color:inherit;opacity:.85}
+.h2o-onboarding nav:not(:has(button:not([hidden]))){display:none}
+.h2o-onboarding[data-step="calendar"] #identity-calendar-settings>h3,.h2o-onboarding[data-step="calendar"] #identity-calendar-settings>p:first-of-type{display:none}
+
+.h2o-onboarding .onboarding-review-link{display:block;padding:12px 0;font-size:.875rem;color:#164b64}
