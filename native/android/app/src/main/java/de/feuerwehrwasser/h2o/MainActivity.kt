@@ -2,7 +2,6 @@ package de.feuerwehrwasser.h2o
 
 import android.Manifest
 import android.app.AlertDialog
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -22,12 +21,10 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
-import androidx.work.*
+import androidx.work.WorkManager
+import org.json.JSONObject
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
-import java.time.Duration
-import java.time.ZonedDateTime
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private lateinit var web: WebView
@@ -37,8 +34,9 @@ class MainActivity : ComponentActivity() {
     private var navigationEpoch = 0
     private lateinit var pdfExport: NativePdfExport
     private var pdfScript = ""
+    private var permissionReply: ((Boolean) -> Unit)? = null
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
-        if (allowed) reminderTime() else notice("Mitteilungen sind nicht freigegeben. Die App bleibt nutzbar.")
+        permissionReply?.invoke(allowed); permissionReply = null
     }
     private val scanner = registerForActivityResult(ScanContract()) { result ->
         result.contents?.let { value ->
@@ -52,9 +50,9 @@ class MainActivity : ComponentActivity() {
         val tools = LinearLayout(this)
         fun action(label: String, click: () -> Unit) { tools.addView(Button(this).apply { text = label; minHeight = 56.dp; setPadding(4.dp, 8.dp, 4.dp, 8.dp); setOnClickListener { click() } }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
         action("QR scannen") { scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Persönliche H₂O-Einladung scannen").setBeepEnabled(false)) }
-        action("Erinnerung") { reminders() }
         action("Hilfe") { help() }
         status = TextView(this).apply { setPadding(12.dp, 8.dp, 12.dp, 8.dp); visibility = View.GONE }
+        WorkManager.getInstance(this).cancelUniqueWork("h2o-reminder")
         web = WebView(this)
         pdfExport = NativePdfExport(this, { !isDestroyed && PortalLinks.trusted(web.url ?: "") }, { navigationEpoch }, ::notice)
         pdfScript = assets.open("pdf-export.js").bufferedReader().use { it.readText() }
@@ -63,6 +61,29 @@ class MainActivity : ComponentActivity() {
                 if (mainFrame && message.type == WebMessageCompat.TYPE_STRING && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1,443) && PortalLinks.trusted(view.url ?: "")) message.data?.let(pdfExport::receive)
             }
         }
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            fun trusted(view: WebView, origin: Uri, main: Boolean) = main && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1, 443) && PortalLinks.trusted(view.url ?: "")
+            WebViewCompat.addWebMessageListener(web, "H2OWidget", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, _ ->
+                if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) message.data?.let { WidgetStore.accept(this, it) }
+            }
+            WebViewCompat.addWebMessageListener(web, "H2ONotifications", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, reply ->
+                if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) runCatching {
+                    val raw = message.data ?: return@addWebMessageListener
+                    if (raw.length > 1024) return@addWebMessageListener
+                    val input = JSONObject(raw); val id = input.getString("id"); val action = input.getString("action")
+                    if (!id.matches(Regex("[A-Za-z0-9-]{1,64}")) || action !in setOf("status", "request", "disable")) return@addWebMessageListener
+                    val epoch = navigationEpoch
+                    val done: (String) -> Unit = { value -> runOnUiThread { if (!isDestroyed && epoch == navigationEpoch && PortalLinks.trusted(web.url ?: "")) runCatching { reply.postMessage(value) } } }
+                    if (action == "disable") { AndroidNotifications.disable(this); done(JSONObject().put("id", id).put("permission", "default").toString()) }
+                    else if (action == "request" && Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        if (permissionReply != null) return@addWebMessageListener
+                        permissionReply = { _ -> if (epoch == navigationEpoch) AndroidNotifications.status(this, id, true, done) }
+                        permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else AndroidNotifications.status(this, id, action == "request", done)
+                }
+            }
+            WebViewCompat.addDocumentStartJavaScript(web, assets.open("android-entry.js").bufferedReader().use { it.readText() }, setOf("https://ffw-wasser.github.io"))
+        } else notice("Bitte Android System WebView aktualisieren, damit Widget und Mitteilungen verfügbar sind.")
         column.addView(tools); column.addView(status); column.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(column)
         ViewCompat.setOnApplyWindowInsetsListener(column) { view, insets ->
@@ -93,7 +114,7 @@ class MainActivity : ComponentActivity() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) { pageFailed = true; notice("Portal nicht erreichbar. Unter Hilfe kannst du erneut laden oder die Offline-Anleitung öffnen.") }
             }
-            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
+            override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); web.evaluateJavascript(assets.open("ios-entry.js").bufferedReader().use { it.readText() }, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder unter Hilfe das Portal im Browser öffnen.") } }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
@@ -118,23 +139,8 @@ class MainActivity : ComponentActivity() {
         if (uri.scheme !in setOf("https", "mailto", "tel")) return
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { notice("Für diesen Link ist keine passende Anwendung verfügbar.") }
     }
-    private fun reminders() {
-        AlertDialog.Builder(this).setTitle("Tägliche App-Erinnerung").setMessage("Eine allgemeine Erinnerung, das Portal zu prüfen. Keine automatische Erinnerung an einzelne Termine. Android kann die Zustellung verzögern.")
-            .setPositiveButton("Uhrzeit wählen") { _, _ ->
-                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else reminderTime()
-            }.setNegativeButton("Ausschalten") { _, _ -> WorkManager.getInstance(this).cancelUniqueWork("h2o-reminder"); notice("App-Erinnerung ausgeschaltet.") }.setNeutralButton("Schließen", null).show()
-    }
-    private fun reminderTime() {
-        TimePickerDialog(this, { _, hour, minute ->
-            val now = ZonedDateTime.now(); var first = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
-            if (!first.isAfter(now)) first = first.plusDays(1)
-            val job = PeriodicWorkRequestBuilder<PortalReminderWorker>(1, TimeUnit.DAYS).setInitialDelay(Duration.between(now, first)).build()
-            WorkManager.getInstance(this).enqueueUniquePeriodicWork("h2o-reminder", ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, job)
-            notice("Tägliche App-Erinnerung eingerichtet. Die Uhrzeit ist ungefähr.")
-        }, 18, 0, true).show()
-    }
     private fun help() {
-        AlertDialog.Builder(this).setTitle("H₂O · Hilfe").setMessage("1. Bei der Verwaltung eine persönliche Einladung holen.\n2. Oben QR scannen wählen und den QR-Code scannen.\n3. Den Passkey auf dem eigenen Handy einrichten.\n\nTermine, Status und Mein Deckel bleiben im Portal. Deine Browser-Anmeldung wird nicht automatisch übernommen. Bei Verlust hilft die Verwaltung.\n\nServer-Push ist in dieser Entwicklungsversion noch nicht eingerichtet. Die tägliche App-Erinnerung funktioniert unabhängig davon.")
+        AlertDialog.Builder(this).setTitle("H₂O · Hilfe").setMessage("1. Bei der Verwaltung eine persönliche Einladung holen.\n2. Oben QR scannen wählen und den QR-Code scannen.\n3. Passkey oder Benutzername und Passwort einrichten.\n\nTermine, Status und Mein Deckel bleiben im Portal. Deine Browser-Anmeldung wird nicht automatisch übernommen. Bei Verlust hilft die Verwaltung.\n\nDein nächster Termin erscheint im Android-Widget, nachdem du das Portal geöffnet hast. Mitteilungen kannst du unter Mehr → Konto & Sicherheit aktivieren, sobald der Dienst eingerichtet ist.")
             .setPositiveButton("Erneut laden") { _, _ -> web.reload() }.setNeutralButton("Im Browser") { _, _ -> external(Uri.parse(PortalLinks.HOME)) }.setNegativeButton("Schließen", null).show()
     }
     private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE } }

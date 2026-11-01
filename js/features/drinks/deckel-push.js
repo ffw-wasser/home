@@ -10,31 +10,34 @@
  const isIos=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
  const installed=()=>navigator.standalone||g.matchMedia?.('(display-mode: standalone)').matches;
  let nativeToken='',nativeReady=false,nativeActive=false,nativePermission='default';
+ const nativePlatform=()=>/H2ONative\/1 Android/.test(navigator.userAgent)?'android':'ios';
+ const nativeDevice=()=>nativePlatform()==='android'?'Android-Gerät':'iPhone';
+ const nativeData=value=>nativePlatform()==='android'?{...value,platform:'android'}:value;
  const nativeConsentKey=()=>access?'h2o-native-push-opt-in:'+access.alias:'';
  function nativeConsent(value){try{const key=nativeConsentKey();if(!key)return false;if(value===true)localStorage.setItem(key,'yes');else if(value===false)localStorage.removeItem(key);return localStorage.getItem(key)==='yes';}catch{return false;}}
  function nativeRequest(action){return new Promise((resolve,reject)=>{
-  const bridge=g.webkit?.messageHandlers?.h2oNotifications;if(!bridge){reject(Error('Bitte die aktuelle iPhone-App installieren.'));return;}
-  const id=crypto.randomUUID(),done=event=>{if(event.detail?.id!==id)return;clearTimeout(timer);g.removeEventListener('h2o-native-notifications',done);resolve(event.detail);};
-  const timer=setTimeout(()=>{g.removeEventListener('h2o-native-notifications',done);reject(Error('Apple-Mitteilungen konnten noch nicht bestätigt werden. Bitte erneut prüfen.'));},20000);
+  const bridge=g.webkit?.messageHandlers?.h2oNotifications;if(!bridge){reject(Error('Bitte die aktuelle H₂O-App installieren.'));return;}
+  const id=crypto.randomUUID(),done=event=>{if(event.detail?.id!==id)return;clearTimeout(timer);g.removeEventListener('h2o-native-notifications',done);if(event.detail.error)reject(Error(event.detail.error));else resolve(event.detail);};
+  const timer=setTimeout(()=>{g.removeEventListener('h2o-native-notifications',done);reject(Error('Mitteilungen konnten noch nicht bestätigt werden. Bitte erneut prüfen.'));},20000);
   g.addEventListener('h2o-native-notifications',done);bridge.postMessage({id,action});
  });}
  function nativeButtons(){
   if(!g.webkit?.messageHandlers?.h2oNotifications){
    $('enable').hidden=$('disable').hidden=$('reset').hidden=true;
    state($('state'),'Bitte App aktualisieren');
-   $('note').textContent='Diese TestFlight-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle iPhone-App verwenden.';return;
+   $('note').textContent='Diese App-Version unterstützt keine nativen Mitteilungen. Bitte die aktuelle H₂O-App verwenden.';return;
   }
   $('enable').hidden=nativeActive;$('disable').hidden=!nativeActive;$('reset').hidden=true;
   $('enable').disabled=busy||!access||!nativeReady;$('disable').disabled=busy;
   $('enable').textContent='Mitteilungen erlauben';
   state($('state'),busy?'Wird geprüft':nativeActive?'Aktiv':nativePermission==='denied'?'Nicht erlaubt':nativeReady?'Aus':'Noch nicht eingerichtet',nativeActive);
-  $('note').textContent=!nativeReady?'Der Apple-Mitteilungsdienst muss von der Verwaltung noch eingerichtet werden.':nativePermission==='denied'?'Mitteilungen in den iPhone-Einstellungen für H₂O erlauben.':'Freiwillig: Feuerwehr-Mitteilungen direkt auf diesem iPhone. Du kannst H₂O auch ohne Mitteilungen nutzen.';
+  $('note').textContent=!nativeReady?'Der native Mitteilungsdienst muss von der Verwaltung noch eingerichtet werden.':nativePermission==='denied'?'Mitteilungen in den Geräte-Einstellungen für H₂O erlauben.':'Freiwillig: Feuerwehr-Mitteilungen direkt auf diesem '+nativeDevice()+'. Du kannst H₂O auch ohne Mitteilungen nutzen.';
  }
  async function nativeRender(){
   const version=generation;busy=true;nativeButtons();try{
-   const result=await g.H2OPortal.api('native-push',{action:'status',...(nativeToken?{deviceToken:nativeToken}:{})});
+   const result=await g.H2OPortal.api('native-push',nativeData({action:'status',...(nativeToken?{deviceToken:nativeToken}:{})}));
    if(version!==generation)return;nativeReady=result.ready===true;nativeActive=result.registered===true;
-   if(nativeReady){const device=await nativeRequest('status');if(version!==generation)return;nativePermission=device.permission;if(device.deviceToken){nativeToken=device.deviceToken;const saved=await g.H2OPortal.api('native-push',{action:nativeConsent()&&device.permission==='granted'?'subscribe':'status',deviceToken:nativeToken});if(version!==generation)return;nativeActive=saved.registered===true;}}
+   if(nativeReady){const device=await nativeRequest('status');if(version!==generation)return;nativePermission=device.permission;if(device.deviceToken){nativeToken=device.deviceToken;const saved=await g.H2OPortal.api('native-push',nativeData({action:nativeConsent()&&device.permission==='granted'?'subscribe':'status',deviceToken:nativeToken}));if(version!==generation)return;nativeActive=saved.registered===true;}}
    $('status').textContent='';
   }catch(error){if(version===generation){nativeReady=false;nativeActive=false;$('status').textContent=error.message;}}
   finally{if(version===generation){busy=false;nativeButtons();}}
@@ -42,15 +45,16 @@
  async function nativeEnable(){
   if(busy||!access||!nativeReady)return;const version=generation;busy=true;nativeButtons();
   try{const device=await nativeRequest('request');if(version!==generation)return;nativePermission=device.permission;
-   if(device.permission!=='granted'||!device.deviceToken)throw Error(device.permission==='denied'?'Mitteilungen wurden nicht erlaubt. Du kannst das später in den iPhone-Einstellungen ändern.':'Das iPhone konnte sich noch nicht für Mitteilungen registrieren.');
-   nativeToken=device.deviceToken;const saved=await g.H2OPortal.api('native-push',{action:'subscribe',deviceToken:nativeToken});if(version!==generation)return;
-   if(!saved.registered)throw Error('Apple-Mitteilungen wurden vom Dienst noch nicht bestätigt.');nativeConsent(true);nativeActive=true;$('status').textContent='Mitteilungen auf diesem iPhone aktiviert.';
+   if(device.permission!=='granted'||!device.deviceToken)throw Error(device.permission==='denied'?'Mitteilungen wurden nicht erlaubt. Du kannst das später in den Geräte-Einstellungen ändern.':'Dieses Gerät konnte sich noch nicht für Mitteilungen registrieren.');
+   nativeToken=device.deviceToken;const saved=await g.H2OPortal.api('native-push',nativeData({action:'subscribe',deviceToken:nativeToken}));if(version!==generation)return;
+   if(!saved.registered)throw Error('Mitteilungen wurden vom Dienst noch nicht bestätigt.');nativeConsent(true);nativeActive=true;$('status').textContent='Mitteilungen auf diesem '+nativeDevice()+' aktiviert.';
   }catch(error){if(version===generation)$('status').textContent=error.message;}finally{if(version===generation){busy=false;nativeButtons();}}
  }
  async function nativeDisable(){
   const version=generation;
   nativeConsent(false);
-  if(nativeToken&&access)await g.H2OPortal.api('native-push',{action:'unsubscribe',deviceToken:nativeToken});
+  if(nativeToken&&access)await g.H2OPortal.api('native-push',nativeData({action:'unsubscribe',deviceToken:nativeToken}));
+  if(nativePlatform()==='android')await nativeRequest('disable');
   if(version!==generation)return;nativeActive=false;if($('status'))$('status').textContent='Mitteilungen für dieses Mitglied deaktiviert.';nativeButtons();
  }
  function timeout(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}

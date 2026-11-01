@@ -46,7 +46,7 @@
       "title": "Anmeldung und lokale Speicherung",
       "paragraphs": [
         "Bei Passkeys erhält der Portaldienst öffentliche Schlüssel und Kennungen. Private Passkey-Schlüssel und biometrische Merkmale verbleiben beim Authentifikator. Ein eingerichtetes Passwort wird serverseitig als Prüfwert gespeichert. Neue persönliche Einrichtungsfreigaben sind einmalig und 30 Minuten gültig.",
-        "Sitzungen und Einstellungen werden auf deinem Gerät gespeichert. Das native iPhone-Widget enthält nur den nächsten freigegebenen Termin mit Zeit, Ort, Kleidung und Rückmeldestatus, höchstens zwölf Stunden. Namen und Zugangstoken werden nicht an das Widget übergeben. Bei Abmeldung oder erkanntem Zugriffsverlust wird der Widget-Stand geleert.",
+        "Sitzungen und Einstellungen werden auf deinem Gerät gespeichert. Das native iPhone- bzw. Android-Widget enthält nur den nächsten freigegebenen Termin mit Zeit, Ort, Kleidung und Rückmeldestatus, mit einer Gültigkeit von zwölf Stunden. Android kann die Hintergrundaktualisierung verzögern; beim nächsten Update werden abgelaufene Daten verworfen. Namen und Zugangstoken werden nicht an das Widget übergeben. Bei Abmeldung oder erkanntem Zugriffsverlust wird der Widget-Stand geleert.",
         "Die Apple-Prüfdemo arbeitet mit erfundenen Daten in einem getrennten, nicht dauerhaften WebKit-Speicher. Ihre Änderungen betreffen keine echten Mitgliederdaten. Öffentliche Ausbildungsdateien können aus dem bestehenden Webangebot geladen werden."
       ]
     },
@@ -54,7 +54,7 @@
       "title": "Dienste und Empfänger",
       "paragraphs": [
         "GitHub Pages liefert die öffentlichen Programmdateien. Cloudflare betreibt den geschützten Portaldienst und die Datenbank. Microsoft OneDrive/SharePoint dient der getrennten Verwaltung gemeinsamer Dateien und Berichte. Google liefert die eingerichteten Kalendertermine. Berechtigte Verwaltungs- und Führungskräfte erhalten nur die für ihre Funktionen freigegebenen Informationen.",
-        "Push-Mitteilungen sind freiwillig. Dafür werden eine Gerätekennung und der Freigabestatus verarbeitet; auf dem Sperrbildschirm steht ein allgemeiner Hinweis. Ein Kalenderabo verwendet einen persönlichen, zurücksetzbaren Nur-Lese-Link. Beim Kalenderabruf werden die für dich freigegebenen Termine an deinen Kalenderdienst übertragen. Kalender und Mitteilungen lassen sich unter Konto & Sicherheit verwalten.",
+        "Push-Mitteilungen sind freiwillig. Dafür werden eine Gerätekennung und der Freigabestatus verarbeitet; auf dem Sperrbildschirm steht ein allgemeiner Hinweis. Ein Kalenderabo verwendet einen persönlichen, zurücksetzbaren Nur-Lese-Link. Beim Kalenderabruf werden die für dich freigegebenen Termine an deinen Kalenderdienst übertragen. Kalender und Mitteilungen lassen sich unter Konto & Sicherheit verwalten. In der nativen iPhone-App erfolgt die Zustellung über Apple Push Notification service, in der nativen Android-App über Google Firebase Cloud Messaging. Hierfür verarbeiten Apple beziehungsweise Google insbesondere die Push-Gerätekennung und technische Zustelldaten. Die Firebase-Registrierung wird in der Android-App erst bei ausdrücklicher Aktivierung angefordert; Firebase Analytics ist nicht eingebunden.",
         "PayPal wird erst beim Öffnen des Zahlungslinks aufgerufen. OpenLigaDB liefert Daten bei Nutzung des Fußballbereichs. Beim Öffnen externer Unterlagen erhält der jeweilige Anbieter die für den Abruf nötigen Verbindungsdaten. Technische Verbindungsdaten können auch bei den Hostinganbietern anfallen.",
         "Die App enthält keine eigenen Werbe- oder Analyse-SDKs. Eine Nutzung zum Werbetracking ist nicht eingerichtet. Die genutzten internationalen Dienste können Daten außerhalb der EU bzw. des EWR verarbeiten, insbesondere in den USA; eine ausschließlich deutsche Speicherung wird nicht zugesagt. Angaben der Anbieter zu Datenstandorten, Angemessenheitsbeschlüssen und vertraglichen Schutzmechanismen stehen unter den folgenden Links."
       ],
@@ -90,6 +90,10 @@
         [
           "OpenLigaDB",
           "https://www.openligadb.de/"
+        ],
+        [
+          "Firebase – Datenschutz und Sicherheit",
+          "https://firebase.google.com/support/privacy"
         ]
       ]
     },

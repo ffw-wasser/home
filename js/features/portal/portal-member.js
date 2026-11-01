@@ -160,7 +160,7 @@
   if(badge){badge.hidden=count===0;badge.textContent=count?String(count):'';}
   if(tile)tile.setAttribute('aria-label',count?'Termine · '+count+' Rückmeldung'+(count===1?'':'en')+' offen oder unsicher':'Termine');
  }
- // Only already authorized, member-filtered list data is mirrored to the iOS widget.
+ // Only already authorized, member-filtered list data is mirrored to the native widget.
  // No capability, token, calendar subscription URL, member name or birthday crosses this bridge.
  function syncNativeWidget(result){
   const bridge=globalThis.webkit?.messageHandlers?.h2oWidget;if(!bridge)return;
