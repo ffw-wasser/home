@@ -1,4 +1,4 @@
-# Privater iPhone-Mitgliederpilot · Build 1018
+# Privater iPhone-Mitgliederpilot · Build 1026
 
 Der Mitglieder-Build öffnet das echte H₂O-Portal unter
 `https://ffw-wasser.github.io/home/deckel.html`. Die Apple-Demo bleibt mit
@@ -10,6 +10,8 @@ Passkeys und Mitgliedsrechte verwenden die bestehende Portalprüfung.
 Der Wechsel zum Home-Bildschirm leert weiterhin die geschützten Ansichten, erhält aber den bestätigten Widgetstand und die freiwillige Push-Registrierung. Zuvor wurde beim Ausblenden versehentlich derselbe Ablauf wie bei einer Abmeldung ausgeführt. Abmeldung, Kontowechsel und erkannter Zugriffsverlust löschen die Widgetdaten weiterhin. Die Korrektur benötigt keinen neuen nativen Build; Build 1015 lädt das aktualisierte Portal. Der Browser-Regressionslauf prüft App → Home → App sowie das anschließende ausdrückliche Löschen der Identität mit künstlichen Daten.
 
 ## Umgesetzter Stand
+
+- Build 1026 zeigt das konkrete Terminthema aus dem persönlichen Kalender, beispielsweise „Löschangriff“, statt „Nächste Probe“. Der Portalstand 2026.11.01.17 entfernt dafür einen wiederholten Terminart-Präfix wie „Probe ·“. Ohne Thema bleibt die ursprüngliche Terminart erhalten. Kleine und mittlere Widgets zeigen das Thema bei Bedarf zweizeilig. Beide Änderungen benötigen den neuen iPhone-Build und den aktuellen Portalstand.
 
 - Build 1018 priorisiert Datum und Rückmeldung entsprechend der zweiten freigegebenen Vorschau: ausgeschriebener Wochentag/Monat und große Tageszahl im roten Feld, kräftiger Statusbalken mit Haken/Kreuz/Fragezeichen/Strich. Die Uhrzeit ist kleiner. Im kleinen Widget entfallen Ort und Kleidung; das mittlere behält beide Zusatzangaben. Die Terminauswahl bleibt unverändert.
 

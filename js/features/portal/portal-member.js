@@ -25,7 +25,7 @@
  }
 
 
- // Remove a repeated type only from the card heading, preserving calendar and export titles.
+ // Use the topic in cards and native widgets, preserving calendar and export titles.
  function eventTopic(event){
   const type=String(event.sessionType||'').trim(),raw=String(event.title||'').trim()||type||'Termin';
   const prefix={Probe:/^(?:Allgemeine\s+)?Probe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Sonderprobe:/^Sonderprobe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Unterricht:/^Unterricht(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Veranstaltung:/^Veranstaltung(?=$|[\s:·|–—-])[\s:·|–—-]*/i}[type];
@@ -169,7 +169,7 @@
   if(!event){bridge.postMessage({action:'empty',stale:!!result.stale});return;}
   const status=['yes','excused','maybe'].includes(event.status)?event.status:'open';
   bridge.postMessage({action:'update',stale:!!result.stale,event:{
-   title:String(event.title||event.sessionType||'Termin').slice(0,100),
+   title:eventTopic(event).slice(0,100),
    start:Number(event.start),end:Number(event.end),allDay:!!event.allDay,
    location:String(event.location||'GH Wasser').slice(0,100),
    clothing:String(event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing||'').slice(0,80),

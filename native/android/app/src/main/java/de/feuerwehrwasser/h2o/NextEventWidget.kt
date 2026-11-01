@@ -84,10 +84,11 @@ open class NextEventWidget : AppWidgetProvider() {
             val showWeekday = event != null && height >= 160
             val showMonth = event != null && separateMonth && !relative
             val titleSize = if (flat) 12f * scale else if (compact) (if (short) 11f else 12f * scale).coerceAtMost(16f) else (if (short) 15f else 18f * scale).coerceAtMost(26f)
+            val titleLines = if (event == null && !flat) 3 else if (!flat && ((compact && height >= 160) || (!compact && height >= 200))) 2 else 1
             val baseDaySize = when { flat -> (if (compact) 13f else 19f) * scale; compact -> if (short) 24f else if (height < 160) 28f else 44f * scale; relative -> if (short) 22f else 30f * scale; else -> if (height < 170) 28f else 48f * scale }
             // Reserve actual rows before enlarging the date, including enlarged system fonts.
             val dateHeight = height - (if (compact) 54f else 56f) - (if (short) 0f else if (compact) maxOf(16f, 13f * fontScale) else maxOf(18f, 15f * fontScale)) -
-                (if (compact) titleSize * fontScale + 5f else 0f) -
+                (if (compact) titleSize * fontScale * titleLines + 5f else 0f) -
                 (if (showWeekday) 14f * fontScale else 0f) - (if (showMonth) 14f * fontScale else 0f)
             val daySize = if (flat) baseDaySize else minOf(baseDaySize, (dateHeight / fontScale).coerceAtLeast(12f))
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = daySize * metrics.scaledDensity }
@@ -101,11 +102,11 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_separator, if (event == null || flat) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_weekday, if (showWeekday) View.VISIBLE else View.GONE)
             views.setViewVisibility(R.id.widget_month, if (showMonth) View.VISIBLE else View.GONE)
-            val title = event?.title?.let { if (it.trim().equals("Probe", ignoreCase = true)) "Nächste Probe" else it }
+            val title = event?.title
                 ?: if (snapshot == null) "H₂O öffnen, um Termine zu laden." else "Keine kommenden Termine"
             views.setTextViewText(R.id.widget_title, title)
             views.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (!flat && (event == null || (!compact && height >= 200))) 3 else 1)
+            views.setInt(R.id.widget_title, "setMaxLines", titleLines)
             views.setViewVisibility(R.id.widget_title, if (flat && compact && event != null) View.GONE else View.VISIBLE)
             val time = event?.let { if (it.allDay) "Ganztägig" else Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone).format(DateTimeFormatter.ofPattern("HH:mm")) + if (compact) "" else " Uhr" } ?: ""
             views.setTextViewText(R.id.widget_time, time)
