@@ -6,14 +6,14 @@
  const native=()=>/\bH2ONative\/1\b/.test(navigator.userAgent);
  const optionsKey=()=>{const alias=g.H2OIdentity?.session()?.alias;return alias?'h2o-first-options-v1:'+(native()?'native:':'web:')+alias:'';};
  function optionsPending(){try{return !!optionsKey()&&localStorage.getItem(optionsKey())!=='done';}catch{return true;}}
- function finishOptions(){try{if(optionsKey())localStorage.setItem(optionsKey(),'done');}catch{}go('finish');}
+ function finishOptions(){try{if(optionsKey())localStorage.setItem(optionsKey(),'done');}catch{}close();}
  const hasRelease=()=>/^[\w-]{43}$/.test($('identity-code')?.value.trim()||'');
  function node(tag,text){const n=document.createElement(tag);if(text)n.textContent=text;return n;}
  function restore(){for(const [item,home] of homes){home.after(item);home.remove();item.hidden=false;}homes.clear();}
  function place(id){const item=$(id);if(!item)return;if(!homes.has(item)){const home=document.createComment('onboarding home');item.before(home);homes.set(item,home);}item.hidden=false;content.append(item);return item;}
  function say(text){content.append(node('p',text));}
  function choice(text,action,parent=content){const b=node('button',text);b.type='button';b.className='onboarding-secondary';b.onclick=action;parent.append(b);return b;}
- function help(){const details=node('details'),summary=node('summary','Brauchst du Hilfe?');details.append(summary);content.append(details);return details;}
+ function help(){const details=node('details'),summary=node('summary','Brauchst du Hilfe?');details.append(summary);if(/\bH2OReviewHelp\/1\b/.test(navigator.userAgent)&&!g.H2OIdentity?.credentials()){const link=node('a','Apple-Prüfdemo öffnen');link.href='https://ffw-wasser.github.io/home/review.html';link.className='onboarding-review-link';details.append(link);}content.append(details);return details;}
  function go(value){step=value;render();}
  function close(){restore();dialog.close();g.H2OIdentity?.refresh();g.DeckelMobile?.jump('portal-section');}
  function release(){ticketFromLink=false;$('identity-code').value='';$('identity-message').textContent='';first=true;go('release');}
@@ -29,7 +29,7 @@
    choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
    const more=help();choice('Zugang verloren',release,more);choice('Ausbildung & Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();},more);
   }else if(step==='release'){
-   say('Die Verwaltung prüft deine Identität vor Ort. Scanne den persönlichen QR mit der normalen Handykamera und öffne den Link. Oder gib die einmalige Freigabe hier ein.');
+   say('Scanne den persönlichen QR der Verwaltung mit deiner Handykamera. Oder gib deine Freigabe hier ein.');
    const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-code');
    next.hidden=false;next.textContent='Weiter';next.onclick=()=>{if(!hasRelease()){$('identity-message').textContent='Bitte die gültige Freigabe eingeben.';return;}$('identity-message').textContent='';go('method');};
   }else if(step==='method'){
@@ -50,17 +50,16 @@
    choice('Zugang verloren?',release,help());
   }else if(step==='calendar'){
    progress.textContent='Einrichtung · 1 von 2';back.hidden=true;
-   say('Möchtest du deine Feuerwehrtermine auch in deiner Kalender-App sehen? Das ist freiwillig.');
-   choice('Kalender einrichten',()=>{const panel=place('identity-calendar-settings');if(panel){panel.load?.(true);const details=panel.querySelector('#identity-calendar-subscribe');if(details)details.open=true;}});
-   say('Nur dein persönliches Kalenderabo verwenden. Ein vorhandenes Abo nicht doppelt hinzufügen. Die Kalender-App fragt dich vor dem Hinzufügen.');
-   next.hidden=false;next.textContent='Weiter zu Mitteilungen';next.onclick=()=>go('notifications');
-   later.hidden=false;later.textContent='Jetzt nicht';later.onclick=()=>go('notifications');
+   say('Deine Feuerwehrtermine in der Kalender-App anzeigen. Freiwillig und später jederzeit möglich.');
+   const add=choice('Kalender hinzufügen',()=>{const panel=place('identity-calendar-settings');if(panel){panel.load?.(true);const details=panel.querySelector('#identity-calendar-subscribe');if(details)details.open=true;add.hidden=true;next.hidden=false;later.hidden=true;}});add.className='';
+   say('Schon eingerichtet? Überspringe diesen Schritt.');
+   next.hidden=true;next.textContent='Weiter';next.onclick=()=>go('notifications');
+   later.hidden=false;later.textContent='Ohne Kalender weiter';later.onclick=()=>go('notifications');
   }else if(step==='notifications'){
    progress.textContent='Einrichtung · 2 von 2';back.hidden=true;
-   say('Möchtest du Feuerwehr-Mitteilungen auf diesem Gerät erhalten? Deine Entscheidung kannst du später unter Konto & Sicherheit ändern.');
+   say('Erhalte Erinnerungen auf diesem Handy. Erlauben oder später unter Konto & Sicherheit einrichten.');
    place('portal-notification-settings');
-   next.hidden=false;next.textContent='Einrichtung abschließen';next.onclick=finishOptions;
-   later.hidden=false;later.textContent='Jetzt nicht';later.onclick=finishOptions;
+   next.hidden=false;next.textContent='H₂O öffnen';next.onclick=finishOptions;
   }else if(step==='install'){
    g.DeckelInstall?.refresh();
    if($('installSection')?.hidden){say('H₂O ist bereit.');next.hidden=false;next.textContent='Weiter';next.onclick=()=>go('calendar');}

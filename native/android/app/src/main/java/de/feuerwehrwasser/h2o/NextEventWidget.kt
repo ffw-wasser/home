@@ -55,37 +55,41 @@ open class NextEventWidget : AppWidgetProvider() {
         internal fun views(context: Context, width: Int, height: Int, now: Long): RemoteViews {
             val compact = width < 240
             val short = height < 140
+            val flat = height < 100
             val snapshot = WidgetStore.read(context, now)
             val event = snapshot?.event
-            val views = RemoteViews(context.packageName, if (compact) R.layout.widget_event_small else R.layout.widget_event)
+            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val day = event?.let { WidgetSnapshot.day(it.start, now) }
             val relative = day == "Heute" || day == "Morgen"
-            val dayText = if (event == null) "" else if (relative) day else date!!.format(DateTimeFormatter.ofPattern(if (compact) "dd MMM" else "dd", Locale.GERMAN)).replace(".", "").uppercase(Locale.GERMAN)
+            val dayText = if (event == null) "" else if (relative) day else date!!.format(DateTimeFormatter.ofPattern(if (compact || flat) "dd MMM" else "dd", Locale.GERMAN)).replace(".", "").uppercase(Locale.GERMAN)
             views.setTextViewText(R.id.widget_day, dayText)
             views.setTextViewText(R.id.widget_weekday, date?.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)) ?: "")
             views.setTextViewText(R.id.widget_month, date?.format(DateTimeFormatter.ofPattern("MMMM", Locale.GERMAN))?.uppercase(Locale.GERMAN) ?: "")
-            val daySize = when { compact -> if (short) 24f else if (height < 160) 28f else 34f; relative -> if (short) 22f else 25f; else -> if (height < 170) 28f else 38f }
+            val daySize = when { flat -> if (compact) 13f else 19f; compact -> if (short) 24f else if (height < 160) 28f else 34f; relative -> if (short) 22f else 25f; else -> if (height < 170) 28f else 38f }
             val metrics = context.resources.displayMetrics
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = daySize * metrics.scaledDensity }
-            val available = (if (compact) width - 20 else 88).coerceAtLeast(1) * metrics.density
+            val timePaint = Paint().apply { textSize = 10f * metrics.scaledDensity }
+            val timeWidth = timePaint.measureText(if (event?.allDay == true) "Ganztägig" else "23:58") / metrics.density
+            val available = (if (flat) { if (compact) width - 16f - timeWidth else 68f } else if (compact) width - 20f else 88f).coerceAtLeast(1f) * metrics.density
             val fit = if (dayText.isNullOrEmpty()) 1f else (available / dayPaint.measureText(dayText)).coerceAtMost(1f)
             views.setTextViewTextSize(R.id.widget_day, TypedValue.COMPLEX_UNIT_SP, daySize * fit)
             views.setViewVisibility(R.id.widget_brand, if (short) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_date, if (event == null) View.GONE else View.VISIBLE)
-            views.setViewVisibility(R.id.widget_separator, if (event == null) View.GONE else View.VISIBLE)
+            views.setViewVisibility(R.id.widget_separator, if (event == null || flat) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_weekday, if (event != null && height >= 160) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_month, if (event != null && !compact && !relative) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_month, if (event != null && !flat && !compact && !relative) View.VISIBLE else View.GONE)
             val title = event?.title?.let { if (it.trim().equals("Probe", ignoreCase = true)) "Nächste Probe" else it }
                 ?: if (snapshot == null) "H₂O öffnen, um Termine zu laden." else "Keine kommenden Termine"
             views.setTextViewText(R.id.widget_title, title)
-            views.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, if (compact) (if (short) 11f else 12f) else (if (short) 15f else 18f))
-            views.setInt(R.id.widget_title, "setMaxLines", if (event == null) 3 else 1)
+            views.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, if (flat) 12f else if (compact) (if (short) 11f else 12f) else (if (short) 15f else 18f))
+            views.setInt(R.id.widget_title, "setMaxLines", if (event == null && !flat) 3 else 1)
+            views.setViewVisibility(R.id.widget_title, if (flat && compact && event != null) View.GONE else View.VISIBLE)
             val time = event?.let { if (it.allDay) "Ganztägig" else Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone).format(DateTimeFormatter.ofPattern("HH:mm")) + if (compact) "" else " Uhr" } ?: ""
             views.setTextViewText(R.id.widget_time, time)
             views.setTextViewText(R.id.widget_location, event?.location?.ifEmpty { "GH Wasser" } ?: "")
             views.setTextViewText(R.id.widget_clothing, event?.clothing ?: "")
-            views.setViewVisibility(R.id.widget_location, if (event != null && !compact) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_location, if (event != null && !compact && !flat) View.VISIBLE else View.GONE)
             views.setViewVisibility(R.id.widget_clothing, if (event != null && !compact && !short && event.clothing.isNotEmpty()) View.VISIBLE else View.GONE)
             val response = when (event?.status) {
                 "yes" -> WidgetResponse("Dabei", 0xFF1F7847.toInt(), 0xFFE3EDE4.toInt(), R.drawable.widget_status_yes)
@@ -98,6 +102,7 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_status, response.title)
             views.setTextColor(R.id.widget_status, response.color)
             views.setImageViewResource(R.id.widget_status_icon, response.icon)
+            views.setViewVisibility(R.id.widget_time, if (event == null) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_note, if (snapshot?.stale == true && event != null) View.VISIBLE else View.GONE)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
             views.setContentDescription(R.id.widget_root, if (event != null) listOfNotNull(day, event.title, time, event.location, event.clothing, response.title, if (snapshot?.stale == true) "Gespeicherter Stand, H₂O öffnen" else null).filter { it.isNotEmpty() }.joinToString(". ") else title)

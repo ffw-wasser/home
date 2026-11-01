@@ -10,6 +10,7 @@ struct H2OPortalApp: App {
 
 @MainActor final class PortalModel: ObservableObject {
     @Published var message = ""
+    @Published var reviewRequested = false
     let web: WKWebView
     private(set) var hasOpened = false
     let review: Bool
@@ -23,7 +24,7 @@ struct H2OPortalApp: App {
         H2OWidgetBridge.accept(["action": "clear"])
         let config = WKWebViewConfiguration()
         config.websiteDataStore = review ? .nonPersistent() : .default()
-        config.applicationNameForUserAgent = "H2ONative/1 iOS"
+        config.applicationNameForUserAgent = "H2ONative/1 iOS H2OReviewHelp/1"
         web = WKWebView(frame: .zero, configuration: config)
         web.allowsBackForwardNavigationGestures = true
         web.isInspectable = false
@@ -34,6 +35,12 @@ struct H2OPortalApp: App {
         hasOpened = true
         web.load(URLRequest(url: destination))
     }
+    func requestReview(from source: URL, to destination: URL, mainFrame: Bool, userInitiated: Bool) -> Bool {
+        guard !review, mainFrame, userInitiated, PortalLinks.trusted(source),
+              !PortalLinks.isReview(source), PortalLinks.isReview(destination) else { return false }
+        reviewRequested = true
+        return true
+    }
 }
 
 struct PortalScreen: View {
@@ -41,11 +48,13 @@ struct PortalScreen: View {
     @State private var confirmSwitch = false
     var body: some View {
         VStack(spacing: 0) {
-            PortalContent(review: review).id(review)
-            Button(review ? "Demo verlassen · Mitgliederanmeldung" : "Apple-Prüfdemo öffnen") { confirmSwitch = true }
+            PortalContent(review: review, onReviewRequested: { confirmSwitch = true }).id(review)
+            if review {
+            Button("Demo verlassen · Mitgliederanmeldung") { confirmSwitch = true }
                 .font(.caption).padding(8).frame(maxWidth: .infinity)
                 .background(Color(red: 16.0 / 255, green: 28.0 / 255, blue: 44.0 / 255))
                 .foregroundStyle(.white)
+            }
         }
         .confirmationDialog("Ansicht wechseln? Ungespeicherte Eingaben in der aktuellen Ansicht werden verworfen.", isPresented: $confirmSwitch, titleVisibility: .visible) {
             Button(review ? "Zur Mitgliederanmeldung" : "Prüfdemo öffnen") { review.toggle() }
@@ -56,7 +65,11 @@ struct PortalScreen: View {
 
 struct PortalContent: View {
     @StateObject private var model: PortalModel
-    init(review: Bool) { _model = StateObject(wrappedValue: PortalModel(review: review)) }
+    private let onReviewRequested: () -> Void
+    init(review: Bool, onReviewRequested: @escaping () -> Void) {
+        _model = StateObject(wrappedValue: PortalModel(review: review))
+        self.onReviewRequested = onReviewRequested
+    }
     var body: some View {
         VStack(spacing: 0) {
             if !model.message.isEmpty {
@@ -71,7 +84,10 @@ struct PortalContent: View {
             }
             PortalWebView(model: model)
         }
-        // Continue the navy footer behind the iPhone home indicator.
+        .onChange(of: model.reviewRequested) { requested in
+            if requested { model.reviewRequested = false; onReviewRequested() }
+        }
+        // Continue the app background behind the iPhone home indicator.
         .background(Color(red: 16.0 / 255, green: 28.0 / 255, blue: 44.0 / 255).ignoresSafeArea(.container, edges: .bottom))
         .onAppear {
             // Snapshot/unit-test hosts must not contact the production portal.
