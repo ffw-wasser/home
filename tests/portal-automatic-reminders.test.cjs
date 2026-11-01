@@ -55,3 +55,42 @@ test('Revoked accounts and removed recipient membership are excluded at dispatch
  f.clock.now=Date.parse('2026-11-01T18:30:00Z');for(let i=0;i<3;i++){await f.c.PortalService.scheduled(f.env);f.clock.now+=60000;}
  assert.deepEqual(f.sends.map(s=>s.url).sort(),f.people.slice(2).map(p=>'https://fcm.googleapis.com/'+p.memberId));
 });
+async function mixedDevices(f){
+ const person=f.people[0];f.c.NativePush.ready=f.c.AndroidPush.ready=()=>true;
+ assert.equal((await f.call('native-push',{action:'subscribe',deviceToken:'ab'.repeat(32)},person)).status,200);
+ assert.equal((await f.call('native-push',{action:'subscribe',platform:'android',deviceToken:'synthetic-android-token-0001'},person)).status,200);
+ assert.equal((await f.call('subscribe',{endpoint:'https://fcm.googleapis.com/synthetic-web-device'},person)).status,200);
+ const warnings=[],summaries=[];f.c.console={warn:(...args)=>warnings.push(args),info:(...args)=>summaries.push(args)};
+ return {person,warnings,summaries};
+}
+test('Automatic dispatch diagnoses each transport for multiple devices of the same member without exposing provider data',async()=>{
+ const f=await fixture({now:Date.parse('2026-11-01T12:00:00Z')}),{warnings,summaries}=await mixedDevices(f);
+ f.c.NativePush.send=async()=>new Response(JSON.stringify({reason:'BadDeviceToken',message:'secret-provider-message'}),{status:400});
+ f.c.AndroidPush.send=async()=>new Response(JSON.stringify({error:{status:'PERMISSION_DENIED',message:'secret-provider-message',details:[{errorCode:'SENDER_ID_MISMATCH'}]}}),{status:403});
+ await policy(f);f.clock.now=Date.parse('2026-11-01T18:30:00Z');await f.c.PortalService.scheduled(f.env);
+ assert.deepEqual(warnings.map(args=>JSON.parse(args[1])),[{transport:'ios',httpStatus:400,reason:'BadDeviceToken'},{transport:'android',httpStatus:403,reason:'SENDER_ID_MISMATCH'}]);
+ assert.deepEqual(JSON.parse(summaries[0][1]),{automatic:true,accepted:1,failed:2,excused:0,remaining:0});
+ assert.equal(f.sql.prepare('SELECT status FROM portal_sends').get().status,'accepted','one provider acceptance does not mean all devices succeeded');
+ assert.doesNotMatch(JSON.stringify([warnings,summaries]),/secret-provider-message|synthetic|https:|member-|Testperson|revision-|abab|111111/);
+});
+test('The sender receives reminders on both native devices and the web device',async()=>{
+ const f=await fixture(),{person,warnings,summaries}=await mixedDevices(f),sent=[];
+ f.c.NativePush.send=async()=>{sent.push('ios');return new Response(null,{status:200});};
+ f.c.AndroidPush.send=async()=>{sent.push('android');return new Response(null,{status:200});};
+ const event=(await f.call('list',{},person)).value.events[0];
+ const result=await f.call('remind',{eventId:event.id,requestId:crypto.randomUUID()},person);
+ assert.equal(result.status,200);assert.equal(result.value.accepted,3);assert.equal(result.value.failed,0);
+ assert.deepEqual(sent,['ios','android']);assert.equal(warnings.length,0);assert.equal(JSON.parse(summaries[0][1]).automatic,false);
+});
+test('Unknown provider reasons, invalid bodies and exception details cannot enter push diagnostics',async()=>{
+ const f=await fixture(),{person,warnings}=await mixedDevices(f);
+ f.c.NativePush.send=async()=>new Response(JSON.stringify({reason:'secret-token-and-name'}),{status:403});
+ f.c.AndroidPush.send=async()=>{throw Object.assign(Error('secret-token-and-name'),{name:'secret-exception-name'});};
+ // Populate the calendar cache before replacing the transport fetch implementation.
+ const event=(await f.call('list',{},person)).value.events[0];
+ f.c.fetch=async()=>new Response('secret-token-and-name',{status:502});
+ const result=await f.call('remind',{eventId:event.id,requestId:crypto.randomUUID()},person);
+ assert.equal(result.status,200);assert.equal(result.value.accepted,0);assert.equal(result.value.failed,3);
+ assert.deepEqual(warnings.map(args=>JSON.parse(args[1])),[{transport:'ios',httpStatus:403},{transport:'android',error:'unknown'},{transport:'web',httpStatus:502}]);
+ assert.doesNotMatch(JSON.stringify(warnings),/secret|synthetic|https:|member-|abab/);
+});

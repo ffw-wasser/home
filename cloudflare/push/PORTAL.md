@@ -367,3 +367,23 @@ Eine fehlgeschlagene Statusspeicherung verhindert nicht die Kalenderauslieferung
 des Abo-Links macht den alten Status ungültig; Wiederherstellung und Austritt löschen ihn.
 IP-Adressen, User-Agent oder Abrufverläufe werden für diese Funktion nicht gespeichert. Ein Abruf
 ist kein Beleg für ein noch bestehendes Abo; direkte Google-Freigaben werden nicht erfasst.
+
+### Versandfehler im Echtzeitprotokoll prüfen
+
+Ein erfolgreicher Cron-Aufruf bestätigt nur die Ausführung, nicht den Versand oder die
+Anzeige auf einem Handy. Auch „angenommen“ zählt Geräte und bedeutet ausschließlich
+Annahme durch deren Push-Dienst. Mehrere Geräte desselben Mitglieds und das Gerät des
+sendenden Gruppenführers werden berücksichtigt; Entschuldigte werden übersprungen.
+
+Im Echtzeitprotokoll meldet `H2O-Push fehlgeschlagen` den Transport (`ios`, `android`
+oder `web`), HTTP-Status und bekannte Apple-/Google-Fehlercodes. Bei Ausnahmen wird nur
+ein fest vorgegebener Fehlertyp ausgegeben. Providertexte, Tokens, Endpunkte, Namen,
+Mitglieder- und Terminkennungen werden nicht protokolliert. `H2O-Push Versandlauf`
+zeigt die Geräteanzahlen eines bearbeiteten manuellen oder automatischen Teillaufs.
+Die Konfiguration zur dauerhaften Protokollspeicherung bleibt unverändert.
+
+Für eine Diagnose den Echtzeit-Stream vor dem nächsten autorisierten Versand öffnen.
+Eine Änderung der Uhrzeit startet bereits versuchte automatische Empfänger desselben
+Termins nicht erneut; auch bei Fehlern verhindert die bisherige Versandreservierung
+einen zweiten automatischen Versuch. Diese Diagnoseergänzung ändert diese Regel nicht
+und bestätigt keine reale Zustellung auf iOS oder Android.

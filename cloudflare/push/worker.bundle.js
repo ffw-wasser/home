@@ -22529,6 +22529,22 @@ g.PortalHydrants={schema,route};
  }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
  async function recipients(env){const rows=(await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE EXISTS(SELECT 1 FROM devices d JOIN portal_devices p ON p.id=d.id WHERE d.alias=a.alias AND d.revision=a.revision)').all()).results,result=new Map();for(const row of rows){const record=await L.open(env,row.payload,'access:'+row.alias);if(!result.has(record.memberId))result.set(record.memberId,[]);result.get(record.memberId).push(record);}return result;}
+ async function pushFailure(transport,response,error){
+  // Never record endpoints, tokens, provider messages, member or appointment data.
+  const diagnostic={transport};
+  if(response){
+   diagnostic.httpStatus=response.status;
+   try{
+    const value=await response.json(),known=['BadDeviceToken','DeviceTokenNotForTopic','BadTopic','TopicDisallowed','BadCertificate','BadCertificateEnvironment','ExpiredProviderToken','InvalidProviderToken','MissingProviderToken','BadAuthorizationHeader','BadJwtToken','BadVapidPublicKey','BadTtl','BadUrgency','BadCryptoKey','BadEncryption','BadContentEncoding','BadRequest','PayloadTooLarge','ExpiredToken','Unregistered','NotFound','Forbidden','TooManyRequests','UNREGISTERED','SENDER_ID_MISMATCH','THIRD_PARTY_AUTH_ERROR','INVALID_ARGUMENT','UNAVAILABLE','INTERNAL','QUOTA_EXCEEDED','UNAUTHENTICATED','PERMISSION_DENIED','NOT_FOUND'];
+    const reasons=[value?.reason,...(Array.isArray(value?.error?.details)?value.error.details.map(item=>item?.errorCode):[]),value?.error?.status];
+    const reason=reasons.find(item=>known.includes(item));if(reason)diagnostic.reason=reason;
+   }catch{}
+  }else{
+   const known=['Error','TypeError','SyntaxError','DataError','OperationError','InvalidAccessError','NotSupportedError','TimeoutError','AbortError'];
+   diagnostic.error=known.includes(error?.name)?error.name:'unknown';
+  }
+  console.warn('H2O-Push fehlgeschlagen',JSON.stringify(diagnostic));
+ }
  async function send(env,event,requestId,automatic=false){
   const remindedAt=Date.now();let marked=false;const mark=async()=>{if(marked)return;await env.DB.prepare('INSERT INTO portal_event_reminders(event,reminded_at) VALUES(?,?) ON CONFLICT(event) DO UPDATE SET reminded_at=excluded.reminded_at').bind(event.id,remindedAt).run();marked=true;};if(!automatic)await mark();
   let accepted=0,failed=0,excused=0,duplicate=0,processed=0;const people=await recipients(env),campaign=requestId,already=new Set((await env.DB.prepare('SELECT member FROM portal_sends WHERE event=? AND campaign=?').bind(event.id,campaign).all()).results.map(r=>r.member)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');let remaining=0;const replyRows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of replyRows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
@@ -22542,11 +22558,13 @@ g.PortalHydrants={schema,route};
    for(const record of records){const devices=(await env.DB.prepare('SELECT d.id,d.endpoint FROM devices d JOIN portal_devices p ON p.id=d.id WHERE alias=? AND revision=? LIMIT 5').bind(record.alias,record.revision).all()).results;
     for(const device of devices){
      if((await replyFor(env,event.id,member)).status==='excused')continue;
-     try{const url=device.endpoint,res=g.AndroidPush?.isEndpoint(url)?await g.AndroidPush.send(env,url):g.NativePush?.isEndpoint(url)?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch{f++;}
+     const url=device.endpoint,transport=g.AndroidPush?.isEndpoint(url)?'android':g.NativePush?.isEndpoint(url)?'ios':'web';
+     try{const res=transport==='android'?await g.AndroidPush.send(env,url):transport==='ios'?await g.NativePush.send(env,url):await fetch(endpoint(url),{method:'POST',headers:{Authorization:await vapid(env,url),TTL:String(Math.max(60,Math.min(86400,Math.floor((event.start-Date.now())/1000)))),Urgency:'normal',Topic:'h2o-portal'},body:null,redirect:'manual',signal:AbortSignal.timeout(8000)});if(res.ok)a++;else{f++;await pushFailure(transport,res);if([404,410].includes(res.status))await env.DB.prepare('DELETE FROM devices WHERE id=? AND alias=?').bind(device.id,record.alias).run();}}catch(error){f++;await pushFailure(transport,null,error);}
     }
    }
    await env.DB.prepare('UPDATE portal_sends SET status=? WHERE id=?').bind(a?'accepted':f?'failed':'skipped',id).run();accepted+=a;failed+=f;
   }
+  if(processed)console.info('H2O-Push Versandlauf',JSON.stringify({automatic,accepted,failed,excused,remaining}));
   return {accepted,failed,excused,duplicate,remaining,remindedAt,...(automatic?{processed}:{})};
  }
  // Completed calendar events are no longer managed in H₂O. Keep their replies
@@ -22988,7 +23006,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"b9deb927bbd6807694ffc76f87c3ddf56a2923ccc07fa739a93305241609f234",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"96ee961290d4cd2449cdf019024aaf3fc1914c806fd5f1dd35dbeb9b5fc80c4c",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
