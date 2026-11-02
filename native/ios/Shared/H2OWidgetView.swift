@@ -75,6 +75,31 @@ struct NextEventView: View {
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
+    private func mediumDetails(_ event: H2OWidgetEvent) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(spacing: 1) {
+                Text(part(event.start, "MMM").uppercased())
+                    .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).frame(height: 16)
+                    .background(Color(red: 0.65, green: 0.12, blue: 0.18))
+                Text(part(event.start, "d")).font(.system(size: 28, weight: .bold, design: .rounded)).frame(height: 30)
+                Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
+                    .font(.system(size: 9, weight: .medium)).foregroundStyle(secondaryInk)
+                    .padding(.bottom, 3)
+            }
+            .frame(width: 55).background(ink.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(event.title).font(.system(size: 16, weight: .semibold))
+                    .lineLimit(2).minimumScaleFactor(0.85)
+                Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
+                    .font(.system(size: 11)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
+                if !event.clothing.isEmpty {
+                    Text(event.clothing).font(.system(size: 10)).foregroundStyle(secondaryInk).lineLimit(1)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
     private func action(_ status: String, label: String? = nil) -> some View {
         Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: status)) {
             HStack(spacing: 4) {
@@ -109,29 +134,33 @@ struct NextEventView: View {
                 HStack(spacing: 6) { action("yes"); action("excused"); action("maybe") }
             } else {
                 HStack {
-                    Label(title(event.status), systemImage: symbol(event.status)).font(.system(size: 13, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                    Label(title(event.status), systemImage: symbol(event.status))
+                        .font(.system(size: 12, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                        .padding(.horizontal, 10).frame(minHeight: 30)
+                        .background(color(event.status), in: Capsule())
                     Spacer(minLength: 4)
                     if canReply { action("edit", label: "Ändern").frame(width: 80) }
-                }.padding(.leading, 10).background(color(event.status), in: RoundedRectangle(cornerRadius: 10))
-                    .frame(minHeight: 44)
+                }.frame(minHeight: 44)
             }
         }
     }
     var body: some View {
         GeometryReader { geometry in
-            let horizontal: CGFloat = small ? 10 : 12
-            let vertical: CGFloat = small ? 8 : large ? 12 : 3
+            let horizontal: CGFloat = small ? 10 : 16
+            let vertical: CGFloat = small ? 8 : 12
             let contentWidth = max(1, geometry.size.width - 2 * horizontal)
-            let detailHeight = max(1, geometry.size.height - 2 * vertical - (small ? 17 + 27 + 8 : 12 + 44 + 6))
+            let detailHeight = max(1, geometry.size.height - 2 * vertical - (small ? 17 + 27 + 8 : 17 + 44 + 8))
             VStack(alignment: .leading, spacing: small ? 4 : large ? 6 : 3) {
-                header.frame(height: small || large ? 17 : 12)
+                header.frame(height: 17)
                 if let event {
                     Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
-                        details(event, compact: small, dense: !small && !large)
-                            .frame(width: contentWidth, alignment: .topLeading)
+                        Group {
+                            if !small && !large { mediumDetails(event) }
+                            else { details(event, compact: small) }
+                        }.frame(width: contentWidth, alignment: .topLeading)
                     }
                     .buttonStyle(.plain)
-                    .frame(width: contentWidth, height: large ? nil : detailHeight, alignment: .topLeading)
+                    .frame(width: contentWidth, height: large ? nil : detailHeight, alignment: .center)
                     if !small && event.status == "open" && job == nil && canReply && large {
                         Text(event.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen").font(.system(size: 10)).foregroundStyle(secondaryInk)
                     }
@@ -157,7 +186,6 @@ struct NextEventView: View {
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
             .background(background)
-            .overlay(alignment: .top) { Color(red: 0.70, green: 0.11, blue: 0.17).frame(height: 3).accessibilityHidden(true) }
         }
         .foregroundStyle(ink)
         .containerBackground(background, for: .widget)
