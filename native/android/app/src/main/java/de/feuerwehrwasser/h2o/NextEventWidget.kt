@@ -51,7 +51,9 @@ open class NextEventWidget : AppWidgetProvider() {
             // Best-effort boundary refresh; Android may defer background work to save power.
             val snapshot = WidgetStore.read(context, now)
             val midnight = Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(1).atStartOfDay(WidgetSnapshot.zone).toInstant().toEpochMilli()
-            val boundary = listOfNotNull(snapshot?.event?.end, snapshot?.updatedAt?.plus(12 * 3600000L), midnight).filter { it > now }.minOrNull()
+            val pending = runCatching { WidgetStore.prefs(context).getString("job", null)?.let(::JSONObject) }.getOrNull()
+            val replyTimeout = pending?.takeIf { it.optString("phase") == "saving" }?.optLong("startedAt")?.plus(30000)
+            val boundary = listOfNotNull(snapshot?.event?.end, snapshot?.updatedAt?.plus(12 * 3600000L), replyTimeout, midnight).filter { it > now }.minOrNull()
             if (boundary != null && widgetIds(context).isNotEmpty()) WorkManager.getInstance(context).enqueueUniqueWork("h2o-widget-boundary", ExistingWorkPolicy.REPLACE,
                 OneTimeWorkRequestBuilder<WidgetClockWorker>().setInitialDelay(boundary - now, TimeUnit.MILLISECONDS).build())
         }

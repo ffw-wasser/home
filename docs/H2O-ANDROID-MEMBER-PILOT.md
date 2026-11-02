@@ -132,3 +132,5 @@ Die nächsten drei bereits freigegebenen eigenen Termine werden übernommen und 
 Datenschutz: Die vollständige Anmeldung, Passkeys und persönliche Kalenderlinks bleiben im Portal. Das Widget erhält nur eine verschlüsselte, auf die übernommenen drei Termine begrenzte Antwortberechtigung, gebunden an die noch gültige Sitzung und maximal zwölf Stunden. Bei jeder Antwort werden Sitzung, Zugang, Mitgliedschaft, Empfänger, Terminbeginn, Kalenderfrische und Antwortversion erneut geprüft. iOS speichert sie in einer geschützten, von Backups ausgeschlossenen App-Group-Datei; Android verschlüsselt sie mit Android Keystore in privaten, nicht gesicherten App-Daten. Abmeldung, Kontowechsel und erkannter Zugriffsverlust entfernen den Stand.
 
 Die neue Funktion benötigt Portal/Worker und den neuen nativen App-Build. Ein Pull Request oder grüner Test ist keine Veröffentlichung. Reale iPhone-/Android-Abnahme bleibt zusätzlich erforderlich.
+
+Das breite Widget startet neu als 4×2-Karte mit Platz für Antworttasten; bestehende Widgets behalten ihre Größe und bleiben bis auf eine Zeile verkleinerbar.
