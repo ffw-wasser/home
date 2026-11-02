@@ -4,6 +4,7 @@
  async function check(){return document.hidden?false:Boolean(await g.AppRelease?.check());}
  function indicator(text,state='message',progress=0){
   const hint=$('deckel-pull-refresh');if(!hint)return;
+  const top=$('deckel-main')?.getBoundingClientRect?.()?.top||0;hint.style?.setProperty('--pull-top',Math.max(0,top)+'px');
   hint.hidden=false;const label=hint.querySelector?.('[data-pull-label]');
   if(label){if(label.textContent!==text)label.textContent=text;}else hint.textContent=text;
   if(hint.dataset)hint.dataset.state=state;

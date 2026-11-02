@@ -571,7 +571,7 @@
 .portal-subscription-item [data-state="active"]{color:var(--success,#166534)}
 
 /* Pull to refresh belongs to the scrollable portal content. */
-.deckel-pull-refresh{position:fixed;z-index:90;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translate(-50%,var(--pull-distance,18px));display:grid;place-items:center;width:48px;height:48px;border:1px solid var(--line,#d6e0e9);border-radius:50%;background:var(--surface,#fff);color:var(--ink,#15365a);box-shadow:0 3px 14px #10284326;pointer-events:none}
+.deckel-pull-refresh{position:fixed;z-index:90;top:calc(var(--pull-top,env(safe-area-inset-top)) + 8px);left:50%;transform:translate(-50%,var(--pull-distance,18px));display:grid;place-items:center;width:48px;height:48px;border:1px solid var(--line,#d6e0e9);border-radius:50%;background:var(--surface,#fff);color:var(--ink,#15365a);box-shadow:0 3px 14px #10284326;pointer-events:none}
 .deckel-pull-refresh[hidden]{display:none!important}
 .deckel-pull-ring{width:36px;height:36px;overflow:visible;transform:rotate(-90deg)}
 .deckel-pull-ring circle{fill:none;stroke-width:3.2}

@@ -22,6 +22,8 @@ const root=path.resolve(__dirname,'..'),engine=process.env.BROWSER_ENGINE||'chro
  await touch('touchstart',170,170);await touch('touchmove',170,310);
  assert.equal(await page.locator('[data-pull-arc]').evaluate(n=>n.style.strokeDashoffset),'0');
  assert.equal(await page.locator('#deckel-pull-refresh').getAttribute('data-state'),'ready');
+ const ringBounds=await page.locator('#deckel-pull-refresh').boundingBox(),mainBounds=await page.locator('#deckel-main').boundingBox();
+ assert.ok(ringBounds.y>=mainBounds.y && ringBounds.y+ringBounds.height<=mainBounds.y+mainBounds.height,'ring stays fully inside the visible content below the header');
  assert.equal(await page.evaluate(()=>hapticCalls.filter(v=>v==='threshold').length),1);
  await touch('touchmove',170,350);await touch('touchmove',170,220);await touch('touchmove',170,310);
  assert.equal(await page.evaluate(()=>hapticCalls.filter(v=>v==='threshold').length),1,'one pulse per gesture despite recrossing');
