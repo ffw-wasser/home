@@ -46,6 +46,7 @@ class WidgetPreviewTest {
                     assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
+                    val isEvent = fixture !in listOf("clear", "empty")
                     val widget = activity.findViewById<View>(R.id.widget_root)
                     assertFalse("Brand heading must not consume calendar space", activity.findViewById<View>(R.id.widget_brand).isShown)
                     if (isEvent && width >= 300 && height in 210..289 && height / fontScale >= 160 && width / fontScale >= 240) {
@@ -57,7 +58,6 @@ class WidgetPreviewTest {
                     }
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
-                    val isEvent = fixture !in listOf("clear", "empty")
                     val card = activity.findViewById<View>(R.id.widget_reply_section) != null
                     val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
                     assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
