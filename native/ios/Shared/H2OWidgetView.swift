@@ -89,15 +89,21 @@ struct NextEventView: View {
             }
             .frame(width: large ? 70 : 55).background(ink.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
             .clipShape(RoundedRectangle(cornerRadius: 9))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(event.title).font(.system(size: large ? 20 : 16, weight: .semibold))
-                    .lineLimit(2).minimumScaleFactor(0.85)
-                Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
-                    .font(.system(size: large ? 12 : 11)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
-                if !event.clothing.isEmpty {
-                    Text(event.clothing).font(.system(size: large ? 11 : 10)).foregroundStyle(secondaryInk).lineLimit(1)
-                }
+            ViewThatFits(in: .vertical) {
+                cardText(event, titleSize: large ? 20 : 16, detailSize: large ? 12 : 11, spacing: 3)
+                cardText(event, titleSize: large ? 18 : 14, detailSize: large ? 11 : 10, spacing: 2)
             }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    private func cardText(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            Text(event.title).font(.system(size: titleSize, weight: .semibold))
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
+                .font(.system(size: detailSize)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
+            if !event.clothing.isEmpty {
+                Text(event.clothing).font(.system(size: detailSize - 1)).foregroundStyle(secondaryInk).lineLimit(1)
+            }
         }
     }
     private func action(_ status: String, label: String? = nil) -> some View {
