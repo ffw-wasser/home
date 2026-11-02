@@ -126,6 +126,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val statusColor = when (event?.status) { "yes" -> 0xFF294835; "excused" -> 0xFF512B35; "maybe" -> 0xFF513F25; else -> 0xFF253240 }.toInt()
             views.setInt(R.id.widget_footer, "setBackgroundColor", statusColor)
             views.setTextViewText(R.id.widget_status, statusText)
+            size(R.id.widget_status, if (flat) 10f else 12f)
             views.setTextColor(R.id.widget_status, 0xFFF7F8FA.toInt())
             show(R.id.widget_footer, event != null && !actions)
             show(R.id.widget_status_icon, false)

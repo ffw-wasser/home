@@ -57,7 +57,7 @@ class WidgetPreviewTest {
                         if (fixture == "saving") assertEquals("Wird gespeichert …", text)
                         if (fixture == "retry") assertTrue(text.contains("Unbestätigt"))
                     }
-                    assertTextFits(widget, widget)
+                    assertTextFits(widget, widget, "${width}x${height} font=$fontScale fixture=$fixture exact=$exactSize")
                     if (fixture in listOf("today", "tomorrow")) assertTrue(activity.findViewById<TextView>(R.id.widget_day).text.toString().startsWith(if (fixture == "today") "Heute" else "Morgen"))
                     if (fixture == "future" && width < 240 && height / fontScale >= 140) {
                         assertTrue("Month gets its own visible row", activity.findViewById<TextView>(R.id.widget_month).isShown)
@@ -74,7 +74,7 @@ class WidgetPreviewTest {
         }
         WidgetStore.clear(context)
     }
-    private fun assertTextFits(root: View, view: View) {
+    private fun assertTextFits(root: View, view: View, scenario: String) {
         if (!view.isShown) return
         if (view is TextView) {
             val rect = android.graphics.Rect()
@@ -84,9 +84,9 @@ class WidgetPreviewTest {
             assertTrue("Text is inside widget horizontally", rect.left >= -2 && rect.right <= root.width + 2)
             assertTrue("Text has visible height", view.height > 0)
             val textLayout = view.layout
-            if (textLayout != null && view.text.isNotEmpty()) assertTrue("Text line is not vertically clipped: ${view.text}", textLayout.getLineBottom(textLayout.lineCount - 1) <= view.height - view.compoundPaddingTop - view.compoundPaddingBottom + 2)
+            if (textLayout != null && view.text.isNotEmpty()) assertTrue("$scenario: Text line is not vertically clipped: ${view.text}, height=${view.height}, bottom=${textLayout.getLineBottom(textLayout.lineCount - 1)}", textLayout.getLineBottom(textLayout.lineCount - 1) <= view.height - view.compoundPaddingTop - view.compoundPaddingBottom + 2)
         }
-        if (view is ViewGroup) for (i in 0 until view.childCount) assertTextFits(root, view.getChildAt(i))
+        if (view is ViewGroup) for (i in 0 until view.childCount) assertTextFits(root, view.getChildAt(i), scenario)
     }
     private val AppWidgetProviderResize = android.appwidget.AppWidgetProviderInfo.RESIZE_HORIZONTAL or android.appwidget.AppWidgetProviderInfo.RESIZE_VERTICAL
 }
