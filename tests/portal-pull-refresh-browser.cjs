@@ -13,14 +13,14 @@ const root=path.resolve(__dirname,'..'),engine=process.env.BROWSER_ENGINE||'chro
  await page.waitForTimeout(250);
  await touch('touchstart',170,170);await touch('touchmove',170,240);
  assert.equal(await page.locator('#deckel-pull-refresh').getAttribute('data-state'),'pulling');
- assert.equal(await page.locator('[data-pull-arc]').evaluate(n=>n.style.strokeDashoffset),'50');
+ assert.equal(await page.locator('[data-pull-arc]').evaluate(n=>parseFloat(n.style.strokeDashoffset)),50);
  assert.equal(await page.evaluate(()=>hapticCalls.filter(v=>v==='threshold').length),0,'half ring has no pulse');
  await touch('touchcancel',170,240);
  await swipe(174,220);assert.equal(await count(),0,'short pulls do not refresh');
  await swipe(170,309);assert.equal(await count(),0,'139px does not refresh');
  await page.evaluate(()=>hapticCalls=[]);
  await touch('touchstart',170,170);await touch('touchmove',170,310);
- assert.equal(await page.locator('[data-pull-arc]').evaluate(n=>n.style.strokeDashoffset),'0');
+ assert.equal(await page.locator('[data-pull-arc]').evaluate(n=>parseFloat(n.style.strokeDashoffset)),0);
  assert.equal(await page.locator('#deckel-pull-refresh').getAttribute('data-state'),'ready');
  const ringBounds=await page.locator('#deckel-pull-refresh').boundingBox(),mainBounds=await page.locator('#deckel-main').boundingBox();
  assert.ok(ringBounds.y>=mainBounds.y && ringBounds.y+ringBounds.height<=mainBounds.y+mainBounds.height,'ring stays fully inside the visible content below the header');
