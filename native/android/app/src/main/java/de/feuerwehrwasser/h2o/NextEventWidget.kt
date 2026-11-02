@@ -71,13 +71,13 @@ open class NextEventWidget : AppWidgetProvider() {
         internal fun views(context: Context, width: Int, height: Int, now: Long): RemoteViews {
             val compact = width < 240; val flat = height < 100
             val snapshot = WidgetStore.read(context, now); val event = snapshot?.event
-            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compact) R.layout.widget_event_small else R.layout.widget_event)
-            fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
-            fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
             val fontScale = context.resources.configuration.fontScale
             val logicalHeight = height / fontScale
-            val roomy = !compact && width / fontScale >= 280 && logicalHeight >= 155
             val large = !compact && logicalHeight >= 290
+            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (large) R.layout.widget_event_large else if (compact) R.layout.widget_event_small else R.layout.widget_event)
+            fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
+            fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
+            val roomy = !compact && width / fontScale >= 280 && logicalHeight >= 155
             val smallDate = compact && !flat && logicalHeight >= 140
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val relative = event?.let { WidgetSnapshot.day(it.start, now) }
