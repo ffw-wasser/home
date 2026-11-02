@@ -1,8 +1,6 @@
 #if canImport(UIKit)
 import SwiftUI
 import WidgetKit
-import UIKit
-import ImageIO
 import AppIntents
 
 struct NextEventEntry: TimelineEntry {
@@ -14,156 +12,199 @@ struct NextEventView: View {
     let entry: NextEventEntry
     @Environment(\.widgetFamily) private var widgetFamily
     @Environment(\.widgetRenderingMode) private var renderingMode
-    @Environment(\.dynamicTypeSize) private var typeSize
     var familyOverride: WidgetFamily? = nil
     private var family: WidgetFamily { familyOverride ?? widgetFamily }
     private var small: Bool { family == .systemSmall }
     private var large: Bool { family == .systemLarge }
     private var snapshot: H2OWidgetSnapshot? { entry.snapshot?.at(entry.date) }
     private var event: H2OWidgetEvent? { snapshot?.event }
-    private let background = Color(red: 0.09, green: 0.12, blue: 0.17)
+    private let background = Color(red: 0.098, green: 0.106, blue: 0.125)
+    private let red = Color(red: 0.65, green: 0.13, blue: 0.20)
+    private let signalYellow = Color(red: 0.96, green: 0.77, blue: 0.26)
     private var ink: Color { renderingMode == .fullColor ? .white : .primary }
-    private var secondaryInk: Color { ink.opacity(0.72) }
+    private var secondaryInk: Color { ink.opacity(0.70) }
     private var job: H2OWidgetReplyJob? { snapshot?.job.flatMap { $0.eventID == event?.id ? $0 : nil } }
     private var canReply: Bool { event?.canReply == true && (event?.start ?? .distantPast) > entry.date && snapshot?.stale == false && event?.id != nil }
-    private var choosing: Bool { event?.status == "open" || snapshot?.editing == event?.id }
-    private static let logo: UIImage? = {
-        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"), let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 96] as CFDictionary) else { return nil }
-        return UIImage(cgImage: thumbnail)
-    }()
+    private var destination: URL { event?.link ?? URL(string: "h2oportal://termine")! }
     private func part(_ date: Date, _ format: String) -> String {
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "de_DE")
         formatter.timeZone = TimeZone(identifier: "Europe/Berlin"); formatter.dateFormat = format
         return formatter.string(from: date)
     }
-    private func day(_ event: H2OWidgetEvent) -> String {
-        let relative = H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date)
-        if small { return relative ?? part(event.start, "d. MMM") }
-        return (relative.map { $0 + " · " } ?? "") + part(event.start, "d. MMMM")
-    }
     private func title(_ status: String) -> String {
-        switch status { case "yes": return "Dabei"; case "excused": return "Entschuldigt"; case "maybe": return "Unsicher"; default: return "Rückmeldung offen" }
-    }
-    private func symbol(_ status: String) -> String {
-        switch status { case "yes": return "checkmark"; case "excused": return "xmark"; case "maybe": return "questionmark"; default: return "circle" }
+        switch status { case "yes": return "Dabei"; case "excused": return "Entschuldigt"; case "maybe": return "Unsicher"; default: return "Offen" }
     }
     private func color(_ status: String) -> Color {
         if renderingMode != .fullColor { return .primary }
-        switch status { case "yes": return Color(red: 0.20, green: 0.43, blue: 0.29); case "excused": return Color(red: 0.48, green: 0.17, blue: 0.22); case "maybe": return Color(red: 0.49, green: 0.34, blue: 0.12); default: return Color.white.opacity(0.10) }
+        switch status {
+        case "yes": return Color(red: 0.26, green: 0.56, blue: 0.37)
+        case "excused": return red
+        case "maybe": return Color(red: 0.66, green: 0.47, blue: 0.22)
+        default: return signalYellow
+        }
     }
     private var header: some View {
-        HStack(spacing: 5) {
-            if let logo = Self.logo { Image(uiImage: logo).resizable().scaledToFit().frame(width: small || large ? 17 : 12, height: small || large ? 17 : 12).accessibilityHidden(true) }
-            Text(small ? "Feuerwehr Wasser" : "H₂O · Feuerwehr Wasser")
-                .font(.system(size: small || !large ? 10 : 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+        HStack(spacing: 3) {
+            Text("H₂O").fontWeight(.semibold).foregroundStyle(ink)
+            Text("· Feuerwehr Wasser").foregroundStyle(secondaryInk)
             Spacer(minLength: 0)
-            if snapshot?.stale == true { Image(systemName: "exclamationmark.triangle").accessibilityLabel("Gespeicherter Kalenderstand · H₂O öffnen") }
-        }.foregroundStyle(secondaryInk)
+            if snapshot?.stale == true {
+                Image(systemName: "exclamationmark.triangle").foregroundStyle(secondaryInk)
+                    .accessibilityLabel("Gespeicherter Kalenderstand · H₂O öffnen")
+            }
+        }.font(.system(size: small ? 9 : large ? 11 : 10)).lineLimit(1).minimumScaleFactor(0.8)
     }
-    private func details(_ event: H2OWidgetEvent, compact: Bool, dense: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: compact || dense ? 2 : 5) {
-            Text(day(event)).font(.system(size: compact ? 24 : large ? 27 : dense ? 17 : 21, weight: .bold))
-                .lineLimit(1).minimumScaleFactor(0.7)
-            Text(event.title).font(.system(size: compact ? 13 : large ? 23 : dense ? 15 : 17, weight: .semibold))
-                .lineLimit(2).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + (compact ? "" : " · " + event.location))
-                .font(.system(size: compact || dense ? 10 : 12)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
-            if !compact && !event.clothing.isEmpty {
-                Text(event.clothing).font(.system(size: dense ? 10 : 11)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
+    private func calendar(_ event: H2OWidgetEvent) -> some View {
+        let paper = renderingMode == .fullColor ? Color(red: 0.95, green: 0.935, blue: 0.90) : ink.opacity(0.12)
+        let dateInk = renderingMode == .fullColor ? Color(red: 0.10, green: 0.11, blue: 0.13) : ink
+        return VStack(spacing: 0) {
+            ZStack {
+                Rectangle().fill(renderingMode == .fullColor ? red : ink.opacity(0.25))
+                Text(part(event.start, "MMM").uppercased())
+                    .font(.system(size: large ? 11 : 9, weight: .semibold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
+            }.frame(height: large ? 19 : 14)
+            Text(part(event.start, "d")).font(.system(size: large ? 34 : small ? 27 : 24, weight: .bold, design: .rounded))
+                .frame(height: large ? 40 : small ? 33 : 29)
+            Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
+                .font(.system(size: large ? 10 : 8)).lineLimit(1).padding(.bottom, 3)
+        }.foregroundStyle(dateInk).frame(width: large ? 64 : small ? 44 : 50)
+            .background(paper).clipShape(RoundedRectangle(cornerRadius: 7))
+            .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
+    }
+    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            Text(event.title).font(.system(size: titleSize, weight: .semibold))
+                .lineLimit(large || small ? 3 : 2).fixedSize(horizontal: false, vertical: true)
+            Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
+                .font(.system(size: detailSize)).foregroundStyle(secondaryInk).lineLimit(small ? 2 : 1).minimumScaleFactor(0.8)
+            if !event.clothing.isEmpty {
+                Text(event.clothing).font(.system(size: detailSize - 1)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
-    private func action(_ status: String, label: String? = nil) -> some View {
-        Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: status)) {
-            HStack(spacing: 4) {
-                if label == nil { Image(systemName: symbol(status)).accessibilityHidden(true) }
-                Text(label ?? title(status)).font(.system(size: 11, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.75)
-            }.frame(maxWidth: .infinity, minHeight: 44)
-                .background(color(status), in: RoundedRectangle(cornerRadius: 10))
-        }.buttonStyle(.plain).accessibilityLabel(label ?? title(status))
+    private func eventCard(_ event: H2OWidgetEvent) -> some View {
+        HStack(spacing: small ? 7 : 11) {
+            calendar(event)
+            ViewThatFits(in: .vertical) {
+                details(event, titleSize: large ? 20 : small ? 12 : 15, detailSize: large ? 12 : small ? 9 : 10, spacing: 2)
+                details(event, titleSize: large ? 17 : small ? 11 : 13, detailSize: large ? 11 : small ? 8 : 9, spacing: 1)
+            }
+        }
     }
-    @ViewBuilder private var footer: some View {
-        if let event {
-            if small {
-                Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
-                    Label(title(event.status), systemImage: symbol(event.status))
-                        .font(.system(size: 12, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.75)
-                        .frame(maxWidth: .infinity, minHeight: 27, alignment: .leading)
-                        .padding(.horizontal, 10).background(color(event.status))
-                }
-            } else if let message = snapshot?.message {
-                Link(message, destination: event.link ?? URL(string: "h2oportal://termine")!)
+    private func choice(_ status: String) -> some View {
+        let selected = job == nil && event?.status == status
+        let pending = job?.phase == "saving" && job?.status == status
+        return Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: status)) {
+            HStack(spacing: 4) {
+                Image(systemName: pending ? "hourglass" : selected ? "checkmark" : "circle").font(.system(size: 10, weight: .semibold))
+                Text(title(status)).font(.system(size: 11, weight: selected ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.75)
+            }.frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(selected ? ink : secondaryInk)
+                .background(selected ? color(status).opacity(0.35) : ink.opacity(0.035))
+        }.buttonStyle(.plain).disabled(!canReply || job != nil)
+            .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
+    }
+    @ViewBuilder private var replyControls: some View {
+        if let message = snapshot?.message {
+            Link(message, destination: destination).font(.system(size: 11, weight: .medium))
+                .frame(maxWidth: .infinity, minHeight: 44)
+        } else if job?.phase == "retry" {
+            Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: "retry")) {
+                Label("Erneut versuchen", systemImage: "arrow.clockwise")
                     .font(.system(size: 12, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 44)
-            } else if let job {
-                if job.phase == "saving" {
-                    Text("Wird gespeichert …").font(.system(size: 12, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 44)
-                } else {
-                    HStack(spacing: 6) {
-                        Text("Speicherung unbestätigt").font(.system(size: 10)).lineLimit(2)
-                        action("retry", label: "Erneut versuchen")
-                    }
-                }
-            } else if canReply && choosing {
-                HStack(spacing: 6) { action("yes"); action("excused"); action("maybe") }
-            } else {
-                HStack {
-                    Label(title(event.status), systemImage: symbol(event.status)).font(.system(size: 13, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
-                    Spacer(minLength: 4)
-                    if canReply { action("edit", label: "Ändern").frame(width: 80) }
-                }.padding(.leading, 10).background(color(event.status), in: RoundedRectangle(cornerRadius: 10))
-                    .frame(minHeight: 44)
+            }.buttonStyle(.plain).background(ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        } else {
+            HStack(spacing: 0) {
+                choice("yes")
+                Rectangle().fill(ink.opacity(0.20)).frame(width: 0.5, height: 44)
+                choice("excused")
+                Rectangle().fill(ink.opacity(0.20)).frame(width: 0.5, height: 44)
+                choice("maybe")
+            }.clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(ink.opacity(0.25), lineWidth: 0.7))
+        }
+    }
+    private var feedbackText: String {
+        if let message = snapshot?.message { return message }
+        if let job { return job.phase == "saving" ? "Wird gespeichert …" : "Nicht bestätigt" }
+        if event?.status == "open" { return event?.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen" }
+        return "Gespeichert"
+    }
+    private var feedback: some View {
+        let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
+        let textColor = unanswered ? signalYellow : secondaryInk
+        return HStack(spacing: 4) {
+            Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark")
+                .foregroundStyle(unanswered ? signalYellow : job == nil && snapshot?.message == nil ? color("yes") : secondaryInk)
+            Text(feedbackText).foregroundStyle(textColor)
+            Spacer(minLength: 0)
+        }.font(.system(size: large ? 10 : 9)).lineLimit(1).minimumScaleFactor(0.8)
+            .frame(height: 12).invalidatableContent(job == nil)
+    }
+    private var compactStatus: some View {
+        Link(destination: destination) {
+            HStack(spacing: 4) {
+                Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 9, height: 9)
+                Text(job == nil ? title(event?.status ?? "open") : feedbackText).fontWeight(.semibold)
+                    .foregroundStyle(job == nil && event?.status == "open" ? signalYellow : ink)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
+            }.font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.75)
+                .padding(.horizontal, 5).frame(maxWidth: .infinity, minHeight: 28)
+                .background(ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 7))
+        }.buttonStyle(.plain)
+    }
+    private var following: some View {
+        VStack(spacing: 0) {
+            ForEach(Array((snapshot?.following ?? []).prefix(2).enumerated()), id: \.offset) { _, next in
+                Link(destination: next.link ?? URL(string: "h2oportal://termine")!) {
+                    HStack(spacing: 7) {
+                        Text(part(next.start, "d. MMM").uppercased()).font(.system(size: 10, weight: .medium)).frame(width: 50, alignment: .leading)
+                        Text(next.title).font(.system(size: 12, weight: .medium)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(next.allDay ? "Ganztägig" : part(next.start, "HH:mm")).font(.system(size: 10)).foregroundStyle(secondaryInk).lineLimit(1)
+                        Image(systemName: "chevron.right").font(.system(size: 8)).foregroundStyle(secondaryInk)
+                    }.frame(minHeight: 33)
+                        .overlay(alignment: .bottom) { Rectangle().fill(ink.opacity(0.16)).frame(height: 0.5) }
+                }.buttonStyle(.plain)
             }
         }
     }
     var body: some View {
         GeometryReader { geometry in
-            let horizontal: CGFloat = small ? 10 : 12
-            let vertical: CGFloat = small ? 8 : large ? 12 : 3
-            let contentWidth = max(1, geometry.size.width - 2 * horizontal)
-            let detailHeight = max(1, geometry.size.height - 2 * vertical - (small ? 17 + 27 + 8 : 12 + 44 + 6))
-            VStack(alignment: .leading, spacing: small ? 4 : large ? 6 : 3) {
-                header.frame(height: small || large ? 17 : 12)
+            let horizontal: CGFloat = small ? 10 : large ? 14 : 12
+            let vertical: CGFloat = large ? 14 : 8
+            let width = max(1, geometry.size.width - 2 * horizontal)
+            let height = max(1, geometry.size.height - 2 * vertical)
+            let eventHeight: CGFloat = large ? 100 : max(1, height - (small ? 12 + 28 + 1 + 9 : 12 + 44 + 12 + 1 + 12))
+            VStack(alignment: .leading, spacing: large ? 5 : 3) {
+                header.frame(height: large ? 14 : 12)
                 if let event {
-                    Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
-                        details(event, compact: small, dense: !small && !large)
-                            .frame(width: contentWidth, alignment: .topLeading)
+                    Link(destination: destination) { eventCard(event) }.buttonStyle(.plain)
+                        .frame(width: width, height: eventHeight, alignment: .center)
+                    Rectangle().fill(ink.opacity(0.22)).frame(height: 0.5)
+                    if small { compactStatus }
+                    else {
+                        if large { Text("Deine Rückmeldung").font(.system(size: 11, weight: .semibold)).foregroundStyle(secondaryInk) }
+                        replyControls.invalidatableContent(job == nil)
+                        feedback
                     }
-                    .buttonStyle(.plain)
-                    .frame(width: contentWidth, height: large ? nil : detailHeight, alignment: .topLeading)
-                    if !small && event.status == "open" && job == nil && canReply && large {
-                        Text(event.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen").font(.system(size: 10)).foregroundStyle(secondaryInk)
-                    }
-                    footer
-                    if large {
-                        ForEach(Array((snapshot?.following ?? []).prefix(2).enumerated()), id: \.offset) { _, next in
-                            Link(destination: next.link ?? URL(string: "h2oportal://termine")!) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Divider().overlay(ink.opacity(0.14))
-                                    Text(day(next) + " · " + (next.allDay ? "Ganztägig" : part(next.start, "HH:mm")))
-                                        .font(.system(size: 11)).foregroundStyle(secondaryInk).lineLimit(1)
-                                    Text(next.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
-                                }.padding(.top, 4)
-                            }.buttonStyle(.plain)
-                        }
+                    if large && !(snapshot?.following ?? []).isEmpty {
+                        Rectangle().fill(ink.opacity(0.22)).frame(height: 0.5)
+                        Text("Weitere Termine").font(.system(size: 10)).foregroundStyle(secondaryInk)
+                        following
                     }
                 } else {
                     Text(snapshot == nil ? "H₂O öffnen, um Termine zu laden." : "Keine kommenden Termine")
                         .font(.system(size: 13, weight: .medium)).frame(maxHeight: .infinity, alignment: .leading)
                 }
-            }
-            .frame(width: contentWidth, height: max(1, geometry.size.height - 2 * vertical), alignment: .topLeading)
-            .padding(.horizontal, horizontal)
-            .padding(.vertical, vertical)
-            .background(background)
-            .overlay(alignment: .top) { Color(red: 0.70, green: 0.11, blue: 0.17).frame(height: 3).accessibilityHidden(true) }
-        }
-        .foregroundStyle(ink)
-        .containerBackground(background, for: .widget)
-        .widgetURL(event?.link ?? URL(string: "h2oportal://termine"))
-        .environment(\.locale, Locale(identifier: "de_DE"))
-        .environment(\.timeZone, TimeZone(identifier: "Europe/Berlin")!)
+            }.frame(width: width, height: height, alignment: .topLeading)
+                .padding(.horizontal, horizontal).padding(.vertical, vertical)
+                .background(background)
+                .overlay(alignment: .top) { red.frame(height: 3).accessibilityHidden(true) }
+                .clipShape(RoundedRectangle(cornerRadius: 22))
+        }.foregroundStyle(ink).containerBackground(background, for: .widget)
+            .widgetURL(destination).environment(\.locale, Locale(identifier: "de_DE"))
+            .environment(\.timeZone, TimeZone(identifier: "Europe/Berlin")!)
     }
 }
 #endif

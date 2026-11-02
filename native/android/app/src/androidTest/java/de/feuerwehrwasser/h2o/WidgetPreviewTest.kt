@@ -28,8 +28,8 @@ class WidgetPreviewTest {
             assertTrue("Widget can shrink to one launcher row", provider.minResizeHeight <= 48 * context.resources.displayMetrics.density)
         }
         val sizes = listOf(Triple(110, 48, 1f), Triple(110, 48, 1.3f), Triple(170, 48, 1.3f), Triple(330, 48, 1.3f), Triple(250, 64, 1f), Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(110, 110, 1f), Triple(330, 110, 1f), Triple(330, 250, 1f), Triple(170, 170, 1.3f), Triple(330, 170, 1.3f))
-        val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f), Triple(330, 345, 1f))
-        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict")) {
+        val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f), Triple(330, 345, 1f), Triple(330, 345, 1.3f), Triple(450, 345, 1.3f))
+        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict", "long-title")) {
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
                 instrumentation.waitForIdleSync()
@@ -37,36 +37,56 @@ class WidgetPreviewTest {
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
                     assertEquals(height >= 100 || width >= 240 || fixture in listOf("clear", "empty"), title.isShown)
-                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else "Technische Hilfeleistung", title.text.toString())
+                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else "Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
                     val widget = activity.findViewById<View>(R.id.widget_root)
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val isEvent = fixture !in listOf("clear", "empty")
+                    val card = activity.findViewById<View>(R.id.widget_reply_section) != null
                     val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
-                    assertEquals(if (isEvent && !actions) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
-                    if (actions) for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) {
-                        val button = activity.findViewById<View>(id)
-                        assertTrue("Answer target is at least 44dp high", button.height / activity.resources.displayMetrics.density >= 44)
+                    assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    if (actions) {
+                        val control = activity.findViewById<View>(R.id.widget_actions)
+                        assertTrue("The direct selector uses the widget width", control.width >= widget.width * 0.8f)
+                        for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) {
+                            val button = activity.findViewById<TextView>(id)
+                            assertTrue("Answer target is at least 44dp high", button.height / activity.resources.displayMetrics.density >= 44)
+                            assertEquals("Pending and stale replies cannot be submitted again", fixture !in listOf("saving", "stale"), button.isEnabled)
+                            if (fixture in listOf("open", "reminded")) assertFalse("Open replies have no selected answer", button.text.contains("✓"))
+                        }
                     }
+                    assertFalse("No separate change button remains", activity.findViewById<View>(R.id.widget_edit)?.isShown == true)
                     assertEquals(if (fixture == "stale") View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_note).visibility)
-                    if (isEvent && !actions) {
-                        val text = activity.findViewById<TextView>(R.id.widget_status).text.toString()
+                    if (isEvent) {
+                        val status = activity.findViewById<TextView>(R.id.widget_status)
+                        val text = status.text.toString()
                         assertTrue(text.isNotBlank())
                         if (fixture == "saving") assertEquals("Wird gespeichert …", text)
-                        if (fixture == "retry") assertTrue(text.contains("Unbestätigt"))
+                        if (fixture == "retry") assertTrue(text.contains("Nicht bestätigt"))
+                        if (card && fixture in listOf("today", "tomorrow", "future", "excused", "allday")) assertTrue("Only confirmed replies say saved", text.contains("Gespeichert"))
+                        if (fixture in listOf("saving", "retry", "conflict", "open", "reminded")) assertFalse("Unconfirmed operations never claim success", text.contains("Gespeichert"))
+                        if (fixture in listOf("open", "reminded")) {
+                            assertEquals("Unanswered replies use signal yellow", 0xFFF4C542.toInt(), status.currentTextColor)
+                            if (card) assertEquals(if (fixture == "reminded") "Bitte Rückmeldung geben" else "Rückmeldung offen", text)
+                        }
                     }
                     assertTextFits(widget, widget, "${width}x${height} font=$fontScale fixture=$fixture exact=$exactSize")
-                    if (fixture in listOf("today", "tomorrow")) assertTrue(activity.findViewById<TextView>(R.id.widget_day).text.toString().startsWith(if (fixture == "today") "Heute" else "Morgen"))
+                    if (isEvent) {
+                        assertTrue("Calendar month is visible", activity.findViewById<TextView>(R.id.widget_month).isShown)
+                        assertTrue("Calendar day is numeric and readable", activity.findViewById<TextView>(R.id.widget_day).text.matches(Regex("\\d{1,2}")))
+                    }
+                    if (fixture in listOf("today", "tomorrow") && height >= 100) {
+                        assertEquals(if (fixture == "today") "Heute" else "Morgen", activity.findViewById<TextView>(R.id.widget_weekday).text.toString())
+                    }
                     if (fixture == "future" && width < 240 && height / fontScale >= 140) {
-                        assertTrue("Month gets its own visible row", activity.findViewById<TextView>(R.id.widget_month).isShown)
-                        assertTrue("Day is readable on its own", activity.findViewById<TextView>(R.id.widget_day).text.matches(Regex("\\d{2}")))
-                        assertTrue("The day stays more prominent than the month with enlarged system fonts", activity.findViewById<TextView>(R.id.widget_day).textSize >= 1.25f * activity.findViewById<TextView>(R.id.widget_month).textSize)
+                        assertTrue("Day stays more prominent than month", activity.findViewById<TextView>(R.id.widget_day).textSize >= 1.25f * activity.findViewById<TextView>(R.id.widget_month).textSize)
                     }
                     if (isEvent && width >= 450 && height >= 250) {
-                        assertTrue("Large widgets use larger event headings", title.textSize / activity.resources.displayMetrics.scaledDensity >= 23.9f)
+                        assertTrue("Roomy widgets keep legible topic headings", title.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 14.9f else 17.9f)
                     }
+
                 }
                 val bitmap = requireNotNull(rendered)
                 assertNotNull(bitmap)
