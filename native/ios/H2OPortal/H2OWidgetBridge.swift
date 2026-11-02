@@ -8,7 +8,7 @@ enum H2OWidgetBridge {
         guard let message = body as? [String: Any], let action = message["action"] as? String else { return }
         if action == "clear" {
             H2OWidgetStorage.transaction { H2OWidgetStorage.clear() }
-            WidgetCenter.shared.reloadTimelines(ofKind: kind); return
+            WidgetCenter.shared.reloadAllTimelines(); return
         }
         guard ["update", "empty"].contains(action) else { return }
         let inputs = message["events"] as? [[String: Any]] ?? (message["event"].map { [$0 as? [String: Any] ?? [:]] } ?? [])
@@ -25,7 +25,7 @@ enum H2OWidgetBridge {
         } else { grant = nil }
         let snapshot = H2OWidgetSnapshot(updatedAt: Date(), event: events.first, stale: message["stale"] as? Bool == true, following: Array(events.dropFirst()))
         H2OWidgetStorage.transaction { try? H2OWidgetStorage.write(H2OWidgetDocument(snapshot: snapshot, grant: grant)) }
-        WidgetCenter.shared.reloadTimelines(ofKind: kind)
+        WidgetCenter.shared.reloadAllTimelines()
     }
     private static func event(_ input: [String: Any]) -> H2OWidgetEvent? {
         guard let start = input["start"] as? Double, let end = input["end"] as? Double,

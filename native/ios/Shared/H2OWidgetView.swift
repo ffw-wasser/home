@@ -7,6 +7,7 @@ import AppIntents
 struct NextEventEntry: TimelineEntry {
     let date: Date
     let snapshot: H2OWidgetSnapshot?
+    var family: WidgetFamily? = nil
 }
 
 struct NextEventView: View {
@@ -14,7 +15,7 @@ struct NextEventView: View {
     @Environment(\.widgetFamily) private var widgetFamily
     @Environment(\.widgetRenderingMode) private var renderingMode
     var familyOverride: WidgetFamily? = nil
-    private var family: WidgetFamily { familyOverride ?? widgetFamily }
+    private var family: WidgetFamily { familyOverride ?? entry.family ?? widgetFamily }
     private var small: Bool { family == .systemSmall }
     private var large: Bool { family == .systemLarge }
     private var snapshot: H2OWidgetSnapshot? { entry.snapshot?.at(entry.date) }
@@ -56,7 +57,7 @@ struct NextEventView: View {
             Text(part(event.start, "d")).font(.system(size: large ? 44 : small ? 34 : 36, weight: .bold, design: .rounded))
                 .frame(height: large ? 51 : small ? 42 : 44)
             Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
-                .font(.system(size: large ? 11 : 10)).lineLimit(1).padding(.bottom, 3)
+                .font(.system(size: large ? 11 : 10, weight: .bold)).lineLimit(1).padding(.bottom, 3)
         }.foregroundStyle(dateInk).frame(width: large ? 70 : small ? 44 : 56)
             .background(paper).clipShape(RoundedRectangle(cornerRadius: 7))
             .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))

@@ -50,7 +50,7 @@ function terminPackageBase(date,type,id){
   let hash=2166136261;
   for(const char of id){hash^=char.codePointAt(0);hash=Math.imul(hash,16777619)>>>0;}
   const key=hash.toString(36).padStart(7,"0");
-  const safeType=String(type||"Termin").normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^A-Za-z0-9_-]+/g,"-").replace(/^-+|-+$/g,"")||"Termin";
+  const safeType=String(type||"Termin").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]+/g,"-").replace(/^-+|-+$/g,"")||"Termin";
   return `${date}_${safeType}_${key}`;
 }
 window.closeDay=async function(topic=currentClosingTopic){
@@ -90,6 +90,7 @@ window.closeDay=async function(topic=currentClosingTopic){
   const packageResult=await buildTerminPackage({baseName:base,csvName,csvContent:csv,pdfName,pdfBlob:pdf,documentReport:typeof pendingDocumentReport!=="undefined"?pendingDocumentReport:null,packageType:"Probe"}),result=await saveTerminPackage(`${base}.zip`,packageResult.zipBlob);
   if(result!=="saved")return;
   if(exportType==="Fitness")try{await window.PortalAdmin?.finalizeFitnessAudience?.(current.filter(entry=>entry.status==="Betrifft nicht").flatMap(entry=>[entry.storedName,entry.displayName].filter(Boolean)));}catch(error){showToast("Fitnessbericht gespeichert, Beteiligungsquote noch nicht abgeglichen: "+error.message+" Abschluss erneut prüfen.","error");return;}
+  try{await window.PortalAdmin?.completeAttendance?.();}catch(error){showToast("Bericht gespeichert, Kalenderabschluss noch offen: "+error.message+" Der Kalenderabschluss wird beim Aktualisieren erneut versucht.","error");}
   try{await addCsvToArchive(csvName,csv,exportType,topic);}catch(error){console.error("Lokales Archiv konnte nach erfolgreichem Speichern nicht vollständig ergänzt werden",error);}
   window.PortalAdmin?.discard();const completedSessionId=ensureCurrentSessionId();entries=entries.filter(e=>e.sessionId!==completedSessionId);currentSessionId="";safeStorage.setItem("fw_v1_current_session_id","");chosenMemberId="";chosenMemberIds.clear();chosenRole="";currentClosingTopic="";resetDocumentReportState();currentProbeDate=systemToday();saveEntries();renderMembers();renderRoles();renderEntries();updateSelection();tacticsClosingPending=false;const actions=byId("tacticsCloseActions");if(actions)actions.hidden=true;setHomeFlowStage(1);showView("attendanceView");window.WorkflowUX?.terminCompleted(result);
   }finally{closingDay=false;}

@@ -65,3 +65,11 @@ test('Fitness-Abschluss zählt Fitnesstrainer nicht als fehlende Teilnehmer',asy
  const a=completionApp('Fitness');a.c.members.push({id:'trainer',firstName:'Trainer',lastName:'Beispiel',fitnessTrainer:true});
  await a.c.window.closeDay();assert.deepEqual(Array.from(a.getPreview()[3].people),['Test, B','Alter, C']);
 });
+
+test('Nach bestätigtem Bericht wird ein fehlgeschlagener Kalenderabgleich ohne erneuten Upload nachgeholt',async()=>{
+ const f=completionApp(),order=[];
+ Object.assign(f.c,{console,entries:[{sessionId:'saved-session'}],currentSessionId:'saved-session',ensureCurrentSessionId:()=> 'saved-session',saveEntries(){},csvCell:x=>String(x??''),probePdfBlob:()=>({}),buildTerminPackage:async()=>({zipBlob:{}}),saveTerminPackage:async()=>{order.push('saved');return 'saved';},addCsvToArchive:async()=>order.push('archive'),safeStorage:{setItem(){}},chosenMemberId:'',chosenMemberIds:new Set(),chosenRole:'',resetDocumentReportState(){},systemToday:()=> '2026-11-02',renderMembers(){},renderRoles(){},renderEntries(){},updateSelection(){},tacticsClosingPending:false,byId:()=>null});
+ f.c.window.SmartWorkflow.confirm=async()=>true;
+ f.c.window.PortalAdmin={completeAttendance:async()=>{order.push('complete');throw Error('offline');},discard:()=>order.push('reset')};
+ await f.c.window.closeDay();assert.deepEqual(order,['saved','complete','archive','reset']);assert.equal(f.c.entries.length,0);assert.match(f.warnings[0],/beim Aktualisieren erneut/);
+});

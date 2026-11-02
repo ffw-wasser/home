@@ -49,7 +49,7 @@ enum H2OWidgetReply {
             document.snapshot.job = job; document.snapshot.message = nil; document.snapshot.notice = nil
             do { try H2OWidgetStorage.write(document); return (grant, job) } catch { return nil }
         }
-        WidgetCenter.shared.reloadTimelines(ofKind: "H2ONextEventWidget")
+        WidgetCenter.shared.reloadAllTimelines()
         guard let (grant, job) = request else { return }
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 12; configuration.timeoutIntervalForResource = 15
@@ -99,7 +99,7 @@ enum H2OWidgetReply {
             // Replying never renews the age of the calendar snapshot.
             try? H2OWidgetStorage.write(document)
         }
-        WidgetCenter.shared.reloadTimelines(ofKind: "H2ONextEventWidget")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 #endif
