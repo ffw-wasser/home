@@ -37,9 +37,9 @@ struct NextEventView: View {
     private func color(_ status: String) -> Color {
         if renderingMode != .fullColor { return .primary }
         switch status {
-        case "yes": return Color(red: 0.26, green: 0.56, blue: 0.37)
-        case "excused": return red
-        case "maybe": return Color(red: 0.66, green: 0.47, blue: 0.22)
+        case "yes": return Color(red: 40.0 / 255, green: 125.0 / 255, blue: 73.0 / 255)
+        case "excused": return Color(red: 179.0 / 255, green: 51.0 / 255, blue: 72.0 / 255)
+        case "maybe": return Color(red: 154.0 / 255, green: 107.0 / 255, blue: 16.0 / 255)
         default: return signalYellow
         }
     }
@@ -89,7 +89,7 @@ struct NextEventView: View {
                 Text(title(status)).font(.system(size: 11, weight: selected ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.75)
             }.frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(selected ? ink : secondaryInk)
-                .background(selected ? color(status).opacity(0.35) : ink.opacity(0.035))
+                .background(selected ? color(status).opacity(renderingMode == .fullColor ? 1 : 0.2) : ink.opacity(0.035))
         }.buttonStyle(.plain).disabled(!canReply || job != nil)
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
     }

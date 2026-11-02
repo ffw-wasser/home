@@ -173,7 +173,7 @@ open class NextEventWidget : AppWidgetProvider() {
                         views.setTextViewText(id, (if (pending) "◌ " else if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
                         views.setInt(id, "setBackgroundResource", if (selected) selectedBackground else 0)
-                        views.setTextColor(id, if (selected) 0xFFF5F5F6.toInt() else 0xFFB9BCC3.toInt())
+                        views.setTextColor(id, if (selected) 0xFFFFFFFF.toInt() else 0xFFB9BCC3.toInt())
                         views.setBoolean(id, "setEnabled", canReply && job == null)
                         views.setFloat(id, "setAlpha", if (canReply && job == null) 1f else 0.55f)
                         views.setContentDescription(id, (when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }) + if (selected) ". Ausgewählt" else if (pending) ". Wird gespeichert" else "")

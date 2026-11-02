@@ -171,3 +171,5 @@ iPhone-Build 1029 folgt dem abgestimmten Entwurf: Anthrazit, rote Oberkante (3 P
 ## Widget ohne zusätzliche Kopfzeile – Build 1030
 
 Die Zeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Die rote Oberkante bleibt; Kalender und Terminthema werden größer dargestellt und nutzen den gewonnenen Platz. Direkte Statusauswahl und Speicherfeedback bleiben erhalten. Der Hinweis auf einen gespeicherten Kalenderstand bleibt bei der Statusanzeige erreichbar.
+
+Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei #287D49, Entschuldigt #B33348, Unsicher #9A6B10, jeweils mit weißer Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.

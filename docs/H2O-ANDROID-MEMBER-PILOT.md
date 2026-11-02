@@ -154,3 +154,5 @@ Die Bildprüfung umfasst lange Themen, 130 Prozent Systemschrift, offene und ang
 Breite Widgets ab 210 dp Höhe erhalten eine größere Kalenderkachel sowie deutlich größere Themen-, Orts- und Kleidungsschrift. Die verfügbare Höhe und die Systemschrift werden gemeinsam berücksichtigt; kleine und flache Ansichten sowie die direkte Statusauswahl bleiben erhalten. Dies korrigiert den auf einem realen Android-Gerät sichtbaren großen Leerraum um eine zu kleine Terminansicht. Die Emulatorprüfung enthält nun zusätzlich diese Zwischenhöhen mit kurzem Thema „Probe“, langen Themen und offener Rückmeldung.
 
 Die Kopfzeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Kalender und Thema nutzen den gewonnenen Platz; die rote Oberkante bleibt erhalten.
+
+Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei #287D49, Entschuldigt #B33348, Unsicher #9A6B10, jeweils mit weißer Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
