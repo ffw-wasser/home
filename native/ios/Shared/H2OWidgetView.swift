@@ -12,7 +12,8 @@ struct NextEventView: View {
     let entry: NextEventEntry
     @Environment(\.widgetFamily) private var widgetFamily
     @Environment(\.widgetRenderingMode) private var renderingMode
-    private var family: WidgetFamily { widgetFamily }
+    var familyOverride: WidgetFamily? = nil
+    private var family: WidgetFamily { familyOverride ?? widgetFamily }
     private var small: Bool { family == .systemSmall }
     private var large: Bool { family == .systemLarge }
     private var snapshot: H2OWidgetSnapshot? { entry.snapshot?.at(entry.date) }

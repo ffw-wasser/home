@@ -88,8 +88,7 @@ final class WidgetLayoutTests: XCTestCase {
                 if scenario == "reply-saving" || scenario == "reply-retry" {
                     snapshot.job = H2OWidgetReplyJob(eventID: current?.id ?? "", status: "maybe", requestID: "synthetic", version: 0, phase: scenario == "reply-saving" ? "saving" : "retry", startedAt: now)
                 }
-                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot))
-                    .environment(\.widgetFamily, family)
+                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot), familyOverride: family)
                     .frame(width: width, height: height)
                     .background(Color(red: 0.94, green: 0.97, blue: 0.95))
                 let renderer = ImageRenderer(content: view)
@@ -112,8 +111,7 @@ private struct WidgetResizeHost: View {
     @ObservedObject var state: WidgetResizeState
     let entry: NextEventEntry
     var body: some View {
-        NextEventView(entry: entry)
-            .environment(\.widgetFamily, state.family)
+        NextEventView(entry: entry, familyOverride: state.family)
             .frame(width: 329, height: state.family == .systemLarge ? 345 : 155)
     }
 }

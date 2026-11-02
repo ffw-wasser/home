@@ -174,6 +174,6 @@ Die Zeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Die
 
 Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei #287D49, Entschuldigt #B33348, Unsicher #9A6B10, jeweils mit weißer Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
 
-Beim Wechsel der Widgetgröße erhält der Layoutbaum eine größenabhängige Identität und wird neu aufgebaut. Die Bildtests verwenden nun die tatsächliche WidgetFamily-Umgebung statt eines separaten Test-Overrides. Ein zusätzlicher Hosting-Test wechselt dasselbe Widget mehrfach zwischen Mittel und Groß und prüft Inhalt im unteren Bereich der großen Ansicht. Das ersetzt keine Abnahme des Größenwechsels im realen iPhone-Homescreen.
+Beim Wechsel der Widgetgröße erhält der Layoutbaum eine größenabhängige Identität und wird neu aufgebaut. Die Produktionsansicht verwendet weiterhin die von WidgetKit vorgegebene Größe; die Darstellungstests geben diese Größe gezielt vor. Ein zusätzlicher Hosting-Test wechselt dasselbe Widget mehrfach zwischen Mittel und Groß und prüft Inhalt im unteren Bereich der großen Ansicht. Das ersetzt keine Abnahme des Größenwechsels im realen iPhone-Homescreen.
 
 Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften. Lange Themen bekommen größenabhängig mehrere Zeilen; die Darstellung verkleinert Text erst bei tatsächlich begrenztem Platz.
