@@ -27,6 +27,9 @@ struct NextEventView: View {
     private var job: H2OWidgetReplyJob? { snapshot?.job.flatMap { $0.eventID == event?.id ? $0 : nil } }
     private var canReply: Bool { event?.canReply == true && (event?.start ?? .distantPast) > entry.date && snapshot?.stale == false && event?.id != nil }
     private var choosing: Bool { event?.status == "open" || snapshot?.editing == event?.id }
+    private var sidebar: Bool {
+        !small && !large && event != nil && snapshot?.message == nil && (job != nil || !(canReply && choosing))
+    }
     private static let logo: UIImage? = {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"), let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 96] as CFDictionary) else { return nil }
@@ -98,9 +101,9 @@ struct NextEventView: View {
     private func cardText(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
             Text(event.title).font(.system(size: titleSize, weight: .semibold))
-                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .lineLimit(sidebar ? 3 : 2).fixedSize(horizontal: false, vertical: true)
             Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
-                .font(.system(size: detailSize)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
+                .font(.system(size: detailSize)).foregroundStyle(secondaryInk).lineLimit(sidebar ? 2 : 1).minimumScaleFactor(0.8)
             if !event.clothing.isEmpty {
                 Text(event.clothing).font(.system(size: detailSize - 1)).foregroundStyle(secondaryInk).lineLimit(1)
             }
@@ -114,6 +117,41 @@ struct NextEventView: View {
             }.frame(maxWidth: .infinity, minHeight: 44)
                 .background(color(status), in: RoundedRectangle(cornerRadius: 10))
         }.buttonStyle(.plain).accessibilityLabel(label ?? title(status))
+    }
+    @ViewBuilder private var replySidebar: some View {
+        if let event {
+            VStack(spacing: 4) {
+                if let job {
+                    if job.phase == "saving" {
+                        VStack(spacing: 6) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Text("Wird gespeichert …").font(.system(size: 11, weight: .semibold)).multilineTextAlignment(.center)
+                        }.unredacted()
+                    } else {
+                        Text("Speicherung unbestätigt").font(.system(size: 10)).multilineTextAlignment(.center)
+                        action("retry", label: "Erneut versuchen")
+                    }
+                } else {
+                    VStack(spacing: 2) {
+                        Image(systemName: symbol(event.status)).font(.system(size: 14, weight: .semibold))
+                        Text(title(event.status)).font(.system(size: 11, weight: .semibold))
+                            .lineLimit(2).minimumScaleFactor(0.8).multilineTextAlignment(.center)
+                        if event.status != "open" {
+                            Text("Gespeichert").font(.system(size: 9)).foregroundStyle(secondaryInk)
+                        }
+                    }.frame(maxWidth: .infinity).padding(.vertical, 6)
+                        .background(color(event.status), in: RoundedRectangle(cornerRadius: 10))
+                    if canReply { action("edit", label: "Ändern") }
+                    else {
+                        Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
+                            Text("Öffnen").font(.system(size: 11, weight: .semibold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(ink.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }.frame(maxHeight: .infinity).invalidatableContent(job == nil)
+        }
     }
     @ViewBuilder private var footer: some View {
         if let event {
@@ -163,21 +201,25 @@ struct NextEventView: View {
             let vertical: CGFloat = small ? 8 : 12
             let contentWidth = max(1, geometry.size.width - 2 * horizontal)
             let detailHeight = max(1, geometry.size.height - 2 * vertical - (small ? 17 + 27 + 8 : 17 + 44 + 8))
-            VStack(alignment: .leading, spacing: small ? 4 : large ? 6 : 3) {
+            let eventWidth = sidebar ? max(1, contentWidth - 100) : contentWidth
+            let eventHeight = sidebar ? max(1, geometry.size.height - 2 * vertical - 17 - 8) : large ? 100 : detailHeight
+            VStack(alignment: .leading, spacing: sidebar ? 8 : small ? 4 : large ? 6 : 4) {
                 header.frame(height: 17)
                 if let event {
-                    Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
-                        Group {
-                            if !small { eventCard(event) }
-                            else { details(event, compact: small) }
-                        }.frame(width: contentWidth, alignment: .topLeading)
-                    }
-                    .buttonStyle(.plain)
-                    .frame(width: contentWidth, height: large ? 100 : detailHeight, alignment: .center)
+                    HStack(spacing: sidebar ? 12 : 0) {
+                        Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
+                            Group {
+                                if !small { eventCard(event) }
+                                else { details(event, compact: small) }
+                            }.frame(width: eventWidth, alignment: .topLeading)
+                        }.buttonStyle(.plain)
+                            .frame(width: eventWidth, height: eventHeight, alignment: .center)
+                        if sidebar { replySidebar.frame(width: 88) }
+                    }.frame(height: eventHeight)
                     if !small && event.status == "open" && job == nil && canReply && large {
                         Text(event.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen").font(.system(size: 10)).foregroundStyle(secondaryInk)
                     }
-                    footer.invalidatableContent(job == nil)
+                    if !sidebar { footer.invalidatableContent(job == nil) }
                     if large {
                         if !(snapshot?.following ?? []).isEmpty {
                             Text("Weitere Termine").font(.system(size: 10, weight: .semibold)).foregroundStyle(secondaryInk)
