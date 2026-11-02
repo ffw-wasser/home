@@ -17,7 +17,7 @@ const root=path.resolve(__dirname,'..');
   await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(({people,token})=>{members=people;window.requireAdmin=()=>true;oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();window.oneDriveReadState=async()=>({members});DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev',source:'test-source',token});DrinksStore.sourceKey=()=> 'test-source';showView('settingsCalendarView');},{people,token:f.env.ADMIN_TOKEN});
   await page.locator('.portal-keyword-card').first().waitFor({state:'attached'});
-  await page.waitForFunction(()=>document.getElementById('portal-review-load')?.disabled===false);
+  await page.waitForFunction(()=>document.getElementById('portal-admin-review-load')?.disabled===false);
   for(const type of ['Allgemeine Probe','Sonderprobe','Unterricht','Einsatz','Fitness']){
    await page.evaluate(type=>{sessionType=type;chosenRole='Anwesend';renderMembers();},type);
    assert.equal(await page.locator('#members [data-quick-member="'+people[1].id+'"]').count(),0,'trainer excluded from '+type);
