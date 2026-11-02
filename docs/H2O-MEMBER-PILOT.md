@@ -183,3 +183,10 @@ Im kleinen Widget wird die Schrift zusätzlich an der Breite des längsten Worte
 Bei einem Versionskonflikt liefert der Dienst ausschließlich den eigenen aktuellen Antwortstatus und dessen Version. Das Widget übernimmt diesen Stand und zeigt „Stand aktualisiert – erneut wählen“ mit wieder freier Auswahl. Es schreibt nicht selbstständig erneut. Zugang, Kalenderalter, Fristen, Empfängerrechte und Vorgangsnummer bleiben unverändert. Abgelaufene Zugänge erfordern weiterhin H₂O. Android hängt direkt aufeinanderfolgende ausdrückliche Antworten an den vorherigen Auftrag an, statt sie am noch auslaufenden Auftrag zu verwerfen; nach 30 Sekunden erfolgt kein stiller Versand.
 
 Die Textfläche des Terminblocks ist auch bei langen Hinweisen ausdrücklich auf die verfügbare Breite begrenzt. Jeder statische Bildtest prüft zusätzlich, dass die helle Kalenderkachel links sichtbar bleibt.
+
+
+## Großes Widget – Build 1031
+
+In der Widgetauswahl gibt es zusätzlich „H₂O · Großer Termin“ mit festem Großformat. Nach dem Update dieses Widget neu hinzufügen. Alle Widgetarten aktualisieren sich bei App-Aktualisierung, Rückmeldung und Abmeldung gemeinsam. Der Wochentag unter der Tageszahl ist kräftiger. Die Größeninformation wird vom Timeline-Provider weitergegeben; die Simulatorprüfungen decken auch große Ansichten ab.
+
+Nach bestätigter Berichtsspeicherung im Gerätehaus wird der Kalendertermin zentral abgeschlossen. Das Portal und der nächste Widgetabruf zeigen den nächsten offenen Termin; vorhandene Antworten bleiben erhalten. Ein noch ausstehender Kalenderabgleich wird auf dem Gerätehausgerät gespeichert und beim nächsten authentifizierten Aktualisieren wiederholt. Der Bericht wird dabei nicht erneut hochgeladen. Bereits angezeigte Handywidgets benötigen weiterhin ihren normalen App- oder Antwortabruf; es gibt keinen garantierten sofortigen Hintergrundabruf.

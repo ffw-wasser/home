@@ -289,3 +289,23 @@ test('Abmeldung während eines privaten Kalenderabrufs stellt später keine Term
 
 for(const status of [401,403])test('Abgewiesener Kalenderzugriff '+status+' entfernt den bisherigen privaten Stand',async()=>{const f=fixture();await f.login();f.c.DrinksPush.request=async()=>{throw Object.assign(Error('Kalenderzugang abgelaufen.'),{status});};await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/abgelaufen/);});
 test('Geänderter Datenordner entfernt den bisherigen Kalender bei abgewiesenem Abruf',async()=>{const f=fixture();await f.login();f.c.DrinksPush.request=async()=>{f.c.DrinksStore.sourceKey=()=> 'anderer-ordner';throw Error('Datenordner geändert.');};await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);});
+
+test('Bestätigter Kalenderabschluss entfernt den laufenden Termin und wählt sofort den nächsten',async()=>{
+ const f=fixture(),first=f.privateCal.events[0],next={...first,id:'next-event',start:first.start+86400000,end:first.end+86400000};f.privateCal.events.push(next);await f.login();f.c.currentSessionId='saved-session';
+ const request=f.c.DrinksPush.request;f.c.DrinksPush.request=async(c,path,data)=>{if(path.endsWith('/complete')){assert.deepEqual(JSON.parse(JSON.stringify(data)),{source:'test-source',eventId:first.id,eventStart:first.start,sessionId:'saved-session'});first.completedAt=Date.now();return {ok:true};}return request(c,path,data);};
+ await f.c.PortalAdmin.completeAttendance();f.c.PortalAdmin.discard();f.c.currentSessionId='';assert.equal(f.c.PortalAdmin.selectedEvent().id,next.id);
+ f.microtasks.forEach(fn=>fn());await new Promise(setImmediate);assert.equal(f.c.PortalAdmin.selectedEvent().id,next.id);
+});
+test('Nicht bestätigter Kalenderabschluss wird ohne erneuten Berichtupload beim Laden wiederholt',async()=>{
+ const f=fixture();await f.login();f.c.currentSessionId='saved-session';const first=f.c.PortalAdmin.selectedEvent(),request=f.c.DrinksPush.request;
+ f.c.DrinksPush.request=async(c,path,data)=>{if(path.endsWith('/complete'))throw Error('Verbindung unterbrochen');return request(c,path,data);};
+ await assert.rejects(f.c.PortalAdmin.completeAttendance(),/Verbindung/);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.equal(f.c.currentSessionId,'saved-session');
+ let retries=0;f.c.DrinksPush.request=async(c,path,data)=>{if(path.endsWith('/complete')){retries++;assert.equal(data.eventId,first.id);first.completedAt=Date.now();return {ok:true};}return request(c,path,data);};
+ await f.c.PortalAdmin.refreshAttendance(true);assert.equal(retries,1);await f.c.PortalAdmin.refreshAttendance(true);assert.equal(retries,1);
+});
+
+test('Ausstehende Kalenderabschlüsse werden niemals an einen anderen Datenordner gesendet',async()=>{
+ const f=fixture();await f.login();f.c.safeStorage.setItem('h2o_saved_completions',JSON.stringify([{source:'another-source',eventId:'other-event',eventStart:1,sessionId:'old-session'}]));
+ let sent=0;const request=f.c.DrinksPush.request;f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/complete'))sent++;return request(...args);};
+ await f.c.PortalAdmin.refreshAttendance(true);assert.equal(sent,0);assert.equal(JSON.parse(f.c.safeStorage.getItem('h2o_saved_completions')).length,1);
+});

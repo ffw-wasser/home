@@ -12,7 +12,7 @@ final class WidgetLayoutTests: XCTestCase {
         let event = H2OWidgetEvent(title: "Probe", start: start, end: start.addingTimeInterval(7200), location: "GH Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false)
         let next = H2OWidgetEvent(title: "Funkübung", start: start.addingTimeInterval(86400), end: start.addingTimeInterval(90000), location: "Test", clothing: "Test", status: "open", allDay: false)
         let state = WidgetResizeState()
-        let host = UIHostingController(rootView: WidgetResizeHost(state: state, entry: NextEventEntry(date: now, snapshot: H2OWidgetSnapshot(updatedAt: now, event: event, stale: false, following: [next, next]))))
+        let host = UIHostingController(rootView: WidgetResizeHost(state: state, entry: NextEventEntry(date: now, snapshot: H2OWidgetSnapshot(updatedAt: now, event: event, stale: false, following: [next, next]), family: .systemMedium)))
         host.safeAreaRegions = []
         host.view.backgroundColor = .black
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
@@ -57,7 +57,7 @@ final class WidgetLayoutTests: XCTestCase {
         }
     }
 
-    @MainActor func testRenderSmallAndMediumEventLayouts() throws {
+    @MainActor func testRenderAllSupportedWidgetLayouts() throws {
         let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         let start = ISO8601DateFormatter().date(from: "2026-11-02T18:30:00Z")!
         var cases: [(String, H2OWidgetEvent?, Bool)] = [
@@ -93,7 +93,7 @@ final class WidgetLayoutTests: XCTestCase {
                 if scenario == "reply-saving" || scenario == "reply-retry" {
                     snapshot.job = H2OWidgetReplyJob(eventID: current?.id ?? "", status: "maybe", requestID: "synthetic", version: 0, phase: scenario == "reply-saving" ? "saving" : "retry", startedAt: now)
                 }
-                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot), familyOverride: family)
+                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot, family: family))
                     .frame(width: width, height: height)
                     .background(Color(red: 0.94, green: 0.97, blue: 0.95))
                 let renderer = ImageRenderer(content: view)
