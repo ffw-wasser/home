@@ -46,8 +46,12 @@ let closingDay=false;
 // Keep the existing session identity across retries; never fall back to date alone.
 function terminPackageBase(date,type,id){
   if(typeof id!=="string"||!id)throw new Error("Die Vorgangskennung fehlt. Bitte den bestehenden Termin erneut öffnen.");
-  const key=Array.from(id,char=>/^[A-Za-z0-9_-]$/.test(char)?char:"~"+char.codePointAt(0).toString(16)+"~").join("");
-  return `FFW-Wasser_${date}_${type.replace(/ /g,"-")}_${key}`;
+  // Stable short identifier derived from the complete session ID; keep full identity in metadata.
+  let hash=2166136261;
+  for(const char of id){hash^=char.codePointAt(0);hash=Math.imul(hash,16777619)>>>0;}
+  const key=hash.toString(36).padStart(7,"0");
+  const safeType=String(type||"Termin").normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^A-Za-z0-9_-]+/g,"-").replace(/^-+|-+$/g,"")||"Termin";
+  return `${date}_${safeType}_${key}`;
 }
 window.closeDay=async function(topic=currentClosingTopic){
   if(closingDay)return;closingDay=true;
