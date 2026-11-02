@@ -36,6 +36,7 @@ class WidgetPreviewActivity : Activity() {
         }
         WidgetStore.accept(this, input.toString())
         val prefs = WidgetStore.prefs(this)
+        if (action == "refreshed") prefs.edit().putString("notice", "Stand aktualisiert – erneut wählen").commit()
         if (action == "edit") prefs.edit().putString("editing", "a".repeat(43)).commit()
         if (action in listOf("saving", "retry")) prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", action).put("startedAt", now).toString()).commit()
         if (action == "conflict") prefs.edit().putString("message", "In H₂O aktualisieren").commit()

@@ -135,6 +135,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val saving = job?.optString("phase") == "saving"
             val retry = job != null && !saving
             val message = prefs.getString("message", null)
+            val notice = prefs.getString("notice", null)
             val canReply = event != null && event.canReply && WidgetEvent.validID(event.id) && event.start > now && snapshot?.stale == false && prefs.getLong("expires", 0) > now && prefs.getString("grant", null) != null
             val actions = card && event != null && !retry && message == null
             val status = when (event?.status) {
@@ -144,6 +145,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 saving -> "Wird gespeichert …"
                 retry -> "Nicht bestätigt"
                 message != null -> message
+                notice != null -> notice
                 card && event?.status in listOf("yes", "excused", "maybe") -> "✓ Gespeichert"
                 card -> if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen"
                 !flat && width >= 170 && event?.status in listOf("yes", "excused", "maybe") -> "$status · Gespeichert"
@@ -173,7 +175,7 @@ open class NextEventWidget : AppWidgetProvider() {
                         views.setTextViewText(id, (if (pending) "◌ " else if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
                         views.setInt(id, "setBackgroundResource", if (selected) selectedBackground else 0)
-                        views.setTextColor(id, if (selected) 0xFFFFFFFF.toInt() else 0xFFB9BCC3.toInt())
+                        views.setTextColor(id, if (selected) (if (answer == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()) else 0xFFB9BCC3.toInt())
                         views.setBoolean(id, "setEnabled", canReply && job == null)
                         views.setFloat(id, "setAlpha", if (canReply && job == null) 1f else 0.55f)
                         views.setContentDescription(id, (when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }) + if (selected) ". Ausgewählt" else if (pending) ". Wird gespeichert" else "")

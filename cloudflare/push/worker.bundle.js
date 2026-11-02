@@ -22976,7 +22976,13 @@ g.PortalHydrants={schema,route};
    if(!['yes','excused','maybe','open'].includes(data.status)||!REV.test(data.requestId||'')||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Rückmeldung.',400);
    const old=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event.id,record.memberId).first(),previous=await open(env,old,'portal-reply:'+event.id+':'+record.memberId);
    if(previous?.requestId===data.requestId){if(previous.status!==data.status)fail('Vorgangsnummer wurde bereits anders verwendet.');return {ok:true,status:previous.status,version:old.version,updatedAt:old.updated_at||null};}
-   if((old?.version||0)!==data.expectedVersion)fail('Deine Rückmeldung wurde inzwischen geändert. Bitte aktualisieren.');
+   if((old?.version||0)!==data.expectedVersion){
+    const error=Object.assign(Error('Deine Rückmeldung wurde inzwischen geändert. Bitte erneut wählen.'),{status:409});
+    // Only the already-authorized widget reply receives its own current answer.
+    // No new grant, session, calendar lifetime or write is issued by recovery.
+    if(record.widgetSession)error.widgetReply={status:previous?.status||'open',version:old?.version||0};
+    throw error;
+   }
    const updatedAt=Date.now(),payload=await L.seal(env,{status:data.status,source:'h2o',requestId:data.requestId,updatedAt},'portal-reply:'+event.id+':'+record.memberId);
    const guard='EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)'+(record.widgetSession?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':''),proof=[record.alias,record.revision,...(record.widgetSession?[record.widgetSession,Date.now()]:[])];
    const result=old?await env.DB.prepare('UPDATE portal_replies SET payload=?,updated_at=?,version=version+1 WHERE event=? AND member=? AND version=? AND '+guard).bind(payload,updatedAt,event.id,record.memberId,old.version,...proof).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_replies(event,member,payload,updated_at) SELECT ?,?,?,? WHERE '+guard).bind(event.id,record.memberId,payload,updatedAt,...proof).run();if(!result.meta.changes)fail('Rückmeldung wurde gleichzeitig geändert. Bitte aktualisieren.');return {ok:true,status:data.status,version:data.expectedVersion+1,updatedAt};
@@ -23045,7 +23051,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"b27591d59c71784e40225582f70fdac2f6f52cce4c11d5bedfa0992bf468f3ef",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"14aac74a4e0451bccd2b6baf80dc1149de111edccb039bf9be9076f4671f6f86",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
@@ -23064,7 +23070,7 @@ export default {
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
     const value=await body(request,path==='/portal/calendar-addon/groups'?130000:path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
     try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(path==='/portal/regulations/pdf'&&result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline'}});return reply(result);}
-    catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
+    catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.',...(path==='/portal/widget-reply'&&error.status===409&&error.widgetReply?{currentReply:error.widgetReply}:{})},error.status||503);}
    }
    if(globalThis.DeckelChallengeService&&(path.startsWith('/challenge/')||path.startsWith('/admin/challenge/'))){
     const raw=await request.text();if(raw.length>(admin?8000000:6000))return reply({error:'Anfrage zu groß.'},413);

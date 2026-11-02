@@ -47,6 +47,7 @@ struct H2OWidgetSnapshot: Codable, Equatable {
     var editing: String? = nil
     var job: H2OWidgetReplyJob? = nil
     var message: String? = nil
+    var notice: String? = nil
     var events: [H2OWidgetEvent] { ([event].compactMap { $0 } + (following ?? [])).sorted { $0.start < $1.start } }
     func at(_ now: Date) -> H2OWidgetSnapshot {
         var value = self
@@ -54,7 +55,7 @@ struct H2OWidgetSnapshot: Codable, Equatable {
         value.event = remaining.first
         value.following = Array(remaining.dropFirst())
         if value.event?.id != event?.id {
-            value.job = nil; value.editing = nil; value.message = nil
+            value.job = nil; value.editing = nil; value.message = nil; value.notice = nil
         }
         if let job = value.job, job.phase == "saving", now.timeIntervalSince(job.startedAt) >= 20 {
             value.job?.phase = "retry"

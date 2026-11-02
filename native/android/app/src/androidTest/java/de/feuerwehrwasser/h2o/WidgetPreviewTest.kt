@@ -33,7 +33,7 @@ class WidgetPreviewTest {
         val scenarios = expandedSizes.flatMap { size -> fixtures.map { size to it } } +
             listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f)).flatMap { size ->
                 listOf("short-title", "long-title", "open").map { size to it }
-            }
+            } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
         for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
@@ -78,6 +78,11 @@ class WidgetPreviewTest {
                         val text = status.text.toString()
                         assertTrue(text.isNotBlank())
                         if (fixture == "saving") assertEquals("Wird gespeichert …", text)
+                        if (fixture == "refreshed") {
+                            assertEquals("Stand aktualisiert – erneut wählen", text)
+                            assertTrue("Refreshed conflicts keep the direct selector available", actions)
+                            assertFalse(text.contains("Gespeichert"))
+                        }
                         if (fixture == "retry") assertTrue(text.contains("Nicht bestätigt"))
                         if (card && fixture in listOf("today", "tomorrow", "future", "excused", "allday")) assertTrue("Only confirmed replies say saved", text.contains("Gespeichert"))
                         if (fixture in listOf("saving", "retry", "conflict", "open", "reminded")) assertFalse("Unconfirmed operations never claim success", text.contains("Gespeichert"))

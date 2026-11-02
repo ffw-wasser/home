@@ -39,8 +39,8 @@ struct NextEventView: View {
         if renderingMode != .fullColor { return .primary }
         switch status {
         case "yes": return Color(red: 40.0 / 255, green: 125.0 / 255, blue: 73.0 / 255)
-        case "excused": return Color(red: 179.0 / 255, green: 51.0 / 255, blue: 72.0 / 255)
-        case "maybe": return Color(red: 154.0 / 255, green: 107.0 / 255, blue: 16.0 / 255)
+        case "excused": return signalYellow
+        case "maybe": return Color(red: 232.0 / 255, green: 117.0 / 255, blue: 36.0 / 255)
         default: return signalYellow
         }
     }
@@ -94,7 +94,7 @@ struct NextEventView: View {
                 Image(systemName: pending ? "hourglass" : selected ? "checkmark" : "circle").font(.system(size: 12, weight: .semibold))
                 Text(title(status)).font(.system(size: 13, weight: selected ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.75)
             }.frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(selected ? ink : secondaryInk)
+                .foregroundStyle(selected ? (renderingMode == .fullColor && status != "yes" ? Color(red: 45.0 / 255, green: 33.0 / 255, blue: 10.0 / 255) : ink) : secondaryInk)
                 .background(selected ? color(status).opacity(renderingMode == .fullColor ? 1 : 0.2) : ink.opacity(0.035))
         }.buttonStyle(.plain).disabled(!canReply || job != nil)
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
@@ -122,6 +122,7 @@ struct NextEventView: View {
     private var feedbackText: String {
         if let message = snapshot?.message { return message }
         if let job { return job.phase == "saving" ? "Wird gespeichert …" : "Nicht bestätigt" }
+        if let notice = snapshot?.notice { return notice }
         if event?.status == "open" { return event?.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen" }
         return "Gespeichert"
     }
@@ -129,8 +130,8 @@ struct NextEventView: View {
         let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
         let textColor = unanswered ? signalYellow : secondaryInk
         return HStack(spacing: 4) {
-            Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark")
-                .foregroundStyle(unanswered ? signalYellow : job == nil && snapshot?.message == nil ? color("yes") : secondaryInk)
+            Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : snapshot?.notice != nil ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark")
+                .foregroundStyle(unanswered ? signalYellow : job == nil && snapshot?.message == nil && snapshot?.notice == nil ? color("yes") : secondaryInk)
             Text(feedbackText).foregroundStyle(textColor)
             if snapshot?.stale == true {
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(secondaryInk)

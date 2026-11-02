@@ -70,7 +70,7 @@ final class WidgetLayoutTests: XCTestCase {
             ("open-long-month", H2OWidgetEvent(title: "Unterricht", start: ISO8601DateFormatter().date(from: "2027-09-22T17:30:00Z")!, end: ISO8601DateFormatter().date(from: "2027-09-22T19:30:00Z")!, location: "GH Wasser", clothing: "Tagesdienst", status: "open", allDay: false), false),
             ("empty", nil, false)
         ]
-        for phase in ["reply-saving", "reply-retry", "reply-edit", "reply-conflict"] {
+        for phase in ["reply-saving", "reply-retry", "reply-edit", "reply-conflict", "reply-refreshed"] {
             cases.append((phase, H2OWidgetEvent(title: "Technische Hilfeleistung", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false), false))
         }
         // Include the smallest supported canvas and a larger iPhone canvas.
@@ -87,6 +87,7 @@ final class WidgetLayoutTests: XCTestCase {
                 current?.id = String(repeating: "a", count: 43); current?.version = 0; current?.canReply = scenario != "today-excused"; current?.reminded = scenario != "tomorrow"
                 let following = event.map { e in [H2OWidgetEvent(title: "Funkübung", start: e.start.addingTimeInterval(86400), end: e.end.addingTimeInterval(86400), location: "Testort", clothing: "Tagesdienst", status: "open", allDay: false, id: String(repeating: "b", count: 43)), H2OWidgetEvent(title: "Unterricht", start: e.start.addingTimeInterval(172800), end: e.end.addingTimeInterval(172800), location: "Testort", clothing: "Tagesdienst", status: "maybe", allDay: false, id: String(repeating: "c", count: 43))] } ?? []
                 var snapshot = H2OWidgetSnapshot(updatedAt: now, event: current, stale: stale, following: following)
+                if scenario == "reply-refreshed" { snapshot.notice = "Stand aktualisiert – erneut wählen" }
                 if scenario == "reply-edit" { snapshot.editing = current?.id }
                 if scenario == "reply-conflict" { snapshot.message = "In H₂O aktualisieren" }
                 if scenario == "reply-saving" || scenario == "reply-retry" {

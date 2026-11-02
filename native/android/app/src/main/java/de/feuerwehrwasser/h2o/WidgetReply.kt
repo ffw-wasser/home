@@ -67,9 +67,9 @@ class WidgetReplyReceiver : BroadcastReceiver() {
                             .put("requestId", UUID.randomUUID().toString())
                     }
                     job.put("phase", "saving").put("startedAt", now)
-                    prefs.edit().putString("job", job.toString()).remove("message").commit()
+                    prefs.edit().putString("job", job.toString()).remove("message").remove("notice").commit()
                     val work = OneTimeWorkRequestBuilder<WidgetReplyWorker>().setInputData(workDataOf("generation" to prefs.getString("generation", ""), "requestId" to job.getString("requestId"))).build()
-                    WorkManager.getInstance(context).enqueueUniqueWork("h2o-widget-reply", ExistingWorkPolicy.KEEP, work)
+                    WorkManager.getInstance(context).enqueueUniqueWork("h2o-widget-reply", ExistingWorkPolicy.APPEND_OR_REPLACE, work)
                 }
             }
         }
@@ -102,6 +102,7 @@ class WidgetReplyWorker(context: Context, params: WorkerParameters) : CoroutineW
             job
         }
         var saved = false; var denied = false; var conflict = false; var version = 0
+        var refreshed: Pair<String, Int>? = null
         var connection: HttpsURLConnection? = null
         try {
             if (prefs.getLong("expires", 0) <= System.currentTimeMillis()) throw IllegalStateException()
@@ -115,8 +116,9 @@ class WidgetReplyWorker(context: Context, params: WorkerParameters) : CoroutineW
             connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             denied = code in listOf(401, 403); conflict = code in listOf(400, 404, 409, 423)
-            if (code == 200) {
-                val bytes = connection.inputStream.use { stream ->
+            if (code == 200 || code == 409) {
+                val stream = if (code == 200) connection.inputStream else connection.errorStream
+                val bytes = stream.use { stream ->
                     val buffer = java.io.ByteArrayOutputStream()
                     val chunk = ByteArray(1024)
                     while (buffer.size() <= 4096) {
@@ -128,7 +130,11 @@ class WidgetReplyWorker(context: Context, params: WorkerParameters) : CoroutineW
                 }
                 if (bytes.size <= 4096) {
                     val value = JSONObject(String(bytes, Charsets.UTF_8)); version = value.optInt("version", -1)
-                    saved = value.optBoolean("ok") && value.optString("status") == job.getString("status") && version == job.getInt("expectedVersion") + 1
+                    saved = code == 200 && value.optBoolean("ok") && value.optString("status") == job.getString("status") && version == job.getInt("expectedVersion") + 1
+                    val current = value.optJSONObject("currentReply")
+                    if (code == 409 && current != null && current.optString("status") in listOf("yes", "excused", "maybe", "open") && current.opt("version") is Number && current.optDouble("version") >= 0 && current.optDouble("version") <= Int.MAX_VALUE && current.optDouble("version") == current.optInt("version").toDouble()) {
+                        refreshed = current.getString("status") to current.getInt("version")
+                    }
                 }
             }
         } catch (_: Exception) { /* Preserve original request for explicit idempotent retry. */ }
@@ -137,6 +143,10 @@ class WidgetReplyWorker(context: Context, params: WorkerParameters) : CoroutineW
             if (prefs.getString("generation", null) != generation || prefs.getString("job", null)?.let(::JSONObject)?.optString("requestId") != requestID) return@withContext Result.success()
             if (denied) WidgetStore.clear(applicationContext)
             else if (saved) WidgetStore.confirm(applicationContext, job.getString("eventId"), job.getString("status"), version)
+            else if (refreshed != null) {
+                val current = requireNotNull(refreshed)
+                WidgetStore.confirm(applicationContext, job.getString("eventId"), current.first, current.second, "Stand aktualisiert – erneut wählen")
+            }
             else if (conflict) prefs.edit().remove("job").remove("editing").putString("message", "In H₂O aktualisieren").commit()
             else prefs.edit().putString("job", job.put("phase", "retry").toString()).commit()
         }

@@ -155,6 +155,8 @@ Breite Widgets ab 210 dp Höhe erhalten eine größere Kalenderkachel sowie deut
 
 Die Kopfzeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Kalender und Thema nutzen den gewonnenen Platz; die rote Oberkante bleibt erhalten.
 
-Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei #287D49, Entschuldigt #B33348, Unsicher #9A6B10, jeweils mit weißer Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
+Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei grün #287D49, Entschuldigt gelb #F4C542, Unsicher orange #E87524. Grün trägt weiße, Gelb und Orange dunkle Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
 
 Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften. Lange Themen bekommen größenabhängig mehrere Zeilen; die Darstellung verkleinert Text erst bei tatsächlich begrenztem Platz.
+
+Bei einem Versionskonflikt liefert der Dienst ausschließlich den eigenen aktuellen Antwortstatus und dessen Version. Das Widget übernimmt diesen Stand und zeigt „Stand aktualisiert – erneut wählen“ mit wieder freier Auswahl. Es schreibt nicht selbstständig erneut. Zugang, Kalenderalter, Fristen, Empfängerrechte und Vorgangsnummer bleiben unverändert. Abgelaufene Zugänge erfordern weiterhin H₂O. Android hängt direkt aufeinanderfolgende ausdrückliche Antworten an den vorherigen Auftrag an, statt sie am noch auslaufenden Auftrag zu verwerfen; nach 30 Sekunden erfolgt kein stiller Versand.
