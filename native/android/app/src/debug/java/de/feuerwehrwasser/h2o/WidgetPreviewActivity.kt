@@ -25,6 +25,15 @@ class WidgetPreviewActivity : Activity() {
                 .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else if (action in listOf("open", "reminded")) "open" else "yes")
                 .put("id", "a".repeat(43)).put("version", 0).put("canReply", true).put("reminded", action == "reminded"))
             .put("reply", JSONObject().put("token", "synthetic".repeat(20)).put("expiresAt", now + 3600000))
+        if (action !in listOf("clear", "empty")) {
+            val first = input.getJSONObject("event")
+            val following = org.json.JSONArray().put(first)
+            for ((offset, title) in listOf("Funkübung", "Unterricht").withIndex()) {
+                following.put(JSONObject(first.toString()).put("title", title).put("id", (if (offset == 0) "b" else "c").repeat(43))
+                    .put("start", start + (offset + 1) * 86400000L).put("end", start + (offset + 1) * 86400000L + 3600000))
+            }
+            input.put("events", following)
+        }
         WidgetStore.accept(this, input.toString())
         val prefs = WidgetStore.prefs(this)
         if (action == "edit") prefs.edit().putString("editing", "a".repeat(43)).commit()

@@ -33,7 +33,7 @@ final class WidgetLayoutTests: XCTestCase {
             for (scenario, event, stale) in cases {
                 var current = event
                 current?.id = String(repeating: "a", count: 43); current?.version = 0; current?.canReply = true; current?.reminded = true
-                let following = event.map { e in [H2OWidgetEvent(title: "Funkübung", start: e.start.addingTimeInterval(86400), end: e.end.addingTimeInterval(86400), location: "Testort", clothing: "Tagesdienst", status: "open", allDay: false)] } ?? []
+                let following = event.map { e in [H2OWidgetEvent(title: "Funkübung", start: e.start.addingTimeInterval(86400), end: e.end.addingTimeInterval(86400), location: "Testort", clothing: "Tagesdienst", status: "open", allDay: false, id: String(repeating: "b", count: 43)), H2OWidgetEvent(title: "Unterricht", start: e.start.addingTimeInterval(172800), end: e.end.addingTimeInterval(172800), location: "Testort", clothing: "Tagesdienst", status: "maybe", allDay: false, id: String(repeating: "c", count: 43))] } ?? []
                 var snapshot = H2OWidgetSnapshot(updatedAt: now, event: current, stale: stale, following: following)
                 if scenario == "reply-edit" { snapshot.editing = current?.id }
                 if scenario == "reply-conflict" { snapshot.message = "In H₂O aktualisieren" }

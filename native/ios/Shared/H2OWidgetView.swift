@@ -66,7 +66,8 @@ struct NextEventView: View {
             Text(day(event)).font(.system(size: compact ? 24 : large ? 27 : dense ? 17 : 21, weight: .bold))
                 .lineLimit(1).minimumScaleFactor(0.7)
             Text(event.title).font(.system(size: compact ? 13 : large ? 23 : dense ? 15 : 17, weight: .semibold))
-                .lineLimit(2).minimumScaleFactor(0.8)
+                .lineLimit(2).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + (compact ? "" : " · " + event.location))
                 .font(.system(size: compact || dense ? 10 : 12)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
             if !compact && !event.clothing.isEmpty {
@@ -118,14 +119,22 @@ struct NextEventView: View {
     }
     var body: some View {
         GeometryReader { geometry in
+            let horizontal: CGFloat = small ? 10 : 12
+            let vertical: CGFloat = small ? 8 : large ? 12 : 3
+            let contentWidth = max(1, geometry.size.width - 2 * horizontal)
+            let detailHeight = max(1, geometry.size.height - 2 * vertical - (small ? 17 + 27 + 8 : 12 + 44 + 6))
             VStack(alignment: .leading, spacing: small ? 4 : large ? 6 : 3) {
                 header.frame(height: small || large ? 17 : 12)
                 if let event {
-                    Link(destination: event.link ?? URL(string: "h2oportal://termine")!) { details(event, compact: small, dense: !small && !large) }.buttonStyle(.plain)
-                    if !small && event.status == "open" && job == nil && canReply && (large || geometry.size.height >= 170) {
+                    Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
+                        details(event, compact: small, dense: !small && !large)
+                            .frame(width: contentWidth, alignment: .topLeading)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: contentWidth, height: large ? nil : detailHeight, alignment: .topLeading)
+                    if !small && event.status == "open" && job == nil && canReply && large {
                         Text(event.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen").font(.system(size: 10)).foregroundStyle(secondaryInk)
                     }
-                    if large { Spacer(minLength: 0) }
                     footer
                     if large {
                         ForEach(Array((snapshot?.following ?? []).prefix(2).enumerated()), id: \.offset) { _, next in
@@ -144,9 +153,9 @@ struct NextEventView: View {
                         .font(.system(size: 13, weight: .medium)).frame(maxHeight: .infinity, alignment: .leading)
                 }
             }
-            .padding(.horizontal, small ? 10 : 12)
-            .padding(.vertical, small ? 8 : large ? 12 : 3)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(width: contentWidth, height: max(1, geometry.size.height - 2 * vertical), alignment: .topLeading)
+            .padding(.horizontal, horizontal)
+            .padding(.vertical, vertical)
             .background(background)
             .overlay(alignment: .top) { Color(red: 0.70, green: 0.11, blue: 0.17).frame(height: 3).accessibilityHidden(true) }
         }
