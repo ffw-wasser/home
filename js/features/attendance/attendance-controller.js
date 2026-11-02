@@ -27,7 +27,7 @@ function restoreAttendanceDraft(){
       if(/^\d{4}-\d{2}-\d{2}$/.test(saved.date)&&!Number.isNaN(Date.parse(saved.date)))currentProbeDate=saved.date;
       currentClosingTopic=String(saved.topic||'').slice(0,300);breathingProtectionPlanned=saved.breathing===true;
       const allowed=sessionType==='Einsatz'?['Anwesend']:sessionType==='Allgemeine Probe'?['Anwesend','Entschuldigt','Orga']:sessionType==='Sonderprobe'?['Anwesend','Entschuldigt','Betrifft nicht']:['Anwesend','Entschuldigt'];
-      for(const pair of Array.isArray(saved.pending)?saved.pending:[]){if(!Array.isArray(pair))continue;const [memberId,status]=pair,member=members.find(m=>m.id===memberId);if(member&&allowed.includes(status)&&!(sessionType==='Einsatz'&&member.ageDepartment)&&!(sessionType==='Ausschuss Sitzung'&&!member.committeeMember)&&!rows.some(e=>e.storedName===nameForStorage(member)||e.displayName===nameForTile(member)))pendingMemberStatuses.set(memberId,status);}
+      for(const pair of Array.isArray(saved.pending)?saved.pending:[]){if(!Array.isArray(pair))continue;const [memberId,status]=pair,member=members.find(m=>m.id===memberId);if(member&&member.fitnessTrainer!==true&&allowed.includes(status)&&!(sessionType==='Einsatz'&&member.ageDepartment)&&!(sessionType==='Ausschuss Sitzung'&&!member.committeeMember)&&!rows.some(e=>e.storedName===nameForStorage(member)||e.displayName===nameForTile(member)))pendingMemberStatuses.set(memberId,status);}
       chosenMemberIds=new Set(pendingMemberStatuses.keys());chosenRole='Anwesend';
       if(currentOperationId){operationAssignments={...(saved.assignments||{})};operationAssignmentRoles={...(saved.roles||{})};}
       attendanceDraftOutcome='Entwurf wiederhergestellt · Markierungen bitte prüfen und übernehmen.';
@@ -68,12 +68,10 @@ function renderMembers() {
   members = sortMembers(members);
   const current = todayEntries();
   const recordedNames = new Set(current.flatMap(entry => [entry.storedName, entry.displayName].filter(Boolean)));
-  const eligibleMembers = sessionType === "Ausschuss Sitzung"
-    ? members.filter(member => member.committeeMember)
-    : sessionType === "Einsatz"
-      ? members.filter(member => !member.ageDepartment)
-      : members;
-  const availableMembers = eligibleMembers.filter(member => (sessionType==="Fitness"||member.fitnessTrainer!==true)&&!recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
+  const eligibleMembers = members.filter(member => member.fitnessTrainer !== true &&
+    (sessionType === "Ausschuss Sitzung" ? member.committeeMember : sessionType === "Einsatz" ? !member.ageDepartment : true));
+  for(const member of members)if(member.fitnessTrainer===true)pendingMemberStatuses.delete(member.id);
+  const availableMembers = eligibleMembers.filter(member => !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
   if (!availableMembers.some(member => member.id === chosenMemberId)) chosenMemberId = "";
   chosenMemberIds = new Set([...chosenMemberIds].filter(id => availableMembers.some(member => member.id === id)));
   const multiMode = (sessionType === "Allgemeine Probe" && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Orga")) ||
@@ -81,15 +79,13 @@ function renderMembers() {
     ((sessionType === "Unterricht" || sessionType === "Ausschuss Sitzung") && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt")) ||
     (sessionType === "Einsatz" && chosenRole === "Anwesend");
   const renderMemberButton = member => {
-    const recorded = recordedNames.has(nameForStorage(member)) || recordedNames.has(nameForTile(member));
-    if(recorded) return window.AttendanceSmart?.recordedCard(member,current)||"";
     const selected = multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId;
     const organizationSelected = selected && chosenRole === "Orga";
     const extra=["Sonderprobe","Fitness"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
     const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
-    return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""} "><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
+    return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""}"><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
   };
-  const visibleMembers=eligibleMembers.filter(member=>window.AttendanceSmart?window.AttendanceSmart.matches(member,recordedNames):!recordedNames.has(nameForStorage(member))&&!recordedNames.has(nameForTile(member)));
+  const visibleMembers=availableMembers;
   const activeMembers=visibleMembers.filter(member=>!member.ageDepartment),ageMembers=visibleMembers.filter(member=>member.ageDepartment);
   const legendItems=sessionType==="Einsatz"
     ? `<span><b class="legend-a">✓</b>Anwesend</span>`
@@ -113,7 +109,7 @@ function renderMembers() {
     ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
   byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
-  window.AttendanceSmart?.refresh(visibleMembers.length);
+  window.AttendanceSmart?.refresh(availableMembers.length);
   requestAnimationFrame(fitMemberLastNames);
   byId("memberCount").textContent = multiMode ? `${chosenMemberIds.size} ausgewählt · ${availableMembers.length} offen` : `${availableMembers.length} offen`;
 }
@@ -220,7 +216,7 @@ function todayEntries() {
 function renderEntries() {
   const allCurrent = todayEntries();
   const committee=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
-  const exportMembers=(committee?members.filter(member=>member.committeeMember):members).filter(member=>sessionType==="Fitness"||member.fitnessTrainer!==true);
+  const exportMembers=(committee?members.filter(member=>member.committeeMember):members).filter(member=>member.fitnessTrainer!==true);
   const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
   const current=committee?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   byId("entries").innerHTML = current.map(entry => `
@@ -265,7 +261,7 @@ function renderAdmin() {
   window.Usability?.members();
 }
 function saveAgeDepartmentAttendance(member) {
-  if (!member || !member.ageDepartment) return false;
+  if (!member || member.fitnessTrainer===true || !member.ageDepartment) return false;
   const time = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   entries.unshift({
     id: makeId(), date: today(), time,
@@ -281,7 +277,7 @@ function saveAgeDepartmentAttendance(member) {
   return true;
 }
 function saveDirectGeneralAttendance(member, status = "Anwesend") {
-  if (!member || member.ageDepartment) return false;
+  if (!member || member.fitnessTrainer===true || member.ageDepartment) return false;
   const time = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   entries.unshift({ id: makeId(), date: today(), time, displayName: nameForTile(member), storedName: nameForStorage(member), role: "", status, sessionType, sessionId:ensureCurrentSessionId() });
   saveEntries(); chosenMemberId = ""; chosenMemberIds.clear(); chosenRole = "";
@@ -290,7 +286,7 @@ function saveDirectGeneralAttendance(member, status = "Anwesend") {
   return true;
 }
 function saveQuickMemberStatus(id,status){
-  const member=members.find(item=>item.id===id);if(!member)return false;
+  const member=members.find(item=>item.id===id);if(!member||member.fitnessTrainer===true)return false;
   const already=todayEntries().some(entry=>entry.storedName===nameForStorage(member)||entry.displayName===nameForTile(member));if(already)return false;
   const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!allowed.includes(status))return false;
@@ -310,7 +306,7 @@ function saveQuickMemberStatus(id,status){
   if(count){
     const recordedNames=new Set(todayEntries().flatMap(entry=>[entry.storedName,entry.displayName].filter(Boolean)));
     const eligible=sessionType==="Ausschuss Sitzung"?members.filter(item=>item.committeeMember):sessionType==="Einsatz"?members.filter(item=>!item.ageDepartment):members;
-    const open=eligible.filter(item=>(sessionType==="Fitness"||item.fitnessTrainer!==true)&&!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
+    const open=eligible.filter(item=>item.fitnessTrainer!==true&&!recordedNames.has(nameForStorage(item))&&!recordedNames.has(nameForTile(item))).length;
     count.textContent=`${chosenMemberIds.size} ausgewählt · ${open} offen`;
   }
   updateSelection();updateProbeWorkflow();
@@ -320,7 +316,7 @@ function commitPendingMemberStatuses(){
   if(!pendingMemberStatuses.size)return false;
   const time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),isOperation=sessionType==="Einsatz";
   let count=0;
-  pendingMemberStatuses.forEach((status,id)=>{const member=members.find(item=>item.id===id);if(!member)return;entries.unshift({id:makeId(),date:today(),time,displayName:nameForTile(member),storedName:nameForStorage(member),role:status==="Orga"?"Orga":sessionType==="Ausschuss Sitzung"&&status==="Anwesend"?"Ausschuss Sitzung":sessionType==="Unterricht"&&status==="Anwesend"?"Unterricht":"",status:status==="Orga"?"Anwesend":status,sessionType,sessionId:isOperation?"":ensureCurrentSessionId(),operationId:isOperation?currentOperationId:""});count++;});
+  pendingMemberStatuses.forEach((status,id)=>{const member=members.find(item=>item.id===id);if(!member||member.fitnessTrainer===true)return;entries.unshift({id:makeId(),date:today(),time,displayName:nameForTile(member),storedName:nameForStorage(member),role:status==="Orga"?"Orga":sessionType==="Ausschuss Sitzung"&&status==="Anwesend"?"Ausschuss Sitzung":sessionType==="Unterricht"&&status==="Anwesend"?"Unterricht":"",status:status==="Orga"?"Anwesend":status,sessionType,sessionId:isOperation?"":ensureCurrentSessionId(),operationId:isOperation?currentOperationId:""});count++;});
   saveEntries();window.WorkflowUX?.clearSelectionUndo();pendingMemberStatuses.clear();chosenMemberIds.clear();chosenMemberId="";
   renderMembers();renderEntries();renderAdmin();updateSelection();updateProbeWorkflow();updatePrimaryAction();
   const scrollToActiveDepartment=()=>{
@@ -342,7 +338,7 @@ function commitPendingMemberStatuses(){
 }
 function chooseMember(id) {
   const clickedMember=members.find(member=>member.id===id);
-  if(!clickedMember || !chosenRole) return;
+  if(!clickedMember || clickedMember.fitnessTrainer===true || !chosenRole) return;
   const allowed=(sessionType==="Allgemeine Probe" && ["Anwesend","Entschuldigt","Orga"].includes(chosenRole)) ||
     (["Sonderprobe","Fitness"].includes(sessionType) && ["Anwesend","Entschuldigt","Betrifft nicht"].includes(chosenRole)) ||
     ((sessionType==="Unterricht" || sessionType==="Ausschuss Sitzung") && ["Anwesend","Entschuldigt"].includes(chosenRole)) ||

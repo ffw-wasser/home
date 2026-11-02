@@ -16,6 +16,28 @@ const root=path.resolve(__dirname,'..');
   await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.hostname.endsWith('workers.dev')){const response=await f.c.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),...(req.method()==='POST'?{body:req.postData()}: {})}),f.env);return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});}if(u.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});}return route.abort();});
   await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(({people,token})=>{members=people;window.requireAdmin=()=>true;oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();window.oneDriveReadState=async()=>({members});DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev',source:'test-source',token});DrinksStore.sourceKey=()=> 'test-source';showView('settingsCalendarView');},{people,token:f.env.ADMIN_TOKEN});
+  await page.locator('.portal-keyword-card').first().waitFor({state:'attached'});
+  await page.waitForFunction(()=>document.getElementById('portal-admin-review-load')?.disabled===false);
+  for(const type of ['Allgemeine Probe','Sonderprobe','Unterricht','Einsatz','Fitness']){
+   await page.evaluate(type=>{sessionType=type;chosenRole='Anwesend';renderMembers();},type);
+   assert.equal(await page.locator('#members [data-quick-member="'+people[1].id+'"]').count(),0,'trainer excluded from '+type);
+   assert.ok(await page.locator('#members [data-quick-status="Anwesend"]').count()>0,'ordinary members remain in '+type);
+  }
+  const tileLayout=()=>page.locator('#members .member-direct-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {id:card.querySelector('[data-quick-member]').dataset.quickMember,x:r.x,y:r.y+scrollY,width:r.width,height:r.height};}));
+  for(const width of [390,768,1180]){
+   await page.setViewportSize({width,height:1000});
+   await page.evaluate(()=>{entries=[];currentSessionId='';currentOperationId='';pendingMemberStatuses.clear();chosenMemberIds.clear();showView('attendanceView');chooseSessionType('Unterricht');continueToAttendance();renderMembers();});
+   await page.evaluate(()=>document.fonts.ready);const before=await tileLayout(),id=before[0].id;
+   await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').click();
+   assert.equal(await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').isVisible(),true,'marking alone keeps the tile visible');
+   await page.locator('#saveButton').click();await page.waitForFunction(()=>todayEntries().length===1);
+   assert.equal(await page.locator('#members [data-quick-member="'+id+'"]').count(),0,'saved member leaves no slot');
+   const after=await tileLayout();assert.deepEqual(after.map(t=>t.id),before.slice(1).map(t=>t.id));
+   assert.ok(Math.abs(after[0].x-before[0].x)<1&&Math.abs(after[0].y-before[0].y)<1,'next tile moves into the first slot at '+width);
+   const preview=path.join(root,'qa/portal-review');fs.mkdirSync(preview,{recursive:true});await page.screenshot({path:path.join(preview,'attendance-selection-'+width+'.png'),fullPage:true});
+   await page.evaluate(()=>{entries=[];renderMembers();});assert.equal(await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').count(),1,'removing attendance restores the tile');
+  }
+  await page.setViewportSize({width:1180,height:1000});await page.evaluate(()=>{currentSessionId='';sessionType='Allgemeine Probe';setHomeFlowStage(1);showView('settingsCalendarView');renderMembers();});
   await page.locator('.portal-keyword-card').first().waitFor({state:'attached'});await page.getByRole('button',{name:'Gruppen',exact:true}).click();
   const group=page.locator('.portal-keyword-card[data-group-id="fitness"]');await group.locator('summary').click();await group.getByRole('button',{name:'Gruppe bearbeiten',exact:true}).click();
   const trainer=group.locator('fieldset').filter({has:page.getByText('Fitnesstrainer · nur diese Gruppe',{exact:true})});assert.equal(await trainer.locator('input[type=checkbox]').count(),1);await trainer.locator('input[type=checkbox]').check();

@@ -141,10 +141,6 @@
   }
 }
 
-/* Übernommene Personen verschwinden aus der Auswahl. Nach Löschen des Tabelleneintrags
-   werden sie durch renderMembers() automatisch wieder eingeblendet. */
-#attendanceSelectionWorkspace .member-direct-card.recorded { display:none !important; }
-
 /* Kurze Statuscodes und seitliche Legende. */
 #attendanceSelectionWorkspace .member-status-action .status-icon{
   font-size:.9rem !important;
