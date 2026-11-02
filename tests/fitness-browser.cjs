@@ -24,7 +24,7 @@ const root=path.resolve(__dirname,'..');
   const tileLayout=()=>page.locator('#members .member-direct-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {id:card.querySelector('[data-quick-member]').dataset.quickMember,x:r.x,y:r.y+scrollY,width:r.width,height:r.height};}));
   for(const width of [390,768,1180]){
    await page.setViewportSize({width,height:1000});
-   await page.evaluate(()=>{entries=[];currentSessionId='synthetic-slot-test';currentOperationId='';sessionType='Unterricht';chosenRole='Anwesend';pendingMemberStatuses.clear();chosenMemberIds.clear();showView('attendanceView');setHomeFlowStage(2);renderMembers();});
+   await page.evaluate(()=>{entries=[];currentSessionId='';currentOperationId='';pendingMemberStatuses.clear();chosenMemberIds.clear();showView('attendanceView');chooseSessionType('Unterricht');continueToAttendance();renderMembers();});
    await page.evaluate(()=>document.fonts.ready);const before=await tileLayout(),id=before[0].id;
    await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').click();
    assert.equal(await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').isVisible(),true,'marking alone keeps the tile visible');

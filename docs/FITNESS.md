@@ -8,7 +8,7 @@ Terminart. Sie zählen dort nicht als offene Mitglieder und können auch nicht �
 eine ältere Auswahl oder einen fortgesetzten Entwurf übernommen werden. Die
 Trainerrolle und ihre Fitnessgruppen-Zuordnung bleiben in der Verwaltung erhalten.
 
-Übernommene Teilnehmer verschwinden aus der Auswahl; die übrigen Kacheln rücken
+Übernommene oder erfolgreich per QR eingecheckte Teilnehmer verschwinden aus der Auswahl; die übrigen Kacheln rücken
 lückenlos auf. Nur markierte, noch nicht übernommene Personen bleiben sichtbar.
 Nach dem Löschen eines erfassten Eintrags erscheint die Person wieder in ihrer
 alphabetischen Reihenfolge. Änderungen sind in der Liste erfasster Personen möglich.

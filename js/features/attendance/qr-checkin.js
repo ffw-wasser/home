@@ -29,7 +29,7 @@
   try{
    const result=await g.PortalAdmin.resolveCheckin(code);if(version!==epoch||!valid())return;
    const member=members.find(m=>String(m.id)===String(result.memberId));if(!member)throw Error('Mitglieder bitte zuerst synchronisieren.');
-   if(sessionType==='Einsatz'&&member.ageDepartment||sessionType==='Ausschuss Sitzung'&&!member.committeeMember)throw Error('Dieses Mitglied ist für diese Terminart nicht auswählbar.');
+   if(member.fitnessTrainer===true||sessionType==='Einsatz'&&member.ageDepartment||sessionType==='Ausschuss Sitzung'&&!member.committeeMember)throw Error('Dieses Mitglied ist für diese Terminart nicht auswählbar.');
    const name=nameForTile(member),existing=todayEntries().find(e=>e.storedName===nameForStorage(member)||e.displayName===name);
    if(existing?.status==='Anwesend'){status.textContent=name+' – bereits erfasst ✓';guide('success','Bereits als anwesend erfasst ✓');return;}
    const selected=g.PortalAdmin.checkinContext(),info=selected.replies,reply=!info?.stale&&(!info?.event||info.event.id===selected.eventId)&&info?.replies?.find(r=>String(r.memberId)===String(member.id));
