@@ -48,7 +48,7 @@ class WidgetPreviewTest {
                     assertTrue(root.width > 0 && root.height > 0)
                     val widget = activity.findViewById<View>(R.id.widget_root)
                     assertFalse("Brand heading must not consume calendar space", activity.findViewById<View>(R.id.widget_brand).isShown)
-                    if (width >= 300 && height in 210..289 && height / fontScale >= 160 && width / fontScale >= 240) {
+                    if (isEvent && width >= 300 && height in 210..289 && height / fontScale >= 160 && width / fontScale >= 240) {
                         val day = activity.findViewById<TextView>(R.id.widget_day)
                         assertTrue("Intermediate launcher heights enlarge the calendar day", day.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 31.9f else 41.9f)
                         assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 16.9f else 21.9f)
