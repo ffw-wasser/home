@@ -103,7 +103,7 @@ struct NextEventView: View {
     private func cardText(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
             Text(event.title).font(.system(size: titleSize, weight: .semibold))
-                .lineLimit(sidebar ? 3 : 2).fixedSize(horizontal: false, vertical: true)
+                .lineLimit(3).fixedSize(horizontal: false, vertical: true)
             Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
                 .font(.system(size: detailSize)).foregroundStyle(secondaryInk).lineLimit(sidebar ? 2 : 1).minimumScaleFactor(0.8)
             if !event.clothing.isEmpty {
