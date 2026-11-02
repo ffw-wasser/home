@@ -147,3 +147,10 @@ Die iPhone-App nutzt UISelectionFeedbackGenerator, die Android-App ab API 34 GES
 Anthrazit (#191B20), rote Oberkante (#A52332, 3 dp), helle Kalenderkachel (#F2EEE5) und ein zusammenhängender Statusregler mit drei dauerhaft sichtbaren Optionen in mittleren und großen Widgets. Keine getrennten roten Statusflächen und kein Ändern-Button. Große Widgets zeigen zwei Folgetermine. Schmale und flache Widgets reduzieren Metadaten und öffnen den Termin in der App. Die tatsächliche Launcherfläche und Systemschrift bestimmen die passende Ansicht.
 
 Die Bildprüfung umfasst lange Themen, 130 Prozent Systemschrift, offene und angeforderte Antworten, laufende Speicherung, Fehler und bestätigte Antworten. Offene Rückmeldungen tragen einen signalgelben Hinweis.
+
+
+## Größere Terminansicht in Zwischenhöhen – Build 1030
+
+Breite Widgets ab 210 dp Höhe erhalten eine größere Kalenderkachel sowie deutlich größere Themen-, Orts- und Kleidungsschrift. Die verfügbare Höhe und die Systemschrift werden gemeinsam berücksichtigt; kleine und flache Ansichten sowie die direkte Statusauswahl bleiben erhalten. Dies korrigiert den auf einem realen Android-Gerät sichtbaren großen Leerraum um eine zu kleine Terminansicht. Die Emulatorprüfung enthält nun zusätzlich diese Zwischenhöhen mit kurzem Thema „Probe“, langen Themen und offener Rückmeldung.
+
+Die Kopfzeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Kalender und Thema nutzen den gewonnenen Platz; die rote Oberkante bleibt erhalten.

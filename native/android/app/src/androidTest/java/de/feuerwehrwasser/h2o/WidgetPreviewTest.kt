@@ -29,7 +29,13 @@ class WidgetPreviewTest {
         }
         val sizes = listOf(Triple(110, 48, 1f), Triple(110, 48, 1.3f), Triple(170, 48, 1.3f), Triple(330, 48, 1.3f), Triple(250, 64, 1f), Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(110, 110, 1f), Triple(330, 110, 1f), Triple(330, 250, 1f), Triple(170, 170, 1.3f), Triple(330, 170, 1.3f))
         val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f), Triple(330, 345, 1f), Triple(330, 345, 1.3f), Triple(450, 345, 1.3f))
-        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict", "long-title")) {
+        val fixtures = listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict", "long-title")
+        val scenarios = expandedSizes.flatMap { size -> fixtures.map { size to it } } +
+            listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f)).flatMap { size ->
+                listOf("short-title", "long-title", "open").map { size to it }
+            }
+        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios) {
+            val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
                 instrumentation.waitForIdleSync()
@@ -37,10 +43,18 @@ class WidgetPreviewTest {
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
                     assertEquals(height >= 100 || width >= 240 || fixture in listOf("clear", "empty"), title.isShown)
-                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else "Technische Hilfeleistung", title.text.toString())
+                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
                     val widget = activity.findViewById<View>(R.id.widget_root)
+                    assertFalse("Brand heading must not consume calendar space", activity.findViewById<View>(R.id.widget_brand).isShown)
+                    if (width >= 300 && height in 210..289 && height / fontScale >= 160 && width / fontScale >= 240) {
+                        val day = activity.findViewById<TextView>(R.id.widget_day)
+                        assertTrue("Intermediate launcher heights enlarge the calendar day", day.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 31.9f else 41.9f)
+                        assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 16.9f else 21.9f)
+                        val dateCard = activity.findViewById<View>(R.id.widget_date)
+                        assertTrue("The calendar is at least 70dp wide", dateCard.width / activity.resources.displayMetrics.density >= 70)
+                    }
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val isEvent = fixture !in listOf("clear", "empty")

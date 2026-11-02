@@ -43,17 +43,6 @@ struct NextEventView: View {
         default: return signalYellow
         }
     }
-    private var header: some View {
-        HStack(spacing: 3) {
-            Text("H₂O").fontWeight(.semibold).foregroundStyle(ink)
-            Text("· Feuerwehr Wasser").foregroundStyle(secondaryInk)
-            Spacer(minLength: 0)
-            if snapshot?.stale == true {
-                Image(systemName: "exclamationmark.triangle").foregroundStyle(secondaryInk)
-                    .accessibilityLabel("Gespeicherter Kalenderstand · H₂O öffnen")
-            }
-        }.font(.system(size: small ? 9 : large ? 11 : 10)).lineLimit(1).minimumScaleFactor(0.8)
-    }
     private func calendar(_ event: H2OWidgetEvent) -> some View {
         let paper = renderingMode == .fullColor ? Color(red: 0.95, green: 0.935, blue: 0.90) : ink.opacity(0.12)
         let dateInk = renderingMode == .fullColor ? Color(red: 0.10, green: 0.11, blue: 0.13) : ink
@@ -61,13 +50,13 @@ struct NextEventView: View {
             ZStack {
                 Rectangle().fill(renderingMode == .fullColor ? red : ink.opacity(0.25))
                 Text(part(event.start, "MMM").uppercased())
-                    .font(.system(size: large ? 11 : 9, weight: .semibold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
-            }.frame(height: large ? 19 : 14)
-            Text(part(event.start, "d")).font(.system(size: large ? 34 : small ? 27 : 24, weight: .bold, design: .rounded))
-                .frame(height: large ? 40 : small ? 33 : 29)
+                    .font(.system(size: large ? 11 : 10, weight: .semibold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
+            }.frame(height: large ? 19 : 15)
+            Text(part(event.start, "d")).font(.system(size: large ? 38 : small ? 31 : 32, weight: .bold, design: .rounded))
+                .frame(height: large ? 44 : 38)
             Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
                 .font(.system(size: large ? 10 : 8)).lineLimit(1).padding(.bottom, 3)
-        }.foregroundStyle(dateInk).frame(width: large ? 64 : small ? 44 : 50)
+        }.foregroundStyle(dateInk).frame(width: large ? 70 : small ? 44 : 56)
             .background(paper).clipShape(RoundedRectangle(cornerRadius: 7))
             .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
     }
@@ -86,7 +75,7 @@ struct NextEventView: View {
         HStack(spacing: small ? 7 : 11) {
             calendar(event)
             ViewThatFits(in: .vertical) {
-                details(event, titleSize: large ? 20 : small ? 12 : 15, detailSize: large ? 12 : small ? 9 : 10, spacing: 2)
+                details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 2)
                 details(event, titleSize: large ? 17 : small ? 11 : 13, detailSize: large ? 11 : small ? 8 : 9, spacing: 1)
             }
         }
@@ -137,6 +126,10 @@ struct NextEventView: View {
             Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark")
                 .foregroundStyle(unanswered ? signalYellow : job == nil && snapshot?.message == nil ? color("yes") : secondaryInk)
             Text(feedbackText).foregroundStyle(textColor)
+            if snapshot?.stale == true {
+                Image(systemName: "exclamationmark.triangle").foregroundStyle(secondaryInk)
+                    .accessibilityLabel("Gespeicherter Kalenderstand · H₂O öffnen")
+            }
             Spacer(minLength: 0)
         }.font(.system(size: large ? 10 : 9)).lineLimit(1).minimumScaleFactor(0.8)
             .frame(height: 12).invalidatableContent(job == nil)
@@ -148,7 +141,7 @@ struct NextEventView: View {
                 Text(job == nil ? title(event?.status ?? "open") : feedbackText).fontWeight(.semibold)
                     .foregroundStyle(job == nil && event?.status == "open" ? signalYellow : ink)
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
+                Image(systemName: snapshot?.stale == true ? "exclamationmark.triangle" : "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
             }.font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.75)
                 .padding(.horizontal, 5).frame(maxWidth: .infinity, minHeight: 28)
                 .background(ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 7))
@@ -175,9 +168,8 @@ struct NextEventView: View {
             let vertical: CGFloat = large ? 14 : 8
             let width = max(1, geometry.size.width - 2 * horizontal)
             let height = max(1, geometry.size.height - 2 * vertical)
-            let eventHeight: CGFloat = large ? 100 : max(1, height - (small ? 12 + 28 + 1 + 9 : 12 + 44 + 12 + 1 + 12))
+            let eventHeight: CGFloat = large ? 119 : max(1, height - (small ? 28 + 1 + 6 : 44 + 12 + 1 + 9))
             VStack(alignment: .leading, spacing: large ? 5 : 3) {
-                header.frame(height: large ? 14 : 12)
                 if let event {
                     Link(destination: destination) { eventCard(event) }.buttonStyle(.plain)
                         .frame(width: width, height: eventHeight, alignment: .center)
