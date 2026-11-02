@@ -270,6 +270,23 @@
    if(identity){if(identity.record.alias!==data.alias||identity.record.revision!==data.revision)fail('Falsches Mitglied.',401);return identity.record;}
    fail('Bitte mit deinem H₂O-Passkey anmelden.',401);
  }
+ // A widget receives a sealed, session-bound grant for at most three visible appointments.
+ // It is not an identity session and cannot authorize list, administration or other APIs.
+ async function widgetGrant(env,auth,events){
+  const identity=await g.WhatsAppPasskeys.session(env,auth);if(!identity)return null;
+  const ids=events.filter(e=>e.canReply&&e.start>Date.now()).slice(0,3).map(e=>e.id);
+  if(!ids.length)return null;
+  const expiresAt=Math.min(identity.row.expires_at,Date.now()+12*60*60*1000);
+  const value=await L.seal(env,{session:identity.row.token_hash,events:ids,expiresAt},'portal-widget-reply-v1');
+  return {token:btoa(value).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),expiresAt};
+ }
+ async function widgetActor(env,auth,data){
+  if(typeof auth!=='string'||auth.length>3000||!/^[A-Za-z0-9_-]+$/.test(auth))fail('Widgetzugang abgelaufen. Bitte H₂O öffnen.',401);
+  let grant;try{grant=await L.open(env,atob(auth.replace(/-/g,'+').replace(/_/g,'/')),'portal-widget-reply-v1');}catch{fail('Widgetzugang ungültig. Bitte H₂O öffnen.',401);}
+  if(!Number.isFinite(grant.expiresAt)||grant.expiresAt<=Date.now()||!Array.isArray(grant.events)||grant.events.length>3||!grant.events.includes(data.eventId))fail('Widgetzugang abgelaufen oder anderer Termin. Bitte H₂O öffnen.',401);
+  const identity=await g.WhatsAppPasskeys.sessionHash(env,grant.session);if(!identity)fail('Bitte erneut in H₂O anmelden.',401);
+  return {...identity.record,widgetSession:identity.row.token_hash};
+ }
  async function replyFor(env,event,member){const row=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event,member).first();return {status:row?(await open(env,row,'portal-reply:'+event+':'+member)).status:'open',version:row?.version||0};}
  async function recipients(env){const rows=(await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE EXISTS(SELECT 1 FROM devices d JOIN portal_devices p ON p.id=d.id WHERE d.alias=a.alias AND d.revision=a.revision)').all()).results,result=new Map();for(const row of rows){const record=await L.open(env,row.payload,'access:'+row.alias);if(!result.has(record.memberId))result.set(record.memberId,[]);result.get(record.memberId).push(record);}return result;}
  async function pushFailure(transport,response,error){
@@ -394,7 +411,9 @@
    if(path.startsWith('/portal/browser/'))fail('Bitte die zentrale H₂O-Passkey-Anmeldung verwenden.',401);
    if(path.startsWith('/portal/calendar-bridge/'))return g.CalendarInvitations.bridge(path.slice('/portal/calendar-bridge/'.length),data,env,auth);
    if(path==='/portal/calendar-addon/groups')return g.CalendarGroupAccess.route(env,data,auth,m.source);
-   let record;if(admin)L.source(m,data);else record=await actor(env,data,auth,path);
+   const widgetReply=path==='/portal/widget-reply';
+   let record;if(admin)L.source(m,data);else record=widgetReply?await widgetActor(env,auth,data):await actor(env,data,auth,path);
+   if(widgetReply)path='/portal/reply';
   const accessRoster=admin?null:await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   const trainer=!admin&&accessRoster?.members.find(person=>person.id===record.memberId)?.fitnessTrainer===true;
   const trainerGroups=trainer?(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
@@ -657,7 +676,9 @@
   if(path==='/admin/portal/display')return saveCalendarDisplay(env,data,cal,roster);
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
-   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(visibleEvent(requestedEvent)?null:'not-relevant'):'unavailable';return {...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:trainer?null:birthday,fitnessTrainer:trainer,leader:!trainer&&roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&e.end>Date.now()&&visibleEvent(e)).map(e=>({...memberEvent(e),canReply:isRecipient(e,record.memberId),canManage:trainer?trainerEvent(e):roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,calendarManaged:false,calendarLinkOnly:true,...(map.get(e.id)||{status:'open',version:0})}))};
+   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(visibleEvent(requestedEvent)?null:'not-relevant'):'unavailable';const result={...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:trainer?null:birthday,fitnessTrainer:trainer,leader:!trainer&&roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>e.approved&&e.kind==='probe'&&e.end>Date.now()&&visibleEvent(e)).map(e=>({...memberEvent(e),canReply:isRecipient(e,record.memberId),canManage:trainer?trainerEvent(e):roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,calendarManaged:false,calendarLinkOnly:true,...(map.get(e.id)||{status:'open',version:0})}))};
+   if(data.widget===true){const upcoming=[...result.events].sort((a,b)=>a.start-b.start).slice(0,3);result.widgetReply=await widgetGrant(env,auth,upcoming);}
+   return result;
   }
   if(path==='/admin/portal/list')return {...cal,calendarLinkOnly:true,googleInstructionVersion:1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1};
   const event=cal.events.find(e=>e.id===data.eventId&&(e.approved&&e.kind==='probe')&&(admin||visibleEvent(e)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
@@ -686,7 +707,7 @@
    if(previous?.requestId===data.requestId){if(previous.status!==data.status)fail('Vorgangsnummer wurde bereits anders verwendet.');return {ok:true,status:previous.status,version:old.version,updatedAt:old.updated_at||null};}
    if((old?.version||0)!==data.expectedVersion)fail('Deine Rückmeldung wurde inzwischen geändert. Bitte aktualisieren.');
    const updatedAt=Date.now(),payload=await L.seal(env,{status:data.status,source:'h2o',requestId:data.requestId,updatedAt},'portal-reply:'+event.id+':'+record.memberId);
-   const guard='EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)',proof=[record.alias,record.revision];
+   const guard='EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)'+(record.widgetSession?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':''),proof=[record.alias,record.revision,...(record.widgetSession?[record.widgetSession,Date.now()]:[])];
    const result=old?await env.DB.prepare('UPDATE portal_replies SET payload=?,updated_at=?,version=version+1 WHERE event=? AND member=? AND version=? AND '+guard).bind(payload,updatedAt,event.id,record.memberId,old.version,...proof).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_replies(event,member,payload,updated_at) SELECT ?,?,?,? WHERE '+guard).bind(event.id,record.memberId,payload,updatedAt,...proof).run();if(!result.meta.changes)fail('Rückmeldung wurde gleichzeitig geändert. Bitte aktualisieren.');return {ok:true,status:data.status,version:data.expectedVersion+1,updatedAt};
   }
   fail('Nicht gefunden.',404);

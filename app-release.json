@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.01.17",
-  "build": "20261101.17",
-  "releasedOn": "2026-11-01",
+  "version": "2026.11.02.2",
+  "build": "20261102.2",
+  "releasedOn": "2026-11-02",
   "vendors": {
     "qrcode-generator": "2.0.4",
     "jszip": "3.10.2",

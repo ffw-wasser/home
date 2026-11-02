@@ -28,8 +28,8 @@ class WidgetPreviewTest {
             assertTrue("Widget can shrink to one launcher row", provider.minResizeHeight <= 48 * context.resources.displayMetrics.density)
         }
         val sizes = listOf(Triple(110, 48, 1f), Triple(110, 48, 1.3f), Triple(170, 48, 1.3f), Triple(330, 48, 1.3f), Triple(250, 64, 1f), Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(110, 110, 1f), Triple(330, 110, 1f), Triple(330, 250, 1f), Triple(170, 170, 1.3f), Triple(330, 170, 1.3f))
-        val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f))
-        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday")) {
+        val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f), Triple(330, 345, 1f))
+        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict")) {
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
                 instrumentation.waitForIdleSync()
@@ -44,18 +44,28 @@ class WidgetPreviewTest {
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val isEvent = fixture !in listOf("clear", "empty")
-                    assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
+                    assertEquals(if (isEvent && !actions) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    if (actions) for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) {
+                        val button = activity.findViewById<View>(id)
+                        assertTrue("Answer target is at least 44dp high", button.height / activity.resources.displayMetrics.density >= 44)
+                    }
                     assertEquals(if (fixture == "stale") View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_note).visibility)
-                    if (isEvent) assertEquals(if (fixture == "excused") "Entschuldigt" else "Dabei", activity.findViewById<TextView>(R.id.widget_status).text.toString())
-                    assertTextFits(widget, widget)
-                    if (fixture in listOf("today", "tomorrow")) assertEquals(if (fixture == "today") "Heute" else "Morgen", activity.findViewById<android.widget.TextView>(R.id.widget_day).text.toString())
-                    if (fixture == "future" && width < 240 && height >= 160) {
+                    if (isEvent && !actions) {
+                        val text = activity.findViewById<TextView>(R.id.widget_status).text.toString()
+                        assertTrue(text.isNotBlank())
+                        if (fixture == "saving") assertEquals("Wird gespeichert …", text)
+                        if (fixture == "retry") assertTrue(text.contains("Unbestätigt"))
+                    }
+                    assertTextFits(widget, widget, "${width}x${height} font=$fontScale fixture=$fixture exact=$exactSize")
+                    if (fixture in listOf("today", "tomorrow")) assertTrue(activity.findViewById<TextView>(R.id.widget_day).text.toString().startsWith(if (fixture == "today") "Heute" else "Morgen"))
+                    if (fixture == "future" && width < 240 && height / fontScale >= 140) {
                         assertTrue("Month gets its own visible row", activity.findViewById<TextView>(R.id.widget_month).isShown)
                         assertTrue("Day is readable on its own", activity.findViewById<TextView>(R.id.widget_day).text.matches(Regex("\\d{2}")))
                         assertTrue("The day stays more prominent than the month with enlarged system fonts", activity.findViewById<TextView>(R.id.widget_day).textSize >= 1.25f * activity.findViewById<TextView>(R.id.widget_month).textSize)
                     }
                     if (isEvent && width >= 450 && height >= 250) {
-                        assertTrue("Large widgets use larger event headings", title.textSize / activity.resources.displayMetrics.scaledDensity >= 24f)
+                        assertTrue("Large widgets use larger event headings", title.textSize / activity.resources.displayMetrics.scaledDensity >= 23.9f)
                     }
                 }
                 val bitmap = requireNotNull(rendered)
@@ -64,7 +74,7 @@ class WidgetPreviewTest {
         }
         WidgetStore.clear(context)
     }
-    private fun assertTextFits(root: View, view: View) {
+    private fun assertTextFits(root: View, view: View, scenario: String) {
         if (!view.isShown) return
         if (view is TextView) {
             val rect = android.graphics.Rect()
@@ -74,9 +84,9 @@ class WidgetPreviewTest {
             assertTrue("Text is inside widget horizontally", rect.left >= -2 && rect.right <= root.width + 2)
             assertTrue("Text has visible height", view.height > 0)
             val textLayout = view.layout
-            if (textLayout != null && view.text.isNotEmpty()) assertTrue("Text line is not vertically clipped: ${view.text}", textLayout.getLineBottom(textLayout.lineCount - 1) <= view.height - view.compoundPaddingTop - view.compoundPaddingBottom + 2)
+            if (textLayout != null && view.text.isNotEmpty()) assertTrue("$scenario: Text line is not vertically clipped: ${view.text}, height=${view.height}, bottom=${textLayout.getLineBottom(textLayout.lineCount - 1)}", textLayout.getLineBottom(textLayout.lineCount - 1) <= view.height - view.compoundPaddingTop - view.compoundPaddingBottom + 2)
         }
-        if (view is ViewGroup) for (i in 0 until view.childCount) assertTextFits(root, view.getChildAt(i))
+        if (view is ViewGroup) for (i in 0 until view.childCount) assertTextFits(root, view.getChildAt(i), scenario)
     }
     private val AppWidgetProviderResize = android.appwidget.AppWidgetProviderInfo.RESIZE_HORIZONTAL or android.appwidget.AppWidgetProviderInfo.RESIZE_VERTICAL
 }

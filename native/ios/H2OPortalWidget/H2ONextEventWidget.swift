@@ -37,8 +37,8 @@ struct H2ONextEventWidget: Widget {
             NextEventView(entry: entry)
         }
         .configurationDisplayName("H₂O · Nächster Termin")
-        .description("Nächster Feuerwehrtermin und deine Rückmeldung. Zum Öffnen antippen.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description("Nächster Termin mit direkter Rückmeldung. Datum oder Thema öffnet H₂O.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         // iOS 17+ otherwise adds its own margins on top of our padding.
         .contentMarginsDisabled()
     }

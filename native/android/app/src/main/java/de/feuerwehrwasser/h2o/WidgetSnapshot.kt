@@ -5,17 +5,19 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-// No identities, credentials, calendar URLs or medical information in this model.
+// No full identity session, member names, calendar URLs or medical information.
 data class WidgetEvent(val title: String, val start: Long, val end: Long, val location: String,
-                       val clothing: String, val status: String, val allDay: Boolean) {
+                       val clothing: String, val status: String, val allDay: Boolean,
+                       val id: String = "", val version: Int = 0, val canReply: Boolean = false, val reminded: Boolean = false) {
     fun valid(now: Long): Boolean = start > 0 && end > start && end - start < 7 * 86400000L &&
         end > now && start < now + 366 * 86400000L && status in setOf("open", "yes", "excused", "maybe") &&
-        clean(title, 100) && clean(location, 100) && clean(clothing, 80)
+        clean(title, 100) && clean(location, 100) && clean(clothing, 80) && version >= 0 && (id.isEmpty() || validID(id))
     companion object {
+        fun validID(value: String) = value.matches(Regex("[A-Za-z0-9_-]{43}"))
         fun clean(value: String, max: Int) = value.length <= max && value.none { it.isISOControl() }
     }
 }
-data class WidgetSnapshot(val updatedAt: Long, val event: WidgetEvent?, val stale: Boolean) {
+data class WidgetSnapshot(val updatedAt: Long, val event: WidgetEvent?, val stale: Boolean, val following: List<WidgetEvent> = emptyList()) {
     fun fresh(now: Long) = updatedAt <= now + 60000 && now - updatedAt < 12 * 3600000L
     companion object {
         val zone: ZoneId = ZoneId.of("Europe/Berlin")

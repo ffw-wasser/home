@@ -69,4 +69,23 @@ final class WidgetPolicyTests: XCTestCase {
         XCTAssertNil(states[0].snapshot?.event)
         XCTAssertNotNil(states[0].snapshot)
     }
+    func testAutomaticAdvanceKeepsOriginalExpiryAndIgnoresUnansweredPastEvent() {
+        let first = H2OWidgetEvent(title: "First", start: now, end: now.addingTimeInterval(60), location: "Test", clothing: "Test", status: "open", allDay: false)
+        let second = H2OWidgetEvent(title: "Second", start: now.addingTimeInterval(600), end: now.addingTimeInterval(900), location: "Test", clothing: "Test", status: "maybe", allDay: false)
+        let snapshot = H2OWidgetSnapshot(updatedAt: now, event: first, stale: false, following: [second])
+        let states = H2OWidgetStorage.timeline(snapshot: snapshot, now: now)
+        XCTAssertEqual(states.first(where: { $0.date == first.end })?.snapshot?.event?.title, "Second")
+        XCTAssertNil(states.first(where: { $0.date == second.end })?.snapshot?.event)
+        XCTAssertEqual(states.last?.date, now.addingTimeInterval(43200))
+    }
+    func testUnconfirmedWriteNeverChangesStatusAndBecomesExplicitRetry() {
+        let job = H2OWidgetReplyJob(eventID: "test", status: "yes", requestID: "same-request", version: 0, phase: "saving", startedAt: now)
+        var value = snapshot(end: 3600); value.job = job
+        let states = H2OWidgetStorage.timeline(snapshot: value, now: now)
+        let retry = states.first(where: { $0.date == now.addingTimeInterval(20) })?.snapshot
+        XCTAssertEqual(retry?.job?.phase, "retry")
+        XCTAssertEqual(retry?.job?.requestID, "same-request")
+        XCTAssertEqual(retry?.updatedAt, now)
+    }
+
 }

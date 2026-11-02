@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import UIKit
 
 struct PortalWebView: UIViewRepresentable {
     @ObservedObject var model: PortalModel
@@ -10,6 +11,8 @@ struct PortalWebView: UIViewRepresentable {
         let controller = model.web.configuration.userContentController
         controller.removeScriptMessageHandler(forName: "h2oPdf")
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oPdf")
+        controller.removeScriptMessageHandler(forName: "h2oHaptics")
+        controller.add(WeakPdfHandler(context.coordinator), name: "h2oHaptics")
         controller.removeScriptMessageHandler(forName: "h2oWidget")
         controller.add(WeakPdfHandler(context.coordinator), name: "h2oWidget")
         controller.removeScriptMessageHandler(forName: "h2oNotifications")
@@ -29,14 +32,27 @@ struct PortalWebView: UIViewRepresentable {
         init(_ target: Coordinator) { self.target = target }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) { target?.userContentController(controller, didReceive: message) }
     }
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+    @MainActor final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         private let model: PortalModel
+        private let pullHaptic = UISelectionFeedbackGenerator()
+        private var lastPullHaptic: TimeInterval = -1
         init(_ model: PortalModel) { self.model = model }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
-            guard ["h2oPdf", "h2oWidget", "h2oNotifications"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == PortalLinks.host, [0,443].contains(origin.port),
+            guard ["h2oPdf", "h2oWidget", "h2oNotifications", "h2oHaptics"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == PortalLinks.host, [0,443].contains(origin.port),
                   let frameURL = message.frameInfo.request.url, PortalLinks.trusted(frameURL),
                   let webView = message.webView, let url = webView.url, PortalLinks.trusted(url) else { return }
+            if message.name == "h2oHaptics" {
+                guard let body = message.body as? [String: String], body.count == 1,
+                      let action = body["action"], ["prepare", "threshold"].contains(action) else { return }
+                if action == "prepare" { pullHaptic.prepare() }
+                else {
+                    let now = ProcessInfo.processInfo.systemUptime
+                    guard now - lastPullHaptic >= 0.7 else { return }
+                    lastPullHaptic = now; pullHaptic.selectionChanged()
+                }
+                return
+            }
             if message.name == "h2oWidget" {
                 H2OWidgetBridge.accept(message.body)
                 return

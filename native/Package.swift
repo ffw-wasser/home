@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         .target(name: "PortalLinkPolicy", path: "ios/H2OPortal", exclude: ["H2OPortalApp.swift", "H2OWidgetBridge.swift", "NativeNotifications.swift", "NativePdfPresenter.swift", "PortalWebView.swift", "Assets.xcassets", "Info.plist", "H2OPortal.entitlements"], sources: ["PortalLinks.swift", "PortalPdfPolicy.swift"]),
         .testTarget(name: "PortalLinkPolicyTests", dependencies: ["PortalLinkPolicy"], path: "ios/H2OPortalTests"),
-        .target(name: "WidgetPolicy", path: "ios/Shared", exclude: ["H2OWidgetView.swift"]),
+        .target(name: "WidgetPolicy", path: "ios/Shared", exclude: ["H2OWidgetView.swift", "WidgetReplyIntent.swift"]),
         .testTarget(name: "WidgetPolicyTests", dependencies: ["WidgetPolicy"], path: "widget-tests")
     ]
 )

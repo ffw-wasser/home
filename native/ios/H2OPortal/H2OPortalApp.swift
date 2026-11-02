@@ -96,9 +96,12 @@ struct PortalContent: View {
         .onOpenURL { url in
             if PortalLinks.isWidgetTermine(url) {
                 if model.hasOpened, !model.web.isLoading, model.web.url?.path == PortalLinks.home.path, model.web.url.map(PortalLinks.trusted) == true {
-                    model.web.evaluateJavaScript("window.DeckelMobile?.jump('portal-section')")
+                    let event = PortalLinks.widgetEvent(url)
+                    if let event {
+                        model.web.evaluateJavaScript("window.H2OPortal?.openEvent('\(event)')")
+                    } else { model.web.evaluateJavaScript("window.DeckelMobile?.jump('portal-section')") }
                 } else {
-                    model.open(model.review ? PortalLinks.review : PortalLinks.terms)
+                    model.open(model.review ? PortalLinks.review : PortalLinks.terms(event: PortalLinks.widgetEvent(url)))
                 }
             } else { model.open(url) }
         }

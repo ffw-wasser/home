@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private var pageFailed = false
     private var passkeysSupported = false
     private var navigationEpoch = 0
+    private var lastPullHaptic = -1000L
     private lateinit var pdfExport: NativePdfExport
     private var pdfScript = ""
     private var permissionReply: ((Boolean) -> Unit)? = null
@@ -46,7 +47,7 @@ class MainActivity : ComponentActivity() {
         recovery("Im Browser öffnen") { external(Uri.parse(PortalLinks.HOME)) }
         status = TextView(this).apply { setPadding(12.dp, 8.dp, 12.dp, 8.dp); visibility = View.GONE }
         WorkManager.getInstance(this).cancelUniqueWork("h2o-reminder")
-        web = WebView(this)
+        web = WebView(this).apply { isHapticFeedbackEnabled = true }
         pdfExport = NativePdfExport(this, { !isDestroyed && PortalLinks.trusted(web.url ?: "") }, { navigationEpoch }, ::notice)
         pdfScript = assets.open("pdf-export.js").bufferedReader().use { it.readText() }
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
@@ -56,6 +57,18 @@ class MainActivity : ComponentActivity() {
         }
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             fun trusted(view: WebView, origin: Uri, main: Boolean) = main && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1, 443) && PortalLinks.trusted(view.url ?: "")
+            WebViewCompat.addWebMessageListener(web, "H2OHaptics", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, _ ->
+                if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) runCatching {
+                    val raw = message.data ?: return@addWebMessageListener
+                    if (raw.length > 80) return@addWebMessageListener
+                    val value = JSONObject(raw)
+                    if (value.length() != 1 || value.optString("action") != "threshold") return@addWebMessageListener
+                    val now = android.os.SystemClock.uptimeMillis()
+                    if (now - lastPullHaptic < 700) return@addWebMessageListener
+                    lastPullHaptic = now
+                    view.performHapticFeedback(if (Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE else android.view.HapticFeedbackConstants.CLOCK_TICK)
+                }
+            }
             WebViewCompat.addWebMessageListener(web, "H2OWidget", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, _ ->
                 if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) message.data?.let {
                     WidgetStore.accept(this, it)
@@ -130,7 +143,15 @@ class MainActivity : ComponentActivity() {
         // A cold start always resolves a trusted page; no session tokens enter intents or logs.
         web.loadUrl(intent?.dataString?.takeIf(PortalLinks::trusted) ?: PortalLinks.HOME)
     }
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); intent.dataString?.takeIf(PortalLinks::trusted)?.let(web::loadUrl) }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent); setIntent(intent)
+        val link = intent.dataString?.takeIf(PortalLinks::trusted) ?: return
+        val event = Uri.parse(link).getQueryParameter("event")
+        if (Uri.parse(link).getQueryParameter("nativePage") == "terms" && web.url?.substringBefore('?')?.substringBefore('#') == PortalLinks.HOME && !pageFailed) {
+            if (event != null && WidgetEvent.validID(event)) web.evaluateJavascript("window.H2OPortal?.openEvent('$event')", null)
+            else web.evaluateJavascript("window.DeckelMobile?.jump('portal-section')", null)
+        } else web.loadUrl(link)
+    }
     private fun external(uri: Uri) {
         PortalLinks.calendarTime(uri.toString())?.let { time ->
             val date = java.time.Instant.ofEpochMilli(time).atZone(WidgetSnapshot.zone).toLocalDate()
