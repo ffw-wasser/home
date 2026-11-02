@@ -21,20 +21,19 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#members [data-quick-member="'+people[1].id+'"]').count(),0,'trainer excluded from '+type);
    assert.ok(await page.locator('#members [data-quick-status="Anwesend"]').count()>0,'ordinary members remain in '+type);
   }
-  const tileLayout=()=>page.locator('#members .member-direct-card:not(.recorded)').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {id:card.querySelector('[data-quick-member]').dataset.quickMember,x:r.x,y:r.y+scrollY,width:r.width,height:r.height};}));
+  const tileLayout=()=>page.locator('#members .member-direct-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {id:card.querySelector('[data-quick-member]').dataset.quickMember,x:r.x,y:r.y+scrollY,width:r.width,height:r.height};}));
   for(const width of [390,768,1180]){
    await page.setViewportSize({width,height:1000});
    await page.evaluate(()=>{entries=[];currentSessionId='synthetic-slot-test';currentOperationId='';sessionType='Unterricht';chosenRole='Anwesend';pendingMemberStatuses.clear();chosenMemberIds.clear();showView('attendanceView');setHomeFlowStage(2);renderMembers();});
    await page.evaluate(()=>document.fonts.ready);const before=await tileLayout(),id=before[0].id;
    await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').click();
    assert.equal(await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').isVisible(),true,'marking alone keeps the tile visible');
-   await page.locator('#saveButton').click();await page.waitForFunction(()=>document.querySelectorAll('#members .recorded').length===1);
-   assert.equal(await page.locator('#members [data-quick-member="'+id+'"]').first().isVisible(),false,'saved member becomes an empty slot');
-   assert.equal(await page.locator('#members .recorded').getAttribute('aria-hidden'),'true');
+   await page.locator('#saveButton').click();await page.waitForFunction(()=>todayEntries().length===1);
+   assert.equal(await page.locator('#members [data-quick-member="'+id+'"]').count(),0,'saved member leaves no slot');
    const after=await tileLayout();assert.deepEqual(after.map(t=>t.id),before.slice(1).map(t=>t.id));
-   for(const tile of after){const prior=before.find(t=>t.id===tile.id);for(const key of ['x','y','width','height'])assert.ok(Math.abs(tile[key]-prior[key])<1,'remaining tile keeps '+key+' at '+width);}
-   const preview=path.join(root,'qa/portal-review');fs.mkdirSync(preview,{recursive:true});await page.screenshot({path:path.join(preview,'attendance-empty-slot-'+width+'.png'),fullPage:true});
-   await page.evaluate(()=>{entries=[];renderMembers();});assert.equal(await page.locator('#members .recorded').count(),0,'removing attendance restores the original tile');
+   assert.ok(Math.abs(after[0].x-before[0].x)<1&&Math.abs(after[0].y-before[0].y)<1,'next tile moves into the first slot at '+width);
+   const preview=path.join(root,'qa/portal-review');fs.mkdirSync(preview,{recursive:true});await page.screenshot({path:path.join(preview,'attendance-selection-'+width+'.png'),fullPage:true});
+   await page.evaluate(()=>{entries=[];renderMembers();});assert.equal(await page.locator('#members [data-quick-member="'+id+'"][data-quick-status="Anwesend"]').count(),1,'removing attendance restores the tile');
   }
   await page.setViewportSize({width:1180,height:1000});await page.evaluate(()=>{currentSessionId='';sessionType='Allgemeine Probe';setHomeFlowStage(1);showView('settingsCalendarView');renderMembers();});
   await page.locator('.portal-keyword-card').first().waitFor({state:'attached'});await page.getByRole('button',{name:'Gruppen',exact:true}).click();
