@@ -3,6 +3,11 @@
 Die Verwaltung setzt unter **Mitglieder → Fitnesstrainer** die eigenständige
 Portalrolle. Sie verleiht keine Feuerwehrfunktion. Unter **Kalender & Gruppen →
 Gruppen → Fitness** werden Teilnehmer und zuständige Trainer getrennt zugeordnet.
+Fitnesstrainer erscheinen in der Gerätehaus-Ansicht **Mitglieder erfassen** bei keiner
+Terminart. Sie zählen dort nicht als offene Mitglieder und können auch nicht über
+eine ältere Auswahl oder einen fortgesetzten Entwurf übernommen werden. Die
+Trainerrolle und ihre Fitnessgruppen-Zuordnung bleiben in der Verwaltung erhalten.
+
 Eine bereits gespeicherte Gruppenliste erhält die leere Fitnessgruppe ergänzend.
 Produktive Personen werden ausschließlich in der geschützten Verwaltung zugeordnet,
 nicht im öffentlichen Quellcode vorgemerkt.

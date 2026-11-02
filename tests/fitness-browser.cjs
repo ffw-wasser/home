@@ -16,6 +16,12 @@ const root=path.resolve(__dirname,'..');
   await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.hostname.endsWith('workers.dev')){const response=await f.c.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),...(req.method()==='POST'?{body:req.postData()}: {})}),f.env);return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});}if(u.origin==='https://ffw-wasser.github.io'){const file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});}return route.abort();});
   await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
   await page.evaluate(({people,token})=>{members=people;window.requireAdmin=()=>true;oneDriveAdministrationReady=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();window.oneDriveReadState=async()=>({members});DrinksCentral.connection=async()=>({origin:'https://test.account.workers.dev',source:'test-source',token});DrinksStore.sourceKey=()=> 'test-source';showView('settingsCalendarView');},{people,token:f.env.ADMIN_TOKEN});
+  for(const type of ['Allgemeine Probe','Sonderprobe','Unterricht','Einsatz','Fitness']){
+   await page.evaluate(type=>{sessionType=type;chosenRole='Anwesend';renderMembers();},type);
+   assert.equal(await page.locator('#members [data-quick-member="'+people[1].id+'"]').count(),0,'trainer excluded from '+type);
+   assert.ok(await page.locator('#members [data-quick-status="Anwesend"]').count()>0,'ordinary members remain in '+type);
+  }
+  await page.evaluate(()=>{sessionType='Allgemeine Probe';renderMembers();});
   await page.locator('.portal-keyword-card').first().waitFor({state:'attached'});await page.getByRole('button',{name:'Gruppen',exact:true}).click();
   const group=page.locator('.portal-keyword-card[data-group-id="fitness"]');await group.locator('summary').click();await group.getByRole('button',{name:'Gruppe bearbeiten',exact:true}).click();
   const trainer=group.locator('fieldset').filter({has:page.getByText('Fitnesstrainer · nur diese Gruppe',{exact:true})});assert.equal(await trainer.locator('input[type=checkbox]').count(),1);await trainer.locator('input[type=checkbox]').check();
