@@ -6,6 +6,53 @@ import UIKit
 @testable import H2OPortal
 
 final class WidgetLayoutTests: XCTestCase {
+    @MainActor func testExistingMediumWidgetExpandsToLargeInSameHost() async throws {
+        let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
+        let start = now.addingTimeInterval(3600)
+        let event = H2OWidgetEvent(title: "Probe", start: start, end: start.addingTimeInterval(7200), location: "GH Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false)
+        let next = H2OWidgetEvent(title: "Funkübung", start: start.addingTimeInterval(86400), end: start.addingTimeInterval(90000), location: "Test", clothing: "Test", status: "open", allDay: false)
+        let state = WidgetResizeState()
+        let host = UIHostingController(rootView: WidgetResizeHost(state: state, entry: NextEventEntry(date: now, snapshot: H2OWidgetSnapshot(updatedAt: now, event: event, stale: false, following: [next, next]))))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 329, height: 345)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        for family in [WidgetFamily.systemMedium, .systemLarge, .systemMedium, .systemLarge] {
+            state.family = family
+            let ready = expectation(description: "Widget layout updated for \(family)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { ready.fulfill() }
+            await fulfillment(of: [ready], timeout: 3)
+            host.view.layoutIfNeeded()
+            let image = UIGraphicsImageRenderer(size: host.view.bounds.size).image { _ in
+                host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+            }
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "widget-resize-\(family)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            if family == .systemLarge {
+                let cg = try XCTUnwrap(image.cgImage)
+                let colorSpace = CGColorSpaceCreateDeviceRGB()
+                let stride = cg.width * 4
+                var pixels = [UInt8](repeating: 0, count: stride * cg.height)
+                try pixels.withUnsafeMutableBytes { bytes in
+                    let context = try XCTUnwrap(CGContext(data: bytes.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8, bytesPerRow: stride, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                    context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                }
+                var bright = 0
+                for y in (cg.height * 3 / 4)..<cg.height {
+                    for x in 0..<cg.width {
+                        let index = y * stride + x * 4
+                        if pixels[index] > 150 && pixels[index + 1] > 150 && pixels[index + 2] > 150 { bright += 1 }
+                    }
+                }
+                XCTAssertGreaterThan(bright, 30, "Large widget must draw following appointments in its lower area after resizing")
+            }
+        }
+    }
+
     @MainActor func testRenderSmallAndMediumEventLayouts() throws {
         let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         let start = ISO8601DateFormatter().date(from: "2026-11-02T18:30:00Z")!
@@ -41,7 +88,8 @@ final class WidgetLayoutTests: XCTestCase {
                 if scenario == "reply-saving" || scenario == "reply-retry" {
                     snapshot.job = H2OWidgetReplyJob(eventID: current?.id ?? "", status: "maybe", requestID: "synthetic", version: 0, phase: scenario == "reply-saving" ? "saving" : "retry", startedAt: now)
                 }
-                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot), familyOverride: family)
+                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot))
+                    .environment(\.widgetFamily, family)
                     .frame(width: width, height: height)
                     .background(Color(red: 0.94, green: 0.97, blue: 0.95))
                 let renderer = ImageRenderer(content: view)
@@ -55,6 +103,18 @@ final class WidgetLayoutTests: XCTestCase {
                 add(attachment)
             }
         }
+    }
+}
+private final class WidgetResizeState: ObservableObject {
+    @Published var family: WidgetFamily = .systemMedium
+}
+private struct WidgetResizeHost: View {
+    @ObservedObject var state: WidgetResizeState
+    let entry: NextEventEntry
+    var body: some View {
+        NextEventView(entry: entry)
+            .environment(\.widgetFamily, state.family)
+            .frame(width: 329, height: state.family == .systemLarge ? 345 : 155)
     }
 }
 #endif

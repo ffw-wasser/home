@@ -156,3 +156,5 @@ Breite Widgets ab 210 dp Höhe erhalten eine größere Kalenderkachel sowie deut
 Die Kopfzeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Kalender und Thema nutzen den gewonnenen Platz; die rote Oberkante bleibt erhalten.
 
 Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei #287D49, Entschuldigt #B33348, Unsicher #9A6B10, jeweils mit weißer Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
+
+Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften. Lange Themen bekommen größenabhängig mehrere Zeilen; die Darstellung verkleinert Text erst bei tatsächlich begrenztem Platz.
