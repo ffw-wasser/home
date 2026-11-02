@@ -1,7 +1,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_background" android:clipToOutline="true">
  <ImageView android:contentDescription="@null" android:importantForAccessibility="no" android:layout_width="match_parent" android:layout_height="3dp" android:background="#B62435"/>
  <LinearLayout android:id="@+id/widget_body" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingHorizontal="10dp" android:paddingTop="5dp" android:paddingBottom="3dp" android:orientation="vertical">
-  <LinearLayout android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="14dp" android:gravity="center_vertical">
+  <LinearLayout android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="18dp" android:gravity="center_vertical">
    <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@mipmap/ic_launcher" android:contentDescription="@null"/>
    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingStart="5dp" android:text="H₂O · Feuerwehr Wasser" android:textSize="10sp" android:textColor="#C0C8D3" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
   </LinearLayout>
