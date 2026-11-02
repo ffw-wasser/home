@@ -75,27 +75,27 @@ struct NextEventView: View {
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
-    private func mediumDetails(_ event: H2OWidgetEvent) -> some View {
+    private func eventCard(_ event: H2OWidgetEvent) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(spacing: 1) {
                 Text(part(event.start, "MMM").uppercased())
-                    .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity).frame(height: 16)
+                    .font(.system(size: large ? 11 : 10, weight: .bold)).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).frame(height: large ? 20 : 16)
                     .background(Color(red: 0.65, green: 0.12, blue: 0.18))
-                Text(part(event.start, "d")).font(.system(size: 28, weight: .bold, design: .rounded)).frame(height: 30)
+                Text(part(event.start, "d")).font(.system(size: large ? 36 : 28, weight: .bold, design: .rounded)).frame(height: large ? 42 : 30)
                 Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
-                    .font(.system(size: 9, weight: .medium)).foregroundStyle(secondaryInk)
-                    .padding(.bottom, 3)
+                    .font(.system(size: large ? 11 : 9, weight: .medium)).foregroundStyle(secondaryInk)
+                    .padding(.bottom, large ? 6 : 3)
             }
-            .frame(width: 55).background(ink.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
+            .frame(width: large ? 70 : 55).background(ink.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
             .clipShape(RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 3) {
-                Text(event.title).font(.system(size: 16, weight: .semibold))
+                Text(event.title).font(.system(size: large ? 20 : 16, weight: .semibold))
                     .lineLimit(2).minimumScaleFactor(0.85)
                 Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
-                    .font(.system(size: 11)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
+                    .font(.system(size: large ? 12 : 11)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
                 if !event.clothing.isEmpty {
-                    Text(event.clothing).font(.system(size: 10)).foregroundStyle(secondaryInk).lineLimit(1)
+                    Text(event.clothing).font(.system(size: large ? 11 : 10)).foregroundStyle(secondaryInk).lineLimit(1)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -123,7 +123,9 @@ struct NextEventView: View {
                     .font(.system(size: 12, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 44)
             } else if let job {
                 if job.phase == "saving" {
-                    Text("Wird gespeichert …").font(.system(size: 12, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                    Label("Wird gespeichert …", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 12, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                        .unredacted()
                 } else {
                     HStack(spacing: 6) {
                         Text("Speicherung unbestätigt").font(.system(size: 10)).lineLimit(2)
@@ -134,8 +136,13 @@ struct NextEventView: View {
                 HStack(spacing: 6) { action("yes"); action("excused"); action("maybe") }
             } else {
                 HStack {
-                    Label(title(event.status), systemImage: symbol(event.status))
-                        .font(.system(size: 12, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Label(title(event.status), systemImage: symbol(event.status))
+                            .font(.system(size: 12, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                        if event.status != "open" {
+                            Text("Gespeichert").font(.system(size: 9, weight: .medium)).foregroundStyle(secondaryInk)
+                        }
+                    }
                         .padding(.horizontal, 10).frame(minHeight: 30)
                         .background(color(event.status), in: Capsule())
                     Spacer(minLength: 4)
@@ -155,17 +162,21 @@ struct NextEventView: View {
                 if let event {
                     Link(destination: event.link ?? URL(string: "h2oportal://termine")!) {
                         Group {
-                            if !small && !large { mediumDetails(event) }
+                            if !small { eventCard(event) }
                             else { details(event, compact: small) }
                         }.frame(width: contentWidth, alignment: .topLeading)
                     }
                     .buttonStyle(.plain)
-                    .frame(width: contentWidth, height: large ? nil : detailHeight, alignment: .center)
+                    .frame(width: contentWidth, height: large ? 100 : detailHeight, alignment: .center)
                     if !small && event.status == "open" && job == nil && canReply && large {
                         Text(event.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen").font(.system(size: 10)).foregroundStyle(secondaryInk)
                     }
-                    footer
+                    footer.invalidatableContent(job == nil)
                     if large {
+                        if !(snapshot?.following ?? []).isEmpty {
+                            Text("Weitere Termine").font(.system(size: 10, weight: .semibold)).foregroundStyle(secondaryInk)
+                                .padding(.top, 3)
+                        }
                         ForEach(Array((snapshot?.following ?? []).prefix(2).enumerated()), id: \.offset) { _, next in
                             Link(destination: next.link ?? URL(string: "h2oportal://termine")!) {
                                 VStack(alignment: .leading, spacing: 3) {

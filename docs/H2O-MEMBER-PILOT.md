@@ -165,6 +165,8 @@ Der freigegebene Entwurf verwendet einen dunklen Navy-Hintergrund, eine dezente 
 
 Mittlere bzw. ausreichend breite und hohe Widgets bieten „Dabei“, „Entschuldigt“ und „Unsicher“ direkt an. Nach serverseitig bestätigter Speicherung erscheint der Status mit „Ändern“. „Ändern“ blendet die Auswahl wieder ein. Während des Schreibens steht „Wird gespeichert …“. Eine unterbrochene Verbindung verändert den bestätigten Status nicht: „Speicherung unbestätigt“/„Unbestätigt“ bietet eine ausdrückliche Wiederholung mit derselben Vorgangsnummer. Versionskonflikte verlangen eine Aktualisierung in H₂O; fehlende Berechtigung löscht den lokalen Stand. Es wird keine neue Antwort heimlich später versendet.
 
+iPhone-Build 1029: Mittlere und große Widgets zeigen den Termin neben einer Datumskachel. Im großen Widget folgen bis zu zwei weitere Termine in einem eigenen Bereich. Nach dem Antippen kennzeichnet iOS den Antwortbereich sofort als noch nicht aktualisiert; während der Übertragung erscheint „Wird gespeichert …“. Erst der vom Server bestätigte Status trägt „Gespeichert“. Ohne Bestätigung bleibt die Wiederholungsmöglichkeit sichtbar.
+
 Ohne eigene Antwort bleibt der Status offen. Nach einer GF-Erinnerung steht bei genügend Platz „Bitte Rückmeldung geben“. Antworten sind schon vor einer Erinnerung möglich. Offen und Unsicher sind keine Absage und keine tatsächliche Anwesenheit.
 
 Die nächsten drei bereits freigegebenen eigenen Termine werden übernommen und nach Ende chronologisch weitergeschaltet, auch wenn die Antwort offen blieb. Große Widgets zeigen bis zu zwei Folgetermine. Kalenderstände verfallen weiterhin nach zwölf Stunden; ohne frische App-Abfrage ist danach H₂O zu öffnen. Android kann geplante Hintergrundaktualisierungen zur Energieeinsparung verzögern.
