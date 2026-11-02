@@ -177,3 +177,5 @@ Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei #287D49, En
 Beim Wechsel der Widgetgröße erhält der Layoutbaum eine größenabhängige Identität und wird neu aufgebaut. Die Produktionsansicht verwendet weiterhin die von WidgetKit vorgegebene Größe; die Darstellungstests geben diese Größe gezielt vor. Ein zusätzlicher Hosting-Test wechselt dasselbe Widget mehrfach zwischen Mittel und Groß und prüft Inhalt im unteren Bereich der großen Ansicht. Das ersetzt keine Abnahme des Größenwechsels im realen iPhone-Homescreen.
 
 Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften. Lange Themen bekommen größenabhängig mehrere Zeilen; die Darstellung verkleinert Text erst bei tatsächlich begrenztem Platz.
+
+Im kleinen Widget wird die Schrift zusätzlich an der Breite des längsten Wortes ausgerichtet, damit größere Ausgangsschrift keine unnötigen Wortzerlegungen verursacht. Der Wechseltest verwendet einen dunklen Host ohne App-Safe-Area, damit leere Randflächen nicht als Inhalt zählen.

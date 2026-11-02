@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import SwiftUI
+import UIKit
 import WidgetKit
 import AppIntents
 
@@ -60,9 +61,14 @@ struct NextEventView: View {
             .background(paper).clipShape(RoundedRectangle(cornerRadius: 7))
             .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
     }
-    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            Text(event.title).font(.system(size: titleSize, weight: .semibold))
+    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat) -> some View {
+        let font = UIFont.systemFont(ofSize: titleSize, weight: .semibold)
+        let longestWord = event.title.split(whereSeparator: { $0.isWhitespace }).map {
+            String($0).size(withAttributes: [.font: font]).width
+        }.max() ?? 0
+        let fittingSize = small && longestWord > availableWidth ? max(10, titleSize * availableWidth / longestWord) : titleSize
+        return VStack(alignment: .leading, spacing: spacing) {
+            Text(event.title).font(.system(size: fittingSize, weight: .semibold))
                 .lineLimit(large || small ? 3 : 2).fixedSize(horizontal: false, vertical: true)
             Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + " · " + event.location)
                 .font(.system(size: detailSize)).foregroundStyle(secondaryInk).lineLimit(small ? 2 : 1).minimumScaleFactor(0.8)
@@ -71,12 +77,12 @@ struct NextEventView: View {
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
-    private func eventCard(_ event: H2OWidgetEvent) -> some View {
+    private func eventCard(_ event: H2OWidgetEvent, width: CGFloat) -> some View {
         HStack(spacing: small ? 7 : 11) {
             calendar(event)
             ViewThatFits(in: .vertical) {
-                details(event, titleSize: large ? 26 : small ? 15 : 20, detailSize: large ? 14 : small ? 10 : 12, spacing: 2)
-                details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 1)
+                details(event, titleSize: large ? 26 : small ? 15 : 20, detailSize: large ? 14 : small ? 10 : 12, spacing: 2, availableWidth: width - (large ? 70 : small ? 44 : 56) - (small ? 7 : 11))
+                details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 1, availableWidth: width - (large ? 70 : small ? 44 : 56) - (small ? 7 : 11))
             }
         }
     }
@@ -171,7 +177,7 @@ struct NextEventView: View {
             let eventHeight: CGFloat = large ? 119 : max(1, height - (small ? 28 + 1 + 6 : 44 + 14 + 1 + 9))
             VStack(alignment: .leading, spacing: large ? 5 : 3) {
                 if let event {
-                    Link(destination: destination) { eventCard(event) }.buttonStyle(.plain)
+                    Link(destination: destination) { eventCard(event, width: width) }.buttonStyle(.plain)
                         .frame(width: width, height: eventHeight, alignment: .center)
                     Rectangle().fill(ink.opacity(0.22)).frame(height: 0.5)
                     if small { compactStatus }

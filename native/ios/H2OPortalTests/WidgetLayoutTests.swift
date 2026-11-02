@@ -13,9 +13,12 @@ final class WidgetLayoutTests: XCTestCase {
         let next = H2OWidgetEvent(title: "Funkübung", start: start.addingTimeInterval(86400), end: start.addingTimeInterval(90000), location: "Test", clothing: "Test", status: "open", allDay: false)
         let state = WidgetResizeState()
         let host = UIHostingController(rootView: WidgetResizeHost(state: state, entry: NextEventEntry(date: now, snapshot: H2OWidgetSnapshot(updatedAt: now, event: event, stale: false, following: [next, next]))))
+        host.safeAreaRegions = []
+        host.view.backgroundColor = .black
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 329, height: 345)
+        window.backgroundColor = .black
         window.rootViewController = host
         window.makeKeyAndVisible()
         defer { window.isHidden = true }
@@ -49,6 +52,7 @@ final class WidgetLayoutTests: XCTestCase {
                     }
                 }
                 XCTAssertGreaterThan(bright, 30, "Large widget must draw following appointments in its lower area after resizing")
+                XCTAssertLessThan(bright, cg.width * cg.height / 16, "An empty white host area must not count as widget content")
             }
         }
     }
