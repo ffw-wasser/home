@@ -147,7 +147,6 @@ struct NextEventView: View {
                 Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 9, height: 9)
                 Text(job == nil ? title(event?.status ?? "open") : feedbackText).fontWeight(.semibold)
                     .foregroundStyle(job == nil && event?.status == "open" ? signalYellow : ink)
-                if job == nil && event?.status != "open" { Text("· Gespeichert").foregroundStyle(secondaryInk).font(.system(size: 8)) }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
             }.font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.75)
