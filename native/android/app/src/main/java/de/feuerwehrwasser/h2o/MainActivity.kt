@@ -130,7 +130,15 @@ class MainActivity : ComponentActivity() {
         // A cold start always resolves a trusted page; no session tokens enter intents or logs.
         web.loadUrl(intent?.dataString?.takeIf(PortalLinks::trusted) ?: PortalLinks.HOME)
     }
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); intent.dataString?.takeIf(PortalLinks::trusted)?.let(web::loadUrl) }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent); setIntent(intent)
+        val link = intent.dataString?.takeIf(PortalLinks::trusted) ?: return
+        val event = Uri.parse(link).getQueryParameter("event")
+        if (Uri.parse(link).getQueryParameter("nativePage") == "terms" && web.url?.substringBefore('?')?.substringBefore('#') == PortalLinks.HOME && !pageFailed) {
+            if (event != null && WidgetEvent.validID(event)) web.evaluateJavascript("window.H2OPortal?.openEvent('$event')", null)
+            else web.evaluateJavascript("window.DeckelMobile?.jump('portal-section')", null)
+        } else web.loadUrl(link)
+    }
     private fun external(uri: Uri) {
         PortalLinks.calendarTime(uri.toString())?.let { time ->
             val date = java.time.Instant.ofEpochMilli(time).atZone(WidgetSnapshot.zone).toLocalDate()

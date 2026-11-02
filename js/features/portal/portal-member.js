@@ -122,7 +122,7 @@
    if(medicalAllowed)globalThis.PortalEvidenceEditor?.consent?.(result,details);
   }catch(e){if(version===generation){evidencePriority([],'Nachweise konnten nicht aktuell geprüft werden. Bitte den Datenstand unter „Meine Nachweise“ beachten.');status.textContent=e.status===404?'Die Nachweisanzeige benötigt das aktuelle Portal-Update. Bitte die Verwaltung informieren.':(navigator.onLine===false?'Offline. ':'')+'Nachweise konnten nicht aktuell geprüft werden. '+(details.children.length?'Angezeigt bleibt der zuletzt geladene Stand.':'Bitte erneut aktualisieren.');}}
  }
- async function refresh(onReady){if(!access||busy||pending||document.hidden)return;const version=generation;busy=true;controls();let evidence;$('status').textContent=loaded?'Termine werden aktualisiert …':'Kalender wird geladen …';try{const result=await api('list');if(version!==generation)return;loaded=true;paint(result);if(result.fitnessTrainer!==true)evidence=refreshEvidence(version);$('status').textContent=!result.configured?'Der Kalender wird von der Verwaltung noch verbunden.':(result.stale?'Kalender konnte nicht aktuell geprüft werden. Angezeigt bleibt der letzte Stand. ':'')+'Zuletzt aktualisiert: '+new Date(result.fetchedAt).toLocaleString('de-DE')+'.';}catch(e){if(version===generation){if([401,403].includes(e.status)&&typeof syncNativeWidget==='function')syncNativeWidget(null);const network=e.name==='TimeoutError'||e.name==='AbortError'||e instanceof TypeError||/abort|load failed|fetch/i.test(e.message||'');$('status').textContent=(navigator.onLine===false?'Offline. ':network?(g.ConnectionStatus?.message(e)||'Die Kalenderverbindung wurde unterbrochen. Bitte erneut versuchen.')+' ':e.message)+(loaded?' Der zuletzt geladene Stand bleibt angezeigt.':'');}}finally{if(version===generation){busy=false;controls();schedule();if(typeof onReady==='function')onReady();}await evidence;}}
+ async function refresh(onReady){if(!access||busy||pending||document.hidden)return;const version=generation;busy=true;controls();let evidence;$('status').textContent=loaded?'Termine werden aktualisiert …':'Kalender wird geladen …';try{const result=await api('list',globalThis.webkit?.messageHandlers?.h2oWidget?{widget:true}:{});if(version!==generation)return;loaded=true;paint(result);if(result.fitnessTrainer!==true)evidence=refreshEvidence(version);$('status').textContent=!result.configured?'Der Kalender wird von der Verwaltung noch verbunden.':(result.stale?'Kalender konnte nicht aktuell geprüft werden. Angezeigt bleibt der letzte Stand. ':'')+'Zuletzt aktualisiert: '+new Date(result.fetchedAt).toLocaleString('de-DE')+'.';}catch(e){if(version===generation){if([401,403].includes(e.status)&&typeof syncNativeWidget==='function')syncNativeWidget(null);const network=e.name==='TimeoutError'||e.name==='AbortError'||e instanceof TypeError||/abort|load failed|fetch/i.test(e.message||'');$('status').textContent=(navigator.onLine===false?'Offline. ':network?(g.ConnectionStatus?.message(e)||'Die Kalenderverbindung wurde unterbrochen. Bitte erneut versuchen.')+' ':e.message)+(loaded?' Der zuletzt geladene Stand bleibt angezeigt.':'');}}finally{if(version===generation){busy=false;controls();schedule();if(typeof onReady==='function')onReady();}await evidence;}}
  let overviewDialog=null,overviewRequest=0;
  function closeOverview(){overviewRequest++;overviewDialog?.close();}
  async function showOverview(event){
@@ -160,21 +160,23 @@
   if(badge){badge.hidden=count===0;badge.textContent=count?String(count):'';}
   if(tile)tile.setAttribute('aria-label',count?'Termine · '+count+' Rückmeldung'+(count===1?'':'en')+' offen oder unsicher':'Termine');
  }
- // Only already authorized, member-filtered list data is mirrored to the native widget.
- // No capability, token, calendar subscription URL, member name or birthday crosses this bridge.
+ // Only the three next authorized appointments and their scoped reply grant cross this bridge.
+ // Full sessions, passkeys, personal calendar URLs and member names never cross it.
  function syncNativeWidget(result){
   const bridge=globalThis.webkit?.messageHandlers?.h2oWidget;if(!bridge)return;
   if(!result){bridge.postMessage({action:'clear'});return;}
-  const event=eventSections(Array.isArray(result.events)?result.events:[]).next;
-  if(!event){bridge.postMessage({action:'empty',stale:!!result.stale});return;}
-  const status=['yes','excused','maybe'].includes(event.status)?event.status:'open';
-  bridge.postMessage({action:'update',stale:!!result.stale,event:{
-   title:eventTopic(event).slice(0,100),
-   start:Number(event.start),end:Number(event.end),allDay:!!event.allDay,
+  const sections=eventSections(Array.isArray(result.events)?result.events:[]);
+  const selected=(sections.ordered||[sections.next]).filter(Boolean).slice(0,3);
+  if(!selected.length){bridge.postMessage({action:'empty',stale:!!result.stale});return;}
+  const events=selected.map(event=>({
+   id:typeof event.id==='string'?event.id:'',version:Number.isSafeInteger(event.version)?event.version:0,
+   canReply:event.canReply!==false,reminded:!!event.remindedAt,
+   title:eventTopic(event).slice(0,100),start:Number(event.start),end:Number(event.end),allDay:!!event.allDay,
    location:String(event.location||'GH Wasser').slice(0,100),
    clothing:String(event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing||'').slice(0,80),
-   status
-  }});
+   status:['yes','excused','maybe'].includes(event.status)?event.status:'open'
+  }));
+  bridge.postMessage({action:'update',stale:!!result.stale,event:events[0],events,reply:result.widgetReply||null});
  }
  function paint(result){latestResult=result;globalThis.DeckelMobile?.sync();
   for(const target of ['portal-evidence','more-breathing','more-hydrants','more-regulations','more-training','more-contacts','more-water','theater-phone-section','more-bundesliga'])for(const tile of (document.querySelectorAll?.('[data-deckel-target="'+target+'"],[data-portal-tile="'+target+'"]')||[]))tile.hidden=result.fitnessTrainer===true;
@@ -204,6 +206,11 @@
  function clear({preserveNativeState=false}={}){if(!preserveNativeState&&typeof syncNativeWidget==='function')syncNativeWidget(null);responseBadge();g.DeckelPush?.clear({unsubscribeNative:!preserveNativeState});g.PortalYearPlan?.lock();g.PortalHydrantsView?.clear();globalThis.PortalEvidenceEditor?.clear();globalThis.H2OIdentity?.setMemberName?.('');const gfTile=document.getElementById('portal-more-breathing-tile');if(gfTile)gfTile.hidden=true;g.H2OGFBreathing?.clear();closeOverview();g.TheaterPhone?.clear();generation++;evidencePriority([]);if($('evidence'))$('evidence').hidden=true;$('evidence-details')?.replaceChildren();if($('evidence-status'))$('evidence-status').textContent='';access=null;busy=false;pending=null;loaded=false;visible=false;deepLinkDone=false;latestResult=null;clearTimeout(timer);if($('section'))$('section').hidden=true;$('events')?.replaceChildren();if($('birthday')){$('birthday').hidden=true;$('birthday').textContent='';}if($('status'))$('status').textContent='';}
  async function render(snapshot,{onReady}={}){const p=new URLSearchParams(location.hash.slice(1)),next=snapshot.actions?{...snapshot.actions,alias:g.H2OIdentity?.credentials()?.alias||p.get('a')}:null;if(!next?.central){clear();$('section').hidden=false;$('evidence').hidden=false;$('evidence-status').textContent='Für persönliche Nachweise bitte die Verwaltung um einen verbundenen Portalzugang bitten.';visible=true;$('status').textContent='Für Proben und Termine muss die Verwaltung deinen Portalzugang mit dem Kontodienst verbinden.';g.DeckelMobile?.sync();onReady?.();return;}const changed=next.alias!==access?.alias||next.revision!==access?.revision||next.origin!==access?.origin;if(changed)clear();access=next;g.TheaterPhone?.connect(next);$('section').hidden=false;visible=true;g.DeckelMobile?.sync();g.DeckelPush?.render(next);await refresh(onReady);g.H2OOnboarding?.offerOptions?.();}
  function init(){if($('priority-open'))$('priority-open').onclick=openEvidence;$('refresh').onclick=refresh;g.addEventListener('portal-pagechange',event=>{closeOverview();if(['portal-section','portal-evidence'].includes(event.detail.page)){refresh();schedule();}else clearTimeout(timer);});$('retry').onclick=retry;document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else{refresh();schedule();}});g.addEventListener('hashchange',clear);}
- g.H2OPortal={isFitnessTrainer:()=>latestResult?.fitnessTrainer===true,render,clear,api,hasAccess:()=>Boolean(access),refreshEvidence:()=>refreshEvidence(generation),hasUnsaved:()=>!!pending||!!g.TheaterPhone?.hasUnsaved()||!!globalThis.PortalEvidenceEditor?.hasUnsaved()};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ function openEvent(id){
+  if(typeof id!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(id))return;
+  const url=new URL(location.href);url.searchParams.set('event',id);history.replaceState(null,'',url.pathname+url.search+url.hash);deepLinkDone=false;
+  g.DeckelMobile?.jump('portal-section');const target=document.getElementById('portal-event-'+id);if(target){target.scrollIntoView({block:'center'});deepLinkDone=true;}
+ }
+ g.H2OPortal={openEvent,isFitnessTrainer:()=>latestResult?.fitnessTrainer===true,render,clear,api,hasAccess:()=>Boolean(access),refreshEvidence:()=>refreshEvidence(generation),hasUnsaved:()=>!!pending||!!g.TheaterPhone?.hasUnsaved()||!!globalThis.PortalEvidenceEditor?.hasUnsaved()};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
 

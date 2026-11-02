@@ -28,8 +28,8 @@ class WidgetPreviewTest {
             assertTrue("Widget can shrink to one launcher row", provider.minResizeHeight <= 48 * context.resources.displayMetrics.density)
         }
         val sizes = listOf(Triple(110, 48, 1f), Triple(110, 48, 1.3f), Triple(170, 48, 1.3f), Triple(330, 48, 1.3f), Triple(250, 64, 1f), Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(110, 110, 1f), Triple(330, 110, 1f), Triple(330, 250, 1f), Triple(170, 170, 1.3f), Triple(330, 170, 1.3f))
-        val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f))
-        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday")) {
+        val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f), Triple(330, 345, 1f))
+        for (exactSize in listOf(false, true)) for ((width, height, fontScale) in expandedSizes) for (fixture in listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict")) {
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
                 instrumentation.waitForIdleSync()
@@ -44,12 +44,22 @@ class WidgetPreviewTest {
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val isEvent = fixture !in listOf("clear", "empty")
-                    assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
+                    assertEquals(if (isEvent && !actions) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    if (actions) for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) {
+                        val button = activity.findViewById<View>(id)
+                        assertTrue("Answer target is at least 44dp high", button.height / activity.resources.displayMetrics.density >= 44)
+                    }
                     assertEquals(if (fixture == "stale") View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_note).visibility)
-                    if (isEvent) assertEquals(if (fixture == "excused") "Entschuldigt" else "Dabei", activity.findViewById<TextView>(R.id.widget_status).text.toString())
+                    if (isEvent && !actions) {
+                        val text = activity.findViewById<TextView>(R.id.widget_status).text.toString()
+                        assertTrue(text.isNotBlank())
+                        if (fixture == "saving") assertEquals("Wird gespeichert …", text)
+                        if (fixture == "retry") assertTrue(text.contains("Unbestätigt"))
+                    }
                     assertTextFits(widget, widget)
-                    if (fixture in listOf("today", "tomorrow")) assertEquals(if (fixture == "today") "Heute" else "Morgen", activity.findViewById<android.widget.TextView>(R.id.widget_day).text.toString())
-                    if (fixture == "future" && width < 240 && height >= 160) {
+                    if (fixture in listOf("today", "tomorrow")) assertTrue(activity.findViewById<TextView>(R.id.widget_day).text.toString().startsWith(if (fixture == "today") "Heute" else "Morgen"))
+                    if (fixture == "future" && width < 240 && height / fontScale >= 140) {
                         assertTrue("Month gets its own visible row", activity.findViewById<TextView>(R.id.widget_month).isShown)
                         assertTrue("Day is readable on its own", activity.findViewById<TextView>(R.id.widget_day).text.matches(Regex("\\d{2}")))
                         assertTrue("The day stays more prominent than the month with enlarged system fonts", activity.findViewById<TextView>(R.id.widget_day).textSize >= 1.25f * activity.findViewById<TextView>(R.id.widget_month).textSize)

@@ -118,3 +118,17 @@ Offizielle Vorgaben:
 - https://support.google.com/googleplay/android-developer/answer/14316361
 - https://support.google.com/googleplay/android-developer/answer/14151465
 - https://firebase.google.com/docs/cloud-messaging/send/v1-api
+
+## Interaktive Terminkarte – Build 1027
+
+Der freigegebene Entwurf verwendet einen dunklen Navy-Hintergrund, eine dezente rote Oberkante und das bestehende H₂O-Wappen. Datum/Heute/Morgen und das konkrete Terminthema stehen vorn. Ein Tipp auf Datum oder Thema öffnet genau diesen Termin in der vollständigen App. Kleine Widgets zeigen Datum, Thema, Uhrzeit und den eigenen Status; Antippen öffnet die Rückmeldung in H₂O. Bei genügend Platz erscheinen Ort und Kleidung.
+
+Mittlere bzw. ausreichend breite und hohe Widgets bieten „Dabei“, „Entschuldigt“ und „Unsicher“ direkt an. Nach serverseitig bestätigter Speicherung erscheint der Status mit „Ändern“. „Ändern“ blendet die Auswahl wieder ein. Während des Schreibens steht „Wird gespeichert …“. Eine unterbrochene Verbindung verändert den bestätigten Status nicht: „Speicherung unbestätigt“/„Unbestätigt“ bietet eine ausdrückliche Wiederholung mit derselben Vorgangsnummer. Versionskonflikte verlangen eine Aktualisierung in H₂O; fehlende Berechtigung löscht den lokalen Stand. Es wird keine neue Antwort heimlich später versendet.
+
+Ohne eigene Antwort bleibt der Status offen. Nach einer GF-Erinnerung steht bei genügend Platz „Bitte Rückmeldung geben“. Antworten sind schon vor einer Erinnerung möglich. Offen und Unsicher sind keine Absage und keine tatsächliche Anwesenheit.
+
+Die nächsten drei bereits freigegebenen eigenen Termine werden übernommen und nach Ende chronologisch weitergeschaltet, auch wenn die Antwort offen blieb. Große Widgets zeigen bis zu zwei Folgetermine. Kalenderstände verfallen weiterhin nach zwölf Stunden; ohne frische App-Abfrage ist danach H₂O zu öffnen. Android kann geplante Hintergrundaktualisierungen zur Energieeinsparung verzögern.
+
+Datenschutz: Die vollständige Anmeldung, Passkeys und persönliche Kalenderlinks bleiben im Portal. Das Widget erhält nur eine verschlüsselte, auf die übernommenen drei Termine begrenzte Antwortberechtigung, gebunden an die noch gültige Sitzung und maximal zwölf Stunden. Bei jeder Antwort werden Sitzung, Zugang, Mitgliedschaft, Empfänger, Terminbeginn, Kalenderfrische und Antwortversion erneut geprüft. iOS speichert sie in einer geschützten, von Backups ausgeschlossenen App-Group-Datei; Android verschlüsselt sie mit Android Keystore in privaten, nicht gesicherten App-Daten. Abmeldung, Kontowechsel und erkannter Zugriffsverlust entfernen den Stand.
+
+Die neue Funktion benötigt Portal/Worker und den neuen nativen App-Build. Ein Pull Request oder grüner Test ist keine Veröffentlichung. Reale iPhone-/Android-Abnahme bleibt zusätzlich erforderlich.

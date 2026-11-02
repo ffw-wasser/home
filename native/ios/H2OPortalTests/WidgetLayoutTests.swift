@@ -23,10 +23,15 @@ final class WidgetLayoutTests: XCTestCase {
             ("small", WidgetFamily.systemSmall, 155.0, 155.0),
             ("medium", WidgetFamily.systemMedium, 329.0, 155.0),
             ("small-large", WidgetFamily.systemSmall, 170.0, 170.0),
-            ("medium-large", WidgetFamily.systemMedium, 364.0, 170.0)
+            ("medium-large", WidgetFamily.systemMedium, 364.0, 170.0),
+            ("large", WidgetFamily.systemLarge, 329.0, 345.0),
+            ("large-wide", WidgetFamily.systemLarge, 364.0, 382.0)
         ] {
             for (scenario, event, stale) in cases {
-                let snapshot = H2OWidgetSnapshot(updatedAt: now, event: event, stale: stale)
+                var current = event
+                current?.id = String(repeating: "a", count: 43); current?.version = 0; current?.canReply = true; current?.reminded = true
+                let following = event.map { e in [H2OWidgetEvent(title: "Funkübung", start: e.start.addingTimeInterval(86400), end: e.end.addingTimeInterval(86400), location: "Testort", clothing: "Tagesdienst", status: "open", allDay: false)] } ?? []
+                let snapshot = H2OWidgetSnapshot(updatedAt: now, event: current, stale: stale, following: following)
                 let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot), familyOverride: family)
                     .frame(width: width, height: height)
                     .background(Color(red: 0.94, green: 0.97, blue: 0.95))

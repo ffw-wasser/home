@@ -47,6 +47,10 @@ final class PortalLinksTests: XCTestCase {
         XCTAssertTrue(PortalLinks.trusted(PortalLinks.terms))
         XCTAssertEqual(URLComponents(url: PortalLinks.terms, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "terms")
         XCTAssertTrue(PortalLinks.isWidgetTermine(URL(string: "h2oportal://termine")!))
+        let event = String(repeating: "a", count: 43)
+        XCTAssertTrue(PortalLinks.isWidgetTermine(URL(string: "h2oportal://termine?event=" + event)!))
+        XCTAssertEqual(PortalLinks.widgetEvent(URL(string: "h2oportal://termine?event=" + event)!), event)
+        XCTAssertFalse(PortalLinks.isWidgetTermine(URL(string: "h2oportal://termine?event=" + event + "&token=x")!))
         for value in ["h2oportal://termine?token=x", "h2oportal://anders", "https://termine", "h2oportal://termine/#setup=x"] {
             XCTAssertFalse(PortalLinks.isWidgetTermine(URL(string: value)!))
         }

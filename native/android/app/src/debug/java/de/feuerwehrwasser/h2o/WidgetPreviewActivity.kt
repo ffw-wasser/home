@@ -22,8 +22,14 @@ class WidgetPreviewActivity : Activity() {
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
             .put("stale", action == "stale").put("event", JSONObject().put("title", "Technische Hilfeleistung")
                 .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", "Gerätehaus Wasser")
-                .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else "yes"))
+                .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else if (action in listOf("open", "reminded")) "open" else "yes")
+                .put("id", "a".repeat(43)).put("version", 0).put("canReply", true).put("reminded", action == "reminded"))
+            .put("reply", JSONObject().put("token", "synthetic".repeat(20)).put("expiresAt", now + 3600000))
         WidgetStore.accept(this, input.toString())
+        val prefs = WidgetStore.prefs(this)
+        if (action == "edit") prefs.edit().putString("editing", "a".repeat(43)).commit()
+        if (action in listOf("saving", "retry")) prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", action).put("startedAt", now).toString()).commit()
+        if (action == "conflict") prefs.edit().putString("message", "In H₂O aktualisieren").commit()
         val layout = FrameLayout(previewContext).apply { setBackgroundColor(0xFF18283C.toInt()) }
         val options = Bundle().apply {
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width)

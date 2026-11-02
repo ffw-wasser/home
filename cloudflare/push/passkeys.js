@@ -61,7 +61,11 @@
  async function session(env,token){
   await g.PortalService.ready(env);
   if(!/^[\w-]{43}$/.test(token||''))return null;
-  const row=await env.DB.prepare('SELECT s.* FROM portal_identity_sessions s WHERE s.token_hash=? AND s.expires_at>? AND (EXISTS(SELECT 1 FROM portal_passkeys p JOIN portal_identity_grants g ON g.id=p.id AND g.alias=p.alias WHERE p.id=s.credential AND p.alias=s.alias AND p.revision=s.revision) OR EXISTS(SELECT 1 FROM portal_passwords w WHERE w.id=s.credential AND w.alias=s.alias AND w.revision=s.revision))').bind(await hash('portal-session:'+token),Date.now()).first();
+  return sessionHash(env,await hash('portal-session:'+token));
+ }
+ // Internal, hash-only lookup also validates the credential and live account for scoped widgets.
+ async function sessionHash(env,tokenHash){
+  const row=await env.DB.prepare('SELECT s.* FROM portal_identity_sessions s WHERE s.token_hash=? AND s.expires_at>? AND (EXISTS(SELECT 1 FROM portal_passkeys p JOIN portal_identity_grants g ON g.id=p.id AND g.alias=p.alias WHERE p.id=s.credential AND p.alias=s.alias AND p.revision=s.revision) OR EXISTS(SELECT 1 FROM portal_passwords w WHERE w.id=s.credential AND w.alias=s.alias AND w.revision=s.revision))').bind(tokenHash,Date.now()).first();
   if(!row)return null;
   return {row,record:await owner(env,row.alias,row.revision)};
  }
@@ -277,5 +281,5 @@
   return {ok:true};
  }
 
- g.WhatsAppPasskeys={schema,limit,route,revoke,session,authorize,migrated,identity,admin};
+ g.WhatsAppPasskeys={schema,limit,route,revoke,session,sessionHash,authorize,migrated,identity,admin};
 })(globalThis);

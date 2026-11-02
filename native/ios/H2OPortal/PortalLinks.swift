@@ -38,7 +38,17 @@ enum PortalLinks {
     static func isWidgetTermine(_ url: URL) -> Bool {
         guard let p = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
         return p.scheme == "h2oportal" && p.host == "termine" && p.path.isEmpty &&
-            p.user == nil && p.password == nil && p.port == nil && p.query == nil && p.fragment == nil
+            p.user == nil && p.password == nil && p.port == nil && p.fragment == nil &&
+            (p.query == nil || (p.queryItems?.count == 1 && p.queryItems?.first?.name == "event" && widgetEvent(url) != nil))
+    }
+    static func widgetEvent(_ url: URL) -> String? {
+        let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "event" })?.value
+        return value.flatMap { $0.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil ? $0 : nil }
+    }
+    static func terms(event: String?) -> URL {
+        var parts = URLComponents(url: terms, resolvingAgainstBaseURL: false)!
+        if let event { parts.queryItems?.append(URLQueryItem(name: "event", value: event)) }
+        return parts.url!
     }
     static var terms: URL {
         var parts = URLComponents(url: home, resolvingAgainstBaseURL: false)!
