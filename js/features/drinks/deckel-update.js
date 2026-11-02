@@ -2,15 +2,26 @@
 (function(g){
  'use strict';const $=id=>document.getElementById(id);let checking=null,refreshing=false,nextRefreshAt=0,hintTimer;
  async function check(){return document.hidden?false:Boolean(await g.AppRelease?.check());}
- function feedback(text){const hint=$('deckel-pull-refresh');if(hint){g.clearTimeout?.(hintTimer);hint.hidden=false;hint.textContent=text;hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},6000);}}
+ function indicator(text,state='message',progress=0){
+  const hint=$('deckel-pull-refresh');if(!hint)return;
+  hint.hidden=false;const label=hint.querySelector?.('[data-pull-label]');
+  if(label){if(label.textContent!==text)label.textContent=text;}else hint.textContent=text;
+  if(hint.dataset)hint.dataset.state=state;
+  const arc=hint.querySelector?.('[data-pull-arc]');if(arc)arc.style.strokeDashoffset=String(100-Math.round(Math.max(0,Math.min(1,progress))*100));
+  hint.style?.setProperty('--pull-distance',state==='pulling'||state==='ready'?Math.min(44,Math.max(0,progress)*44)+'px':'18px');
+ }
+ function haptic(action){
+  try{const bridge=g.webkit?.messageHandlers?.h2oHaptics;if(bridge){bridge.postMessage({action});return;}if(action==='threshold')g.navigator?.vibrate?.(8);}catch{}
+ }
+ function feedback(text){const hint=$('deckel-pull-refresh');if(hint){g.clearTimeout?.(hintTimer);indicator(text);hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},6000);}}
  async function refresh(){
   if(refreshing||g.DeckelReload?.isLoading?.())return;
   const hint=$('deckel-pull-refresh');g.clearTimeout?.(hintTimer);
-  if(Date.now()<nextRefreshAt){if(hint){hint.hidden=false;hint.textContent='Bitte kurz warten, bevor du erneut aktualisierst.';hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},1800);}return false;}
+  if(Date.now()<nextRefreshAt){if(hint){indicator('Bitte kurz warten, bevor du erneut aktualisierst.');hintTimer=g.setTimeout?.(()=>{if(!refreshing)hint.hidden=true;},1800);}return false;}
   refreshing=true;let completed=false;
-  if(hint){hint.hidden=false;hint.textContent='Wird aktualisiert …';}
+  if(hint)indicator('Wird aktualisiert …','refreshing',.75);
   try{if(await check())completed=await reload();else{await g.DeckelReload?.({checkUpdate:false});completed=true;}return completed;}
-  finally{if(completed)nextRefreshAt=Date.now()+10000;refreshing=false;if(hint&&(completed||hint.textContent==='Wird aktualisiert …'))hint.hidden=true;}
+  finally{if(completed)nextRefreshAt=Date.now()+10000;refreshing=false;if(hint&&(completed||(hint.querySelector?.('[data-pull-label]')?.textContent||hint.textContent)==='Wird aktualisiert …'))hint.hidden=true;}
  }
  function blocked(){
   const messages=[];
@@ -36,16 +47,19 @@
    const target=event.target;
    if(target.closest('input,select,textarea,a,summary,[contenteditable],[data-no-swipe],canvas,iframe,dialog'))return;
    for(let node=target;node&&node!==main;node=node.parentElement){if(node.scrollHeight>node.clientHeight+1&&/auto|scroll/.test(g.getComputedStyle(node).overflowY))return;}
-   const touch=event.touches[0];pull={id:touch.identifier,x:touch.clientX,y:touch.clientY,armed:false,active:false};
+   const touch=event.touches[0];pull={id:touch.identifier,x:touch.clientX,y:touch.clientY,armed:false,active:false,hapticSent:false};
   },{passive:true});
   main.addEventListener('touchmove',event=>{
    if(!pull)return;
    if(event.touches.length!==1||!atTop()||blocked()){cancel();return;}
    const touch=Array.from(event.touches).find(t=>t.identifier===pull.id);if(!touch){cancel();return;}
    const dx=Math.abs(touch.clientX-pull.x),dy=touch.clientY-pull.y;
-   if(!pull.active){if(Math.max(dx,Math.abs(dy))<12)return;if(dy<=0||dy<dx*1.5){cancel();return;}pull.active=true;}
+   if(!pull.active){if(Math.max(dx,Math.abs(dy))<12)return;if(dy<=0||dy<dx*1.5){cancel();return;}pull.active=true;if(Date.now()>=nextRefreshAt)haptic('prepare');}
    if(!event.cancelable){cancel();return;}event.preventDefault();
-   pull.armed=dy>=140;hint.hidden=false;hint.textContent=pull.armed?'Loslassen zum Aktualisieren':'Zum Aktualisieren weiter nach unten ziehen';
+   pull.armed=dy>=140;
+   if(Date.now()<nextRefreshAt){indicator('Bitte kurz warten, bevor du erneut aktualisierst.');return;}
+   indicator(pull.armed?'Loslassen zum Aktualisieren':'Zum Aktualisieren weiter nach unten ziehen',pull.armed?'ready':'pulling',dy/140);
+   if(pull.armed&&!pull.hapticSent){pull.hapticSent=true;haptic('threshold');}
   },{passive:false});
   main.addEventListener('touchend',event=>{
    if(!pull)return;const start=pull,ended=Array.from(event.changedTouches).some(t=>t.identifier===start.id);

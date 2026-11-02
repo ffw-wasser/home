@@ -28,3 +28,13 @@ test('Manuelle Aktualisierung wartet zehn Sekunden nach Abschluss und startet ni
  vm.runInContext('testNow+=9999',f.ctx);await f.ctx.DeckelUpdate.refresh();assert.equal(loads,1);
  vm.runInContext('testNow+=1',f.ctx);f.ctx.DeckelReload=async()=>loads++;await f.ctx.DeckelUpdate.refresh();assert.equal(loads,2);
 });
+
+test('Pull haptics prefer the native adapter and only use browser vibration at the threshold',()=>{
+ const source=fs.readFileSync('js/features/drinks/deckel-update.js','utf8'),calls=[];
+ const ctx=vm.createContext({navigator:{vibrate:duration=>calls.push(duration)}});ctx.g=ctx;
+ vm.runInContext(source.slice(source.indexOf(' function haptic('),source.indexOf(' function feedback(')),ctx);
+ ctx.haptic('prepare');assert.deepEqual(calls,[]);ctx.haptic('threshold');assert.deepEqual(calls,[8]);
+ ctx.webkit={messageHandlers:{h2oHaptics:{postMessage:value=>calls.push(value.action)}}};ctx.haptic('prepare');ctx.haptic('threshold');assert.deepEqual(calls,[8,'prepare','threshold']);
+ ctx.webkit.messageHandlers.h2oHaptics.postMessage=()=>{throw Error('unavailable');};assert.doesNotThrow(()=>ctx.haptic('threshold'));
+ delete ctx.webkit;delete ctx.navigator;assert.doesNotThrow(()=>ctx.haptic('threshold'));
+});

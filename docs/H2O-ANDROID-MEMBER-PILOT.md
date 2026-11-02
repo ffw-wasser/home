@@ -134,3 +134,9 @@ Datenschutz: Die vollständige Anmeldung, Passkeys und persönliche Kalenderlink
 Die neue Funktion benötigt Portal/Worker und den neuen nativen App-Build. Ein Pull Request oder grüner Test ist keine Veröffentlichung. Reale iPhone-/Android-Abnahme bleibt zusätzlich erforderlich.
 
 Das breite Widget startet neu als 4×2-Karte mit Platz für Antworttasten; bestehende Widgets behalten ihre Größe und bleiben bis auf eine Zeile verkleinerbar.
+
+## Herunterziehen mit Fortschrittsring – Build 1028
+
+Beim Herunterziehen am oberen Rand schließt sich der Ring bis zur bisherigen Schwelle von 140 CSS-Pixeln. Dort erfolgt höchstens ein kurzer haptischer Impuls je Ziehbewegung, auch beim mehrfachen Überqueren derselben Schwelle. Loslassen startet den Abgleich; währenddessen rotiert der Ring. Zurückziehen unter die Schwelle oder Abbrechen verwirft den Vorgang. Laufender Abruf und zehn Sekunden Pause verhindern weitere Impulse und doppelte Abrufe.
+
+Die iPhone-App nutzt UISelectionFeedbackGenerator, die Android-App ab API 34 GESTURE_THRESHOLD_ACTIVATE und auf älteren Geräten CLOCK_TICK. Native Nachrichten akzeptieren nur die bestehende vertrauenswürdige Hauptseite und werden zusätzlich zeitlich begrenzt; Android respektiert die Systemeinstellung für haptisches Feedback. Im Browser wird die optionale Vibration API verwendet. Ohne Unterstützung bleibt die Ringanzeige vollständig bedienbar. Eine echte Vibration lässt sich nur auf einem unterstützten realen Handy beurteilen.

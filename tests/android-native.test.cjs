@@ -41,9 +41,9 @@ test('Android registration enforces independent readiness, ownership, five devic
 });
 test('Android document adapter only exposes bridges in trusted top-level portal pages',()=>{
  const source=fs.readFileSync('native/shared/android-entry.js','utf8');
- function run({origin='https://ffw-wasser.github.io',pathname='/home/deckel.html',frame=false}={}){const sent=[],events=[],c={location:{origin,pathname},H2OWidget:{postMessage:v=>sent.push(JSON.parse(v))},H2ONotifications:{postMessage:v=>sent.push(JSON.parse(v))},dispatchEvent:v=>events.push(v),CustomEvent:class {constructor(type,options){this.type=type;this.detail=options.detail;}}};c.window=c;c.top=frame?{}:c;vm.runInNewContext(source,c);return {c,sent,events};}
+ function run({origin='https://ffw-wasser.github.io',pathname='/home/deckel.html',frame=false}={}){const sent=[],events=[],c={location:{origin,pathname},H2OWidget:{postMessage:v=>sent.push(JSON.parse(v))},H2OHaptics:{postMessage:v=>sent.push(JSON.parse(v))},H2ONotifications:{postMessage:v=>sent.push(JSON.parse(v))},dispatchEvent:v=>events.push(v),CustomEvent:class {constructor(type,options){this.type=type;this.detail=options.detail;}}};c.window=c;c.top=frame?{}:c;vm.runInNewContext(source,c);return {c,sent,events};}
  for(const options of [{origin:'https://evil.invalid'},{pathname:'/home/privacy.html'},{frame:true}])assert.equal(run(options).c.webkit,undefined);
- const f=run();f.c.webkit.messageHandlers.h2oWidget.postMessage({action:'clear'});assert.deepEqual(f.sent,[{action:'clear'}]);f.c.H2ONotifications.onmessage({data:JSON.stringify({id:'synthetic',permission:'granted'})});assert.equal(f.events[0].type,'h2o-native-notifications');
+ const f=run();f.c.webkit.messageHandlers.h2oWidget.postMessage({action:'clear'});assert.deepEqual(f.sent,[{action:'clear'}]);f.c.webkit.messageHandlers.h2oHaptics.postMessage({action:'threshold'});assert.deepEqual(f.sent.at(-1),{action:'threshold'});f.c.H2ONotifications.onmessage({data:JSON.stringify({id:'synthetic',permission:'granted'})});assert.equal(f.events[0].type,'h2o-native-notifications');
 });
 
 test('Single JSON secret validates service account type and fails closed before any request',async()=>{
