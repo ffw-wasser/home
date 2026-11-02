@@ -706,7 +706,7 @@
    const old=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event.id,record.memberId).first(),previous=await open(env,old,'portal-reply:'+event.id+':'+record.memberId);
    if(previous?.requestId===data.requestId){if(previous.status!==data.status)fail('Vorgangsnummer wurde bereits anders verwendet.');return {ok:true,status:previous.status,version:old.version,updatedAt:old.updated_at||null};}
    if((old?.version||0)!==data.expectedVersion){
-    const error=Object.assign(Error('Deine Rückmeldung wurde inzwischen geändert. Bitte erneut wählen.'),{status:409});
+    const error=Object.assign(Error('Deine Rückmeldung wurde inzwischen geändert. Bitte aktualisieren.'),{status:409});
     // Only the already-authorized widget reply receives its own current answer.
     // No new grant, session, calendar lifetime or write is issued by recovery.
     if(record.widgetSession)error.widgetReply={status:previous?.status||'open',version:old?.version||0};
