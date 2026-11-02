@@ -20,7 +20,7 @@ class WidgetPreviewActivity : Activity() {
         val date = java.time.Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(when (action) { "tomorrow" -> 1; "future" -> 3; else -> 0 })
         val start = date.atTime(23, 58).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
-            .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else "Technische Hilfeleistung")
+            .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (action == "short-title") "Probe" else "Technische Hilfeleistung")
                 .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", "Gerätehaus Wasser")
                 .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else if (action in listOf("open", "reminded")) "open" else "yes")
                 .put("id", "a".repeat(43)).put("version", 0).put("canReply", true).put("reminded", action == "reminded"))
@@ -36,6 +36,7 @@ class WidgetPreviewActivity : Activity() {
         }
         WidgetStore.accept(this, input.toString())
         val prefs = WidgetStore.prefs(this)
+        if (action == "refreshed") prefs.edit().putString("notice", "Stand aktualisiert – erneut wählen").commit()
         if (action == "edit") prefs.edit().putString("editing", "a".repeat(43)).commit()
         if (action in listOf("saving", "retry")) prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", action).put("startedAt", now).toString()).commit()
         if (action == "conflict") prefs.edit().putString("message", "In H₂O aktualisieren").commit()

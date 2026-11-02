@@ -147,3 +147,16 @@ Die iPhone-App nutzt UISelectionFeedbackGenerator, die Android-App ab API 34 GES
 Anthrazit (#191B20), rote Oberkante (#A52332, 3 dp), helle Kalenderkachel (#F2EEE5) und ein zusammenhängender Statusregler mit drei dauerhaft sichtbaren Optionen in mittleren und großen Widgets. Keine getrennten roten Statusflächen und kein Ändern-Button. Große Widgets zeigen zwei Folgetermine. Schmale und flache Widgets reduzieren Metadaten und öffnen den Termin in der App. Die tatsächliche Launcherfläche und Systemschrift bestimmen die passende Ansicht.
 
 Die Bildprüfung umfasst lange Themen, 130 Prozent Systemschrift, offene und angeforderte Antworten, laufende Speicherung, Fehler und bestätigte Antworten. Offene Rückmeldungen tragen einen signalgelben Hinweis.
+
+
+## Größere Terminansicht in Zwischenhöhen – Build 1030
+
+Breite Widgets ab 210 dp Höhe erhalten eine größere Kalenderkachel sowie deutlich größere Themen-, Orts- und Kleidungsschrift. Die verfügbare Höhe und die Systemschrift werden gemeinsam berücksichtigt; kleine und flache Ansichten sowie die direkte Statusauswahl bleiben erhalten. Dies korrigiert den auf einem realen Android-Gerät sichtbaren großen Leerraum um eine zu kleine Terminansicht. Die Emulatorprüfung enthält nun zusätzlich diese Zwischenhöhen mit kurzem Thema „Probe“, langen Themen und offener Rückmeldung.
+
+Die Kopfzeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Kalender und Thema nutzen den gewonnenen Platz; die rote Oberkante bleibt erhalten.
+
+Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei grün #287D49, Entschuldigt gelb #F4C542, Unsicher orange #E87524. Grün trägt weiße, Gelb und Orange dunkle Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
+
+Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften. Lange Themen bekommen größenabhängig mehrere Zeilen; die Darstellung verkleinert Text erst bei tatsächlich begrenztem Platz.
+
+Bei einem Versionskonflikt liefert der Dienst ausschließlich den eigenen aktuellen Antwortstatus und dessen Version. Das Widget übernimmt diesen Stand und zeigt „Stand aktualisiert – erneut wählen“ mit wieder freier Auswahl. Es schreibt nicht selbstständig erneut. Zugang, Kalenderalter, Fristen, Empfängerrechte und Vorgangsnummer bleiben unverändert. Abgelaufene Zugänge erfordern weiterhin H₂O. Android hängt direkt aufeinanderfolgende ausdrückliche Antworten an den vorherigen Auftrag an, statt sie am noch auslaufenden Auftrag zu verwerfen; nach 30 Sekunden erfolgt kein stiller Versand.

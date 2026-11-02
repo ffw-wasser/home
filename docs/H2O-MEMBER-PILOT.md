@@ -166,3 +166,20 @@ Der freigegebene Entwurf verwendet einen dunklen Navy-Hintergrund, eine dezente 
 Mittlere und große Widgets zeigen „Dabei“, „Entschuldigt“ und „Unsicher“ dauerhaft als zusammenhängende Auswahl. Die bestätigte Antwort ist markiert; eine andere Antwort lässt sich direkt antippen. Einen gesonderten Ändern-Button gibt es nicht. Sofortige Systemrückmeldung und „Wird gespeichert …“ zeigen die laufende Übertragung; weitere Antworten sind währenddessen gesperrt. Erst eine Serverbestätigung führt zu „Gespeichert“. Ohne gewählte Antwort bleiben alle Optionen neutral; „Rückmeldung offen“ steht in Signalgelb darunter, nach einer ausdrücklichen Anforderung „Bitte Rückmeldung geben“. Kleine und flache Widgets öffnen den vollständigen Termin in H₂O. Bei einer unterbrochenen Verbindung bleibt „Nicht bestätigt“ mit „Erneut versuchen“ und derselben Vorgangsnummer. Versionskonflikte verlangen eine Aktualisierung in H₂O; fehlende Berechtigung löscht den lokalen Stand. Keine Antwort wird heimlich später versendet.
 
 iPhone-Build 1029 folgt dem abgestimmten Entwurf: Anthrazit, rote Oberkante (3 Punkte), Kalender mit rotem Monatskopf und hellem Papier, ruhige Metadaten und gemeinsame Statusauswahl. Mittlere und große Größen zeigen die drei Antworten dauerhaft; große zusätzlich zwei Folgetermine. Kleine zeigen bis zu drei Themenzeilen, dann Auslassungspunkte; Antippen öffnet den vollständigen Termin.
+
+
+## Widget ohne zusätzliche Kopfzeile – Build 1030
+
+Die Zeile „H₂O · Feuerwehr Wasser“ entfällt in allen Widgetgrößen. Die rote Oberkante bleibt; Kalender und Terminthema werden größer dargestellt und nutzen den gewonnenen Platz. Direkte Statusauswahl und Speicherfeedback bleiben erhalten. Der Hinweis auf einen gespeicherten Kalenderstand bleibt bei der Statusanzeige erreichbar.
+
+Bestätigte Statusfelder sind kräftig und heller eingefärbt: Dabei grün #287D49, Entschuldigt gelb #F4C542, Unsicher orange #E87524. Grün trägt weiße, Gelb und Orange dunkle Beschriftung. Offene Antworten behalten den signalgelben Hinweis und keine ausgewählte Option.
+
+Beim Wechsel der Widgetgröße erhält der Layoutbaum eine größenabhängige Identität und wird neu aufgebaut. Die Produktionsansicht verwendet weiterhin die von WidgetKit vorgegebene Größe; die Darstellungstests geben diese Größe gezielt vor. Ein zusätzlicher Hosting-Test wechselt dasselbe Widget mehrfach zwischen Mittel und Groß und prüft Inhalt im unteren Bereich der großen Ansicht. Das ersetzt keine Abnahme des Größenwechsels im realen iPhone-Homescreen.
+
+Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften. Lange Themen bekommen größenabhängig mehrere Zeilen; die Darstellung verkleinert Text erst bei tatsächlich begrenztem Platz.
+
+Im kleinen Widget wird die Schrift zusätzlich an der Breite des längsten Wortes ausgerichtet, damit größere Ausgangsschrift keine unnötigen Wortzerlegungen verursacht. Der Wechseltest verwendet einen dunklen Host ohne App-Safe-Area, damit leere Randflächen nicht als Inhalt zählen.
+
+Bei einem Versionskonflikt liefert der Dienst ausschließlich den eigenen aktuellen Antwortstatus und dessen Version. Das Widget übernimmt diesen Stand und zeigt „Stand aktualisiert – erneut wählen“ mit wieder freier Auswahl. Es schreibt nicht selbstständig erneut. Zugang, Kalenderalter, Fristen, Empfängerrechte und Vorgangsnummer bleiben unverändert. Abgelaufene Zugänge erfordern weiterhin H₂O. Android hängt direkt aufeinanderfolgende ausdrückliche Antworten an den vorherigen Auftrag an, statt sie am noch auslaufenden Auftrag zu verwerfen; nach 30 Sekunden erfolgt kein stiller Versand.
+
+Die Textfläche des Terminblocks ist auch bei langen Hinweisen ausdrücklich auf die verfügbare Breite begrenzt. Jeder statische Bildtest prüft zusätzlich, dass die helle Kalenderkachel links sichtbar bleibt.

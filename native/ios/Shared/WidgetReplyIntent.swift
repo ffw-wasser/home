@@ -46,7 +46,7 @@ enum H2OWidgetReply {
                 guard ["yes", "excused", "maybe"].contains(response), let version = event.version else { return nil }
                 job = H2OWidgetReplyJob(eventID: eventID, status: response, requestID: UUID().uuidString.lowercased(), version: version, phase: "saving", startedAt: now)
             }
-            document.snapshot.job = job; document.snapshot.message = nil
+            document.snapshot.job = job; document.snapshot.message = nil; document.snapshot.notice = nil
             do { try H2OWidgetStorage.write(document); return (grant, job) } catch { return nil }
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "H2ONextEventWidget")
@@ -57,6 +57,7 @@ enum H2OWidgetReply {
         let session = URLSession(configuration: configuration, delegate: NoWidgetRedirects(), delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         var saved: (String, Int)?
+        var refreshed: (String, Int)?
         var denied = false; var conflict = false
         do {
             var request = URLRequest(url: URL(string: "https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/portal/widget-reply")!)
@@ -67,6 +68,13 @@ enum H2OWidgetReply {
             let (data, result) = try await session.data(for: request)
             let code = (result as? HTTPURLResponse)?.statusCode ?? 0
             denied = [401, 403].contains(code); conflict = [400, 404, 409, 423].contains(code)
+            if code == 409, data.count < 4096,
+               let value = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let current = value["currentReply"] as? [String: Any],
+               let status = current["status"] as? String, ["yes", "excused", "maybe", "open"].contains(status),
+               let version = current["version"] as? Int, version >= 0, version <= Int32.max {
+                refreshed = (status, version)
+            }
             if code == 200, data.count < 4096, let value = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                value["ok"] as? Bool == true, value["status"] as? String == job.status,
                let version = value["version"] as? Int, version == job.version + 1 { saved = (job.status, version) }
@@ -77,7 +85,13 @@ enum H2OWidgetReply {
             if denied { H2OWidgetStorage.clear(); return }
             if let (status, version) = saved {
                 if document.snapshot.event?.id == eventID { document.snapshot.event?.status = status; document.snapshot.event?.version = version }
+                document.snapshot.job = nil; document.snapshot.editing = nil; document.snapshot.message = nil; document.snapshot.notice = nil
+            } else if let (status, version) = refreshed {
+                if document.snapshot.event?.id == eventID {
+                    document.snapshot.event?.status = status; document.snapshot.event?.version = version
+                }
                 document.snapshot.job = nil; document.snapshot.editing = nil; document.snapshot.message = nil
+                document.snapshot.notice = "Stand aktualisiert – erneut wählen"
             } else if conflict {
                 document.snapshot.job = nil; document.snapshot.editing = nil
                 document.snapshot.message = "In H₂O aktualisieren"

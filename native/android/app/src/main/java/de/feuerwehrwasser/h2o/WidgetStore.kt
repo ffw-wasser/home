@@ -52,16 +52,17 @@ object WidgetStore {
         val events = (0 until array.length()).map { readEvent(array.getJSONObject(it)) }.filter { it.valid(now) }.sortedBy { it.start }
         val stateEvent = prefs(context).getString("stateEvent", null)
         val nextID = events.firstOrNull()?.id.orEmpty()
-        if (stateEvent != nextID) prefs(context).edit().putString("stateEvent", nextID).remove("job").remove("editing").remove("message").commit()
+        if (stateEvent != nextID) prefs(context).edit().putString("stateEvent", nextID).remove("job").remove("editing").remove("message").remove("notice").commit()
         WidgetSnapshot(value.getLong("updatedAt"), events.firstOrNull(), value.getBoolean("stale"), events.drop(1)).takeIf { it.fresh(now) }
     }.getOrNull()
-    @Synchronized internal fun confirm(context: Context, eventID: String, status: String, version: Int) {
+    @Synchronized internal fun confirm(context: Context, eventID: String, status: String, version: Int, notice: String? = null) {
         val value = JSONObject(prefs(context).getString(KEY, null) ?: return)
         val events = value.getJSONArray("events")
         for (i in 0 until events.length()) if (events.getJSONObject(i).optString("id") == eventID) {
             events.getJSONObject(i).put("status", status).put("version", version)
         }
         // Keep original calendar age, even after a successful response.
-        prefs(context).edit().putString(KEY, value.toString()).remove("job").remove("editing").remove("message").commit()
+        prefs(context).edit().putString(KEY, value.toString()).remove("job").remove("editing").remove("message")
+            .apply { if (notice == null) remove("notice") else putString("notice", notice) }.commit()
     }
 }

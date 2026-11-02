@@ -29,6 +29,22 @@ final class WidgetPolicyTests: XCTestCase {
         XCTAssertNil(states[3].snapshot)
     }
 
+    func testConflictNoticeKeepsCalendarAgeAndClearsWhenAdvancing() throws {
+        let reference = date("2026-11-02T12:00:00Z")
+        let event = H2OWidgetEvent(title: "Probe", start: reference.addingTimeInterval(60), end: reference.addingTimeInterval(120), location: "Test", clothing: "Test", status: "excused", allDay: false, id: String(repeating: "a", count: 43), version: 4)
+        let next = H2OWidgetEvent(title: "Nächster Termin", start: reference.addingTimeInterval(180), end: reference.addingTimeInterval(240), location: "Test", clothing: "Test", status: "open", allDay: false, id: String(repeating: "b", count: 43))
+        var value = H2OWidgetSnapshot(updatedAt: reference, event: event, stale: false, following: [next])
+        value.notice = "Stand aktualisiert – erneut wählen"
+        let decoded = try JSONDecoder().decode(H2OWidgetSnapshot.self, from: JSONEncoder().encode(value))
+        XCTAssertEqual(decoded.notice, value.notice)
+        XCTAssertEqual(decoded.updatedAt, reference)
+        XCTAssertEqual(decoded.event?.status, "excused")
+        XCTAssertEqual(decoded.event?.version, 4)
+        XCTAssertNil(decoded.job)
+        XCTAssertNil(decoded.at(event.end).notice)
+        XCTAssertEqual(decoded.at(event.end).updatedAt, reference)
+    }
+
     let now = Date(timeIntervalSince1970: 1_800_000_000)
     func snapshot(end: TimeInterval? = nil) -> H2OWidgetSnapshot {
         H2OWidgetSnapshot(updatedAt: now, event: end.map {

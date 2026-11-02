@@ -61,3 +61,27 @@ test('Widget cannot select another member with forged alias fields',async()=>{
  assert.equal((await f.call('list',{},other)).value.events[0].status,'open');
  assert.equal((await f.call('list')).value.events[0].status,'yes');
 });
+
+test('Widget version conflicts return only the current own answer without writing or renewing the grant',async()=>{
+ const f=await setup();
+ const accepted=await f.call('reply',{...f.job,status:'excused',requestId:webcrypto.randomUUID()});assert.equal(accepted.status,200);
+ const conflict=await f.widget();assert.equal(conflict.status,409);
+ assert.deepEqual(conflict.value.currentReply,{status:'excused',version:1});
+ assert.deepEqual(Object.keys(conflict.value).sort(),['currentReply','error']);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,1);
+ assert.equal((await f.call('list')).value.events[0].status,'excused');
+ const ordinary=await f.call('reply',{...f.job,requestId:webcrypto.randomUUID()});
+ assert.equal(ordinary.status,409);assert.equal(ordinary.value.currentReply,undefined);
+ const chosen={...f.job,expectedVersion:conflict.value.currentReply.version,requestId:webcrypto.randomUUID()};
+ const saved=await f.widget('widget-reply',chosen);assert.equal(saved.status,200);assert.equal(saved.value.version,2);
+ assert.equal((await f.call('list')).value.events[0].status,'yes');
+ f.clock.now=f.grant.expiresAt;const expired=await f.widget('widget-reply',chosen);
+ assert.equal(expired.status,401);assert.equal(expired.value.currentReply,undefined);
+});
+test('Widget conflict state is not returned to revoked or unrelated grants',async()=>{
+ const f=await setup();await f.call('reply',{...f.job,status:'maybe'});
+ const unrelated=await f.widget('widget-reply',{...f.job,eventId:'x'.repeat(43)});
+ assert.equal(unrelated.status,401);assert.equal(unrelated.value.currentReply,undefined);
+ f.sql.prepare('DELETE FROM portal_identity_sessions').run();
+ const revoked=await f.widget();assert.equal(revoked.status,401);assert.equal(revoked.value.currentReply,undefined);
+});

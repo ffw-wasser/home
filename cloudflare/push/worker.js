@@ -38,7 +38,7 @@ export default {
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
     const value=await body(request,path==='/portal/calendar-addon/groups'?130000:path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
     try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(path==='/portal/regulations/pdf'&&result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline'}});return reply(result);}
-    catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.'},error.status||503);}
+    catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.',...(path==='/portal/widget-reply'&&error.status===409&&error.widgetReply?{currentReply:error.widgetReply}:{})},error.status||503);}
    }
    if(globalThis.DeckelChallengeService&&(path.startsWith('/challenge/')||path.startsWith('/admin/challenge/'))){
     const raw=await request.text();if(raw.length>(admin?8000000:6000))return reply({error:'Anfrage zu groß.'},413);

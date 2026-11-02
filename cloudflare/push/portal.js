@@ -705,7 +705,13 @@
    if(!['yes','excused','maybe','open'].includes(data.status)||!REV.test(data.requestId||'')||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Rückmeldung.',400);
    const old=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event.id,record.memberId).first(),previous=await open(env,old,'portal-reply:'+event.id+':'+record.memberId);
    if(previous?.requestId===data.requestId){if(previous.status!==data.status)fail('Vorgangsnummer wurde bereits anders verwendet.');return {ok:true,status:previous.status,version:old.version,updatedAt:old.updated_at||null};}
-   if((old?.version||0)!==data.expectedVersion)fail('Deine Rückmeldung wurde inzwischen geändert. Bitte aktualisieren.');
+   if((old?.version||0)!==data.expectedVersion){
+    const error=Object.assign(Error('Deine Rückmeldung wurde inzwischen geändert. Bitte aktualisieren.'),{status:409});
+    // Only the already-authorized widget reply receives its own current answer.
+    // No new grant, session, calendar lifetime or write is issued by recovery.
+    if(record.widgetSession)error.widgetReply={status:previous?.status||'open',version:old?.version||0};
+    throw error;
+   }
    const updatedAt=Date.now(),payload=await L.seal(env,{status:data.status,source:'h2o',requestId:data.requestId,updatedAt},'portal-reply:'+event.id+':'+record.memberId);
    const guard='EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)'+(record.widgetSession?' AND EXISTS(SELECT 1 FROM portal_identity_sessions WHERE token_hash=? AND expires_at>?)':''),proof=[record.alias,record.revision,...(record.widgetSession?[record.widgetSession,Date.now()]:[])];
    const result=old?await env.DB.prepare('UPDATE portal_replies SET payload=?,updated_at=?,version=version+1 WHERE event=? AND member=? AND version=? AND '+guard).bind(payload,updatedAt,event.id,record.memberId,old.version,...proof).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_replies(event,member,payload,updated_at) SELECT ?,?,?,? WHERE '+guard).bind(event.id,record.memberId,payload,updatedAt,...proof).run();if(!result.meta.changes)fail('Rückmeldung wurde gleichzeitig geändert. Bitte aktualisieren.');return {ok:true,status:data.status,version:data.expectedVersion+1,updatedAt};
