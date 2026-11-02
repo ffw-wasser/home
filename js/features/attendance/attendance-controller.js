@@ -105,8 +105,8 @@ function renderMembers() {
   }
   if(headingLegend){headingLegend.innerHTML=`<strong>Legende</strong>${legendItems}`;headingLegend.querySelectorAll(".legend-a").forEach(item=>item.textContent="✓");}
   const sections = [
-    `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${availableMembers.filter(member=>!member.ageDepartment).length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
-    ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${availableMembers.filter(member=>member.ageDepartment).length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
+    `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
+    ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
   byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
   window.AttendanceSmart?.refresh(availableMembers.length);
@@ -257,7 +257,7 @@ function renderAdmin() {
   const activeMembers = members.filter(member => !member.ageDepartment);
   const ageMembers = members.filter(member => member.ageDepartment);
   if(window.Usability?.hasMemberDraft())return;
-  byId("memberAdmin").innerHTML = `<section class="admin-department admin-department-active"><div class="admin-department-heading"><h4>Einsatzabteilung</h4><span>${availableMembers.filter(member=>!member.ageDepartment).length}</span></div>${activeMembers.map((member, index) => renderMemberCard(member, index)).join("")}</section>${ageMembers.length ? `<section class="admin-department admin-department-age"><div class="admin-department-heading"><h4>Alterskameraden</h4><span>${availableMembers.filter(member=>member.ageDepartment).length}</span></div>${ageMembers.map((member, index) => renderMemberCard(member, activeMembers.length + index)).join("")}</section>` : ""}`;
+  byId("memberAdmin").innerHTML = `<section class="admin-department admin-department-active"><div class="admin-department-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div>${activeMembers.map((member, index) => renderMemberCard(member, index)).join("")}</section>${ageMembers.length ? `<section class="admin-department admin-department-age"><div class="admin-department-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div>${ageMembers.map((member, index) => renderMemberCard(member, activeMembers.length + index)).join("")}</section>` : ""}`;
   window.Usability?.members();
 }
 function saveAgeDepartmentAttendance(member) {
