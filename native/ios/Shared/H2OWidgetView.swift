@@ -92,6 +92,8 @@ struct NextEventView: View {
             }
             .frame(width: large ? 70 : 55).background(ink.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
             .clipShape(RoundedRectangle(cornerRadius: 9))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
             ViewThatFits(in: .vertical) {
                 cardText(event, titleSize: large ? 20 : 16, detailSize: large ? 12 : 11, spacing: 3)
                 cardText(event, titleSize: large ? 18 : 14, detailSize: large ? 11 : 10, spacing: 2)

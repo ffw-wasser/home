@@ -140,3 +140,10 @@ Das breite Widget startet neu als 4×2-Karte mit Platz für Antworttasten; beste
 Beim Herunterziehen am oberen Rand schließt sich der Ring bis zur bisherigen Schwelle von 140 CSS-Pixeln. Dort erfolgt höchstens ein kurzer haptischer Impuls je Ziehbewegung, auch beim mehrfachen Überqueren derselben Schwelle. Loslassen startet den Abgleich; währenddessen rotiert der Ring. Zurückziehen unter die Schwelle oder Abbrechen verwirft den Vorgang. Laufender Abruf und zehn Sekunden Pause verhindern weitere Impulse und doppelte Abrufe.
 
 Die iPhone-App nutzt UISelectionFeedbackGenerator, die Android-App ab API 34 GESTURE_THRESHOLD_ACTIVATE und auf älteren Geräten CLOCK_TICK. Native Nachrichten akzeptieren nur die bestehende vertrauenswürdige Hauptseite und werden zusätzlich zeitlich begrenzt; Android respektiert die Systemeinstellung für haptisches Feedback. Im Browser wird die optionale Vibration API verwendet. Ohne Unterstützung bleibt die Ringanzeige vollständig bedienbar. Eine echte Vibration lässt sich nur auf einem unterstützten realen Handy beurteilen.
+
+
+## Ausgewogene Widget-Größen und Speicheranzeige – Build 1029
+
+Breite Widgets zeigen eine Datumskachel und das Terminthema links, Status und Ändern rechts. Ist keine direkte Antwort möglich, führt Öffnen zum Termin. Bei offener Auswahl stehen die drei Antworten unten nebeneinander. Hohe Widgets nutzen den verbleibenden Platz für zwei Folgetermine; schmale und flache Größen behalten ihre kompakte Ansicht. Die Auswahl richtet sich nach der tatsächlichen Fläche und der Systemschrift.
+
+Während einer Änderung steht im Antwortbereich Wird gespeichert …, erst nach der Bestätigung durch den Server erscheint Gespeichert zusammen mit dem neuen Status. Ohne Bestätigung bleibt Unbestätigt mit Erneut versuchen sichtbar. Die Bildprüfung umfasst auch lange Themen und große Widgets mit 130 Prozent Systemschrift.

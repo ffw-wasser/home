@@ -73,44 +73,51 @@ open class NextEventWidget : AppWidgetProvider() {
             val snapshot = WidgetStore.read(context, now); val event = snapshot?.event
             val fontScale = context.resources.configuration.fontScale
             val logicalHeight = height / fontScale
-            val large = !compact && logicalHeight >= 290
-            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (large) R.layout.widget_event_large else if (compact) R.layout.widget_event_small else R.layout.widget_event)
+            val large = width >= 300 && height >= 290 && logicalHeight >= 250
+            val roomy = width >= 300 && width / fontScale >= 240 && height >= 160 && logicalHeight >= 130
+            val card = large || roomy
+            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (large) R.layout.widget_event_large else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
-            val roomy = !compact && width / fontScale >= 280 && logicalHeight >= 155
             val smallDate = compact && !flat && logicalHeight >= 140
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val relative = event?.let { WidgetSnapshot.day(it.start, now) }
             val day = when {
                 event == null -> ""
+                card -> date!!.format(DateTimeFormatter.ofPattern("d", Locale.GERMAN))
                 relative in listOf("Heute", "Morgen") -> relative!! + if (!compact && !flat) " · " + date!!.format(DateTimeFormatter.ofPattern("d. MMMM", Locale.GERMAN)) else ""
                 smallDate -> date!!.format(DateTimeFormatter.ofPattern("dd", Locale.GERMAN))
                 else -> date!!.format(DateTimeFormatter.ofPattern(if (flat || compact) "dd.MM." else "d. MMMM", Locale.GERMAN))
             }
             views.setTextViewText(R.id.widget_day, day)
-            val baseDaySize = if (flat) (if (compact) 13f else 17f) else if (smallDate) 30f else if (roomy) 21f else 18f
+            val baseDaySize = if (card) (if (large) 34f else if (fontScale > 1.15f) 22f else 28f) else if (flat) (if (compact) 13f else 17f) else if (smallDate) 30f else 18f
             val metrics = context.resources.displayMetrics
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseDaySize * metrics.scaledDensity }
             val timePaint = Paint().apply { textSize = 10f * metrics.scaledDensity }
-            val availableDayWidth = if (flat && compact) width - 16f - timePaint.measureText(if (event?.allDay == true) "Ganztägig" else "23:58") / metrics.density else if (flat) 66f else width - 20f
+            val availableDayWidth = if (card) 48f else if (flat && compact) width - 16f - timePaint.measureText(if (event?.allDay == true) "Ganztägig" else "23:58") / metrics.density else if (flat) 66f else width - 20f
             val fit = if (day.isEmpty()) 1f else ((availableDayWidth - 2f).coerceAtLeast(1f) * metrics.density / dayPaint.measureText(day)).coerceAtMost(1f)
             size(R.id.widget_day, baseDaySize * fit)
-            views.setTextViewText(R.id.widget_weekday, "")
-            views.setTextViewText(R.id.widget_month, date?.format(DateTimeFormatter.ofPattern("MMMM", Locale.GERMAN)) ?: "")
-            show(R.id.widget_weekday, false); show(R.id.widget_month, smallDate && relative !in listOf("Heute", "Morgen"))
-            show(R.id.widget_brand, !flat && logicalHeight >= 140)
+            views.setTextViewText(R.id.widget_weekday, if (card) relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty() else "")
+            views.setTextViewText(R.id.widget_month, date?.format(DateTimeFormatter.ofPattern(if (card) "MMM" else "MMMM", Locale.GERMAN))?.let { if (card) it.uppercase(Locale.GERMAN) else it } ?: "")
+            show(R.id.widget_weekday, card); show(R.id.widget_month, card || smallDate && relative !in listOf("Heute", "Morgen"))
+            show(R.id.widget_brand, card || !flat && logicalHeight >= 140)
             show(R.id.widget_date, event != null); show(R.id.widget_separator, false)
             val title = event?.title ?: if (snapshot == null) "H₂O öffnen, um Termine zu laden." else "Keine kommenden Termine"
             views.setTextViewText(R.id.widget_title, title)
-            size(R.id.widget_title, if (flat) 12f else if (large || width >= 450 && height >= 250) 24f else if (roomy) 16f else if (compact) 12f else 15f)
+            size(R.id.widget_title, if (flat) 12f else if (width >= 450 && height >= 250) 24f else if (card) (if (fontScale > 1.15f) 13f else 16f) else if (compact) 12f else 15f)
             views.setInt(R.id.widget_title, "setMaxLines", if (event == null && !flat) 3 else if (logicalHeight >= 155) 2 else 1)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) } ?: ""
             views.setTextViewText(R.id.widget_time, time)
             views.setTextViewText(R.id.widget_location, "$time · ${event?.location.orEmpty()}")
             views.setTextViewText(R.id.widget_clothing, event?.clothing.orEmpty())
-            show(R.id.widget_location, event != null && !flat && !compact && logicalHeight >= 140)
-            show(R.id.widget_clothing, event != null && !flat && !compact && logicalHeight >= 155 && event.clothing.isNotEmpty())
+            show(R.id.widget_location, event != null && (card || !flat && !compact && logicalHeight >= 140))
+            show(R.id.widget_clothing, event != null && (card || !flat && !compact && logicalHeight >= 155) && event.clothing.isNotEmpty())
+            if (card) {
+                size(R.id.widget_location, if (fontScale > 1.15f) 10f else 11f)
+                size(R.id.widget_clothing, if (fontScale > 1.15f) 9f else 10f)
+                views.setInt(R.id.widget_location, "setMaxLines", if (large && width >= 450) 1 else 2)
+            }
             val prefs = WidgetStore.prefs(context)
             val job = runCatching { prefs.getString("job", null)?.let(::JSONObject)?.takeIf { it.optString("eventId") == event?.id } }.getOrNull()
             val timedOut = job != null && now - job.optLong("startedAt") >= 30000
@@ -120,17 +127,24 @@ open class NextEventWidget : AppWidgetProvider() {
             val message = prefs.getString("message", null)
             val canReply = event != null && event.canReply && WidgetEvent.validID(event.id) && event.start > now && snapshot?.stale == false && prefs.getLong("expires", 0) > now && prefs.getString("grant", null) != null
             val choosing = event?.status == "open" || prefs.getString("editing", null) == event?.id
-            val actions = roomy && canReply && choosing && job == null && message == null
+            val actions = (roomy || large) && canReply && choosing && job == null && message == null
             val status = when (event?.status) { "yes" -> "✓ Dabei"; "excused" -> "× Entschuldigt"; "maybe" -> "? Unsicher"; else -> if (compact || flat) "Offen" else "Rückmeldung offen" }
-            val statusText = when { saving -> "Wird gespeichert …"; retry -> "Unbestätigt · Erneut versuchen"; message != null -> message; else -> status }
+            val statusText = when { saving -> "Wird gespeichert …"; retry -> "Unbestätigt · Erneut versuchen"; message != null -> message; card && event?.status in listOf("yes", "excused", "maybe") -> "$status\nGespeichert"; else -> status }
             val statusColor = when (event?.status) { "yes" -> 0xFF294835; "excused" -> 0xFF512B35; "maybe" -> 0xFF513F25; else -> 0xFF253240 }.toInt()
-            views.setInt(R.id.widget_footer, "setBackgroundColor", statusColor)
+            if (card) {
+                val background = if (job != null || message != null) R.drawable.widget_panel_background else when (event?.status) {
+                    "yes" -> R.drawable.widget_button_yes; "excused" -> R.drawable.widget_button_excused; "maybe" -> R.drawable.widget_button_maybe; else -> R.drawable.widget_panel_background
+                }
+                views.setInt(R.id.widget_footer, "setBackgroundResource", background)
+                views.setInt(R.id.widget_title, "setMaxLines", if (actions || large && width >= 450) 2 else 3)
+                show(R.id.widget_sidebar, event != null && !actions)
+            } else views.setInt(R.id.widget_footer, "setBackgroundColor", statusColor)
             views.setTextViewText(R.id.widget_status, statusText)
-            size(R.id.widget_status, if (flat) 10f else 12f)
+            size(R.id.widget_status, if (flat) 10f else if (card) 11f else 12f)
             views.setTextColor(R.id.widget_status, 0xFFF7F8FA.toInt())
             show(R.id.widget_footer, event != null && !actions)
             show(R.id.widget_status_icon, false)
-            show(R.id.widget_time, event != null && (flat || compact || logicalHeight < 140) && !retry && !saving)
+            show(R.id.widget_time, event != null && !card && (flat || compact || logicalHeight < 140) && !retry && !saving)
             show(R.id.widget_note, snapshot?.stale == true && event != null)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
             val open = Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData(android.net.Uri.parse(PortalLinks.HOME + "?nativePage=terms" + if (event != null && WidgetEvent.validID(event.id)) "&event=${event.id}" else ""))
@@ -139,9 +153,11 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_footer, openPending)
             if (!flat) {
                 show(R.id.widget_actions, actions)
-                show(R.id.widget_edit, roomy && canReply && !choosing && job == null && message == null)
+                show(R.id.widget_edit, event != null && job == null && message == null && (if (card) !actions else roomy && canReply && !choosing))
+                views.setTextViewText(R.id.widget_edit, if (canReply) "Ändern" else "Öffnen")
+                views.setOnClickPendingIntent(R.id.widget_edit, openPending)
                 views.setInt(R.id.widget_footer, "setMinimumHeight", ((if (roomy) 44 else 32) * context.resources.displayMetrics.density).toInt())
-                show(R.id.widget_hint, actions && logicalHeight >= 190)
+                show(R.id.widget_hint, !card && actions && logicalHeight >= 190)
                 views.setTextViewText(R.id.widget_hint, if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen")
                 show(R.id.widget_following, large && snapshot?.following?.isNotEmpty() == true)
                 for ((index, id) in listOf(R.id.widget_following_one, R.id.widget_following_two).withIndex()) {
@@ -158,7 +174,8 @@ open class NextEventWidget : AppWidgetProvider() {
                     if (retry) views.setOnClickPendingIntent(R.id.widget_footer, WidgetReplyReceiver.pending(context, event, "retry"))
                 }
             }
-            views.setContentDescription(R.id.widget_root, if (event != null) listOf(day, event.title, time, event.location, event.clothing, statusText, if (snapshot?.stale == true) "Gespeicherter Stand" else "").filter { it.isNotEmpty() }.joinToString(". ") else title)
+            val spokenDay = if (card) date?.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy", Locale.GERMAN)).orEmpty() else day
+            views.setContentDescription(R.id.widget_root, if (event != null) listOf(spokenDay, event.title, time, event.location, event.clothing, statusText, if (snapshot?.stale == true) "Gespeicherter Stand" else "").filter { it.isNotEmpty() }.joinToString(". ") else title)
             return views
         }
     }
