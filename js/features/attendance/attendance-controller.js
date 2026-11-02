@@ -80,14 +80,13 @@ function renderMembers() {
     (sessionType === "Einsatz" && chosenRole === "Anwesend");
   const renderMemberButton = member => {
     const recorded = recordedNames.has(nameForStorage(member)) || recordedNames.has(nameForTile(member));
-    if(recorded) return window.AttendanceSmart?.recordedCard(member,current)||"";
     const selected = multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId;
     const organizationSelected = selected && chosenRole === "Orga";
     const extra=["Sonderprobe","Fitness"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
     const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
-    return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""} "><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
+    return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""} ${recorded?"recorded":""}" ${recorded?'aria-hidden="true" inert':""}><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
   };
-  const visibleMembers=eligibleMembers.filter(member=>window.AttendanceSmart?window.AttendanceSmart.matches(member,recordedNames):!recordedNames.has(nameForStorage(member))&&!recordedNames.has(nameForTile(member)));
+  const visibleMembers=eligibleMembers;
   const activeMembers=visibleMembers.filter(member=>!member.ageDepartment),ageMembers=visibleMembers.filter(member=>member.ageDepartment);
   const legendItems=sessionType==="Einsatz"
     ? `<span><b class="legend-a">✓</b>Anwesend</span>`
@@ -107,11 +106,11 @@ function renderMembers() {
   }
   if(headingLegend){headingLegend.innerHTML=`<strong>Legende</strong>${legendItems}`;headingLegend.querySelectorAll(".legend-a").forEach(item=>item.textContent="✓");}
   const sections = [
-    `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
-    ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
+    `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${availableMembers.filter(member=>!member.ageDepartment).length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
+    ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${availableMembers.filter(member=>member.ageDepartment).length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
   byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
-  window.AttendanceSmart?.refresh(visibleMembers.length);
+  window.AttendanceSmart?.refresh(availableMembers.length);
   requestAnimationFrame(fitMemberLastNames);
   byId("memberCount").textContent = multiMode ? `${chosenMemberIds.size} ausgewählt · ${availableMembers.length} offen` : `${availableMembers.length} offen`;
 }
@@ -218,7 +217,7 @@ function todayEntries() {
 function renderEntries() {
   const allCurrent = todayEntries();
   const committee=sessionType==="Ausschuss Sitzung"||allCurrent[0]?.sessionType==="Ausschuss Sitzung";
-  const exportMembers=(committee?members.filter(member=>member.committeeMember):members).filter(member=>sessionType==="Fitness"||member.fitnessTrainer!==true);
+  const exportMembers=(committee?members.filter(member=>member.committeeMember):members).filter(member=>member.fitnessTrainer!==true);
   const allowedNames=new Set(exportMembers.flatMap(member=>[nameForStorage(member),nameForTile(member)]));
   const current=committee?allCurrent.filter(entry=>allowedNames.has(entry.storedName)||allowedNames.has(entry.displayName)):allCurrent;
   byId("entries").innerHTML = current.map(entry => `
@@ -259,7 +258,7 @@ function renderAdmin() {
   const activeMembers = members.filter(member => !member.ageDepartment);
   const ageMembers = members.filter(member => member.ageDepartment);
   if(window.Usability?.hasMemberDraft())return;
-  byId("memberAdmin").innerHTML = `<section class="admin-department admin-department-active"><div class="admin-department-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div>${activeMembers.map((member, index) => renderMemberCard(member, index)).join("")}</section>${ageMembers.length ? `<section class="admin-department admin-department-age"><div class="admin-department-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div>${ageMembers.map((member, index) => renderMemberCard(member, activeMembers.length + index)).join("")}</section>` : ""}`;
+  byId("memberAdmin").innerHTML = `<section class="admin-department admin-department-active"><div class="admin-department-heading"><h4>Einsatzabteilung</h4><span>${availableMembers.filter(member=>!member.ageDepartment).length}</span></div>${activeMembers.map((member, index) => renderMemberCard(member, index)).join("")}</section>${ageMembers.length ? `<section class="admin-department admin-department-age"><div class="admin-department-heading"><h4>Alterskameraden</h4><span>${availableMembers.filter(member=>member.ageDepartment).length}</span></div>${ageMembers.map((member, index) => renderMemberCard(member, activeMembers.length + index)).join("")}</section>` : ""}`;
   window.Usability?.members();
 }
 function saveAgeDepartmentAttendance(member) {

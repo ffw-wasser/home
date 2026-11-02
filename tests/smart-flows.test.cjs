@@ -60,3 +60,8 @@ test('Unbekannte private Einladungsliste verhindert falschen Export',async()=>{c
 test('CSV und PDF behandeln nicht eingeladene Mitglieder als Betrifft nicht, explizites Fehlt bleibt erhalten',async()=>{
  const f=completionApp('Sonderprobe');f.c.window.PortalAdmin={attendanceAudience:()=>({recipientIds:['a','b']})};f.c.window.SmartWorkflow.confirm=async()=>true;f.c.todayEntries=()=>[{storedName:'Test, A',status:'Anwesend',sessionType:'Sonderprobe'},{storedName:'Test, B',status:'Fehlt',sessionType:'Sonderprobe',date:'2026-10-09',time:''}];f.c.ensureCurrentSessionId=()=> 'session-test';f.c.saveEntries=()=>{};f.c.csvCell=x=>String(x??'');f.c.probePdfBlob=(rows,type,counts)=>{assert.equal(rows.find(x=>x.name==='Alter, C').status,'Betrifft nicht');assert.equal(rows.find(x=>x.name==='Test, B').status,'Fehlt');assert.equal(counts.missing,1);assert.equal(counts.notApplicable,1);return {};};f.c.buildTerminPackage=async options=>{assert.match(options.csvContent,/Alter, C;Sonderprobe;Betrifft nicht/);throw Error('captured');};await assert.rejects(f.c.window.closeDay(),/captured/);
 });
+
+test('Fitness-Abschluss zählt Fitnesstrainer nicht als fehlende Teilnehmer',async()=>{
+ const a=completionApp('Fitness');a.c.members.push({id:'trainer',firstName:'Trainer',lastName:'Beispiel',fitnessTrainer:true});
+ await a.c.window.closeDay();assert.deepEqual(Array.from(a.getPreview()[3].people),['Test, B','Alter, C']);
+});

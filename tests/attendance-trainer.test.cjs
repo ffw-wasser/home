@@ -31,3 +31,14 @@ test('Old selections cannot write trainer attendance, ordinary members can still
  c.pendingMemberStatuses.set('member','Anwesend');c.renderMembers=()=>{};c.commitPendingMemberStatuses();
  assert.equal(c.entries.length,1);assert.equal(c.entries[0].storedName,'member');assert.equal(c.pendingMemberStatuses.size,0);
 });
+
+test('Saved members keep an inaccessible grid slot; deleting attendance restores their tile',()=>{
+ for(const smart of [true,false]){
+  const {c,nodes}=fixture('Unterricht',smart);c.members.push({id:'other',lastName:'Weitere',firstName:'Person'});
+  c.todayEntries=()=>[{storedName:'member',status:'Anwesend'}];c.renderMembers();
+  assert.match(nodes.get('members').innerHTML,/class="member-direct-card  recorded" aria-hidden="true" inert/);
+  assert.ok(nodes.get('members').innerHTML.indexOf('data-quick-member="member"')<nodes.get('members').innerHTML.indexOf('data-quick-member="other"'));
+  assert.match(nodes.get('memberCount').textContent,/1 offen$/);
+  c.todayEntries=()=>[];c.renderMembers();assert.doesNotMatch(nodes.get('members').innerHTML,/aria-hidden="true" inert/);assert.match(nodes.get('memberCount').textContent,/2 offen$/);
+ }
+});

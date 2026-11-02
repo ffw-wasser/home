@@ -8,6 +8,11 @@ Terminart. Sie zählen dort nicht als offene Mitglieder und können auch nicht �
 eine ältere Auswahl oder einen fortgesetzten Entwurf übernommen werden. Die
 Trainerrolle und ihre Fitnessgruppen-Zuordnung bleiben in der Verwaltung erhalten.
 
+Übernommene Teilnehmer bleiben als unsichtbare, nicht bedienbare Rasterplätze in
+der Auswahl. Die anderen Kacheln rücken nicht nach. Nur markierte, noch nicht
+übernommene Personen bleiben sichtbar. Nach dem Löschen eines erfassten Eintrags
+erscheint die Person wieder an ihrer ursprünglichen Stelle.
+
 Eine bereits gespeicherte Gruppenliste erhält die leere Fitnessgruppe ergänzend.
 Produktive Personen werden ausschließlich in der geschützten Verwaltung zugeordnet,
 nicht im öffentlichen Quellcode vorgemerkt.
