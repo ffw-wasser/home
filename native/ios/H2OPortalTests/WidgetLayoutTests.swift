@@ -7,10 +7,10 @@ import UIKit
 
 final class WidgetLayoutTests: XCTestCase {
     @MainActor func testRenderSmallAndMediumEventLayouts() throws {
-        let now = ISO8601DateFormatter().date(from: "2026-10-31T12:00:00Z")!
+        let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         let start = ISO8601DateFormatter().date(from: "2026-11-02T18:30:00Z")!
         var cases: [(String, H2OWidgetEvent?, Bool)] = [
-            ("today-excused", H2OWidgetEvent(title: "Probe", start: now.addingTimeInterval(3600), end: now.addingTimeInterval(10800), location: "GH Wasser", clothing: "Einsatzkleidung", status: "excused", allDay: false), false),
+            ("today-excused", H2OWidgetEvent(title: "Probe", start: start, end: start.addingTimeInterval(7200), location: "GH Wasser", clothing: "Einsatzkleidung", status: "excused", allDay: false), false),
             ("today", H2OWidgetEvent(title: "Löschangriff", start: now.addingTimeInterval(3600), end: now.addingTimeInterval(10800), location: "GH Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false), false),
             ("tomorrow", H2OWidgetEvent(title: "Löschangriff", start: now.addingTimeInterval(86400), end: now.addingTimeInterval(93600), location: "GH Wasser", clothing: "Einsatzkleidung", status: "open", allDay: false), false),
             ("probe", H2OWidgetEvent(title: "Löschangriff", start: start, end: start.addingTimeInterval(7200), location: "GH Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false), false),
@@ -33,7 +33,7 @@ final class WidgetLayoutTests: XCTestCase {
         ] {
             for (scenario, event, stale) in cases {
                 var current = event
-                current?.id = String(repeating: "a", count: 43); current?.version = 0; current?.canReply = scenario != "today-excused"; current?.reminded = true
+                current?.id = String(repeating: "a", count: 43); current?.version = 0; current?.canReply = scenario != "today-excused"; current?.reminded = scenario != "tomorrow"
                 let following = event.map { e in [H2OWidgetEvent(title: "Funkübung", start: e.start.addingTimeInterval(86400), end: e.end.addingTimeInterval(86400), location: "Testort", clothing: "Tagesdienst", status: "open", allDay: false, id: String(repeating: "b", count: 43)), H2OWidgetEvent(title: "Unterricht", start: e.start.addingTimeInterval(172800), end: e.end.addingTimeInterval(172800), location: "Testort", clothing: "Tagesdienst", status: "maybe", allDay: false, id: String(repeating: "c", count: 43))] } ?? []
                 var snapshot = H2OWidgetSnapshot(updatedAt: now, event: current, stale: stale, following: following)
                 if scenario == "reply-edit" { snapshot.editing = current?.id }
