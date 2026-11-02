@@ -66,7 +66,8 @@ struct NextEventView: View {
         let longestWord = event.title.split(whereSeparator: { $0.isWhitespace }).map {
             String($0).size(withAttributes: [.font: font]).width
         }.max() ?? 0
-        let fittingSize = small && longestWord > availableWidth ? max(10, titleSize * availableWidth / longestWord) : titleSize
+        let usableWidth = max(1, availableWidth - 2)
+        let fittingSize = small && longestWord > usableWidth ? max(10, titleSize * usableWidth / longestWord) : titleSize
         return VStack(alignment: .leading, spacing: spacing) {
             Text(event.title).font(.system(size: fittingSize, weight: .semibold))
                 .lineLimit(large || small ? 3 : 2).fixedSize(horizontal: false, vertical: true)
@@ -75,7 +76,7 @@ struct NextEventView: View {
             if !event.clothing.isEmpty {
                 Text(event.clothing).font(.system(size: detailSize - 1)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.8)
             }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(width: max(1, availableWidth), alignment: .leading)
     }
     private func eventCard(_ event: H2OWidgetEvent, width: CGFloat) -> some View {
         HStack(spacing: small ? 7 : 11) {

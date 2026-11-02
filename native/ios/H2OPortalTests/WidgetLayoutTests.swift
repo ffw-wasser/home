@@ -101,6 +101,24 @@ final class WidgetLayoutTests: XCTestCase {
                 let image: UIImage = try XCTUnwrap(renderer.uiImage)
                 XCTAssertEqual(image.size.width, width)
                 XCTAssertEqual(image.size.height, height)
+                if event != nil {
+                    let cg = try XCTUnwrap(image.cgImage)
+                    let stride = cg.width * 4
+                    var pixels = [UInt8](repeating: 0, count: stride * cg.height)
+                    try pixels.withUnsafeMutableBytes { bytes in
+                        let context = try XCTUnwrap(CGContext(data: bytes.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8, bytesPerRow: stride, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                        context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                    }
+                    var paper = 0
+                    for y in 0..<cg.height {
+                        for x in 0..<(cg.width / 4) {
+                            let i = y * stride + x * 4
+                            let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
+                            if r >= 235 && g >= 230 && b >= 220 && r - g >= 2 && g - b >= 4 { paper += 1 }
+                        }
+                    }
+                    XCTAssertGreaterThan(paper, 500, "Calendar paper must remain visible on the left in \(name)/\(scenario); long text must not push it out of bounds")
+                }
                 let attachment = XCTAttachment(image: image)
                 attachment.name = "widget-\(name)-\(scenario)"
                 attachment.lifetime = .keepAlways

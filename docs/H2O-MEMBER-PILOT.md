@@ -181,3 +181,5 @@ Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften.
 Im kleinen Widget wird die Schrift zusätzlich an der Breite des längsten Wortes ausgerichtet, damit größere Ausgangsschrift keine unnötigen Wortzerlegungen verursacht. Der Wechseltest verwendet einen dunklen Host ohne App-Safe-Area, damit leere Randflächen nicht als Inhalt zählen.
 
 Bei einem Versionskonflikt liefert der Dienst ausschließlich den eigenen aktuellen Antwortstatus und dessen Version. Das Widget übernimmt diesen Stand und zeigt „Stand aktualisiert – erneut wählen“ mit wieder freier Auswahl. Es schreibt nicht selbstständig erneut. Zugang, Kalenderalter, Fristen, Empfängerrechte und Vorgangsnummer bleiben unverändert. Abgelaufene Zugänge erfordern weiterhin H₂O. Android hängt direkt aufeinanderfolgende ausdrückliche Antworten an den vorherigen Auftrag an, statt sie am noch auslaufenden Auftrag zu verwerfen; nach 30 Sekunden erfolgt kein stiller Versand.
+
+Die Textfläche des Terminblocks ist auch bei langen Hinweisen ausdrücklich auf die verfügbare Breite begrenzt. Jeder statische Bildtest prüft zusätzlich, dass die helle Kalenderkachel links sichtbar bleibt.
