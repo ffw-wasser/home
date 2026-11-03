@@ -263,12 +263,16 @@ function ensureArchiveCorrectionDialog(){
 }
 function updateCorrectionRoleVisibility(){
   const present=byId("correctionStatus").value==="Anwesend";
-  byId("correctionRole").hidden=!present;byId("correctionRoleLabel").hidden=!present;
+  const showRole=present&&archiveCorrectionUsesRoles();
+  byId("correctionRole").hidden=!showRole;byId("correctionRoleLabel").hidden=!showRole;
   if(!present)byId("correctionRole").value="";
 }
 function correctionMemberForRow(row){
   const rowName=String(row?.name||"").trim();
   return members.find(member=>nameForStorage(member)===rowName||nameForTile(member)===rowName)||null;
+}
+function archiveCorrectionUsesRoles(rows=archiveCorrectionState?.rows||[]){
+  return rows.some(row=>!["","Anwesend","Orga"].includes(String(row.role||"").trim()));
 }
 function correctionRolesForRow(row){
   const member=correctionMemberForRow(row);
@@ -284,7 +288,7 @@ function loadSelectedCorrectionRow(){
   byId("correctionName").value=row.name||"";
   const roleSelect=byId("correctionRole");
   const isGeneral=(archiveCorrectionState.item.sessionType||archiveCorrectionState.rows[0]?.sessionType)==="Allgemeine Probe";
-  const allowedRoles=isGeneral?correctionRolesForRow(row):[row.role||""];
+  const allowedRoles=isGeneral&&archiveCorrectionUsesRoles()?correctionRolesForRow(row):[row.role||""];
   roleSelect.innerHTML='<option value="">Bitte Funktion auswählen</option>'+allowedRoles.map(role=>`<option value="${escapeHtml(role)}">${escapeHtml(role)}</option>`).join("");
   byId("correctionStatus").value=row.status||"Fehlt";
   roleSelect.value=allowedRoles.includes(row.role)?row.role:"";
@@ -339,7 +343,7 @@ function appendArchiveCorrectionPerson(row,index){
   for(const value of types){const option=document.createElement("option");option.value=value;option.textContent=value;status.append(option);}
   status.value=types.includes(row.status)?row.status:"Fehlt";statusLabel.append(status);
   const roleLabel=document.createElement("label");roleLabel.textContent="Funktion / Status";const role=document.createElement("input");role.type="text";role.className="text-input";role.maxLength=120;role.dataset.correctionField="role";role.value=row.role||"";roleLabel.append(role);
-  const update=()=>{roleLabel.hidden=status.value!=="Anwesend"||archiveCorrectionState?.item.sessionType!=="Allgemeine Probe";card.dataset.status=status.value;state.textContent=status.value;filterArchiveCorrectionRows();};
+  const update=()=>{roleLabel.hidden=status.value!=="Anwesend"||archiveCorrectionState?.item.sessionType!=="Allgemeine Probe"||!archiveCorrectionUsesRoles();card.dataset.status=status.value;state.textContent=status.value;filterArchiveCorrectionRows();};
   status.onchange=update;name.oninput=filterArchiveCorrectionRows;
   fields.append(nameLabel,statusLabel,roleLabel);card.append(top,fields);container.append(card);update();
 }
@@ -413,7 +417,7 @@ async function saveArchiveCorrectionStep2(){
     const fieldRole=card.querySelector('[data-correction-field="role"]').value.trim();
     const role=status==="Anwesend"?(item.sessionType==="Allgemeine Probe"||original.status==="Anwesend"?fieldRole:(fieldRole||({Sonderprobe:"Anwesend",Unterricht:"Unterricht","Ausschuss Sitzung":"Ausschuss Sitzung"}[item.sessionType]||""))):"";
     if(!name)return showToast("Bitte für alle Personen einen Namen eintragen.","error");
-    if(status==="Anwesend"&&item.sessionType==="Allgemeine Probe"&&!role&&correctionRolesForRow({...original,name}).length)return showToast("Bitte die Funktion von "+name+" ergänzen.","error");
+    if(status==="Anwesend"&&item.sessionType==="Allgemeine Probe"&&archiveCorrectionUsesRoles()&&!role&&correctionRolesForRow({...original,name}).length)return showToast("Bitte die Funktion von "+name+" ergänzen.","error");
     rows.push({...original,name,status,role,date:correctedDate,topic,sessionType:item.sessionType});
   }
   if(!rows.length)return showToast("Der Bericht benötigt mindestens eine Person.","error");
@@ -512,7 +516,7 @@ async function saveArchiveCorrection(){
   const correctedDate=byId("correctionDate")?.value||row.date;
   if(!correctedDate)return showToast("Bitte ein gültiges Termindatum auswählen.","error");
   const isGeneral=(item.sessionType||rows[0]?.sessionType)==="Allgemeine Probe";
-  if(status==="Anwesend"&&isGeneral&&!role&&correctionRolesForRow(row).length)return showToast("Bitte eine für diese Person freigegebene Funktion auswählen.","error");
+  if(status==="Anwesend"&&isGeneral&&archiveCorrectionUsesRoles(rows)&&!role&&correctionRolesForRow(row).length)return showToast("Bitte eine für diese Person freigegebene Funktion auswählen.","error");
   const button=byId("saveCorrectionButton");if(button.disabled)return;button.disabled=true;
   try{
     const original={name:row.name,status:row.status,role:row.role,date:row.date};

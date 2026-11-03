@@ -72,7 +72,7 @@
     const container=el('members');container.replaceChildren();el('directory').replaceChildren();cardNodes.clear();const query=el('search').value.toLocaleLowerCase('de-DE');
     for(const p of people.filter(p=>p.id===menuMemberId||(!stagedOnly||cardDrafts.has(p.id))&&p.name.toLocaleLowerCase('de-DE').includes(query))){
       const card=document.createElement('article');card.className='dr-member-card';card.dataset.drCard=p.id;card.tabIndex=-1;
-      const tile=document.createElement('button');tile.type='button';tile.className='dr-name-card';tile.dataset.drMember=p.id;tile.dataset.drCardAction='menu';const lastName=document.createElement('strong');lastName.className='dr-name-last';lastName.textContent=p.lastName;const firstName=document.createElement('span');firstName.className='dr-name-first';firstName.textContent=p.firstName;tile.append(lastName,firstName);el('directory').append(tile);
+      const tile=document.createElement('button');tile.type='button';tile.className='dr-name-card';tile.dataset.drMember=p.id;tile.dataset.drCardAction='menu';const lastName=document.createElement('strong');lastName.className='dr-name-last';lastName.textContent=p.lastName;const firstName=document.createElement('span');firstName.className='dr-name-first';firstName.textContent=p.firstName;const tileName=document.createElement('span');tileName.className='dr-name-text';tileName.append(lastName,firstName);const tileBalance=document.createElement('span');tileBalance.className='dr-name-balance';tile.append(tileName,tileBalance);el('directory').append(tile);
       const heading=document.createElement('div');heading.className='dr-member-heading';
       const title=document.createElement('h3');title.textContent=p.name;
       const more=document.createElement('button');more.type='button';more.className='dr-member-more';more.dataset.drMember=p.id;more.dataset.drCardAction='account';more.textContent='Konto';more.setAttribute('aria-label','Konto von '+p.name);heading.append(title,more);
@@ -97,16 +97,17 @@
       const status=document.createElement('p');status.className='dr-member-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
       const retry=document.createElement('button');retry.type='button';retry.className='dr-member-retry';retry.dataset.drMember=p.id;retry.dataset.drCardAction='retry';retry.textContent='Speicherung erneut prüfen';retry.hidden=true;
       const save=document.createElement('button');save.type='button';save.className='dr-primary dr-member-save';save.dataset.drMember=p.id;save.dataset.drCardAction='save';save.textContent='OK · Diese Karte speichern';
-      card.append(heading,label,balance,credit,points,bonus,progress,lock,actions,redeemActions,draftLabel,draftGlasses,save,undo,discard,hint,status,retry);container.append(card);cardNodes.set(p.id,{card,tile,balance,credit,points,redeemBeer,redeemWine,redeemActions,deposit,bonus,progress,draftLabel,draftGlasses,save,undo,discard,hint,lock,add,wine,pay,more,status,retry});
+      card.append(heading,label,balance,credit,points,bonus,progress,lock,actions,redeemActions,draftLabel,draftGlasses,save,undo,discard,hint,status,retry);container.append(card);cardNodes.set(p.id,{card,tile,tileBalance,balance,credit,points,redeemBeer,redeemWine,redeemActions,deposit,bonus,progress,draftLabel,draftGlasses,save,undo,discard,hint,lock,add,wine,pay,more,status,retry});
     }
     if(!container.children.length){const p=document.createElement('p');p.textContent=stagedOnly?'Keine passenden Vormerkungen.':people.length?'Kein Mitglied gefunden. Suche nach Vor- oder Nachname.':loaded?'Noch keine Mitglieder vorhanden. Namen unter Einstellungen → Mitglieder anlegen.':'Mitglieder werden aus OneDrive geladen.';container.append(p);const empty=document.createElement('p');empty.textContent=p.textContent;el('directory').append(empty);}
     renderCards();
   }
   function renderCards(){
     for(const [id,n] of cardNodes){
-      n.card.hidden=menuMemberId!==id;n.tile.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length);n.tile.dataset.draft=String(cardDrafts.has(id));n.tile.setAttribute('aria-label',name(id)+(cardDrafts.has(id)?' · Noch nicht gespeicherte Einträge':' · Eingabemenü öffnen'));
+      n.card.hidden=menuMemberId!==id;n.tile.disabled=!loaded||busy||Boolean(pending)||Boolean(cardQueue.length);n.tile.dataset.draft=String(cardDrafts.has(id));n.tile.setAttribute('aria-label',name(id)+(rankingReady?' · Aktuelle Schulden: '+euro(M.totals(overviewAccount(id)).balance):' · Kontostand noch nicht geladen')+(cardDrafts.has(id)?' · Noch nicht gespeicherte Einträge':' · Eingabemenü öffnen'));
       const value=S.cached(id),unlocked=cardUnlocked(id,value),state=M.ledger?.(value),balance=state?.balance??M.totals(value).balance,policy=S.cachedRewards?.(),reward=policy&&global.H2OFeatures?.rewards!==false?M.rewardState(value,policy,state):null,credit=(reward||M.rewardState?.(value,policy,state))?.prepaid||0;
       n.card.hidden=menuMemberId!==id||Boolean(value.pin&&!unlocked);
+      n.tileBalance.textContent=rankingReady?euro(M.totals(overviewAccount(id)).balance):'–';n.tileBalance.setAttribute('aria-label',rankingReady?'Aktuelle Schulden: '+n.tileBalance.textContent:'Kontostand noch nicht geladen');
       n.balance.textContent=euro(balance);n.card.dataset.paid=String(balance===0);n.credit.hidden=!credit;n.credit.textContent=credit?'Eingezahlter Betrag: '+euro(credit):'';
       n.bonus.hidden=n.progress.hidden=!reward;if(reward){n.bonus.textContent=global.DrinksRewards?.remainingText(reward,policy)||'Noch '+euro(reward.needed)+' bezahlen bis zu den nächsten Treuepunkten.';n.progress.max=reward.threshold;n.progress.value=Math.min(reward.progress,reward.threshold);}
       n.points.hidden=!reward;n.points.textContent=reward?'⭐ '+M.pointText(reward.pointUnits)+(reward.pointUnits===M.POINT_UNIT?' Treuepunkt':' Treuepunkte'):'';
@@ -195,14 +196,18 @@
   }
   async function loadRanking(){
     if(!loaded||rankingLoading)return;const number=openNumber;rankingLoading=true;renderRanking();
-    try{const accounts=await S.list(people.map(p=>p.id),{replaceCache:false});if(number!==openNumber)return;rankingAccounts=new Map(accounts.map(a=>[a.memberId,a]));rankingReady=true;renderRanking();}
-    catch{if(number===openNumber){rankingReady=false;el('ranking').textContent='Offene Deckel konnten nicht geladen werden. Bitte aktualisieren.';}}
+    try{const accounts=await S.list(people.map(p=>p.id),{replaceCache:false});if(number!==openNumber)return;rankingAccounts=new Map(accounts.map(a=>[a.memberId,a]));rankingReady=true;renderCards();renderRanking();}
+    catch{if(number===openNumber){rankingReady=false;renderCards();el('ranking').textContent='Offene Deckel konnten nicht geladen werden. Bitte aktualisieren.';}}
     finally{rankingLoading=false;}
+  }
+  function overviewAccount(id){
+    const fresh=S.cached(id),snapshot=rankingAccounts?.get(id);
+    return !snapshot||fresh.bookings.length>=snapshot.bookings.length?fresh:snapshot;
   }
   function renderRanking(){
     const list=el('ranking');list.replaceChildren();
     if(!loaded||!rankingReady){const p=document.createElement('li');p.textContent=rankingLoading?'Offene Deckel werden geladen …':'Deckel noch nicht geladen. Bitte aktualisieren.';list.append(p);return;}
-    const ranked=people.map(p=>({...p,balance:M.totals((()=>{const fresh=S.cached(p.id),snapshot=rankingAccounts?.get(p.id);return !snapshot||fresh.bookings.length>=snapshot.bookings.length?fresh:snapshot;})()).balance})).filter(p=>p.balance>0).sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name,'de')).slice(0,3);
+    const ranked=people.map(p=>({...p,balance:M.totals(overviewAccount(p.id)).balance})).filter(p=>p.balance>0).sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name,'de')).slice(0,3);
     if(!ranked.length){const p=document.createElement('li');p.textContent='Alle Deckel bezahlt. Prost! 🍻';list.append(p);return;}
     ranked.forEach((p,index)=>{
       const row=document.createElement('li');row.className='dr-rank-row';
