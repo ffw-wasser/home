@@ -28,6 +28,7 @@ function fixture(type='Sonderprobe'){
     persistArchiveCorrection:async(...args)=>captured.push(args),
     document:{createElement:()=>({})}
   });
+  vm.runInContext(source.slice(source.indexOf('function archiveCorrectionUsesRoles('),source.indexOf('function correctionRolesForRow(')),c);
   vm.runInContext(source.slice(start,end),c);
   c.archiveCorrectionWorkspace=()=>({scrollIntoView(){}});
   c.appendArchiveCorrectionPerson=()=>{};
@@ -153,4 +154,23 @@ test('Speicherhinweis für noch zu ersetzende Dateien bleibt nach Rückkehr zur 
   await f.c.saveArchiveCorrectionStep2();
   assert.deepEqual(f.calls.filter(c=>c[0]==='toast').at(-1),['toast','CSV-Ausgabe nicht abgeschlossen','error']);
   assert.equal(f.c.archiveCorrectionState,null);
+});
+
+test('Direkt abgeschlossene allgemeine Probe erlaubt Anwesenheitskorrektur ohne Funktion trotz Qualifikation',async()=>{
+  const f=fixture('Allgemeine Probe');f.rows[0].role='';
+  f.c.correctionRolesForRow=()=>['Maschinist'];
+  f.c.correctArchiveItem('original-archive-id');
+  f.get('archiveCorrectionList').children=[editableCard(0,'Mustermann Erika','Anwesend'),editableCard(1,'Muster Max','Anwesend')];
+  await f.c.saveArchiveCorrectionStep2();
+  assert.equal(f.captured.length,1);
+  assert.equal(f.captured[0][1][1].status,'Anwesend');
+  assert.equal(f.captured[0][1][1].role,'');
+});
+test('Probe mit Funktionsverteilung verlangt weiterhin die Funktion einer qualifizierten Person',async()=>{
+  const f=fixture('Allgemeine Probe');f.c.correctionRolesForRow=()=>['Maschinist'];
+  f.c.correctArchiveItem('original-archive-id');
+  f.get('archiveCorrectionList').children=[editableCard(0,'Mustermann Erika','Anwesend','Maschinist'),editableCard(1,'Muster Max','Anwesend')];
+  await f.c.saveArchiveCorrectionStep2();
+  assert.equal(f.captured.length,0);
+  assert.ok(f.calls.some(call=>call[0]==='toast'&&call[1].includes('Funktion')));
 });

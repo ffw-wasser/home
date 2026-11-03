@@ -24,8 +24,9 @@ async function fixture(options={}){
   if(options.balance)accounts.set('a',M.append(accounts.get('a'),{id:'drink-fixture-001',type:'drinks',count:5,cents:750,createdAt:'2026-10-09T11:00:00Z'}));
   if(options.prepaid){accounts.set('a',M.appendWithReward(accounts.get('a'),{id:'fixture-prepaid-payment',type:'payment',cents:options.prepaid,method:'cash',confirmation:'member',prepay:true,createdAt:'2026-10-09T10:00:00Z'},options.policy));}
   const clone=x=>JSON.parse(JSON.stringify(x));for(const [id,a] of accounts)cache.set(id,clone(a));
+  if(options.snapshotOnly)cache.set('a',M.empty('a'));
   let fail=null,failMember='',loseReply=false,gate=null,readCount=0,allowDiscard=true;const writes=[];
-  const S={cached:id=>clone(cache.get(id)||M.empty(id)),rewards:async()=>options.policy||null,cachedRewards:()=>options.policy||null,list:async()=>[],
+  const S={cached:id=>clone(cache.get(id)||M.empty(id)),rewards:async()=>options.policy||null,cachedRewards:()=>options.policy||null,list:async()=>{if(options.rankingFailure)throw Error('Offline');return options.snapshotOnly?[...accounts.values()].map(clone):[];},
     read:async id=>{readCount++;cache.set(id,clone(accounts.get(id)));return clone(accounts.get(id));},
     book:async(id,booking,sig)=>{books.push({id,booking:clone(booking),sig});if(gate){const g=gate;gate=null;await g;}if(fail){const e=fail;fail=null;throw e;}
       cache.set(id,clone(accounts.get(id)));if(JSON.stringify(accounts.get(id).pin)!==sig)throw Object.assign(new Error('PIN wurde geändert.'),{code:'pinChanged'});
@@ -213,4 +214,26 @@ test('Freiwillige PIN schützt das Eingabemenü und sperrt nach Inaktivität ode
 
 test('PIN-Abbruch nach abgelaufener Freigabe führt zur Namensübersicht, nicht in die geschützte Karte',async()=>{
  const f=await fixture({pin:true});const tile=f.nodes['dr-directory'].children[0];f.nodes['dr-directory'].handlers.click({target:{closest:()=>tile}});await wait(()=>f.root.dataset.screen==='pin');f.pin('4826');await wait(()=>f.root.dataset.screen==='members'&&!f.nodes['dr-pin'].disabled);f.advance(60001);assert.equal(f.root.dataset.screen,'pin');f.nodes['dr-pin-back'].handlers.click();assert.equal(f.nodes['dr-directory'].hidden,false);assert.equal(f.card('a').hidden,true);assert.equal(f.root.dataset.memberMenu,'false');
+});
+
+test('Namenskarten zeigen gespeicherte Schulden und aktualisieren erst nach erfolgreichem OK',async()=>{
+ const f=await fixture({balance:true});
+ const amount=id=>descendants(f.nodes['dr-directory'].children.find(n=>n.dataset.drMember===id)).find(n=>n.className==='dr-name-balance').textContent;
+ await wait(()=>amount('a')==='7,50 €');assert.equal(amount('b'),'0,00 €');
+ f.click('a','add');assert.equal(amount('a'),'7,50 €');
+ f.confirm();await wait(()=>amount('a')==='9,00 €');
+});
+
+test('Namenskarten verwenden wie die Top 3 den frisch geladenen Kontostand statt eines leeren Caches',async()=>{
+ const f=await fixture({balance:true,snapshotOnly:true});
+ const amount=()=>descendants(f.nodes['dr-directory'].children.find(n=>n.dataset.drMember==='a')).find(n=>n.className==='dr-name-balance').textContent;
+ await wait(()=>amount()==='7,50 €');
+ assert.match(f.nodes['dr-directory'].children[0].attributes['aria-label'],/Aktuelle Schulden: 7,50 €/);
+});
+test('Fehlgeschlagenes Laden zeigt keinen scheinbar ausgeglichenen Deckel',async()=>{
+ const f=await fixture({balance:true,rankingFailure:true});
+ await wait(()=>f.nodes['dr-ranking'].textContent.includes('konnten nicht geladen'));
+ const tile=f.nodes['dr-directory'].children[0];
+ assert.equal(descendants(tile).find(n=>n.className==='dr-name-balance').textContent,'–');
+ assert.match(tile.attributes['aria-label'],/Kontostand noch nicht geladen/);
 });
