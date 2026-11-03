@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -68,7 +69,14 @@ class WidgetReplyReceiver : BroadcastReceiver() {
                     }
                     job.put("phase", "saving").put("startedAt", now)
                     prefs.edit().putString("job", job.toString()).remove("message").remove("notice").commit()
-                    val work = OneTimeWorkRequestBuilder<WidgetReplyWorker>().setInputData(workDataOf("generation" to prefs.getString("generation", ""), "requestId" to job.getString("requestId"))).build()
+                    val builder = OneTimeWorkRequestBuilder<WidgetReplyWorker>()
+                        .setInputData(workDataOf("generation" to prefs.getString("generation", ""), "requestId" to job.getString("requestId")))
+                    // Android 12+ supports immediate jobs without a foreground-service notification.
+                    // Older devices retain the existing worker path.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        builder.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    }
+                    val work = builder.build()
                     WorkManager.getInstance(context).enqueueUniqueWork("h2o-widget-reply", ExistingWorkPolicy.APPEND_OR_REPLACE, work)
                 }
             }

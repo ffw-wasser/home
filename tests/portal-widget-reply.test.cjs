@@ -85,3 +85,25 @@ test('Widget conflict state is not returned to revoked or unrelated grants',asyn
  f.sql.prepare('DELETE FROM portal_identity_sessions').run();
  const revoked=await f.widget();assert.equal(revoked.status,401);assert.equal(revoked.value.currentReply,undefined);
 });
+
+for (const viaWidget of [false, true]) test('Saving '+(viaWidget?'widget':'portal')+' reply does not fetch or wait for optional Google colours',async()=>{
+ const f=await setup(),endpoint='https://script.google.com/macros/s/test-bridge-id1234567890123456/exec';
+ const row=f.sql.prepare('SELECT * FROM portal_config WHERE id=1').get(),config=await f.L.open(f.env,row.payload,'portal-config');
+ config.googleColorBridge={endpoint,secret:'synthetic-colour-secret-'.padEnd(64,'x')};
+ f.sql.prepare('UPDATE portal_config SET payload=?').run(await f.L.seal(f.env,config,'portal-config'));
+ let release,started,colourCalls=0;
+ const blocked=new Promise(resolve=>{release=resolve;}),colourStarted=new Promise(resolve=>{started=resolve;}),prior=f.c.fetch;
+ f.c.fetch=(url,options)=>{
+  if(url!==endpoint)return prior(url,options);
+  colourCalls++;started();return blocked;
+ };
+ const calendarFetches=f.calendarFetches();
+ const pending=viaWidget?f.widget():f.call('reply',f.job);
+ try{
+  const result=await Promise.race([pending,colourStarted.then(()=>({blocked:true}))]);
+  assert.equal(result.blocked,undefined,'optional colour service must not enter the save path');
+  assert.equal(result.status,200);assert.equal(result.value.status,'yes');assert.equal(result.value.version,1);
+  assert.equal(colourCalls,0);assert.equal(f.calendarFetches(),calendarFetches);
+  assert.equal(f.sql.prepare('SELECT version FROM portal_replies WHERE event=? AND member=?').get(f.event.id,f.people[0].memberId).version,1);
+ }finally{release(new Response(null,{status:503}));await pending;}
+});
