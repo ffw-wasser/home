@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   ios-simulator:
-    runs-on: macos-26-intel
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
@@ -70,9 +70,14 @@ jobs:
       - name: Render production widget layouts on iPhone simulator
         run: |
           set -euo pipefail
-          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
+          # Match the newest installed runtime and boot one simulator explicitly.
+          # Parallel cold boots on the Intel fallback stalled in the device service.
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); candidates=[(tuple(map(int,r.split(".iOS-")[1].split("-"))),x["udid"]) for r,devices in d["devices"].items() if ".iOS-" in r for x in devices if x["name"].startswith("iPhone")]; print(max(candidates,key=lambda x:x[0])[1])')
+          xcrun simctl boot "$device" || true
+          python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=300)' "$device"
           xcodebuild -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal \
-            -destination "platform=iOS Simulator,id=$device" \
+            -destination "platform=iOS Simulator,id=$device" -destination-timeout 180 \
+            -parallel-testing-enabled NO \
             -resultBundlePath "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
             -configuration Debug H2O_REVIEW_FLAG= \
             CODE_SIGNING_ALLOWED=NO test
