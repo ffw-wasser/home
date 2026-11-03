@@ -160,7 +160,8 @@ open class NextEventWidget : AppWidgetProvider() {
                     val clothingSize = (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
                     val lines = if (tall || large || spacious || logicalHeight >= 140) 3 else 2
                     val maxTitle = ((textHeight - 1.2f * (locationSize + clothingSize) - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
-                    val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(if (tall) 28f else 36f).coerceAtMost(maxTitle)
+                    val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else 36f
+                    val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
                     size(R.id.widget_title, growingTitle)
                     views.setInt(R.id.widget_title, "setMaxLines", lines)
                     size(R.id.widget_location, locationSize)

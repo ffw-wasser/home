@@ -60,6 +60,9 @@ class WidgetPreviewTest {
                         val weekday = activity.findViewById<TextView>(R.id.widget_weekday)
                         assertTrue("The label beneath the day is readable", weekday.textSize / activity.resources.displayMetrics.scaledDensity >= 11.9f)
                     }
+                    if (fixture == "today" && width == 170 && height == 170) {
+                        assertEquals("The topic stays complete in small square widgets", 0, title.layout.getEllipsisCount(title.layout.lineCount - 1))
+                    }
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val card = activity.findViewById<View>(R.id.widget_reply_section) != null
