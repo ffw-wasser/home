@@ -25,7 +25,8 @@ concurrency:
 jobs:
   sign-and-possibly-upload:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/h2o-native-member-pilot'
-    runs-on: macos-26
+    # Standard Intel runner avoids the observed arm64 hosted-runner capacity failures.
+    runs-on: macos-26-intel
     timeout-minutes: 50
     environment: apple-testflight-review
     steps:
