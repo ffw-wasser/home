@@ -139,7 +139,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
                 val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else bodyHeight
                 val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
-                    else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * if (compact) 0.40f else 0.34f)
+                    else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
                 val fixedWidth = if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
                 val dateWidth = if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) desiredWidth else fixedWidth
                 if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) views.setViewLayoutWidth(R.id.widget_date, dateWidth, TypedValue.COMPLEX_UNIT_DIP)
