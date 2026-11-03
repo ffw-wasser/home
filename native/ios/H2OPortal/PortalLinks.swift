@@ -55,6 +55,22 @@ enum PortalLinks {
         parts.queryItems = [URLQueryItem(name: "nativePage", value: "terms")]
         return parts.url!
     }
+    // Accept only a deliberate day link from the real member page, without URL extras.
+    static func calendarDay(from source: URL, to destination: URL, mainFrame: Bool, userInitiated: Bool) -> Date? {
+        guard mainFrame, userInitiated, trusted(source), !isReview(source),
+              destination.absoluteString.range(of: "^calshow:[0-9]{1,11}$", options: .regularExpression) != nil,
+              let seconds = TimeInterval(destination.absoluteString.dropFirst("calshow:".count)),
+              (0...31525372800).contains(seconds) else { return nil }
+        return Date(timeIntervalSinceReferenceDate: seconds)
+    }
+    static func calendarDayFallback(_ date: Date) -> URL {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(identifier: "Europe/Berlin")
+        formatter.dateFormat = "yyyy/MM/dd"
+        return URL(string: "https://calendar.google.com/calendar/u/0/r/day/" + formatter.string(from: date))!
+    }
     static func calendarSubscription(_ url: URL) -> Bool {
         guard let p = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
         return p.scheme == "webcal" && p.host == "feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev" &&

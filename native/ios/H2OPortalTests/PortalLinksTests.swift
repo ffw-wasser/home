@@ -55,6 +55,20 @@ final class PortalLinksTests: XCTestCase {
             XCTAssertFalse(PortalLinks.isWidgetTermine(URL(string: value)!))
         }
     }
+    func testCalendarDayAcceptsOnlyExplicitMemberNavigationAndNumericDates() throws {
+        let target = URL(string: "calshow:814608000")!
+        let date = try XCTUnwrap(PortalLinks.calendarDay(from: PortalLinks.home, to: target, mainFrame: true, userInitiated: true))
+        XCTAssertEqual(date.timeIntervalSince1970, 1792915200)
+        XCTAssertEqual(PortalLinks.calendarDayFallback(date).absoluteString, "https://calendar.google.com/calendar/u/0/r/day/2026/10/25")
+        for value in ["calshow:", "calshow://814608000", "calshow:-1", "calshow:1.5", "calshow:31525372801", "calshow:814608000?token=synthetic", "calshow:814608000#extra", "https://example.invalid/814608000"] {
+            XCTAssertNil(PortalLinks.calendarDay(from: PortalLinks.home, to: URL(string: value)!, mainFrame: true, userInitiated: true), value)
+        }
+        for (source, mainFrame, userInitiated) in [(PortalLinks.home, false, true), (PortalLinks.home, true, false), (PortalLinks.review, true, true), (URL(string: "https://example.invalid/home/deckel.html")!, true, true)] {
+            XCTAssertNil(PortalLinks.calendarDay(from: source, to: target, mainFrame: mainFrame, userInitiated: userInitiated))
+        }
+        let berlinNextDay = Date(timeIntervalSince1970: 1793662200) // 2026-11-02 23:30 UTC
+        XCTAssertEqual(PortalLinks.calendarDayFallback(berlinNextDay).absoluteString, "https://calendar.google.com/calendar/u/0/r/day/2026/11/03")
+    }
     func testOnlyPersonalCalendarSubscriptionCanLeaveTheWebView() {
         let valid = "webcal://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/calendar/member/" + String(repeating: "a", count: 43) + ".ics"
         XCTAssertTrue(PortalLinks.calendarSubscription(URL(string: valid)!))

@@ -18,6 +18,7 @@ struct NextEventView: View {
     private var family: WidgetFamily { familyOverride ?? entry.family ?? widgetFamily }
     private var small: Bool { family == .systemSmall }
     private var large: Bool { family == .systemLarge }
+    private var calendarWidth: CGFloat { large ? 76 : small ? 50 : 64 }
     private var snapshot: H2OWidgetSnapshot? { entry.snapshot?.at(entry.date) }
     private var event: H2OWidgetEvent? { snapshot?.event }
     private let background = Color(red: 0.098, green: 0.106, blue: 0.125)
@@ -57,8 +58,8 @@ struct NextEventView: View {
             Text(part(event.start, "d")).font(.system(size: large ? 44 : small ? 34 : 36, weight: .bold, design: .rounded))
                 .frame(height: large ? 51 : small ? 42 : 44)
             Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
-                .font(.system(size: large ? 11 : 10, weight: .bold)).lineLimit(1).padding(.bottom, 3)
-        }.foregroundStyle(dateInk).frame(width: large ? 70 : small ? 44 : 56)
+                .font(.system(size: large ? 16 : small ? 12 : 14, weight: .bold)).lineLimit(1).padding(.bottom, 3)
+        }.foregroundStyle(dateInk).frame(width: calendarWidth)
             .background(paper).clipShape(RoundedRectangle(cornerRadius: 7))
             .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
     }
@@ -83,8 +84,8 @@ struct NextEventView: View {
         HStack(spacing: small ? 7 : 11) {
             calendar(event)
             ViewThatFits(in: .vertical) {
-                details(event, titleSize: large ? 26 : small ? 15 : 20, detailSize: large ? 14 : small ? 10 : 12, spacing: 2, availableWidth: width - (large ? 70 : small ? 44 : 56) - (small ? 7 : 11))
-                details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 1, availableWidth: width - (large ? 70 : small ? 44 : 56) - (small ? 7 : 11))
+                details(event, titleSize: large ? 26 : small ? 15 : 20, detailSize: large ? 14 : small ? 10 : 12, spacing: 2, availableWidth: width - calendarWidth - (small ? 7 : 11))
+                details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 1, availableWidth: width - calendarWidth - (small ? 7 : 11))
             }
         }
     }
@@ -174,7 +175,7 @@ struct NextEventView: View {
     var body: some View {
         GeometryReader { geometry in
             let horizontal: CGFloat = small ? 10 : large ? 14 : 12
-            let vertical: CGFloat = large ? 12 : small ? 8 : 6
+            let vertical: CGFloat = large ? 12 : small ? 8 : 4
             let width = max(1, geometry.size.width - 2 * horizontal)
             let height = max(1, geometry.size.height - 2 * vertical)
             let eventHeight: CGFloat = large ? 119 : max(1, height - (small ? 28 + 1 + 6 : 44 + 14 + 1 + 9))

@@ -36,7 +36,18 @@ struct PortalWebView: UIViewRepresentable {
         private let model: PortalModel
         private let pullHaptic = UISelectionFeedbackGenerator()
         private var lastPullHaptic: TimeInterval = -1
-        init(_ model: PortalModel) { self.model = model }
+        private let openURL: @MainActor (URL) async -> Bool
+        init(_ model: PortalModel, openURL: @escaping @MainActor (URL) async -> Bool = { await UIApplication.shared.open($0, options: [:]) }) {
+            self.model = model; self.openURL = openURL
+        }
+        func openCalendarDay(_ date: Date) async {
+            guard !model.review else { return }
+            let url = URL(string: "calshow:\(Int(date.timeIntervalSinceReferenceDate))")!
+            if await openURL(url) { return }
+            if !(await openURL(PortalLinks.calendarDayFallback(date))) {
+                model.message = "Der Kalender konnte nicht geöffnet werden. Bitte erneut versuchen."
+            }
+        }
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
             guard ["h2oPdf", "h2oWidget", "h2oNotifications", "h2oHaptics"].contains(message.name), message.frameInfo.isMainFrame, origin.protocol == "https", origin.host == PortalLinks.host, [0,443].contains(origin.port),
@@ -93,6 +104,11 @@ struct PortalWebView: UIViewRepresentable {
                 } else { decisionHandler(.allow) }
                 return
             }
+            if let source = webView.url,
+               let date = PortalLinks.calendarDay(from: source, to: url, mainFrame: action.sourceFrame.isMainFrame, userInitiated: action.navigationType == .linkActivated) {
+                Task { await self.openCalendarDay(date) }
+                decisionHandler(.cancel); return
+            }
             if action.navigationType == .linkActivated && PortalLinks.calendarSubscription(url) {
                 UIApplication.shared.open(url); decisionHandler(.cancel); return
             }
@@ -103,6 +119,10 @@ struct PortalWebView: UIViewRepresentable {
             if action.targetFrame == nil, let url = action.request.url {
                 if model.review && PortalLinks.isPublicPrivacy(url) { UIApplication.shared.open(url); return nil }
                 if model.review { model.message = "Prüfdemo: Externe Aufrufe sind gesperrt."; return nil }
+                if let source = webView.url,
+                   let date = PortalLinks.calendarDay(from: source, to: url, mainFrame: action.sourceFrame.isMainFrame, userInitiated: action.navigationType == .linkActivated) {
+                    Task { await self.openCalendarDay(date) }; return nil
+                }
                 if PortalLinks.trusted(url) { model.open(url) }
                 else if ["https", "mailto", "tel"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
             }; return nil

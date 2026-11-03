@@ -192,3 +192,9 @@ Die Textfläche des Terminblocks ist auch bei langen Hinweisen ausdrücklich auf
 In der Widgetauswahl gibt es zusätzlich „H₂O · Großer Termin“ mit festem Großformat. Nach dem Update dieses Widget neu hinzufügen. Alle Widgetarten aktualisieren sich bei App-Aktualisierung, Rückmeldung und Abmeldung gemeinsam. Der Wochentag unter der Tageszahl ist kräftiger. Die Größeninformation wird vom Timeline-Provider weitergegeben; die Simulatorprüfungen decken auch große Ansichten ab.
 
 Nach bestätigter Berichtsspeicherung im Gerätehaus wird der Kalendertermin zentral abgeschlossen. Das Portal und der nächste Widgetabruf zeigen den nächsten offenen Termin; vorhandene Antworten bleiben erhalten. Ein noch ausstehender Kalenderabgleich wird auf dem Gerätehausgerät gespeichert und beim nächsten authentifizierten Aktualisieren wiederholt. Der Bericht wird dabei nicht erneut hochgeladen. Bereits angezeigte Handywidgets benötigen weiterhin ihren normalen App- oder Antwortabruf; es gibt keinen garantierten sofortigen Hintergrundabruf.
+
+## Build 1032: Datum und Kalenderaufruf
+
+Heute/Morgen und der Wochentag unter der Tageszahl sind im kleinen Widget mit 12, im mittleren mit 14 und im großen mit 16 Punkt fett dargestellt. Die Kalenderkarte erhält passende Breite; im mittleren Widget wird der Außenabstand verringert, damit Antworttasten und Status vollständig bleiben.
+
+„Tag im Kalender öffnen“ übergibt ausschließlich einen geprüften Tageszeitstempel an die Kalender-App. Fehlt die Kalender-App, öffnet sich die Tagesansicht im Browser. Automatische Aufrufe, fremde Seiten und Unterframes bleiben gesperrt; die isolierte Apple-Prüfdemo öffnet weiterhin keine externen Kalender.
