@@ -165,7 +165,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 val followingCount = if (large) snapshot?.following?.size?.coerceAtMost(2) ?: 0 else 0
                 val followingHeight = if (followingCount == 0) 0f else 26f + followingCount * maxOf(36f, 29f * fontScale + 4f)
                 val replyHeight = if (card) 48f + 16f * fontScale + if (large) 22f else 0f else maxOf(32f, 30f * fontScale)
-                val bodyHeight = (height - 18f - replyHeight - followingHeight).coerceAtLeast(1f)
+                val bodyHeight = (height - 24f - replyHeight - followingHeight).coerceAtLeast(1f)
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
                 val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else bodyHeight
                 val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
@@ -183,7 +183,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
                     val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
-                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 7f) / 1.2f).coerceIn(22f, 82f)
+                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 13f) / 1.2f).coerceIn(22f, 82f)
                     size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
                     val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale

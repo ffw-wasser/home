@@ -78,7 +78,7 @@ struct NextEventView: View {
         let fittingSize = titleSize * min(textScale, 1.5)
         return VStack(alignment: .leading, spacing: spacing) {
             Text(event.title).font(.system(size: fittingSize, weight: .semibold))
-                .lineLimit(2).truncationMode(.tail).fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2).truncationMode(.tail)
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                 Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + (event.location.isEmpty ? "" : " · " + event.location))
