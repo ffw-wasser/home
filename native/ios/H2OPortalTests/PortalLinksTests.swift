@@ -57,8 +57,12 @@ final class PortalLinksTests: XCTestCase {
     }
     func testCalendarDayAcceptsOnlyExplicitMemberNavigationAndNumericDates() throws {
         let target = URL(string: "calshow:814608000")!
-        let date = try XCTUnwrap(PortalLinks.calendarDay(from: PortalLinks.home, to: target, mainFrame: true, userInitiated: true))
-        XCTAssertEqual(date.timeIntervalSince1970, 1792915200)
+        let date = Date(timeIntervalSince1970: 1792915200)
+        #if H2O_APP_REVIEW
+        XCTAssertNil(PortalLinks.calendarDay(from: PortalLinks.home, to: target, mainFrame: true, userInitiated: true))
+        #else
+        XCTAssertEqual(PortalLinks.calendarDay(from: PortalLinks.home, to: target, mainFrame: true, userInitiated: true), date)
+        #endif
         XCTAssertEqual(PortalLinks.calendarDayFallback(date).absoluteString, "https://calendar.google.com/calendar/u/0/r/day/2026/10/25")
         for value in ["calshow:", "calshow://814608000", "calshow:-1", "calshow:1.5", "calshow:31525372801", "calshow:814608000?token=synthetic", "calshow:814608000#extra", "https://example.invalid/814608000"] {
             XCTAssertNil(PortalLinks.calendarDay(from: PortalLinks.home, to: URL(string: value)!, mainFrame: true, userInitiated: true), value)

@@ -41,7 +41,7 @@ struct PortalWebView: UIViewRepresentable {
             self.model = model; self.openURL = openURL
         }
         func openCalendarDay(_ date: Date) async {
-            guard !model.review else { return }
+            guard !model.review, PortalLinks.host == "ffw-wasser.github.io" else { return }
             let url = URL(string: "calshow:\(Int(date.timeIntervalSinceReferenceDate))")!
             if await openURL(url) { return }
             if !(await openURL(PortalLinks.calendarDayFallback(date))) {

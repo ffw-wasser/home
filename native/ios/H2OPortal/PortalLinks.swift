@@ -57,7 +57,7 @@ enum PortalLinks {
     }
     // Accept only a deliberate day link from the real member page, without URL extras.
     static func calendarDay(from source: URL, to destination: URL, mainFrame: Bool, userInitiated: Bool) -> Date? {
-        guard mainFrame, userInitiated, trusted(source), !isReview(source),
+        guard mainFrame, userInitiated, source.host == "ffw-wasser.github.io", trusted(source), !isReview(source),
               destination.absoluteString.range(of: "^calshow:[0-9]{1,11}$", options: .regularExpression) != nil,
               let seconds = TimeInterval(destination.absoluteString.dropFirst("calshow:".count)),
               (0...31525372800).contains(seconds) else { return nil }
