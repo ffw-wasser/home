@@ -169,3 +169,5 @@ Build 1031: Wochentag/Heute/Morgen unter dem Datum wird kräftiger dargestellt. 
 Kalender und Termintexte wachsen mit der tatsächlich verfügbaren Höhe. Schmale hohe Widgets zeigen Kalender und Thema untereinander; große Ansichten geben freien Platz dem Haupttermin statt gestreckten Folgezeilen. Wochentag sowie Heute/Morgen sind deutlich größer und bleiben kräftig. Antworttasten behalten ihre Mindesthöhe. Größenwechsel und vergrößerte Systemschrift werden weiterhin berücksichtigt. Bestehende Widgets aktualisieren sich nach dem App-Update; bei älteren Android-Versionen bleiben die festen Layoutbreiten erhalten.
 
 „Tag im Kalender öffnen“ übergibt in der Android-App nur den Zeitstempel an Android. Die Kalender-App öffnet den gewählten Tag; fehlt eine passende Kalender-App, öffnet sich die Tagesansicht im Browser. Der Web-Intent bleibt für normale Android-Browser erhalten.
+
+Build 1033: Monatsname und rotes Monatsfeld sind größer. Dafür ist die Tageszahl etwas kleiner; Heute/Morgen beziehungsweise der Wochentag bleiben gut lesbar. Die Kalenderkarte behält ihre Anordnung, und die übrigen Bedienelemente bleiben erreichbar.

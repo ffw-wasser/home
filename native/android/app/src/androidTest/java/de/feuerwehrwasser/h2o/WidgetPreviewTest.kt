@@ -34,7 +34,8 @@ class WidgetPreviewTest {
             listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f), Triple(170, 345, 1f), Triple(220, 345, 1.3f), Triple(330, 450, 1f)).flatMap { size ->
                 listOf("short-title", "long-title", "open").map { size to it }
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
-        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios) {
+        val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
+        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
@@ -101,6 +102,9 @@ class WidgetPreviewTest {
                     assertTextFits(widget, widget, "${width}x${height} font=$fontScale fixture=$fixture exact=$exactSize")
                     if (isEvent) {
                         assertTrue("Calendar month is visible", activity.findViewById<TextView>(R.id.widget_month).isShown)
+                        val month = activity.findViewById<TextView>(R.id.widget_month)
+                        assertTrue("Month fits its red field: ${month.text} at $width/$fontScale", month.paint.measureText(month.text.toString()) <= month.width - month.compoundPaddingLeft - month.compoundPaddingRight + 2)
+
                         assertTrue("Calendar day is numeric and readable", activity.findViewById<TextView>(R.id.widget_day).text.matches(Regex("\\d{1,2}")))
                     }
                     if (fixture in listOf("today", "tomorrow") && height >= 100) {

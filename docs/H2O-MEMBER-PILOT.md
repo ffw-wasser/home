@@ -198,3 +198,5 @@ Nach bestätigter Berichtsspeicherung im Gerätehaus wird der Kalendertermin zen
 Heute/Morgen und der Wochentag unter der Tageszahl sind im kleinen Widget mit 12, im mittleren mit 14 und im großen mit 16 Punkt fett dargestellt. Die Kalenderkarte erhält passende Breite; im mittleren Widget wird der Außenabstand verringert, damit Antworttasten und Status vollständig bleiben.
 
 „Tag im Kalender öffnen“ übergibt ausschließlich einen geprüften Tageszeitstempel an die Kalender-App. Fehlt die Kalender-App, öffnet sich die Tagesansicht im Browser. Automatische Aufrufe, fremde Seiten und Unterframes bleiben gesperrt; die isolierte Apple-Prüfdemo öffnet weiterhin keine externen Kalender.
+
+Build 1033: Monatsname und rotes Monatsfeld sind größer. Dafür ist die Tageszahl etwas kleiner; Heute/Morgen beziehungsweise der Wochentag bleiben gut lesbar. Die Kalenderkarte behält ihre Anordnung, und die übrigen Bedienelemente bleiben erreichbar.

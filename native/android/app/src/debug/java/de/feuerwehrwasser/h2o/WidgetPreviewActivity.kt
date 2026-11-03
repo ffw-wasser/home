@@ -17,7 +17,8 @@ class WidgetPreviewActivity : Activity() {
         val fontScale = intent.getFloatExtra("fontScale", 1f)
         val previewContext = createConfigurationContext(Configuration(resources.configuration).apply { this.fontScale = fontScale })
         val action = intent.getStringExtra("fixture") ?: "today"
-        val date = java.time.Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(when (action) { "tomorrow" -> 1; "future" -> 3; else -> 0 })
+        val relativeDate = java.time.Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(when (action) { "tomorrow" -> 1; "future" -> 3; else -> 0 })
+        val date = if (action == "long-month") relativeDate.withMonth(9).withDayOfMonth(22).let { if (it.isBefore(relativeDate)) it.plusYears(1) else it } else relativeDate
         val start = date.atTime(23, 58).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
             .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (action == "short-title") "Probe" else "Technische Hilfeleistung")
