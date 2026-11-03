@@ -133,6 +133,8 @@ open class NextEventWidget : AppWidgetProvider() {
             size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
+            show(R.id.widget_bindings, !flat && logicalHeight >= 140)
+            show(R.id.widget_date_line, !flat && logicalHeight >= 140)
             show(R.id.widget_weekday, !flat); show(R.id.widget_month, event != null)
             show(R.id.widget_brand, false)
             show(R.id.widget_date, event != null); show(R.id.widget_separator, false)
