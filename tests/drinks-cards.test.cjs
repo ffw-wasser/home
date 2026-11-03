@@ -15,7 +15,8 @@ async function fixture(options={}){
   const context=vm.createContext({console,crypto:webcrypto,TextEncoder,Date:ClockDate,innerHeight:844,
     setTimeout:(fn,delay)=>{timers.set(++nextTimer,{fn,until:now+delay});return nextTimer;},clearTimeout:id=>timers.delete(id),
     confirm:()=>allowDiscard,byId:id=>nodes[id],showView(){root.hidden=false;return true;},showToast(){},
-    oneDriveReadState:async()=>({members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]}),
+    oneDriveSignedIn:()=>true,
+    oneDriveReadState:async()=>({members:[{id:'a',lastName:'Alpha',firstName:'Mitglied',fitnessTrainer:options.trainer===true},{id:'b',lastName:'Beta',firstName:'Mitglied'}]}),
     document:{hidden:false,createElement:tag=>new Node(tag),addEventListener:(name,fn)=>documentEvents[name]=fn},
     addEventListener:(name,fn)=>globalEvents[name]=fn,scrollTo(){}});
   context.window=context;vm.runInContext(source('js/features/drinks/drinks-model.js'),context);const M=context.DrinksModel;
@@ -236,4 +237,15 @@ test('Fehlgeschlagenes Laden zeigt keinen scheinbar ausgeglichenen Deckel',async
  const tile=f.nodes['dr-directory'].children[0];
  assert.equal(descendants(tile).find(n=>n.className==='dr-name-balance').textContent,'–');
  assert.match(tile.attributes['aria-label'],/Kontostand noch nicht geladen/);
+});
+
+test('Gäste fehlen in Getränkeauswahl und Top 3, auch nach Vorladen',async()=>{
+ const f=await fixture({trainer:true,balance:true});
+ for(const preloaded of [false,true]){
+  if(preloaded)await f.context.Drinks.preload();
+  await f.context.Drinks.open();
+  assert.deepEqual(f.nodes['dr-directory'].children.map(n=>n.dataset.drMember),['b']);
+  assert.equal(f.card('a'),undefined);
+  assert.equal(f.nodes['dr-ranking'].children.some(n=>descendants(n).some(child=>child.textContent==='Alpha Mitglied')),false);
+ }
 });

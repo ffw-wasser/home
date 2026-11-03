@@ -115,3 +115,10 @@ Ein Kalenderabruf ist kein Nachweis eines weiterhin eingerichteten Abos. Linkres
 Zugangswiederherstellung und Mitgliederaustritt entwerten beziehungsweise entfernen den Status.
 Namen und Status werden nicht in öffentlichen Dateien oder zusätzlichen Browserablagen gespeichert.
 Prüfungen: `tests/member-subscriptions.test.cjs`, `tests/member-subscriptions-browser.cjs`.
+
+## Gäste und Fitnesstrainer
+
+Die Mitgliederrolle heißt „Gast“. Bestehende Daten verwenden kompatibel weiterhin
+`fitnessTrainer`; es findet keine Migration statt. Gäste fehlen bei Gerätehaus-Anwesenheit
+und Getränkeauswahl einschließlich Top 3 und Vorladen. Die Fitnessgruppe vergibt über
+`trainerIds` getrennt die Berechtigung für Rückmeldungsübersicht und Erinnerungen.
