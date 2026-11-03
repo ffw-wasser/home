@@ -21,6 +21,14 @@ private final class NoWidgetRedirects: NSObject, URLSessionTaskDelegate, @unchec
 }
 
 enum H2OWidgetReply {
+    // Reuse the connection pool for successive taps without sharing credentials or cookies.
+    private static let session: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 12; configuration.timeoutIntervalForResource = 15
+        configuration.httpCookieStorage = nil; configuration.urlCache = nil
+        configuration.urlCredentialStorage = nil; configuration.httpShouldSetCookies = false
+        return URLSession(configuration: configuration, delegate: NoWidgetRedirects(), delegateQueue: nil)
+    }()
     static func send(eventID: String, response: String) async {
         guard H2OWidgetEvent.validID(eventID), ["yes", "excused", "maybe", "edit", "retry"].contains(response) else { return }
         let now = Date()
@@ -51,11 +59,6 @@ enum H2OWidgetReply {
         }
         WidgetCenter.shared.reloadAllTimelines()
         guard let (grant, job) = request else { return }
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 12; configuration.timeoutIntervalForResource = 15
-        configuration.httpCookieStorage = nil; configuration.urlCache = nil
-        let session = URLSession(configuration: configuration, delegate: NoWidgetRedirects(), delegateQueue: nil)
-        defer { session.invalidateAndCancel() }
         var saved: (String, Int)?
         var refreshed: (String, Int)?
         var denied = false; var conflict = false

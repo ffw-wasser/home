@@ -171,3 +171,8 @@ Kalender und Termintexte wachsen mit der tatsächlich verfügbaren Höhe. Schmal
 „Tag im Kalender öffnen“ übergibt in der Android-App nur den Zeitstempel an Android. Die Kalender-App öffnet den gewählten Tag; fehlt eine passende Kalender-App, öffnet sich die Tagesansicht im Browser. Der Web-Intent bleibt für normale Android-Browser erhalten.
 
 Build 1033: Monatsname und rotes Monatsfeld sind größer. Dafür ist die Tageszahl etwas kleiner; Heute/Morgen beziehungsweise der Wochentag bleiben gut lesbar. Die Kalenderkarte behält ihre Anordnung, und die übrigen Bedienelemente bleiben erreichbar.
+
+
+## Build 1034: Schnellere Verarbeitung der Rückmeldung
+
+Beim Speichern von Widget- und Portalantworten entfällt der optionale Google-Farbabruf. Unter Android 12 und neuer fordert eine ausdrücklich angetippte Widgetantwort bevorzugte Ausführung an. Wenn das Systemkontingent ausgeschöpft ist, bleibt der normale Auftrag erhalten; ältere Android-Versionen verwenden weiterhin den bisherigen Weg. Versionsschutz, ausdrücklicher Wiederholungsversuch und die Grenze von 30 Sekunden für den Versand bleiben bestehen. Die Verarbeitung bleibt bis zur Serverbestätigung sichtbar. Eine konkrete Zeitersparnis am echten Gerät ist noch zu messen.

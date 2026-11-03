@@ -200,3 +200,8 @@ Heute/Morgen und der Wochentag unter der Tageszahl sind im kleinen Widget mit 12
 „Tag im Kalender öffnen“ übergibt ausschließlich einen geprüften Tageszeitstempel an die Kalender-App. Fehlt die Kalender-App, öffnet sich die Tagesansicht im Browser. Automatische Aufrufe, fremde Seiten und Unterframes bleiben gesperrt; die isolierte Apple-Prüfdemo öffnet weiterhin keine externen Kalender.
 
 Build 1033: Monatsname und rotes Monatsfeld sind größer. Dafür ist die Tageszahl etwas kleiner; Heute/Morgen beziehungsweise der Wochentag bleiben gut lesbar. Die Kalenderkarte behält ihre Anordnung, und die übrigen Bedienelemente bleiben erreichbar.
+
+
+## Build 1034: Rückmeldung ohne unnötigen Farbabruf
+
+Beim Speichern von Widget- und Portalantworten wird die optionale Google-Terminfarbe nicht mehr abgerufen. Aktuelle Empfänger-, Freigabe-, Abschluss- und Versionsprüfungen bleiben erhalten. Das iPhone nutzt innerhalb des laufenden Widgetprozesses dieselbe kurzlebige Netzwerksitzung für weitere Antworten und kann dadurch eine vorhandene Verbindung weiterverwenden. Zugang und Antwort werden weiterhin pro Anfrage geprüft; Cookies, Zugangsdatenablage und Antwortcache sind ausgeschaltet. Die Verarbeitung bleibt bis zur Serverbestätigung sichtbar. Eine konkrete Zeitersparnis am echten Gerät ist noch zu messen.

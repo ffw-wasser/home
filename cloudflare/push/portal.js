@@ -139,10 +139,11 @@
   return {groups,version:row?.version||0};
  }
  async function groupData(env){const current=await audienceGroups(env),row=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,row,'portal-roster');return {...current,rosterPayload:row?.payload||null,rosterUpdatedAt:roster?.updatedAt||null,members:(roster?.members||[]).map(({id,name})=>({id,name}))};}
- async function decorate(env,cal,configuration,ctx){
+ // Reply validation needs current rules, audiences and completion state, never presentation colours.
+ async function decorate(env,cal,configuration,ctx,includeColors=true){
   const row=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,row,'portal-rules')||{},roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),groups=await audienceGroups(env);
   const reminded=new Map((await env.DB.prepare('SELECT event,reminded_at FROM portal_event_reminders').all()).results.map(r=>[r.event,r.reminded_at]));
-  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster),design=await calendarColors(env),googleColors=await g.GoogleCalendarColors.read(env,configuration===undefined?await config(env):configuration,cal.events,ctx),display=new Map();for(const item of (await env.DB.prepare('SELECT * FROM portal_calendar_display').all()).results)display.set(item.event,{...await open(env,item,'calendar-display:'+item.event),version:item.version});
+  const resolveAudience=g.PortalGroups.resolver(groups.groups,roster),design=includeColors?await calendarColors(env):{colors:{},version:0},googleColors=includeColors?await g.GoogleCalendarColors.read(env,configuration===undefined?await config(env):configuration,cal.events,ctx):{status:'not-requested',colors:new Map()},display=new Map();for(const item of (await env.DB.prepare('SELECT * FROM portal_calendar_display').all()).results)display.set(item.event,{...await open(env,item,'calendar-display:'+item.event),version:item.version});
   return {...cal,googleColorStatus:googleColors.status,colors:design.colors,colorVersion:design.version,displayFeatureVersion:1,rulesVersion:row?.version||0,groupsVersion:groups.version,rosterUpdatedAt:roster?.updatedAt||null,events:cal.events.map(e=>{
    const rule=rules[e.id]||rules[e.seriesId],source=g.CalendarPresentation.instructions(e.description),fields=source.fields,issues=[...source.issues],auto=detected(e,roster);
    const controlled=auto.kind!=='info'&&auto.kind!=='birthday';
@@ -687,7 +688,7 @@
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&!e.completedAt&&e.approved&&e.kind==='probe'&&visibleEvent(e));
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
-  const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list',ctx):calendar(env)),undefined,path==='/portal/list'?ctx:undefined);
+  const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list',ctx):calendar(env)),undefined,path==='/portal/list'?ctx:undefined,path!=='/portal/reply');
   if(path==='/admin/portal/complete')return completeAttendance(env,data,cal);
   if(path==='/admin/portal/display')return saveCalendarDisplay(env,data,cal,roster);
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
