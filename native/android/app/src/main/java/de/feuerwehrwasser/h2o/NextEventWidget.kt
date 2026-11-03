@@ -86,24 +86,28 @@ open class NextEventWidget : AppWidgetProvider() {
             val day = date?.format(DateTimeFormatter.ofPattern("d", Locale.GERMAN)).orEmpty()
             views.setTextViewText(R.id.widget_day, day)
             val baseDaySize = when {
-                flat -> if (compact) 12f else 15f
-                spacious -> if (fontScale > 1.15f) 36f else 46f
-                large -> if (fontScale > 1.15f) 34f else 42f
-                width < 150 -> 20f
-                fontScale > 1.15f -> if (card) 26f else 20f
-                card -> 32f
-                else -> 28f
+                flat -> if (compact) 10f else 13f
+                spacious -> if (fontScale > 1.15f) 32f else 40f
+                large -> if (fontScale > 1.15f) 30f else 36f
+                width < 150 -> 18f
+                fontScale > 1.15f -> if (card) 23f else 18f
+                card -> 28f
+                else -> 24f
             }
             val metrics = context.resources.displayMetrics
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseDaySize * metrics.scaledDensity }
             val availableDayWidth = if (flat) (if (compact) 20f else 28f) else if (spacious) 64f else if (large) 56f else if (card) 42f else 32f
             val fit = if (day.isEmpty()) 1f else ((availableDayWidth - 2f) * metrics.density / dayPaint.measureText(day)).coerceAtMost(1f)
             size(R.id.widget_day, baseDaySize * fit)
-            size(R.id.widget_month, if (flat) (if (compact) 6f else 7f) else if (spacious) 11f else if (large) 10f else if (width < 150) 7f else if (fontScale > 1.15f) 8f else 9f)
+            val monthText = date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty()
+            val baseMonthSize = if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (fontScale > 1.15f) 10f else 12f
+            val monthPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseMonthSize * metrics.scaledDensity }
+            val monthFit = if (monthText.isEmpty()) 1f else ((availableDayWidth + 2f) * metrics.density / monthPaint.measureText(monthText)).coerceAtMost(1f)
+            size(R.id.widget_month, baseMonthSize * monthFit)
             val weekdayText = relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty()
             size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
-            views.setTextViewText(R.id.widget_month, date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty())
+            views.setTextViewText(R.id.widget_month, monthText)
             show(R.id.widget_weekday, !flat); show(R.id.widget_month, event != null)
             show(R.id.widget_brand, false)
             show(R.id.widget_date, event != null); show(R.id.widget_separator, false)
@@ -151,9 +155,9 @@ open class NextEventWidget : AppWidgetProvider() {
                     else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
-                    val monthSize = (dateHeight / fontScale * 0.08f).coerceIn(10f, 16f)
-                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 5f) / 1.2f).coerceIn(24f, 96f)
-                    size(R.id.widget_month, fitted(monthSize, date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty()))
+                    val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
+                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 7f) / 1.2f).coerceIn(22f, 82f)
+                    size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
                     val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
                     val locationSize = (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
