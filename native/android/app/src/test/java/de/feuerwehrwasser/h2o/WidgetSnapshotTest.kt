@@ -25,4 +25,13 @@ class WidgetSnapshotTest {
   assertFalse(event.copy(title = "Probe\nSecret").valid(now))
   assertFalse(event.copy(title = "a".repeat(101)).valid(now))
  }
+ @Test fun expiredReplyAccessDoesNotEraseDisplayAndHasABoundedRetention() {
+  val now = time("2026-11-03T12:00:00Z")
+  val old = WidgetSnapshot(now - 12 * 3600000L, null, false)
+  assertFalse(old.fresh(now))
+  assertTrue(old.displayable(now))
+  assertFalse(old.copy(updatedAt = now - 30 * 86400000L).displayable(now))
+  assertFalse(old.copy(updatedAt = now + 61000).displayable(now))
+ }
+
 }

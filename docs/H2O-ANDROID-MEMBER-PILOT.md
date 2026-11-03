@@ -176,3 +176,16 @@ Build 1033: Monatsname und rotes Monatsfeld sind größer. Dafür ist die Tagesz
 ## Build 1034: Schnellere Verarbeitung der Rückmeldung
 
 Beim Speichern von Widget- und Portalantworten entfällt der optionale Google-Farbabruf. Unter Android 12 und neuer fordert eine ausdrücklich angetippte Widgetantwort bevorzugte Ausführung an. Wenn das Systemkontingent ausgeschöpft ist, bleibt der normale Auftrag erhalten; ältere Android-Versionen verwenden weiterhin den bisherigen Weg. Versionsschutz, ausdrücklicher Wiederholungsversuch und die Grenze von 30 Sekunden für den Versand bleiben bestehen. Die Verarbeitung bleibt bis zur Serverbestätigung sichtbar. Eine konkrete Zeitersparnis am echten Gerät ist noch zu messen.
+
+
+## Build 1035 Finale Widgetgestaltung und gespeicherte Termine
+
+Marineblau mit dezentem Bordeauxverlauf, Kalenderblatt mit Binderingen und einer feinen Linie unter dem Tag. Das vorhandene Original-App-Icon steht mit 12 Prozent Deckkraft rechts; seine Größe richtet sich nach der gemessenen Themenbreite. Bei schmaler Fläche, langer Überschrift oder großer Schrift entfällt das Icon. Der Titel hat maximal zwei Zeilen; vollständige Angaben öffnen sich durch Antippen. Uhrzeit, Ort, Kleidung und Metadatensymbole verwenden denselben Farbwert #C6D2DF.
+
+Die bestätigte Antwort bleibt während des Speicherns ausgewählt. Die feine Linie unter den Antworttasten folgt dem bestätigten Status und hat ihren Farbschwerpunkt unter dessen Taste. Erst die Serverbestätigung ändert Auswahl, Linie und Speicheranzeige. Ein erneuter Tipp auf die bereits bestätigte Antwort verschickt keine weitere Anfrage. Fehler und Versionskonflikte behalten den vorhandenen Wiederholungsweg.
+
+Die zwölfstündige Gültigkeit der Antwortfreigabe bleibt unverändert. Gespeicherte Termine verschwinden danach nicht mehr pauschal: Sie bleiben bis zum jeweiligen Ende innerhalb einer begrenzten Aufbewahrung von maximal 30 Tagen sichtbar und zeigen nach zwölf Stunden „Gespeicherter Stand · H₂O öffnen“. Ohne aktuelle Freigabe kann nicht geantwortet werden. App öffnen lädt den Serverstand und erneuert die Freigabe. Es gibt keinen neuen Hintergrundzugang und keinen garantierten Serverabruf bei geschlossener App. Abmeldung und erkannter Zugriffsverlust löschen weiterhin den gesamten Widgetstand.
+
+Auf iOS ist die gemeinsame Datei nach dem ersten Entsperren seit einem Geräteneustart auch bei gesperrtem Bildschirm lesbar; sie bleibt verschlüsselt und vom Backup ausgeschlossen. WidgetKit liest den gemeinsamen Speicher zusätzlich etwa stündlich nach Systemplanung. Android verwendet den bestehenden zeitgesteuerten Auftrag. Die Timeline beziehungsweise der Auftrag schalten bei Terminende auf den nächsten gespeicherten Termin.
+
+Die nativen CI-Bildprüfungen rendern die tatsächlich ausgelieferten Ansichten mit künstlichen Daten. Sie ersetzen keine Messung am echten iPhone oder Android-Gerät und keine Store-Freigabe.

@@ -51,7 +51,7 @@ enum H2OWidgetReply {
                 guard pending.eventID == eventID, pending.phase == "retry", response == "retry" else { return nil }
                 pending.phase = "saving"; pending.startedAt = now; job = pending
             } else {
-                guard ["yes", "excused", "maybe"].contains(response), let version = event.version else { return nil }
+                guard ["yes", "excused", "maybe"].contains(response), event.status != response, let version = event.version else { return nil }
                 job = H2OWidgetReplyJob(eventID: eventID, status: response, requestID: UUID().uuidString.lowercased(), version: version, phase: "saving", startedAt: now)
             }
             document.snapshot.job = job; document.snapshot.message = nil; document.snapshot.notice = nil

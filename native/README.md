@@ -18,7 +18,7 @@ Gerätetest stehen in [H2O-MEMBER-PILOT.md](../docs/H2O-MEMBER-PILOT.md).
 - Der neue Installationsweg nutzt für den persönlichen Pilot TestFlight; kein nativer Einladungs-QR-Scanner und keine zusätzliche Safari-Home-Installation.
 - Die App übernimmt ausschließlich den persönlich freigegebenen nächsten Termin.
   Abmeldung und erkannter Zugriffsverlust leeren das Widget; auch leere Kalender
-  verfallen nach zwölf Stunden.
+  werden nach zwölf Stunden als älterer Stand markiert; Details und Grenze der Antwortfreigabe siehe Build 1035 in den Pilotanleitungen.
 - Die Produktionsvariante wird ohne H2O_APP_REVIEW gebaut und öffnet das echte Portal.
   Die Demo bleibt für Apple-Prüfungen auf ihrer isolierten Domain.
 - Native Passkeys benötigen die noch zu veröffentlichende Apple-Domainzuordnung

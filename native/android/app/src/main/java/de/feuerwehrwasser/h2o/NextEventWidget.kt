@@ -18,6 +18,13 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import java.util.Locale
 import android.util.TypedValue
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Shader
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.graphics.Paint
 import android.graphics.Typeface
 import org.json.JSONObject
@@ -57,6 +64,23 @@ open class NextEventWidget : AppWidgetProvider() {
             if (boundary != null && widgetIds(context).isNotEmpty()) WorkManager.getInstance(context).enqueueUniqueWork("h2o-widget-boundary", ExistingWorkPolicy.REPLACE,
                 OneTimeWorkRequestBuilder<WidgetClockWorker>().setInitialDelay(boundary - now, TimeUnit.MILLISECONDS).build())
         }
+        private fun statusLine(width: Int, status: String, density: Float): Bitmap {
+            val pixels = ((width - 24).coerceAtLeast(1) * density).toInt().coerceIn(1, 2048)
+            val bitmap = Bitmap.createBitmap(pixels, 3, Bitmap.Config.ARGB_8888)
+            val center = when (status) { "yes" -> 1f / 6; "maybe" -> 5f / 6; else -> 0.5f }
+            val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF5C442; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
+            val paint = Paint().apply {
+                shader = LinearGradient(0f, 0f, pixels.toFloat(), 0f,
+                    intArrayOf(0x30C6D2DF, (tint and 0xFFFFFF) or 0x33000000, (tint and 0xFFFFFF) or (if (status == "open") 0x40000000 else 0xB0000000.toInt()), (tint and 0xFFFFFF) or 0x33000000, 0x30C6D2DF),
+                    floatArrayOf(0f, (center - 0.16f).coerceAtLeast(0.001f), center, (center + 0.16f).coerceAtMost(0.999f), 1f), Shader.TileMode.CLAMP)
+            }
+            Canvas(bitmap).apply {
+                drawRect(0f, 0f, pixels.toFloat(), 3f, paint)
+                drawRect(0f, 0f, pixels.toFloat(), 1f, Paint().apply { color = 0x18FFFFFF })
+                drawRect(0f, 2f, pixels.toFloat(), 3f, Paint().apply { color = 0x28000000 })
+            }
+            return bitmap
+        }
         internal fun viewsForOptions(context: Context, options: Bundle, compactDefault: Boolean, now: Long): RemoteViews {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val sizes = BundleCompat.getParcelableArrayList(options, AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java)
@@ -81,6 +105,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
+            var calendarLayoutWidth = if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val relative = event?.let { WidgetSnapshot.day(it.start, now) }
             val day = date?.format(DateTimeFormatter.ofPattern("d", Locale.GERMAN)).orEmpty()
@@ -111,7 +136,7 @@ open class NextEventWidget : AppWidgetProvider() {
             show(R.id.widget_weekday, !flat); show(R.id.widget_month, event != null)
             show(R.id.widget_brand, false)
             show(R.id.widget_date, event != null); show(R.id.widget_separator, false)
-            val title = event?.title ?: if (snapshot == null) "H₂O öffnen, um Termine zu laden." else "Keine kommenden Termine"
+            val title = event?.title ?: if (snapshot == null) "H₂O öffnen, um Termine zu laden." else if (snapshot.stale) "Keine gespeicherten Termine · H₂O öffnen" else "Keine kommenden Termine"
             views.setTextViewText(R.id.widget_title, title)
             val titleSize = when {
                 flat -> 12f
@@ -122,8 +147,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 compact -> if (height >= 150) (if (fontScale > 1.15f) 13f else 15f) else if (fontScale > 1.15f) 11f else 12f
                 else -> 13f
             }
+            var renderedTitleSize = titleSize
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else if (large || spacious && (fontScale <= 1.15f || height >= 230) || !card && height >= 150 && logicalHeight >= 110) 3 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
@@ -146,6 +172,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
                 val fixedWidth = if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
                 val dateWidth = if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) desiredWidth else fixedWidth
+                calendarLayoutWidth = dateWidth
                 if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) views.setViewLayoutWidth(R.id.widget_date, dateWidth, TypedValue.COMPLEX_UNIT_DIP)
                 fun fitted(sp: Float, text: String): Float {
                     val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = sp * metrics.scaledDensity }
@@ -162,15 +189,26 @@ open class NextEventWidget : AppWidgetProvider() {
                     val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
                     val locationSize = (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
                     val clothingSize = (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
-                    val lines = if (tall || large || spacious || logicalHeight >= 140) 3 else 2
+                    val lines = 2
                     val maxTitle = ((textHeight - 1.2f * (locationSize + clothingSize) - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
                     val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else 36f
                     val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
+                    renderedTitleSize = growingTitle
                     size(R.id.widget_title, growingTitle)
                     views.setInt(R.id.widget_title, "setMaxLines", lines)
                     size(R.id.widget_location, locationSize)
                     size(R.id.widget_clothing, clothingSize)
                 }
+            }
+            val availableText = (width - calendarLayoutWidth - 34f).coerceAtLeast(1f)
+            val titlePaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = renderedTitleSize * metrics.scaledDensity }
+            val titleWidth = titlePaint.measureText(title) / metrics.density
+            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (titleWidth <= availableText - 60f) 48 else if (titleWidth <= (availableText - 40f) * 1.7f) 28 else 0
+            show(R.id.widget_logo, logoSize > 0)
+            views.setViewPadding(R.id.widget_details, 0, 0, ((if (logoSize > 0) logoSize + 10 else 0) * metrics.density).toInt(), 0)
+            if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                views.setViewLayoutWidth(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+                views.setViewLayoutHeight(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
             }
             val prefs = WidgetStore.prefs(context)
             val job = runCatching { prefs.getString("job", null)?.let(::JSONObject)?.takeIf { it.optString("eventId") == event?.id } }.getOrNull()
@@ -191,13 +229,16 @@ open class NextEventWidget : AppWidgetProvider() {
                 retry -> "Nicht bestätigt"
                 message != null -> message
                 notice != null -> notice
+                snapshot?.stale == true -> "Gespeicherter Stand · H₂O öffnen"
                 card && event?.status in listOf("yes", "excused", "maybe") -> "✓ Gespeichert"
                 card -> if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen"
                 !flat && width >= 170 && event?.status in listOf("yes", "excused", "maybe") -> "$status · Gespeichert"
                 else -> status
             }
-            views.setTextViewText(R.id.widget_status, statusText)
-            views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFB9BCC3.toInt())
+            val feedback = SpannableString(statusText)
+            if (statusText.startsWith("✓")) feedback.setSpan(ForegroundColorSpan(0xFF55A472.toInt()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            views.setTextViewText(R.id.widget_status, feedback)
+            views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
             show(R.id.widget_footer, event != null)
             show(R.id.widget_status_icon, false); show(R.id.widget_time, false)
             show(R.id.widget_note, snapshot?.stale == true && event != null)
@@ -210,17 +251,19 @@ open class NextEventWidget : AppWidgetProvider() {
                 show(R.id.widget_actions, actions); show(R.id.widget_edit, false); show(R.id.widget_hint, false)
                 views.setInt(R.id.widget_footer, "setMinimumHeight", ((if (card) 12 else 28) * metrics.density).toInt())
                 if (card) {
+                    show(R.id.widget_status_line, event != null)
+                    if (event != null) views.setImageViewBitmap(R.id.widget_status_line, statusLine(width, event.status, metrics.density))
                     show(R.id.widget_reply_section, event != null)
                     show(R.id.widget_retry, event != null && retry)
                     views.setTextViewText(R.id.widget_retry, if (canReply) "Erneut versuchen" else "In H₂O öffnen")
                     views.setOnClickPendingIntent(R.id.widget_retry, if (canReply && event != null) WidgetReplyReceiver.pending(context, event, "retry") else openPending)
                     for ((id, answer) in listOf(R.id.widget_reply_yes to "yes", R.id.widget_reply_excused to "excused", R.id.widget_reply_maybe to "maybe")) {
-                        val selected = job == null && event?.status == answer
+                        val selected = event?.status == answer
                         val pending = saving && job?.optString("status") == answer
                         views.setTextViewText(id, (if (pending) "◌ " else if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
                         views.setInt(id, "setBackgroundResource", if (selected) selectedBackground else 0)
-                        views.setTextColor(id, if (selected) (if (answer == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()) else 0xFFB9BCC3.toInt())
+                        views.setTextColor(id, if (selected) (if (answer == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()) else 0xFFC6D2DF.toInt())
                         views.setBoolean(id, "setEnabled", canReply && job == null)
                         views.setFloat(id, "setAlpha", if (canReply && job == null) 1f else 0.55f)
                         views.setContentDescription(id, (when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }) + if (selected) ". Ausgewählt" else if (pending) ". Wird gespeichert" else "")

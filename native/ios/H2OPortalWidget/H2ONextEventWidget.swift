@@ -23,9 +23,9 @@ struct NextEventProvider: TimelineProvider {
         let entries = H2OWidgetStorage.timeline(snapshot: H2OWidgetStorage.read(now: now), now: now)
             .map { NextEventEntry(date: $0.date, snapshot: $0.snapshot, family: context.family) }
 
-        // A successful app refresh or logout explicitly reloads the widget.
-        // No background network access is needed, and no 15-minute polling.
-        completion(Timeline(entries: entries, policy: .never))
+        // Re-read shared state periodically; no credentials or unscoped network access.
+        // Cached appointments survive the reply grant expiry and remain clearly marked.
+        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(3600))))
     }
 }
 
