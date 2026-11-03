@@ -177,7 +177,7 @@ test('Vormerkung und Rücknahme einer Punkteeinlösung verändern den Bestand vo
  const f=await fixture({policy:newPointsPolicy,prepaid:1000});f.click('a','points-beer');f.click('a','undo');assert.equal(f.writes.length,0);assert.equal(f.nodes['dr-main-confirm'].hidden,true);assert.equal(f.M.rewardState(f.accounts.get('a'),newPointsPolicy).pointUnits,150);assert.equal(f.button('a','points-wine').disabled,false);
 });
 test('Im Hintergrund vorbereitete Karten öffnen ohne erneutes Laden aller Mitglieder und Konten',async()=>{
- const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,0);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,1);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
+ const f=await fixture({policy:newPointsPolicy});let reads=0,lists=0;f.context.oneDriveSignedIn=()=>true;f.context.oneDriveReadState=async()=>{reads++;return {members:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'}]};};f.S.previewRewards=async()=>newPointsPolicy;f.S.list=async()=>{lists++;return [];};f.S.sourceKey=()=> 'drive:root';await f.context.Drinks.preload();assert.equal(reads,1);assert.equal(lists,1);await f.context.Drinks.open();assert.equal(reads,1);assert.equal(lists,1);f.click('a','account');await wait(()=>f.root.dataset.screen==='account');assert.ok(f.readCount()>0,'Einzelkonto wird für Änderungen weiterhin frisch geprüft');
 });
 
 test('Karten-OK speichert nur die ausgewählte Karte und hält deren Fokus',async()=>{
@@ -248,4 +248,32 @@ test('Gäste fehlen in Getränkeauswahl und Top 3, auch nach Vorladen',async()=>
   assert.equal(f.card('a'),undefined);
   assert.equal(f.nodes['dr-ranking'].children.some(n=>descendants(n).some(child=>child.textContent==='Alpha Mitglied')),false);
  }
+});
+
+test('Beim App-Start vorgeladene Schulden und Top 3 stehen beim Öffnen ohne weiteren Sammelabruf bereit',async()=>{
+ const f=await fixture({balance:true});let lists=0;f.S.list=async()=>{lists++;return [...f.accounts.values()];};
+ await f.context.Drinks.preload();assert.equal(lists,1);
+ await f.context.Drinks.open();assert.equal(lists,1);
+ const amount=descendants(f.nodes['dr-directory'].children[0]).find(n=>n.className==='dr-name-balance');
+ assert.equal(amount.textContent,'7,50 €');assert.ok(f.nodes['dr-ranking'].children.some(n=>descendants(n).some(x=>x.textContent==='7,50 €')));
+ await f.context.Drinks.open({fresh:true});assert.equal(lists,2,'Aktualisieren ruft erneut ab');
+});
+test('Gleichzeitiges Vorladen und Öffnen teilen sich den Kontenabruf',async()=>{
+ const f=await fixture();let lists=0,release;f.S.list=async()=>{lists++;return new Promise(r=>release=r);};
+ const preload=f.context.Drinks.preload();await wait(()=>lists===1);const opening=f.context.Drinks.open();
+ release([...f.accounts.values()]);await Promise.all([preload,opening]);assert.equal(lists,1);
+});
+test('Veraltete vorgeladene Kontostände werden beim Öffnen erneut geladen',async()=>{
+ const f=await fixture();let lists=0;f.S.list=async()=>{lists++;return [...f.accounts.values()];};
+ await f.context.Drinks.preload();f.advance(60001);await f.context.Drinks.open();assert.equal(lists,2);
+});
+test('Ein Fehler beim Vorladen verhindert die Gerätehausnutzung nicht und wird beim Öffnen erneut versucht',async()=>{
+ const f=await fixture();let lists=0;f.S.list=async()=>{lists++;if(lists===1)throw Error('Offline');return [...f.accounts.values()];};
+ assert.equal(await f.context.Drinks.preload(),null);await f.context.Drinks.open();assert.equal(lists,2);assert.equal(f.nodes['dr-directory'].children.length,2);
+});
+
+test('Ein Wechsel der OneDrive-Quelle verwirft den laufenden Vorladeabruf',async()=>{
+ const f=await fixture();let source='drive:old',lists=0;f.S.sourceKey=()=>source;
+ f.S.list=async()=>{lists++;source='drive:new';return [...f.accounts.values()];};
+ assert.equal(await f.context.Drinks.preload(),null);await f.context.Drinks.open();assert.equal(lists,2);
 });

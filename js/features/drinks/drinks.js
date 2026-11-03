@@ -246,21 +246,22 @@
     if(error.code==='correctionChanged'){account=await S.read(memberId).catch(()=>account);screen('account');}
     message(userMessage(error));
   }finally{busy=false;render();if(lockAfterRun){lockAfterRun=false;lockAccount();}flushCards();if(confirmRequested){confirmRequested=false;confirmCards(confirmTarget);}}}
-  async function open(){
+  async function open({fresh=false}={}){
     if(busy||pending||(cardQueue.length&&!cardError)){showToast('Die aktuelle Buchung bitte zuerst fertig speichern.','error');return;}
     if(stagedCount()&&!confirm('Vorgemerkte Änderungen verwerfen und Getränkekarten neu laden?'))return;
     if(showView('drinksView')===false)return;menuMemberId='';rankingReady=false;rankingAccounts=null;cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
     const number=++openNumber;
     await run(async()=>{
-      let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;
+      let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;if(fresh||ready&&(Date.now()-ready.at>=60000||ready.sourceKey!==S.sourceKey?.()))ready=null;preloaded=null;
       const data=ready?{members:ready.people.map(p=>({id:p.id,lastName:p.lastName,firstName:p.firstName}))}:await oneDriveReadState();
       if(!data||!Array.isArray(data.members))throw new Error('Die Mitgliederdatei in OneDrive ist nicht lesbar.');
       const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));
       if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)throw new Error('Die Mitglieder benötigen eindeutige Kennungen und Namen.');
       if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
+      if(Array.isArray(ready?.accounts)){rankingAccounts=new Map(ready.accounts.map(a=>[a.memberId,a]));rankingReady=true;}
       people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Mitglieder geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
     });
-    if(loaded)loadRanking();
+    if(loaded&&!rankingReady)loadRanking();
     if(!loaded)el('status').textContent='Getränke konnten nicht geladen werden. OneDrive-Verbindung prüfen und aktualisieren.';
     renderPeople();
   }
@@ -343,11 +344,11 @@
   }
   async function preload(){
     if(preloading)return preloading;if(preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.())return preloaded;if(typeof oneDriveSignedIn!=='function'||!oneDriveSignedIn()||stagedCount()||busy||pending||cardQueue.length)return null;const epoch=preloadEpoch;
-    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
+    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();const sourceKey=S.sourceKey?.(),accounts=await S.list(next.map(p=>p.id),{replaceCache:false});if(epoch!==preloadEpoch||sourceKey!==S.sourceKey?.())return null;preloaded={people:next,accounts,at:Date.now(),sourceKey};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
   }
   function init(){
     root=byId('drinksView');if(!root)return;
-    byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',open);
+    byId('drinksShortcut').addEventListener('click',open);el('home').addEventListener('click',()=>showView('attendanceView'));el('refresh').addEventListener('click',()=>open({fresh:true}));
     el('confirm')?.addEventListener('click',()=>confirmCards());
     el('staged-only').addEventListener('click',()=>{stagedOnly=!stagedOnly;el('search').value='';renderPeople();});
     el('discard-all').addEventListener('click',()=>{if(busy||pending||cardQueue.length)return;if(confirm('Alle vorgemerkten Änderungen verwerfen? Gespeicherte Buchungen bleiben erhalten.')){cardDrafts.clear();stagedOnly=false;renderPeople();render();}});
