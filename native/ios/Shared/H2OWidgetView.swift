@@ -123,7 +123,7 @@ struct NextEventView: View {
         // Reserve real space for the exact original asset; text never sits underneath it.
         let logoSize: CGFloat = small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
         return HStack(spacing: small ? 7 : 11) {
-            calendar(event)
+            calendar(event).padding(.top, 4)
             ViewThatFits(in: .vertical) {
                 details(event, titleSize: titleSize, detailSize: large ? 14 : small ? 10 : 12, spacing: 2, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
                 details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 1, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
