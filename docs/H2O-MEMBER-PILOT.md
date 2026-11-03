@@ -36,6 +36,8 @@ Apple-Referenz: https://developer.apple.com/documentation/bundleresources/inform
 
 ## Bauen und Signieren
 
+Der Mitglieder-Signierworkflow verwendet `macos-26-intel` (GitHub-Standardrunner mit Xcode 26). Die zuvor verwendeten arm64-Runner konnten den Uploadauftrag wegen Kapazitätsfehlern zweimal nicht übernehmen. Signierung, Profile, App Group und ausdrückliche Uploadfreigabe bleiben unverändert.
+
 1. Der Workflow `h2o-ios-widget.yml` prüft Swift-Richtlinien, kompiliert echte und Demo-Variante und rendert kleine/mittlere Widgetbilder mit künstlichen Daten. Die Bilder liegen im Artefakt `h2o-member-widget-layouts`.
 2. `Check application changes` kann auf dem Pilotzweig manuell mit `build_member_pilot=true` gestartet werden. Erst nach den vollständigen Prüfungen wird ein signiertes Mitglieder-IPA erzeugt. Dieser Weg lädt nichts nach TestFlight.
 3. Der Mitglieder-Signierworkflow baut genau den gewählten Commit ohne Review-Flag mit den echten App-Entitlements. Beide Profile müssen gültig, mit demselben Zertifikat signierbar und für die App Group freigegeben sein. Das Haupt-App-Profil muss zusätzlich Associated Domains zulassen. Bei fehlender Berechtigung bricht die Prüfung ab; sie schwächt die App-Berechtigungen nicht ab.
