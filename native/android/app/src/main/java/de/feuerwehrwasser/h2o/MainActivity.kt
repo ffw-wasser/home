@@ -57,6 +57,13 @@ class MainActivity : ComponentActivity() {
         }
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             fun trusted(view: WebView, origin: Uri, main: Boolean) = main && origin.scheme == "https" && origin.host == "ffw-wasser.github.io" && origin.port in listOf(-1, 443) && PortalLinks.trusted(view.url ?: "")
+            WebViewCompat.addWebMessageListener(web, "H2OCalendarDay", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, _ ->
+                if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) {
+                    PortalLinks.calendarTimestamp(message.data.orEmpty())?.let { time ->
+                        runOnUiThread { external(Uri.parse("intent://com.android.calendar/time/$time")) }
+                    }
+                }
+            }
             WebViewCompat.addWebMessageListener(web, "H2OHaptics", setOf("https://ffw-wasser.github.io")) { view, message, origin, main, _ ->
                 if (trusted(view, origin, main) && message.type == WebMessageCompat.TYPE_STRING) runCatching {
                     val raw = message.data ?: return@addWebMessageListener

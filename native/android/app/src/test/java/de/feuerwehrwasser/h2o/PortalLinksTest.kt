@@ -12,6 +12,10 @@ class PortalLinksTest {
         assertTrue(PortalLinks.invitation(url))
         for (value in listOf(PortalLinks.HOME, url + "&k=secret", PortalLinks.HOME + "?next=evil#setup=" + "a".repeat(43), PortalLinks.HOME + "#setup=short")) assertFalse(PortalLinks.invitation(value))
     }
+    @Test fun calendarBridgeAcceptsOnlyAnAppointmentTimestamp() {
+        assertEquals(1792915200000L, PortalLinks.calendarTimestamp("1792915200000"))
+        for (value in listOf("0", "-1", "32503680000001", "1.5", " 123", "123?token=private", "intent://evil.test", "{\"start\":123}")) assertNull(value, PortalLinks.calendarTimestamp(value))
+    }
     @Test fun calendarDayNeverExecutesUntrustedIntentExtras() {
         assertEquals(1234567890000L, PortalLinks.calendarTime("intent://com.android.calendar/time/1234567890000#Intent;scheme=content;action=android.intent.action.VIEW;end"))
         for (url in listOf("intent://evil.test/time/123", "intent://user@com.android.calendar/time/123", "intent://com.android.calendar/time/123?token=private", "intent://com.android.calendar/time/../123", "intent://com.android.calendar/time/99999999999999", "javascript:alert(1)")) assertNull(PortalLinks.calendarTime(url))

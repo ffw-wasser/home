@@ -162,3 +162,10 @@ Thema, Datum, Metadaten und Statusauswahl verwenden größere Ausgangsschriften.
 Bei einem Versionskonflikt liefert der Dienst ausschließlich den eigenen aktuellen Antwortstatus und dessen Version. Das Widget übernimmt diesen Stand und zeigt „Stand aktualisiert – erneut wählen“ mit wieder freier Auswahl. Es schreibt nicht selbstständig erneut. Zugang, Kalenderalter, Fristen, Empfängerrechte und Vorgangsnummer bleiben unverändert. Abgelaufene Zugänge erfordern weiterhin H₂O. Android hängt direkt aufeinanderfolgende ausdrückliche Antworten an den vorherigen Auftrag an, statt sie am noch auslaufenden Auftrag zu verwerfen; nach 30 Sekunden erfolgt kein stiller Versand.
 
 Build 1031: Wochentag/Heute/Morgen unter dem Datum wird kräftiger dargestellt. Nach einem zentral bestätigten Probeabschluss zeigt der nächste Kalenderabruf den nächsten offenen Termin.
+
+
+## Höhe ausnutzen – Build 1032
+
+Kalender und Termintexte wachsen mit der tatsächlich verfügbaren Höhe. Schmale hohe Widgets zeigen Kalender und Thema untereinander; große Ansichten geben freien Platz dem Haupttermin statt gestreckten Folgezeilen. Wochentag sowie Heute/Morgen sind deutlich größer und bleiben kräftig. Antworttasten behalten ihre Mindesthöhe. Größenwechsel und vergrößerte Systemschrift werden weiterhin berücksichtigt. Bestehende Widgets aktualisieren sich nach dem App-Update; bei älteren Android-Versionen bleiben die festen Layoutbreiten erhalten.
+
+„Tag im Kalender öffnen“ übergibt in der Android-App nur den Zeitstempel an Android. Die Kalender-App öffnet den gewählten Tag; fehlt eine passende Kalender-App, öffnet sich die Tagesansicht im Browser. Der Web-Intent bleibt für normale Android-Browser erhalten.

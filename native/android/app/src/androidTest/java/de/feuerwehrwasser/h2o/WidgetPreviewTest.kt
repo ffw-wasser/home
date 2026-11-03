@@ -31,7 +31,7 @@ class WidgetPreviewTest {
         val expandedSizes = sizes + listOf(Triple(220, 220, 1f), Triple(450, 250, 1f), Triple(450, 250, 1.3f), Triple(239, 160, 1.3f), Triple(240, 160, 1.3f), Triple(330, 345, 1f), Triple(330, 345, 1.3f), Triple(450, 345, 1.3f))
         val fixtures = listOf("today", "tomorrow", "future", "empty", "clear", "stale", "excused", "allday", "open", "reminded", "edit", "saving", "retry", "conflict", "long-title")
         val scenarios = expandedSizes.flatMap { size -> fixtures.map { size to it } } +
-            listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f)).flatMap { size ->
+            listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f), Triple(170, 345, 1f), Triple(220, 345, 1.3f), Triple(330, 450, 1f)).flatMap { size ->
                 listOf("short-title", "long-title", "open").map { size to it }
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
         for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios) {
@@ -55,6 +55,10 @@ class WidgetPreviewTest {
                         assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 16.9f else 21.9f)
                         val dateCard = activity.findViewById<View>(R.id.widget_date)
                         assertTrue("The calendar is at least 70dp wide", dateCard.width / activity.resources.displayMetrics.density >= 70)
+                    }
+                    if (isEvent && height >= 200 && height / fontScale >= 160) {
+                        val weekday = activity.findViewById<TextView>(R.id.widget_weekday)
+                        assertTrue("The label beneath the day is readable", weekday.textSize / activity.resources.displayMetrics.scaledDensity >= 11.9f)
                     }
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
