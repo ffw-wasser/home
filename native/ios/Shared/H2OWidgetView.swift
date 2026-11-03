@@ -24,7 +24,7 @@ struct NextEventView: View {
     @ScaledMetric(relativeTo: .body) private var textScale: CGFloat = 1
     private let background = Color(red: 16.0 / 255, green: 38.0 / 255, blue: 58.0 / 255)
     private let red = Color(red: 0.65, green: 0.13, blue: 0.20)
-    private let signalYellow = Color(red: 0.96, green: 0.77, blue: 0.26)
+    private let signalYellow = Color(red: 244.0 / 255, green: 197.0 / 255, blue: 66.0 / 255)
     private var ink: Color { renderingMode == .fullColor ? .white : .primary }
     private var secondaryInk: Color { renderingMode == .fullColor ? Color(red: 198.0 / 255, green: 210.0 / 255, blue: 223.0 / 255) : ink.opacity(0.75) }
     private var job: H2OWidgetReplyJob? { snapshot?.job.flatMap { $0.eventID == event?.id ? $0 : nil } }

@@ -68,7 +68,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val pixels = ((width - 24).coerceAtLeast(1) * density).toInt().coerceIn(1, 2048)
             val bitmap = Bitmap.createBitmap(pixels, 3, Bitmap.Config.ARGB_8888)
             val center = when (status) { "yes" -> 1f / 6; "maybe" -> 5f / 6; else -> 0.5f }
-            val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF5C442; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
+            val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF4C542; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
             val paint = Paint().apply {
                 shader = LinearGradient(0f, 0f, pixels.toFloat(), 0f,
                     intArrayOf(0x30C6D2DF, (tint and 0xFFFFFF) or 0x33000000, (tint and 0xFFFFFF) or (if (status == "open") 0x40000000 else 0xB0000000.toInt()), (tint and 0xFFFFFF) or 0x33000000, 0x30C6D2DF),
