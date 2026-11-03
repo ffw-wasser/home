@@ -53,7 +53,8 @@ object WidgetStore {
         val stateEvent = prefs(context).getString("stateEvent", null)
         val nextID = events.firstOrNull()?.id.orEmpty()
         if (stateEvent != nextID) prefs(context).edit().putString("stateEvent", nextID).remove("job").remove("editing").remove("message").remove("notice").commit()
-        WidgetSnapshot(value.getLong("updatedAt"), events.firstOrNull(), value.getBoolean("stale"), events.drop(1)).takeIf { it.fresh(now) }
+        val snapshot = WidgetSnapshot(value.getLong("updatedAt"), events.firstOrNull(), value.getBoolean("stale"), events.drop(1))
+        snapshot.takeIf { it.displayable(now) }?.let { it.copy(stale = it.stale || !it.fresh(now)) }
     }.getOrNull()
     @Synchronized internal fun confirm(context: Context, eventID: String, status: String, version: Int, notice: String? = null) {
         val value = JSONObject(prefs(context).getString(KEY, null) ?: return)

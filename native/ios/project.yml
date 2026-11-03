@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: '5.0'
     MARKETING_VERSION: '1.0.0'
-    CURRENT_PROJECT_VERSION: 1034
+    CURRENT_PROJECT_VERSION: 1035
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: VKL57X3H6F
     # Review is opt-in with H2O_REVIEW_FLAG=H2O_APP_REVIEW at build time.
@@ -16,6 +16,8 @@ targets:
     type: application
     platform: iOS
     sources:
+      - path: ../../assets/drinks/h2o-symbol-white-512.png
+        buildPhase: resources
       - H2OPortal
       - Shared
       - path: H2OPortal/Assets.xcassets/AppIcon.appiconset/AppIcon.png
@@ -41,6 +43,8 @@ targets:
     type: app-extension
     platform: iOS
     sources:
+      - path: ../../assets/drinks/h2o-symbol-white-512.png
+        buildPhase: resources
       - H2OPortalWidget
       - Shared
       # Reuse the exact original H2O app icon (fire and water) as the widget logo.

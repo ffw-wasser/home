@@ -19,6 +19,7 @@ data class WidgetEvent(val title: String, val start: Long, val end: Long, val lo
 }
 data class WidgetSnapshot(val updatedAt: Long, val event: WidgetEvent?, val stale: Boolean, val following: List<WidgetEvent> = emptyList()) {
     fun fresh(now: Long) = updatedAt <= now + 60000 && now - updatedAt < 12 * 3600000L
+    fun displayable(now: Long) = updatedAt <= now + 60000 && now - updatedAt < 30 * 86400000L
     companion object {
         val zone: ZoneId = ZoneId.of("Europe/Berlin")
         fun day(start: Long, now: Long): String {

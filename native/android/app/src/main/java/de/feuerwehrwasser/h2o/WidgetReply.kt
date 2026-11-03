@@ -63,7 +63,7 @@ class WidgetReplyReceiver : BroadcastReceiver() {
                         if (action != "retry" || old.optString("eventId") != eventID || old.optString("phase") != "retry") return
                         old
                     } else {
-                        if (action == "retry") return
+                        if (action == "retry" || action == event.status) return
                         JSONObject().put("eventId", eventID).put("status", action).put("expectedVersion", event.version)
                             .put("requestId", UUID.randomUUID().toString())
                     }

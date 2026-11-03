@@ -42,7 +42,7 @@ struct H2OWidgetReplyJob: Codable, Equatable {
 struct H2OWidgetSnapshot: Codable, Equatable {
     let updatedAt: Date
     var event: H2OWidgetEvent?
-    let stale: Bool
+    var stale: Bool
     var following: [H2OWidgetEvent]? = nil
     var editing: String? = nil
     var job: H2OWidgetReplyJob? = nil
@@ -51,6 +51,7 @@ struct H2OWidgetSnapshot: Codable, Equatable {
     var events: [H2OWidgetEvent] { ([event].compactMap { $0 } + (following ?? [])).sorted { $0.start < $1.start } }
     func at(_ now: Date) -> H2OWidgetSnapshot {
         var value = self
+        if !H2OWidgetStorage.fresh(self, now: now) { value.stale = true }
         let remaining = events.filter { $0.end > now }
         value.event = remaining.first
         value.following = Array(remaining.dropFirst())
@@ -83,6 +84,8 @@ enum H2OWidgetStorage {
     static let suite = "group.de.feuerwehrwasser.h2o"
     static let key = "h2o.widget.snapshot.v1"
     static let maxAge: TimeInterval = 12 * 60 * 60
+    // Display-only retention never extends the reply grant or calendar freshness.
+    static let displayAge: TimeInterval = 30 * 24 * 60 * 60
     private static var folder: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suite) }
     private static var file: URL? { folder?.appendingPathComponent("widget-v2.json") }
     static func transaction<T>(_ action: () throws -> T) rethrows -> T {
@@ -101,7 +104,7 @@ enum H2OWidgetStorage {
         guard var file else { throw CocoaError(.fileNoSuchFile) }
         let data = try JSONEncoder().encode(value)
         #if os(iOS)
-        try data.write(to: file, options: [.atomic, .completeFileProtection])
+        try data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         #else
         try data.write(to: file, options: .atomic)
         #endif
@@ -118,13 +121,18 @@ enum H2OWidgetStorage {
     }
     static func read(now: Date = Date()) -> H2OWidgetSnapshot? {
         let snapshot = document()?.snapshot ?? UserDefaults(suiteName: suite)?.data(forKey: key).flatMap { try? JSONDecoder().decode(H2OWidgetSnapshot.self, from: $0) }
-        guard let snapshot, fresh(snapshot, now: now) else { return nil }
+        guard let snapshot, displayable(snapshot, now: now) else { return nil }
         return snapshot.at(now)
     }
+    static func displayable(_ snapshot: H2OWidgetSnapshot, now: Date) -> Bool {
+        snapshot.updatedAt <= now.addingTimeInterval(60) && now.timeIntervalSince(snapshot.updatedAt) < displayAge
+    }
     static func timeline(snapshot: H2OWidgetSnapshot?, now: Date) -> [H2OWidgetState] {
-        guard let snapshot, fresh(snapshot, now: now) else { return [H2OWidgetState(date: now, snapshot: nil)] }
-        let expiry = snapshot.updatedAt.addingTimeInterval(maxAge)
+        guard let snapshot, displayable(snapshot, now: now) else { return [H2OWidgetState(date: now, snapshot: nil)] }
+        let expiry = snapshot.updatedAt.addingTimeInterval(displayAge)
         var dates = Set([now, expiry])
+        let staleAt = snapshot.updatedAt.addingTimeInterval(maxAge)
+        if staleAt > now { dates.insert(staleAt) }
         for event in snapshot.events where event.end > now && event.end < expiry { dates.insert(event.end) }
         if let midnight = H2OWidgetDateLabel.calendar.date(byAdding: .day, value: 1, to: H2OWidgetDateLabel.calendar.startOfDay(for: now)), midnight < expiry,
            snapshot.events.contains(where: { $0.end > midnight }) { dates.insert(midnight) }
