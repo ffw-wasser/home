@@ -76,8 +76,9 @@ open class NextEventWidget : AppWidgetProvider() {
             val large = width >= 300 && height >= 290 && logicalHeight >= 250
             val roomy = width >= 300 && width / fontScale >= 240 && height >= 160 && logicalHeight >= 130
             val card = large || roomy
+            val tall = !flat && width < 300 && logicalHeight >= 200 && height >= width
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
-            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
+            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
@@ -99,8 +100,9 @@ open class NextEventWidget : AppWidgetProvider() {
             val fit = if (day.isEmpty()) 1f else ((availableDayWidth - 2f) * metrics.density / dayPaint.measureText(day)).coerceAtMost(1f)
             size(R.id.widget_day, baseDaySize * fit)
             size(R.id.widget_month, if (flat) (if (compact) 6f else 7f) else if (spacious) 11f else if (large) 10f else if (width < 150) 7f else if (fontScale > 1.15f) 8f else 9f)
-            size(R.id.widget_weekday, if (spacious || large) 10f else if (width < 150 || fontScale > 1.15f) 7f else 8f)
-            views.setTextViewText(R.id.widget_weekday, relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty())
+            val weekdayText = relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty()
+            size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f)
+            views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty())
             show(R.id.widget_weekday, !flat); show(R.id.widget_month, event != null)
             show(R.id.widget_brand, false)
@@ -117,7 +119,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 else -> 13f
             }
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else if (large || spacious && (fontScale <= 1.15f || height >= 230) || !card && logicalHeight >= 140) 3 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else if (large || spacious && (fontScale <= 1.15f || height >= 230) || !card && height >= 150 && logicalHeight >= 110) 3 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
@@ -127,6 +129,45 @@ open class NextEventWidget : AppWidgetProvider() {
             show(R.id.widget_clothing, event != null && !flat && (card || logicalHeight >= 140) && event.clothing.isNotEmpty())
             size(R.id.widget_location, if (flat) 10f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
             size(R.id.widget_clothing, if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
+            // Spend additional launcher height on the actual date and topic.
+            // Reserve the response targets and following appointments before growing text.
+            if (!flat && event != null) {
+                val followingCount = if (large) snapshot?.following?.size?.coerceAtMost(2) ?: 0 else 0
+                val followingHeight = if (followingCount == 0) 0f else 26f + followingCount * maxOf(36f, 29f * fontScale + 4f)
+                val replyHeight = if (card) 48f + 16f * fontScale + if (large) 22f else 0f else maxOf(32f, 30f * fontScale)
+                val bodyHeight = (height - 18f - replyHeight - followingHeight).coerceAtLeast(1f)
+                val grow = logicalHeight >= 140 && bodyHeight >= 70
+                val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else bodyHeight
+                val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
+                    else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
+                val fixedWidth = if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
+                val dateWidth = if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) desiredWidth else fixedWidth
+                if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) views.setViewLayoutWidth(R.id.widget_date, dateWidth, TypedValue.COMPLEX_UNIT_DIP)
+                fun fitted(sp: Float, text: String): Float {
+                    val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = sp * metrics.scaledDensity }
+                    return if (text.isEmpty()) sp else sp * (((dateWidth - 4f) * metrics.density / paint.measureText(text)).coerceAtMost(1f))
+                }
+                val weekdaySize = if (grow) (dateHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
+                    else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f
+                size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
+                if (grow) {
+                    val monthSize = (dateHeight / fontScale * 0.08f).coerceIn(10f, 16f)
+                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 5f) / 1.2f).coerceIn(24f, 96f)
+                    size(R.id.widget_month, fitted(monthSize, date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty()))
+                    size(R.id.widget_day, fitted(daySize, day))
+                    val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
+                    val locationSize = (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
+                    val clothingSize = (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
+                    val lines = if (tall || large || spacious || logicalHeight >= 140) 3 else 2
+                    val maxTitle = ((textHeight - 1.2f * (locationSize + clothingSize) - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
+                    val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else 36f
+                    val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
+                    size(R.id.widget_title, growingTitle)
+                    views.setInt(R.id.widget_title, "setMaxLines", lines)
+                    size(R.id.widget_location, locationSize)
+                    size(R.id.widget_clothing, clothingSize)
+                }
+            }
             val prefs = WidgetStore.prefs(context)
             val job = runCatching { prefs.getString("job", null)?.let(::JSONObject)?.takeIf { it.optString("eventId") == event?.id } }.getOrNull()
             if (job?.optString("phase") == "saving" && now - job.optLong("startedAt") >= 30000) {

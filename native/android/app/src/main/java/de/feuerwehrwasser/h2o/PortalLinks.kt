@@ -17,12 +17,15 @@ object PortalLinks {
         trusted(value) && url.rawPath == "/home/deckel.html" && url.rawQuery == null &&
             Regex("setup=[A-Za-z0-9_-]{16,128}").matches(url.rawFragment ?: "")
     }.getOrDefault(false)
+    fun calendarTimestamp(value: String): Long? = value.takeIf { Regex("[0-9]{1,14}").matches(it) }
+        ?.toLongOrNull()?.takeIf { it in 1..32503680000000L }
+
     /** Rebuild only the known calendar day action; never execute intent extras from a URL. */
     fun calendarTime(value: String): Long? = runCatching {
         val url = URI(value)
         if (url.scheme != "intent" || url.rawAuthority != "com.android.calendar" || url.rawQuery != null ||
             !Regex("/time/[0-9]{1,14}").matches(url.rawPath ?: "")) return null
-        url.rawPath.substringAfterLast('/').toLong().takeIf { it in 1..32503680000000L }
+        calendarTimestamp(url.rawPath.substringAfterLast('/'))
     }.getOrNull()
 
 }
