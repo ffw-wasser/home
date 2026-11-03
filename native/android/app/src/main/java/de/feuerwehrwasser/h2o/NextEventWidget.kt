@@ -119,7 +119,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 else -> 13f
             }
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else if (large || spacious && (fontScale <= 1.15f || height >= 230) || !card && logicalHeight >= 140) 3 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else if (large || spacious && (fontScale <= 1.15f || height >= 230) || !card && height >= 150 && logicalHeight >= 110) 3 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
