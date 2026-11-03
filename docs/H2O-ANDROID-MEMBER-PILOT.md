@@ -198,3 +198,5 @@ Die Rückmeldetasten haben jetzt einzeln abgerundete, gewölbt wirkende Farbflä
 Die Binderinge sitzen in einem eigenen Streifen oberhalb der Monatsbeschriftung. Der Monatskopf hat zusätzlichen Abstand zum Metall. Bei wenig Platz entfällt weiterhin zuerst die Dekoration. Der Farbstreifen unter den Rückmeldetasten besitzt einen sichtbaren hellen Kern und einen örtlich begrenzten, weich auslaufenden Reflex unter der bestätigten Auswahl. Auswahl und Linie wechseln weiterhin erst nach Serverbestätigung.
 
 Die nativen Bildprüfungen enthalten zusätzlich den Vergleichsfall Indoor Cycling, 20:00, Injoy EM, Sportkleidung, Entschuldigt. Unter Android wird außerdem der tatsächliche Abstand zwischen Binderingen und Monatsschrift geprüft. Kalenderöffnung, Antwortversand, Cache und Berechtigungen ändern sich in diesem Build nicht.
+
+Die Android-Bildprüfung gleicht auch den Kalenderaufbau mit iOS ab: Das Papier beginnt unter den darüberliegenden Metallösen; oberhalb des roten Monatsfelds bleibt kein heller Papierstreifen.

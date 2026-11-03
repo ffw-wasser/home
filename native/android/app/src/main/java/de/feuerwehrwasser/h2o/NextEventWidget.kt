@@ -193,7 +193,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
                     val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
-                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 14f) / 1.2f).coerceIn(22f, 82f)
+                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 17f) / 1.2f).coerceIn(22f, 82f)
                     size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
                     val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
