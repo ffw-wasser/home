@@ -183,7 +183,7 @@
     else screen('account');
   }
   function selectCard(id,action='account'){
-    if(!loaded||pending||busy)return;
+    if(!loaded||pending||busy||!people.some(p=>p.id===id))return;
     activeCardId=id;
     if(action==='save'){confirmCards(id);return;}
     if(action==='undo'&&!cardQueue.length&&cardUnlocked(id,S.cached(id))&&undoStaged(id))return;
@@ -255,7 +255,7 @@
       let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;
       const data=ready?{members:ready.people.map(p=>({id:p.id,lastName:p.lastName,firstName:p.firstName}))}:await oneDriveReadState();
       if(!data||!Array.isArray(data.members))throw new Error('Die Mitgliederdatei in OneDrive ist nicht lesbar.');
-      const next=data.members.map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));
+      const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));
       if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)throw new Error('Die Mitglieder benötigen eindeutige Kennungen und Namen.');
       if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
       people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Mitglieder geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
@@ -301,7 +301,7 @@
       try{global.DrinksExtras?.celebrate(bonus,finishPaid);}catch{}
     }
   }
-  function adminFields(member){return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie über „Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus OneDrive laden.</span></fieldset>`;}
+  function adminFields(member){if(member.fitnessTrainer===true)return '';return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie über „Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus OneDrive laden.</span></fieldset>`;}
   async function saveAdminPin(button){
     if(!adminUnlocked)return showToast('Bitte zuerst die Administration entsperren.','error');
     const box=button.closest('.dr-pin-editor'),input=box.querySelector('[data-dr-new-pin]'),status=box.querySelector('[data-dr-pin-status]'),pin=input.value;
@@ -343,7 +343,7 @@
   }
   async function preload(){
     if(preloading)return preloading;if(preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.())return preloaded;if(typeof oneDriveSignedIn!=='function'||!oneDriveSignedIn()||stagedCount()||busy||pending||cardQueue.length)return null;const epoch=preloadEpoch;
-    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
+    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();if(epoch!==preloadEpoch)return null;preloaded={people:next,at:Date.now(),sourceKey:S.sourceKey?.()};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
   }
   function init(){
     root=byId('drinksView');if(!root)return;
