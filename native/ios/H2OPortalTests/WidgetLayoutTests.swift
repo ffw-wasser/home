@@ -70,6 +70,7 @@ final class WidgetLayoutTests: XCTestCase {
             ("open-long-month", H2OWidgetEvent(title: "Unterricht", start: ISO8601DateFormatter().date(from: "2027-09-22T17:30:00Z")!, end: ISO8601DateFormatter().date(from: "2027-09-22T19:30:00Z")!, location: "GH Wasser", clothing: "Tagesdienst", status: "open", allDay: false), false),
             ("empty", nil, false)
         ]
+        cases.append(("sketch-reference", H2OWidgetEvent(title: "Indoor Cycling", start: ISO8601DateFormatter().date(from: "2026-11-05T19:00:00Z")!, end: ISO8601DateFormatter().date(from: "2026-11-05T20:30:00Z")!, location: "Injoy EM", clothing: "Sportkleidung", status: "excused", allDay: false), false))
         for name in ["very-long-title", "large-font"] {
             cases.append((name, H2OWidgetEvent(title: "Atemschutz-Übung – Notfall & Mayday mit anschließender Nachbesprechung der gesamten Mannschaft", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser und Übungsgelände Emmendingen", clothing: "Einsatzkleidung mit persönlicher Schutzausrüstung", status: "maybe", allDay: false), false))
         }

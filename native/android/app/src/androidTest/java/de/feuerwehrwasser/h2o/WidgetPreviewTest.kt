@@ -34,8 +34,9 @@ class WidgetPreviewTest {
             listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f), Triple(170, 345, 1f), Triple(220, 345, 1.3f), Triple(330, 450, 1f)).flatMap { size ->
                 listOf("short-title", "long-title", "open").map { size to it }
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
+        val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f)).map { it to "sketch-reference" }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
-        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios) {
+        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios + sketchScenarios) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
@@ -44,7 +45,7 @@ class WidgetPreviewTest {
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
                     assertEquals(height >= 100 || width >= 240 || fixture in listOf("clear", "empty"), title.isShown)
-                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
+                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "sketch-reference") "Indoor Cycling" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
                     val isEvent = fixture !in listOf("clear", "empty")
@@ -98,6 +99,16 @@ class WidgetPreviewTest {
                             assertEquals("Unanswered replies use signal yellow", 0xFFF4C542.toInt(), status.currentTextColor)
                             if (card) assertEquals(if (fixture == "reminded") "Bitte Rückmeldung geben" else "Rückmeldung offen", text)
                         }
+                    }
+                    val bindings = activity.findViewById<View>(R.id.widget_bindings)
+                    if (isEvent && bindings?.isShown == true) {
+                        val month = activity.findViewById<TextView>(R.id.widget_month)
+                        val monthPoint = IntArray(2); val ringPoint = IntArray(2)
+                        month.getLocationOnScreen(monthPoint); bindings.getLocationOnScreen(ringPoint)
+                        val ink = android.graphics.Rect()
+                        month.paint.getTextBounds(month.text.toString(), 0, month.text.length, ink)
+                        val gap = monthPoint[1] + month.baseline + ink.top - ringPoint[1] - bindings.height
+                        assertTrue("Calendar rings leave clear space above month text: $gap px", gap >= 2 * activity.resources.displayMetrics.density - 1)
                     }
                     assertTextFits(widget, widget, "${width}x${height} font=$fontScale fixture=$fixture exact=$exactSize")
                     if (isEvent) {

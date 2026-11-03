@@ -47,54 +47,78 @@ struct NextEventView: View {
         default: return secondaryInk
         }
     }
+    private func rgb(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255)
+    }
+    private func highlight(_ status: String) -> Color {
+        guard renderingMode == .fullColor else { return ink.opacity(0.3) }
+        switch status {
+        case "yes": return rgb(0x65B580)
+        case "excused": return rgb(0xFFE797)
+        case "maybe": return rgb(0xFFC184)
+        default: return secondaryInk
+        }
+    }
+    private var bindings: some View {
+        HStack {
+            binding
+            Spacer()
+            binding
+        }.padding(.horizontal, calendarWidth * 0.22)
+            .frame(height: 9).accessibilityHidden(true)
+    }
+    private var binding: some View {
+        Capsule().fill(LinearGradient(colors: [rgb(0x7E8791), rgb(0xF1F4F7), rgb(0x949FA9)], startPoint: .leading, endPoint: .trailing))
+            .frame(width: small ? 3 : 4, height: 9)
+            .overlay(Capsule().stroke(.white.opacity(0.45), lineWidth: 0.4))
+            .compositingGroup().shadow(color: .black.opacity(0.4), radius: 0.6, x: 0.5, y: 1)
+    }
     private func calendar(_ event: H2OWidgetEvent) -> some View {
         let paper = renderingMode == .fullColor ? Color(red: 0.95, green: 0.935, blue: 0.90) : ink.opacity(0.12)
         let dateInk = renderingMode == .fullColor ? Color(red: 0.10, green: 0.11, blue: 0.13) : ink
         return VStack(spacing: 0) {
+            rgb(0xBD2542).frame(height: 5)
             ZStack {
-                Rectangle().fill(renderingMode == .fullColor ? red : ink.opacity(0.25))
+                Rectangle().fill(LinearGradient(colors: renderingMode == .fullColor ? [rgb(0xBD2542), rgb(0x8C142D)] : [ink.opacity(0.3), ink.opacity(0.2)], startPoint: .top, endPoint: .bottom))
                 Text(part(event.start, "MMM").uppercased())
                     .font(.system(size: large ? 15 : small ? 13 : 14, weight: .bold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
-            }.frame(height: large ? 25 : 21)
+            }.frame(height: large ? 25 : 20)
             Text(part(event.start, "d")).font(.system(size: large ? 38 : small ? 30 : 31, weight: .bold, design: .rounded))
-                .frame(height: large ? 45 : small ? 36 : 34)
-            Rectangle().fill(red.opacity(0.65)).frame(width: calendarWidth * 0.7, height: 0.5)
+                .frame(height: large ? 45 : small ? 32 : 30)
+            Capsule().fill(red.opacity(0.85)).frame(width: calendarWidth * 0.72, height: 0.8)
             Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
                 .font(.system(size: large ? 16 : small ? 12 : 14, weight: .bold)).lineLimit(1).padding(.bottom, 3)
         }.foregroundStyle(dateInk).frame(width: calendarWidth)
-            .background(LinearGradient(colors: [paper, paper.opacity(0.95)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            .clipShape(RoundedRectangle(cornerRadius: 7))
-            .overlay(alignment: .top) {
-                HStack {
-                    Capsule().fill(LinearGradient(colors: [.gray, .white, .gray], startPoint: .leading, endPoint: .trailing)).frame(width: 3, height: 9)
-                    Spacer()
-                    Capsule().fill(LinearGradient(colors: [.gray, .white, .gray], startPoint: .leading, endPoint: .trailing)).frame(width: 3, height: 9)
-                }.padding(.horizontal, calendarWidth * 0.22).offset(y: -3)
-            }
-            .shadow(color: .black.opacity(0.20), radius: 2, y: 2)
+            .background(LinearGradient(colors: [paper, renderingMode == .fullColor ? rgb(0xEDE7DD) : paper, paper], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(LinearGradient(colors: [.white.opacity(0.65), red.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.7))
+            .background(RoundedRectangle(cornerRadius: 9).fill(red).offset(y: 2))
+            .overlay(alignment: .top) { bindings.offset(y: -4) }
+            .compositingGroup()
+            .shadow(color: .black.opacity(0.4), radius: 2, y: 2)
             .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
     }
     private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat) -> some View {
         let fittingSize = titleSize * min(textScale, 1.5)
         return VStack(alignment: .leading, spacing: spacing) {
-            Text(event.title).font(.system(size: fittingSize, weight: .semibold))
+            Text(event.title).font(.system(size: fittingSize, weight: .bold))
                 .lineLimit(2).truncationMode(.tail)
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                 Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + (event.location.isEmpty ? "" : " · " + event.location))
-            }.font(.system(size: detailSize * min(textScale, 1.5))).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
+            }.font(.system(size: detailSize * min(textScale, 1.5), weight: .semibold)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
             if !event.clothing.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "tshirt")
                     Text(event.clothing)
-                }.font(.system(size: detailSize * min(textScale, 1.5))).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
+                }.font(.system(size: detailSize * min(textScale, 1.5), weight: .semibold)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
             }
         }.frame(width: max(1, availableWidth), alignment: .leading)
     }
     private func eventCard(_ event: H2OWidgetEvent, width: CGFloat) -> some View {
         let available = max(1, width - calendarWidth - (small ? 7 : 11))
         let titleSize: CGFloat = large ? 26 : small ? 15 : 20
-        let font = UIFont.systemFont(ofSize: titleSize * min(textScale, 1.5), weight: .semibold)
+        let font = UIFont.systemFont(ofSize: titleSize * min(textScale, 1.5), weight: .bold)
         let titleWidth = (event.title as NSString).size(withAttributes: [.font: font]).width
         // Reserve real space for the exact original asset; text never sits underneath it.
         let logoSize: CGFloat = small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
@@ -114,16 +138,27 @@ struct NextEventView: View {
         let status = event?.status ?? "open"
         let center: CGFloat = status == "yes" ? 1.0 / 6 : status == "maybe" ? 5.0 / 6 : 0.5
         let tint = color(status)
-        return Rectangle().fill(LinearGradient(stops: [
-            .init(color: secondaryInk.opacity(0.18), location: 0),
-            .init(color: tint.opacity(0.20), location: max(0.001, center - 0.16)),
-            .init(color: tint.opacity(status == "open" ? 0.25 : 0.7), location: center),
-            .init(color: tint.opacity(0.20), location: min(0.999, center + 0.16)),
-            .init(color: secondaryInk.opacity(0.18), location: 1)
-        ], startPoint: .leading, endPoint: .trailing))
-            .frame(height: 1).overlay(alignment: .top) { Color.white.opacity(0.10).frame(height: 0.3) }
-            .overlay(alignment: .bottom) { Color.black.opacity(0.18).frame(height: 0.3) }
-            .accessibilityHidden(true)
+        let core = LinearGradient(stops: [
+            .init(color: secondaryInk.opacity(0.42), location: 0),
+            .init(color: tint.opacity(0.35), location: max(0.001, center - 0.22)),
+            .init(color: status == "open" ? secondaryInk.opacity(0.45) : highlight(status), location: center),
+            .init(color: tint.opacity(0.35), location: min(0.999, center + 0.22)),
+            .init(color: secondaryInk.opacity(0.42), location: 1)
+        ], startPoint: .leading, endPoint: .trailing)
+        return ZStack {
+            if status != "open" && renderingMode == .fullColor {
+                Capsule().fill(LinearGradient(stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .clear, location: max(0.001, center - 0.22)),
+                    .init(color: tint.opacity(0.50), location: center),
+                    .init(color: .clear, location: min(0.999, center + 0.22)),
+                    .init(color: .clear, location: 1)
+                ], startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 2.5).blur(radius: 1)
+            }
+            Capsule().fill(core).frame(height: 0.8)
+                .overlay(alignment: .top) { Color.white.opacity(0.16).frame(height: 0.2) }
+        }.frame(height: 1).accessibilityHidden(true)
     }
     private func choice(_ status: String) -> some View {
         let selected = event?.status == status
@@ -131,14 +166,17 @@ struct NextEventView: View {
         return Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: status)) {
             HStack(spacing: 4) {
                 Image(systemName: pending ? "hourglass" : selected ? "checkmark" : "circle").font(.system(size: 12, weight: .semibold))
-                Text(title(status)).font(.system(size: 13, weight: selected ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.75)
+                Text(title(status)).font(.system(size: 13, weight: selected ? .bold : .semibold)).lineLimit(1).minimumScaleFactor(0.75)
             }.frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(selected ? (renderingMode == .fullColor && status != "yes" ? Color(red: 45.0 / 255, green: 33.0 / 255, blue: 10.0 / 255) : ink) : secondaryInk)
                 .background {
                     if selected {
-                        LinearGradient(colors: [color(status).opacity(0.92), color(status)], startPoint: .top, endPoint: .bottom)
-                            .overlay(alignment: .top) { Color.white.opacity(0.20).frame(height: 0.5) }
-                    } else { background.opacity(0.3) }
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(LinearGradient(stops: [.init(color: highlight(status), location: 0), .init(color: color(status), location: 0.68), .init(color: color(status).opacity(0.94), location: 1)], startPoint: .top, endPoint: .bottom))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(LinearGradient(colors: [.white.opacity(0.8), highlight(status).opacity(0.45), .black.opacity(0.2)], startPoint: .top, endPoint: .bottom), lineWidth: 0.9))
+                            .compositingGroup().shadow(color: .black.opacity(0.35), radius: 1.5, y: 1.5)
+                            .padding(1)
+                    }
                 }
         }.buttonStyle(.plain).disabled(!canReply || job != nil)
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
@@ -155,12 +193,12 @@ struct NextEventView: View {
         } else {
             HStack(spacing: 0) {
                 choice("yes")
-                Rectangle().fill(ink.opacity(0.20)).frame(width: 0.5, height: 44)
                 choice("excused")
-                Rectangle().fill(ink.opacity(0.20)).frame(width: 0.5, height: 44)
                 choice("maybe")
-            }.clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(ink.opacity(0.25), lineWidth: 0.7))
+            }.background(LinearGradient(colors: [rgb(0x315971), rgb(0x183A52), rgb(0x102A40)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).stroke(LinearGradient(colors: [rgb(0xB9DAE8).opacity(0.85), rgb(0x4C758E).opacity(0.5)], startPoint: .top, endPoint: .bottom), lineWidth: 0.8))
+                .compositingGroup().shadow(color: .black.opacity(0.3), radius: 1.5, y: 2)
+
         }
     }
     private var feedbackText: String {
@@ -174,10 +212,19 @@ struct NextEventView: View {
     private var feedback: some View {
         let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
         let textColor = unanswered ? signalYellow : secondaryInk
+        let confirmed = job == nil && snapshot?.message == nil && snapshot?.notice == nil && snapshot?.stale == false && ["yes", "excused", "maybe"].contains(event?.status ?? "open")
         return HStack(spacing: 4) {
-            Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : snapshot?.notice != nil || snapshot?.stale == true ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark")
+            if confirmed {
+                ZStack {
+                    Circle().fill(LinearGradient(colors: [highlight("yes"), color("yes")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Image(systemName: "checkmark").font(.system(size: 8, weight: .bold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
+                }.frame(width: 12, height: 12)
+                    .overlay(Circle().stroke(ink.opacity(0.35), lineWidth: 0.4))
+            } else {
+            Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : snapshot?.notice != nil || snapshot?.stale == true ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark.circle.fill")
                 .foregroundStyle(unanswered ? signalYellow : job == nil && snapshot?.message == nil && snapshot?.notice == nil && snapshot?.stale == false ? color("yes") : secondaryInk)
-            Text(feedbackText).foregroundStyle(textColor)
+            }
+            Text(feedbackText).fontWeight(.semibold).foregroundStyle(textColor)
             if snapshot?.stale == true {
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(secondaryInk)
                     .accessibilityLabel("Gespeicherter Kalenderstand · H₂O öffnen")
@@ -246,9 +293,10 @@ struct NextEventView: View {
                 .padding(.horizontal, horizontal).padding(.vertical, vertical)
                 .background {
                     LinearGradient(stops: [.init(color: Color(red: 29.0 / 255, green: 48.0 / 255, blue: 68.0 / 255), location: 0), .init(color: background, location: 1)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    LinearGradient(stops: [.init(color: red.opacity(0.22), location: 0), .init(color: red.opacity(0), location: 0.25), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(stops: [.init(color: rgb(0x781234).opacity(0.75), location: 0), .init(color: red.opacity(0), location: 0.25), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
+                    RadialGradient(colors: [rgb(0x2C6378).opacity(0.22), .clear], center: .bottomLeading, startRadius: 0, endRadius: geometry.size.width)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 22).stroke(ink.opacity(0.12), lineWidth: 0.6))
+                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(colors: [rgb(0xD1B2BA).opacity(0.7), rgb(0x4A748D).opacity(0.55), rgb(0x071725)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
         }.id(family)
             .foregroundStyle(ink).containerBackground(background, for: .widget)

@@ -9,7 +9,7 @@
             </LinearLayout>
             <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginHorizontal="3dp" android:orientation="vertical" android:id="@+id/widget_details">
                 <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textColor="#F5F5F6" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
-                <TextView android:id="@+id/widget_location" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textSize="10sp" android:textColor="@color/widget_secondary" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/widget_location" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textSize="10sp" android:textColor="@color/widget_secondary" android:maxLines="1" android:ellipsize="end" android:textStyle="bold" />
             </LinearLayout>
             <LinearLayout android:id="@+id/widget_footer" android:layout_width="36dp" android:layout_height="wrap_content" android:minHeight="0dp" android:layout_marginTop="2dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:background="@drawable/widget_panel_background">
                 <ImageView android:id="@+id/widget_status_icon" android:layout_width="10dp" android:layout_height="10dp" android:visibility="gone" android:contentDescription="@null" />
@@ -20,7 +20,7 @@
                 <TextView android:id="@+id/widget_status_chevron" android:layout_width="10dp" android:layout_height="wrap_content" android:includeFontPadding="false" android:textColor="#F5F5F6" android:text="⌄" android:textSize="10sp" android:gravity="center" />
             </LinearLayout>
             <TextView android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textColor="#F5F5F6" android:visibility="gone" />
-            <TextView android:id="@+id/widget_clothing" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textColor="@color/widget_secondary" android:visibility="gone" />
+            <TextView android:id="@+id/widget_clothing" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textColor="@color/widget_secondary" android:visibility="gone" android:textStyle="bold" />
             <TextView android:id="@+id/widget_separator" android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:textColor="#F5F5F6" android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
