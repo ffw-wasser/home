@@ -125,6 +125,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 spacious -> if (fontScale > 1.15f) 32f else 40f
                 large -> if (fontScale > 1.15f) 30f else 36f
                 width < 150 -> 18f
+                card && logicalHeight < 130 -> 18f
                 fontScale > 1.15f -> if (card) 23f else 18f
                 card -> if (height < 160) 22f else 28f
                 else -> 24f

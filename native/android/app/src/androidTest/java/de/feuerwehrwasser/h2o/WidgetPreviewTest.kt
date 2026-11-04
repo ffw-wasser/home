@@ -35,8 +35,9 @@ class WidgetPreviewTest {
                 listOf("short-title", "long-title", "open").map { size to it }
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
         val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 110, 1f), Triple(330, 130, 1f), Triple(330, 140, 1f), Triple(330, 150, 1f), Triple(330, 160, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f), Triple(330, 150, 1.3f)).map { it to "sketch-reference" }
+        val shortCalendarScenarios = listOf(Triple(330, 150, 1.3f), Triple(330, 160, 1.3f)).flatMap { size -> listOf("today", "tomorrow").map { size to it } }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
-        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios + sketchScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
+        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
