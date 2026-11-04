@@ -308,7 +308,7 @@ struct NextEventView: View {
                     Color.clear.frame(height: 0.5)
                     if small { compactStatus }
                     else {
-                        if large { Text(event?.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
+                        if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
                         replyControls.contentTransition(.identity)
                         statusLine
                         feedback
