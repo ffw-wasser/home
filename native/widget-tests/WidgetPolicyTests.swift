@@ -57,6 +57,8 @@ final class WidgetPolicyTests: XCTestCase {
         }
         value.job = H2OWidgetReplyJob(eventID: String(repeating: "b", count: 43), status: "excused", requestID: "other-event", version: 0, phase: "saving", startedAt: now)
         XCTAssertEqual(value.replyLightStatus, "maybe", "Other appointments never move this light")
+        value.event?.canReply = false
+        XCTAssertEqual(value.replyFeedback, "Nur zur Information")
         let decoded = try JSONDecoder().decode(H2OWidgetSnapshot.self, from: JSONEncoder().encode(value))
         XCTAssertEqual(decoded, value)
     }

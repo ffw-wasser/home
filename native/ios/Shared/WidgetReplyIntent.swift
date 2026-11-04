@@ -53,9 +53,9 @@ enum H2OWidgetReply {
             H2OWidgetStorage.transaction {
                 guard var current = H2OWidgetStorage.document(), current.grant?.generation == grant.generation else { return }
                 func update(_ event: H2OWidgetEvent) -> H2OWidgetEvent {
-                    guard event.id == id, (event.version ?? 0) <= version else { return event }
+                    guard event.id == id, !canReply || (event.version ?? 0) <= version else { return event }
                     var next = event; next.reminded = reminded; next.canReply = canReply
-                    if current.snapshot.currentReplyJob?.eventID != id { next.status = status; next.version = version }
+                    if !canReply || current.snapshot.currentReplyJob?.eventID != id { next.status = status; next.version = version }
                     return next
                 }
                 current.snapshot.event = current.snapshot.event.map(update)

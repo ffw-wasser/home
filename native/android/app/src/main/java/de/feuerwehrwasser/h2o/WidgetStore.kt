@@ -64,9 +64,9 @@ object WidgetStore {
         val pending = runCatching { JSONObject(prefs.getString("job", "") ?: "").optString("eventId") }.getOrNull()
         for (i in 0 until events.length()) {
             val event = events.getJSONObject(i)
-            if (event.optString("id") == eventID && event.optInt("version") <= version) {
+            if (event.optString("id") == eventID && (!canReply || event.optInt("version") <= version)) {
                 event.put("reminded", reminded).put("canReply", canReply)
-                if (pending != eventID) event.put("status", status).put("version", version)
+                if (!canReply || pending != eventID) event.put("status", status).put("version", version)
             }
         }
         prefs.edit().putString(KEY, value.toString()).commit()

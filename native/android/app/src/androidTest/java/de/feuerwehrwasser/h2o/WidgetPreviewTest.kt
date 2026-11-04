@@ -43,6 +43,26 @@ class WidgetPreviewTest {
         }
     }
 
+    @Test fun reminderUpdatesRetainCalendarAgeAndRejectOldSessionsOrReplyVersions() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        ActivityScenario.launch<WidgetPreviewActivity>(Intent(context, WidgetPreviewActivity::class.java).putExtra("fixture", "today")).use { scenario ->
+            scenario.onActivity {
+                val now = System.currentTimeMillis(); val prefs = WidgetStore.prefs(context)
+                val original = requireNotNull(WidgetStore.read(context, now)); val event = requireNotNull(original.event)
+                val generation = requireNotNull(prefs.getString("generation", null))
+                WidgetStore.reminder(context, "old-session", event.id, "maybe", 5, true, true)
+                assertEquals(event, WidgetStore.read(context, now)?.event)
+                WidgetStore.reminder(context, generation, event.id, "maybe", 5, true, true)
+                val updated = requireNotNull(WidgetStore.read(context, now)); assertEquals(original.updatedAt, updated.updatedAt)
+                assertEquals("maybe", updated.event?.status); assertTrue(updated.event?.reminded == true)
+                WidgetStore.reminder(context, generation, event.id, "open", 1, false, true)
+                assertEquals("maybe", WidgetStore.read(context, now)?.event?.status)
+                WidgetStore.reminder(context, generation, event.id, "open", 0, false, false)
+                assertFalse(requireNotNull(WidgetStore.read(context, now)?.event).canReply)
+            }
+        }
+    }
+
     @Test fun renderSyntheticWidgetStates() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

@@ -254,7 +254,7 @@ struct NextEventView: View {
         }
     }
     private var feedback: some View {
-        let unanswered = job == nil && snapshot?.message == nil && event?.status == "open" && event?.canReply != false
+        let unanswered = job == nil && snapshot?.message == nil && ["open", "maybe"].contains(event?.status ?? "") && (event?.status == "open" || event?.reminded == true) && event?.canReply != false
         let textColor = unanswered ? signalYellow : secondaryInk
         return HStack(spacing: 4) {
             if let text = snapshot?.feedback(appUpdateAvailable: entry.appUpdateAvailable) {

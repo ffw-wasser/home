@@ -306,7 +306,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 else -> status
             }
             views.setTextViewText(R.id.widget_status, statusText)
-            views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open" && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
+            views.setTextColor(R.id.widget_status, if (job == null && message == null && (event?.status == "open" || (event?.status == "maybe" && event.reminded)) && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
             // Compact widgets show the confirmed answer as one colored status target.
             // Errors, notices and stale data keep their neutral information surface.
             if (!card) {
@@ -320,7 +320,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 val ink = when (confirmed) {
                     "yes" -> 0xFFFFFFFF.toInt()
                     "excused", "maybe" -> 0xFF2D210A.toInt()
-                    else -> if (job == null && message == null && event?.status == "open" && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
+                    else -> if (job == null && message == null && (event?.status == "open" || (event?.status == "maybe" && event.reminded)) && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
                 }
                 views.setInt(R.id.widget_footer, "setBackgroundResource", background)
                 views.setTextColor(R.id.widget_status, ink)
