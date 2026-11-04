@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
     private var passkeysSupported = false
     private var navigationEpoch = 0
     private var lastPullHaptic = -1000L
+    private lateinit var appUpdates: PlayAppUpdates
     private lateinit var pdfExport: NativePdfExport
     private var pdfScript = ""
     private var permissionReply: ((Boolean) -> Unit)? = null
@@ -101,6 +102,7 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addDocumentStartJavaScript(web, assets.open("android-entry.js").bufferedReader().use { it.readText() }, setOf("https://ffw-wasser.github.io"))
         } else notice("Bitte Android System WebView aktualisieren, damit Widget und Mitteilungen verfügbar sind.")
         column.addView(status); column.addView(errorActions); column.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
+        appUpdates = PlayAppUpdates(this, column)
         setContentView(column)
         ViewCompat.setOnApplyWindowInsetsListener(column) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
@@ -150,6 +152,7 @@ class MainActivity : ComponentActivity() {
         // A cold start always resolves a trusted page; no session tokens enter intents or logs.
         web.loadUrl(intent?.dataString?.takeIf(PortalLinks::trusted) ?: PortalLinks.HOME)
     }
+    override fun onResume() { super.onResume(); if (::appUpdates.isInitialized) appUpdates.onResume() }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent); setIntent(intent)
         val link = intent.dataString?.takeIf(PortalLinks::trusted) ?: return
@@ -170,6 +173,6 @@ class MainActivity : ComponentActivity() {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { notice("Für diesen Link ist keine passende Anwendung verfügbar.") }
     }
     private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE } }
-    override fun onDestroy() { pdfExport.close(); web.destroy(); super.onDestroy() }
+    override fun onDestroy() { if (::appUpdates.isInitialized) appUpdates.close(); pdfExport.close(); web.destroy(); super.onDestroy() }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 }

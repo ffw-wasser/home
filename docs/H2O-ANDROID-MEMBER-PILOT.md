@@ -216,3 +216,27 @@ Die vorhandenen nativen Bildprüfungen enthalten den Vergleichsfall „Indoor Cy
 Auf iPhone gleitet der Lichtschwerpunkt beim Start der Antwort für 0,55 Sekunden zur angeforderten Taste und übernimmt deren Farbe. Nach Bestätigung wird er heller, bei Fehler kehrt er zum bestätigten Status zurück. „Bewegung reduzieren“ wird beachtet. WidgetKit bestimmt den tatsächlichen Übergang; es wird keine dauernde Animation oder Aktualisierungsschleife erzwungen. Auf Android läuft während der Übertragung ein nativer unbestimmter Ladebalken in der Antwortfarbe; danach erscheint wieder der Lichtschwerpunkt der bestätigten Auswahl. Es wird kein erfundener Prozentfortschritt angezeigt.
 
 Im großen Widget stehen Thema und Metadaten getrennt: Das Thema nutzt die volle verfügbare Breite, das Originalwappen sitzt größer neben Uhrzeit und Kleidung (regulär 56 pt/dp, bei Enge kleiner; bei großer Systemschrift entfällt die Dekoration). Mittlere und kleine Ansichten behalten ihre bisherige Anordnung. Native Bildprüfungen decken alle drei Ladefarben, offene und fehlerhafte Rückmeldungen sowie große Widgets mit kurzen und langen Themen ab. Tatsächliche Übergangsflüssigkeit und Launcher-Verhalten sind zusätzlich am Gerät zu beurteilen. Antwortfreigabe, Wiederholungsschutz und Datenformat bleiben unverändert.
+
+
+## Build 1039 – Android-Proportionen nach der iPhone-Vorlage
+
+Breite Terminkarten zeigen die drei Rückmeldetasten bereits ab 140 dp Höhe, sofern die Systemschrift genügend Platz lässt. Die 44 dp hohen Tasten und der feste Hinweisplatz bleiben erhalten. Bei weniger Platz öffnet der vorhandene kompakte Status weiterhin den Termin in H₂O.
+
+Das Kalenderblatt bleibt in mittleren Karten schmaler und wächst bei zusätzlicher Höhe nur begrenzt. Thema und Metadaten erhalten dadurch mehr Breite. Das Wappen steht in einer eigenen, vertikal zentrierten Spalte rechts, regulär 40 dp groß; bei geringer Höhe oder großer Systemschrift entfällt es zuerst. Ein kurzes Thema wie „Indoor Cycling“ wird bei Bedarf maßvoll verkleinert, damit es wie auf iPhone einzeilig bleibt. Große Widgets mit Folgeterminen behalten ihre Anordnung.
+
+Die Emulator-Bildprüfung enthält die Referenzkarte bei 140, 150, 160, 170 und 230 dp Höhe sowie vergrößerter Systemschrift. Sie prüft die vollständig sichtbare Rückmeldeleiste und den Abstand zwischen Wappen und Text. Die tatsächlichen Größen im Samsung-Launcher sind zusätzlich am Galaxy zu beurteilen.
+
+Breite Zwischenhöhen unter 140 dp behalten die kompakte Statuszeile, zeigen aber ein größeres einzeiliges Thema, Uhrzeit/Ort und Kleidung. Bei normaler Schrift nutzt ein 36-dp-Wappen rechts den sonst freien Platz. Auch 110 und 130 dp sind als Bildprüfungen enthalten.
+
+
+Antippen der kompakten Statuszeile öffnet weiterhin den zugehörigen Termin in H₂O, um die Antwort dort zu ändern.
+
+## App-Updates beim Öffnen – Build 1039
+
+Die Android-App fragt beim Öffnen beziehungsweise bei Rückkehr in den Vordergrund Google Play nach einer neueren, für das angemeldete Play-Konto verfügbaren Version. Ein freiwilliger Hinweis „Aktualisieren“ startet nach Antippen den Google-Dialog für ein flexibles Update. Erst nach Zustimmung lädt Play die neue Version im Hintergrund. Bei „Jetzt neu starten“ zuerst offene Eingaben speichern; nur Antippen dieser Aktion schließt die Installation ab. „Später“ blendet den Hinweis für dieselbe Version 24 Stunden aus; eine neuere Version darf wieder angeboten werden. Ein bereits heruntergeladenes Update wird bei Rückkehr in die App wieder erkannt. Offline, ohne verfügbaren Play-Dienst oder ohne Update bleibt H₂O normal bedienbar. Es werden keine APK-Dateien selbst heruntergeladen und keine zusätzlichen Berechtigungen oder Mitgliederdaten übertragen.
+
+Diese Ergänzung ist kein zentraler Installationsbefehl und keine Push-Mitteilung. Die verfügbaren Versionen werden weiterhin im internen Google-Play-Test freigegeben. Der erste Build mit dieser Funktion muss zunächst normal installiert werden; testen lässt sich der Ablauf erst mit einer danach angebotenen höheren Versionsnummer und passender Play-Signatur/Kontoberechtigung.
+
+Auf iPhone erfolgen automatische App-Updates über TestFlight beziehungsweise den App Store, sofern auf dem Gerät aktiviert. H₂O installiert dort keine neue native Version selbst.
+
+Die Android-Emulatorprüfung verwendet Googles FakeAppUpdateManager: Start ohne Dialog, Zustimmung, Download ohne automatischen Neustart, Wiedererkennen des fertigen Downloads, ausdrücklicher Neustart, „Später“ sowie fehlendes Update und nicht verfügbarer Play-Dienst. Reale Store-Berechtigung, Signierung, Verteilung und Installation sind zusätzlich im internen Play-Test zu prüfen.

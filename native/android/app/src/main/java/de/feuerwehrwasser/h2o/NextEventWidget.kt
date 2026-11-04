@@ -106,8 +106,9 @@ open class NextEventWidget : AppWidgetProvider() {
             val fontScale = context.resources.configuration.fontScale
             val logicalHeight = height / fontScale
             val large = width >= 300 && height >= 290 && logicalHeight >= 250
-            val roomy = width >= 300 && width / fontScale >= 240 && height >= 160 && logicalHeight >= 130
+            val roomy = width >= 300 && width / fontScale >= 240 && height >= 140 && logicalHeight >= 112
             val card = large || roomy
+            val wideCompact = !flat && !card && width >= 300 && logicalHeight >= 100
             val tall = !flat && width < 300 && logicalHeight >= 200 && height >= width
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
@@ -124,8 +125,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 spacious -> if (fontScale > 1.15f) 32f else 40f
                 large -> if (fontScale > 1.15f) 30f else 36f
                 width < 150 -> 18f
+                card && logicalHeight < 130 -> 18f
                 fontScale > 1.15f -> if (card) 23f else 18f
-                card -> 28f
+                card -> if (height < 160) 22f else 28f
                 else -> 24f
             }
             val metrics = context.resources.displayMetrics
@@ -134,15 +136,15 @@ open class NextEventWidget : AppWidgetProvider() {
             val fit = if (day.isEmpty()) 1f else ((availableDayWidth - 2f) * metrics.density / dayPaint.measureText(day)).coerceAtMost(1f)
             size(R.id.widget_day, baseDaySize * fit)
             val monthText = date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty()
-            val baseMonthSize = if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (fontScale > 1.15f) 10f else 12f
+            val baseMonthSize = if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (fontScale > 1.15f || (card && height < 160)) 10f else 12f
             val monthPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseMonthSize * metrics.scaledDensity }
             val monthFit = if (monthText.isEmpty()) 1f else ((availableDayWidth + 2f) * metrics.density / monthPaint.measureText(monthText)).coerceAtMost(1f)
             size(R.id.widget_month, baseMonthSize * monthFit)
             val weekdayText = relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty()
-            size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f)
+            size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f || (card && height < 160)) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
-            val showBindings = !flat && logicalHeight >= 140
+            val showBindings = !flat && logicalHeight >= if (card) 160 else 140
             show(R.id.widget_bindings, showBindings)
             show(R.id.widget_binding_gap, showBindings)
             show(R.id.widget_binding_headroom, showBindings)
@@ -157,22 +159,23 @@ open class NextEventWidget : AppWidgetProvider() {
                 large -> if (fontScale > 1.15f) 19f else 24f
                 spacious -> if (fontScale > 1.15f) 20f else 26f
                 width >= 450 && height >= 250 -> if (fontScale > 1.15f) 15f else 18f
+                wideCompact -> 18f
                 card -> if (fontScale > 1.15f) 15f else if (height <= 165) 18f else 20f
                 compact -> if (height >= 150) (if (fontScale > 1.15f) 13f else 15f) else if (fontScale > 1.15f) 11f else 12f
                 else -> 13f
             }
             var renderedTitleSize = titleSize
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact) 1 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
             views.setTextViewText(R.id.widget_location, if (flat || width < 150) time else "$time · ${event?.location.orEmpty()}")
             views.setTextViewText(R.id.widget_clothing, event?.clothing.orEmpty())
             show(R.id.widget_location, event != null)
-            show(R.id.widget_clothing, event != null && !flat && (card || logicalHeight >= 140) && event.clothing.isNotEmpty())
-            size(R.id.widget_location, if (flat) 10f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
-            size(R.id.widget_clothing, if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
+            show(R.id.widget_clothing, event != null && !flat && (card || wideCompact || logicalHeight >= 140) && event.clothing.isNotEmpty())
+            size(R.id.widget_location, if (flat) 10f else if (wideCompact) 11f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
+            size(R.id.widget_clothing, if (wideCompact) 10f else if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
             // Spend additional launcher height on the actual date and topic.
             // Reserve the response targets and following appointments before growing text.
             if (!flat && event != null) {
@@ -182,8 +185,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 val bodyHeight = (height - 24f - replyHeight - followingHeight).coerceAtLeast(1f)
                 if (large && bodyHeight < 112f * fontScale) largeLogoSize = 40
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
-                val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else bodyHeight
+                val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else if (card && !large) bodyHeight.coerceAtMost(120f * fontScale) else bodyHeight
                 val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
+                    else if (card && !large) (dateHeight * 0.52f).coerceIn(50f, 72f).coerceAtMost((width - 24f) * 0.22f)
                     else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
                 val fixedWidth = if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
                 val dateWidth = if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) desiredWidth else fixedWidth
@@ -194,7 +198,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     return if (text.isEmpty()) sp else sp * (((dateWidth - 4f) * metrics.density / paint.measureText(text)).coerceAtMost(1f))
                 }
                 val weekdaySize = if (grow) (dateHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
-                    else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f
+                    else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f || (card && height < 160)) 10f else 12f
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
                     val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
@@ -207,7 +211,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     val lines = 2
                     val metadataHeight = if (large && fontScale <= 1.2f) maxOf(largeLogoSize / fontScale, 1.2f * (locationSize + clothingSize)) else 1.2f * (locationSize + clothingSize)
                     val maxTitle = ((textHeight - metadataHeight - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
-                    val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else 36f
+                    val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else if (card && !large) 24f else 36f
                     val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
                     renderedTitleSize = growingTitle
                     size(R.id.widget_title, growingTitle)
@@ -219,9 +223,17 @@ open class NextEventWidget : AppWidgetProvider() {
             val availableText = (width - calendarLayoutWidth - 34f).coerceAtLeast(1f)
             val titlePaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = renderedTitleSize * metrics.scaledDensity }
             val titleWidth = titlePaint.measureText(title) / metrics.density
-            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (titleWidth <= availableText - 60f) 48 else if (titleWidth <= (availableText - 40f) * 1.7f) 28 else 0
+            // The crest has its own column in medium cards, as on iPhone.
+            // A short heading may shrink slightly to stay on one line beside it.
+            val mediumLogo = (wideCompact || (card && !large && logicalHeight >= 140)) && fontScale <= 1.2f
+            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (wideCompact) 36 else 40) else 0
+            if (mediumLogo && event != null) {
+                val titleSpace = (availableText - logoSize - 8f).coerceAtLeast(1f)
+                val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
+                if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
+            }
             show(R.id.widget_logo, logoSize > 0)
-            views.setViewPadding(R.id.widget_details, 0, 0, ((if (logoSize > 0 && !large) logoSize + 10 else 0) * metrics.density).toInt(), 0)
+            views.setViewPadding(R.id.widget_details, 0, 0, 0, 0)
             if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 views.setViewLayoutWidth(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
                 views.setViewLayoutHeight(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)

@@ -37,8 +37,9 @@ const root=path.resolve(__dirname,'..');
   for(const target of ['portal-evidence','portal-section','account','more-training','deckel-more']){await page.evaluate(target=>DeckelMobile.jump(target),target);assert.equal(await page.locator('#portal-priority').isVisible(),target==='portal-evidence','evidence warning visibility follows its own page: '+target);}
   await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.evaluate(()=>H2OPortal.refreshEvidence());assert.equal(await page.locator('#portal-priority').isVisible(),false,'background evidence refresh cannot reveal warnings over appointments');
   await page.evaluate(()=>DeckelMobile.jump('portal-evidence'));
-  await page.waitForFunction(()=>document.querySelector('#portal-evidence-status').textContent.includes('Vorwarnung:'));
-  assert.match(await page.locator('#portal-evidence-status').textContent(),/Datenstand: [^\n]+\nVorwarnung: 60 Tage\./);
+  // Capture the matching status atomically: a concurrent refresh may replace it with loading text.
+  const evidenceStatus=await page.waitForFunction(()=>{const text=document.querySelector('#portal-evidence-status').textContent;return /Datenstand: [^\n]+\nVorwarnung: 60 Tage\./.test(text)?text:false;});
+  assert.match(await evidenceStatus.jsonValue(),/Datenstand: [^\n]+\nVorwarnung: 60 Tage\./);
   assert.equal(await page.locator('#portal-evidence-status').evaluate(n=>getComputedStyle(n).whiteSpace),'pre-line','data status preserves the line break');
   await page.getByRole('button',{name:'FFI aktualisieren',exact:true}).click();
   const today=E.day(now);

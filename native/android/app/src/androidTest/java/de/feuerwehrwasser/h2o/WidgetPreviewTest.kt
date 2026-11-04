@@ -34,9 +34,10 @@ class WidgetPreviewTest {
             listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f), Triple(170, 345, 1f), Triple(220, 345, 1.3f), Triple(330, 450, 1f)).flatMap { size ->
                 listOf("short-title", "long-title", "open").map { size to it }
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
-        val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f)).map { it to "sketch-reference" }
+        val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 110, 1f), Triple(330, 130, 1f), Triple(330, 140, 1f), Triple(330, 150, 1f), Triple(330, 160, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f), Triple(330, 150, 1.3f)).map { it to "sketch-reference" }
+        val shortCalendarScenarios = listOf(Triple(330, 150, 1.3f), Triple(330, 160, 1.3f)).flatMap { size -> listOf("today", "tomorrow").map { size to it } }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
-        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios + sketchScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
+        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
@@ -53,10 +54,10 @@ class WidgetPreviewTest {
                     assertFalse("Brand heading must not consume calendar space", activity.findViewById<View>(R.id.widget_brand).isShown)
                     if (isEvent && width >= 300 && height in 210..289 && height / fontScale >= 160 && width / fontScale >= 240) {
                         val day = activity.findViewById<TextView>(R.id.widget_day)
-                        assertTrue("Intermediate launcher heights enlarge the calendar day", day.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 31.9f else 41.9f)
-                        assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= if (fontScale > 1.15f) 16.9f else 21.9f)
+                        assertTrue("Intermediate launcher heights enlarge the calendar day", day.textSize / activity.resources.displayMetrics.scaledDensity >= 21.9f)
+                        assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= 16.9f)
                         val dateCard = activity.findViewById<View>(R.id.widget_date)
-                        assertTrue("The calendar is at least 70dp wide", dateCard.width / activity.resources.displayMetrics.density >= 70)
+                        assertTrue("The compact calendar leaves room for the subject and crest", dateCard.width / activity.resources.displayMetrics.density in 49f..73f)
                     }
                     if (isEvent && height >= 200 && height / fontScale >= 160) {
                         val weekday = activity.findViewById<TextView>(R.id.widget_weekday)
@@ -71,6 +72,28 @@ class WidgetPreviewTest {
                     val saving = fixture.startsWith("saving")
                     val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
                     assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    if (fixture == "sketch-reference" && width == 330 && height in 110..139 && fontScale == 1f) {
+                        assertFalse("Short cards keep the compact status target", actions)
+                        assertTrue("Short wide cards retain clothing", activity.findViewById<View>(R.id.widget_clothing).isShown)
+                        assertTrue("Short wide cards use the free space for a crest", activity.findViewById<View>(R.id.widget_logo).isShown)
+                        assertEquals("The compact subject remains on one line", 1, title.lineCount)
+                    }
+                    if (fixture == "sketch-reference" && width == 330 && height >= 140) {
+                        assertTrue("Galaxy-sized cards retain all three response options", actions)
+                        val selector = activity.findViewById<View>(R.id.widget_actions)
+                        val selectorPoint = IntArray(2); val widgetPoint = IntArray(2)
+                        selector.getLocationOnScreen(selectorPoint); widget.getLocationOnScreen(widgetPoint)
+                        assertTrue("The whole selector stays inside the widget", selectorPoint[1] >= widgetPoint[1] && selectorPoint[1] + selector.height <= widgetPoint[1] + widget.height)
+                        if (fontScale == 1f && height >= 160) {
+                            val logo = activity.findViewById<View>(R.id.widget_logo)
+                            val details = activity.findViewById<View>(R.id.widget_details)
+                            val logoPoint = IntArray(2); val detailsPoint = IntArray(2)
+                            logo.getLocationOnScreen(logoPoint); details.getLocationOnScreen(detailsPoint)
+                            assertTrue("The crest remains visible at a useful size", logo.isShown && logo.width / activity.resources.displayMetrics.density >= 39)
+                            assertTrue("The crest never overlaps the subject", detailsPoint[0] + details.width <= logoPoint[0])
+                            assertEquals("Indoor Cycling fits on one line like the iPhone reference", 1, title.lineCount)
+                        }
+                    }
                     if (actions) {
                         val control = activity.findViewById<View>(R.id.widget_actions)
                         assertTrue("The direct selector uses the widget width", control.width >= widget.width * 0.8f)
