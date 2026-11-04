@@ -77,6 +77,7 @@ final class WidgetLayoutTests: XCTestCase {
         for phase in ["reply-saving", "reply-saving-yes", "reply-saving-excused", "reply-retry", "reply-edit", "reply-conflict", "reply-refreshed"] {
             cases.append((phase, H2OWidgetEvent(title: "Technische Hilfeleistung", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser", clothing: "Einsatzkleidung", status: phase == "reply-saving-yes" ? "maybe" : "yes", allDay: false), false))
         }
+        var selectorBrightness: [String: Int] = [:]
         // Include the smallest supported canvas and a larger iPhone canvas.
         for (name, family, width, height) in [
             ("small", WidgetFamily.systemSmall, 155.0, 155.0),
@@ -123,11 +124,34 @@ final class WidgetLayoutTests: XCTestCase {
                         }
                     }
                     XCTAssertGreaterThan(paper, 500, "Calendar paper must remain visible on the left in \(name)/\(scenario); long text must not push it out of bounds")
+                    if family != .systemSmall && ["reply-edit", "reply-saving", "reply-saving-excused"].contains(scenario) {
+                        // Compare the broad green selected surface, excluding the thin moving light.
+                        var rows: [Int] = []
+                        for y in 0..<cg.height {
+                            var count = 0, peak = 0
+                            for x in 0..<(cg.width / 3) {
+                                let i = y * stride + x * 4
+                                let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
+                                if g * 10 > r * 14 && g * 10 > b * 12 { count += 1; peak = max(peak, g) }
+                            }
+                            if count > cg.width / 8 { rows.append(peak) }
+                        }
+                        XCTAssertGreaterThan(rows.count, 10, "The confirmed green selection must remain visible")
+                        selectorBrightness["\(name)-\(scenario)"] = rows.sorted().dropFirst(rows.count / 2).first ?? 0
+                    }
+
                 }
                 let attachment = XCTAttachment(image: image)
                 attachment.name = "widget-\(name)-\(scenario)"
                 attachment.lifetime = .keepAlways
                 add(attachment)
+            }
+            if family != .systemSmall {
+                let confirmed = try XCTUnwrap(selectorBrightness["\(name)-reply-edit"])
+                for saving in ["reply-saving", "reply-saving-excused"] {
+                    let pending = try XCTUnwrap(selectorBrightness["\(name)-\(saving)"])
+                    XCTAssertEqual(Double(pending), Double(confirmed), accuracy: 3, "Saving must not dim/flicker the confirmed selector in \(name)")
+                }
             }
         }
     }

@@ -10,6 +10,11 @@ struct NextEventEntry: TimelineEntry {
     var family: WidgetFamily? = nil
 }
 
+// A pending reply remains disabled without PlainButtonStyle dimming the card.
+private struct StableWidgetReplyStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { configuration.label }
+}
+
 struct NextEventView: View {
     let entry: NextEventEntry
     @Environment(\.widgetFamily) private var widgetFamily
@@ -210,7 +215,7 @@ struct NextEventView: View {
                             .padding(1)
                     }
                 }
-        }.buttonStyle(.plain).disabled(!canReply || job != nil)
+        }.buttonStyle(StableWidgetReplyStyle()).disabled(!canReply || job != nil)
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
     }
     @ViewBuilder private var replyControls: some View {
