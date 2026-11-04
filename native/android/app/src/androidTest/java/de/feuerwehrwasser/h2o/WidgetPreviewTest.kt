@@ -36,7 +36,7 @@ class WidgetPreviewTest {
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
         val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f)).map { it to "sketch-reference" }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
-        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios + sketchScenarios) {
+        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios + sketchScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
@@ -68,6 +68,7 @@ class WidgetPreviewTest {
                     rendered = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888).also { widget.draw(android.graphics.Canvas(it)) }
                     File(folder, "${width}x${height}-font${fontScale}-${fixture}-exact${exactSize}.png").outputStream().use { requireNotNull(rendered).compress(Bitmap.CompressFormat.PNG, 100, it) }
                     val card = activity.findViewById<View>(R.id.widget_reply_section) != null
+                    val saving = fixture.startsWith("saving")
                     val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
                     assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
                     if (actions) {
@@ -76,7 +77,7 @@ class WidgetPreviewTest {
                         for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) {
                             val button = activity.findViewById<TextView>(id)
                             assertTrue("Answer target is at least 44dp high", button.height / activity.resources.displayMetrics.density >= 44)
-                            assertEquals("Pending and stale replies cannot be submitted again", fixture !in listOf("saving", "stale"), button.isEnabled)
+                            assertEquals("Pending and stale replies cannot be submitted again", !saving && fixture != "stale", button.isEnabled)
                             if (fixture in listOf("open", "reminded")) assertFalse("Open replies have no selected answer", button.text.contains("✓"))
                         }
                     }
@@ -85,20 +86,42 @@ class WidgetPreviewTest {
                     if (isEvent) {
                         val status = activity.findViewById<TextView>(R.id.widget_status)
                         val text = status.text.toString()
-                        assertTrue(text.isNotBlank())
-                        if (fixture == "saving") assertEquals("Wird gespeichert …", text)
+                        val quiet = card && fixture !in listOf("stale", "conflict", "refreshed", "open", "reminded", "retry")
+                        if (quiet) assertEquals("Confirmed and pending replies leave notification space empty", "", text) else assertTrue(text.isNotBlank())
+                        assertFalse("Saved is never a persistent widget message", text.contains("Gespeichert"))
+                        assertFalse("No saved badge remains", activity.findViewById<View>(R.id.widget_status_icon).isShown)
+                        if (card) {
+                            val pendingTarget = when (fixture) { "saving-yes" -> "yes"; "saving-excused" -> "excused"; else -> "maybe" }
+                            for ((id, target, tint) in listOf(Triple(R.id.widget_reply_loading_yes, "yes", 0xFF287D49.toInt()), Triple(R.id.widget_reply_loading_excused, "excused", 0xFFF4C542.toInt()), Triple(R.id.widget_reply_loading_maybe, "maybe", 0xFFE87524.toInt()))) {
+                                val loading = activity.findViewById<android.widget.ProgressBar>(id)
+                                assertEquals("Only the requested response animates", saving && pendingTarget == target, loading.isShown)
+                                if (saving && pendingTarget == target) {
+                                    assertTrue("The system renders an indeterminate loading animation", loading.isIndeterminate)
+                                    assertEquals(tint, loading.indeterminateTintList!!.defaultColor)
+                                }
+                            }
+                            if (saving) {
+                                val confirmedID = if (fixture == "saving-yes") R.id.widget_reply_maybe else R.id.widget_reply_yes
+                                assertTrue("Only the stored response remains checked while saving", activity.findViewById<TextView>(confirmedID).text.contains("✓"))
+                                for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) assertEquals("Saving does not flash/dim the selector", 1f, activity.findViewById<View>(id).alpha, 0.01f)
+                            }
+                        }
                         if (fixture == "refreshed") {
                             assertEquals("Stand aktualisiert – erneut wählen", text)
                             assertTrue("Refreshed conflicts keep the direct selector available", actions)
                             assertFalse(text.contains("Gespeichert"))
                         }
                         if (fixture == "retry") assertTrue(text.contains("Nicht bestätigt"))
-                        if (card && fixture in listOf("today", "tomorrow", "future", "excused", "allday")) assertTrue("Only confirmed replies say saved", text.contains("Gespeichert"))
                         if (fixture in listOf("saving", "retry", "conflict", "open", "reminded")) assertFalse("Unconfirmed operations never claim success", text.contains("Gespeichert"))
                         if (fixture in listOf("open", "reminded")) {
                             assertEquals("Unanswered replies use signal yellow", 0xFFF4C542.toInt(), status.currentTextColor)
                             if (card) assertEquals(if (fixture == "reminded") "Bitte Rückmeldung geben" else "Rückmeldung offen", text)
                         }
+                    }
+                    if (isEvent && width >= 300 && height >= 290 && height / fontScale >= 250 && fontScale <= 1.2f) {
+                        val logo = activity.findViewById<View>(R.id.widget_logo)
+                        assertTrue("Large widgets retain a larger crest", logo.isShown && logo.width / activity.resources.displayMetrics.density >= 39)
+                        assertEquals("Large headings are not squeezed by the crest", 0, activity.findViewById<View>(R.id.widget_details).paddingRight)
                     }
                     val bindings = activity.findViewById<View>(R.id.widget_bindings)
                     if (isEvent && bindings?.isShown == true) {

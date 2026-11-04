@@ -74,8 +74,8 @@ final class WidgetLayoutTests: XCTestCase {
         for name in ["very-long-title", "large-font"] {
             cases.append((name, H2OWidgetEvent(title: "Atemschutz-Übung – Notfall & Mayday mit anschließender Nachbesprechung der gesamten Mannschaft", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser und Übungsgelände Emmendingen", clothing: "Einsatzkleidung mit persönlicher Schutzausrüstung", status: "maybe", allDay: false), false))
         }
-        for phase in ["reply-saving", "reply-retry", "reply-edit", "reply-conflict", "reply-refreshed"] {
-            cases.append((phase, H2OWidgetEvent(title: "Technische Hilfeleistung", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false), false))
+        for phase in ["reply-saving", "reply-saving-yes", "reply-saving-excused", "reply-retry", "reply-edit", "reply-conflict", "reply-refreshed"] {
+            cases.append((phase, H2OWidgetEvent(title: "Technische Hilfeleistung", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser", clothing: "Einsatzkleidung", status: phase == "reply-saving-yes" ? "maybe" : "yes", allDay: false), false))
         }
         // Include the smallest supported canvas and a larger iPhone canvas.
         for (name, family, width, height) in [
@@ -94,8 +94,8 @@ final class WidgetLayoutTests: XCTestCase {
                 if scenario == "reply-refreshed" { snapshot.notice = "Stand aktualisiert – erneut wählen" }
                 if scenario == "reply-edit" { snapshot.editing = current?.id }
                 if scenario == "reply-conflict" { snapshot.message = "In H₂O aktualisieren" }
-                if scenario == "reply-saving" || scenario == "reply-retry" {
-                    snapshot.job = H2OWidgetReplyJob(eventID: current?.id ?? "", status: "maybe", requestID: "synthetic", version: 0, phase: scenario == "reply-saving" ? "saving" : "retry", startedAt: now)
+                if scenario.hasPrefix("reply-saving") || scenario == "reply-retry" {
+                    snapshot.job = H2OWidgetReplyJob(eventID: current?.id ?? "", status: scenario == "reply-saving-yes" ? "yes" : scenario == "reply-saving-excused" ? "excused" : "maybe", requestID: "synthetic", version: 0, phase: scenario.hasPrefix("reply-saving") ? "saving" : "retry", startedAt: now)
                 }
                 let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot, family: family))
                     .environment(\.dynamicTypeSize, scenario == "large-font" ? .accessibility1 : .large)

@@ -24,9 +24,6 @@ import android.graphics.ComposeShader
 import android.graphics.PorterDuff
 import android.graphics.LinearGradient
 import android.graphics.Shader
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
 import android.graphics.Paint
 import android.graphics.Typeface
 import org.json.JSONObject
@@ -116,6 +113,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
+            var largeLogoSize = if (large && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 56 else 40
             var calendarLayoutWidth = if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val relative = event?.let { WidgetSnapshot.day(it.start, now) }
@@ -182,6 +180,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 val followingHeight = if (followingCount == 0) 0f else 26f + followingCount * maxOf(36f, 29f * fontScale + 4f)
                 val replyHeight = if (card) 48f + 16f * fontScale + if (large) 22f else 0f else maxOf(32f, 30f * fontScale)
                 val bodyHeight = (height - 24f - replyHeight - followingHeight).coerceAtLeast(1f)
+                if (large && bodyHeight < 112f * fontScale) largeLogoSize = 40
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
                 val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else bodyHeight
                 val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
@@ -206,7 +205,8 @@ open class NextEventWidget : AppWidgetProvider() {
                     val locationSize = (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
                     val clothingSize = (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
                     val lines = 2
-                    val maxTitle = ((textHeight - 1.2f * (locationSize + clothingSize) - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
+                    val metadataHeight = if (large && fontScale <= 1.2f) maxOf(largeLogoSize / fontScale, 1.2f * (locationSize + clothingSize)) else 1.2f * (locationSize + clothingSize)
+                    val maxTitle = ((textHeight - metadataHeight - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
                     val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else 36f
                     val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
                     renderedTitleSize = growingTitle
@@ -219,9 +219,9 @@ open class NextEventWidget : AppWidgetProvider() {
             val availableText = (width - calendarLayoutWidth - 34f).coerceAtLeast(1f)
             val titlePaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = renderedTitleSize * metrics.scaledDensity }
             val titleWidth = titlePaint.measureText(title) / metrics.density
-            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (titleWidth <= availableText - 60f) 48 else if (titleWidth <= (availableText - 40f) * 1.7f) 28 else 0
+            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (titleWidth <= availableText - 60f) 48 else if (titleWidth <= (availableText - 40f) * 1.7f) 28 else 0
             show(R.id.widget_logo, logoSize > 0)
-            views.setViewPadding(R.id.widget_details, 0, 0, ((if (logoSize > 0) logoSize + 10 else 0) * metrics.density).toInt(), 0)
+            views.setViewPadding(R.id.widget_details, 0, 0, ((if (logoSize > 0 && !large) logoSize + 10 else 0) * metrics.density).toInt(), 0)
             if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 views.setViewLayoutWidth(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
                 views.setViewLayoutHeight(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
@@ -241,24 +241,20 @@ open class NextEventWidget : AppWidgetProvider() {
                 "yes" -> "Dabei"; "excused" -> if (flat && compact) "Entsch." else "Entschuldigt"; "maybe" -> "Unsicher"; else -> "Offen"
             }
             val statusText = when {
-                saving -> "Wird gespeichert …"
+                saving -> if (card) "" else status
                 retry -> "Nicht bestätigt"
                 message != null -> message
                 notice != null -> notice
-                snapshot?.stale == true -> "Gespeicherter Stand · H₂O öffnen"
-                card && event?.status in listOf("yes", "excused", "maybe") -> "✓ Gespeichert"
+                snapshot?.stale == true -> "Stand veraltet · H₂O öffnen"
+                card && event?.status in listOf("yes", "excused", "maybe") -> ""
                 card -> if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen"
-                !flat && width >= 170 && event?.status in listOf("yes", "excused", "maybe") -> "$status · Gespeichert"
                 else -> status
             }
-            val savedBadge = card && statusText.startsWith("✓")
-            val feedback = SpannableString(if (savedBadge) statusText.removePrefix("✓ ") else statusText)
-            if (!savedBadge && statusText.startsWith("✓")) feedback.setSpan(ForegroundColorSpan(0xFF55A472.toInt()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            views.setTextViewText(R.id.widget_status, feedback)
+            views.setTextViewText(R.id.widget_status, statusText)
             views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
+            // Keep notification space stable; successful replies show no footer label.
             show(R.id.widget_footer, event != null)
-            show(R.id.widget_status_icon, savedBadge)
-            if (savedBadge) views.setImageViewResource(R.id.widget_status_icon, R.drawable.widget_saved_badge)
+            show(R.id.widget_status_icon, false)
             show(R.id.widget_time, false)
             show(R.id.widget_note, snapshot?.stale == true && event != null)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
@@ -271,7 +267,12 @@ open class NextEventWidget : AppWidgetProvider() {
                 views.setInt(R.id.widget_footer, "setMinimumHeight", ((if (card) 12 else 28) * metrics.density).toInt())
                 if (card) {
                     show(R.id.widget_status_line, event != null)
-                    if (event != null) views.setImageViewBitmap(R.id.widget_status_line, statusLine(width, event.status, metrics.density))
+                    if (event != null) views.setImageViewBitmap(R.id.widget_status_line, statusLine(width, if (saving) "open" else event.status, metrics.density))
+                    for ((loadingID, target) in listOf(R.id.widget_reply_loading_yes to "yes", R.id.widget_reply_loading_excused to "excused", R.id.widget_reply_loading_maybe to "maybe")) {
+                        val moving = saving && job?.optString("status") == target
+                        show(loadingID, moving)
+                        views.setProgressBar(loadingID, 100, 0, true)
+                    }
                     show(R.id.widget_reply_section, event != null)
                     show(R.id.widget_retry, event != null && retry)
                     views.setTextViewText(R.id.widget_retry, if (canReply) "Erneut versuchen" else "In H₂O öffnen")
@@ -279,12 +280,12 @@ open class NextEventWidget : AppWidgetProvider() {
                     for ((id, answer) in listOf(R.id.widget_reply_yes to "yes", R.id.widget_reply_excused to "excused", R.id.widget_reply_maybe to "maybe")) {
                         val selected = event?.status == answer
                         val pending = saving && job?.optString("status") == answer
-                        views.setTextViewText(id, (if (pending) "◌ " else if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
+                        views.setTextViewText(id, (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
                         views.setInt(id, "setBackgroundResource", if (selected) selectedBackground else 0)
                         views.setTextColor(id, if (selected) (if (answer == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()) else 0xFFC6D2DF.toInt())
                         views.setBoolean(id, "setEnabled", canReply && job == null)
-                        views.setFloat(id, "setAlpha", if (canReply && job == null) 1f else 0.55f)
+                        views.setFloat(id, "setAlpha", if (canReply) 1f else 0.55f)
                         views.setContentDescription(id, (when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }) + if (selected) ". Ausgewählt" else if (pending) ". Wird gespeichert" else "")
                         if (event != null && canReply) views.setOnClickPendingIntent(id, WidgetReplyReceiver.pending(context, event, answer))
                     }
@@ -305,7 +306,7 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             if (retry && canReply && event != null) views.setOnClickPendingIntent(R.id.widget_footer, WidgetReplyReceiver.pending(context, event, "retry"))
             val spokenDay = date?.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy", Locale.GERMAN)).orEmpty()
-            views.setContentDescription(R.id.widget_root, if (event != null) listOf(spokenDay, event.title, time, event.location, event.clothing, status, statusText, if (snapshot?.stale == true) "Gespeicherter Stand" else "").filter { it.isNotEmpty() }.joinToString(". ") else title)
+            views.setContentDescription(R.id.widget_root, if (event != null) listOf(spokenDay, event.title, time, event.location, event.clothing, status, if (saving) "Rückmeldung wird gespeichert" else statusText, if (snapshot?.stale == true) "Gespeicherter Stand" else "").filter { it.isNotEmpty() }.joinToString(". ") else title)
             return views
         }
     }

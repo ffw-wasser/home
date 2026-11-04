@@ -14,6 +14,7 @@ struct NextEventView: View {
     let entry: NextEventEntry
     @Environment(\.widgetFamily) private var widgetFamily
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var familyOverride: WidgetFamily? = nil
     private var family: WidgetFamily { familyOverride ?? entry.family ?? widgetFamily }
     private var small: Bool { family == .systemSmall }
@@ -27,7 +28,7 @@ struct NextEventView: View {
     private let signalYellow = Color(red: 244.0 / 255, green: 197.0 / 255, blue: 66.0 / 255)
     private var ink: Color { renderingMode == .fullColor ? .white : .primary }
     private var secondaryInk: Color { renderingMode == .fullColor ? Color(red: 198.0 / 255, green: 210.0 / 255, blue: 223.0 / 255) : ink.opacity(0.75) }
-    private var job: H2OWidgetReplyJob? { snapshot?.job.flatMap { $0.eventID == event?.id ? $0 : nil } }
+    private var job: H2OWidgetReplyJob? { snapshot?.currentReplyJob }
     private var canReply: Bool { event?.canReply == true && (event?.start ?? .distantPast) > entry.date && snapshot?.stale == false && event?.id != nil }
     private var destination: URL { event?.link ?? URL(string: "h2oportal://termine")! }
     private func part(_ date: Date, _ format: String) -> String {
@@ -98,72 +99,83 @@ struct NextEventView: View {
             .shadow(color: .black.opacity(0.4), radius: 2, y: 2)
             .accessibilityElement(children: .ignore).accessibilityLabel(part(event.start, "EEEE, d. MMMM yyyy"))
     }
-    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat) -> some View {
-        let fittingSize = titleSize * min(textScale, 1.5)
-        return VStack(alignment: .leading, spacing: spacing) {
-            Text(event.title).font(.system(size: fittingSize, weight: .bold))
-                .lineLimit(2).truncationMode(.tail)
+    private func metadata(_ event: H2OWidgetEvent, size: CGFloat, spacing: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                 Text((event.allDay ? "Ganztägig" : part(event.start, "HH:mm")) + (event.location.isEmpty ? "" : " · " + event.location))
-            }.font(.system(size: detailSize * min(textScale, 1.5), weight: .semibold)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
-            if !event.clothing.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "tshirt")
-                    Text(event.clothing)
-                }.font(.system(size: detailSize * min(textScale, 1.5), weight: .semibold)).foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
             }
+            if !event.clothing.isEmpty {
+                HStack(spacing: 4) { Image(systemName: "tshirt"); Text(event.clothing) }
+            }
+        }.font(.system(size: size * min(textScale, 1.5), weight: .semibold))
+            .foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
+    }
+    @ViewBuilder private func emblem(size: CGFloat) -> some View {
+        if size > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: logo).resizable().scaledToFit().frame(width: size, height: size)
+                .opacity(0.5).accessibilityHidden(true)
+        }
+    }
+    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(2).truncationMode(.tail)
+            metadata(event, size: detailSize, spacing: spacing)
         }.frame(width: max(1, availableWidth), alignment: .leading)
+    }
+    private func largeDetails(_ event: H2OWidgetEvent, width: CGFloat, titleSize: CGFloat, detailSize: CGFloat, logoSize: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(2).truncationMode(.tail)
+            HStack(spacing: 8) {
+                metadata(event, size: detailSize, spacing: 2).frame(maxWidth: .infinity, alignment: .leading)
+                emblem(size: textScale > 1.2 ? 0 : logoSize)
+            }
+        }.frame(width: width, alignment: .leading)
     }
     private func eventCard(_ event: H2OWidgetEvent, width: CGFloat) -> some View {
         let available = max(1, width - calendarWidth - (small ? 7 : 11))
-        let titleSize: CGFloat = large ? 26 : small ? 15 : 20
+        let titleSize: CGFloat = small ? 15 : 20
         let font = UIFont.systemFont(ofSize: titleSize * min(textScale, 1.5), weight: .bold)
         let titleWidth = (event.title as NSString).size(withAttributes: [.font: font]).width
-        // Reserve real space for the exact original asset; text never sits underneath it.
         let logoSize: CGFloat = small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
         return HStack(spacing: small ? 7 : 11) {
             calendar(event).padding(.top, 4)
-            ViewThatFits(in: .vertical) {
-                details(event, titleSize: titleSize, detailSize: large ? 14 : small ? 10 : 12, spacing: 2, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
-                details(event, titleSize: large ? 22 : small ? 13 : 17, detailSize: large ? 12 : small ? 9 : 11, spacing: 1, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
-            }
-            if logoSize > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
-                Image(uiImage: logo).resizable().scaledToFit().frame(width: logoSize, height: logoSize)
-                    .opacity(0.5).accessibilityHidden(true)
+            if large {
+                ViewThatFits(in: .vertical) {
+                    largeDetails(event, width: available, titleSize: 26, detailSize: 14, logoSize: 56)
+                    largeDetails(event, width: available, titleSize: 22, detailSize: 12, logoSize: 48)
+                    largeDetails(event, width: available, titleSize: 18, detailSize: 11, logoSize: 0)
+                }
+            } else {
+                ViewThatFits(in: .vertical) {
+                    details(event, titleSize: titleSize, detailSize: small ? 10 : 12, spacing: 2, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
+                    details(event, titleSize: small ? 13 : 17, detailSize: small ? 9 : 11, spacing: 1, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
+                }
+                emblem(size: logoSize)
             }
         }
     }
     private var statusLine: some View {
-        let status = event?.status ?? "open"
+        let status = snapshot?.replyLightStatus ?? "open"
+        let pending = job?.phase == "saving"
         let center: CGFloat = status == "yes" ? 1.0 / 6 : status == "maybe" ? 5.0 / 6 : 0.5
         let tint = color(status)
-        let left = max(0.001, center - 0.29)
-        let right = min(0.999, center + 0.29)
-        let core = LinearGradient(stops: [
-            .init(color: secondaryInk.opacity(0.22), location: 0),
-            .init(color: tint.opacity(0.18), location: left),
-            .init(color: tint.opacity(status == "open" ? 0.22 : 0.95), location: center - 0.11),
-            .init(color: status == "open" ? secondaryInk.opacity(0.4) : highlight(status), location: center),
-            .init(color: tint.opacity(status == "open" ? 0.22 : 0.95), location: center + 0.11),
-            .init(color: tint.opacity(0.18), location: right),
-            .init(color: secondaryInk.opacity(0.22), location: 1)
-        ], startPoint: .leading, endPoint: .trailing)
-        return ZStack {
-            if status != "open" && renderingMode == .fullColor {
-                Capsule().fill(LinearGradient(stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: .clear, location: left),
-                    .init(color: tint.opacity(0.4), location: center - 0.08),
-                    .init(color: tint.opacity(0.5), location: center),
-                    .init(color: tint.opacity(0.4), location: center + 0.08),
-                    .init(color: .clear, location: right),
-                    .init(color: .clear, location: 1)
-                ], startPoint: .leading, endPoint: .trailing))
-                    .frame(height: 4).blur(radius: 1.5)
+        return GeometryReader { geometry in
+            ZStack {
+                Capsule().fill(secondaryInk.opacity(0.22)).frame(height: 0.65)
+                ZStack {
+                    Capsule().fill(tint.opacity(0.5)).frame(height: 4).blur(radius: 1.5)
+                    Capsule().fill(tint).frame(height: 1.3)
+                    Capsule().fill(highlight(status)).frame(width: geometry.size.width * 0.22, height: 0.7)
+                }
+                .frame(width: geometry.size.width * 0.58, height: 7)
+                .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: 0.3), .init(color: .white, location: 0.7), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                .opacity(status == "open" ? 0 : pending ? 0.6 : 1)
+                .position(x: geometry.size.width * center, y: 3.5)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: status)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: pending)
             }
-            Capsule().fill(core).frame(height: 1.3)
-        }.frame(height: 1).accessibilityHidden(true)
+        }.frame(height: 7).clipped().frame(height: 1).accessibilityHidden(true)
     }
     private func buttonFill(_ status: String) -> LinearGradient {
         let shades: [Color]
@@ -182,7 +194,7 @@ struct NextEventView: View {
         let pending = job?.phase == "saving" && job?.status == status
         return Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: status)) {
             HStack(spacing: 4) {
-                Image(systemName: pending ? "hourglass" : selected ? "checkmark" : "circle").font(.system(size: 12, weight: .semibold))
+                Image(systemName: selected ? "checkmark" : "circle").font(.system(size: 12, weight: .semibold))
                 Text(title(status)).font(.system(size: 13, weight: selected ? .bold : .semibold)).lineLimit(1).minimumScaleFactor(0.75)
             }.frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(selected ? (renderingMode == .fullColor && status != "yes" ? Color(red: 45.0 / 255, green: 33.0 / 255, blue: 10.0 / 255) : ink) : secondaryInk)
@@ -221,43 +233,24 @@ struct NextEventView: View {
 
         }
     }
-    private var feedbackText: String {
-        if let message = snapshot?.message { return message }
-        if let job { return job.phase == "saving" ? "Wird gespeichert …" : "Nicht bestätigt" }
-        if let notice = snapshot?.notice { return notice }
-        if snapshot?.stale == true { return "Gespeicherter Stand · H₂O öffnen" }
-        if event?.status == "open" { return event?.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen" }
-        return "Gespeichert"
-    }
     private var feedback: some View {
         let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
         let textColor = unanswered ? signalYellow : secondaryInk
-        let confirmed = job == nil && snapshot?.message == nil && snapshot?.notice == nil && snapshot?.stale == false && ["yes", "excused", "maybe"].contains(event?.status ?? "open")
         return HStack(spacing: 4) {
-            if confirmed {
-                ZStack {
-                    Circle().fill(LinearGradient(colors: [highlight("yes"), color("yes")], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Image(systemName: "checkmark").font(.system(size: 8, weight: .bold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
-                }.frame(width: 12, height: 12)
-                    .overlay(Circle().stroke(ink.opacity(0.35), lineWidth: 0.4))
-            } else {
-            Image(systemName: job?.phase == "saving" ? "arrow.triangle.2.circlepath" : snapshot?.notice != nil || snapshot?.stale == true ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : event?.status == "open" ? "circle" : "checkmark.circle.fill")
-                .foregroundStyle(unanswered ? signalYellow : job == nil && snapshot?.message == nil && snapshot?.notice == nil && snapshot?.stale == false ? color("yes") : secondaryInk)
-            }
-            Text(feedbackText).fontWeight(.semibold).foregroundStyle(textColor)
-            if snapshot?.stale == true {
-                Image(systemName: "exclamationmark.triangle").foregroundStyle(secondaryInk)
-                    .accessibilityLabel("Gespeicherter Kalenderstand · H₂O öffnen")
+            if let text = snapshot?.replyFeedback {
+                Image(systemName: snapshot?.notice != nil || snapshot?.stale == true ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : "circle")
+                    .foregroundStyle(textColor)
+                Text(text).fontWeight(.semibold).foregroundStyle(textColor)
             }
             Spacer(minLength: 0)
         }.font(.system(size: large ? 12 : 11)).lineLimit(1).minimumScaleFactor(0.8)
-            .frame(height: large ? 15 : 14).invalidatableContent(job == nil)
+            .frame(height: large ? 15 : 14).contentTransition(.identity)
     }
     private var compactStatus: some View {
         Link(destination: destination) {
             HStack(spacing: 4) {
                 Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 11, height: 11)
-                Text(job == nil ? title(event?.status ?? "open") : feedbackText).fontWeight(.semibold)
+                Text(title(event?.status ?? "open")).fontWeight(.semibold)
                     .foregroundStyle(job == nil && event?.status == "open" ? signalYellow : ink)
                 Spacer(minLength: 0)
                 Image(systemName: snapshot?.stale == true ? "exclamationmark.triangle" : "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
@@ -296,7 +289,7 @@ struct NextEventView: View {
                     if small { compactStatus }
                     else {
                         if large { Text("Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
-                        replyControls.invalidatableContent(job == nil)
+                        replyControls.contentTransition(.identity)
                         statusLine
                         feedback
                     }
@@ -318,6 +311,7 @@ struct NextEventView: View {
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: rgb(0xFF5574).opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
         }.id(family)
+            .contentTransition(.identity)
             .foregroundStyle(ink).containerBackground(background, for: .widget)
             .widgetURL(destination).environment(\.locale, Locale(identifier: "de_DE"))
             .environment(\.timeZone, TimeZone(identifier: "Europe/Berlin")!)

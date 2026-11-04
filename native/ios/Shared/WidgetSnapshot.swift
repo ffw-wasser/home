@@ -48,6 +48,20 @@ struct H2OWidgetSnapshot: Codable, Equatable {
     var job: H2OWidgetReplyJob? = nil
     var message: String? = nil
     var notice: String? = nil
+    var currentReplyJob: H2OWidgetReplyJob? { job.flatMap { $0.eventID == event?.id ? $0 : nil } }
+    // Moving the light is pending feedback, never an optimistic stored answer.
+    var replyLightStatus: String {
+        if let job = currentReplyJob, job.phase == "saving", ["yes", "excused", "maybe"].contains(job.status) { return job.status }
+        return event?.status ?? "open"
+    }
+    var replyFeedback: String? {
+        if let message { return message }
+        if let job = currentReplyJob { return job.phase == "saving" ? nil : "Nicht bestätigt" }
+        if let notice { return notice }
+        if stale { return "Stand veraltet · H₂O öffnen" }
+        if event?.status == "open" { return event?.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen" }
+        return nil
+    }
     var events: [H2OWidgetEvent] { ([event].compactMap { $0 } + (following ?? [])).sorted { $0.start < $1.start } }
     func at(_ now: Date) -> H2OWidgetSnapshot {
         var value = self

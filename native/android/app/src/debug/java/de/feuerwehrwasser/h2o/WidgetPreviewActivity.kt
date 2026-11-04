@@ -23,7 +23,7 @@ class WidgetPreviewActivity : Activity() {
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
             .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "sketch-reference") "Indoor Cycling" else if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (action == "short-title") "Probe" else "Technische Hilfeleistung")
                 .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", if (action == "sketch-reference") "Injoy EM" else "Gerätehaus Wasser")
-                .put("clothing", if (action == "sketch-reference") "Sportkleidung" else "Einsatzkleidung").put("status", if (action in listOf("excused", "sketch-reference")) "excused" else if (action == "future") "maybe" else if (action in listOf("open", "reminded")) "open" else "yes")
+                .put("clothing", if (action == "sketch-reference") "Sportkleidung" else "Einsatzkleidung").put("status", if (action in listOf("excused", "sketch-reference")) "excused" else if (action in listOf("future", "saving-yes")) "maybe" else if (action in listOf("open", "reminded")) "open" else "yes")
                 .put("id", "a".repeat(43)).put("version", 0).put("canReply", true).put("reminded", action == "reminded"))
             .put("reply", JSONObject().put("token", "synthetic".repeat(20)).put("expiresAt", now + 3600000))
         if (action !in listOf("clear", "empty")) {
@@ -39,7 +39,7 @@ class WidgetPreviewActivity : Activity() {
         val prefs = WidgetStore.prefs(this)
         if (action == "refreshed") prefs.edit().putString("notice", "Stand aktualisiert – erneut wählen").commit()
         if (action == "edit") prefs.edit().putString("editing", "a".repeat(43)).commit()
-        if (action in listOf("saving", "retry")) prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", action).put("status", "maybe").put("startedAt", now).toString()).commit()
+        if (action.startsWith("saving") || action == "retry") prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", if (action.startsWith("saving")) "saving" else "retry").put("status", when (action) { "saving-yes" -> "yes"; "saving-excused" -> "excused"; else -> "maybe" }).put("startedAt", now).toString()).commit()
         if (action == "conflict") prefs.edit().putString("message", "In H₂O aktualisieren").commit()
         val layout = FrameLayout(previewContext).apply { setBackgroundColor(0xFF18283C.toInt()) }
         val options = Bundle().apply {

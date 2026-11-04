@@ -4,6 +4,42 @@ import XCTest
 final class WidgetPolicyTests: XCTestCase {
     func date(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
 
+    func testReplyLightMovesWithoutConfirmingAndFeedbackOnlyReportsActionNeeded() throws {
+        var value = snapshot(end: 3600)
+        value.event?.id = String(repeating: "a", count: 43)
+        XCTAssertNil(value.replyFeedback)
+        XCTAssertEqual(value.replyLightStatus, "yes")
+        value.job = H2OWidgetReplyJob(eventID: value.event!.id!, status: "maybe", requestID: "synthetic", version: 0, phase: "saving", startedAt: now)
+        XCTAssertNil(value.replyFeedback, "Saving uses the light, not a footer label")
+        XCTAssertEqual(value.replyLightStatus, "maybe")
+        XCTAssertEqual(value.event?.status, "yes", "Moving the light must not claim a saved answer")
+        XCTAssertEqual(value.updatedAt, now)
+        value.job?.phase = "retry"
+        XCTAssertEqual(value.replyFeedback, "Nicht bestätigt")
+        XCTAssertEqual(value.replyLightStatus, "yes")
+        value.job = nil
+        value.message = "In H₂O aktualisieren"
+        XCTAssertEqual(value.replyFeedback, value.message)
+        value.message = nil
+        value.notice = "Stand aktualisiert – erneut wählen"
+        XCTAssertEqual(value.replyFeedback, value.notice)
+        value.notice = nil; value.stale = true
+        XCTAssertEqual(value.replyFeedback, "Stand veraltet · H₂O öffnen")
+        value.stale = false; value.event?.status = "open"
+        XCTAssertEqual(value.replyFeedback, "Rückmeldung offen")
+        value.event?.reminded = true
+        XCTAssertEqual(value.replyFeedback, "Bitte Rückmeldung geben")
+        for status in ["yes", "excused", "maybe"] {
+            value.event?.status = status
+            XCTAssertNil(value.replyFeedback)
+            XCTAssertEqual(value.replyLightStatus, status)
+        }
+        value.job = H2OWidgetReplyJob(eventID: String(repeating: "b", count: 43), status: "excused", requestID: "other-event", version: 0, phase: "saving", startedAt: now)
+        XCTAssertEqual(value.replyLightStatus, "maybe", "Other appointments never move this light")
+        let decoded = try JSONDecoder().decode(H2OWidgetSnapshot.self, from: JSONEncoder().encode(value))
+        XCTAssertEqual(decoded, value)
+    }
+
     func testRelativeDaysUseBerlinCalendarIncludingClockChanges() {
         for (reference, tomorrow) in [
             ("2026-03-28T23:30:00Z", "2026-03-29T22:30:00Z"),
