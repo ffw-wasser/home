@@ -128,8 +128,15 @@ struct NextEventView: View {
         }.font(.system(size: size * min(textScale, 1.5), weight: .semibold))
             .foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
     }
+    private var reminderVisible: Bool {
+        event?.canReply != false && event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")
+    }
     @ViewBuilder private func emblem(size: CGFloat) -> some View {
-        if size > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
+        if size > 0 && reminderVisible {
+            Image(systemName: "exclamationmark.triangle.fill").resizable().scaledToFit()
+                .foregroundStyle(renderingMode == .fullColor ? signalYellow : ink)
+                .frame(width: size, height: size).accessibilityHidden(true)
+        } else if size > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
             Image(uiImage: logo).resizable().scaledToFit().frame(width: size, height: size)
                 .opacity(0.5).accessibilityHidden(true)
         }

@@ -9,7 +9,7 @@ zusätzliche Hintergrundabrufe. Die Darstellung auf realen Homescreens hängt vo
 System beziehungsweise Launcher ab.
 
 Eine Erinnerung erscheint bei offener oder unsicherer Rückmeldung als Hinweis im
-Widget; nach Zu- oder Absage entfällt sie. Ein empfangener Push löst einen begrenzten,
+Widget; dabei ersetzt ein großes gelbes Warndreieck das Wappen, wo der Iconplatz vorhanden ist. Nach Zu- oder Absage erscheinen wieder Wappen und ruhige Hinweiszeile. Ein empfangener Push löst einen begrenzten,
 authentifizierten Statusabruf für bereits freigegebene Widgettermine aus. Er verlängert
 weder Anmeldung noch Kalenderalter. Hintergrundzustellung und Aktualisierungszeit
 bleiben vom Betriebssystem abhängig. Reine Beobachter sehen „Nur zur Information“

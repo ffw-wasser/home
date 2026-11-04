@@ -271,6 +271,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
                 if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
             }
+            val reminderVisible = event?.canReply == true && event.reminded && event.status in setOf("open", "maybe")
+            views.setImageViewResource(R.id.widget_logo, if (reminderVisible) R.drawable.widget_reminder else R.drawable.widget_logo)
+            views.setFloat(R.id.widget_logo, "setAlpha", if (reminderVisible) 1f else 0.5f)
             show(R.id.widget_logo, logoSize > 0)
             views.setViewPadding(R.id.widget_details, 0, 0, 0, 0)
             if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
