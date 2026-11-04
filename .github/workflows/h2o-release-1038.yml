@@ -1,0 +1,33 @@
+name: Publish verified H2O member build 1038
+
+# One-time start for the already authorized release; no automatic later builds.
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/h2o-release-1038.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require the exact tested build 1038 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 1644cbc2a81f0074ceb9b27a4750df6b3768c1e2
+          changed=$(git diff --name-only 1644cbc2a81f0074ceb9b27a4750df6b3768c1e2 HEAD)
+          test "$changed" = ".github/workflows/h2o-release-1038.yml"
+          grep -Eq 'CURRENT_PROJECT_VERSION: 1038$' native/ios/project.yml
+          echo "Exact CI-tested build 1038 source verified."
+  publish-member-pilot:
+    needs: verify-release-source
+    uses: ./.github/workflows/h2o-ios-member-pilot.yml
+    with:
+      upload_to_testflight: true
+    secrets: inherit
