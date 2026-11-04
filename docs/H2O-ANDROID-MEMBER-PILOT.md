@@ -228,4 +228,15 @@ Die Emulator-Bildprüfung enthält die Referenzkarte bei 140, 150, 160, 170 und 
 
 Breite Zwischenhöhen unter 140 dp behalten die kompakte Statuszeile, zeigen aber ein größeres einzeiliges Thema, Uhrzeit/Ort und Kleidung. Bei normaler Schrift nutzt ein 36-dp-Wappen rechts den sonst freien Platz. Auch 110 und 130 dp sind als Bildprüfungen enthalten.
 
+
 Antippen der kompakten Statuszeile öffnet weiterhin den zugehörigen Termin in H₂O, um die Antwort dort zu ändern.
+
+## App-Updates beim Öffnen – Build 1039
+
+Die Android-App fragt beim Öffnen beziehungsweise bei Rückkehr in den Vordergrund Google Play nach einer neueren, für das angemeldete Play-Konto verfügbaren Version. Ein freiwilliger Hinweis „Aktualisieren“ startet nach Antippen den Google-Dialog für ein flexibles Update. Erst nach Zustimmung lädt Play die neue Version im Hintergrund. Bei „Jetzt neu starten“ zuerst offene Eingaben speichern; nur Antippen dieser Aktion schließt die Installation ab. „Später“ blendet den Hinweis für dieselbe Version 24 Stunden aus; eine neuere Version darf wieder angeboten werden. Ein bereits heruntergeladenes Update wird bei Rückkehr in die App wieder erkannt. Offline, ohne verfügbaren Play-Dienst oder ohne Update bleibt H₂O normal bedienbar. Es werden keine APK-Dateien selbst heruntergeladen und keine zusätzlichen Berechtigungen oder Mitgliederdaten übertragen.
+
+Diese Ergänzung ist kein zentraler Installationsbefehl und keine Push-Mitteilung. Die verfügbaren Versionen werden weiterhin im internen Google-Play-Test freigegeben. Der erste Build mit dieser Funktion muss zunächst normal installiert werden; testen lässt sich der Ablauf erst mit einer danach angebotenen höheren Versionsnummer und passender Play-Signatur/Kontoberechtigung.
+
+Auf iPhone erfolgen automatische App-Updates über TestFlight beziehungsweise den App Store, sofern auf dem Gerät aktiviert. H₂O installiert dort keine neue native Version selbst.
+
+Die Android-Emulatorprüfung verwendet Googles FakeAppUpdateManager: Start ohne Dialog, Zustimmung, Download ohne automatischen Neustart, Wiedererkennen des fertigen Downloads, ausdrücklicher Neustart, „Später“ sowie fehlendes Update und nicht verfügbarer Play-Dienst. Reale Store-Berechtigung, Signierung, Verteilung und Installation sind zusätzlich im internen Play-Test zu prüfen.

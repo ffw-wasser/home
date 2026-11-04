@@ -49,6 +49,7 @@ dependencies {
     implementation("androidx.credentials:credentials:1.5.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("androidx.work:work-runtime-ktx:2.10.1")
+    implementation("com.google.android.play:app-update:2.1.0")
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
     implementation("com.google.firebase:firebase-messaging")
     androidTestImplementation("androidx.test:runner:1.6.2")
