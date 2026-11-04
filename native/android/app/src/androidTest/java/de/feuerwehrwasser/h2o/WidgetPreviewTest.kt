@@ -34,7 +34,7 @@ class WidgetPreviewTest {
             listOf(Triple(330, 210, 1f), Triple(330, 230, 1f), Triple(330, 260, 1f), Triple(330, 230, 1.3f), Triple(360, 260, 1.3f), Triple(170, 345, 1f), Triple(220, 345, 1.3f), Triple(330, 450, 1f)).flatMap { size ->
                 listOf("short-title", "long-title", "open").map { size to it }
             } + listOf(Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 345, 1.3f)).map { it to "refreshed" }
-        val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 140, 1f), Triple(330, 150, 1f), Triple(330, 160, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f), Triple(330, 150, 1.3f)).map { it to "sketch-reference" }
+        val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 110, 1f), Triple(330, 130, 1f), Triple(330, 140, 1f), Triple(330, 150, 1f), Triple(330, 160, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f), Triple(330, 150, 1.3f)).map { it to "sketch-reference" }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
         for (exactSize in listOf(false, true)) for ((dimensions, fixture) in scenarios + monthScenarios + sketchScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
             val (width, height, fontScale) = dimensions
@@ -71,6 +71,12 @@ class WidgetPreviewTest {
                     val saving = fixture.startsWith("saving")
                     val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
                     assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    if (fixture == "sketch-reference" && width == 330 && height in 110..139 && fontScale == 1f) {
+                        assertFalse("Short cards keep the compact status target", actions)
+                        assertTrue("Short wide cards retain clothing", activity.findViewById<View>(R.id.widget_clothing).isShown)
+                        assertTrue("Short wide cards use the free space for a crest", activity.findViewById<View>(R.id.widget_logo).isShown)
+                        assertEquals("The compact subject remains on one line", 1, title.lineCount)
+                    }
                     if (fixture == "sketch-reference" && width == 330 && height >= 140) {
                         assertTrue("Galaxy-sized cards retain all three response options", actions)
                         val selector = activity.findViewById<View>(R.id.widget_actions)

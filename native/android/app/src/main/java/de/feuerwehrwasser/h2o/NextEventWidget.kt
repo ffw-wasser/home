@@ -108,6 +108,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val large = width >= 300 && height >= 290 && logicalHeight >= 250
             val roomy = width >= 300 && width / fontScale >= 240 && height >= 140 && logicalHeight >= 112
             val card = large || roomy
+            val wideCompact = !flat && !card && width >= 300 && logicalHeight >= 100
             val tall = !flat && width < 300 && logicalHeight >= 200 && height >= width
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
@@ -157,22 +158,23 @@ open class NextEventWidget : AppWidgetProvider() {
                 large -> if (fontScale > 1.15f) 19f else 24f
                 spacious -> if (fontScale > 1.15f) 20f else 26f
                 width >= 450 && height >= 250 -> if (fontScale > 1.15f) 15f else 18f
+                wideCompact -> 18f
                 card -> if (fontScale > 1.15f) 15f else if (height <= 165) 18f else 20f
                 compact -> if (height >= 150) (if (fontScale > 1.15f) 13f else 15f) else if (fontScale > 1.15f) 11f else 12f
                 else -> 13f
             }
             var renderedTitleSize = titleSize
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat) 1 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact) 1 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
             views.setTextViewText(R.id.widget_location, if (flat || width < 150) time else "$time · ${event?.location.orEmpty()}")
             views.setTextViewText(R.id.widget_clothing, event?.clothing.orEmpty())
             show(R.id.widget_location, event != null)
-            show(R.id.widget_clothing, event != null && !flat && (card || logicalHeight >= 140) && event.clothing.isNotEmpty())
-            size(R.id.widget_location, if (flat) 10f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
-            size(R.id.widget_clothing, if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
+            show(R.id.widget_clothing, event != null && !flat && (card || wideCompact || logicalHeight >= 140) && event.clothing.isNotEmpty())
+            size(R.id.widget_location, if (flat) 10f else if (wideCompact) 11f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
+            size(R.id.widget_clothing, if (wideCompact) 10f else if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
             // Spend additional launcher height on the actual date and topic.
             // Reserve the response targets and following appointments before growing text.
             if (!flat && event != null) {
@@ -222,8 +224,8 @@ open class NextEventWidget : AppWidgetProvider() {
             val titleWidth = titlePaint.measureText(title) / metrics.density
             // The crest has its own column in medium cards, as on iPhone.
             // A short heading may shrink slightly to stay on one line beside it.
-            val mediumLogo = card && !large && fontScale <= 1.2f && logicalHeight >= 140
-            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) 40 else 0
+            val mediumLogo = (wideCompact || (card && !large && logicalHeight >= 140)) && fontScale <= 1.2f
+            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (wideCompact) 36 else 40) else 0
             if (mediumLogo && event != null) {
                 val titleSpace = (availableText - logoSize - 8f).coerceAtLeast(1f)
                 val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
