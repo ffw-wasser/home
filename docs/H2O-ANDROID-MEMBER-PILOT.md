@@ -216,3 +216,12 @@ Die vorhandenen nativen Bildprüfungen enthalten den Vergleichsfall „Indoor Cy
 Auf iPhone gleitet der Lichtschwerpunkt beim Start der Antwort für 0,55 Sekunden zur angeforderten Taste und übernimmt deren Farbe. Nach Bestätigung wird er heller, bei Fehler kehrt er zum bestätigten Status zurück. „Bewegung reduzieren“ wird beachtet. WidgetKit bestimmt den tatsächlichen Übergang; es wird keine dauernde Animation oder Aktualisierungsschleife erzwungen. Auf Android läuft während der Übertragung ein nativer unbestimmter Ladebalken in der Antwortfarbe; danach erscheint wieder der Lichtschwerpunkt der bestätigten Auswahl. Es wird kein erfundener Prozentfortschritt angezeigt.
 
 Im großen Widget stehen Thema und Metadaten getrennt: Das Thema nutzt die volle verfügbare Breite, das Originalwappen sitzt größer neben Uhrzeit und Kleidung (regulär 56 pt/dp, bei Enge kleiner; bei großer Systemschrift entfällt die Dekoration). Mittlere und kleine Ansichten behalten ihre bisherige Anordnung. Native Bildprüfungen decken alle drei Ladefarben, offene und fehlerhafte Rückmeldungen sowie große Widgets mit kurzen und langen Themen ab. Tatsächliche Übergangsflüssigkeit und Launcher-Verhalten sind zusätzlich am Gerät zu beurteilen. Antwortfreigabe, Wiederholungsschutz und Datenformat bleiben unverändert.
+
+
+## Build 1039 – Android-Proportionen nach der iPhone-Vorlage
+
+Breite Terminkarten zeigen die drei Rückmeldetasten bereits ab 140 dp Höhe, sofern die Systemschrift genügend Platz lässt. Die 44 dp hohen Tasten und der feste Hinweisplatz bleiben erhalten. Bei weniger Platz öffnet der vorhandene kompakte Status weiterhin den Termin in H₂O.
+
+Das Kalenderblatt bleibt in mittleren Karten schmaler und wächst bei zusätzlicher Höhe nur begrenzt. Thema und Metadaten erhalten dadurch mehr Breite. Das Wappen steht in einer eigenen, vertikal zentrierten Spalte rechts, regulär 40 dp groß; bei geringer Höhe oder großer Systemschrift entfällt es zuerst. Ein kurzes Thema wie „Indoor Cycling“ wird bei Bedarf maßvoll verkleinert, damit es wie auf iPhone einzeilig bleibt. Große Widgets mit Folgeterminen behalten ihre Anordnung.
+
+Die Emulator-Bildprüfung enthält die Referenzkarte bei 140, 150, 160, 170 und 230 dp Höhe sowie vergrößerter Systemschrift. Sie prüft die vollständig sichtbare Rückmeldeleiste und den Abstand zwischen Wappen und Text. Die tatsächlichen Größen im Samsung-Launcher sind zusätzlich am Galaxy zu beurteilen.

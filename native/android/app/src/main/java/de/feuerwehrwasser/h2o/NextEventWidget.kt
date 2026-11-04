@@ -106,7 +106,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val fontScale = context.resources.configuration.fontScale
             val logicalHeight = height / fontScale
             val large = width >= 300 && height >= 290 && logicalHeight >= 250
-            val roomy = width >= 300 && width / fontScale >= 240 && height >= 160 && logicalHeight >= 130
+            val roomy = width >= 300 && width / fontScale >= 240 && height >= 140 && logicalHeight >= 112
             val card = large || roomy
             val tall = !flat && width < 300 && logicalHeight >= 200 && height >= width
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
@@ -182,8 +182,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 val bodyHeight = (height - 24f - replyHeight - followingHeight).coerceAtLeast(1f)
                 if (large && bodyHeight < 112f * fontScale) largeLogoSize = 40
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
-                val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else bodyHeight
+                val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else if (card && !large) bodyHeight.coerceAtMost(120f * fontScale) else bodyHeight
                 val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
+                    else if (card && !large) (dateHeight * 0.52f).coerceIn(50f, 72f).coerceAtMost((width - 24f) * 0.22f)
                     else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
                 val fixedWidth = if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
                 val dateWidth = if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) desiredWidth else fixedWidth
@@ -207,7 +208,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     val lines = 2
                     val metadataHeight = if (large && fontScale <= 1.2f) maxOf(largeLogoSize / fontScale, 1.2f * (locationSize + clothingSize)) else 1.2f * (locationSize + clothingSize)
                     val maxTitle = ((textHeight - metadataHeight - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
-                    val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else 36f
+                    val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else if (card && !large) 24f else 36f
                     val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
                     renderedTitleSize = growingTitle
                     size(R.id.widget_title, growingTitle)
@@ -219,9 +220,17 @@ open class NextEventWidget : AppWidgetProvider() {
             val availableText = (width - calendarLayoutWidth - 34f).coerceAtLeast(1f)
             val titlePaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = renderedTitleSize * metrics.scaledDensity }
             val titleWidth = titlePaint.measureText(title) / metrics.density
-            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (titleWidth <= availableText - 60f) 48 else if (titleWidth <= (availableText - 40f) * 1.7f) 28 else 0
+            // The crest has its own column in medium cards, as on iPhone.
+            // A short heading may shrink slightly to stay on one line beside it.
+            val mediumLogo = card && !large && fontScale <= 1.2f && logicalHeight >= 140
+            val logoSize = if (!card || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) 40 else 0
+            if (mediumLogo && event != null) {
+                val titleSpace = (availableText - logoSize - 8f).coerceAtLeast(1f)
+                val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
+                if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
+            }
             show(R.id.widget_logo, logoSize > 0)
-            views.setViewPadding(R.id.widget_details, 0, 0, ((if (logoSize > 0 && !large) logoSize + 10 else 0) * metrics.density).toInt(), 0)
+            views.setViewPadding(R.id.widget_details, 0, 0, 0, 0)
             if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 views.setViewLayoutWidth(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
                 views.setViewLayoutHeight(R.id.widget_logo, logoSize.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
