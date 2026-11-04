@@ -60,7 +60,7 @@ class WidgetPreviewTest {
                         assertTrue("Intermediate launcher heights enlarge the calendar day", day.textSize / activity.resources.displayMetrics.scaledDensity >= 21.9f)
                         assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= 16.9f)
                         val dateCard = activity.findViewById<View>(R.id.widget_date)
-                        assertTrue("The compact calendar leaves room for the subject and crest", dateCard.width / activity.resources.displayMetrics.density in 49f..73f)
+                        assertTrue("The compact calendar leaves room for the subject and crest", dateCard.width / activity.resources.displayMetrics.density in 55f..97f)
                     }
                     if (isEvent && height >= 200 && height / fontScale >= 160) {
                         val weekday = activity.findViewById<TextView>(R.id.widget_weekday)
@@ -138,6 +138,14 @@ class WidgetPreviewTest {
                         dateCard.getLocationOnScreen(datePoint); selector.getLocationOnScreen(selectorPoint)
                         val gap = (selectorPoint[1] - datePoint[1] - dateCard.height) / activity.resources.displayMetrics.density
                         assertTrue("Calendar and replies form one compact group: $gap dp", gap in 0f..12f)
+                        if (height >= 210) {
+                            val density = activity.resources.displayMetrics.density
+                            val scaled = activity.resources.displayMetrics.scaledDensity
+                            assertTrue("Roomy previews use larger readable headings", title.textSize / scaled >= 29f)
+                            assertTrue("Roomy previews enlarge the calendar proportionally", dateCard.width / density >= 72f)
+                            assertTrue("Roomy previews enlarge metadata", activity.findViewById<TextView>(R.id.widget_location).textSize / scaled >= 15f)
+                            assertTrue("Roomy previews enlarge the crest", activity.findViewById<View>(R.id.widget_logo).width / density >= 55f)
+                        }
                         val aspect = dateCard.height.toFloat() / dateCard.width
                         assertTrue("The calendar sheet keeps iPhone-like proportions: $aspect", aspect in 1.05f..1.5f)
                     }

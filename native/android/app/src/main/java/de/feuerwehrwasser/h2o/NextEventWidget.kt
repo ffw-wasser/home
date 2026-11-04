@@ -161,7 +161,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 flat -> 12f
                 compactActions -> 16f
                 large -> if (fontScale > 1.15f) 19f else 24f
-                spacious -> if (fontScale > 1.15f) 20f else 26f
+                spacious -> if (fontScale > 1.15f) 26f else 30f
                 width >= 450 && height >= 250 -> if (fontScale > 1.15f) 15f else 18f
                 wideCompact -> 18f
                 card -> if (fontScale > 1.15f) 15f else if (height <= 165) 18f else 20f
@@ -189,8 +189,23 @@ open class NextEventWidget : AppWidgetProvider() {
                 val bodyHeight = (height - 24f - replyHeight - followingHeight).coerceAtLeast(1f)
                 if (large && bodyHeight < 112f * fontScale) largeLogoSize = 40
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
-                val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else if (card && !large) bodyHeight.coerceAtMost(120f * fontScale) else bodyHeight
-                val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
+                var headingLines = 2
+                var headingSize = titleSize
+                var headingHeight = 0f
+                if (spacious) {
+                    // A full-width heading frees the row below for a larger proportional calendar and metadata.
+                    val headingPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = titleSize * metrics.scaledDensity }
+                    headingLines = kotlin.math.ceil(headingPaint.measureText(title) / ((width - 24f) * metrics.density)).toInt().coerceIn(1, 2)
+                    val minimumCalendarHeight = 1.2f * (22f + 13f + 12f) * fontScale + 17f
+                    val headingBudget = (bodyHeight - minimumCalendarHeight - 6f).coerceAtLeast(1f)
+                    if (headingBudget / (headingLines * 1.2f * fontScale) < 14f) headingLines = 1
+                    headingSize = minOf(titleSize, headingBudget / (headingLines * 1.2f * fontScale)).coerceAtLeast(12f)
+                    headingHeight = headingSize * headingLines * 1.2f * fontScale + 6f
+                }
+                val dateHeight = if (spacious) (bodyHeight - headingHeight).coerceAtLeast(1f)
+                    else if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else if (card && !large) bodyHeight.coerceAtMost(120f * fontScale) else bodyHeight
+                val desiredWidth = if (spacious) (dateHeight / 1.30f).coerceIn(56f, 96f).coerceAtMost((width - 24f) * 0.30f)
+                    else if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
                     else if (card && !large) (dateHeight * 0.52f).coerceIn(56f, 72f).coerceAtMost((width - 24f) * 0.22f)
                     else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
                 val fixedWidth = if (compactActions) 40f else if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 56f else if (wideCompact) 48f else 40f
@@ -203,22 +218,22 @@ open class NextEventWidget : AppWidgetProvider() {
                 }
                 // Match the short calendar sheet in the iPhone reference instead of stretching it with launcher height.
                 val calendarHeight = if (card && !large) minOf(dateHeight, dateWidth * 1.30f) else dateHeight
-                val weekdaySize = if (grow) (calendarHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
+                val weekdaySize = if (grow && spacious) (calendarHeight / fontScale * 0.16f).coerceIn(12f, 18f) else if (grow) (calendarHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
                     else if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
-                    val monthSize = (calendarHeight / fontScale * 0.12f).coerceIn(13f, 22f)
+                    val monthSize = if (spacious) (calendarHeight / fontScale * 0.16f).coerceIn(13f, 18f) else (calendarHeight / fontScale * 0.12f).coerceIn(13f, 22f)
                     val daySize = ((calendarHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 17f) / 1.2f).coerceIn(22f, 82f)
                     size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
-                    val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
-                    val locationSize = (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
-                    val clothingSize = (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
-                    val lines = 2
+                    val textHeight = (if (spacious) dateHeight else if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
+                    val locationSize = if (spacious) (textHeight * 0.17f).coerceIn(13f, 18f) else (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
+                    val clothingSize = if (spacious) (textHeight * 0.15f).coerceIn(12f, 16f) else (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
+                    val lines = if (spacious) headingLines else 2
                     val metadataHeight = if (large && fontScale <= 1.2f) maxOf(largeLogoSize / fontScale, 1.2f * (locationSize + clothingSize)) else 1.2f * (locationSize + clothingSize)
                     val maxTitle = ((textHeight - metadataHeight - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
                     val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else if (card && !large) 24f else 36f
-                    val growingTitle = maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
+                    val growingTitle = if (spacious) headingSize else maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
                     renderedTitleSize = growingTitle
                     size(R.id.widget_title, growingTitle)
                     views.setInt(R.id.widget_title, "setMaxLines", lines)
@@ -232,8 +247,8 @@ open class NextEventWidget : AppWidgetProvider() {
             // The crest has its own column in medium cards, as on iPhone.
             // A short heading may shrink slightly to stay on one line beside it.
             val mediumLogo = (compactActions || wideCompact || (card && !large && logicalHeight >= 140)) && fontScale <= 1.2f
-            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (wideCompact || compactActions) 40 else 48) else 0
-            if (mediumLogo && event != null) {
+            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (spacious) 56 else if (wideCompact || compactActions) 40 else 48) else 0
+            if (mediumLogo && event != null && !spacious) {
                 val titleSpace = (availableText - logoSize - 8f).coerceAtLeast(1f)
                 val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
                 if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
