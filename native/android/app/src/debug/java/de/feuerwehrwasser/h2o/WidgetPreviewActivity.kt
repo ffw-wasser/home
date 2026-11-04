@@ -19,7 +19,7 @@ class WidgetPreviewActivity : Activity() {
         val action = intent.getStringExtra("fixture") ?: "today"
         val relativeDate = java.time.Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(when (action) { "tomorrow" -> 1; "future" -> 3; else -> 0 })
         val date = if (action == "long-month") relativeDate.withMonth(9).withDayOfMonth(22).let { if (it.isBefore(relativeDate)) it.plusYears(1) else it } else relativeDate
-        val start = (if (action == "sketch-reference") date.plusDays(2).atTime(20, 0) else date.atTime(23, 58)).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
+        val start = (if (action == "sketch-reference") date.plusDays(1).atTime(20, 0) else date.atTime(23, 58)).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
             .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "sketch-reference") "Indoor Cycling" else if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (action == "short-title") "Probe" else "Technische Hilfeleistung")
                 .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", if (action == "sketch-reference") "Injoy EM" else "Gerätehaus Wasser")

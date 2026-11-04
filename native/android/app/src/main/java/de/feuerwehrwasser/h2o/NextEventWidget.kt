@@ -107,23 +107,26 @@ open class NextEventWidget : AppWidgetProvider() {
             val logicalHeight = height / fontScale
             val large = width >= 300 && height >= 290 && logicalHeight >= 250
             val roomy = width >= 300 && width / fontScale >= 240 && height >= 140 && logicalHeight >= 112
-            val card = large || roomy
+            val compactActions = !flat && width >= 300 && width / fontScale >= 260 && height >= 110 && logicalHeight >= 100 && !roomy
+            val card = large || roomy || compactActions
             val wideCompact = !flat && !card && width >= 300 && logicalHeight >= 100
             val tall = !flat && width < 300 && logicalHeight >= 200 && height >= width
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
-            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
+            val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compactActions) R.layout.widget_event_compact_actions else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
             var largeLogoSize = if (large && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 56 else 40
-            var calendarLayoutWidth = if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
+            var calendarLayoutWidth = if (compactActions) 40f else if (spacious) 72f else if (large) 64f else if (card) 56f else if (wideCompact) 48f else 40f
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
             val relative = event?.let { WidgetSnapshot.day(it.start, now) }
             val day = date?.format(DateTimeFormatter.ofPattern("d", Locale.GERMAN)).orEmpty()
             views.setTextViewText(R.id.widget_day, day)
             val baseDaySize = when {
                 flat -> if (compact) 10f else 13f
+                compactActions -> 18f
                 spacious -> if (fontScale > 1.15f) 32f else 40f
                 large -> if (fontScale > 1.15f) 30f else 36f
+                wideCompact -> if (fontScale > 1.15f) 20f else 24f
                 width < 150 -> 18f
                 card && logicalHeight < 130 -> 18f
                 fontScale > 1.15f -> if (card) 23f else 18f
@@ -132,23 +135,23 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             val metrics = context.resources.displayMetrics
             val dayPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseDaySize * metrics.scaledDensity }
-            val availableDayWidth = if (flat) (if (compact) 20f else 28f) else if (spacious) 64f else if (large) 56f else if (card) 42f else 32f
+            val availableDayWidth = if (compactActions) 32f else if (flat) (if (compact) 20f else 28f) else if (spacious) 64f else if (large) 56f else if (card) 48f else if (wideCompact) 40f else 32f
             val fit = if (day.isEmpty()) 1f else ((availableDayWidth - 2f) * metrics.density / dayPaint.measureText(day)).coerceAtMost(1f)
             size(R.id.widget_day, baseDaySize * fit)
             val monthText = date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty()
-            val baseMonthSize = if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (fontScale > 1.15f || (card && height < 160)) 10f else 12f
+            val baseMonthSize = if (compactActions) 9f else if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f
             val monthPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseMonthSize * metrics.scaledDensity }
             val monthFit = if (monthText.isEmpty()) 1f else ((availableDayWidth + 2f) * metrics.density / monthPaint.measureText(monthText)).coerceAtMost(1f)
             size(R.id.widget_month, baseMonthSize * monthFit)
             val weekdayText = relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty()
-            size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f || (card && height < 160)) 10f else 12f)
+            size(R.id.widget_weekday, if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
-            val showBindings = !flat && logicalHeight >= if (card) 160 else 140
+            val showBindings = !flat && !compactActions && logicalHeight >= if (card) 160 else 140
             show(R.id.widget_bindings, showBindings)
             show(R.id.widget_binding_gap, showBindings)
             show(R.id.widget_binding_headroom, showBindings)
-            show(R.id.widget_date_line, !flat && logicalHeight >= 140)
+            show(R.id.widget_date_line, !flat && !compactActions && logicalHeight >= 140)
             show(R.id.widget_weekday, !flat); show(R.id.widget_month, event != null)
             show(R.id.widget_brand, false)
             show(R.id.widget_date, event != null); show(R.id.widget_separator, false)
@@ -156,6 +159,7 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_title, title)
             val titleSize = when {
                 flat -> 12f
+                compactActions -> 16f
                 large -> if (fontScale > 1.15f) 19f else 24f
                 spacious -> if (fontScale > 1.15f) 20f else 26f
                 width >= 450 && height >= 250 -> if (fontScale > 1.15f) 15f else 18f
@@ -166,7 +170,7 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             var renderedTitleSize = titleSize
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact) 1 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact || compactActions) 1 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
@@ -174,8 +178,8 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_clothing, event?.clothing.orEmpty())
             show(R.id.widget_location, event != null)
             show(R.id.widget_clothing, event != null && !flat && (card || wideCompact || logicalHeight >= 140) && event.clothing.isNotEmpty())
-            size(R.id.widget_location, if (flat) 10f else if (wideCompact) 11f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
-            size(R.id.widget_clothing, if (wideCompact) 10f else if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
+            size(R.id.widget_location, if (compactActions) 10f else if (flat) 10f else if (wideCompact) 11f else if (spacious) (if (fontScale > 1.15f) 11f else 13f) else if (large) (if (fontScale > 1.15f) 10f else 13f) else if (fontScale > 1.15f) (if (card) 10f else 8f) else if (card) 12f else 9f)
+            size(R.id.widget_clothing, if (compactActions) 9f else if (wideCompact) 10f else if (spacious) (if (fontScale > 1.15f) 10f else 12f) else if (large) (if (fontScale > 1.15f) 9f else 12f) else if (fontScale > 1.15f) (if (card) 9f else 7f) else if (card) 11f else 8f)
             // Spend additional launcher height on the actual date and topic.
             // Reserve the response targets and following appointments before growing text.
             if (!flat && event != null) {
@@ -187,9 +191,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 val grow = logicalHeight >= 140 && bodyHeight >= 70
                 val dateHeight = if (tall) bodyHeight * if (bodyHeight >= 220) 0.55f else 0.44f else if (card && !large) bodyHeight.coerceAtMost(120f * fontScale) else bodyHeight
                 val desiredWidth = if (tall) (dateHeight * 0.70f).coerceIn(80f, 116f)
-                    else if (card && !large) (dateHeight * 0.52f).coerceIn(50f, 72f).coerceAtMost((width - 24f) * 0.22f)
+                    else if (card && !large) (dateHeight * 0.52f).coerceIn(56f, 72f).coerceAtMost((width - 24f) * 0.22f)
                     else (bodyHeight * 0.58f).coerceIn(56f, 112f).coerceAtMost((width - 24f) * 0.34f)
-                val fixedWidth = if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 50f else 40f
+                val fixedWidth = if (compactActions) 40f else if (tall) 80f else if (spacious) 72f else if (large) 64f else if (card) 56f else if (wideCompact) 48f else 40f
                 val dateWidth = if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) desiredWidth else fixedWidth
                 calendarLayoutWidth = dateWidth
                 if (grow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) views.setViewLayoutWidth(R.id.widget_date, dateWidth, TypedValue.COMPLEX_UNIT_DIP)
@@ -197,12 +201,14 @@ open class NextEventWidget : AppWidgetProvider() {
                     val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = sp * metrics.scaledDensity }
                     return if (text.isEmpty()) sp else sp * (((dateWidth - 4f) * metrics.density / paint.measureText(text)).coerceAtMost(1f))
                 }
-                val weekdaySize = if (grow) (dateHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
-                    else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f || (card && height < 160)) 10f else 12f
+                // Match the short calendar sheet in the iPhone reference instead of stretching it with launcher height.
+                val calendarHeight = if (card && !large) minOf(dateHeight, dateWidth * 1.30f) else dateHeight
+                val weekdaySize = if (grow) (calendarHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
+                    else if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
-                    val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
-                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 17f) / 1.2f).coerceIn(22f, 82f)
+                    val monthSize = (calendarHeight / fontScale * 0.12f).coerceIn(13f, 22f)
+                    val daySize = ((calendarHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 17f) / 1.2f).coerceIn(22f, 82f)
                     size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
                     val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
@@ -225,8 +231,8 @@ open class NextEventWidget : AppWidgetProvider() {
             val titleWidth = titlePaint.measureText(title) / metrics.density
             // The crest has its own column in medium cards, as on iPhone.
             // A short heading may shrink slightly to stay on one line beside it.
-            val mediumLogo = (wideCompact || (card && !large && logicalHeight >= 140)) && fontScale <= 1.2f
-            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (wideCompact) 36 else 40) else 0
+            val mediumLogo = (compactActions || wideCompact || (card && !large && logicalHeight >= 140)) && fontScale <= 1.2f
+            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (wideCompact || compactActions) 40 else 48) else 0
             if (mediumLogo && event != null) {
                 val titleSpace = (availableText - logoSize - 8f).coerceAtLeast(1f)
                 val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
@@ -264,8 +270,29 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             views.setTextViewText(R.id.widget_status, statusText)
             views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
+            // Compact widgets show the confirmed answer as one colored status target.
+            // Errors, notices and stale data keep their neutral information surface.
+            if (!card) {
+                val confirmed = event?.status?.takeIf { it in setOf("yes", "excused", "maybe") && !retry && message == null && notice == null && snapshot?.stale == false }
+                val background = when (confirmed) {
+                    "yes" -> R.drawable.widget_segment_yes
+                    "excused" -> R.drawable.widget_segment_excused
+                    "maybe" -> R.drawable.widget_segment_maybe
+                    else -> R.drawable.widget_panel_background
+                }
+                val ink = when (confirmed) {
+                    "yes" -> 0xFFFFFFFF.toInt()
+                    "excused", "maybe" -> 0xFF2D210A.toInt()
+                    else -> if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
+                }
+                views.setInt(R.id.widget_footer, "setBackgroundResource", background)
+                views.setTextColor(R.id.widget_status, ink)
+                views.setTextColor(R.id.widget_status_chevron, ink)
+                if (confirmed != null && !(flat && compact)) views.setTextViewText(R.id.widget_status, "✓ $status")
+            }
             // Keep notification space stable; successful replies show no footer label.
-            show(R.id.widget_footer, event != null)
+            show(R.id.widget_footer, event != null && (!compactActions || statusText.isNotEmpty()))
+            if (compactActions) show(R.id.widget_clothing, event != null && event.clothing.isNotEmpty() && statusText.isEmpty())
             show(R.id.widget_status_icon, false)
             show(R.id.widget_time, false)
             show(R.id.widget_note, snapshot?.stale == true && event != null)
@@ -276,7 +303,7 @@ open class NextEventWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_footer, openPending)
             if (!flat) {
                 show(R.id.widget_actions, actions); show(R.id.widget_edit, false); show(R.id.widget_hint, false)
-                views.setInt(R.id.widget_footer, "setMinimumHeight", ((if (card) 12 else 28) * metrics.density).toInt())
+                views.setInt(R.id.widget_footer, "setMinimumHeight", ((if (compactActions) 0 else if (card) 12 else 28) * metrics.density).toInt())
                 if (card) {
                     show(R.id.widget_status_line, event != null)
                     if (event != null) views.setImageViewBitmap(R.id.widget_status_line, statusLine(width, if (saving) "open" else event.status, metrics.density))

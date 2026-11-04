@@ -240,3 +240,14 @@ Diese Ergänzung ist kein zentraler Installationsbefehl und keine Push-Mitteilun
 Auf iPhone erfolgen automatische App-Updates über TestFlight beziehungsweise den App Store, sofern auf dem Gerät aktiviert. H₂O installiert dort keine neue native Version selbst.
 
 Die Android-Emulatorprüfung verwendet Googles FakeAppUpdateManager: Start ohne Dialog, Zustimmung, Download ohne automatischen Neustart, Wiedererkennen des fertigen Downloads, ausdrücklicher Neustart, „Später“ sowie fehlendes Update und nicht verfügbarer Play-Dienst. Reale Store-Berechtigung, Signierung, Verteilung und Installation sind zusätzlich im internen Play-Test zu prüfen.
+
+
+## Build 1040 – Farbiger kompakter Status und harmonische Proportionen
+
+Kleine und flache Widgets färben die gesamte bestätigte Statusfläche: Dabei grün, Entschuldigt gelb, Unsicher orange, jeweils mit Haken. Auf Gelb und Orange ist die Schrift dunkel, auf Grün weiß. Der Pfeil übernimmt denselben Kontrast. Ohne Antwort bleiben die Flächen neutral; offene Antworten, Fehler, Hinweise und veraltete Kalenderstände werden weiterhin eindeutig angezeigt. Während des Speicherns bleibt die bestätigte Antwort maßgeblich.
+
+Das Kalenderblatt bleibt in mittleren Karten etwa 1,3-mal so hoch wie breit, statt mit zusätzlicher Launcherhöhe immer länger zu werden. Bei großer Systemschrift hat lesbarer Text weiterhin Vorrang. Mittlere Karten halten Kalender, Thema und Antwortleiste als zusammenhängende Gruppe in der verfügbaren Höhe. Zusätzlicher Launcherplatz verteilt sich ober- und unterhalb, statt eine große Lücke zwischen Termin und Antworten zu erzeugen. Das identische Originalwappen wird wie im iPhone-Widget regulär 48 dp groß rechts dargestellt, in der flachen breiten Karte 40 dp. Große Karten behalten ihre bisherige Anordnung. Die tatsächliche Launchergröße und Systemschrift bestimmen weiterhin, wann Details oder die direkte Antwortauswahl Platz haben.
+
+Die vorhandene Emulatorprüfung kontrolliert alle drei bestätigten Farben, lesbaren Textkontrast, neutrale Fehler-/Offen-Zustände und bestätigte Auswahl während einer laufenden Änderung. Zusätzliche geometrische Prüfungen sichern den Abstand zur Antwortleiste und das größere Wappen ab.
+
+Breite kurze Widgets erhalten bei mindestens 110 dp Höhe und ausreichender Schriftfläche eine eigene kompakte Ansicht mit allen drei 44 dp hohen Antworttasten. Kalender, einzeiliges Thema und Wappen stehen darüber; bei Fehlern oder offener Antwort ersetzt der Hinweis die Kleidungszeile. Bei großer Systemschrift oder noch weniger Höhe bleibt die farbige Statusfläche mit Öffnung des Termins als Rückfall erhalten. Die zwei gezielten Entwurfsvorschauen zeigen 330 × 230 dp und 330 × 110 dp mit „Indoor Cycling“, 20:00, Injoy EM, Sportkleidung und Entschuldigt.
