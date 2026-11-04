@@ -91,3 +91,10 @@ test('Neue Gruppen sind ohne Verbindung oder nach Entzug gesperrt; Schlüssel er
 test('Fehlermeldungen passen zur direkten zentralen Gruppenauswahl',()=>{
  const M=model();assert.throws(()=>M.build({}, {...selection,groups:[]},names),/^Error: Bitte mindestens eine passende Gruppe wählen\.$/);assert.throws(()=>M.read('Gruppen: Nicht mehr vorhanden',names),/Gruppenliste aktualisieren/);
 });
+
+test('Google-Add-on belegt Alle aktiven Mitglieder und Freigabe vor; bestehende Zuordnungen und Nein bleiben erhalten',()=>{
+ const M=model(),groups=[...names,'Alterskameraden','Fitness'];
+ const defaults=M.read('',groups,'Probe mit Emmendingen');assert.deepEqual(Array.from(defaults.groups),['Alle aktiven Mitglieder']);assert.equal(defaults.release,true);
+ const existing=M.read('Gruppen: Fitness\nFreigabe: Nein',groups,'Fitness');assert.deepEqual(Array.from(existing.groups),['Fitness']);assert.equal(existing.release,false);
+ const f=controller();f.open();assert.deepEqual(f.widgets.find(w=>w.setFieldName==='groups').items.filter(i=>i[2]).map(i=>i[0]),['Alle aktiven Mitglieder']);assert.equal(f.widgets.find(w=>w.setFieldName==='release').items.find(i=>i[2])[0],'Freigeben');
+});

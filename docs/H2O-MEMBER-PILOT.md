@@ -1,5 +1,13 @@
 # Privater iPhone-Mitgliederpilot · Build 1026
 
+
+Die obere Widget-Verlaufskante folgt ab Build 1041 der bestätigten Rückmeldung:
+Dabei grün, Entschuldigt gelb, Unsicher orange, ohne Auswahl neutral blau-grau.
+Der Farbwechsel blendet in etwa 0,55 Sekunden über. Bei reduzierten Animationen
+bleibt der Wechsel direkt; Android animiert nur bei geändertem Status und ohne
+zusätzliche Hintergrundabrufe. Die Darstellung auf realen Homescreens hängt vom
+System beziehungsweise Launcher ab.
+
 Der Mitglieder-Build öffnet das echte H₂O-Portal unter
 `https://ffw-wasser.github.io/home/deckel.html`. Die Apple-Demo bleibt mit
 `H2O_APP_REVIEW` und ihrer eigenen Domain getrennt erhalten. Zugang, Passwort,

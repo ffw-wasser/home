@@ -1,5 +1,13 @@
 # Native Android-App mit Mitglieder-Widget
 
+
+Die obere Widget-Verlaufskante folgt ab Build 1041 der bestätigten Rückmeldung:
+Dabei grün, Entschuldigt gelb, Unsicher orange, ohne Auswahl neutral blau-grau.
+Der Farbwechsel blendet in etwa 0,55 Sekunden über. Bei reduzierten Animationen
+bleibt der Wechsel direkt; Android animiert nur bei geändertem Status und ohne
+zusätzliche Hintergrundabrufe. Die Darstellung auf realen Homescreens hängt vom
+System beziehungsweise Launcher ab.
+
 Ziel: Dasselbe geschützte H₂O Portal wie auf dem iPhone, ergänzt um ein natives
 Android-Widget und freiwillige Firebase-Cloud-Messaging-Mitteilungen.
 Verteilung ausdrücklich über den **internen Google-Play-Test**, keine öffentliche

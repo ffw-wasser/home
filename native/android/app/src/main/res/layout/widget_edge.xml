@@ -1,0 +1,9 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="noHideDescendants">
+    <ViewFlipper android:id="@+id/widget_edge_transition" android:layout_width="match_parent" android:layout_height="match_parent" android:autoStart="false" android:animateFirstView="false" android:inAnimation="@anim/widget_edge_fade_in" android:outAnimation="@anim/widget_edge_fade_out">
+        <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_background_open" android:importantForAccessibility="no" />
+        <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_background_yes" android:importantForAccessibility="no" />
+        <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_background_excused" android:importantForAccessibility="no" />
+        <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_background_maybe" android:importantForAccessibility="no" />
+    </ViewFlipper>
+    <ImageView android:id="@+id/widget_edge_static" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:visibility="gone" android:importantForAccessibility="no" />
+</FrameLayout>

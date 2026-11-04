@@ -159,6 +159,8 @@ test('Terminkarten kürzen nur eine wiederholte Terminart vor dem Thema',()=>{
   ['Sonderprobe','Sonderprobe GF + Ausschuss','GF + Ausschuss'],
   ['Probe','Allgemeine Probe · Technische Hilfe','Technische Hilfe'],
   ['Sonderprobe','Sonderprobe – Sonderprobe: Atemschutz','Atemschutz'],
+  ['Probe','Probe mit Emmendingen','Probe mit Emmendingen'],
+  ['Probe','Probe Löschangriff','Probe Löschangriff'],
   ['Probe','Probe','Probe'],
   ['Probe','   ','Probe'],
   ['','   ','Termin'],

@@ -70,9 +70,9 @@ test('D1 und CPU: Gruppenerkennung liest eine Konfiguration pro Projektion, Inde
  const groups=G.defaults();for(let i=0;i<90;i++)groups.push({id:'g'+i,name:'Gruppe '+i,source:'manual',memberIds:['a'],keywords:Array.from({length:20},(_,k)=>'Begriff'+i+'x'+k),general:false,enabled:true});
  const compiled=G.resolver(G.validate(groups),roster);const start=performance.now();for(let i=0;i<500;i++)assert.deepEqual(Array.from(compiled('Sonderprobe Begriff'+(i%90)+'x3').recipientIds),['a']);assert.ok(performance.now()-start<1000);
 });
-test('Neue Kalenderdaten erhalten automatisch Empfänger, unabhängig von der Terminfreigabe',async()=>{
+test('Neue Kalenderdaten erhalten Alle aktiven Mitglieder und sind standardmäßig freigegeben',async()=>{
  const f=await setup();f.sql.prepare('DELETE FROM portal_rules').run();await rename(f,'Sonderprobe Atemschutz');
- const event=(await list(f)).events[0];assert.equal(event.recipientMode,'automatic');assert.equal(event.approved,false);assert.equal(event.sessionType,'Sonderprobe');assert.deepEqual(event.recipientIds,['member-1','member-2']);
+ const event=(await list(f)).events[0];assert.equal(event.recipientMode,'automatic');assert.equal(event.approved,true);assert.equal(event.sessionType,'Sonderprobe');assert.deepEqual(event.recipientIds,['member-1','member-2','member-3','member-4']);
 });
 test('Zwei gleichzeitige Gruppenschreibvorgänge bestätigen höchstens eine Version',async()=>{
  const f=await setup(),groups=(await f.call('groups',{},null,true)).value.groups;

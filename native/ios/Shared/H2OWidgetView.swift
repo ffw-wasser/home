@@ -66,6 +66,17 @@ struct NextEventView: View {
         default: return secondaryInk
         }
     }
+    // Only the confirmed answer colors the frame; pending/error feedback stays below.
+    private var edgeStatus: String { event?.status ?? "open" }
+    private var edgePalette: [Color] {
+        guard renderingMode == .fullColor else { return [ink.opacity(0.3), background, ink.opacity(0.3)] }
+        switch edgeStatus {
+        case "yes": return [rgb(0x28513E), rgb(0x152D2D), rgb(0x78C38F)]
+        case "excused": return [rgb(0x675327), rgb(0x3B3026), rgb(0xFFE8A0)]
+        case "maybe": return [rgb(0x714026), rgb(0x432A28), rgb(0xFFC68B)]
+        default: return [rgb(0x344A60), rgb(0x213346), rgb(0x9AB2C6)]
+        }
+    }
     private var bindings: some View {
         HStack {
             binding
@@ -311,10 +322,13 @@ struct NextEventView: View {
             }.frame(width: width, height: height, alignment: .topLeading)
                 .padding(.horizontal, horizontal).padding(.vertical, vertical)
                 .background {
-                    LinearGradient(stops: [.init(color: rgb(0x951C35), location: 0), .init(color: rgb(0x5C152C), location: 0.08), .init(color: rgb(0x5C152C), location: 1)], startPoint: .top, endPoint: .bottom)
-                    LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
+                    ZStack {
+                        LinearGradient(stops: [.init(color: edgePalette[0], location: 0), .init(color: edgePalette[1], location: 0.08), .init(color: edgePalette[1], location: 1)], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
+                    }.animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: rgb(0xFF5574).opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: edgePalette[2].opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
         }.id(family)
             .contentTransition(.identity)

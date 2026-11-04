@@ -50,12 +50,16 @@ open class NextEventWidget : AppWidgetProvider() {
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val now = System.currentTimeMillis()
+            val snapshot = WidgetStore.read(context, now)
+            val edgeKey = snapshot?.event?.status ?: "open"
+            val edgePrefs = WidgetStore.prefs(context)
             for (id in widgetIds(context)) {
                 val compact = manager.getAppWidgetInfo(id)?.provider?.className == CompactNextEventWidget::class.java.name
-                manager.updateAppWidget(id, viewsForOptions(context, manager.getAppWidgetOptions(id), compact, now))
+                val previous = edgePrefs.getString("edge-$id", null)
+                manager.updateAppWidget(id, viewsForOptions(context, manager.getAppWidgetOptions(id), compact, now, previous != null && previous != edgeKey))
+                edgePrefs.edit().putString("edge-$id", edgeKey).apply()
             }
             // Best-effort boundary refresh; Android may defer background work to save power.
-            val snapshot = WidgetStore.read(context, now)
             val midnight = Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(1).atStartOfDay(WidgetSnapshot.zone).toInstant().toEpochMilli()
             val pending = runCatching { WidgetStore.prefs(context).getString("job", null)?.let(::JSONObject) }.getOrNull()
             val replyTimeout = pending?.takeIf { it.optString("phase") == "saving" }?.optLong("startedAt")?.plus(30000)
@@ -89,18 +93,18 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             return bitmap
         }
-        internal fun viewsForOptions(context: Context, options: Bundle, compactDefault: Boolean, now: Long): RemoteViews {
+        internal fun viewsForOptions(context: Context, options: Bundle, compactDefault: Boolean, now: Long, edgeChanged: Boolean = false): RemoteViews {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val sizes = BundleCompat.getParcelableArrayList(options, AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java)
                     ?.filter { it.width.isFinite() && it.height.isFinite() && it.width > 0 && it.height > 0 }?.distinct()?.take(16)
-                if (!sizes.isNullOrEmpty()) return RemoteViews(sizes.associateWith { views(context, it.width.toInt(), it.height.toInt(), now) })
+                if (!sizes.isNullOrEmpty()) return RemoteViews(sizes.associateWith { views(context, it.width.toInt(), it.height.toInt(), now, edgeChanged) })
             }
             val width = if (compactDefault) 170 else 330
-            val portrait = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 170), now)
-            val landscape = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 170), now)
+            val portrait = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 170), now, edgeChanged)
+            val landscape = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 170), now, edgeChanged)
             return RemoteViews(landscape, portrait)
         }
-        internal fun views(context: Context, width: Int, height: Int, now: Long): RemoteViews {
+        internal fun views(context: Context, width: Int, height: Int, now: Long, edgeChanged: Boolean = false): RemoteViews {
             val compact = width < 240; val flat = height < 100
             val snapshot = WidgetStore.read(context, now); val event = snapshot?.event
             val fontScale = context.resources.configuration.fontScale
@@ -115,6 +119,20 @@ open class NextEventWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compactActions) R.layout.widget_event_compact_actions else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
+            // ViewFlipper animates locally in the launcher: no timer or repeated widget updates.
+            val edgeIndex = when (event?.status) { "yes" -> 1; "excused" -> 2; "maybe" -> 3; else -> 0 }
+            val edgeDrawable = when (event?.status) {
+                "yes" -> R.drawable.widget_background_yes
+                "excused" -> R.drawable.widget_background_excused
+                "maybe" -> R.drawable.widget_background_maybe
+                else -> R.drawable.widget_background_open
+            }
+            val animateEdge = edgeChanged && android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f &&
+                android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 1f) > 0f
+            show(R.id.widget_edge_transition, animateEdge)
+            show(R.id.widget_edge_static, !animateEdge)
+            views.setInt(R.id.widget_edge_transition, "setDisplayedChild", edgeIndex)
+            views.setImageViewResource(R.id.widget_edge_static, edgeDrawable)
             var largeLogoSize = if (large && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 56 else 40
             var calendarLayoutWidth = if (compactActions) 40f else if (spacious) 72f else if (large) 64f else if (card) 56f else if (wideCompact) 48f else 40f
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }

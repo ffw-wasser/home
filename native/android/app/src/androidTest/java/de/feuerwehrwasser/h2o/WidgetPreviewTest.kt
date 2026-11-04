@@ -16,6 +16,33 @@ import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class WidgetPreviewTest {
+    @Test fun statusEdgeReappliesWithoutReplacingContentOrAnimatingUnchangedStatus() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", 330).putExtra("height", 230).putExtra("fixture", "today")
+        ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
+            scenario.onActivity { activity ->
+                val root = activity.findViewById<View>(R.id.widget_root)
+                val heading = activity.findViewById<TextView>(R.id.widget_title)
+                val originalTitle = heading.text.toString()
+                val now = System.currentTimeMillis()
+                val event = requireNotNull(WidgetStore.read(context, now)?.event)
+                for ((status, index) in listOf("yes" to 1, "excused" to 2, "maybe" to 3, "open" to 0)) {
+                    WidgetStore.confirm(context, event.id, status, 1)
+                    NextEventWidget.views(activity, 330, 230, now, true).reapply(activity, root)
+                    val flipper = activity.findViewById<android.widget.ViewFlipper>(R.id.widget_edge_transition)
+                    assertEquals(index, flipper.displayedChild)
+                    assertFalse("The edge must never loop", flipper.isFlipping)
+                    assertSame("Replies keep the existing content view", heading, activity.findViewById<TextView>(R.id.widget_title))
+                    assertEquals(originalTitle, heading.text.toString())
+                    NextEventWidget.views(activity, 330, 230, now, false).reapply(activity, root)
+                    assertEquals("An unchanged status uses a static surface", View.VISIBLE, activity.findViewById<View>(R.id.widget_edge_static).visibility)
+                    assertEquals(View.GONE, flipper.visibility)
+                }
+            }
+        }
+    }
+
     @Test fun renderSyntheticWidgetStates() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

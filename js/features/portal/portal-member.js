@@ -28,7 +28,7 @@
  // Use the topic in cards and native widgets, preserving calendar and export titles.
  function eventTopic(event){
   const type=String(event.sessionType||'').trim(),raw=String(event.title||'').trim()||type||'Termin';
-  const prefix={Probe:/^(?:Allgemeine\s+)?Probe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Sonderprobe:/^Sonderprobe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Unterricht:/^Unterricht(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Veranstaltung:/^Veranstaltung(?=$|[\s:·|–—-])[\s:·|–—-]*/i}[type];
+  const prefix={Probe:/^(?:Allgemeine\s+)?Probe(?:$|\s*[:·|–—-]\s*)/i,Sonderprobe:/^Sonderprobe(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Unterricht:/^Unterricht(?=$|[\s:·|–—-])[\s:·|–—-]*/i,Veranstaltung:/^Veranstaltung(?=$|[\s:·|–—-])[\s:·|–—-]*/i}[type];
   let title=raw;if(prefix)while(prefix.test(title)){const next=title.replace(prefix,'').trim();if(!next){title=type;break;}title=next;}
   return title;
  }
