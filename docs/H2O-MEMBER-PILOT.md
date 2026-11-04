@@ -218,3 +218,12 @@ Die zwölfstündige Gültigkeit der Antwortfreigabe bleibt unverändert. Gespeic
 Auf iOS ist die gemeinsame Datei nach dem ersten Entsperren seit einem Geräteneustart auch bei gesperrtem Bildschirm lesbar; sie bleibt verschlüsselt und vom Backup ausgeschlossen. WidgetKit liest den gemeinsamen Speicher zusätzlich etwa stündlich nach Systemplanung. Android verwendet den bestehenden zeitgesteuerten Auftrag. Die Timeline beziehungsweise der Auftrag schalten bei Terminende auf den nächsten gespeicherten Termin.
 
 Die nativen CI-Bildprüfungen rendern die tatsächlich ausgelieferten Ansichten mit künstlichen Daten. Sie ersetzen keine Messung am echten iPhone oder Android-Gerät und keine Store-Freigabe.
+
+
+## Build 1036 Plastische Darstellung nach dem freigegebenen Entwurf
+
+Die Rückmeldetasten haben jetzt einzeln abgerundete, gewölbt wirkende Farbflächen mit heller Oberkante und kleinem Schatten. Die gemeinsame dunkelblaue Leiste erhält einen eigenen Verlauf und eine Lichtkante. Der obere Bordeauxbereich und der Außenrand sind deutlicher; Terminmetadaten sind kräftiger gesetzt und verwenden weiterhin einheitlich #C6D2DF. Die Kalenderkarte erhält eine rote Unterkante und einen Papierrand. Ihr Schatten wird auf die zusammengesetzte Karte angewendet, damit Ziffern und Buchstaben keinen eigenen Schlagschatten bekommen.
+
+Die Binderinge sitzen in einem eigenen Streifen oberhalb der Monatsbeschriftung. Der Monatskopf hat zusätzlichen Abstand zum Metall. Bei wenig Platz entfällt weiterhin zuerst die Dekoration. Der Farbstreifen unter den Rückmeldetasten besitzt einen sichtbaren hellen Kern und einen örtlich begrenzten, weich auslaufenden Reflex unter der bestätigten Auswahl. Auswahl und Linie wechseln weiterhin erst nach Serverbestätigung.
+
+Die nativen Bildprüfungen enthalten zusätzlich den Vergleichsfall Indoor Cycling, 20:00, Injoy EM, Sportkleidung, Entschuldigt. Unter Android wird außerdem der tatsächliche Abstand zwischen Binderingen und Monatsschrift geprüft. Kalenderöffnung, Antwortversand, Cache und Berechtigungen ändern sich in diesem Build nicht.

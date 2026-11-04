@@ -19,11 +19,11 @@ class WidgetPreviewActivity : Activity() {
         val action = intent.getStringExtra("fixture") ?: "today"
         val relativeDate = java.time.Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(when (action) { "tomorrow" -> 1; "future" -> 3; else -> 0 })
         val date = if (action == "long-month") relativeDate.withMonth(9).withDayOfMonth(22).let { if (it.isBefore(relativeDate)) it.plusYears(1) else it } else relativeDate
-        val start = date.atTime(23, 58).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
+        val start = (if (action == "sketch-reference") date.plusDays(2).atTime(20, 0) else date.atTime(23, 58)).atZone(WidgetSnapshot.zone).toInstant().toEpochMilli()
         val input = if (action == "clear") JSONObject().put("action", "clear") else JSONObject().put("action", if (action == "empty") "empty" else "update")
-            .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (action == "short-title") "Probe" else "Technische Hilfeleistung")
-                .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", "Gerätehaus Wasser")
-                .put("clothing", "Einsatzkleidung").put("status", if (action == "excused") "excused" else if (action in listOf("open", "reminded")) "open" else "yes")
+            .put("stale", action == "stale").put("event", JSONObject().put("title", if (action == "sketch-reference") "Indoor Cycling" else if (action == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (action == "short-title") "Probe" else "Technische Hilfeleistung")
+                .put("start", start).put("end", start + 3600000).put("allDay", action == "allday").put("location", if (action == "sketch-reference") "Injoy EM" else "Gerätehaus Wasser")
+                .put("clothing", if (action == "sketch-reference") "Sportkleidung" else "Einsatzkleidung").put("status", if (action in listOf("excused", "sketch-reference")) "excused" else if (action == "future") "maybe" else if (action in listOf("open", "reminded")) "open" else "yes")
                 .put("id", "a".repeat(43)).put("version", 0).put("canReply", true).put("reminded", action == "reminded"))
             .put("reply", JSONObject().put("token", "synthetic".repeat(20)).put("expiresAt", now + 3600000))
         if (action !in listOf("clear", "empty")) {
@@ -39,7 +39,7 @@ class WidgetPreviewActivity : Activity() {
         val prefs = WidgetStore.prefs(this)
         if (action == "refreshed") prefs.edit().putString("notice", "Stand aktualisiert – erneut wählen").commit()
         if (action == "edit") prefs.edit().putString("editing", "a".repeat(43)).commit()
-        if (action in listOf("saving", "retry")) prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", action).put("startedAt", now).toString()).commit()
+        if (action in listOf("saving", "retry")) prefs.edit().putString("job", JSONObject().put("eventId", "a".repeat(43)).put("phase", action).put("status", "maybe").put("startedAt", now).toString()).commit()
         if (action == "conflict") prefs.edit().putString("message", "In H₂O aktualisieren").commit()
         val layout = FrameLayout(previewContext).apply { setBackgroundColor(0xFF18283C.toInt()) }
         val options = Bundle().apply {

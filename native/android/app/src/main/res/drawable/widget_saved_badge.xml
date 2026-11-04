@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="oval"><gradient android:startColor="#75D547" android:endColor="#23883F" android:angle="270"/><stroke android:width="0.7dp" android:color="#80C9F5B2"/></shape></item>
+    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp"><vector android:width="8dp" android:height="8dp" android:viewportWidth="16" android:viewportHeight="16"><path android:strokeWidth="2.3" android:strokeColor="#FFFFFF" android:fillColor="#00000000" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M2,8 L6,12 L14,3"/></vector></item>
+</layer-list>

@@ -20,6 +20,8 @@ import java.util.Locale
 import android.util.TypedValue
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.ComposeShader
+import android.graphics.PorterDuff
 import android.graphics.LinearGradient
 import android.graphics.Shader
 import android.text.SpannableString
@@ -66,18 +68,24 @@ open class NextEventWidget : AppWidgetProvider() {
         }
         private fun statusLine(width: Int, status: String, density: Float): Bitmap {
             val pixels = ((width - 24).coerceAtLeast(1) * density).toInt().coerceIn(1, 2048)
-            val bitmap = Bitmap.createBitmap(pixels, 3, Bitmap.Config.ARGB_8888)
+            val height = (3 * density).toInt().coerceAtLeast(3)
+            val bitmap = Bitmap.createBitmap(pixels, height, Bitmap.Config.ARGB_8888)
             val center = when (status) { "yes" -> 1f / 6; "maybe" -> 5f / 6; else -> 0.5f }
             val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF4C542; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
-            val paint = Paint().apply {
+            val bright = when (status) { "yes" -> 0xFF78C38F; "excused" -> 0xFFFFE8A0; "maybe" -> 0xFFFFC68B; else -> 0x70C6D2DF }.toInt()
+            val stops = floatArrayOf(0f, (center - 0.22f).coerceAtLeast(0.001f), center, (center + 0.22f).coerceAtMost(0.999f), 1f)
+            val core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 shader = LinearGradient(0f, 0f, pixels.toFloat(), 0f,
-                    intArrayOf(0x30C6D2DF, (tint and 0xFFFFFF) or 0x33000000, (tint and 0xFFFFFF) or (if (status == "open") 0x40000000 else 0xB0000000.toInt()), (tint and 0xFFFFFF) or 0x33000000, 0x30C6D2DF),
-                    floatArrayOf(0f, (center - 0.16f).coerceAtLeast(0.001f), center, (center + 0.16f).coerceAtMost(0.999f), 1f), Shader.TileMode.CLAMP)
+                    intArrayOf(0x70C6D2DF, (tint and 0xFFFFFF) or 0x59000000, bright, (tint and 0xFFFFFF) or 0x59000000, 0x70C6D2DF), stops, Shader.TileMode.CLAMP)
             }
             Canvas(bitmap).apply {
-                drawRect(0f, 0f, pixels.toFloat(), 3f, paint)
-                drawRect(0f, 0f, pixels.toFloat(), 1f, Paint().apply { color = 0x18FFFFFF })
-                drawRect(0f, 2f, pixels.toFloat(), 3f, Paint().apply { color = 0x28000000 })
+                if (status != "open") {
+                    val horizontal = LinearGradient(0f, 0f, pixels.toFloat(), 0f, intArrayOf(0, 0, (tint and 0xFFFFFF) or 0x80000000.toInt(), 0, 0), stops, Shader.TileMode.CLAMP)
+                    val vertical = LinearGradient(0f, 0f, 0f, height.toFloat(), intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+                    drawRect(0f, 0f, pixels.toFloat(), height.toFloat(), Paint().apply { shader = ComposeShader(horizontal, vertical, PorterDuff.Mode.DST_IN) })
+                }
+                val half = 0.4f * density
+                drawRect(0f, height / 2f - half, pixels.toFloat(), height / 2f + half, core)
             }
             return bitmap
         }
@@ -133,7 +141,10 @@ open class NextEventWidget : AppWidgetProvider() {
             size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
-            show(R.id.widget_bindings, !flat && logicalHeight >= 140)
+            val showBindings = !flat && logicalHeight >= 140
+            show(R.id.widget_bindings, showBindings)
+            show(R.id.widget_binding_gap, showBindings)
+            show(R.id.widget_binding_headroom, showBindings)
             show(R.id.widget_date_line, !flat && logicalHeight >= 140)
             show(R.id.widget_weekday, !flat); show(R.id.widget_month, event != null)
             show(R.id.widget_brand, false)
@@ -185,7 +196,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
                     val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
-                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 13f) / 1.2f).coerceIn(22f, 82f)
+                    val daySize = ((dateHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 17f) / 1.2f).coerceIn(22f, 82f)
                     size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
                     val textHeight = (if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
@@ -237,12 +248,15 @@ open class NextEventWidget : AppWidgetProvider() {
                 !flat && width >= 170 && event?.status in listOf("yes", "excused", "maybe") -> "$status · Gespeichert"
                 else -> status
             }
-            val feedback = SpannableString(statusText)
-            if (statusText.startsWith("✓")) feedback.setSpan(ForegroundColorSpan(0xFF55A472.toInt()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            val savedBadge = card && statusText.startsWith("✓")
+            val feedback = SpannableString(if (savedBadge) statusText.removePrefix("✓ ") else statusText)
+            if (!savedBadge && statusText.startsWith("✓")) feedback.setSpan(ForegroundColorSpan(0xFF55A472.toInt()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             views.setTextViewText(R.id.widget_status, feedback)
             views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
             show(R.id.widget_footer, event != null)
-            show(R.id.widget_status_icon, false); show(R.id.widget_time, false)
+            show(R.id.widget_status_icon, savedBadge)
+            if (savedBadge) views.setImageViewResource(R.id.widget_status_icon, R.drawable.widget_saved_badge)
+            show(R.id.widget_time, false)
             show(R.id.widget_note, snapshot?.stale == true && event != null)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
             val open = Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData(android.net.Uri.parse(PortalLinks.HOME + "?nativePage=terms" + if (event != null && WidgetEvent.validID(event.id)) "&event=${event.id}" else ""))
