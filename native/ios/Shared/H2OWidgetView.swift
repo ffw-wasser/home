@@ -8,6 +8,7 @@ struct NextEventEntry: TimelineEntry {
     let date: Date
     let snapshot: H2OWidgetSnapshot?
     var family: WidgetFamily? = nil
+    var appUpdateAvailable: Bool = false
 }
 
 // A pending reply remains disabled without PlainButtonStyle dimming the card.
@@ -242,8 +243,8 @@ struct NextEventView: View {
         let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
         let textColor = unanswered ? signalYellow : secondaryInk
         return HStack(spacing: 4) {
-            if let text = snapshot?.replyFeedback {
-                Image(systemName: snapshot?.notice != nil || snapshot?.stale == true ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : "circle")
+            if let text = snapshot?.feedback(appUpdateAvailable: entry.appUpdateAvailable) {
+                Image(systemName: snapshot?.notice != nil || snapshot?.stale == true || (snapshot?.replyFeedback == nil && entry.appUpdateAvailable) ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : "circle")
                     .foregroundStyle(textColor)
                 Text(text).fontWeight(.semibold).foregroundStyle(textColor)
             }

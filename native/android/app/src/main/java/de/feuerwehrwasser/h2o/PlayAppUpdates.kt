@@ -75,6 +75,8 @@ internal class PlayAppUpdates(
     }
 
     private fun render(info: AppUpdateInfo) {
+        WidgetAppUpdate.record(activity, info)
+        NextEventWidget.updateAll(activity)
         version = info.availableVersionCode()
         if (deferred()) { banner.visibility = View.GONE; return }
         when (info.installStatus()) {

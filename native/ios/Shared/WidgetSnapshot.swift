@@ -62,6 +62,12 @@ struct H2OWidgetSnapshot: Codable, Equatable {
         if event?.status == "open" { return event?.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen" }
         return nil
     }
+    func feedback(appUpdateAvailable: Bool) -> String? {
+        if let replyFeedback { return replyFeedback }
+        // Saving is represented by the light alone; an update never obscures it.
+        if currentReplyJob != nil { return nil }
+        return appUpdateAvailable ? "App-Update verfügbar · TestFlight" : nil
+    }
     var events: [H2OWidgetEvent] { ([event].compactMap { $0 } + (following ?? [])).sorted { $0.start < $1.start } }
     func at(_ now: Date) -> H2OWidgetSnapshot {
         var value = self

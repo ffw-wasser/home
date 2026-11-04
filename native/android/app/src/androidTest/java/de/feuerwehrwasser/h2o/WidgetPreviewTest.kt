@@ -19,6 +19,7 @@ class WidgetPreviewTest {
     @Test fun renderSyntheticWidgetStates() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        context.getSharedPreferences("h2o-app-updates", android.content.Context.MODE_PRIVATE).edit().clear().commit()
         val folder = File(context.getExternalFilesDir(null), "widget-previews").apply { mkdirs() }
         val providers = AppWidgetManager.getInstance(context).installedProviders.filter { it.provider.packageName == context.packageName }
         assertEquals("Both formats appear in the Android widget picker", 2, providers.size)
@@ -37,7 +38,10 @@ class WidgetPreviewTest {
         val sketchScenarios = listOf(Triple(170, 170, 1f), Triple(330, 110, 1f), Triple(330, 130, 1f), Triple(330, 140, 1f), Triple(330, 150, 1f), Triple(330, 160, 1f), Triple(330, 170, 1f), Triple(330, 230, 1f), Triple(330, 170, 1.3f), Triple(330, 150, 1.3f)).map { it to "sketch-reference" }
         val shortCalendarScenarios = listOf(Triple(330, 150, 1.3f), Triple(330, 160, 1.3f)).flatMap { size -> listOf("today", "tomorrow").map { size to it } }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
-        for (exactSize in listOf(false, true)) for ((dimensions, fixture) in shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }) {
+        val previewOnly = InstrumentationRegistry.getArguments().getString("widgetPreviewOnly") == "true"
+        val selectedScenarios = if (previewOnly) listOf(Triple(330, 230, 1f), Triple(330, 110, 1f)).map { it to "sketch-reference" }
+            else shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }
+        for (exactSize in if (previewOnly) listOf(true) else listOf(false, true)) for ((dimensions, fixture) in selectedScenarios) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
             ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
@@ -57,7 +61,7 @@ class WidgetPreviewTest {
                         assertTrue("Intermediate launcher heights enlarge the calendar day", day.textSize / activity.resources.displayMetrics.scaledDensity >= 21.9f)
                         assertTrue("Intermediate launcher heights enlarge the subject", title.textSize / activity.resources.displayMetrics.scaledDensity >= 16.9f)
                         val dateCard = activity.findViewById<View>(R.id.widget_date)
-                        assertTrue("The compact calendar leaves room for the subject and crest", dateCard.width / activity.resources.displayMetrics.density in 49f..73f)
+                        assertTrue("The compact calendar leaves room for the subject and crest", dateCard.width / activity.resources.displayMetrics.density in 55f..97f)
                     }
                     if (isEvent && height >= 200 && height / fontScale >= 160) {
                         val weekday = activity.findViewById<TextView>(R.id.widget_weekday)
@@ -71,9 +75,12 @@ class WidgetPreviewTest {
                     val card = activity.findViewById<View>(R.id.widget_reply_section) != null
                     val saving = fixture.startsWith("saving")
                     val actions = activity.findViewById<View>(R.id.widget_actions)?.isShown == true
-                    assertEquals(if (isEvent) View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_footer).visibility)
+                    val footer = activity.findViewById<View>(R.id.widget_footer)
+                    val inlineNotice = footer.parent === activity.findViewById<View>(R.id.widget_details)
+                    val visibleNotice = isEvent && (!inlineNotice || activity.findViewById<TextView>(R.id.widget_status).text.isNotEmpty())
+                    assertEquals(if (visibleNotice) View.VISIBLE else View.GONE, footer.visibility)
                     if (fixture == "sketch-reference" && width == 330 && height in 110..139 && fontScale == 1f) {
-                        assertFalse("Short cards keep the compact status target", actions)
+                        assertTrue("Short wide cards retain all three response buttons", actions)
                         assertTrue("Short wide cards retain clothing", activity.findViewById<View>(R.id.widget_clothing).isShown)
                         assertTrue("Short wide cards use the free space for a crest", activity.findViewById<View>(R.id.widget_logo).isShown)
                         assertEquals("The compact subject remains on one line", 1, title.lineCount)
@@ -89,7 +96,7 @@ class WidgetPreviewTest {
                             val details = activity.findViewById<View>(R.id.widget_details)
                             val logoPoint = IntArray(2); val detailsPoint = IntArray(2)
                             logo.getLocationOnScreen(logoPoint); details.getLocationOnScreen(detailsPoint)
-                            assertTrue("The crest remains visible at a useful size", logo.isShown && logo.width / activity.resources.displayMetrics.density >= 39)
+                            assertTrue("The crest remains visible at a useful size", logo.isShown && logo.width / activity.resources.displayMetrics.density >= 47)
                             assertTrue("The crest never overlaps the subject", detailsPoint[0] + details.width <= logoPoint[0])
                             assertEquals("Indoor Cycling fits on one line like the iPhone reference", 1, title.lineCount)
                         }
@@ -103,6 +110,45 @@ class WidgetPreviewTest {
                             assertEquals("Pending and stale replies cannot be submitted again", !saving && fixture != "stale", button.isEnabled)
                             if (fixture in listOf("open", "reminded")) assertFalse("Open replies have no selected answer", button.text.contains("✓"))
                         }
+                    }
+                    if (isEvent && !card) {
+                        val neutral = fixture in listOf("stale", "retry", "conflict", "refreshed", "open", "reminded")
+                        val expected = if (neutral) "neutral" else if (fixture in listOf("excused", "sketch-reference")) "excused" else if (fixture in listOf("future", "saving-yes")) "maybe" else "yes"
+                        val footer = activity.findViewById<View>(R.id.widget_footer)
+                        val background = footer.background
+                        val originalBounds = android.graphics.Rect(background.bounds)
+                        val sample = Bitmap.createBitmap(80, 40, Bitmap.Config.ARGB_8888)
+                        background.setBounds(0, 0, 80, 40); background.draw(android.graphics.Canvas(sample)); background.bounds = originalBounds
+                        val pixel = sample.getPixel(40, 20)
+                        val red = android.graphics.Color.red(pixel); val green = android.graphics.Color.green(pixel); val blue = android.graphics.Color.blue(pixel)
+                        when (expected) {
+                            "yes" -> assertTrue("Confirmed compact presence has a green status surface", green > red && green > blue)
+                            "excused" -> assertTrue("Confirmed compact absence has a yellow status surface", red > blue + 80 && green > blue + 60)
+                            "maybe" -> assertTrue("Confirmed compact uncertainty has an orange status surface", red > green + 40 && green > blue + 30)
+                            else -> assertTrue("Open, stale and failed replies keep a neutral blue surface", blue > red)
+                        }
+                        if (!neutral) {
+                            val ink = if (expected == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()
+                            assertEquals("The compact status uses readable contrast", ink, activity.findViewById<TextView>(R.id.widget_status).currentTextColor)
+                        }
+                    }
+                    if (fixture == "sketch-reference" && width == 330 && height in 160..289 && fontScale == 1f) {
+                        val dateCard = activity.findViewById<View>(R.id.widget_date)
+                        val selector = activity.findViewById<View>(R.id.widget_actions)
+                        val datePoint = IntArray(2); val selectorPoint = IntArray(2)
+                        dateCard.getLocationOnScreen(datePoint); selector.getLocationOnScreen(selectorPoint)
+                        val gap = (selectorPoint[1] - datePoint[1] - dateCard.height) / activity.resources.displayMetrics.density
+                        assertTrue("Calendar and replies form one compact group: $gap dp", gap in 0f..12f)
+                        if (height >= 210) {
+                            val density = activity.resources.displayMetrics.density
+                            val scaled = activity.resources.displayMetrics.scaledDensity
+                            assertTrue("Roomy previews use larger readable headings", title.textSize / scaled >= 29f)
+                            assertTrue("Roomy previews enlarge the calendar proportionally", dateCard.width / density >= 72f)
+                            assertTrue("Roomy previews enlarge metadata", activity.findViewById<TextView>(R.id.widget_location).textSize / scaled >= 15f)
+                            assertTrue("Roomy previews enlarge the crest", activity.findViewById<View>(R.id.widget_logo).width / density >= 55f)
+                        }
+                        val aspect = dateCard.height.toFloat() / dateCard.width
+                        assertTrue("The calendar sheet keeps iPhone-like proportions: $aspect", aspect in 1.05f..1.5f)
                     }
                     assertFalse("No separate change button remains", activity.findViewById<View>(R.id.widget_edit)?.isShown == true)
                     assertEquals(if (fixture == "stale") View.VISIBLE else View.GONE, activity.findViewById<View>(R.id.widget_note).visibility)
