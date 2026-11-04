@@ -130,7 +130,7 @@ struct NextEventView: View {
             }
             if logoSize > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
                 Image(uiImage: logo).resizable().scaledToFit().frame(width: logoSize, height: logoSize)
-                    .opacity(0.12).accessibilityHidden(true)
+                    .opacity(0.5).accessibilityHidden(true)
             }
         }
     }
@@ -138,27 +138,44 @@ struct NextEventView: View {
         let status = event?.status ?? "open"
         let center: CGFloat = status == "yes" ? 1.0 / 6 : status == "maybe" ? 5.0 / 6 : 0.5
         let tint = color(status)
+        let left = max(0.001, center - 0.29)
+        let right = min(0.999, center + 0.29)
         let core = LinearGradient(stops: [
-            .init(color: secondaryInk.opacity(0.42), location: 0),
-            .init(color: tint.opacity(0.35), location: max(0.001, center - 0.22)),
-            .init(color: status == "open" ? secondaryInk.opacity(0.45) : highlight(status), location: center),
-            .init(color: tint.opacity(0.35), location: min(0.999, center + 0.22)),
-            .init(color: secondaryInk.opacity(0.42), location: 1)
+            .init(color: secondaryInk.opacity(0.22), location: 0),
+            .init(color: tint.opacity(0.18), location: left),
+            .init(color: tint.opacity(status == "open" ? 0.22 : 0.95), location: center - 0.11),
+            .init(color: status == "open" ? secondaryInk.opacity(0.4) : highlight(status), location: center),
+            .init(color: tint.opacity(status == "open" ? 0.22 : 0.95), location: center + 0.11),
+            .init(color: tint.opacity(0.18), location: right),
+            .init(color: secondaryInk.opacity(0.22), location: 1)
         ], startPoint: .leading, endPoint: .trailing)
         return ZStack {
             if status != "open" && renderingMode == .fullColor {
                 Capsule().fill(LinearGradient(stops: [
                     .init(color: .clear, location: 0),
-                    .init(color: .clear, location: max(0.001, center - 0.22)),
-                    .init(color: tint.opacity(0.50), location: center),
-                    .init(color: .clear, location: min(0.999, center + 0.22)),
+                    .init(color: .clear, location: left),
+                    .init(color: tint.opacity(0.4), location: center - 0.08),
+                    .init(color: tint.opacity(0.5), location: center),
+                    .init(color: tint.opacity(0.4), location: center + 0.08),
+                    .init(color: .clear, location: right),
                     .init(color: .clear, location: 1)
                 ], startPoint: .leading, endPoint: .trailing))
-                    .frame(height: 2.5).blur(radius: 1)
+                    .frame(height: 4).blur(radius: 1.5)
             }
-            Capsule().fill(core).frame(height: 0.8)
-                .overlay(alignment: .top) { Color.white.opacity(0.16).frame(height: 0.2) }
+            Capsule().fill(core).frame(height: 1.3)
         }.frame(height: 1).accessibilityHidden(true)
+    }
+    private func buttonFill(_ status: String) -> LinearGradient {
+        let shades: [Color]
+        if renderingMode != .fullColor { shades = [ink.opacity(0.25), ink.opacity(0.15), ink.opacity(0.2)] }
+        else {
+            switch status {
+            case "yes": shades = [rgb(0x53A06A), rgb(0x287D49), rgb(0x19562F)]
+            case "excused": shades = [rgb(0xFFE38B), rgb(0xFFCB2F), rgb(0xE8A300)]
+            default: shades = [rgb(0xFFB974), rgb(0xF18A2C), rgb(0xC65A0B)]
+            }
+        }
+        return LinearGradient(stops: [.init(color: shades[0], location: 0), .init(color: shades[1], location: 0.58), .init(color: shades[2], location: 1)], startPoint: .top, endPoint: .bottom)
     }
     private func choice(_ status: String) -> some View {
         let selected = event?.status == status
@@ -172,9 +189,12 @@ struct NextEventView: View {
                 .background {
                     if selected {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(LinearGradient(stops: [.init(color: highlight(status), location: 0), .init(color: color(status), location: 0.68), .init(color: color(status).opacity(0.94), location: 1)], startPoint: .top, endPoint: .bottom))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(LinearGradient(colors: [.white.opacity(0.8), highlight(status).opacity(0.45), .black.opacity(0.2)], startPoint: .top, endPoint: .bottom), lineWidth: 0.9))
-                            .compositingGroup().shadow(color: .black.opacity(0.35), radius: 1.5, y: 1.5)
+                            .fill(buttonFill(status))
+                            .overlay(alignment: .top) {
+                                RoundedRectangle(cornerRadius: 9).fill(LinearGradient(colors: [.white.opacity(0.22), .clear], startPoint: .top, endPoint: .bottom)).frame(height: 14).padding(1)
+                            }
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(LinearGradient(colors: [.white.opacity(0.95), highlight(status).opacity(0.55), .black.opacity(0.45)], startPoint: .top, endPoint: .bottom), lineWidth: 0.9))
+                            .compositingGroup().shadow(color: .black.opacity(0.65), radius: 2, y: 2.5)
                             .padding(1)
                     }
                 }
@@ -195,9 +215,9 @@ struct NextEventView: View {
                 choice("yes")
                 choice("excused")
                 choice("maybe")
-            }.background(LinearGradient(colors: [rgb(0x315971), rgb(0x183A52), rgb(0x102A40)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 11))
-                .overlay(RoundedRectangle(cornerRadius: 11).stroke(LinearGradient(colors: [rgb(0xB9DAE8).opacity(0.85), rgb(0x4C758E).opacity(0.5)], startPoint: .top, endPoint: .bottom), lineWidth: 0.8))
-                .compositingGroup().shadow(color: .black.opacity(0.3), radius: 1.5, y: 2)
+            }.background(LinearGradient(colors: [rgb(0x406B83), rgb(0x183B51), rgb(0x092438)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).stroke(LinearGradient(colors: [rgb(0xD2EDF7).opacity(0.95), rgb(0x4C758E).opacity(0.45), .black.opacity(0.7)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                .compositingGroup().shadow(color: .black.opacity(0.55), radius: 2, y: 2.5)
 
         }
     }
@@ -272,7 +292,7 @@ struct NextEventView: View {
                 if let event {
                     Link(destination: destination) { eventCard(event, width: width) }.buttonStyle(.plain)
                         .frame(width: width, height: eventHeight, alignment: .center)
-                    Rectangle().fill(ink.opacity(0.22)).frame(height: 0.5)
+                    Color.clear.frame(height: 0.5)
                     if small { compactStatus }
                     else {
                         if large { Text("Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
@@ -292,11 +312,10 @@ struct NextEventView: View {
             }.frame(width: width, height: height, alignment: .topLeading)
                 .padding(.horizontal, horizontal).padding(.vertical, vertical)
                 .background {
-                    LinearGradient(stops: [.init(color: Color(red: 29.0 / 255, green: 48.0 / 255, blue: 68.0 / 255), location: 0), .init(color: background, location: 1)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    LinearGradient(stops: [.init(color: rgb(0x781234).opacity(0.75), location: 0), .init(color: red.opacity(0), location: 0.25), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
-                    RadialGradient(colors: [rgb(0x2C6378).opacity(0.22), .clear], center: .bottomLeading, startRadius: 0, endRadius: geometry.size.width)
+                    LinearGradient(stops: [.init(color: rgb(0x951C35), location: 0), .init(color: rgb(0x5C152C), location: 0.08), .init(color: rgb(0x5C152C), location: 1)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(colors: [rgb(0xD1B2BA).opacity(0.7), rgb(0x4A748D).opacity(0.55), rgb(0x071725)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: rgb(0xFF5574).opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
         }.id(family)
             .foregroundStyle(ink).containerBackground(background, for: .widget)
