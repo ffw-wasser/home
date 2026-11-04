@@ -19,6 +19,7 @@ class WidgetPreviewTest {
     @Test fun renderSyntheticWidgetStates() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        context.getSharedPreferences("h2o-app-updates", android.content.Context.MODE_PRIVATE).edit().clear().commit()
         val folder = File(context.getExternalFilesDir(null), "widget-previews").apply { mkdirs() }
         val providers = AppWidgetManager.getInstance(context).installedProviders.filter { it.provider.packageName == context.packageName }
         assertEquals("Both formats appear in the Android widget picker", 2, providers.size)

@@ -252,4 +252,11 @@ Die vorhandene Emulatorprüfung kontrolliert alle drei bestätigten Farben, lesb
 
 Breite kurze Widgets erhalten bei mindestens 110 dp Höhe und ausreichender Schriftfläche eine eigene kompakte Ansicht mit allen drei 44 dp hohen Antworttasten. Kalender, einzeiliges Thema und Wappen stehen darüber; bei Fehlern oder offener Antwort ersetzt der Hinweis die Kleidungszeile. Bei großer Systemschrift oder noch weniger Höhe bleibt die farbige Statusfläche mit Öffnung des Termins als Rückfall erhalten. Die zwei gezielten Entwurfsvorschauen zeigen 330 × 230 dp und 330 × 110 dp mit „Indoor Cycling“, 20:00, Injoy EM, Sportkleidung und Entschuldigt.
 
-Nach der Bildprüfung bleibt die kompakte Ansicht unverändert. Die größere Vorschau verwendet eine über die gesamte Breite laufende, größere Überschrift. Darunter wachsen Kalenderblatt, Zeit/Ort, Kleidung und Wappen proportional mit der verfügbaren Höhe; das Kalenderblatt behält sein kurzes Seitenverhältnis. Bei langen Themen oder vergrößerter Systemschrift werden die Größen aus dem verbleibenden Platz berechnet. Die Veröffentlichung bleibt bis zur erneuten Bildbestätigung ausgesetzt.
+Nach der Bildprüfung bleibt die kompakte Ansicht unverändert. Die größere Vorschau verwendet eine über die gesamte Breite laufende, größere Überschrift. Darunter wachsen Kalenderblatt, Zeit/Ort, Kleidung und Wappen proportional mit der verfügbaren Höhe; das Kalenderblatt behält sein kurzes Seitenverhältnis. Bei langen Themen oder vergrößerter Systemschrift werden die Größen aus dem verbleibenden Platz berechnet. Die beiden Größen sind nach der erneuten Bildvorschau bestätigt; der Entwurf wird um die folgenden Update-Hinweise ergänzt.
+
+
+## Hinweisplatz unter der Lichtleiste – Build 1040
+
+Die Zeile bleibt nach bestätigter Antwort leer. Fehler, nicht bestätigte Änderungen, notwendige Kalenderaktualisierung und offene Rückmeldungen gehen dem Hinweis „App-Update verfügbar“ vor. Beim Speichern meldet ausschließlich die Lichtleiste den laufenden Vorgang. Die kompakte Ansicht behält ihren vorhandenen Hinweisplatz im Kopfbereich.
+
+Die Update-Verfügbarkeit stammt aus Google Play für das jeweilige Konto. Die App übernimmt sie beim Öffnen; der vorhandene Widget-Hintergrundlauf prüft sie zusätzlich höchstens stündlich (Android kann den Lauf verschieben). Ein nach 24 Stunden nicht mehr bestätigter Stand verschwindet. Nach Installation derselben oder einer höheren Buildnummer ist der Hinweis sofort ungültig. Ein Tipp öffnet H₂O mit dem vorhandenen freiwilligen Update-Ablauf. Der Hinweis löst weder Download noch Neustart aus.

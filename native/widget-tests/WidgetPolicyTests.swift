@@ -2,6 +2,27 @@ import XCTest
 @testable import WidgetPolicy
 
 final class WidgetPolicyTests: XCTestCase {
+    func testPackageUpdateDoesNotHideReplyErrorsOrChangeCalendarAge() throws {
+        var value = snapshot(end: 3600)
+        XCTAssertEqual(value.feedback(appUpdateAvailable: true), "App-Update verfügbar · TestFlight")
+        XCTAssertNil(value.feedback(appUpdateAvailable: false))
+        value.event?.status = "open"
+        XCTAssertEqual(value.feedback(appUpdateAvailable: true), "Rückmeldung offen")
+        value.stale = true
+        XCTAssertEqual(value.feedback(appUpdateAvailable: true), "Stand veraltet · H₂O öffnen")
+        value.message = "Nicht bestätigt"
+        XCTAssertEqual(value.feedback(appUpdateAvailable: true), "Nicht bestätigt")
+        XCTAssertEqual(value.updatedAt, now)
+        let manifest = Data("{\"schema\":1,\"iosTestFlight\":{\"build\":1041,\"availableUntil\":\"2026-12-01T12:00:00Z\"}}".utf8)
+        let release = try XCTUnwrap(H2OWidgetAppReleases.parse(manifest)?.iosTestFlight)
+        XCTAssertTrue(release.isNewer(than: 1040, at: date("2026-11-04T12:00:00Z")))
+        XCTAssertFalse(release.isNewer(than: 1041, at: now))
+        XCTAssertFalse(release.isNewer(than: 0, at: now))
+        XCTAssertFalse(release.isNewer(than: 1040, at: date("2026-12-01T12:00:00Z")))
+        XCTAssertNil(H2OWidgetAppReleases.parse(Data("{\"schema\":1,\"iosTestFlight\":null}".utf8))?.iosTestFlight)
+        XCTAssertNil(H2OWidgetAppReleases.parse(Data("{\"schema\":2}".utf8)))
+        XCTAssertNil(H2OWidgetAppReleases.parse(Data(repeating: 32, count: 4097)))
+    }
     func date(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
 
     func testReplyLightMovesWithoutConfirmingAndFeedbackOnlyReportsActionNeeded() throws {

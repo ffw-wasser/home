@@ -15,17 +15,20 @@ struct NextEventProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (NextEventEntry) -> Void) {
         completion(context.isPreview ? placeholder(in: context) :
-                   NextEventEntry(date: Date(), snapshot: H2OWidgetStorage.read(), family: context.family))
+                   NextEventEntry(date: Date(), snapshot: H2OWidgetStorage.read(), family: context.family, appUpdateAvailable: H2OWidgetAppUpdate.available()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<NextEventEntry>) -> Void) {
+        Task {
+        await H2OWidgetAppUpdate.refresh()
         let now = Date()
         let entries = H2OWidgetStorage.timeline(snapshot: H2OWidgetStorage.read(now: now), now: now)
-            .map { NextEventEntry(date: $0.date, snapshot: $0.snapshot, family: context.family) }
+            .map { NextEventEntry(date: $0.date, snapshot: $0.snapshot, family: context.family, appUpdateAvailable: H2OWidgetAppUpdate.available(at: $0.date)) }
 
-        // Re-read shared state periodically; no credentials or unscoped network access.
+        // Re-read calendar state and public release metadata periodically.
         // Cached appointments survive the reply grant expiry and remain clearly marked.
         completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(3600))))
+        }
     }
 }
 

@@ -10,11 +10,39 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.After
 import org.junit.runner.RunWith
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class PlayAppUpdatesTest {
+    @After fun clearUpdateFixture() {
+        instrumentation.targetContext.getSharedPreferences("h2o-app-updates", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+    }
+    @Test fun widgetUpdateNoticeKeepsReplyAndErrorPriority() {
+        val context = instrumentation.targetContext
+        val preferences = context.getSharedPreferences("h2o-app-updates", android.content.Context.MODE_PRIVATE)
+        preferences.edit().putInt("widgetVersion", BuildConfig.VERSION_CODE + 1).putLong("widgetCheckedAt", System.currentTimeMillis()).commit()
+        for ((fixture, expected) in listOf("sketch-reference" to "App-Update verfügbar", "open" to "Rückmeldung offen", "retry" to "Nicht bestätigt")) {
+            val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", 330).putExtra("height", 230).putExtra("fixture", fixture)
+            ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
+                instrumentation.waitForIdleSync()
+                scenario.onActivity {
+                    assertEquals(expected, it.findViewById<android.widget.TextView>(R.id.widget_status).text.toString())
+                    if (fixture == "sketch-reference") {
+                        val folder = File(it.getExternalFilesDir(null), "widget-previews").apply { mkdirs() }
+                        val view = it.window.decorView
+                        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+                        view.draw(Canvas(bitmap))
+                        File(folder, "android-widget-app-update.png").outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, output) }
+                    }
+                }
+            }
+        }
+        assertFalse(WidgetAppUpdate.available(context, System.currentTimeMillis() + 25 * 3600000L))
+        preferences.edit().putInt("widgetVersion", BuildConfig.VERSION_CODE).commit()
+        assertFalse(WidgetAppUpdate.available(context))
+    }
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private fun open(fixture: String = "available") = ActivityScenario.launch<AppUpdatePreviewActivity>(
         Intent(instrumentation.targetContext, AppUpdatePreviewActivity::class.java).putExtra("fixture", fixture))
@@ -24,6 +52,7 @@ class PlayAppUpdatesTest {
             instrumentation.waitForIdleSync()
             scenario.onActivity { activity ->
                 assertEquals(View.VISIBLE, activity.updates.banner.visibility)
+                assertTrue("Widget receives the store-confirmed update", WidgetAppUpdate.available(activity))
                 assertFalse("Opening H₂O never launches a store dialog", activity.manager.isConfirmationDialogVisible)
                 activity.updates.update.performClick()
             }
@@ -64,6 +93,7 @@ class PlayAppUpdatesTest {
             instrumentation.waitForIdleSync()
             scenario.onActivity {
                 assertEquals(View.GONE, it.updates.banner.visibility)
+                assertTrue("Postponing the app banner preserves the widget notice", WidgetAppUpdate.available(it))
                 assertFalse(it.manager.isConfirmationDialogVisible)
             }
         }
@@ -74,6 +104,7 @@ class PlayAppUpdatesTest {
             instrumentation.waitForIdleSync()
             scenario.onActivity {
                 assertEquals(View.GONE, it.updates.banner.visibility)
+                assertFalse("No available build means no widget notice", WidgetAppUpdate.available(it))
                 assertFalse(it.manager.isConfirmationDialogVisible)
                 assertFalse(it.manager.isInstallSplashScreenVisible)
             }

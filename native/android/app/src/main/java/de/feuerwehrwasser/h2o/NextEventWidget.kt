@@ -279,6 +279,8 @@ open class NextEventWidget : AppWidgetProvider() {
                 message != null -> message
                 notice != null -> notice
                 snapshot?.stale == true -> "Stand veraltet · H₂O öffnen"
+                card && event?.status == "open" -> if (event.reminded) "Bitte Rückmeldung geben" else "Rückmeldung offen"
+                card && WidgetAppUpdate.available(context, now) -> "App-Update verfügbar"
                 card && event?.status in listOf("yes", "excused", "maybe") -> ""
                 card -> if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen"
                 else -> status
@@ -367,5 +369,9 @@ open class NextEventWidget : AppWidgetProvider() {
 }
 class CompactNextEventWidget : NextEventWidget()
 class WidgetClockWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result { NextEventWidget.updateAll(applicationContext); return Result.success() }
+    override suspend fun doWork(): Result {
+        WidgetAppUpdate.refresh(applicationContext)
+        NextEventWidget.updateAll(applicationContext)
+        return Result.success()
+    }
 }

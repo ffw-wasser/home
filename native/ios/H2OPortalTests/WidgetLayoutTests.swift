@@ -74,6 +74,7 @@ final class WidgetLayoutTests: XCTestCase {
         for name in ["very-long-title", "large-font"] {
             cases.append((name, H2OWidgetEvent(title: "Atemschutz-Übung – Notfall & Mayday mit anschließender Nachbesprechung der gesamten Mannschaft", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser und Übungsgelände Emmendingen", clothing: "Einsatzkleidung mit persönlicher Schutzausrüstung", status: "maybe", allDay: false), false))
         }
+        cases.append(("app-update", H2OWidgetEvent(title: "Indoor Cycling", start: start, end: start.addingTimeInterval(7200), location: "Injoy EM", clothing: "Sportkleidung", status: "excused", allDay: false), false))
         for phase in ["reply-saving", "reply-saving-yes", "reply-saving-excused", "reply-retry", "reply-edit", "reply-conflict", "reply-refreshed"] {
             cases.append((phase, H2OWidgetEvent(title: "Technische Hilfeleistung", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser", clothing: "Einsatzkleidung", status: phase == "reply-saving-yes" ? "maybe" : "yes", allDay: false), false))
         }
@@ -98,7 +99,7 @@ final class WidgetLayoutTests: XCTestCase {
                 if scenario.hasPrefix("reply-saving") || scenario == "reply-retry" {
                     snapshot.job = H2OWidgetReplyJob(eventID: current?.id ?? "", status: scenario == "reply-saving-yes" ? "yes" : scenario == "reply-saving-excused" ? "excused" : "maybe", requestID: "synthetic", version: 0, phase: scenario.hasPrefix("reply-saving") ? "saving" : "retry", startedAt: now)
                 }
-                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot, family: family))
+                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot, family: family, appUpdateAvailable: scenario == "app-update"))
                     .environment(\.dynamicTypeSize, scenario == "large-font" ? .accessibility1 : .large)
                     .frame(width: width, height: height)
                     .background(Color(red: 0.94, green: 0.97, blue: 0.95))
