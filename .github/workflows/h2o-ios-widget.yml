@@ -82,9 +82,14 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
             -configuration Debug H2O_REVIEW_FLAG= \
             CODE_SIGNING_ALLOWED=NO test
-          mkdir -p "$RUNNER_TEMP/h2o-widget-screens"
-          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
-            --output-path "$RUNNER_TEMP/h2o-widget-screens"
+      - name: Export native widget images even when a layout assertion fails
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/h2o-widget-layout.xcresult" ]; then
+            mkdir -p "$RUNNER_TEMP/h2o-widget-screens"
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/h2o-widget-layout.xcresult" \
+              --output-path "$RUNNER_TEMP/h2o-widget-screens"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
