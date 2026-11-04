@@ -21,13 +21,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const guide=page.locator('#help-guide');assert.equal(await guide.isVisible(),true);assert.equal(await guide.locator('.guide-privacy-grid,.guide-data-fields').count(),0);assert.equal(await guide.locator('.guide-lesson').count(),file==='deckel.html'?10:7);
   assert.equal(await guide.locator('.contacts-pane').count(),0);assert.equal(await guide.locator('a[href^="#"]').count(),0);
   const policy=guide.locator('a[href="privacy.html"]');assert.equal(await policy.count(),1);assert.equal(await policy.getAttribute('target'),'_blank');assert.match(await policy.innerText(),/Datenschutzerklärung/);assert.doesNotMatch(await guide.locator('.guide-privacy').innerText(),/G26|OneDrive|Cloudflare/);
+  if(file==='deckel.html')assert.match(await guide.textContent(),/TestFlight\/App Store/,'Apple update settings remain discoverable');
   if(file==='deckel.html')assert.equal(await guide.locator('img[src="assets/help/guide/h2o-konto-loeschen.jpg"]').count(),1);
   if(file==='index.html')assert.equal(await guide.locator('img[src="assets/help/guide/geraetehaus-backlog.jpg"]').count(),1,'Backlog is illustrated in the main administration guide');
   const before=await page.evaluate(()=>location.hash);
   for(const width of [320,390,768,1280])for(const scale of [100,200]){
    await page.setViewportSize({width,height:900});await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'%';document.querySelectorAll('#help-guide details').forEach(d=>d.open=true);},scale);
    const manualLength=(await guide.locator('.guide-manual').innerText()).length;assert.ok(manualLength<5500,'daily instructions remain concise: '+manualLength);
-   assert.doesNotMatch(await guide.innerText(),/TestFlight|Google-Gruppenschnittstelle|zertifiziert|APK/);
+   assert.doesNotMatch(await guide.innerText(),/Google-Gruppenschnittstelle|zertifiziert|APK/);
    assert.equal(await guide.locator('img').count(),file==='index.html'?13:14);
    await guide.locator('img').evaluateAll(async images=>{for(const img of images){img.loading='eager';await img.decode();}});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' overflow '+width+'/'+scale);
