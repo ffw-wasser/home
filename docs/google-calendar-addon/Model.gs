@@ -38,11 +38,11 @@ var H2OCalendarAddonModel = (function () {
     const fallback = /(?:^|[\s:-])fitness(?:$|[\s:,-])/i.test(title || '') ? 'Fitness' : /^\s*INFO\s*:/i.test(title || '') ? 'Information' : /(?:^|[\s:-])unterricht(?:$|[\s:,-])/i.test(title || '') ? 'Unterricht' : /ausschuss[\s-]*sitzung/i.test(title || '') ? 'Ausschusssitzung' : !/sonderprobe/i.test(title || '') && /(?:^|[\s-])probe(?:$|[\s:,-])|gesamtprobe|hauptprobe|übungsprobe/i.test(title || '') ? 'Probe' : 'Sonderprobe';
     const raw = fields.terminart || fallback, type = types.find(function (t) { return t.toLocaleLowerCase('de') === raw.toLocaleLowerCase('de'); }) || aliases[raw.toLocaleLowerCase('de')];
     if (!type) fail('Unbekannte Terminart bitte zuerst in der Google-Beschreibung korrigieren.');
-    const selected = fields.group === undefined ? [] : (knownGroups.includes(fields.group) ? [fields.group] : fields.group.split(';').map(function (x) { return x.trim(); }));
+    const selected = fields.group === undefined ? knownGroups.filter(function (name) { return /^Alle aktiven Mitglieder$/i.test(name); }) : (knownGroups.includes(fields.group) ? [fields.group] : fields.group.split(';').map(function (x) { return x.trim(); }));
     if (selected.some(function (name) { return !knownGroups.includes(name); })) fail('Vorhandene Gruppe fehlt in der Gruppenliste. Bitte die Gruppenliste aktualisieren und den Termin erneut öffnen.');
     if (fields.freigabe !== undefined && !/^(ja|nein)$/i.test(fields.freigabe)) fail('Freigabe muss Ja oder Nein sein.');
     if ((fields.kleidung || '').length > 120) fail('Kleidung ist zu lang.');
-    return {type:type, clothing:fields.kleidung || (type === 'Fitness' ? 'Sportkleidung' : type === 'Probe' ? 'Einsatzkleidung' : 'Tagesdienst'), mode:fields.group === undefined ? 'automatic' : 'selected', groups:selected, release:/^ja$/i.test(fields.freigabe || '')};
+    return {type:type, clothing:fields.kleidung || (type === 'Fitness' ? 'Sportkleidung' : type === 'Probe' ? 'Einsatzkleidung' : 'Tagesdienst'), mode:fields.group === undefined && !selected.length ? 'automatic' : 'selected', groups:selected, release:fields.freigabe === undefined || /^ja$/i.test(fields.freigabe)};
   }
   function build(event, selection, knownGroups) {
     if (!types.includes(selection.type) || !['automatic', 'selected'].includes(selection.mode) || typeof selection.release !== 'boolean') fail('Bitte Terminart, Gruppenauswahl und Freigabe prüfen.');

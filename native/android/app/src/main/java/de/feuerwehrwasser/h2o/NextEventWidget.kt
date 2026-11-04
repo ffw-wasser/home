@@ -50,12 +50,16 @@ open class NextEventWidget : AppWidgetProvider() {
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val now = System.currentTimeMillis()
+            val snapshot = WidgetStore.read(context, now)
+            val edgeKey = snapshot?.event?.status ?: "open"
+            val edgePrefs = context.getSharedPreferences("h2o-widget-edge", Context.MODE_PRIVATE)
             for (id in widgetIds(context)) {
                 val compact = manager.getAppWidgetInfo(id)?.provider?.className == CompactNextEventWidget::class.java.name
-                manager.updateAppWidget(id, viewsForOptions(context, manager.getAppWidgetOptions(id), compact, now))
+                val previous = edgePrefs.getString("edge-$id", null)
+                manager.updateAppWidget(id, viewsForOptions(context, manager.getAppWidgetOptions(id), compact, now, previous != null && previous != edgeKey))
+                edgePrefs.edit().putString("edge-$id", edgeKey).apply()
             }
             // Best-effort boundary refresh; Android may defer background work to save power.
-            val snapshot = WidgetStore.read(context, now)
             val midnight = Instant.ofEpochMilli(now).atZone(WidgetSnapshot.zone).toLocalDate().plusDays(1).atStartOfDay(WidgetSnapshot.zone).toInstant().toEpochMilli()
             val pending = runCatching { WidgetStore.prefs(context).getString("job", null)?.let(::JSONObject) }.getOrNull()
             val replyTimeout = pending?.takeIf { it.optString("phase") == "saving" }?.optLong("startedAt")?.plus(30000)
@@ -89,18 +93,18 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             return bitmap
         }
-        internal fun viewsForOptions(context: Context, options: Bundle, compactDefault: Boolean, now: Long): RemoteViews {
+        internal fun viewsForOptions(context: Context, options: Bundle, compactDefault: Boolean, now: Long, edgeChanged: Boolean = false): RemoteViews {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val sizes = BundleCompat.getParcelableArrayList(options, AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java)
                     ?.filter { it.width.isFinite() && it.height.isFinite() && it.width > 0 && it.height > 0 }?.distinct()?.take(16)
-                if (!sizes.isNullOrEmpty()) return RemoteViews(sizes.associateWith { views(context, it.width.toInt(), it.height.toInt(), now) })
+                if (!sizes.isNullOrEmpty()) return RemoteViews(sizes.associateWith { views(context, it.width.toInt(), it.height.toInt(), now, edgeChanged) })
             }
             val width = if (compactDefault) 170 else 330
-            val portrait = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 170), now)
-            val landscape = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 170), now)
+            val portrait = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 170), now, edgeChanged)
+            val landscape = views(context, options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width), options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 170), now, edgeChanged)
             return RemoteViews(landscape, portrait)
         }
-        internal fun views(context: Context, width: Int, height: Int, now: Long): RemoteViews {
+        internal fun views(context: Context, width: Int, height: Int, now: Long, edgeChanged: Boolean = false): RemoteViews {
             val compact = width < 240; val flat = height < 100
             val snapshot = WidgetStore.read(context, now); val event = snapshot?.event
             val fontScale = context.resources.configuration.fontScale
@@ -115,6 +119,20 @@ open class NextEventWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compactActions) R.layout.widget_event_compact_actions else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
+            // ViewFlipper animates locally in the launcher: no timer or repeated widget updates.
+            val edgeIndex = when (event?.status) { "yes" -> 1; "excused" -> 2; "maybe" -> 3; else -> 0 }
+            val edgeDrawable = when (event?.status) {
+                "yes" -> R.drawable.widget_background_yes
+                "excused" -> R.drawable.widget_background_excused
+                "maybe" -> R.drawable.widget_background_maybe
+                else -> R.drawable.widget_background_open
+            }
+            val animateEdge = edgeChanged && android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f &&
+                android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 1f) > 0f
+            show(R.id.widget_edge_transition, animateEdge)
+            show(R.id.widget_edge_static, !animateEdge)
+            views.setInt(R.id.widget_edge_transition, "setDisplayedChild", edgeIndex)
+            views.setImageViewResource(R.id.widget_edge_static, edgeDrawable)
             var largeLogoSize = if (large && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 56 else 40
             var calendarLayoutWidth = if (compactActions) 40f else if (spacious) 72f else if (large) 64f else if (card) 56f else if (wideCompact) 48f else 40f
             val date = event?.let { Instant.ofEpochMilli(it.start).atZone(WidgetSnapshot.zone) }
@@ -253,6 +271,9 @@ open class NextEventWidget : AppWidgetProvider() {
                 val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
                 if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
             }
+            val reminderVisible = event?.canReply == true && event.reminded && event.status in setOf("open", "maybe")
+            views.setImageViewResource(R.id.widget_logo, if (reminderVisible) R.drawable.widget_reminder else R.drawable.widget_logo)
+            views.setFloat(R.id.widget_logo, "setAlpha", if (reminderVisible) 1f else 0.5f)
             show(R.id.widget_logo, logoSize > 0)
             views.setViewPadding(R.id.widget_details, 0, 0, 0, 0)
             if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -269,8 +290,8 @@ open class NextEventWidget : AppWidgetProvider() {
             val message = prefs.getString("message", null)
             val notice = prefs.getString("notice", null)
             val canReply = event != null && event.canReply && WidgetEvent.validID(event.id) && event.start > now && snapshot?.stale == false && prefs.getLong("expires", 0) > now && prefs.getString("grant", null) != null
-            val actions = card && event != null && !retry && message == null
-            val status = when (event?.status) {
+            val actions = card && event != null && event.canReply && !retry && message == null
+            val status = if (event?.canReply == false) "Information" else when (event?.status) {
                 "yes" -> "Dabei"; "excused" -> if (flat && compact) "Entsch." else "Entschuldigt"; "maybe" -> "Unsicher"; else -> "Offen"
             }
             val statusText = when {
@@ -279,14 +300,16 @@ open class NextEventWidget : AppWidgetProvider() {
                 message != null -> message
                 notice != null -> notice
                 snapshot?.stale == true -> "Stand veraltet · H₂O öffnen"
-                card && event?.status == "open" -> if (event.reminded) "Bitte Rückmeldung geben" else "Rückmeldung offen"
+                event?.canReply == false -> "Nur zur Information"
+                event?.reminded == true && event.status in setOf("open", "maybe") -> if (!card) "Erinnerung · $status" else if (event.status == "maybe") "Erinnerung: Bitte festlegen" else "Erinnerung: Bitte antworten"
+                card && event?.status == "open" -> "Rückmeldung offen"
                 card && WidgetAppUpdate.available(context, now) -> "App-Update verfügbar"
                 card && event?.status in listOf("yes", "excused", "maybe") -> ""
                 card -> if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen"
                 else -> status
             }
             views.setTextViewText(R.id.widget_status, statusText)
-            views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
+            views.setTextColor(R.id.widget_status, if (job == null && message == null && (event?.status == "open" || (event?.status == "maybe" && event.reminded)) && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
             // Compact widgets show the confirmed answer as one colored status target.
             // Errors, notices and stale data keep their neutral information surface.
             if (!card) {
@@ -300,12 +323,12 @@ open class NextEventWidget : AppWidgetProvider() {
                 val ink = when (confirmed) {
                     "yes" -> 0xFFFFFFFF.toInt()
                     "excused", "maybe" -> 0xFF2D210A.toInt()
-                    else -> if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
+                    else -> if (job == null && message == null && (event?.status == "open" || (event?.status == "maybe" && event.reminded)) && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
                 }
                 views.setInt(R.id.widget_footer, "setBackgroundResource", background)
                 views.setTextColor(R.id.widget_status, ink)
                 views.setTextColor(R.id.widget_status_chevron, ink)
-                if (confirmed != null && !(flat && compact)) views.setTextViewText(R.id.widget_status, "✓ $status")
+                if (confirmed != null && !(flat && compact) && !(event?.reminded == true && event.status in setOf("open", "maybe"))) views.setTextViewText(R.id.widget_status, "✓ $status")
             }
             // Keep notification space stable; successful replies show no footer label.
             show(R.id.widget_footer, event != null && (!compactActions || statusText.isNotEmpty()))
@@ -329,7 +352,7 @@ open class NextEventWidget : AppWidgetProvider() {
                         show(loadingID, moving)
                         views.setProgressBar(loadingID, 100, 0, true)
                     }
-                    show(R.id.widget_reply_section, event != null)
+                    show(R.id.widget_reply_section, event != null && event.canReply)
                     show(R.id.widget_retry, event != null && retry)
                     views.setTextViewText(R.id.widget_retry, if (canReply) "Erneut versuchen" else "In H₂O öffnen")
                     views.setOnClickPendingIntent(R.id.widget_retry, if (canReply && event != null) WidgetReplyReceiver.pending(context, event, "retry") else openPending)

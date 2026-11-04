@@ -66,6 +66,17 @@ struct NextEventView: View {
         default: return secondaryInk
         }
     }
+    // Only the confirmed answer colors the frame; pending/error feedback stays below.
+    private var edgeStatus: String { event?.status ?? "open" }
+    private var edgePalette: [Color] {
+        guard renderingMode == .fullColor else { return [ink.opacity(0.3), background, ink.opacity(0.3)] }
+        switch edgeStatus {
+        case "yes": return [rgb(0x28513E), rgb(0x152D2D), rgb(0x78C38F)]
+        case "excused": return [rgb(0x675327), rgb(0x3B3026), rgb(0xFFE8A0)]
+        case "maybe": return [rgb(0x714026), rgb(0x432A28), rgb(0xFFC68B)]
+        default: return [rgb(0x344A60), rgb(0x213346), rgb(0x9AB2C6)]
+        }
+    }
     private var bindings: some View {
         HStack {
             binding
@@ -117,8 +128,15 @@ struct NextEventView: View {
         }.font(.system(size: size * min(textScale, 1.5), weight: .semibold))
             .foregroundStyle(secondaryInk).lineLimit(1).minimumScaleFactor(0.85)
     }
+    private var reminderVisible: Bool {
+        event?.canReply != false && event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")
+    }
     @ViewBuilder private func emblem(size: CGFloat) -> some View {
-        if size > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
+        if size > 0 && reminderVisible {
+            Image(systemName: "exclamationmark.triangle.fill").resizable().scaledToFit()
+                .foregroundStyle(renderingMode == .fullColor ? signalYellow : ink)
+                .frame(width: size, height: size).accessibilityHidden(true)
+        } else if size > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
             Image(uiImage: logo).resizable().scaledToFit().frame(width: size, height: size)
                 .opacity(0.5).accessibilityHidden(true)
         }
@@ -220,7 +238,10 @@ struct NextEventView: View {
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
     }
     @ViewBuilder private var replyControls: some View {
-        if let message = snapshot?.message {
+        if event?.canReply == false {
+            Link("Nur zur Information", destination: destination).font(.system(size: 12, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 44)
+        } else if let message = snapshot?.message {
             Link(message, destination: destination).font(.system(size: 11, weight: .medium))
                 .frame(maxWidth: .infinity, minHeight: 44)
         } else if job?.phase == "retry" {
@@ -240,7 +261,7 @@ struct NextEventView: View {
         }
     }
     private var feedback: some View {
-        let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
+        let unanswered = job == nil && snapshot?.message == nil && ["open", "maybe"].contains(event?.status ?? "") && (event?.status == "open" || event?.reminded == true) && event?.canReply != false
         let textColor = unanswered ? signalYellow : secondaryInk
         return HStack(spacing: 4) {
             if let text = snapshot?.feedback(appUpdateAvailable: entry.appUpdateAvailable) {
@@ -256,8 +277,8 @@ struct NextEventView: View {
         Link(destination: destination) {
             HStack(spacing: 4) {
                 Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 11, height: 11)
-                Text(title(event?.status ?? "open")).fontWeight(.semibold)
-                    .foregroundStyle(job == nil && event?.status == "open" ? signalYellow : ink)
+                Text(event?.canReply == false ? "Information" : ((event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")) ? "Erinnerung · " : "") + title(event?.status ?? "open")).fontWeight(.semibold)
+                    .foregroundStyle(job == nil && event?.status == "open" && event?.canReply != false ? signalYellow : ink)
                 Spacer(minLength: 0)
                 Image(systemName: snapshot?.stale == true ? "exclamationmark.triangle" : "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
             }.font(.system(size: 12)).lineLimit(1).minimumScaleFactor(0.75)
@@ -294,7 +315,7 @@ struct NextEventView: View {
                     Color.clear.frame(height: 0.5)
                     if small { compactStatus }
                     else {
-                        if large { Text("Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
+                        if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
                         replyControls.contentTransition(.identity)
                         statusLine
                         feedback
@@ -311,10 +332,13 @@ struct NextEventView: View {
             }.frame(width: width, height: height, alignment: .topLeading)
                 .padding(.horizontal, horizontal).padding(.vertical, vertical)
                 .background {
-                    LinearGradient(stops: [.init(color: rgb(0x951C35), location: 0), .init(color: rgb(0x5C152C), location: 0.08), .init(color: rgb(0x5C152C), location: 1)], startPoint: .top, endPoint: .bottom)
-                    LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
+                    ZStack {
+                        LinearGradient(stops: [.init(color: edgePalette[0], location: 0), .init(color: edgePalette[1], location: 0.08), .init(color: edgePalette[1], location: 1)], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
+                    }.animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: rgb(0xFF5574).opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: edgePalette[2].opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
         }.id(family)
             .contentTransition(.identity)

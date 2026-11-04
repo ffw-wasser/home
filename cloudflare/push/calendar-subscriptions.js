@@ -35,7 +35,7 @@
  function fold(line){let result='',part='',length=0;for(const ch of line){const size=new TextEncoder().encode(ch).length;if(length+size>75){result+=part+'\r\n';part=' ';length=1;}part+=ch;length+=size;}return result+part;}
  function serialize(events,updatedAt){
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Feuerwehr Wasser//H2O Personal Calendar//DE','CALSCALE:GREGORIAN','X-WR-CALNAME:H₂O – Meine Feuerwehrtermine','REFRESH-INTERVAL;VALUE=DURATION:PT1H','X-PUBLISHED-TTL:PT1H'];
-  for(const e of events){const link=g.CalendarPresentation.responseLink(e.id);lines.push('BEGIN:VEVENT','UID:'+e.id+'@h2o.feuerwehr-wasser','DTSTAMP:'+utc(updatedAt),...(e.allDay?['DTSTART;VALUE=DATE:'+day(e.start),'DTEND;VALUE=DATE:'+day(e.end)]:['DTSTART:'+utc(e.start),'DTEND:'+utc(e.end)]),'CLASS:PRIVATE','SUMMARY:'+escape(e.title),'LOCATION:'+escape(e.location),'DESCRIPTION:'+escape('H₂O-Rückmeldung: '+link+(e.clothing?'\nKleidung: '+e.clothing:'')+(e.note?'\n'+e.note:'')),'URL:'+link,'END:VEVENT');}
+  for(const e of events){const link=g.CalendarPresentation.responseLink(e.id);lines.push('BEGIN:VEVENT','UID:'+e.id+'@h2o.feuerwehr-wasser','DTSTAMP:'+utc(updatedAt),...(e.allDay?['DTSTART;VALUE=DATE:'+day(e.start),'DTEND;VALUE=DATE:'+day(e.end)]:['DTSTART:'+utc(e.start),'DTEND:'+utc(e.end)]),'CLASS:PRIVATE','SUMMARY:'+escape(e.title),'LOCATION:'+escape(e.location),'DESCRIPTION:'+escape((e.observerOnly?'Nur zur Information · H₂O-Termin: ':'H₂O-Rückmeldung: ')+link+(e.clothing?'\nKleidung: '+e.clothing:'')+(e.note?'\n'+e.note:'')),'URL:'+link,'END:VEVENT');}
   lines.push('END:VCALENDAR');return lines.map(fold).join('\r\n')+'\r\n';
  }
  async function overview(env,roster,source){

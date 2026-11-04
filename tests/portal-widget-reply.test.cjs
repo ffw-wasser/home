@@ -107,3 +107,16 @@ for (const viaWidget of [false, true]) test('Saving '+(viaWidget?'widget':'porta
   assert.equal(f.sql.prepare('SELECT version FROM portal_replies WHERE event=? AND member=?').get(f.event.id,f.people[0].memberId).version,1);
  }finally{release(new Response(null,{status:503}));await pending;}
 });
+test('Widget reminder status reads only granted events, returns current reply/reminder flags and never writes an answer',async()=>{
+ const f=await setup();f.sql.prepare('INSERT INTO portal_event_reminders(event,reminded_at) VALUES(?,?)').run(f.event.id,f.clock.now);
+ const before=f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n;
+ let response=await f.widget('widget-status',{eventId:f.event.id});assert.equal(response.status,200);assert.deepEqual(response.value,{ok:true,status:'open',version:0,reminded:true,canReply:true});
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies').get().n,before);
+ assert.equal((await f.widget('widget-status',{eventId:'z'.repeat(43)})).status,401);
+ assert.equal((await f.widget()).status,200);
+ response=await f.widget('widget-status',{eventId:f.event.id});assert.equal(response.value.status,'yes');assert.equal(response.value.version,1);
+ const state=(await f.call('groups',{},null,true)).value;await f.call('groups',{groups:state.groups,observerIds:[f.people[0].memberId],expectedVersion:state.version},null,true);
+ const cal=(await f.call('list',{},null,true)).value;await f.call('classify',{eventId:f.event.id,kind:'probe',approved:true,recipientIds:[f.people[1].memberId],expectedVersion:cal.rulesVersion},null,true);
+ response=await f.widget('widget-status',{eventId:f.event.id});assert.equal(response.value.canReply,false);assert.equal(response.value.reminded,false);assert.equal(response.value.status,'open');
+ f.clock.now=f.grant.expiresAt+1;assert.equal((await f.widget('widget-status',{eventId:f.event.id})).status,401);
+});

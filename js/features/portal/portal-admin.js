@@ -64,6 +64,17 @@
   const beginEdit=id=>{if(groupEditing===id)return;if(!cancelChanges())return;groupEditing=id;paintGroups();};
   add.onclick=()=>{if(!cancelChanges())return;const id=crypto.randomUUID();groupDraft.push({id,name:'Neue Gruppe',keywords:[],source:'manual',memberIds:[],enabled:true,general:false});groupEditing=id;mark();paintGroups();};
   reload.onclick=()=>{if(!cancelChanges())return;return run(async()=>{await loadGroups();await reviewCalendar();},status);};
+  const observers=node('details'),observerSummary=node('summary','Beobachter für alle Gruppen'),observerList=node('div'),observerStatus=node('p');
+  observers.id='portal-global-observers';observerList.className='portal-recipient-list';observerStatus.setAttribute('role','status');
+  observers.append(observerSummary,node('p','Beobachter sehen alle freigegebenen Gruppentermine zur Information. Sind sie selbst als Teilnehmer zugeordnet, können sie abstimmen. Beobachten allein erlaubt keine Rückmeldung oder Erinnerung.'),observerList);
+  const observerChecks=[];
+  for(const person of sortedPeople(groupSnapshot.members).filter(person=>person.fitnessTrainer!==true)){
+   const label=node('label'),check=node('input');check.type='checkbox';check.value=person.id;check.checked=groupSnapshot.observerIds?.includes(person.id)===true;label.append(check,node('span',person.name));observerList.append(label);observerChecks.push(check);
+  }
+  const observerSave=node('button','Beobachter speichern');observerSave.type='button';observerSave.className='primary-button';
+  observerSave.onclick=()=>{const selected=observerChecks.filter(check=>check.checked).map(check=>check.value);if(!cancelChanges())return;return run(async()=>{
+   const result=await request('groups',{groups:groupSnapshot.groups,observerIds:selected,expectedVersion:groupSnapshot.version});if(result.version!==groupSnapshot.version+1)throw Error('Beobachter wurden nicht bestätigt. Bitte neu laden.');await loadGroups();await reviewCalendar();
+  },observerStatus);};observers.append(observerSave,observerStatus);host.append(observers);
   for(const group of groupDraft){
    const box=node('details');box.className='portal-keyword-card';box.open=expandedGroups.has(group.id)||groupEditing===group.id;box.ontoggle=()=>{if(box.open)expandedGroups.add(group.id);else expandedGroups.delete(group.id);};box.dataset.groupId=group.id;
    const summary=node('summary'),heading=node('h4',group.name),count=node('span'),sourceNote=node('p'),peopleArea=node('div');

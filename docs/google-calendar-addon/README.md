@@ -1,8 +1,34 @@
 # H₂O-Auswahl direkt in Google Kalender am Computer
 
-Stand: 28.10.2026. Die Erweiterung wird im eigenen Google-Konto als privates
+Stand: 04.11.2026. Die Erweiterung wird im eigenen Google-Konto als privates
 Apps-Script-Add-on installiert. Die neue Funktion benötigt die aktualisierten
 Skriptdateien und einmalig eine begrenzte Gruppenverbindung zu H₂O.
+
+## Standard für Termine vom Handy
+
+Ein im gemeinsamen Google-Kalender gespeicherter Termin ohne H₂O-Steuerzeilen
+wird in H₂O automatisch für **Alle aktiven Mitglieder** mit **Freigabe: Ja**
+übernommen. Gäste und Alterskameraden gehören nicht zu dieser Standardgruppe.
+Die Verwaltung kann die Zuordnung später am Computer ändern. Ausdrückliche
+Gruppen, `Freigabe: Nein` und H₂O-Einzelanpassungen haben weiterhin Vorrang.
+INFO-Einträge und Geburtstage behalten ihre getrennten Freigaberegeln.
+Ohne gültigen Mitgliederstand oder bei fehlerhaften Angaben erfolgt keine Freigabe.
+Die mobile Vorgabe funktioniert ohne Öffnen des Add-ons. Für dieselbe Vorbelegung
+in der Google-Seitenleiste die aktualisierte **Model.gs** übernehmen.
+
+Das Thema **Probe mit Emmendingen** bleibt in Terminkarten und Widgets vollständig.
+Nur ein ausdrücklich abgetrennter Typvorspann wie `Probe: Löschangriff` wird in der
+Anzeige gekürzt; die Terminart bleibt separat sichtbar, der Google-Titel unverändert.
+
+## Beobachter für alle Gruppen
+
+Unter **Kalender & Gruppen → Gruppen → Beobachter für alle Gruppen** wählt die
+Verwaltung die Personen einmal zentral aus. Diese sehen alle freigegebenen
+Gruppentermine in H₂O, im persönlichen Kalender und im Widget zur Information.
+Ist dieselbe Person auch als Teilnehmer zugeordnet, hat die Teilnahme Vorrang:
+sie kann normal abstimmen. Beobachter allein zählen weder als fehlende Antwort
+noch als Teilnehmer und erhalten keine Abstimmungserinnerung. Die Auswahl gibt
+keine Verwaltungs- oder GF-Rechte. Gäste bleiben auf ihre bestehende Rolle begrenzt.
 
 ## Bedienung
 

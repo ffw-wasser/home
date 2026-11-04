@@ -29,6 +29,45 @@ enum H2OWidgetReply {
         configuration.urlCredentialStorage = nil; configuration.httpShouldSetCookies = false
         return URLSession(configuration: configuration, delegate: NoWidgetRedirects(), delegateQueue: nil)
     }()
+    // A generic push contains no event details. Read only the already granted widget events.
+    static func refreshReminder() async -> Bool {
+        guard let original = H2OWidgetStorage.transaction({ H2OWidgetStorage.document() }),
+              let grant = original.grant, grant.expiresAt > Date(), H2OWidgetStorage.fresh(original.snapshot, now: Date()) else { return false }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 4; configuration.timeoutIntervalForResource = 5
+        configuration.httpCookieStorage = nil; configuration.urlCache = nil; configuration.urlCredentialStorage = nil
+        let transport = URLSession(configuration: configuration, delegate: NoWidgetRedirects(), delegateQueue: nil)
+        defer { transport.invalidateAndCancel() }
+        var changed = false
+        for event in ([original.snapshot.event].compactMap { $0 } + (original.snapshot.following ?? [])).prefix(3) {
+            guard event.canReply == true, let id = event.id, H2OWidgetEvent.validID(id) else { continue }
+            var request = URLRequest(url: URL(string: "https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev/portal/widget-status")!)
+            request.httpMethod = "POST"; request.setValue("Bearer " + grant.token, forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["eventId": id])
+            guard let (data, response) = try? await transport.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 4096,
+                  let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any], value["ok"] as? Bool == true,
+                  let status = value["status"] as? String, ["open", "yes", "excused", "maybe"].contains(status),
+                  let version = value["version"] as? Int, version >= 0, let reminded = value["reminded"] as? Bool,
+                  let canReply = value["canReply"] as? Bool else { continue }
+            H2OWidgetStorage.transaction {
+                guard var current = H2OWidgetStorage.document(), current.grant?.generation == grant.generation else { return }
+                func update(_ event: H2OWidgetEvent) -> H2OWidgetEvent {
+                    guard event.id == id, !canReply || (event.version ?? 0) <= version else { return event }
+                    var next = event; next.reminded = reminded; next.canReply = canReply
+                    if !canReply || current.snapshot.currentReplyJob?.eventID != id { next.status = status; next.version = version }
+                    return next
+                }
+                current.snapshot.event = current.snapshot.event.map(update)
+                current.snapshot.following = current.snapshot.following?.map(update)
+                // Never renew the calendar age or session grant from a notification.
+                do { try H2OWidgetStorage.write(current); changed = true } catch {}
+            }
+        }
+        if changed { WidgetCenter.shared.reloadAllTimelines() }
+        return changed
+    }
+
     static func send(eventID: String, response: String) async {
         guard H2OWidgetEvent.validID(eventID), ["yes", "excused", "maybe", "edit", "retry"].contains(response) else { return }
         let now = Date()

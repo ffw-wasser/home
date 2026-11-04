@@ -61,6 +61,10 @@ object AndroidNotifications {
 }
 class PortalMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
-        if (message.data["type"] == "portal-reminder") AndroidNotifications.show(this)
+        if (message.data["type"] == "portal-reminder") {
+            AndroidNotifications.show(this)
+            androidx.work.WorkManager.getInstance(this).enqueueUniqueWork("h2o-widget-reminder", androidx.work.ExistingWorkPolicy.REPLACE,
+                androidx.work.OneTimeWorkRequestBuilder<WidgetReminderWorker>().setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST).build())
+        }
     }
 }

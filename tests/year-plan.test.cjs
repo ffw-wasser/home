@@ -43,7 +43,7 @@ test('Baden-Württemberg: zwölf gesetzliche Feiertage, feste Tage und Ostervers
 });
 test('Persönlicher Jahresplan wahrt Empfängergrenzen und zeigt ausschließlich den eigenen Geburtstag',async()=>{
  const f=await fixture({now:Date.parse('2026-06-15T12:00:00Z')});
- f.raw(ics([event('allowed','20260620','Probe Allgemein'),event('restricted','20260710','Probe Vertraulich'),event('unapproved','20260801','Probe Noch nicht freigegeben'),event('own-birthday','20260910','Geburtstag Eigene Testperson'),event('other-birthday','20260911','Geburtstag Andere Testperson')]));
+ f.raw(ics([event('allowed','20260620','Probe Allgemein'),event('restricted','20260710','Probe Vertraulich'),event('unapproved','20260801','Probe Noch nicht freigegeben').replace('END:VEVENT','DESCRIPTION:Freigabe: Nein\r\nEND:VEVENT'),event('own-birthday','20260910','Geburtstag Eigene Testperson'),event('other-birthday','20260911','Geburtstag Andere Testperson')]));
  f.clock.now+=301000;await f.c.PortalService.scheduled(f.env);
  for(const [title,kind,memberId,recipientIds] of [['Probe Allgemein','probe',null,null],['Probe Vertraulich','probe',null,[f.people[1].memberId]],['Geburtstag Eigene Testperson','birthday',f.people[0].memberId],['Geburtstag Andere Testperson','birthday',f.people[1].memberId]]){
   const cal=(await f.call('list',{},null,true)).value,e=cal.events.find(e=>e.title===title);

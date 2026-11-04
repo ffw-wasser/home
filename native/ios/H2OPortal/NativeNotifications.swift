@@ -63,10 +63,14 @@ final class PortalAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificati
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         Task { @MainActor in NativeNotifications.failed() }
     }
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completion: @escaping (UIBackgroundFetchResult) -> Void) {
+        Task { completion(await H2OWidgetReply.refreshReminder() ? .newData : .noData) }
+    }
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completion: @escaping () -> Void) {
         Task { @MainActor in UIApplication.shared.open(URL(string: "h2oportal://termine")!); completion() }
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completion: @escaping (UNNotificationPresentationOptions) -> Void) {
+        Task { _ = await H2OWidgetReply.refreshReminder() }
         completion([.banner, .sound])
     }
 }

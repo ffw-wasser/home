@@ -9,6 +9,8 @@ test('Apple und Android erhalten das konkrete Terminthema statt einer allgemeine
   ['Allgemeine Probe: Technische Hilfeleistung','Probe','Technische Hilfeleistung'],
   ['Sonderprobe – Atemschutz','Sonderprobe','Atemschutz'],
   ['Kameradschaftsabend','Veranstaltung','Kameradschaftsabend'],
+  ['Probe mit Emmendingen','Probe','Probe mit Emmendingen'],
+  ['Probe Löschangriff','Probe','Probe Löschangriff'],
   ['Probe','Probe','Probe'],['','Probe','Probe']
  ]){
   const event={title,sessionType,start:1793640600000,end:1793647800000,status:'yes'};
