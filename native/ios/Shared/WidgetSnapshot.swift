@@ -59,7 +59,9 @@ struct H2OWidgetSnapshot: Codable, Equatable {
         if let job = currentReplyJob { return job.phase == "saving" ? nil : "Nicht bestätigt" }
         if let notice { return notice }
         if stale { return "Stand veraltet · H₂O öffnen" }
-        if event?.status == "open" { return event?.reminded == true ? "Bitte Rückmeldung geben" : "Rückmeldung offen" }
+        if event?.canReply == false { return "Nur zur Information" }
+        if event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "") { return event?.status == "maybe" ? "Erinnerung: Bitte festlegen" : "Erinnerung: Bitte antworten" }
+        if event?.status == "open" { return "Rückmeldung offen" }
         return nil
     }
     func feedback(appUpdateAvailable: Bool) -> String? {

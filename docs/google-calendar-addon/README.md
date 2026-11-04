@@ -20,6 +20,16 @@ Das Thema **Probe mit Emmendingen** bleibt in Terminkarten und Widgets vollstän
 Nur ein ausdrücklich abgetrennter Typvorspann wie `Probe: Löschangriff` wird in der
 Anzeige gekürzt; die Terminart bleibt separat sichtbar, der Google-Titel unverändert.
 
+## Beobachter für alle Gruppen
+
+Unter **Kalender & Gruppen → Gruppen → Beobachter für alle Gruppen** wählt die
+Verwaltung die Personen einmal zentral aus. Diese sehen alle freigegebenen
+Gruppentermine in H₂O, im persönlichen Kalender und im Widget zur Information.
+Ist dieselbe Person auch als Teilnehmer zugeordnet, hat die Teilnahme Vorrang:
+sie kann normal abstimmen. Beobachter allein zählen weder als fehlende Antwort
+noch als Teilnehmer und erhalten keine Abstimmungserinnerung. Die Auswahl gibt
+keine Verwaltungs- oder GF-Rechte. Gäste bleiben auf ihre bestehende Rolle begrenzt.
+
 ## Bedienung
 
 1. Termin im gemeinsamen Feuerwehrkalender anlegen und **in Google speichern**.

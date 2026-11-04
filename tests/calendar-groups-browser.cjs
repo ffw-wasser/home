@@ -33,12 +33,12 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
   await page.getByRole('button',{name:'Termine',exact:true}).click();
   const card=page.locator('#portal-admin-review-events .portal-event').first();
   assert.equal(await card.locator('h4').textContent(),'Sonderprobe Atemschutz');
-  await card.locator('.portal-event-people summary').click();assert.equal(await card.locator('.portal-name-list li').count(),2);
+  await card.locator('.portal-event-people summary').click();assert.equal(await card.locator('.portal-name-list li').count(),4);
   await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();
-  assert.equal(await card.locator('.portal-recipient-list input:checked').count(),2);assert.match(await card.textContent(),/Gruppen/);
+  assert.equal(await card.locator('.portal-recipient-list input:checked').count(),4);assert.match(await card.textContent(),/Gruppen/);
   await card.locator('.portal-recipient-exceptions > summary').click();
   await card.getByLabel('Kleidung für diesen Termin',{exact:true}).selectOption('Uniform');await card.getByLabel('Ort für diesen Termin',{exact:true}).selectOption('custom');await card.getByLabel('Ort als Freitext',{exact:true}).fill('Übungshof');
-  const recipients=card.locator('.portal-recipient-list input');await recipients.nth(2).check();
+  const recipients=card.locator('.portal-recipient-list input');await recipients.nth(2).uncheck();
   await Promise.all([page.waitForResponse(r=>r.url().endsWith('/admin/portal/classify')),card.getByRole('button',{name:'Speichern',exact:true}).click()]);
   await card.locator('.portal-event-feedback').filter({hasText:'Änderungen gespeichert.'}).waitFor();
   assert.equal((await f.call('list',{},null,true)).value.events[0].recipientMode,'manual');const edited=(await f.call('list',{},null,true)).value.events[0];assert.equal(edited.clothing,'Uniform');assert.equal(edited.location,'Übungshof');
@@ -80,7 +80,15 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
   await page.getByRole('button',{name:'Termine',exact:true}).click();await card.getByRole('button',{name:'Rückmeldelink in Google ergänzen',exact:true}).waitFor();assert.match(await card.getByRole('link',{name:'Rückmeldelink öffnen',exact:true}).getAttribute('href'),/termin.html\?event=/);assert.equal(await card.getByRole('button',{name:'Rückmeldung anfordern',exact:true}).count(),0);assert.equal(await page.locator('#calendar-invitations-connection').count(),0);
   for(const width of [320,390,768]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'subscription response links fit '+width);}
   if(process.env.CAPTURE_INVITATIONS_ADMIN_HELP){await page.setViewportSize({width:768,height:1500});const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));await card.screenshot({path:path.join(out,'geraetehaus-kalender-rueckmeldung.jpg'),type:'jpeg',quality:80,animations:'disabled'});const box=await card.boundingBox();sizes['geraetehaus-kalender-rueckmeldung']={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');}
-  await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();await card.locator('.portal-event-more > summary').click();await card.getByRole('button',{name:'Google-Angaben übernehmen',exact:true}).click();await card.locator('.portal-google-source').filter({hasText:'Angaben aus Google Kalender'}).waitFor();assert.equal((await f.call('list',{},null,true)).value.events[0].googleManaged,true);await page.getByRole('button',{name:'Gruppen',exact:true}).click();await page.evaluate(()=>PortalAdmin.lock());assert.equal(await groups.locator('.portal-name-list li').count(),0,'Lock removes private names');
+  await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();await card.locator('.portal-event-more > summary').click();await card.getByRole('button',{name:'Google-Angaben übernehmen',exact:true}).click();await card.locator('.portal-google-source').filter({hasText:'Angaben aus Google Kalender'}).waitFor();assert.equal((await f.call('list',{},null,true)).value.events[0].googleManaged,true);await page.getByRole('button',{name:'Gruppen',exact:true}).click();const observers=page.locator('#portal-global-observers');await observers.locator('summary').click();
+  await observers.locator('input[value="member-4"]').check();
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/admin/portal/groups')&&r.request().postDataJSON().observerIds),observers.getByRole('button',{name:'Beobachter speichern'}).click()]);
+  await page.waitForResponse(r=>r.url().endsWith('/admin/portal/groups')&&!r.request().postDataJSON().groups);
+  assert.deepEqual((await f.call('groups',{},null,true)).value.observerIds,['member-4']);
+  await observers.locator('summary').click();
+  for(const width of [320,390,768]){await page.setViewportSize({width,height:1100});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'global observers overflow '+width);}
+  if(process.env.CAPTURE_OBSERVER_HELP){const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));await observers.screenshot({path:path.join(out,'geraetehaus-beobachter.jpg'),type:'jpeg',quality:80,animations:'disabled'});const box=await observers.boundingBox();sizes['geraetehaus-beobachter']={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');}
+  await page.evaluate(()=>PortalAdmin.lock());assert.equal(await groups.locator('.portal-name-list li').count(),0,'Lock removes private names');
   assert.deepEqual(errors,[]);console.log('Calendar browser OK: visible automatic names, effective audience, group/term editing, draft guards, resolver, tabs, privacy, 320/390/412/768/1024.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

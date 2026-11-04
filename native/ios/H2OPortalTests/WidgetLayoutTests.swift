@@ -74,6 +74,9 @@ final class WidgetLayoutTests: XCTestCase {
         for name in ["very-long-title", "large-font"] {
             cases.append((name, H2OWidgetEvent(title: "Atemschutz-Übung – Notfall & Mayday mit anschließender Nachbesprechung der gesamten Mannschaft", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser und Übungsgelände Emmendingen", clothing: "Einsatzkleidung mit persönlicher Schutzausrüstung", status: "maybe", allDay: false), false))
         }
+        for (name, status) in [("reminder-open", "open"), ("reminder-maybe", "maybe")] {
+            cases.append((name, H2OWidgetEvent(title: "Probe mit Emmendingen", start: start, end: start.addingTimeInterval(7200), location: "GH Wasser", clothing: "Einsatzkleidung", status: status, allDay: false), false))
+        }
         cases.append(("app-update", H2OWidgetEvent(title: "Indoor Cycling", start: start, end: start.addingTimeInterval(7200), location: "Injoy EM", clothing: "Sportkleidung", status: "excused", allDay: false), false))
         for phase in ["reply-saving", "reply-saving-yes", "reply-saving-excused", "reply-retry", "reply-edit", "reply-conflict", "reply-refreshed"] {
             cases.append((phase, H2OWidgetEvent(title: "Technische Hilfeleistung", start: start, end: start.addingTimeInterval(7200), location: "Gerätehaus Wasser", clothing: "Einsatzkleidung", status: phase == "reply-saving-yes" ? "maybe" : "yes", allDay: false), false))

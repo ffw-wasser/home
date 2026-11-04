@@ -66,7 +66,7 @@ class WidgetPreviewTest {
         val shortCalendarScenarios = listOf(Triple(330, 150, 1.3f), Triple(330, 160, 1.3f)).flatMap { size -> listOf("today", "tomorrow").map { size to it } }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
         val previewOnly = InstrumentationRegistry.getArguments().getString("widgetPreviewOnly") == "true"
-        val selectedScenarios = if (previewOnly) listOf(Triple(330, 230, 1f), Triple(330, 110, 1f)).map { it to "sketch-reference" }
+        val selectedScenarios = if (previewOnly) listOf(Triple(330, 230, 1f), Triple(330, 110, 1f)).flatMap { size -> listOf("sketch-reference", "reminded", "reminded-maybe").map { size to it } }
             else shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }
         for (exactSize in if (previewOnly) listOf(true) else listOf(false, true)) for ((dimensions, fixture) in selectedScenarios) {
             val (width, height, fontScale) = dimensions
@@ -77,7 +77,7 @@ class WidgetPreviewTest {
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
                     assertEquals(height >= 100 || width >= 240 || fixture in listOf("clear", "empty"), title.isShown)
-                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "sketch-reference") "Indoor Cycling" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
+                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture.startsWith("reminded")) "Probe mit Emmendingen" else if (fixture == "sketch-reference") "Indoor Cycling" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
                     val isEvent = fixture !in listOf("clear", "empty")
@@ -140,7 +140,7 @@ class WidgetPreviewTest {
                     }
                     if (isEvent && !card) {
                         val neutral = fixture in listOf("stale", "retry", "conflict", "refreshed", "open", "reminded")
-                        val expected = if (neutral) "neutral" else if (fixture in listOf("excused", "sketch-reference")) "excused" else if (fixture in listOf("future", "saving-yes")) "maybe" else "yes"
+                        val expected = if (neutral) "neutral" else if (fixture in listOf("excused", "sketch-reference")) "excused" else if (fixture in listOf("future", "saving-yes", "reminded-maybe")) "maybe" else "yes"
                         val footer = activity.findViewById<View>(R.id.widget_footer)
                         val background = footer.background
                         val originalBounds = android.graphics.Rect(background.bounds)
@@ -182,7 +182,7 @@ class WidgetPreviewTest {
                     if (isEvent) {
                         val status = activity.findViewById<TextView>(R.id.widget_status)
                         val text = status.text.toString()
-                        val quiet = card && fixture !in listOf("stale", "conflict", "refreshed", "open", "reminded", "retry")
+                        val quiet = card && fixture !in listOf("stale", "conflict", "refreshed", "open", "reminded", "reminded-maybe", "retry")
                         if (quiet) assertEquals("Confirmed and pending replies leave notification space empty", "", text) else assertTrue(text.isNotBlank())
                         assertFalse("Saved is never a persistent widget message", text.contains("Gespeichert"))
                         assertFalse("No saved badge remains", activity.findViewById<View>(R.id.widget_status_icon).isShown)
@@ -211,7 +211,7 @@ class WidgetPreviewTest {
                         if (fixture in listOf("saving", "retry", "conflict", "open", "reminded")) assertFalse("Unconfirmed operations never claim success", text.contains("Gespeichert"))
                         if (fixture in listOf("open", "reminded")) {
                             assertEquals("Unanswered replies use signal yellow", 0xFFF4C542.toInt(), status.currentTextColor)
-                            if (card) assertEquals(if (fixture == "reminded") "Bitte Rückmeldung geben" else "Rückmeldung offen", text)
+                            if (card) assertEquals(if (fixture == "reminded") "Erinnerung: Bitte antworten" else "Rückmeldung offen", text)
                         }
                     }
                     if (isEvent && width >= 300 && height >= 290 && height / fontScale >= 250 && fontScale <= 1.2f) {

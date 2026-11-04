@@ -231,7 +231,10 @@ struct NextEventView: View {
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
     }
     @ViewBuilder private var replyControls: some View {
-        if let message = snapshot?.message {
+        if event?.canReply == false {
+            Link("Nur zur Information", destination: destination).font(.system(size: 12, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 44)
+        } else if let message = snapshot?.message {
             Link(message, destination: destination).font(.system(size: 11, weight: .medium))
                 .frame(maxWidth: .infinity, minHeight: 44)
         } else if job?.phase == "retry" {
@@ -251,7 +254,7 @@ struct NextEventView: View {
         }
     }
     private var feedback: some View {
-        let unanswered = job == nil && snapshot?.message == nil && event?.status == "open"
+        let unanswered = job == nil && snapshot?.message == nil && event?.status == "open" && event?.canReply != false
         let textColor = unanswered ? signalYellow : secondaryInk
         return HStack(spacing: 4) {
             if let text = snapshot?.feedback(appUpdateAvailable: entry.appUpdateAvailable) {
@@ -267,8 +270,8 @@ struct NextEventView: View {
         Link(destination: destination) {
             HStack(spacing: 4) {
                 Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 11, height: 11)
-                Text(title(event?.status ?? "open")).fontWeight(.semibold)
-                    .foregroundStyle(job == nil && event?.status == "open" ? signalYellow : ink)
+                Text(event?.canReply == false ? "Information" : ((event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")) ? "Erinnerung · " : "") + title(event?.status ?? "open")).fontWeight(.semibold)
+                    .foregroundStyle(job == nil && event?.status == "open" && event?.canReply != false ? signalYellow : ink)
                 Spacer(minLength: 0)
                 Image(systemName: snapshot?.stale == true ? "exclamationmark.triangle" : "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)
             }.font(.system(size: 12)).lineLimit(1).minimumScaleFactor(0.75)
@@ -305,7 +308,7 @@ struct NextEventView: View {
                     Color.clear.frame(height: 0.5)
                     if small { compactStatus }
                     else {
-                        if large { Text("Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
+                        if large { Text(event?.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
                         replyControls.contentTransition(.identity)
                         statusLine
                         feedback

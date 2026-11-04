@@ -33,3 +33,10 @@ test('Fehlgeschlagene Transaktion hinterlässt keine halbe Gruppe; Wiederholung 
 test('Neue Gruppe gilt nach ausdrücklicher Terminzuordnung auch für persönliche Termine und Abos',async()=>{
  const {f,call,body}=await setup(),created=await call(await body()),cal=(await f.call('list',{},null,true)).value,e=cal.events[0];assert.equal((await f.call('classify',{eventId:e.id,kind:'probe',approved:true,recipientMode:'groups',groupIds:[created.value.group.id],includeIds:[],excludeIds:[],expectedGroupsVersion:created.value.version,expectedVersion:cal.rulesVersion},null,true)).status,200);assert.equal((await f.call('list')).value.events.length,0);assert.equal((await f.call('list',{},f.people[1])).value.events.length,1);
 });
+test('Google-Gruppenanlage erhält globale Beobachter und gibt die Beobachterauswahl nicht an das Add-on aus',async()=>{
+ const {f,call,read,body}=await setup(),state=(await f.call('groups',{},null,true)).value;
+ await f.call('groups',{groups:state.groups,observerIds:[f.people[2].memberId],expectedVersion:state.version},null,true);
+ assert.equal((await read()).value.observerIds,undefined);
+ assert.equal((await call(await body())).status,200);
+ assert.deepEqual((await f.call('groups',{},null,true)).value.observerIds,[f.people[2].memberId]);
+});

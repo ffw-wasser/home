@@ -56,6 +56,21 @@ object WidgetStore {
         val snapshot = WidgetSnapshot(value.getLong("updatedAt"), events.firstOrNull(), value.getBoolean("stale"), events.drop(1))
         snapshot.takeIf { it.displayable(now) }?.let { it.copy(stale = it.stale || !it.fresh(now)) }
     }.getOrNull()
+    @Synchronized internal fun reminder(context: Context, generation: String, eventID: String, status: String, version: Int, reminded: Boolean, canReply: Boolean) {
+        val prefs = prefs(context)
+        if (prefs.getString("generation", null) != generation) return
+        val value = JSONObject(prefs.getString(KEY, null) ?: return)
+        val events = value.getJSONArray("events")
+        val pending = runCatching { JSONObject(prefs.getString("job", "") ?: "").optString("eventId") }.getOrNull()
+        for (i in 0 until events.length()) {
+            val event = events.getJSONObject(i)
+            if (event.optString("id") == eventID && event.optInt("version") <= version) {
+                event.put("reminded", reminded).put("canReply", canReply)
+                if (pending != eventID) event.put("status", status).put("version", version)
+            }
+        }
+        prefs.edit().putString(KEY, value.toString()).commit()
+    }
     @Synchronized internal fun confirm(context: Context, eventID: String, status: String, version: Int, notice: String? = null) {
         val value = JSONObject(prefs(context).getString(KEY, null) ?: return)
         val events = value.getJSONArray("events")

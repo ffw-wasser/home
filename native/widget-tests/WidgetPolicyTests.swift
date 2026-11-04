@@ -49,10 +49,10 @@ final class WidgetPolicyTests: XCTestCase {
         value.stale = false; value.event?.status = "open"
         XCTAssertEqual(value.replyFeedback, "Rückmeldung offen")
         value.event?.reminded = true
-        XCTAssertEqual(value.replyFeedback, "Bitte Rückmeldung geben")
+        XCTAssertEqual(value.replyFeedback, "Erinnerung: Bitte antworten")
         for status in ["yes", "excused", "maybe"] {
             value.event?.status = status
-            XCTAssertNil(value.replyFeedback)
+            if status == "maybe" { XCTAssertEqual(value.replyFeedback, "Erinnerung: Bitte festlegen") } else { XCTAssertNil(value.replyFeedback) }
             XCTAssertEqual(value.replyLightStatus, status)
         }
         value.job = H2OWidgetReplyJob(eventID: String(repeating: "b", count: 43), status: "excused", requestID: "other-event", version: 0, phase: "saving", startedAt: now)

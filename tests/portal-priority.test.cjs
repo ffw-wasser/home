@@ -216,3 +216,11 @@ test('Terminmarkierung zählt nur nach Erinnerung offene Antworten und verschwin
  events[1].status='excused';f.c.responseBadge(events);assert.equal(badge.hidden,true);assert.equal(tile.attributes['aria-label'],'Termine');
  events[0].status='open';f.c.responseBadge(events);assert.equal(badge.hidden,false);f.c.responseBadge();assert.equal(badge.hidden,true);assert.equal(badge.textContent,'');
 });
+test('Beobachter sehen Information ohne Abstimmung und ohne Rückmeldungs-Badge; Teilnehmer behalten ihre Auswahl',()=>{
+ const f=fixture(),e={...event('observer',Date.now()+60000),observerOnly:true,canReply:false,remindedAt:Date.now(),status:'open'};
+ f.c.paint({events:[e]});const card=f.events.querySelector('article');
+ assert.equal(card.querySelectorAll('button').filter(button=>button.dataset.reply).length,0);
+ assert.equal(card.querySelectorAll('strong').find(n=>n.className?.startsWith('portal-answer ')).textContent,'Nur zur Information');
+ f.c.paint({events:[{...e,observerOnly:false,canReply:true}]});
+ assert.equal(f.events.querySelector('article').querySelectorAll('button').filter(button=>button.dataset.reply).length,3);
+});

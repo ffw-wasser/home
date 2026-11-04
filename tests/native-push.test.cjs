@@ -14,7 +14,7 @@ test('APNs signs the expected team and topic and sends no member or event detail
  assert.equal(JSON.parse(Buffer.from(parts[0],'base64url')).kid,'SYNTHKEY01');assert.equal(JSON.parse(Buffer.from(parts[1],'base64url')).iss,'VKL57X3H6F');
  assert.equal(await webcrypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},keys.publicKey,Buffer.from(parts[2],'base64url'),Buffer.from(parts[0]+'.'+parts[1])),true);
  assert.equal(options.headers['apns-topic'],'de.feuerwehrwasser.h2o');assert.equal(options.headers['apns-push-type'],'alert');
- const payload=JSON.parse(options.body);assert.deepEqual(Object.keys(payload),['aps']);assert.doesNotMatch(options.body,/memberId|eventId|capability|password|calendar/);
+ const payload=JSON.parse(options.body);assert.deepEqual(Object.keys(payload),['aps']);assert.equal(payload.aps['content-available'],1);assert.doesNotMatch(options.body,/memberId|eventId|capability|password|calendar/);
 });
 test('APNs returns a redirect as a failed response without forwarding authorization',async()=>{
  const f=fixture({status:302}),keys=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']),der=Buffer.from(await webcrypto.subtle.exportKey('pkcs8',keys.privateKey)),env={H2O_APNS_TEAM_ID:'VKL57X3H6F',H2O_APNS_KEY_ID:'SYNTHKEY01',H2O_APNS_PRIVATE_KEY:'-----BEGIN PRIVATE KEY-----\n'+der.toString('base64')+'\n-----END PRIVATE KEY-----'};

@@ -52,7 +52,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val now = System.currentTimeMillis()
             val snapshot = WidgetStore.read(context, now)
             val edgeKey = snapshot?.event?.status ?: "open"
-            val edgePrefs = WidgetStore.prefs(context)
+            val edgePrefs = context.getSharedPreferences("h2o-widget-edge", Context.MODE_PRIVATE)
             for (id in widgetIds(context)) {
                 val compact = manager.getAppWidgetInfo(id)?.provider?.className == CompactNextEventWidget::class.java.name
                 val previous = edgePrefs.getString("edge-$id", null)
@@ -287,8 +287,8 @@ open class NextEventWidget : AppWidgetProvider() {
             val message = prefs.getString("message", null)
             val notice = prefs.getString("notice", null)
             val canReply = event != null && event.canReply && WidgetEvent.validID(event.id) && event.start > now && snapshot?.stale == false && prefs.getLong("expires", 0) > now && prefs.getString("grant", null) != null
-            val actions = card && event != null && !retry && message == null
-            val status = when (event?.status) {
+            val actions = card && event != null && event.canReply && !retry && message == null
+            val status = if (event?.canReply == false) "Information" else when (event?.status) {
                 "yes" -> "Dabei"; "excused" -> if (flat && compact) "Entsch." else "Entschuldigt"; "maybe" -> "Unsicher"; else -> "Offen"
             }
             val statusText = when {
@@ -297,14 +297,16 @@ open class NextEventWidget : AppWidgetProvider() {
                 message != null -> message
                 notice != null -> notice
                 snapshot?.stale == true -> "Stand veraltet · H₂O öffnen"
-                card && event?.status == "open" -> if (event.reminded) "Bitte Rückmeldung geben" else "Rückmeldung offen"
+                event?.canReply == false -> "Nur zur Information"
+                event?.reminded == true && event.status in setOf("open", "maybe") -> if (!card) "Erinnerung · $status" else if (event.status == "maybe") "Erinnerung: Bitte festlegen" else "Erinnerung: Bitte antworten"
+                card && event?.status == "open" -> "Rückmeldung offen"
                 card && WidgetAppUpdate.available(context, now) -> "App-Update verfügbar"
                 card && event?.status in listOf("yes", "excused", "maybe") -> ""
                 card -> if (event?.reminded == true) "Bitte Rückmeldung geben" else "Rückmeldung offen"
                 else -> status
             }
             views.setTextViewText(R.id.widget_status, statusText)
-            views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
+            views.setTextColor(R.id.widget_status, if (job == null && message == null && event?.status == "open" && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt())
             // Compact widgets show the confirmed answer as one colored status target.
             // Errors, notices and stale data keep their neutral information surface.
             if (!card) {
@@ -318,12 +320,12 @@ open class NextEventWidget : AppWidgetProvider() {
                 val ink = when (confirmed) {
                     "yes" -> 0xFFFFFFFF.toInt()
                     "excused", "maybe" -> 0xFF2D210A.toInt()
-                    else -> if (job == null && message == null && event?.status == "open") 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
+                    else -> if (job == null && message == null && event?.status == "open" && event?.canReply != false) 0xFFF4C542.toInt() else 0xFFC6D2DF.toInt()
                 }
                 views.setInt(R.id.widget_footer, "setBackgroundResource", background)
                 views.setTextColor(R.id.widget_status, ink)
                 views.setTextColor(R.id.widget_status_chevron, ink)
-                if (confirmed != null && !(flat && compact)) views.setTextViewText(R.id.widget_status, "✓ $status")
+                if (confirmed != null && !(flat && compact) && !(event?.reminded == true && event.status in setOf("open", "maybe"))) views.setTextViewText(R.id.widget_status, "✓ $status")
             }
             // Keep notification space stable; successful replies show no footer label.
             show(R.id.widget_footer, event != null && (!compactActions || statusText.isNotEmpty()))
@@ -347,7 +349,7 @@ open class NextEventWidget : AppWidgetProvider() {
                         show(loadingID, moving)
                         views.setProgressBar(loadingID, 100, 0, true)
                     }
-                    show(R.id.widget_reply_section, event != null)
+                    show(R.id.widget_reply_section, event != null && event.canReply)
                     show(R.id.widget_retry, event != null && retry)
                     views.setTextViewText(R.id.widget_retry, if (canReply) "Erneut versuchen" else "In H₂O öffnen")
                     views.setOnClickPendingIntent(R.id.widget_retry, if (canReply && event != null) WidgetReplyReceiver.pending(context, event, "retry") else openPending)

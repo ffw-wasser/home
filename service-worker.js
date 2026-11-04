@@ -175,6 +175,7 @@ const PUBLIC_FILES=[
   "./assets/help/guide/geraetehaus-fitness-rolle.jpg",
   "./assets/help/guide/geraetehaus-fitness-gruppe.jpg",
   "./assets/help/guide/geraetehaus-fitness-statistik.jpg",
+  "./assets/help/guide/geraetehaus-beobachter.jpg",
   "./assets/regulations/fwdv-001-1.bin",
   "./assets/regulations/fwdv-001-2.bin",
   "./assets/regulations/fwdv-002.pdf",

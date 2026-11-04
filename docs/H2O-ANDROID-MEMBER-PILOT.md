@@ -8,6 +8,13 @@ bleibt der Wechsel direkt; Android animiert nur bei geändertem Status und ohne
 zusätzliche Hintergrundabrufe. Die Darstellung auf realen Homescreens hängt vom
 System beziehungsweise Launcher ab.
 
+Eine Erinnerung erscheint bei offener oder unsicherer Rückmeldung als Hinweis im
+Widget; nach Zu- oder Absage entfällt sie. Ein empfangener Push löst einen begrenzten,
+authentifizierten Statusabruf für bereits freigegebene Widgettermine aus. Er verlängert
+weder Anmeldung noch Kalenderalter. Hintergrundzustellung und Aktualisierungszeit
+bleiben vom Betriebssystem abhängig. Reine Beobachter sehen „Nur zur Information“
+ohne Abstimmung.
+
 Ziel: Dasselbe geschützte H₂O Portal wie auf dem iPhone, ergänzt um ein natives
 Android-Widget und freiwillige Firebase-Cloud-Messaging-Mitteilungen.
 Verteilung ausdrücklich über den **internen Google-Play-Test**, keine öffentliche
