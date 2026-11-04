@@ -125,7 +125,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 large -> if (fontScale > 1.15f) 30f else 36f
                 width < 150 -> 18f
                 fontScale > 1.15f -> if (card) 23f else 18f
-                card -> 28f
+                card -> if (height < 160) 22f else 28f
                 else -> 24f
             }
             val metrics = context.resources.displayMetrics
@@ -134,15 +134,15 @@ open class NextEventWidget : AppWidgetProvider() {
             val fit = if (day.isEmpty()) 1f else ((availableDayWidth - 2f) * metrics.density / dayPaint.measureText(day)).coerceAtMost(1f)
             size(R.id.widget_day, baseDaySize * fit)
             val monthText = date?.format(DateTimeFormatter.ofPattern("MMM", Locale.GERMAN))?.uppercase(Locale.GERMAN).orEmpty()
-            val baseMonthSize = if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (fontScale > 1.15f) 10f else 12f
+            val baseMonthSize = if (flat) (if (compact) 8f else 9f) else if (spacious) 14f else if (large) 13f else if (width < 150) 9f else if (fontScale > 1.15f || (card && height < 160)) 10f else 12f
             val monthPaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = baseMonthSize * metrics.scaledDensity }
             val monthFit = if (monthText.isEmpty()) 1f else ((availableDayWidth + 2f) * metrics.density / monthPaint.measureText(monthText)).coerceAtMost(1f)
             size(R.id.widget_month, baseMonthSize * monthFit)
             val weekdayText = relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty()
-            size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f)
+            size(R.id.widget_weekday, if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f || (card && height < 160)) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
-            val showBindings = !flat && logicalHeight >= 140
+            val showBindings = !flat && logicalHeight >= if (card) 160 else 140
             show(R.id.widget_bindings, showBindings)
             show(R.id.widget_binding_gap, showBindings)
             show(R.id.widget_binding_headroom, showBindings)
@@ -195,7 +195,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     return if (text.isEmpty()) sp else sp * (((dateWidth - 4f) * metrics.density / paint.measureText(text)).coerceAtMost(1f))
                 }
                 val weekdaySize = if (grow) (dateHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
-                    else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f) 10f else 12f
+                    else if (spacious || large) 14f else if (width < 150 || fontScale > 1.15f || (card && height < 160)) 10f else 12f
                 size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
                 if (grow) {
                     val monthSize = (dateHeight / fontScale * 0.12f).coerceIn(13f, 22f)
