@@ -312,7 +312,8 @@ struct NextEventView: View {
             }.frame(width: width, height: height, alignment: .topLeading)
                 .padding(.horizontal, horizontal).padding(.vertical, vertical)
                 .background {
-                    LinearGradient(stops: [.init(color: rgb(0xA80032), location: 0), .init(color: background, location: 0.28), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(stops: [.init(color: rgb(0x951C35), location: 0), .init(color: rgb(0x5C152C), location: 0.08), .init(color: rgb(0x5C152C), location: 1)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
                 }
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: rgb(0xFF5574).opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 22))

@@ -230,7 +230,7 @@ Die nativen Bildprüfungen enthalten zusätzlich den Vergleichsfall Indoor Cycli
 
 ## Build 1037 – Lichtwirkung und oberer Verlauf am Entwurf nachgezogen
 
-Der obere Kartenbereich verläuft nun direkt von sattem Bordeauxrot (#A80032) in dunkles Blau (#10263A bei 28 % der Höhe), mit klarer heller Oberkante. Die bisherige violette Mischfläche entfällt. Die zusätzliche graue Trennlinie über den Rückmeldetasten ist unsichtbar; ihr Platz bleibt für das bestehende Layout reserviert.
+Der obere Kartenbereich verläuft nun von sattem Bordeauxrot (#951C35) über einen bereits nach 8 % deutlich dunkleren Weinrotton (#5C152C) in dunkles Blau (#10263A bei 24 % der Höhe), mit klarer heller Oberkante. Die bisherige violette Mischfläche entfällt. Die zusätzliche graue Trennlinie über den Rückmeldetasten ist unsichtbar; ihr Platz bleibt für das bestehende Layout reserviert.
 
 Die Tasten und die blaue Leiste erhalten eine stärkere obere Lichtkante, dunklere Unterkante und deutlichere Schatten. Der Leuchtstreifen trägt die bestätigte Rückmeldefarbe über eine breitere Fläche unter der gewählten Taste und läuft weich zu den neutralen Seiten aus. Ohne bestätigte Auswahl bleibt er neutral. Das Originalwappen ist adaptiv unverändert angeordnet, jetzt jedoch mit 50 % statt 12 % Deckkraft sichtbar. Metadaten bleiben einheitlich #C6D2DF. Kalenderösen, Papierkarte, Antwortfreigaben und Speicherrückmeldungen bleiben unverändert.
 
