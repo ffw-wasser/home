@@ -68,23 +68,26 @@ open class NextEventWidget : AppWidgetProvider() {
         }
         private fun statusLine(width: Int, status: String, density: Float): Bitmap {
             val pixels = ((width - 24).coerceAtLeast(1) * density).toInt().coerceIn(1, 2048)
-            val height = (3 * density).toInt().coerceAtLeast(3)
+            val height = (5 * density).toInt().coerceAtLeast(3)
             val bitmap = Bitmap.createBitmap(pixels, height, Bitmap.Config.ARGB_8888)
             val center = when (status) { "yes" -> 1f / 6; "maybe" -> 5f / 6; else -> 0.5f }
             val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF4C542; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
             val bright = when (status) { "yes" -> 0xFF78C38F; "excused" -> 0xFFFFE8A0; "maybe" -> 0xFFFFC68B; else -> 0x70C6D2DF }.toInt()
-            val stops = floatArrayOf(0f, (center - 0.22f).coerceAtLeast(0.001f), center, (center + 0.22f).coerceAtMost(0.999f), 1f)
+            val stops = floatArrayOf(0f, (center - 0.29f).coerceAtLeast(0.001f), center - 0.11f, center, center + 0.11f, (center + 0.29f).coerceAtMost(0.999f), 1f)
+            val edge = 0x38C6D2DF
+            val faded = (tint and 0xFFFFFF) or 0x2E000000
+            val vivid = if (status == "open") edge else (tint and 0xFFFFFF) or 0xF2000000.toInt()
             val core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 shader = LinearGradient(0f, 0f, pixels.toFloat(), 0f,
-                    intArrayOf(0x70C6D2DF, (tint and 0xFFFFFF) or 0x59000000, bright, (tint and 0xFFFFFF) or 0x59000000, 0x70C6D2DF), stops, Shader.TileMode.CLAMP)
+                    intArrayOf(edge, faded, vivid, bright, vivid, faded, edge), stops, Shader.TileMode.CLAMP)
             }
             Canvas(bitmap).apply {
                 if (status != "open") {
-                    val horizontal = LinearGradient(0f, 0f, pixels.toFloat(), 0f, intArrayOf(0, 0, (tint and 0xFFFFFF) or 0x80000000.toInt(), 0, 0), stops, Shader.TileMode.CLAMP)
+                    val horizontal = LinearGradient(0f, 0f, pixels.toFloat(), 0f, intArrayOf(0, 0, (tint and 0xFFFFFF) or 0x66000000, (tint and 0xFFFFFF) or 0x80000000.toInt(), (tint and 0xFFFFFF) or 0x66000000, 0, 0), stops, Shader.TileMode.CLAMP)
                     val vertical = LinearGradient(0f, 0f, 0f, height.toFloat(), intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
                     drawRect(0f, 0f, pixels.toFloat(), height.toFloat(), Paint().apply { shader = ComposeShader(horizontal, vertical, PorterDuff.Mode.DST_IN) })
                 }
-                val half = 0.4f * density
+                val half = 0.65f * density
                 drawRect(0f, height / 2f - half, pixels.toFloat(), height / 2f + half, core)
             }
             return bitmap

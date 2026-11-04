@@ -200,3 +200,11 @@ Die Binderinge sitzen in einem eigenen Streifen oberhalb der Monatsbeschriftung.
 Die nativen Bildprüfungen enthalten zusätzlich den Vergleichsfall Indoor Cycling, 20:00, Injoy EM, Sportkleidung, Entschuldigt. Unter Android wird außerdem der tatsächliche Abstand zwischen Binderingen und Monatsschrift geprüft. Kalenderöffnung, Antwortversand, Cache und Berechtigungen ändern sich in diesem Build nicht.
 
 Die Android-Bildprüfung gleicht auch den Kalenderaufbau mit iOS ab: Das Papier beginnt unter den darüberliegenden Metallösen; oberhalb des roten Monatsfelds bleibt kein heller Papierstreifen.
+
+## Build 1037 – Lichtwirkung und oberer Verlauf am Entwurf nachgezogen
+
+Der obere Kartenbereich verläuft nun direkt von sattem Bordeauxrot (#A80032) in dunkles Blau (#10263A bei 28 % der Höhe), mit klarer heller Oberkante. Die bisherige violette Mischfläche entfällt. Die zusätzliche graue Trennlinie über den Rückmeldetasten ist unsichtbar; ihr Platz bleibt für das bestehende Layout reserviert.
+
+Die Tasten und die blaue Leiste erhalten eine stärkere obere Lichtkante, dunklere Unterkante und deutlichere Schatten. Der Leuchtstreifen trägt die bestätigte Rückmeldefarbe über eine breitere Fläche unter der gewählten Taste und läuft weich zu den neutralen Seiten aus. Ohne bestätigte Auswahl bleibt er neutral. Das Originalwappen ist adaptiv unverändert angeordnet, jetzt jedoch mit 50 % statt 12 % Deckkraft sichtbar. Metadaten bleiben einheitlich #C6D2DF. Kalenderösen, Papierkarte, Antwortfreigaben und Speicherrückmeldungen bleiben unverändert.
+
+Die vorhandenen nativen Bildprüfungen enthalten den Vergleichsfall „Indoor Cycling · 20:00 · Injoy EM · Sportkleidung“ und die Größen-/Schriftvarianten. Die fertigen Bilder werden vor der Veröffentlichung gegen den Entwurf und Build 1036 verglichen.
