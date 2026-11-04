@@ -227,3 +227,5 @@ Das Kalenderblatt bleibt in mittleren Karten schmaler und wächst bei zusätzlic
 Die Emulator-Bildprüfung enthält die Referenzkarte bei 140, 150, 160, 170 und 230 dp Höhe sowie vergrößerter Systemschrift. Sie prüft die vollständig sichtbare Rückmeldeleiste und den Abstand zwischen Wappen und Text. Die tatsächlichen Größen im Samsung-Launcher sind zusätzlich am Galaxy zu beurteilen.
 
 Breite Zwischenhöhen unter 140 dp behalten die kompakte Statuszeile, zeigen aber ein größeres einzeiliges Thema, Uhrzeit/Ort und Kleidung. Bei normaler Schrift nutzt ein 36-dp-Wappen rechts den sonst freien Platz. Auch 110 und 130 dp sind als Bildprüfungen enthalten.
+
+Antippen der kompakten Statuszeile öffnet weiterhin den zugehörigen Termin in H₂O, um die Antwort dort zu ändern.
