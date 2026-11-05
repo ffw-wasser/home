@@ -70,6 +70,7 @@ struct NextEventView: View {
     private var edgeStatus: String { event?.status ?? "open" }
     private var edgePalette: [Color] {
         guard renderingMode == .fullColor else { return [ink.opacity(0.3), background, ink.opacity(0.3)] }
+        if event?.canReply == false { return [rgb(0x466E90), rgb(0x213346), rgb(0xA4CEE9)] }
         switch edgeStatus {
         case "yes": return [rgb(0x28513E), rgb(0x152D2D), rgb(0x78C38F)]
         case "excused": return [rgb(0x675327), rgb(0x3B3026), rgb(0xFFE8A0)]
@@ -92,14 +93,18 @@ struct NextEventView: View {
             .compositingGroup().shadow(color: .black.opacity(0.4), radius: 0.6, x: 0.5, y: 1)
     }
     private func calendar(_ event: H2OWidgetEvent) -> some View {
+        let observation = event.canReply == false
+        let monthTop = observation ? rgb(0xA4CEE9) : rgb(0xBD2542)
+        let monthBottom = observation ? rgb(0x82BCE7) : rgb(0x8C142D)
+        let monthInk = observation ? rgb(0x18344C) : Color.white
         let paper = renderingMode == .fullColor ? Color(red: 0.95, green: 0.935, blue: 0.90) : ink.opacity(0.12)
         let dateInk = renderingMode == .fullColor ? Color(red: 0.10, green: 0.11, blue: 0.13) : ink
         return VStack(spacing: 0) {
-            rgb(0xBD2542).frame(height: 5)
+            monthTop.frame(height: 5)
             ZStack {
-                Rectangle().fill(LinearGradient(colors: renderingMode == .fullColor ? [rgb(0xBD2542), rgb(0x8C142D)] : [ink.opacity(0.3), ink.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                Rectangle().fill(LinearGradient(colors: renderingMode == .fullColor ? [monthTop, monthBottom] : [ink.opacity(0.3), ink.opacity(0.2)], startPoint: .top, endPoint: .bottom))
                 Text(part(event.start, "MMM").uppercased())
-                    .font(.system(size: large ? 15 : small ? 13 : 14, weight: .bold)).foregroundStyle(renderingMode == .fullColor ? .white : ink)
+                    .font(.system(size: large ? 15 : small ? 13 : 14, weight: .bold)).foregroundStyle(renderingMode == .fullColor ? monthInk : ink)
             }.frame(height: large ? 25 : 20)
             Text(part(event.start, "d")).font(.system(size: large ? 38 : small ? 30 : 31, weight: .bold, design: .rounded))
                 .frame(height: large ? 45 : small ? 32 : 30)
@@ -132,7 +137,11 @@ struct NextEventView: View {
         event?.canReply != false && event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")
     }
     @ViewBuilder private func emblem(size: CGFloat) -> some View {
-        if size > 0 && reminderVisible {
+        if size > 0 && event?.canReply == false {
+            Image(systemName: "info.circle").font(.system(size: size * 0.72, weight: .light))
+                .foregroundStyle(renderingMode == .fullColor ? rgb(0xA4CEE9) : ink)
+                .frame(width: size, height: size).accessibilityHidden(true)
+        } else if size > 0 && reminderVisible {
             Image(systemName: "exclamationmark.triangle.fill").resizable().scaledToFit()
                 .foregroundStyle(renderingMode == .fullColor ? signalYellow : ink)
                 .frame(width: size, height: size).accessibilityHidden(true)
@@ -237,10 +246,24 @@ struct NextEventView: View {
         }.buttonStyle(StableWidgetReplyStyle()).disabled(!canReply || job != nil)
             .accessibilityLabel(title(status)).accessibilityValue(selected ? "Ausgewählt" : pending ? "Wird gespeichert" : "")
     }
+    private struct H2OWidgetSelectorSurface: ViewModifier {
+        private func rgb(_ hex: UInt32) -> Color {
+            Color(red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255)
+        }
+        func body(content: Content) -> some View {
+            content.background(LinearGradient(colors: [rgb(0x406B83), rgb(0x183B51), rgb(0x092438)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).stroke(LinearGradient(colors: [rgb(0xD2EDF7).opacity(0.95), rgb(0x4C758E).opacity(0.45), .black.opacity(0.7)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                .compositingGroup().shadow(color: .black.opacity(0.55), radius: 2, y: 2.5)
+        }
+    }
     @ViewBuilder private var replyControls: some View {
         if event?.canReply == false {
-            Link("Nur zur Information", destination: destination).font(.system(size: 12, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: 44)
+            Link(destination: destination) {
+                Label("Nur zur Information", systemImage: "eye")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .modifier(H2OWidgetSelectorSurface())
+            }.buttonStyle(.plain)
         } else if let message = snapshot?.message {
             Link(message, destination: destination).font(.system(size: 11, weight: .medium))
                 .frame(maxWidth: .infinity, minHeight: 44)
@@ -254,9 +277,7 @@ struct NextEventView: View {
                 choice("yes")
                 choice("excused")
                 choice("maybe")
-            }.background(LinearGradient(colors: [rgb(0x406B83), rgb(0x183B51), rgb(0x092438)], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 11))
-                .overlay(RoundedRectangle(cornerRadius: 11).stroke(LinearGradient(colors: [rgb(0xD2EDF7).opacity(0.95), rgb(0x4C758E).opacity(0.45), .black.opacity(0.7)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
-                .compositingGroup().shadow(color: .black.opacity(0.55), radius: 2, y: 2.5)
+            }.modifier(H2OWidgetSelectorSurface())
 
         }
     }
@@ -264,7 +285,8 @@ struct NextEventView: View {
         let unanswered = job == nil && snapshot?.message == nil && ["open", "maybe"].contains(event?.status ?? "") && (event?.status == "open" || event?.reminded == true) && event?.canReply != false
         let textColor = unanswered ? signalYellow : secondaryInk
         return HStack(spacing: 4) {
-            if let text = snapshot?.feedback(appUpdateAvailable: entry.appUpdateAvailable) {
+            if let text = snapshot?.feedback(appUpdateAvailable: entry.appUpdateAvailable),
+               event?.canReply != false || text != "Nur zur Information" {
                 Image(systemName: snapshot?.notice != nil || snapshot?.stale == true || (snapshot?.replyFeedback == nil && entry.appUpdateAvailable) ? "arrow.clockwise" : job != nil || snapshot?.message != nil ? "exclamationmark.circle" : "circle")
                     .foregroundStyle(textColor)
                 Text(text).fontWeight(.semibold).foregroundStyle(textColor)
@@ -276,8 +298,12 @@ struct NextEventView: View {
     private var compactStatus: some View {
         Link(destination: destination) {
             HStack(spacing: 4) {
-                Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 11, height: 11)
-                Text(event?.canReply == false ? "Information" : ((event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")) ? "Erinnerung · " : "") + title(event?.status ?? "open")).fontWeight(.semibold)
+                if event?.canReply == false {
+                    Image(systemName: "eye").foregroundStyle(secondaryInk)
+                } else {
+                    Circle().stroke(color(event?.status ?? "open"), lineWidth: 1.5).frame(width: 11, height: 11)
+                }
+                Text(event?.canReply == false ? "Nur zur Information" : ((event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")) ? "Erinnerung · " : "") + title(event?.status ?? "open")).fontWeight(.semibold)
                     .foregroundStyle(job == nil && event?.status == "open" && event?.canReply != false ? signalYellow : ink)
                 Spacer(minLength: 0)
                 Image(systemName: snapshot?.stale == true ? "exclamationmark.triangle" : "chevron.down").font(.system(size: 8)).foregroundStyle(secondaryInk)

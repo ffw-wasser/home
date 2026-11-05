@@ -48,5 +48,11 @@
   }
   return text;
  }
- g.CalendarPresentation={reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ function widgetEvents(events,now=Date.now()){
+  const upcoming=events.filter(event=>event.end>now).sort((a,b)=>a.start-b.start);
+  const first=upcoming[0];
+  const preferred=first?.canReply===false&&upcoming.find(event=>event.canReply===true&&event.start<first.end&&event.end>first.start);
+  return (preferred?[preferred,...upcoming.filter(event=>event!==preferred)]:upcoming).slice(0,3);
+ }
+ g.CalendarPresentation={widgetEvents,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);

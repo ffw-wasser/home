@@ -3,7 +3,7 @@ const source=fs.readFileSync('js/features/portal/portal-member.js','utf8');
 class Node{
  constructor(tag='div',text=''){this.tagName=tag;this.textContent=text;this.children=[];this.dataset={};this.open=false;this.hidden=false;}
  append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=nodes;}
- setAttribute(){}focus(){this.focused=true;}scrollIntoView(){this.scrolled=true;}
+ setAttribute(name,value){(this.attributes??={})[name]=value;}focus(){this.focused=true;}scrollIntoView(){this.scrolled=true;}
  querySelectorAll(tag){return this.children.flatMap(n=>[...(n.tagName===tag?[n]:[]),...n.querySelectorAll(tag)]);}
  querySelector(tag){return this.querySelectorAll(tag)[0];}
 }
@@ -220,7 +220,8 @@ test('Beobachter sehen Information ohne Abstimmung und ohne Rückmeldungs-Badge;
  const f=fixture(),e={...event('observer',Date.now()+60000),observerOnly:true,canReply:false,remindedAt:Date.now(),status:'open'};
  f.c.paint({events:[e]});const card=f.events.querySelector('article');
  assert.equal(card.querySelectorAll('button').filter(button=>button.dataset.reply).length,0);
- assert.equal(card.querySelectorAll('strong').find(n=>n.className?.startsWith('portal-answer ')).textContent,'Nur zur Information');
+ assert.match(card.className,/portal-event-observer/);
+ assert.equal(card.querySelectorAll('div').find(n=>n.className==='portal-observer-info').attributes['aria-label'],'Nur zur Information');
  f.c.paint({events:[{...e,observerOnly:false,canReply:true}]});
  assert.equal(f.events.querySelector('article').querySelectorAll('button').filter(button=>button.dataset.reply).length,3);
 });

@@ -47,3 +47,13 @@ test('Beobachter ändern keine Freigaben und bleiben bei älteren Gruppenänderu
  for(const ids of [['unknown'],[observer.memberId,observer.memberId],null])assert.equal((await f.call('groups',{groups:current.groups,observerIds:ids,expectedVersion:current.version},null,true)).status,400);
  assert.equal((await f.call('groups',{groups:current.groups,observerIds:[],expectedVersion:current.version},observer)).status,404);
 });
+
+test('Widget zieht bei einer echten Überschneidung den Teilnehmertermin vor',()=>{
+ require('../js/features/portal/calendar-presentation.js');
+ const {widgetEvents}=globalThis.CalendarPresentation;
+ const now=100,observer={id:'info',start:110,end:160,canReply:false},other={id:'info2',start:120,end:140,canReply:false};
+ const boundary={id:'after',start:160,end:200,canReply:true},participant={id:'own',start:150,end:180,canReply:true};
+ assert.deepEqual(widgetEvents([observer,other,{...other,start:130},participant,boundary],now).map(e=>e.id),['own','info','info2']);
+ assert.deepEqual(widgetEvents([observer,boundary],now).map(e=>e.id),['info','after']);
+ assert.equal(widgetEvents([observer,participant],180).length,0);
+});

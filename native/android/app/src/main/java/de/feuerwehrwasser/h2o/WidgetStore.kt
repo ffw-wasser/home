@@ -49,7 +49,7 @@ object WidgetStore {
     @Synchronized fun read(context: Context, now: Long): WidgetSnapshot? = runCatching {
         val value = JSONObject(prefs(context).getString(KEY, null) ?: return null)
         val array = value.optJSONArray("events") ?: JSONArray().also { array -> value.optJSONObject("event")?.let { event -> array.put(event) } }
-        val events = (0 until array.length()).map { readEvent(array.getJSONObject(it)) }.filter { it.valid(now) }.sortedBy { it.start }
+        val events = WidgetSnapshot.orderEvents((0 until array.length()).map { readEvent(array.getJSONObject(it)) }.filter { it.valid(now) })
         val stateEvent = prefs(context).getString("stateEvent", null)
         val nextID = events.firstOrNull()?.id.orEmpty()
         if (stateEvent != nextID) prefs(context).edit().putString("stateEvent", nextID).remove("job").remove("editing").remove("message").remove("notice").commit()

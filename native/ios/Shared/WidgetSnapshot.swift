@@ -75,8 +75,14 @@ struct H2OWidgetSnapshot: Codable, Equatable {
         var value = self
         if !H2OWidgetStorage.fresh(self, now: now) { value.stale = true }
         let remaining = events.filter { $0.end > now }
-        value.event = remaining.first
-        value.following = Array(remaining.dropFirst())
+        let preferred = remaining.first.flatMap { first in
+            first.canReply == false ? remaining.firstIndex {
+                $0.canReply == true && $0.start < first.end && $0.end > first.start
+            } : nil
+        }
+        let selectedIndex = preferred ?? 0
+        value.event = remaining.indices.contains(selectedIndex) ? remaining[selectedIndex] : nil
+        value.following = remaining.enumerated().compactMap { $0.offset == selectedIndex ? nil : $0.element }
         if value.event?.id != event?.id {
             value.job = nil; value.editing = nil; value.message = nil; value.notice = nil
         }

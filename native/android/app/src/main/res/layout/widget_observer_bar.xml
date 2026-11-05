@@ -1,0 +1,10 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_observer_bar" android:layout_width="match_parent" android:layout_height="44dp"
+    android:layout_marginTop="4dp" android:orientation="horizontal" android:gravity="center"
+    android:background="@drawable/widget_selector_background" android:visibility="gone">
+    <ImageView android:layout_width="16dp" android:layout_height="16dp"
+        android:layout_marginEnd="6dp" android:src="@drawable/widget_eye" android:contentDescription="@null" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/widget_observer_label" android:textColor="#C6D2DF"
+        android:textSize="13sp" android:textStyle="bold" />
+</LinearLayout>

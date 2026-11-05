@@ -21,6 +21,15 @@ data class WidgetSnapshot(val updatedAt: Long, val event: WidgetEvent?, val stal
     fun fresh(now: Long) = updatedAt <= now + 60000 && now - updatedAt < 12 * 3600000L
     fun displayable(now: Long) = updatedAt <= now + 60000 && now - updatedAt < 30 * 86400000L
     companion object {
+        fun orderEvents(events: List<WidgetEvent>): List<WidgetEvent> {
+            val ordered = events.sortedBy { it.start }
+            val first = ordered.firstOrNull() ?: return ordered
+            if (first.canReply) return ordered
+            val preferred = ordered.firstOrNull { it.canReply && it.start < first.end && it.end > first.start }
+                ?: return ordered
+            return listOf(preferred) + ordered.filter { it !== preferred }
+        }
+
         val zone: ZoneId = ZoneId.of("Europe/Berlin")
         fun day(start: Long, now: Long): String {
             val date = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
