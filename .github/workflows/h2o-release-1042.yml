@@ -28,6 +28,8 @@ jobs:
     needs: verify-release-source
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    permissions:
+      actions: read
     steps:
       - name: Require the iPhone simulator check for the exact release source
         shell: bash
