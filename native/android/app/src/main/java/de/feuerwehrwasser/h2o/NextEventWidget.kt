@@ -120,14 +120,15 @@ open class NextEventWidget : AppWidgetProvider() {
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
             // ViewFlipper animates locally in the launcher: no timer or repeated widget updates.
+            val observation = event?.canReply == false
             val edgeIndex = when (event?.status) { "yes" -> 1; "excused" -> 2; "maybe" -> 3; else -> 0 }
-            val edgeDrawable = when (event?.status) {
+            val edgeDrawable = if (observation) R.drawable.widget_background_observer else when (event?.status) {
                 "yes" -> R.drawable.widget_background_yes
                 "excused" -> R.drawable.widget_background_excused
                 "maybe" -> R.drawable.widget_background_maybe
                 else -> R.drawable.widget_background_open
             }
-            val animateEdge = edgeChanged && android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f &&
+            val animateEdge = !observation && edgeChanged && android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f &&
                 android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 1f) > 0f
             show(R.id.widget_edge_transition, animateEdge)
             show(R.id.widget_edge_static, !animateEdge)
@@ -165,6 +166,13 @@ open class NextEventWidget : AppWidgetProvider() {
             size(R.id.widget_weekday, if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f)
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
+            views.setTextColor(R.id.widget_month, if (observation) 0xFF18344C.toInt() else 0xFFFFFFFF.toInt())
+            if (flat) {
+                views.setInt(R.id.widget_month, "setBackgroundColor", if (observation) 0xFF82BCE7.toInt() else 0xFFA52332.toInt())
+            } else {
+                views.setInt(R.id.widget_calendar_month_header, "setBackgroundResource",
+                    if (observation) R.drawable.widget_calendar_header_observer else R.drawable.widget_calendar_header)
+            }
             val showBindings = !flat && !compactActions && logicalHeight >= if (card) 160 else 140
             show(R.id.widget_bindings, showBindings)
             show(R.id.widget_binding_gap, showBindings)
@@ -272,8 +280,8 @@ open class NextEventWidget : AppWidgetProvider() {
                 if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
             }
             val reminderVisible = event?.canReply == true && event.reminded && event.status in setOf("open", "maybe")
-            views.setImageViewResource(R.id.widget_logo, if (reminderVisible) R.drawable.widget_reminder else R.drawable.widget_logo)
-            views.setFloat(R.id.widget_logo, "setAlpha", if (reminderVisible) 1f else 0.5f)
+            views.setImageViewResource(R.id.widget_logo, when { observation -> R.drawable.widget_info; reminderVisible -> R.drawable.widget_reminder; else -> R.drawable.widget_logo })
+            views.setFloat(R.id.widget_logo, "setAlpha", if (reminderVisible || observation) 1f else 0.5f)
             show(R.id.widget_logo, logoSize > 0)
             views.setViewPadding(R.id.widget_details, 0, 0, 0, 0)
             if (logoSize > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -300,7 +308,7 @@ open class NextEventWidget : AppWidgetProvider() {
                 message != null -> message
                 notice != null -> notice
                 snapshot?.stale == true -> "Stand veraltet · H₂O öffnen"
-                event?.canReply == false -> "Nur zur Information"
+                observation -> if (card) "" else "Nur zur Information"
                 event?.reminded == true && event.status in setOf("open", "maybe") -> if (!card) "Erinnerung · $status" else if (event.status == "maybe") "Erinnerung: Bitte festlegen" else "Erinnerung: Bitte antworten"
                 card && event?.status == "open" -> "Rückmeldung offen"
                 card && WidgetAppUpdate.available(context, now) -> "App-Update verfügbar"
@@ -333,7 +341,8 @@ open class NextEventWidget : AppWidgetProvider() {
             // Keep notification space stable; successful replies show no footer label.
             show(R.id.widget_footer, event != null && (!compactActions || statusText.isNotEmpty()))
             if (compactActions) show(R.id.widget_clothing, event != null && event.clothing.isNotEmpty() && statusText.isEmpty())
-            show(R.id.widget_status_icon, false)
+            show(R.id.widget_status_icon, observation && !card)
+            if (observation && !card) views.setImageViewResource(R.id.widget_status_icon, R.drawable.widget_eye)
             show(R.id.widget_time, false)
             show(R.id.widget_note, snapshot?.stale == true && event != null)
             views.setContentDescription(R.id.widget_note, "Gespeicherter Kalenderstand · H₂O öffnen")
@@ -352,7 +361,10 @@ open class NextEventWidget : AppWidgetProvider() {
                         show(loadingID, moving)
                         views.setProgressBar(loadingID, 100, 0, true)
                     }
-                    show(R.id.widget_reply_section, event != null && event.canReply)
+                    show(R.id.widget_reply_section, event != null)
+                    show(R.id.widget_reply_caption, large && !observation)
+                    show(R.id.widget_observer_bar, observation)
+                    views.setOnClickPendingIntent(R.id.widget_observer_bar, openPending)
                     show(R.id.widget_retry, event != null && retry)
                     views.setTextViewText(R.id.widget_retry, if (canReply) "Erneut versuchen" else "In H₂O öffnen")
                     views.setOnClickPendingIntent(R.id.widget_retry, if (canReply && event != null) WidgetReplyReceiver.pending(context, event, "retry") else openPending)
@@ -385,7 +397,7 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             if (retry && canReply && event != null) views.setOnClickPendingIntent(R.id.widget_footer, WidgetReplyReceiver.pending(context, event, "retry"))
             val spokenDay = date?.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy", Locale.GERMAN)).orEmpty()
-            views.setContentDescription(R.id.widget_root, if (event != null) listOf(spokenDay, event.title, time, event.location, event.clothing, status, if (saving) "Rückmeldung wird gespeichert" else statusText, if (snapshot?.stale == true) "Gespeicherter Stand" else "").filter { it.isNotEmpty() }.joinToString(". ") else title)
+            views.setContentDescription(R.id.widget_root, if (event != null) listOf(spokenDay, event.title, time, event.location, event.clothing, if (observation) "Nur zur Information" else status, if (saving) "Rückmeldung wird gespeichert" else statusText, if (snapshot?.stale == true) "Gespeicherter Stand" else "").filter { it.isNotEmpty() }.joinToString(". ") else title)
             return views
         }
     }

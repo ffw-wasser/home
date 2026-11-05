@@ -1,7 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('js/features/portal/portal-member.js','utf8');
 test('Apple und Android erhalten das konkrete Terminthema statt einer allgemeinen Probenüberschrift',()=>{
- const messages=[],c=vm.createContext({eventSections:events=>({next:events[0]}),webkit:{messageHandlers:{h2oWidget:{postMessage:value=>messages.push(value)}}}});
+ const messages=[],c=vm.createContext({webkit:{messageHandlers:{h2oWidget:{postMessage:value=>messages.push(value)}}}});
+ c.g=c;
+ vm.runInContext(fs.readFileSync('js/features/portal/calendar-presentation.js','utf8'),c);
  vm.runInContext(source.slice(source.indexOf(' function eventTopic('),source.indexOf(' async function api(')),c);
  vm.runInContext(source.slice(source.indexOf(' function syncNativeWidget('),source.indexOf(' function paint(')),c);
  for(const [title,sessionType,expected] of [
@@ -13,7 +15,7 @@ test('Apple und Android erhalten das konkrete Terminthema statt einer allgemeine
   ['Probe Löschangriff','Probe','Probe Löschangriff'],
   ['Probe','Probe','Probe'],['','Probe','Probe']
  ]){
-  const event={title,sessionType,start:1793640600000,end:1793647800000,status:'yes'};
+  const event={title,sessionType,start:Date.now()+60000,end:Date.now()+120000,status:'yes'};
   c.syncNativeWidget({events:[event]});
   assert.equal(messages.at(-1).event.title,expected);
   assert.equal(event.title,title,'Kalendertitel bleibt unverändert');
