@@ -24,8 +24,30 @@ jobs:
           grep -Eq 'CURRENT_PROJECT_VERSION: 1042$' native/ios/project.yml
           grep -Eq 'versionCode = 1042$' native/android/app/build.gradle.kts
           echo "Exact CI-tested build 1042 source verified."
-  publish-member-pilot:
+  verify-ios-simulator:
     needs: verify-release-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Require the iPhone simulator check for the exact release source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41993388762")
+            jq -e '.head_sha == "fc5edb707bebe0d5324e039bbe8ad9ae468996b4"' <<< "$run" >/dev/null
+            if jq -e '.status == "completed"' <<< "$run" >/dev/null; then
+              jq -e '.conclusion == "success"' <<< "$run" >/dev/null
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::iPhone simulator check did not complete within the release window."
+          exit 1
+  publish-member-pilot:
+    needs: verify-ios-simulator
     uses: ./.github/workflows/h2o-ios-member-pilot.yml
     with:
       upload_to_testflight: true
