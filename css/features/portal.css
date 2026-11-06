@@ -179,7 +179,7 @@
 #portal-events .portal-event-badges{padding-inline:46px;min-height:24px;align-items:center}
 /* Weekly calendar sheet: seven days, with the event date highlighted. */
 .portal-event-day.portal-calendar-week{display:grid;gap:6px;width:100%;min-width:0;text-align:center}
-.portal-calendar-week-heading{font-size:1rem;font-weight:800;line-height:1.3}
+.portal-calendar-week-heading{font-size:1rem;font-weight:800;line-height:1.3;text-wrap:balance}
 /* The narrower band passes through the sides of the red number frame.
    Keep both edges 1px inside the scaled number window; weekday names stay clear. */
 .portal-calendar-week-grid{--week-label-height:1.05rem;--week-number-height:1.5rem;--week-number-top:calc(17px + var(--week-label-height));position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;padding:6px 4px 7px}
@@ -214,7 +214,7 @@
  #portal-events .portal-event-content .portal-event-badges{margin:0}
  #portal-events .portal-event-badges span{padding:3px 10px;font-size:1rem}
  #portal-events .portal-event-date{margin:0;padding:8px;line-height:1.3;min-height:44px}
- #portal-events .portal-event h3{margin:0;font-size:1.375rem;font-weight:800;line-height:1.2}
+ #portal-events .portal-event h3{margin:0;font-size:clamp(1.25rem,5.5cqi,1.375rem);font-weight:800;line-height:1.2}
  #portal-events .portal-event p{margin:0;line-height:1.5}
  #portal-events .portal-event-meta{font-size:var(--portal-body-size,1rem);padding:0;gap:6px}
  #portal-events .portal-answer{flex:none;min-height:0;margin:8px 0;padding-top:6px;font-size:var(--portal-support-size,.9375rem);line-height:1.3}
@@ -266,15 +266,16 @@
 /* Practical details on the left, poll-style reply rows on the right. */
 #portal-events .portal-event-details{display:grid;grid-template-columns:minmax(0,1fr) minmax(164px,.8fr);align-items:center;gap:12px;margin-top:10px}
 #portal-events .portal-event-practical{min-width:0;container-type:inline-size;container-name:portal-practical}
-#portal-events .portal-clothing-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#portal-events .portal-event-practical .portal-event-meta{font-size:clamp(.875rem,10cqi,var(--portal-body-size,1rem))}
+#portal-events .portal-event-meta>:last-child{overflow-wrap:anywhere}
 #portal-events .portal-clothing-short{display:none}
-@container portal-practical (max-width:20ch){#portal-events [data-clothing="Einsatzkleidung"] .portal-clothing-full{display:none}#portal-events [data-clothing="Einsatzkleidung"] .portal-clothing-short{display:inline}}
-@container portal-practical (max-width:17ch){#portal-events [data-clothing="Tagesdienst"] .portal-clothing-full{display:none}#portal-events [data-clothing="Tagesdienst"] .portal-clothing-short{display:inline}}
+@container portal-practical (max-width:10.75rem){#portal-events [data-clothing="Einsatzkleidung"] .portal-clothing-full{display:none}#portal-events [data-clothing="Einsatzkleidung"] .portal-clothing-short{display:inline}}
+@container portal-practical (max-width:8.75rem){#portal-events [data-clothing="Tagesdienst"] .portal-clothing-full{display:none}#portal-events [data-clothing="Tagesdienst"] .portal-clothing-short{display:inline}}
 #portal-events .portal-event-meta[aria-label^="Kleidung:"]{margin-bottom:0}
-#portal-events .portal-reply-switch{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(48px,1fr));gap:2px;margin:0;padding:0 0 0 8px;border:0;border-left:1px solid #bdcec5;border-radius:0;background:transparent;align-self:stretch}
+#portal-events .portal-reply-switch{container-type:inline-size;position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(48px,1fr));gap:2px;margin:0;padding:0 0 0 8px;border:0;border-left:1px solid #bdcec5;border-radius:0;background:transparent;align-self:stretch}
 #portal-events .portal-observer-info{display:grid;place-items:center;align-self:stretch;min-height:148px;padding-left:8px;border-left:1px solid #bdcec5;color:var(--portal-observer-ink,#326a9b)}
 #portal-events .portal-observer-info svg{width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round}
-#portal-events .portal-reply-switch button{position:relative;z-index:1;display:flex;align-items:center;gap:8px;grid-column:1;min-height:48px;margin:0;padding:9px 4px;border:0;border-radius:6px;background:transparent;color:var(--reply-ink);font-size:1rem;font-weight:650;text-align:left;line-height:1.25;hyphens:auto;word-break:normal;overflow-wrap:anywhere;box-shadow:none}
+#portal-events .portal-reply-switch button{position:relative;z-index:1;display:flex;align-items:center;gap:8px;grid-column:1;min-height:48px;margin:0;padding:9px 4px;border:0;border-radius:6px;background:transparent;color:var(--reply-ink);font-size:clamp(.9375rem,10.5cqi,1rem);font-weight:650;text-align:left;line-height:1.25;hyphens:auto;word-break:normal;overflow-wrap:anywhere;box-shadow:none}
 #portal-events .portal-reply-switch button[data-reply=yes]{--reply-ink:#175631;--reply-color:#287d49;--reply-surface:#dcf1e3;--reply-selected-ink:#fff}
 #portal-events .portal-reply-switch button[data-reply=excused]{--reply-ink:#665006;--reply-color:#f4c542;--reply-surface:#fff4c4;--reply-selected-ink:#2d210a}
 #portal-events .portal-reply-switch button[data-reply=maybe]{--reply-ink:#7a3508;--reply-color:#e87524;--reply-surface:#ffe8d6;--reply-selected-ink:#2d210a}
@@ -284,7 +285,7 @@
 #portal-events .portal-reply-switch button[aria-pressed=true]::after{content:"";position:absolute;left:12px;top:calc(50% - 7px);width:6px;height:11px;border:solid var(--reply-selected-ink,#fff);border-width:0 2px 2px 0;transform:rotate(45deg);pointer-events:none}
 #portal-events .portal-reply-switch button:focus-visible{outline:3px solid #075baf;outline-offset:2px}
 #portal-events .portal-choice-hint{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-@media(max-width:360px){#portal-events .portal-event-details{gap:8px;grid-template-columns:minmax(0,1fr) 148px}#portal-events .portal-reply-switch button{font-size:1rem}}
+@media(max-width:360px){#portal-events .portal-event-details{gap:8px;grid-template-columns:minmax(0,1fr) 144px}}
 @media(min-width:601px){#portal-events .portal-event-details{grid-template-columns:minmax(0,1fr) 164px}}
 
 /* Kalenderverwaltung: gemeinsame Gestaltung innerhalb der FFW-Einstellungen. */
@@ -383,9 +384,15 @@
 
 /* Keep dates readable: grow with the user’s text size and wrap instead of shrinking below the supporting type size. */
 @supports (font-size:1cqi){
- .portal-event button.portal-event-date{container-type:inline-size}
+ .portal-event button.portal-event-date{container:portal-date / inline-size}
+ #portal-events .portal-event{container-type:inline-size}
  .portal-event-day{font-size:max(var(--portal-support-size,0px),min(1.375rem,6.6cqi))}
  .portal-event-clock{font-size:max(var(--portal-support-size,0px),min(1.25rem,6.6cqi))}
+}
+
+@container portal-date (max-width:16rem){
+ .portal-calendar-week-heading{font-size:0}
+ .portal-calendar-week-heading::after{content:attr(data-compact);font-size:.875rem}
 }
 
 /* Compact notification settings; one main action per service. */
