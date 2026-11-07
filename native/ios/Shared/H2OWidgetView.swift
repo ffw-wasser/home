@@ -165,14 +165,16 @@ struct NextEventView: View {
             }
         }.frame(width: width, alignment: .leading)
     }
-    private func eventCard(_ event: H2OWidgetEvent, width: CGFloat) -> some View {
+    private func eventCard(_ event: H2OWidgetEvent, width: CGFloat, height: CGFloat) -> some View {
         let available = max(1, width - calendarWidth - (small ? 7 : 11))
         let titleSize: CGFloat = small ? 15 : 20
         let font = UIFont.systemFont(ofSize: titleSize * min(textScale, 1.5), weight: .bold)
         let titleWidth = (event.title as NSString).size(withAttributes: [.font: font]).width
         let logoSize: CGFloat = small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
         return HStack(spacing: small ? 7 : 11) {
-            calendar(event).padding(.top, 4)
+            calendar(event)
+                .scaleEffect(small || large ? 1 : min(1, max(1, height - 4) / 80))
+                .padding(.top, 4)
             if large {
                 ViewThatFits(in: .vertical) {
                     largeDetails(event, width: available, titleSize: 26, detailSize: 14, logoSize: 56)
@@ -336,15 +338,21 @@ struct NextEventView: View {
             let eventHeight: CGFloat = large ? 119 : max(1, height - (small ? 28 + 1 + 6 : 44 + 14 + 1 + 13))
             VStack(alignment: .leading, spacing: large ? 5 : 3) {
                 if let event {
-                    Link(destination: destination) { eventCard(event, width: width) }.buttonStyle(.plain)
+                    Link(destination: destination) { eventCard(event, width: width, height: eventHeight) }.buttonStyle(.plain)
                         .frame(width: width, height: eventHeight, alignment: .center)
+                        .clipped()
                     Color.clear.frame(height: 0.5)
                     if small { compactStatus }
                     else {
-                        if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
-                        replyControls.contentTransition(.identity)
-                        statusLine
-                        feedback
+                        // Reserve the complete response area before laying out enlarged
+                        // event text. Intrinsic text height must not cover its targets.
+                        VStack(alignment: .leading, spacing: 3) {
+                            if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
+                            replyControls.contentTransition(.identity)
+                                .frame(height: 44)
+                            statusLine
+                            feedback
+                        }.fixedSize(horizontal: false, vertical: true).layoutPriority(1)
                     }
                     if large && !(snapshot?.following ?? []).isEmpty {
                         Rectangle().fill(ink.opacity(0.22)).frame(height: 0.5)

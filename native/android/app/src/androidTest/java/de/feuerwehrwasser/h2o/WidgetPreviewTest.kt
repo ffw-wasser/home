@@ -16,6 +16,40 @@ import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class WidgetPreviewTest {
+    @Test fun mediumRepliesRemainVisibleAtLargeSystemFonts() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        for (fontScale in listOf(1.5f, 1.8f, 2f)) {
+            val intent = Intent(context, WidgetPreviewActivity::class.java)
+                .putExtra("width", 330).putExtra("height", 170)
+                .putExtra("fontScale", fontScale).putExtra("fixture", "long-title")
+            ActivityScenario.launch<WidgetPreviewActivity>(intent).use { scenario ->
+                instrumentation.waitForIdleSync()
+                scenario.onActivity { activity ->
+                    val root = activity.findViewById<ViewGroup>(R.id.widget_root)
+                    for (id in listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)) {
+                        val button = activity.findViewById<TextView>(id)
+                        assertNotNull("Medium widget retains replies at font=$fontScale", button)
+                        assertTrue("Reply is visible and enabled at font=$fontScale", button.isShown && button.isEnabled)
+                        val rect = android.graphics.Rect()
+                        assertTrue(button.getGlobalVisibleRect(rect))
+                        assertEquals("Entire reply target is visible", button.height, rect.height())
+                        assertTrue("Reply target keeps its height", button.height >= 44 * activity.resources.displayMetrics.density - 1)
+                        assertTrue("Reply label fits", button.paint.measureText(button.text.toString()) <= button.width - button.compoundPaddingLeft - button.compoundPaddingRight + 2)
+                    }
+                    assertTextFits(root, root, "medium font=$fontScale")
+                    val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+                    root.draw(android.graphics.Canvas(bitmap))
+                    File(context.getExternalFilesDir(null), "widget-previews/medium-large-font-$fontScale.png").apply {
+                        parentFile?.mkdirs()
+                        outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    }
+                }
+            }
+        }
+        WidgetStore.clear(context)
+    }
+
     @Test fun statusEdgeReappliesWithoutReplacingContentOrAnimatingUnchangedStatus() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

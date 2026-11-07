@@ -6,6 +6,49 @@ import UIKit
 @testable import H2OPortal
 
 final class WidgetLayoutTests: XCTestCase {
+    @MainActor func testMediumReplyTargetsSurviveAllAccessibilityTextSizes() throws {
+        let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
+        for textSize in [DynamicTypeSize.xxxLarge, .accessibility1, .accessibility2, .accessibility3, .accessibility4, .accessibility5] {
+            for (width, height) in [(292.0, 141.0), (329.0, 155.0), (364.0, 170.0)] {
+                for status in ["yes", "excused", "maybe"] {
+                    let event = H2OWidgetEvent(title: "Atemschutz-Übung mit anschließender Nachbesprechung", start: now.addingTimeInterval(3600), end: now.addingTimeInterval(7200), location: "Gerätehaus Wasser und Übungsgelände", clothing: "Einsatzkleidung mit persönlicher Schutzausrüstung", status: status, allDay: false, id: String(repeating: "a", count: 43), canReply: true)
+                    let view = NextEventView(entry: NextEventEntry(date: now, snapshot: H2OWidgetSnapshot(updatedAt: now, event: event, stale: false), family: .systemMedium))
+                        .environment(\.dynamicTypeSize, textSize)
+                        .frame(width: width, height: height)
+                    let renderer = ImageRenderer(content: view)
+                    renderer.scale = 2
+                    let image = try XCTUnwrap(renderer.uiImage)
+                    let cg = try XCTUnwrap(image.cgImage)
+                    let stride = cg.width * 4
+                    var pixels = [UInt8](repeating: 0, count: stride * cg.height)
+                    try pixels.withUnsafeMutableBytes { bytes in
+                        let context = try XCTUnwrap(CGContext(data: bytes.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8, bytesPerRow: stride, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                        context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                    }
+                    // Check each selected target's broad surface, excluding thin edges
+                    // and the moving light. A missing/clipped reply row cannot pass.
+                    var visibleRows = 0
+                    for y in 0..<cg.height {
+                        var colored = 0
+                        for x in 0..<cg.width {
+                            let i = y * stride + x * 4
+                            let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
+                            let matches = status == "yes" ? g * 10 > r * 14 && g * 10 > b * 12 :
+                                status == "excused" ? r > 180 && g > 140 && b < 110 : r > 180 && g > 65 && g < 180 && b < 110
+                            if matches { colored += 1 }
+                        }
+                        if colored > cg.width / 6 { visibleRows += 1 }
+                    }
+                    XCTAssertGreaterThan(visibleRows, 60, "44-point reply target remains visible: \(width)x\(height), \(textSize), \(status)")
+                    let attachment = XCTAttachment(image: image)
+                    attachment.name = "widget-medium-font-\(textSize)-\(Int(width))-\(status)"
+                    attachment.lifetime = .keepAlways
+                    add(attachment)
+                }
+            }
+        }
+    }
+
     @MainActor func testExistingMediumWidgetExpandsToLargeInSameHost() async throws {
         let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         let start = now.addingTimeInterval(3600)
