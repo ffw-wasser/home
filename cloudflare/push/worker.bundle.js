@@ -22993,7 +22993,21 @@ g.PortalHydrants={schema,route};
   if(path==='/portal/overview'){
    if(!(trainer?trainerEvent(event):roster?.members.some(m=>m.id===record.memberId&&m.leader)))fail('Diese Übersicht ist nur für hinterlegte Gruppenführer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   return {event:memberEvent(event),stale:cal.stale,functionsVersion:!trainer&&event.attendanceType!=='Fitness'&&roster.replyFunctionsVersion===1?1:0,members:roster.members.filter(m=>isRecipient(event,m.id)).map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&!trainer&&event.attendanceType!=='Fitness'&&roster.replyFunctionsVersion===1?{functions:[...(m.leader?['GF']:[]),...(m.replyRoles||[])]}:{})};})};
+   const grouped=!trainer&&event.attendanceType!=='Fitness'&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
+   // Only the remaining accepted AGT candidates need an assessment. Medical details stay server-side.
+   const candidates=grouped&&roster.agtSource==='member-checkbox'?recipients.filter(m=>statuses.get(m.id)==='yes'&&!m.leader&&!m.replyRoles?.includes('Maschinist')&&m.agt===true&&!m.ageDepartment&&!m.fitnessTrainer):[];
+   if(candidates.length){
+    const evidenceRows=await g.PortalEvidence.rows(env),approvals=await g.PortalEvidence.consents(env);
+    for(const member of candidates){
+     breathing.add(member.id);
+     if(roster.updatedAt<limit||!member.evidenceUpdatedAt||member.evidenceUpdatedAt<limit||!approvals.get(member.id)?.granted)continue;
+     const merged=await g.PortalEvidence.view(env,member,roster,evidenceRows),assessment=merged.evidence&&g.MemberEvidence.assess(merged.evidence,now).find(group=>group.title==='Atemschutz');
+     if(assessment&&['valid','soon'].includes(assessment.status))confirmedBreathing.add(member.id);
+    }
+    const latest=await g.PortalEvidence.consents(env);
+    for(const id of confirmedBreathing)if(!latest.get(id)?.granted||latest.get(id).version!==approvals.get(id).version)confirmedBreathing.delete(id);
+   }
+   return {event:memberEvent(event),stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
   }
   if(path==='/admin/portal/replies'){
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,stale:cal.stale,fetchedAt:cal.fetchedAt};
@@ -23088,7 +23102,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"93c69bcde5e30b718cbb6255cccc12eda221e74fcfa11ea1e5c52d89d76314da",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"eb44b73441be366c25c3c62957b668af7075959ee5284da0ede41ab3537d9897",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

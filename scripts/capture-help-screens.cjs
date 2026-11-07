@@ -115,7 +115,7 @@ if(process.argv.includes('--only=geraetehaus-google-verbindung')){require('node:
   const capture=async name=>{await page.evaluate(()=>document.getElementById('deckel-main').scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:path.join(reviewRoot,name+'.jpg'),type:'jpeg',quality:85,animations:'disabled'});};
   const reviewEvents=[{...event,title:'Sonderprobe GF + Ausschuss',sessionType:'Sonderprobe',status:'yes'},{...event,id:'help-later',title:'Probe',status:'open',start:stamp+172800000,end:stamp+176400000}];
   const evidence={version:1,medical:{g262:'2020-12-31',g263:''},breathing:null,driver:null};
-  const overview={event:reviewEvents[0],functionsVersion:1,members:[{id:'help-a',name:'Anna Beispiel',status:'yes',functions:['GF','ATF']},{id:'help-b',name:'Ben Muster',status:'open'}]};
+  const overview={event:reviewEvents[0],functionsVersion:2,members:[{id:'help-a',name:'Anna Beispiel',status:'yes',functions:['GF']},{id:'help-b',name:'Ben Muster',status:'open'}]};
   const people=[{name:'Anna Beispiel',status:'check',items:[{label:'G26.3',status:'expired',until:'2020-12-31'}]},{name:'Ben Muster',status:'valid',items:[{label:'G26.3',status:'valid',until:'2030-12-31'}]}];
   const catalog={id:'review-theater',title:'Theaterabend',version:1,items:[{id:'beer',name:'Bier · Flasche · 0,5 l',category:'Getränke',cents:150,active:true},{id:'water',name:'Mineralwasser · Flasche · 0,5 l',category:'Getränke',cents:150,active:true},{id:'food',name:'Belegtes Brötchen',category:'Essen',cents:300,active:true}]};
   let empty=false;

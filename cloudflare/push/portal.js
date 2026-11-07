@@ -716,7 +716,21 @@
   if(path==='/portal/overview'){
    if(!(trainer?trainerEvent(event):roster?.members.some(m=>m.id===record.memberId&&m.leader)))fail('Diese Übersicht ist nur für hinterlegte Gruppenführer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   return {event:memberEvent(event),stale:cal.stale,functionsVersion:!trainer&&event.attendanceType!=='Fitness'&&roster.replyFunctionsVersion===1?1:0,members:roster.members.filter(m=>isRecipient(event,m.id)).map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&!trainer&&event.attendanceType!=='Fitness'&&roster.replyFunctionsVersion===1?{functions:[...(m.leader?['GF']:[]),...(m.replyRoles||[])]}:{})};})};
+   const grouped=!trainer&&event.attendanceType!=='Fitness'&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
+   // Only the remaining accepted AGT candidates need an assessment. Medical details stay server-side.
+   const candidates=grouped&&roster.agtSource==='member-checkbox'?recipients.filter(m=>statuses.get(m.id)==='yes'&&!m.leader&&!m.replyRoles?.includes('Maschinist')&&m.agt===true&&!m.ageDepartment&&!m.fitnessTrainer):[];
+   if(candidates.length){
+    const evidenceRows=await g.PortalEvidence.rows(env),approvals=await g.PortalEvidence.consents(env);
+    for(const member of candidates){
+     breathing.add(member.id);
+     if(roster.updatedAt<limit||!member.evidenceUpdatedAt||member.evidenceUpdatedAt<limit||!approvals.get(member.id)?.granted)continue;
+     const merged=await g.PortalEvidence.view(env,member,roster,evidenceRows),assessment=merged.evidence&&g.MemberEvidence.assess(merged.evidence,now).find(group=>group.title==='Atemschutz');
+     if(assessment&&['valid','soon'].includes(assessment.status))confirmedBreathing.add(member.id);
+    }
+    const latest=await g.PortalEvidence.consents(env);
+    for(const id of confirmedBreathing)if(!latest.get(id)?.granted||latest.get(id).version!==approvals.get(id).version)confirmedBreathing.delete(id);
+   }
+   return {event:memberEvent(event),stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
   }
   if(path==='/admin/portal/replies'){
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,stale:cal.stale,fetchedAt:cal.fetchedAt};
