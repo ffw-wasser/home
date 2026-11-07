@@ -104,7 +104,42 @@
   section.append(heading,intro,cleanup,subscribe,state,retry,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
   g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-security')section.load(true);});
  }
- function init(){if(!el('login'))return;initialized=true;paint();try{if(sessionStorage.getItem('h2o-account-deleted')==='1'){sessionStorage.removeItem('h2o-account-deleted');el('message').textContent='Dein Portal-Konto wurde gelöscht. Für einen neuen Zugang wende dich an die Verwaltung.';}}catch{}if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}pendingSetup='';g.H2OOnboarding?.init(!!setupCode);
+ function releaseCode(value){
+  if(typeof value!=='string')return '';
+  const text=value.trim();if(/^[\w-]{43}$/.test(text))return text;
+  try{const url=new URL(text);if(url.origin!=='https://ffw-wasser.github.io'||url.pathname!=='/home/deckel.html'||url.search||url.username||url.password)return '';return /^#setup=([\w-]{43})$/.exec(url.hash)?.[1]||'';}catch{return '';}
+ }
+ async function scanRelease(){
+  if(document.getElementById('identity-release-scanner')||busy)return;
+  const dialog=document.createElement('dialog');dialog.id='identity-release-scanner';dialog.className='identity-release-scanner';dialog.setAttribute('aria-labelledby','identity-release-scan-title');
+  const heading=document.createElement('h2');heading.id='identity-release-scan-title';heading.textContent='Freigabe scannen';
+  const video=document.createElement('video');video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute('aria-label','Kamerabild zum Scannen der Freigabe');
+  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Kamera wird geöffnet …';
+  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Abbrechen';dialog.append(heading,video,status,cancel);document.body.append(dialog);
+  let stream,frame=0,closed=false,previous=0;
+  const stop=()=>{if(closed)return;closed=true;cancelAnimationFrame(frame);stream?.getTracks().forEach(track=>track.stop());video.srcObject=null;g.removeEventListener('pagehide',close);document.removeEventListener('visibilitychange',hidden);};
+  const close=()=>{stop();if(dialog.open)dialog.close();dialog.remove();el('scan-release')?.focus();};
+  const hidden=()=>{if(document.hidden)close();};
+  cancel.onclick=close;dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.addEventListener('close',()=>{stop();dialog.remove();});g.addEventListener('pagehide',close);document.addEventListener('visibilitychange',hidden);dialog.showModal();
+  try{
+   if(!navigator.mediaDevices?.getUserMedia||typeof g.jsQR!=='function')throw Error('unavailable');
+   const camera=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280}}});
+   if(closed){camera.getTracks().forEach(track=>track.stop());return;}stream=camera;video.srcObject=stream;await video.play();if(closed)return;
+   const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw Error('unavailable');
+   status.textContent='Persönlichen QR-Code der Verwaltung in die Kamera halten.';
+   function tick(now){
+    if(closed)return;
+    if(now-previous>250&&video.readyState>=2&&video.videoWidth){
+     previous=now;const scale=Math.min(1,960/video.videoWidth);canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);ctx.drawImage(video,0,0,canvas.width,canvas.height);
+     const pixels=ctx.getImageData(0,0,canvas.width,canvas.height),qr=g.jsQR(pixels.data,canvas.width,canvas.height);
+     if(qr){const code=releaseCode(qr.data);if(code){el('code').value=code;el('code').dispatchEvent(new Event('input',{bubbles:true}));el('message').textContent='Freigabe eingelesen. Mit „Weiter“ die Einrichtung fortsetzen.';close();return;}status.textContent='Das ist keine persönliche H₂O-Freigabe. Bitte den QR-Code der Verwaltung scannen.';}
+    }
+    frame=requestAnimationFrame(tick);
+   }
+   frame=requestAnimationFrame(tick);
+  }catch{if(!closed){stream?.getTracks().forEach(track=>track.stop());video.srcObject=null;video.hidden=true;status.textContent='Kamera nicht verfügbar. Bitte Kamerazugriff erlauben oder die Freigabe manuell eingeben.';cancel.textContent='Zurück zur Eingabe';}}
+ }
+ function init(){if(!el('login'))return;initialized=true;if(el('scan-release'))el('scan-release').onclick=scanRelease;paint();try{if(sessionStorage.getItem('h2o-account-deleted')==='1'){sessionStorage.removeItem('h2o-account-deleted');el('message').textContent='Dein Portal-Konto wurde gelöscht. Für einen neuen Zugang wende dich an die Verwaltung.';}}catch{}if(setupCode){el('code').value=setupCode;el('code').closest('details').open=true;el('account').open=true;}pendingSetup='';g.H2OOnboarding?.init(!!setupCode);
   el('password-login-form').onsubmit=event=>{event.preventDefault();const name=el('username').value,password=el('login-password').value;el('login-password').value='';void run(async()=>{await loginPassword(name,password);el('message').textContent='';el('account').open=false;g.H2OOnboarding?.signedIn();await g.DeckelReload?.();});};
   el('password-set-form').onsubmit=event=>{event.preventDefault();const username=el('new-username').value,password=el('new-password').value,repeat=el('repeat-password').value,confirmation=el('change-password').value,code=el('code').value.trim();el('new-password').value=el('repeat-password').value=el('change-password').value='';void run(async()=>{if(password!==repeat)throw Error('Die beiden neuen Passwörter stimmen nicht überein.');const wasPassword=current?.method==='password';if(current&&!code)await login(undefined,confirmation);await post('password/set',{username,password,...(code?{code}:{})});el('code').value='';el('password-settings').open=false;if(wasPassword){save(null);await g.DeckelReload?.();}el('message').textContent='Passwort gespeichert. Jetzt mit Benutzername und Passwort anmelden.';g.H2OOnboarding?.accessReady();});};
   el('login').onclick=()=>run(async()=>{await login(g.H2OOnboarding?.loginCode?.()??el('code').value.trim());el('code').value='';el('message').textContent='';el('account').open=false;g.H2OOnboarding?.signedIn();await g.DeckelReload?.();});

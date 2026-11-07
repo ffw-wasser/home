@@ -612,3 +612,13 @@ html[data-loyalty="paused"] #portal-page-points,html[data-loyalty="paused"] #por
 
 /* The cap stays readable against the dark navigation rail. */
 #deckel-nav button:not([aria-current="page"]) .portal-icon-training{filter:brightness(2)}
+
+/* Personal release scanner shares the existing enrollment input and handlers. */
+.identity-release-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.identity-release-controls input{flex:1 1 12rem;min-width:0}
+.identity-release-controls button{flex:0 1 auto}
+.identity-release-scanner{box-sizing:border-box;width:min(92vw,480px);max-height:90dvh;overflow:auto;border:1px solid #c4d0df;border-radius:18px;padding:20px;background:var(--surface,#fff);color:var(--text,#10223c)}
+.identity-release-scanner::backdrop{background:#10223c99}
+.identity-release-scanner video{display:block;width:100%;max-height:50dvh;object-fit:contain;border-radius:12px;background:#10223c}
+.identity-release-scanner video[hidden]{display:none}
+.identity-release-scanner button{min-height:48px}

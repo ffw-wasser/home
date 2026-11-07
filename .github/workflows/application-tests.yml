@@ -153,6 +153,8 @@ jobs:
           node tests/portal-pull-refresh-browser.cjs
           node tests/portal-welcome-browser.cjs
           node tests/native-onboarding-browser.cjs
+          node tests/portal-release-scan-browser.cjs
+          BROWSER_ENGINE=webkit node tests/portal-release-scan-browser.cjs
           node tests/android-onboarding-browser.cjs
           node tests/native-push-limit-browser.cjs
           BROWSER_ENGINE=webkit node tests/native-push-limit-browser.cjs

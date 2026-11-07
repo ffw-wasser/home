@@ -29,8 +29,8 @@
    choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
    const more=help();choice('Zugang verloren',release,more);choice('Ausbildung & Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();},more);
   }else if(step==='release'){
-   say('Scanne den persönlichen QR der Verwaltung mit deiner Handykamera. Oder gib deine Freigabe hier ein.');
-   const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-code');
+   say('Scanne den persönlichen QR der Verwaltung direkt hier. Oder gib deine Freigabe ein.');
+   const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-release-controls');
    next.hidden=false;next.textContent='Weiter';next.onclick=()=>{if(!hasRelease()){$('identity-message').textContent='Bitte die gültige Freigabe eingeben.';return;}$('identity-message').textContent='';go('method');};
   }else if(step==='method'){
    const device=g.DeckelInstall?.profile();
