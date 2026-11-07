@@ -12,7 +12,6 @@ import android.util.SizeF
 import androidx.core.os.BundleCompat
 import android.view.View
 import android.widget.RemoteViews
-import android.widget.TextView
 import androidx.work.*
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -121,7 +120,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compactActions) R.layout.widget_event_compact_actions else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
-            val contentScale = if (compactActions) minOf(fontScale, 1.3f) else fontScale
+            val contentScale = if (compactActions) minOf(fontScale, ((height - 60f) / 70f).coerceIn(1f, 1.3f)) else fontScale
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value * contentScale / fontScale)
             // ViewFlipper animates locally in the launcher: no timer or repeated widget updates.
             val observation = event?.canReply == false
@@ -380,7 +379,6 @@ open class NextEventWidget : AppWidgetProvider() {
                             val label = (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }
                             val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = 13f * metrics.scaledDensity }
                             val available = ((width - 20f) / 3f - 8f) * metrics.density
-                            views.setInt(id, "setAutoSizeTextTypeWithDefaults", TextView.AUTO_SIZE_TEXT_TYPE_NONE)
                             views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, minOf(paint.textSize, paint.textSize * available / paint.measureText(label)))
                         }
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }

@@ -346,7 +346,7 @@ struct NextEventView: View {
                     else {
                         // Reserve the complete response area before laying out enlarged
                         // event text. Intrinsic text height must not cover its targets.
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: large ? 5 : 3) {
                             if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
                             replyControls.contentTransition(.identity)
                                 .frame(height: 44)
