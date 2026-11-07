@@ -150,9 +150,9 @@ struct NextEventView: View {
                 .opacity(0.5).accessibilityHidden(true)
         }
     }
-    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat) -> some View {
+    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat, titleLines: Int = 2) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
-            Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(2).truncationMode(.tail)
+            Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(titleLines).truncationMode(.tail)
             metadata(event, size: detailSize, spacing: spacing)
         }.frame(width: max(1, availableWidth), alignment: .leading)
     }
@@ -181,11 +181,22 @@ struct NextEventView: View {
                     largeDetails(event, width: available, titleSize: 22, detailSize: 12, logoSize: 48)
                     largeDetails(event, width: available, titleSize: 18, detailSize: 11, logoSize: 0)
                 }
-            } else {
+            } else if small {
                 ViewThatFits(in: .vertical) {
                     details(event, titleSize: titleSize, detailSize: small ? 10 : 12, spacing: 2, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
                     details(event, titleSize: small ? 13 : 17, detailSize: small ? 9 : 11, spacing: 1, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
                 }
+                emblem(size: logoSize)
+            } else {
+                let scale = min(textScale, 1.5)
+                let textWidth = available - (logoSize > 0 ? logoSize + 11 : 0)
+                let lines = titleWidth > textWidth && scale <= 1.2 && height >= 70 ? 2 : 1
+                let metadataRows: CGFloat = event.clothing.isEmpty ? 1 : 2
+                let titleHeight = font.lineHeight * CGFloat(lines)
+                let detailHeight = UIFont.systemFont(ofSize: 12 * scale, weight: .semibold).lineHeight * metadataRows
+                let fit = min(1, max(1, height - 2 * metadataRows) / (titleHeight + detailHeight))
+                details(event, titleSize: titleSize * fit, detailSize: 12 * fit, spacing: 2, availableWidth: textWidth, titleLines: lines)
+                    .fixedSize(horizontal: false, vertical: true)
                 emblem(size: logoSize)
             }
         }

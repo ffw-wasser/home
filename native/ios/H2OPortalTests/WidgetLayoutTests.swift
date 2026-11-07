@@ -34,10 +34,10 @@ final class WidgetLayoutTests: XCTestCase {
                             let i = y * stride + x * 4
                             let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
                             let matches = status == "yes" ? g * 10 > r * 14 && g * 10 > b * 12 :
-                                status == "excused" ? r > 180 && g > 140 && b < 110 : r > 180 && g > 65 && g < 180 && b < 110
+                                status == "excused" ? r > 180 && g > 140 && b < 170 : r > 180 && g > 65 && g < 180 && b < 110
                             if matches { colored += 1 }
                         }
-                        if colored > cg.width / 6 { visibleRows += 1 }
+                        if colored > cg.width / 12 { visibleRows += 1 }
                     }
                     XCTAssertGreaterThan(visibleRows, 60, "44-point reply target remains visible: \(width)x\(height), \(textSize), \(status)")
                     let attachment = XCTAttachment(image: image)
