@@ -25,6 +25,11 @@ const root=path.resolve(__dirname,'..');
   });
   await page.locator('#year-plan-status').filter({hasText:'Vollständiger Jahresplan'}).waitFor().catch(async e=>{console.error(await page.locator('#year-plan-status').textContent(),errors);throw e;});
   assert.equal(await page.locator('.year-plan-month').count(),12);assert.equal(await page.locator('.year-plan-event').count(),2);
+  for(const width of [320,390,768])for(const scale of [150,200]){
+   await page.setViewportSize({width,height:900});await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);
+   const clipped=await page.locator('.year-plan-date').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent));assert.deepEqual(clipped,[],'date column grows with text '+width+'/'+scale);
+  }
+  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
   assert.equal(await page.locator('.year-plan-holiday').count(),6,'one label at each holiday start, plus the ongoing holiday on January 1');
   assert.equal(await page.locator('.year-plan-day.is-holiday').count(),88,'all 88 school-holiday days in 2026 remain highlighted');
   assert.equal(await page.locator('.year-plan-public-holiday').count(),12);assert.match(await page.locator('#year-plan-month-0').textContent(),/Heilige Drei Könige/);
