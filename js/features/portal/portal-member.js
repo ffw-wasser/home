@@ -133,12 +133,14 @@
    if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Entschuldigt'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){
     const people=result.members.filter(m=>m.status===value).sort((a,b)=>a.name.localeCompare(b.name,'de'));summary.append(node('h3',label+' ('+people.length+')'));
-    if(value!=='yes'||!people.length||result.functionsVersion!==1){summary.append(node('p',people.map(m=>m.name).join(' · ')||'Keine'));continue;}
+    if(value!=='yes'||!people.length||result.functionsVersion!==2){summary.append(node('p',people.map(m=>m.name).join(' · ')||'Keine'));continue;}
     const groups=node('div');groups.className='portal-reply-functions';
-    for(const [role,label] of [['GF','GF'],['ATF','ATF'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
-     const list=people.filter(m=>(['GF','ATF','Maschinist'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section');section.dataset.replyFunction=role;section.append(node('h4',label+' ('+list.length+')'),node('p',list.map(m=>m.name).join(' · ')||'Keine'));groups.append(section);
+    for(const [role,label] of [['GF','Gruppenführer'],['AGT','Atemschutz'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
+     const list=people.filter(m=>(['GF','Maschinist','AGT'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section'),names=node('p');
+     for(const member of list){if(names.childNodes.length)names.append(node('span',' · '));const name=node('span',member.name);if(role==='AGT'&&member.breathingNeedsCheck!==false){name.className='portal-reply-breathing-check';name.title='Atemschutz-Nachweise prüfen';name.setAttribute('aria-label',member.name+' · Atemschutz-Nachweise prüfen');}names.append(name);}
+     if(!list.length)names.textContent='Keine';section.dataset.replyFunction=role;section.append(node('h4',label+' ('+list.length+')'),names);groups.append(section);
     }
-    summary.append(groups,node('p','Jede Person einmal · Reihenfolge: GF, ATF, Maschinist, weitere Zusagen. Hinterlegte Funktionen, keine feste Einteilung.'));
+    summary.append(groups,node('p','Jede Person einmal · Gruppenführer und Maschinisten stehen in ihrer eigenen Rubrik. Atemschutz: übrige Zusagen mit Atemschutz-Häkchen. Orange: Nachweise fehlen, sind abgelaufen oder nicht aktuell prüfbar. Keine feste Einteilung.'));
    }
    const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false,total={accepted:0,failed:0,failures:[]};
    remind.disabled=result.stale||event.start<=Date.now();
