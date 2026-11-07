@@ -402,7 +402,7 @@ continue;}
   $('identity-code').value=result.code;$('identity-result').hidden=false;
   $('link').href=url.href;$('link').hidden=false;
   $('install-guide').hidden=false;
-  $('identity-status').textContent='Nur für '+name+'. Mit der normalen Handykamera scannen und den Link öffnen. Einmalig 30 Minuten gültig; nur diesem Mitglied zeigen. '+(reset?'Bisherige Passkeys, Passwortzugänge und Sitzungen sind gesperrt.':'Danach Passkey oder Benutzername und Passwort einrichten.');
+  $('identity-status').textContent='Nur für '+name+'. In H₂O neben der Freigabeeingabe „QR-Code scannen“ wählen und diesen persönlichen QR scannen. Einmalig 30 Minuten gültig; nur diesem Mitglied zeigen. '+(reset?'Bisherige Passkeys, Passwortzugänge und Sitzungen sind gesperrt.':'Danach Passkey oder Benutzername und Passwort einrichten.');
   invitationTimer=setTimeout(()=>{if($('identity-code').value===result.code){clearInvitation();$('qr-status').textContent='Freigabe abgelaufen. Bitte eine neue Freigabe erstellen.';}},Math.max(0,result.expiresAt-Date.now()));
  },$('qr-status')).finally(()=>invitationLoading(false));}
  function invitationLoading(active){const button=$('show-qr');button.disabled=active||busy;button.classList.toggle('is-loading',active);button.setAttribute('aria-busy',String(active));button.textContent=active?'Portal-Code wird vorbereitet …':'Zugangseinrichtung freigeben';}

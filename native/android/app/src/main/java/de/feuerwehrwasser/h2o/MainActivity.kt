@@ -39,6 +39,16 @@ class MainActivity : ComponentActivity() {
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         permissionReply?.invoke(allowed); permissionReply = null
     }
+    private var cameraRequest: PermissionRequest? = null
+    private var cameraEpoch = 0
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        val request = cameraRequest
+        cameraRequest = null
+        if (request != null) {
+            if (allowed && cameraEpoch == navigationEpoch && PortalLinks.trusted(web.url ?: "")) request.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+            else request.deny()
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -121,7 +131,7 @@ class MainActivity : ComponentActivity() {
         } else notice("Diese Android-WebView-Version unterstützt keine Passkeys. Bitte Android System WebView aktualisieren oder Benutzername und Passwort verwenden.")
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false)
         web.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageFailed = false; navigationEpoch++; status.visibility = View.GONE; errorActions.visibility = View.GONE }
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { cameraRequest?.deny(); cameraRequest = null; pageFailed = false; navigationEpoch++; status.visibility = View.GONE; errorActions.visibility = View.GONE }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 if (!request.isForMainFrame) return false
                 val value = request.url.toString()
@@ -135,6 +145,19 @@ class MainActivity : ComponentActivity() {
             override fun onPageFinished(view: WebView, url: String) { if (PortalLinks.trusted(url) && !pageFailed) { web.evaluateJavascript(pdfScript, null); web.evaluateJavascript(assets.open("ios-entry.js").bufferedReader().use { it.readText() }, null); if (passkeysSupported) status.visibility = View.GONE else notice("Bitte Android System WebView für Passkeys aktualisieren oder Benutzername und Passwort verwenden.") } }
         }
         web.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                runOnUiThread {
+                    val origin = request.origin
+                    if (origin.scheme != "https" || origin.host != "ffw-wasser.github.io" || origin.port !in listOf(-1, 443) || !PortalLinks.trusted(web.url ?: "") || !request.resources.contentEquals(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) || cameraRequest != null) {
+                        request.deny(); return@runOnUiThread
+                    }
+                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) request.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+                    else { cameraRequest = request; cameraEpoch = navigationEpoch; cameraPermission.launch(Manifest.permission.CAMERA) }
+                }
+            }
+            override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                if (cameraRequest === request) cameraRequest = null
+            }
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
                 if (!isUserGesture) return false
                 val popup = WebView(this@MainActivity)
@@ -173,6 +196,6 @@ class MainActivity : ComponentActivity() {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { notice("Für diesen Link ist keine passende Anwendung verfügbar.") }
     }
     private fun notice(message: String) { if (::status.isInitialized) { status.text = message; status.visibility = View.VISIBLE } }
-    override fun onDestroy() { if (::appUpdates.isInitialized) appUpdates.close(); pdfExport.close(); web.destroy(); super.onDestroy() }
+    override fun onDestroy() { cameraRequest?.deny(); cameraRequest = null; if (::appUpdates.isInitialized) appUpdates.close(); pdfExport.close(); web.destroy(); super.onDestroy() }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 }

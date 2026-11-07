@@ -31,6 +31,12 @@ const root=path.resolve(__dirname,'..');
   const currentMonth=await page.evaluate(()=>Number(new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',month:'2-digit'}).format(new Date()))-1);
   const atMonth=month=>page.waitForFunction(month=>{const n=document.querySelector('#year-plan-month-'+month),r=n.getBoundingClientRect();return document.querySelector('#year-plan-month').value===String(month)&&r.top>=0&&r.top<innerHeight;},month);
   await atMonth(currentMonth);await page.locator('#year-plan-month').selectOption('0');await atMonth(0);const beforeToday=await page.evaluate(()=>qaYearCalls.length);await page.locator('#year-plan-today').click();await atMonth(currentMonth);assert.equal(await page.evaluate(()=>qaYearCalls.length),beforeToday,'Today is navigation, not another fetch');
+  for(const width of [320,390,768])for(const scale of [150,200]){
+   await page.setViewportSize({width,height:900});await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);
+   const clipped=await page.locator('.year-plan-date').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent));assert.deepEqual(clipped,[],'date column grows with text '+width+'/'+scale);
+  }
+  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
+  await page.setViewportSize({width:1024,height:900});await page.locator('#year-plan-today').click();await atMonth(currentMonth);
   assert.equal(await page.evaluate(()=>adminUnlocked),false,'all appointments without administration PIN');assert.equal(await page.locator('#year-plan-unlock').count(),0);assert.equal(await page.evaluate(()=>qaYearCalls.length),2,'one failed read is retried');assert.equal(publicRequests,0,'never use the reduced public calendar');
   assert.match(await page.locator('#year-plan-month-0').textContent(),/19:30 Uhr · Probe Jahresbeginn/);
   assert.equal(await page.locator('.is-birthday').count(),0,'Main annual plan excludes birthdays');assert.equal(await page.locator('#year-plan-birthdays').count(),0);assert.doesNotMatch(await page.locator('#yearPlanView').textContent(),/Geburtstag/);

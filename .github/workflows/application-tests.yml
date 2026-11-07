@@ -52,6 +52,13 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
+      - name: Verify direct enrollment and capture changed help panels
+        run: |
+          node tests/portal-release-scan-browser.cjs
+          BROWSER_ENGINE=webkit node tests/portal-release-scan-browser.cjs
+          node tests/qr-checkin-browser.cjs
+          node tests/year-plan-browser.cjs
+          node scripts/capture-help-screens.cjs --only=geraetehaus-abos
       - name: Verify isolated review portal uses actual member UI
         run: |
           node scripts/build-review-portal.cjs --check
@@ -178,7 +185,6 @@ jobs:
           node tests/term-reply-browser.cjs
       - name: Test annual plan, navigation and private access
         run: |
-          node tests/year-plan-browser.cjs
           node tests/portal-year-plan-browser.cjs
           H2O_TEST_BROWSER=webkit node tests/portal-year-plan-browser.cjs
       - name: Test calendar keyword groups and recipient overrides
@@ -194,8 +200,6 @@ jobs:
         run: node tests/onedrive-direct-browser.cjs
       - name: Test local drafts, resume and administration tasks
         run: node tests/workflow-drafts-browser.cjs
-      - name: Test QR attendance and full appointment layout
-        run: node tests/qr-checkin-browser.cjs
       - name: Test home icon, administration cards and portal navigation
         run: |
           node tests/navigation-settings-browser.cjs

@@ -29,8 +29,8 @@
    choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
    const more=help();choice('Zugang verloren',release,more);choice('Ausbildung & Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();},more);
   }else if(step==='release'){
-   say('Scanne den persönlichen QR der Verwaltung mit deiner Handykamera. Oder gib deine Freigabe hier ein.');
-   const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-code');
+   say('Scanne den persönlichen QR der Verwaltung direkt hier. Oder gib deine Freigabe ein.');
+   const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-release-controls');
    next.hidden=false;next.textContent='Weiter';next.onclick=()=>{if(!hasRelease()){$('identity-message').textContent='Bitte die gültige Freigabe eingeben.';return;}$('identity-message').textContent='';go('method');};
   }else if(step==='method'){
    const device=g.DeckelInstall?.profile();
@@ -41,12 +41,14 @@
    say(first?(device?.platform==='android'?'Nutze Fingerabdruck, Gesichtserkennung, Geräte-PIN oder Entsperrmuster.':device?.platform==='ios'?'Nutze Face ID, Touch ID oder deinen Gerätecode.':'Nutze die Entsperrung deines Geräts.'):(g.DeckelInstall?.isStandalone()?'Melde dich mit deinem vorhandenen Zugang an.':'Entsperre deinen Zugang mit deinem Gerät.'));
    method='passkey';place(first?'identity-register':'identity-login').textContent=first?'Zugang einrichten':'Anmelden';
    choice('Benutzername und Passwort',()=>{method='password';go('access');});
-   const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else{choice('Zugang verloren',release,more);if(!first){if(hasRelease())choice('Mit Freigabe erstmals einrichten',()=>{first=true;ticketFromLink=true;go('method');},more);else choice('Erstmals einrichten',()=>{first=true;go('release');},more);}}
+   if(!first)choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
+   const more=help();if(first&&hasRelease())choice('Andere Freigabe verwenden',release,more);else{choice('Zugang verloren',release,more);if(!first){if(hasRelease())choice('Mit Freigabe erstmals einrichten',()=>{first=true;ticketFromLink=true;go('method');},more);}}
   }else if(step==='access'){
    if(first){say('Wähle deinen Benutzernamen und dein Passwort.');place('identity-password-set-form');}
    else if(method==='passkey'){say('Bestätige deinen neuen Zugang.');place('identity-login').textContent='Anmelden';}
    else{say('Gib deinen Benutzernamen und dein Passwort ein.');place('identity-password-login-form');}
    if(!setupFinished)choice('Andere Anmeldeart',()=>go('method'));
+   if(!first)choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
    choice('Zugang verloren?',release,help());
   }else if(step==='calendar'){
    progress.textContent='Einrichtung · 1 von 2';back.hidden=true;

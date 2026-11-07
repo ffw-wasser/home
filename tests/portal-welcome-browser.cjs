@@ -22,7 +22,7 @@ const root=path.resolve(__dirname,'..');
  assert.equal(new URL(personal).hash,'#setup='+'t'.repeat(43));assert.equal(new URL(personal).search,'');
  const pixels=await qr.evaluate(c=>({data:[...c.getContext('2d').getImageData(0,0,c.width,c.height).data],width:c.width,height:c.height}));
  const jsQR=require('../js/vendor/jsqr.js');assert.equal(jsQR(new Uint8ClampedArray(pixels.data),pixels.width,pixels.height).data,personal);
- assert.equal(await page.locator('#portal-admin-identity-email').count(),0);assert.match(await page.locator('#portal-admin-identity-status').innerText(),/normalen Handykamera/);
+ assert.equal(await page.locator('#portal-admin-identity-email').count(),0);assert.match(await page.locator('#portal-admin-identity-status').innerText(),/QR-Code scannen/);
  await page.locator('#portal-admin-member').selectOption('');assert.equal(await qr.isVisible(),false);assert.equal(await qr.getAttribute('width'),'0');assert.equal(await page.locator('#portal-admin-link').getAttribute('href'),null);
  // The link lands in the existing one-use-ticket flow, erasing the secret from the address bar.
  await page.goto('https://ffw-wasser.github.io/home/deckel.html#setup='+'t'.repeat(43));await page.locator('#h2oStartup').waitFor({state:'hidden'});
