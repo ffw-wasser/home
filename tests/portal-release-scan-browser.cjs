@@ -4,8 +4,11 @@ const root=path.resolve(__dirname,'..');
 (async()=>{const browser=await(process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(8000);
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();});
+ await page.addInitScript(()=>{Object.defineProperty(navigator,'userAgent',{value:'Mozilla/5.0 (iPhone) H2ONative/1 iOS'});});
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});
- const wizard=page.locator('#h2o-onboarding');await wizard.getByRole('button',{name:'Erstmals einrichten',exact:true}).click();
+ const wizard=page.locator('#h2o-onboarding');
+ assert.equal(await wizard.getByRole('button',{name:'Erstmals einrichten',exact:true}).isVisible(),true,'first enrollment is directly on normal login screen');
+ await wizard.getByRole('button',{name:'Erstmals einrichten',exact:true}).click();
  await page.evaluate(()=>{
   window.scanTest={requests:0,stops:0,qr:'',deny:false,delay:false};
   Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async constraints=>{scanTest.requests++;scanTest.constraints=constraints;if(scanTest.deny)throw Error('denied');if(scanTest.delay)await new Promise(resolve=>scanTest.resolve=resolve);return {getTracks:()=>[{stop(){scanTest.stops++;}}]};}}});

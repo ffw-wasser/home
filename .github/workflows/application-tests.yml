@@ -52,6 +52,11 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
+      - name: Verify direct enrollment and capture changed help panels
+        run: |
+          node tests/portal-release-scan-browser.cjs
+          BROWSER_ENGINE=webkit node tests/portal-release-scan-browser.cjs
+          node scripts/capture-help-screens.cjs --only=geraetehaus-abos
       - name: Verify isolated review portal uses actual member UI
         run: |
           node scripts/build-review-portal.cjs --check
@@ -153,8 +158,6 @@ jobs:
           node tests/portal-pull-refresh-browser.cjs
           node tests/portal-welcome-browser.cjs
           node tests/native-onboarding-browser.cjs
-          node tests/portal-release-scan-browser.cjs
-          BROWSER_ENGINE=webkit node tests/portal-release-scan-browser.cjs
           node tests/android-onboarding-browser.cjs
           node tests/native-push-limit-browser.cjs
           BROWSER_ENGINE=webkit node tests/native-push-limit-browser.cjs
