@@ -199,7 +199,7 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             var renderedTitleSize = titleSize
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact || compactActions) 1 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact || (compactActions && height < 150)) 1 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
@@ -376,10 +376,12 @@ open class NextEventWidget : AppWidgetProvider() {
                         val pending = saving && job?.optString("status") == answer
                         views.setTextViewText(id, (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
                         if (compactActions) {
-                            val label = (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }
                             val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = 13f * metrics.scaledDensity }
                             val available = ((width - 20f) / 3f - 8f) * metrics.density
-                            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, minOf(paint.textSize, paint.textSize * available / paint.measureText(label)))
+                            // Use one size for all choices; changing the selected answer
+                            // must not resize labels or let short words dominate the row.
+                            val widest = listOf("✓ Dabei", "○ Dabei", "✓ Entschuldigt", "○ Entschuldigt", "✓ Unsicher", "○ Unsicher").maxOf { paint.measureText(it) }
+                            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, minOf(paint.textSize, paint.textSize * available / widest))
                         }
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
                         views.setInt(id, "setBackgroundResource", if (selected) selectedBackground else 0)
