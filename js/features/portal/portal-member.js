@@ -135,10 +135,10 @@
     const people=result.members.filter(m=>m.status===value).sort((a,b)=>a.name.localeCompare(b.name,'de'));summary.append(node('h3',label+' ('+people.length+')'));
     if(value!=='yes'||!people.length||result.functionsVersion!==1){summary.append(node('p',people.map(m=>m.name).join(' · ')||'Keine'));continue;}
     const groups=node('div');groups.className='portal-reply-functions';
-    for(const [role,label] of [['GF','GF'],['ATF','ATF'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
+    for(const [role,label] of [['GF','Gruppenführer'],['ATF','Atemschutz'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
      const list=people.filter(m=>(['GF','ATF','Maschinist'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section');section.dataset.replyFunction=role;section.append(node('h4',label+' ('+list.length+')'),node('p',list.map(m=>m.name).join(' · ')||'Keine'));groups.append(section);
     }
-    summary.append(groups,node('p','Jede Person einmal · Reihenfolge: GF, ATF, Maschinist, weitere Zusagen. Hinterlegte Funktionen, keine feste Einteilung.'));
+    summary.append(groups,node('p','Jede Person einmal · Reihenfolge: Gruppenführer, Atemschutz, Maschinist, weitere Zusagen. Hinterlegte Funktionen, keine feste Einteilung.'));
    }
    const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false,total={accepted:0,failed:0,failures:[]};
    remind.disabled=result.stale||event.start<=Date.now();
