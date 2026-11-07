@@ -407,6 +407,17 @@
 @container portal-date (max-width:10rem){
  #portal-events .portal-calendar-week-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+/* The short-screen calendar uses smaller type and can retain its single row longer. */
+@media(max-width:600px) and (max-height:699px){
+ @container portal-date (min-width:14.5rem) and (max-width:17rem){
+  #portal-events .portal-calendar-week-grid{grid-template-columns:repeat(7,minmax(0,1fr));row-gap:3px}
+  #portal-events .portal-calendar-week-grid::before{display:block}
+  #portal-events .portal-calendar-week-cell{gap:8px;padding:0 0 6px}
+  #portal-events .portal-calendar-week-cell.is-event-day>strong{transform:scale(1.22)}
+  #portal-events .portal-calendar-week-cell:not(.is-event-day)>strong{filter:blur(.25px)}
+ }
+}
+
 
 
 /* Compact notification settings; one main action per service. */
