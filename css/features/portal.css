@@ -396,7 +396,7 @@
  .portal-calendar-week-heading::after{content:attr(data-compact);font-size:.875rem}
 }
 /* Reflow the week when enlarged text needs more space per day. */
-@container portal-date (max-width:14rem){
+@container portal-date (max-width:17rem){
  #portal-events .portal-calendar-week-grid{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:.75rem}
  #portal-events .portal-calendar-week-grid::before{display:none}
  #portal-events .portal-calendar-week-cell{min-width:0;gap:.5rem;padding-bottom:.5rem}
