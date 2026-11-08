@@ -150,9 +150,9 @@ struct NextEventView: View {
                 .opacity(0.5).accessibilityHidden(true)
         }
     }
-    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat) -> some View {
+    private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat, titleLines: Int = 2) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
-            Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(2).truncationMode(.tail)
+            Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(titleLines).truncationMode(.tail)
             metadata(event, size: detailSize, spacing: spacing)
         }.frame(width: max(1, availableWidth), alignment: .leading)
     }
@@ -165,25 +165,38 @@ struct NextEventView: View {
             }
         }.frame(width: width, alignment: .leading)
     }
-    private func eventCard(_ event: H2OWidgetEvent, width: CGFloat) -> some View {
+    private func eventCard(_ event: H2OWidgetEvent, width: CGFloat, height: CGFloat) -> some View {
         let available = max(1, width - calendarWidth - (small ? 7 : 11))
         let titleSize: CGFloat = small ? 15 : 20
         let font = UIFont.systemFont(ofSize: titleSize * min(textScale, 1.5), weight: .bold)
         let titleWidth = (event.title as NSString).size(withAttributes: [.font: font]).width
         let logoSize: CGFloat = small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
         return HStack(spacing: small ? 7 : 11) {
-            calendar(event).padding(.top, 4)
+            calendar(event)
+                .scaleEffect(small || large ? 1 : min(1, max(1, height - 4) / 80))
+                .padding(.top, 4)
             if large {
                 ViewThatFits(in: .vertical) {
                     largeDetails(event, width: available, titleSize: 26, detailSize: 14, logoSize: 56)
                     largeDetails(event, width: available, titleSize: 22, detailSize: 12, logoSize: 48)
                     largeDetails(event, width: available, titleSize: 18, detailSize: 11, logoSize: 0)
                 }
-            } else {
+            } else if small {
                 ViewThatFits(in: .vertical) {
                     details(event, titleSize: titleSize, detailSize: small ? 10 : 12, spacing: 2, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
                     details(event, titleSize: small ? 13 : 17, detailSize: small ? 9 : 11, spacing: 1, availableWidth: available - (logoSize > 0 ? logoSize + 11 : 0))
                 }
+                emblem(size: logoSize)
+            } else {
+                let scale = min(textScale, 1.5)
+                let textWidth = available - (logoSize > 0 ? logoSize + 11 : 0)
+                let lines = titleWidth > textWidth && scale <= 1.2 && height >= 70 ? 2 : 1
+                let metadataRows: CGFloat = event.clothing.isEmpty ? 1 : 2
+                let titleHeight = font.lineHeight * CGFloat(lines)
+                let detailHeight = UIFont.systemFont(ofSize: 12 * scale, weight: .semibold).lineHeight * metadataRows
+                let fit = min(1, max(1, height - 2 * metadataRows) / (titleHeight + detailHeight))
+                details(event, titleSize: titleSize * fit, detailSize: 12 * fit, spacing: 2, availableWidth: textWidth, titleLines: lines)
+                    .fixedSize(horizontal: false, vertical: true)
                 emblem(size: logoSize)
             }
         }
@@ -336,15 +349,21 @@ struct NextEventView: View {
             let eventHeight: CGFloat = large ? 119 : max(1, height - (small ? 28 + 1 + 6 : 44 + 14 + 1 + 13))
             VStack(alignment: .leading, spacing: large ? 5 : 3) {
                 if let event {
-                    Link(destination: destination) { eventCard(event, width: width) }.buttonStyle(.plain)
+                    Link(destination: destination) { eventCard(event, width: width, height: eventHeight) }.buttonStyle(.plain)
                         .frame(width: width, height: eventHeight, alignment: .center)
+                        .clipped()
                     Color.clear.frame(height: 0.5)
                     if small { compactStatus }
                     else {
-                        if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
-                        replyControls.contentTransition(.identity)
-                        statusLine
-                        feedback
+                        // Reserve the complete response area before laying out enlarged
+                        // event text. Intrinsic text height must not cover its targets.
+                        VStack(alignment: .leading, spacing: large ? 5 : 3) {
+                            if large { Text(event.canReply == false ? "Information" : "Deine Rückmeldung").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondaryInk) }
+                            replyControls.contentTransition(.identity)
+                                .frame(height: 44)
+                            statusLine
+                            feedback
+                        }.fixedSize(horizontal: false, vertical: true).layoutPriority(1)
                     }
                     if large && !(snapshot?.following ?? []).isEmpty {
                         Rectangle().fill(ink.opacity(0.22)).frame(height: 0.5)

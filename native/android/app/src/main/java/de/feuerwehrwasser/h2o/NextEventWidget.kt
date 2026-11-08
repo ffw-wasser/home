@@ -111,14 +111,17 @@ open class NextEventWidget : AppWidgetProvider() {
             val logicalHeight = height / fontScale
             val large = width >= 300 && height >= 290 && logicalHeight >= 250
             val roomy = width >= 300 && width / fontScale >= 240 && height >= 140 && logicalHeight >= 112
-            val compactActions = !flat && width >= 300 && width / fontScale >= 260 && height >= 110 && logicalHeight >= 100 && !roomy
+            // A larger system font must not remove the medium widget's reply targets.
+            // Fall back to the compact card based on physical launcher space.
+            val compactActions = !flat && width >= 300 && height >= 110 && !roomy && !large
             val card = large || roomy || compactActions
             val wideCompact = !flat && !card && width >= 300 && logicalHeight >= 100
             val tall = !flat && width < 300 && logicalHeight >= 200 && height >= width
             val spacious = !large && roomy && height >= 210 && logicalHeight >= 160
             val views = RemoteViews(context.packageName, if (flat) { if (compact) R.layout.widget_event_flat_small else R.layout.widget_event_flat } else if (compactActions) R.layout.widget_event_compact_actions else if (tall) R.layout.widget_event_tall else if (large) R.layout.widget_event_large else if (spacious) R.layout.widget_event_spacious else if (card) R.layout.widget_event_card else if (compact) R.layout.widget_event_small else R.layout.widget_event)
             fun show(id: Int, value: Boolean) = views.setViewVisibility(id, if (value) View.VISIBLE else View.GONE)
-            fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value)
+            val contentScale = if (compactActions) minOf(fontScale, ((height - 60f) / 70f).coerceIn(1f, 1.3f)) else fontScale
+            fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value * contentScale / fontScale)
             // ViewFlipper animates locally in the launcher: no timer or repeated widget updates.
             val observation = event?.canReply == false
             val edgeIndex = when (event?.status) { "yes" -> 1; "excused" -> 2; "maybe" -> 3; else -> 0 }
@@ -196,7 +199,7 @@ open class NextEventWidget : AppWidgetProvider() {
             }
             var renderedTitleSize = titleSize
             size(R.id.widget_title, titleSize)
-            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact || compactActions) 1 else 2)
+            views.setInt(R.id.widget_title, "setMaxLines", if (flat || wideCompact || (compactActions && height < 150)) 1 else 2)
             show(R.id.widget_title, !(flat && compact && event != null))
             val time = event?.let { if (it.allDay) "Ganztägig" else date!!.format(DateTimeFormatter.ofPattern("HH:mm")) }.orEmpty()
             views.setTextViewText(R.id.widget_time, time)
@@ -372,6 +375,14 @@ open class NextEventWidget : AppWidgetProvider() {
                         val selected = event?.status == answer
                         val pending = saving && job?.optString("status") == answer
                         views.setTextViewText(id, (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
+                        if (compactActions) {
+                            val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = 13f * metrics.scaledDensity }
+                            val available = ((width - 20f) / 3f - 8f) * metrics.density
+                            // Use one size for all choices; changing the selected answer
+                            // must not resize labels or let short words dominate the row.
+                            val widest = listOf("✓ Dabei", "○ Dabei", "✓ Entschuldigt", "○ Entschuldigt", "✓ Unsicher", "○ Unsicher").maxOf { paint.measureText(it) }
+                            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, minOf(paint.textSize, paint.textSize * available / widest))
+                        }
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
                         views.setInt(id, "setBackgroundResource", if (selected) selectedBackground else 0)
                         views.setTextColor(id, if (selected) (if (answer == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()) else 0xFFC6D2DF.toInt())
