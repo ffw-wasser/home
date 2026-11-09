@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 let html=fs.readFileSync(path.join(root,'deckel.html'),'utf8');
-html=html.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]+">/,`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' blob:; font-src 'self' blob:; frame-src blob:; worker-src 'self' blob:; base-uri 'none'; form-action 'none'">`);
+html=html.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]+">/,`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self' blob:; font-src 'self' blob:; frame-src blob:; worker-src 'self' blob:; base-uri 'none'; form-action 'none'">`);
 // No update, install, production IndexedDB or service worker lifecycle in the demo.
 html=html.replace(/<script[^>]+src="(?:js\/core\/app-release|js\/features\/drinks\/(?:deckel-manifest|deckel-install|push-device))\.js[^>]*><\/script>/g,'');
 html=html.replace(/<script[^>]+src="js\/features\/portal\/portal-onboarding\.js[^>]*><\/script>/g,'');

@@ -262,5 +262,9 @@
   "geraetehaus-beobachter": {
     "width": 728,
     "height": 299
+  },
+  "geraetehaus-funkausbildung": {
+    "width": 1326,
+    "height": 270
   }
 }

@@ -169,6 +169,8 @@ jobs:
 
       - name: Test movable portal icon sizes
         run: node tests/portal-icons-browser.cjs
+      - name: Test protected member training
+        run: node tests/portal-training-browser.cjs
       - name: Test protected hydrant plan view
         run: node tests/portal-hydrants-browser.cjs
       - name: Test calendar and member invitation with uppercase OneDrive drive IDs

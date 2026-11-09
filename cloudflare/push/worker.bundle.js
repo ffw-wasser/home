@@ -22297,6 +22297,7 @@ g.PortalHydrants={schema,route};
   'CREATE TABLE IF NOT EXISTS portal_devices (id TEXT PRIMARY KEY)',
   'CREATE TABLE IF NOT EXISTS portal_roster (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_regulations (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS portal_training (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_contacts (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,updated_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS portal_config (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1)',
   'CREATE TABLE IF NOT EXISTS portal_calendar (id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,fetched_at INTEGER NOT NULL)',
@@ -22704,6 +22705,15 @@ g.PortalHydrants={schema,route};
   await awardBirthdays(env,cal);
   await automaticReminders(env,cal);
  }
+ async function trainingMaterial(value){
+  const text=(v,max=1200)=>typeof v==='string'&&v.trim().length>0&&v.length<=max&&!/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v);
+  if(!value||value.schemaVersion!==1||!text(value.title,120)||!Array.isArray(value.steps)||value.steps.length!==6||!value.steps.every(v=>text(v))||!Array.isArray(value.groups)||value.groups.length>24||!value.groups.every(v=>v&&['TMO','DMO'].includes(v.mode)&&text(v.code,80)&&text(v.label,160))||!Array.isArray(value.notes)||value.notes.length>8||!value.notes.every(v=>text(v)))fail('Ungültiges Funk-Importpaket.',400);
+  const image=value.image;
+  if(!image||image.mime!=='image/jpeg'||typeof image.base64!=='string'||image.base64.length>700000||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(image.base64)||!/^[a-f0-9]{64}$/.test(image.sha256))fail('Ungültiges Anleitungsbild.',400);
+  const raw=atob(image.base64),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+  if(bytes.length<5||bytes[0]!==255||bytes[1]!==216||bytes[2]!==255||bytes.at(-2)!==255||bytes.at(-1)!==217||Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('')!==image.sha256)fail('Anleitungsbild konnte nicht geprüft werden.',400);
+  return {schemaVersion:1,title:value.title,steps:value.steps,groups:value.groups.map(({mode,code,label})=>({mode,code,label})),notes:value.notes,image:{mime:'image/jpeg',base64:image.base64,sha256:image.sha256}};
+ }
  async function route(path,data,env,auth,clientIP='unknown',ctx){
   await ready(env);const m=await L.meta(env);L.active(m);const admin=path.startsWith('/admin/');
    if(path==='/admin/portal/identity-ticket'){L.source(m,data);return g.WhatsAppPasskeys.admin(env,data);}
@@ -22736,6 +22746,20 @@ g.PortalHydrants={schema,route};
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
   if(path==='/portal/calendar-subscription')return g.PortalCalendarSubscriptions.subscription(env,data,record);
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
+  if(path==='/portal/training'||path==='/admin/portal/training'){
+   if(!admin)await assertMember(env,record);
+   const row=await env.DB.prepare('SELECT * FROM portal_training WHERE id=1').first();
+   if(admin){
+    if(data.material===undefined)return {version:row?.version||0,configured:!!row};
+    if(!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion!==(row?.version||0))fail('Die Funkunterlagen wurden geändert. Bitte erneut bereitstellen.',409);
+    const material=await trainingMaterial(data.material),payload=await L.seal(env,material,'portal-training');
+    const saved=row?await env.DB.prepare('UPDATE portal_training SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,row.version).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_training(id,payload,version) VALUES(1,?,1)').bind(payload).run();
+    if(!saved.meta.changes)fail('Die Funkunterlagen wurden geändert. Bitte erneut bereitstellen.',409);
+    return {ok:true,version:(row?.version||0)+1};
+   }
+   if(!row)fail('Die örtlichen Funkunterlagen wurden noch nicht bereitgestellt.',404);
+   return {material:await L.open(env,row.payload,'portal-training'),version:row.version};
+  }
   if(path.startsWith('/portal/hydrants/')||path.startsWith('/admin/portal/hydrants/'))return g.PortalHydrants.route(path,data,env,admin);
   const rosterRow=await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),roster=await open(env,rosterRow,'portal-roster');
   if(path==='/portal/checkin-code'){
@@ -23102,7 +23126,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"eb44b73441be366c25c3c62957b668af7075959ee5284da0ede41ab3537d9897",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"c961ac8fdbb2dd72026634a27ad03375451fe8e567063356650b0cc44c19517c",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
@@ -23119,7 +23143,7 @@ export default {
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
-    const value=await body(request,path==='/portal/calendar-addon/groups'?130000:path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
+    const value=await body(request,path==='/admin/portal/training'?750000:path==='/portal/calendar-addon/groups'?130000:path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
     try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(path==='/portal/regulations/pdf'&&result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline'}});return reply(result);}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.',...(path==='/portal/widget-reply'&&error.status===409&&error.widgetReply?{currentReply:error.widgetReply}:{})},error.status||503);}
    }
