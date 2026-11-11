@@ -36,11 +36,8 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#memberSearch').fill('');
   await choose('a');await row('a').locator('[data-first-name]').fill('Nicht übernehmen');
   // Eine ungültige Maschinistenberechtigung eines anderen Mitglieds verhindert den ganzen Stapel.
-  await choose('b','roles');await row('b').locator('[data-first-name]').fill('Auch offen',{force:true}).catch(async()=>{
-    await row('b').locator('[data-record-tab="master"]').click();
-    await row('b').locator('[data-first-name]').fill('Auch offen');
-    await row('b').locator('[data-record-tab="roles"]').click();
-  });
+  await choose('b');await row('b').locator('[data-first-name]').fill('Auch offen');
+  await row('b').locator('[data-record-tab="roles"]').click();
   await row('b').locator('[data-machinist-vehicle="LF"]').check();
   await page.locator('#membersSaveAll').click();
   assert.equal(await page.evaluate(()=>memberSaveCalls),1);
