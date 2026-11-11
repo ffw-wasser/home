@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('js/features/history/archive.js','utf8');
 const start=source.indexOf('let completedCalendarCorrectionOpening=false;');
-const end=source.indexOf('function pairedArchiveFileNames(item)',start);
+const end=source.indexOf('async function persistArchiveCorrection(item,rows,correctedDate)',start);
 assert.ok(start>=0&&end>start,'Calendar correction route exists');
 function fixture(items,options={}){
  const calls=[],now=Date.parse('2026-11-11T10:00:00Z'),event={id:'calendar-event-1',title:'Funkübung',kind:'probe',approved:true,completedAt:now,start:Date.parse('2026-11-10T19:00:00Z'),sessionType:'Sonderprobe',attendanceType:'Sonderprobe'};
