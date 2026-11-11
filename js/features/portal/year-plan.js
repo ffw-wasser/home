@@ -28,7 +28,7 @@
     const key=new Date(stamp).toISOString().slice(0,10);if(!byDay.has(key))byDay.set(key,[]);byDay.get(key).push({event,starts,time});
    }
   }
-  $('months').hidden=!loaded;$('months').replaceChildren();
+  $('months').hidden=portal&&!loaded;$('months').replaceChildren();
   for(let half=0;half<2;half++){
    const grid=node('div');grid.className='year-plan-half';$('months').append(grid);
    for(let month=half*6;month<half*6+6;month++){
