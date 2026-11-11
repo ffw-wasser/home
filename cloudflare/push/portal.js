@@ -1,6 +1,6 @@
 /* Members portal. Reuses scoped member credentials; all private payloads encrypted. */
 (function(g){
- 'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap();
+ 'use strict';const L=g.CentralLedger,DAY=86400000,fail=(message,status=409)=>{throw Object.assign(Error(message),{status});},checks=new WeakSet(),loads=new WeakMap(),yearLoads=new WeakMap(),yearSources=new WeakMap();
  const ddl=[
   'CREATE TABLE IF NOT EXISTS portal_fitness_meta (id INTEGER PRIMARY KEY CHECK(id=1),activated_at INTEGER NOT NULL)',
   'INSERT OR IGNORE INTO portal_fitness_meta(id,activated_at) VALUES(1,'+Date.now()+')',
@@ -50,16 +50,25 @@
  }
  const sourceKey=c=>c?c.calendarUrl+'|'+(c.privateCalendarRevision||''):'';
  const sourceRevision=c=>c?.privateCalendarRevision||'';
- async function sourceProjection(c,range=null){
-  if(!c.privateCalendarUrl)return projection(c.calendarUrl,range);
-  try{return await projection(c.calendarUrl,range,c.privateCalendarUrl);}catch{fail('Privater Google-Kalender konnte nicht gelesen werden. Geheime iCal-Adresse und Google-Freigabe prüfen. Die gespeicherte Verbindung bleibt erhalten.',503);}
+ async function sourceProjection(c,range=null,db=null,force=false){
+  try{
+   if(!db)return await projection(c.calendarUrl,range,c.privateCalendarUrl||c.calendarUrl);
+   const key=sourceKey(c)+'|'+(c.privateCalendarUrl||''),previous=yearSources.get(db);
+   let entry=previous;
+   if(!entry||entry.key!==key||!entry.pending&&(force||entry.fetchedAt<=Date.now()-60000)){
+    entry={key,fetchedAt:0,raw:null,pending:null};yearSources.set(db,entry);
+    entry.pending=download(c.privateCalendarUrl||c.calendarUrl).then(raw=>{entry.raw=raw;entry.fetchedAt=Date.now();return raw;}).catch(error=>{if(yearSources.get(db)===entry)yearSources.delete(db);throw error;}).finally(()=>{entry.pending=null;});
+   }
+   const raw=entry.pending?await entry.pending:entry.raw;
+   return await projection(c.calendarUrl,range,c.privateCalendarUrl||c.calendarUrl,raw);
+  }catch(error){if(c.privateCalendarUrl)fail('Privater Google-Kalender konnte nicht gelesen werden. Geheime iCal-Adresse und Google-Freigabe prüfen. Die gespeicherte Verbindung bleibt erhalten.',503);throw error;}
  }
  async function saveCalendarConnection(env,row,c,events){
   const payload=await L.seal(env,c,'portal-config'),cal=await L.seal(env,{events,sourceRevision:sourceRevision(c)},'portal-calendar'),fetchedAt=Date.now();
   const update=row?env.DB.prepare('UPDATE portal_config SET payload=?,version=version+1 WHERE id=1 AND version=?').bind(payload,row.version):env.DB.prepare('INSERT INTO portal_config(id,payload) SELECT 1,? WHERE NOT EXISTS(SELECT 1 FROM portal_config WHERE id=1)').bind(payload);
   const results=await env.DB.batch([update,env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) SELECT 1,?,? WHERE EXISTS(SELECT 1 FROM portal_config WHERE id=1 AND payload=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(cal,fetchedAt,payload)]);
   if(!results[0].meta.changes)fail('Kalenderverbindung wurde gleichzeitig geändert. Bitte neu laden.',409);
-  yearLoads.delete(env.DB);return {ok:true,count:events.length,version:row?row.version+1:1,private:!!c.privateCalendarUrl,checkedAt:fetchedAt};
+  yearLoads.delete(env.DB);yearSources.delete(env.DB);return {ok:true,count:events.length,version:row?row.version+1:1,private:!!c.privateCalendarUrl,checkedAt:fetchedAt};
  }
  async function download(url){
   let response;try{response=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(20000),headers:{Accept:'text/calendar'}});}catch{fail('Google-Kalender derzeit nicht erreichbar. Bitte später erneut prüfen.',503);}if(!response.ok)throw Object.assign(Error('Google-Kalender derzeit nicht erreichbar. Bitte später erneut prüfen.'),{status:503,googleStatus:response.status});
@@ -71,8 +80,8 @@
   try{const raw=await download(url);return raw.trimStart().startsWith('BEGIN:VCALENDAR')&&/BEGIN:VEVENT/.test(raw)?'readable':'unknown';}
   catch(error){return [401,403,404,410].includes(error.googleStatus)?'blocked':'unknown';}
  }
- async function projection(url,range=null,readUrl=url){const raw=await download(readUrl),items=g.PortalCalendar.parse(raw,Date.now(),range),events=[],series=new Map();for(const item of items){const {key,seriesKey,...rest}=item;if(!series.has(seriesKey))series.set(seriesKey,await hash('h2o-series/v1:'+url+':'+seriesKey));events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:series.get(seriesKey),...rest});}return events;}
- async function yearCalendar(env,year,ctx,background=false){
+ async function projection(url,range=null,readUrl=url,raw=null){raw=raw??await download(readUrl);const items=g.PortalCalendar.parse(raw,Date.now(),range),events=[],series=new Map();for(const item of items){const {key,seriesKey,...rest}=item;if(!series.has(seriesKey))series.set(seriesKey,await hash('h2o-series/v1:'+url+':'+seriesKey));events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:series.get(seriesKey),...rest});}return events;}
+ async function yearCalendar(env,year,ctx,background=false,force=false){
   if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
   const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
   const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
@@ -81,7 +90,7 @@
   let years=yearLoads.get(env.DB);if(!years){years=new Map();yearLoads.set(env.DB,years);}
   for(const [key,value] of years)if(value.source!==sourceKey(c))years.delete(key);
   let entry=years.get(year);
-  if(!entry||!entry.pending&&entry.fetchedAt<=Date.now()-300000){
+  if(!entry||!entry.pending&&(force||entry.fetchedAt<=Date.now()-300000)){
    const previous=entry;entry={source:sourceKey(c),fetchedAt:0,pending:null,fallback:null};let snapshotReady;entry.snapshotReady=new Promise(resolve=>snapshotReady=resolve);years.set(year,entry);
    while(years.size>3)years.delete(years.keys().next().value);
    entry.pending=(async()=>{let fallback=previous?.events?{events:previous.events,fetchedAt:previous.fetchedAt}:null;
@@ -90,8 +99,8 @@
      // historical series. They never contain recipient decisions or reply data.
      const row=await env.DB.prepare('SELECT * FROM portal_calendar_year WHERE year=?').bind(year).first(),saved=await open(env,row,'portal-calendar-year:'+year);if(saved?.calendarUrl===c.calendarUrl&&(saved.sourceRevision||'')===sourceRevision(c)&&Array.isArray(saved.events)&&(!fallback||row.fetched_at>fallback.fetchedAt))fallback={events:saved.events,fetchedAt:row.fetched_at};
      entry.fallback=fallback;snapshotReady();
-     if(fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
-     const events=await sourceProjection(c,range),fetchedAt=Date.now();
+     if(!force&&fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
+     const events=await sourceProjection(c,range,env.DB,force),fetchedAt=Date.now();
      const currentRow=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first();if(sourceKey(await open(env,currentRow,'portal-config'))!==sourceKey(c))fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
      const payload=await L.seal(env,{calendarUrl:c.calendarUrl,sourceRevision:sourceRevision(c),events},'portal-calendar-year:'+year);
      const written=await env.DB.prepare('INSERT INTO portal_calendar_year(year,payload,fetched_at) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM portal_config WHERE id=1 AND payload=?) ON CONFLICT(year) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at WHERE portal_calendar_year.fetched_at<=excluded.fetched_at').bind(year,payload,fetchedAt,currentRow.payload).run();if(!written.meta.changes)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
@@ -103,7 +112,7 @@
   let cal;
   if(background&&ctx?.waitUntil&&entry.pending){
    const pending=entry.pending;await entry.snapshotReady;
-   if(entry.pending&&entry.fallback&&entry.fallback.fetchedAt<=Date.now()-300000){
+   if(entry.pending&&entry.fallback&&(force||entry.fallback.fetchedAt<=Date.now()-300000)){
     // Return the encrypted snapshot before Google; apply current rules below.
     ctx.waitUntil(pending.catch(()=>{}));cal={events:entry.fallback.events,fetchedAt:entry.fallback.fetchedAt,stale:true,refreshing:true};
    }else cal=await pending;
@@ -651,12 +660,12 @@
   if(path==='/admin/portal/colors')return calendarColors(env,data);
   if(path==='/admin/portal/event-statistics')return fitnessStatistics(env,data.year,'Veranstaltung');
   if(path==='/admin/portal/fitness-statistics')return fitnessStatistics(env,data.year);
-  if(path==='/admin/portal/year')return yearCalendar(env,data.year,ctx,data.background===true);
+  if(path==='/admin/portal/year')return yearCalendar(env,data.year,ctx,data.background===true,data.force===true);
   if(path==='/portal/year'){
-   const cal=await yearCalendar(env,data.year);
+   const cal=await yearCalendar(env,data.year,ctx,data.background===true,data.force===true);
    // Preserve the same audience as the personal appointment list. Other people's
    // birthdays, unapproved entries and administration metadata stay private.
-   return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,colors:cal.colors,colorVersion:cal.colorVersion,
+   return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,refreshing:cal.refreshing===true,colors:cal.colors,colorVersion:cal.colorVersion,
     events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&visibleEvent(e)||!trainer&&e.kind==='birthday'&&e.memberId===record.memberId||!trainer&&e.kind==='info'&&e.infoVisible&&isRecipient(e,record.memberId)).map(e=>({
      id:e.id,calendarManaged:false,calendarLinkOnly:true,title:e.kind==='birthday'?'Dein Geburtstag':e.title,start:e.start,end:e.end,allDay:e.allDay===true,kind:e.kind,...(e.googleColor?{googleColor:e.googleColor}:{}),
      ...(e.kind==='probe'?{canReply:isRecipient(e,record.memberId),observerOnly:!isRecipient(e,record.memberId)&&isObserver(e,record.memberId),sessionType:e.sessionType,attendanceType:e.attendanceType,location:e.location,clothing:e.clothing,note:e.note,approved:true}:e.kind==='info'?{note:e.note}:{})
