@@ -102,7 +102,7 @@
      // Google's confirmed mutation is complete. Do not keep the dialog locked
      // while the separate ICS import and calendar view catch up.
      void (async()=>{
-      try{g.CalendarSidebar?.clear();const synced=await request('list',{force:true});if(version!==epoch)return;await reload?.(synced);if(synced.stale)throw Error('Import noch nicht bestätigt');if(editor===dialog)status.textContent=confirmed+' Kalenderabgleich abgeschlossen. Änderungen aus Google können beim Import verzögert erscheinen.';}
+      try{if(deleting)g.PortalAdmin?.calendarEventDeleted?.(event.id);else g.CalendarSidebar?.clear();const synced=await request('list',{force:true});if(version!==epoch)return;await reload?.(synced);if(synced.stale)throw Error('Import noch nicht bestätigt');if(editor===dialog)status.textContent=confirmed+' Kalenderabgleich abgeschlossen. Änderungen aus Google können beim Import verzögert erscheinen.';}
       catch{if(version===epoch&&editor===dialog)status.textContent=confirmed+' Die Kalenderanzeige konnte noch nicht aktualisiert werden. Bitte den Kalender erneut laden; die Google-Änderung ist bestätigt.';}
      })();
     }catch(e){if(version===epoch&&editor===dialog){status.textContent=e.message;for(const control of form.elements)control.disabled=false;}}

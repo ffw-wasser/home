@@ -20387,9 +20387,10 @@ const entries=[
  ['007','FwDV 7','Atemschutz','2005-04-01'],
  ['010','FwDV 10','Die tragbaren Leitern','2019-11-01'],
  ['100','FwDV 100','Führung und Leitung im Einsatz','1999-03-01'],
- ['002','FwDV 2','Ausbildung der Freiwilligen Feuerwehren','2012-01-01']
+ ['002','FwDV 2','Ausbildung der Freiwilligen Feuerwehren','2012-01-01'],
+ ['810','FwDV/DV 810','Sprech- und Datenfunkverkehr','2018-09-14','FwDV_DV_810.pdf']
 ];
-function defaults(){return entries.map(([id,label,title,sourceUpdated])=>({id,label,title,sourceUpdated,url:base+'FwDV_'+id+'.pdf'}));}
+function defaults(){return entries.map(([id,label,title,sourceUpdated,file])=>({id,label,title,sourceUpdated,url:base+(file||'FwDV_'+id+'.pdf')}));}
 function pdfUrl(value){try{const u=new URL(value);return u.origin==='https://www.lfs-bw.de'&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/fileadmin\/LFS-BW\/[A-Za-z0-9_./-]+\.pdf$/.test(u.pathname)&&!u.pathname.includes('/../')?u.href:null;}catch{return null;}}
 function validate(items){
  if(!Array.isArray(items)||items.length>20)throw Error('Bitte höchstens 20 Vorschriften hinterlegen.');
@@ -20399,9 +20400,10 @@ function validate(items){
   seen.add(item.id);return {id:item.id,label:item.label.trim(),title:item.title.trim(),sourceUpdated:item.sourceUpdated,url:pdfUrl(item.url)};
  });
 }
-function bundledPdf(value){const url=pdfUrl(value),entry=entries.find(([id])=>url===base+'FwDV_'+id+'.pdf');return entry?'assets/regulations/fwdv-'+entry[0]+'.pdf':null;}
+function bundledPdf(value){const url=pdfUrl(value),entry=entries.find(([id,,,,file])=>url===base+(file||'FwDV_'+id+'.pdf'));return entry?'assets/regulations/fwdv-'+entry[0]+'.pdf':null;}
 function bundledParts(value){const file=bundledPdf(value);return file?file.endsWith('fwdv-001.pdf')?['assets/regulations/fwdv-001-1.bin','assets/regulations/fwdv-001-2.bin']:[file]:null;}
-g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
+function selection(value){const items=validate(value.items);return value.catalogueVersion===1||items.some(item=>item.id==='810')?items:[...items,defaults().find(item=>item.id==='810')];}
+g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,selection};
 })(globalThis);
 
 /* Shared display metadata and public response links. No personal access credentials. */
@@ -20520,7 +20522,13 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
   }
   const unique=new Map(events.map(e=>[e.key,e]));return [...unique.values()].sort((a,b)=>a.start-b.start);
  }
- g.PortalCalendar={parse};
+ // Confirmed Google deletions override delayed calendar snapshots on this device.
+ // Keep opaque IDs in memory only, scoped to the connected data folder.
+ let deletionSource='',deleted=new Set();
+ function rememberDeletion(id,source){if(typeof id!=='string'||!id||!source)return false;if(source!==deletionSource){deletionSource=source;deleted.clear();}deleted.add(id);return true;}
+ function withoutDeleted(events,source){return source&&source===deletionSource?events.filter(event=>!deleted.has(event.id)):events;}
+ function forgetDeletions(){deletionSource='';deleted.clear();}
+ g.PortalCalendar={parse,rememberDeletion,withoutDeleted,forgetDeletions};
 })(globalThis);
 
 /* Audience rules are independent of calendar kind / attendance type. Shared by Worker and admin. */
@@ -22817,7 +22825,7 @@ g.PortalHydrants={schema,route};
   }
   if(path==='/portal/regulations/pdf'){
    const url=g.RegulationsModel.pdfUrl(data.url);if(!url)fail('Kein gültiger offizieller PDF-Link.',400);
-   const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first(),items=row?(await open(env,row,'portal-regulations')).items:g.RegulationsModel.defaults();
+   const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first(),items=row?g.RegulationsModel.selection(await open(env,row,'portal-regulations')):g.RegulationsModel.defaults();
    if(!items.some(item=>item.url===url))fail('Diese Vorschrift ist nicht in der freigegebenen Auswahl.',404);
    const upstream=await fetch(url,{redirect:'error',headers:{Accept:'application/pdf'},signal:AbortSignal.timeout(60000),cf:{cacheTtl:86400,cacheEverything:true}});
    if(!upstream.ok||!upstream.body)fail('Die Original-PDF ist derzeit nicht erreichbar.',502);
@@ -22835,12 +22843,12 @@ g.PortalHydrants={schema,route};
    if(admin&&Object.prototype.hasOwnProperty.call(data,'items')){
     let items;try{items=g.RegulationsModel.validate(data.items);}catch(e){fail(e.message,400);}
     if(!Number.isInteger(data.expectedVersion)||data.expectedVersion!==(row?.version||0))fail('Die Auswahl wurde zwischenzeitlich geändert. Bitte erneut laden.',409);
-    const payload=await L.seal(env,{items},'portal-regulations'),version=data.expectedVersion+1;
+    const payload=await L.seal(env,{items,catalogueVersion:1},'portal-regulations'),version=data.expectedVersion+1;
     const saved=await env.DB.prepare('INSERT INTO portal_regulations(id,payload,version) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=excluded.version WHERE portal_regulations.version=?').bind(payload,version,data.expectedVersion).run();
     if(!saved.meta.changes)fail('Die Auswahl wurde zwischenzeitlich geändert. Bitte erneut laden.',409);
     return {items,version};
    }
-   return {items:row?(await open(env,row,'portal-regulations')).items:g.RegulationsModel.defaults(),version:row?.version||0};
+   return {items:row?g.RegulationsModel.selection(await open(env,row,'portal-regulations')):g.RegulationsModel.defaults(),version:row?.version||0};
   }
   if(path==='/admin/portal/contacts'){
    const contacts=data.contacts;
@@ -23154,7 +23162,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4c7bcd3116cda8d0d076d14c071238b72837cc959fcc5457ccadac96a7fb5084",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"ef09da796ad5b587223d3a2010862722366f04aa24e5fc6ec26ea25af7e8bc19",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

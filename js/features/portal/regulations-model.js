@@ -9,9 +9,10 @@ const entries=[
  ['007','FwDV 7','Atemschutz','2005-04-01'],
  ['010','FwDV 10','Die tragbaren Leitern','2019-11-01'],
  ['100','FwDV 100','Führung und Leitung im Einsatz','1999-03-01'],
- ['002','FwDV 2','Ausbildung der Freiwilligen Feuerwehren','2012-01-01']
+ ['002','FwDV 2','Ausbildung der Freiwilligen Feuerwehren','2012-01-01'],
+ ['810','FwDV/DV 810','Sprech- und Datenfunkverkehr','2018-09-14','FwDV_DV_810.pdf']
 ];
-function defaults(){return entries.map(([id,label,title,sourceUpdated])=>({id,label,title,sourceUpdated,url:base+'FwDV_'+id+'.pdf'}));}
+function defaults(){return entries.map(([id,label,title,sourceUpdated,file])=>({id,label,title,sourceUpdated,url:base+(file||'FwDV_'+id+'.pdf')}));}
 function pdfUrl(value){try{const u=new URL(value);return u.origin==='https://www.lfs-bw.de'&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/fileadmin\/LFS-BW\/[A-Za-z0-9_./-]+\.pdf$/.test(u.pathname)&&!u.pathname.includes('/../')?u.href:null;}catch{return null;}}
 function validate(items){
  if(!Array.isArray(items)||items.length>20)throw Error('Bitte höchstens 20 Vorschriften hinterlegen.');
@@ -21,7 +22,8 @@ function validate(items){
   seen.add(item.id);return {id:item.id,label:item.label.trim(),title:item.title.trim(),sourceUpdated:item.sourceUpdated,url:pdfUrl(item.url)};
  });
 }
-function bundledPdf(value){const url=pdfUrl(value),entry=entries.find(([id])=>url===base+'FwDV_'+id+'.pdf');return entry?'assets/regulations/fwdv-'+entry[0]+'.pdf':null;}
+function bundledPdf(value){const url=pdfUrl(value),entry=entries.find(([id,,,,file])=>url===base+(file||'FwDV_'+id+'.pdf'));return entry?'assets/regulations/fwdv-'+entry[0]+'.pdf':null;}
 function bundledParts(value){const file=bundledPdf(value);return file?file.endsWith('fwdv-001.pdf')?['assets/regulations/fwdv-001-1.bin','assets/regulations/fwdv-001-2.bin']:[file]:null;}
-g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts};
+function selection(value){const items=validate(value.items);return value.catalogueVersion===1||items.some(item=>item.id==='810')?items:[...items,defaults().find(item=>item.id==='810')];}
+g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,selection};
 })(globalThis);

@@ -55,7 +55,13 @@
   }
   const unique=new Map(events.map(e=>[e.key,e]));return [...unique.values()].sort((a,b)=>a.start-b.start);
  }
- g.PortalCalendar={parse};
+ // Confirmed Google deletions override delayed calendar snapshots on this device.
+ // Keep opaque IDs in memory only, scoped to the connected data folder.
+ let deletionSource='',deleted=new Set();
+ function rememberDeletion(id,source){if(typeof id!=='string'||!id||!source)return false;if(source!==deletionSource){deletionSource=source;deleted.clear();}deleted.add(id);return true;}
+ function withoutDeleted(events,source){return source&&source===deletionSource?events.filter(event=>!deleted.has(event.id)):events;}
+ function forgetDeletions(){deletionSource='';deleted.clear();}
+ g.PortalCalendar={parse,rememberDeletion,withoutDeleted,forgetDeletions};
 })(globalThis);
 
 /* Audience rules are independent of calendar kind / attendance type. Shared by Worker and admin. */

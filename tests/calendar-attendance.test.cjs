@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../js/features/portal/member-evidence.js');
-class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.hidden=true;this.dataset={};this.value='';this.textContent='';}append(...nodes){this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}insertBefore(node,before){const index=this.children.indexOf(before);if(index<0)throw Error('Missing child');this.children.splice(index,0,node);return node;}replaceChildren(...nodes){this.children=nodes;this.firstChild=nodes[0];}get options(){return this.children;}setAttribute(){}removeAttribute(){}querySelector(){return new Node();}querySelectorAll(){return [];}}
+class Node{constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.hidden=true;this.dataset={};this.value='';this.textContent='';}append(...nodes){for(const n of nodes)n.parent=this;this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}insertBefore(node,before){const index=this.children.indexOf(before);if(index<0)throw Error('Missing child');this.children.splice(index,0,node);return node;}replaceChildren(...nodes){for(const n of nodes)n.parent=this;this.children=nodes;this.firstChild=nodes[0];}get options(){return this.children;}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}setAttribute(){}removeAttribute(){}querySelector(){return new Node();}querySelectorAll(){return [];}}
 const descendants=n=>n.children.flatMap(c=>[c,...descendants(c)]);
 const type=card=>descendants(card).find(n=>n.tagName==='LABEL'&&n.textContent==='Terminart').children[0];
 function fixture(){
@@ -8,6 +8,7 @@ function fixture(){
  const start=Date.now()+3600000,privateCal={configured:true,stale:false,fetchedAt:Date.now(),events:[{id:'test-event',title:'Funkübung',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',kind:'probe',approved:true,start,end:start+3600000}]};
  const clone=v=>JSON.parse(JSON.stringify(v));
  const c=vm.createContext({console,Intl,Date,Promise,MemberEvidence:E,CalendarPresentation:{responseLink:id=>'https://calendar.example.test/response?event='+encodeURIComponent(id)},oneDriveStateConfirmed:false,oneDriveAdministrationReady:()=>ready,oneDriveReadState:async()=>({members:[]}),sessionType:'Sonderprobe',currentSessionId:'',currentOperationId:'',currentProbeDate:'',pendingMemberStatuses:new Map(),members:[],todayEntries:()=>[],byId:get,showToast(){},showView(){},requireAdmin:()=>true,localStorage:{getItem:()=>null,setItem(){},removeItem:key=>removedSettings.push(key)},safeStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},DrinksCentral:{connection:async()=>({origin:'https://test.account.workers.dev/',source:'test-source'})},DrinksStore:{sourceKey:()=> 'test-source'},DrinksPush:{validOrigin:()=>true,request:async(_,path,data)=>{requests.push(path);if(path.endsWith('/list'))return clone(privateCal);if(path.endsWith('/replies'))return {event:clone(privateCal.events.find(e=>e.id===data.eventId)||privateCal.events[0]),replies:[],stale:false};return {evidenceVersion:1,replyFunctionsVersion:1};}},document:{hidden:false,readyState:'loading',getElementById:get,createElement:tag=>new Node(tag),querySelector:s=>s.startsWith('#sessionTypes ')?{click:()=>typeClicks.push(s.match(/data-session-type="([^"]+)"/)[1])}:new Node(),querySelectorAll:()=>[],addEventListener:(key,fn)=>events['doc:'+key]=fn},addEventListener:(key,fn)=>events['window:'+key]=fn,MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(node){(this.nodes??=[]).push(node);}},queueMicrotask:fn=>microtasks.push(fn),setInterval:fn=>intervals.push(fn),fetch:async()=>{throw Error('Anonymer Kalenderabruf ist nicht erlaubt.');}});
+ vm.runInContext(fs.readFileSync('js/features/portal/calendar-model.js','utf8'),c);
  vm.runInContext(fs.readFileSync('js/features/portal/portal-admin.js','utf8'),c);
  return {c,get,events,intervals,microtasks,observers,typeClicks,requests,removedSettings,privateCal,logout:()=>{ready=false;c.oneDriveStateConfirmed=false;return c.PortalAdmin.storageChanged();},init:()=>events['doc:DOMContentLoaded'](),login:()=>{ready=true;c.oneDriveStateConfirmed=true;return c.PortalAdmin.storageChanged();},label:()=>get('portal-calendar-pick').children[1]?.textContent};
 }
@@ -319,4 +320,21 @@ test('Ausstehende Kalenderabschlüsse werden niemals an einen anderen Datenordne
  const f=fixture();await f.login();f.c.safeStorage.setItem('h2o_saved_completions',JSON.stringify([{source:'another-source',eventId:'other-event',eventStart:1,sessionId:'old-session'}]));
  let sent=0;const request=f.c.DrinksPush.request;f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/complete'))sent++;return request(...args);};
  await f.c.PortalAdmin.refreshAttendance(true);assert.equal(sent,0);assert.equal(JSON.parse(f.c.safeStorage.getItem('h2o_saved_completions')).length,1);
+});
+
+test('Bestätigte Google-Löschung entfernt Auswahl sofort und ältere Listen- oder Jahresstände können sie nicht wieder aktivieren',async()=>{
+ const f=fixture();await f.login();assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');
+ f.c.PortalAdmin.calendarEventDeleted('test-event');assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.equal(f.get('portal-calendar-pick').options.some(o=>o.value==='test-event'),false);
+ await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.c.PortalAdmin.selectedEvent(),null);
+ assert.equal(f.c.PortalAdmin.selectCalendarEvent('test-event',{...f.privateCal.events[0],end:Date.now()-1000}),false);
+});
+
+test('Google-Löschung lässt eine bereits laufende Anwesenheit samt Terminbindung bestehen',async()=>{
+ const f=fixture();await f.login();f.c.currentSessionId='synthetic-running-session';f.c.PortalAdmin.calendarEventDeleted('test-event');
+ assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.c.PortalAdmin.selectedEvent().id,'test-event');
+});
+
+test('Bestätigte Löschungen gelten nur im zugehörigen Datenordner und können beim Abmelden verworfen werden',()=>{
+ const f=fixture(),model=f.c.PortalCalendar,events=[{id:'one'},{id:'two'}];model.rememberDeletion('one','source-a');
+ assert.deepEqual(Array.from(model.withoutDeleted(events,'source-a'),e=>e.id),['two']);assert.equal(model.withoutDeleted(events,'source-b').length,2);model.forgetDeletions();assert.equal(model.withoutDeleted(events,'source-a').length,2);
 });
