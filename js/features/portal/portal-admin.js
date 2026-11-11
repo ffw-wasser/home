@@ -493,6 +493,9 @@ continue;}
    // the automatic start card advances to the next future or ongoing event.
    const previous=list.find(e=>e.id===current);
    list=cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&(e.end>now-366*86400000||(running&&e.id===current))).sort((a,b)=>a.start-b.start);
+   // A past, explicitly selected yearly event may fall outside the rolling list.
+   // Preserve its already-authorized identity while its attendance is in progress.
+   if(running&&previous&&!previous.completedAt&&!list.some(e=>e.id===previous.id))list.push(previous);
    const picker=document.getElementById('portal-calendar-pick');if(!picker)return;
    const stillAvailable=list.some(e=>e.id===current&&(e.end>now||running));
    const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list.find(e=>e.end>now)?.id||''));
@@ -512,8 +515,19 @@ continue;}
  function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if((currentOperationId||currentSessionId)&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Eine Erfassung läuft bereits. Bitte diesen Termin zuerst abschließen oder verwerfen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){const spontaneous=document.getElementById('attendanceSpontaneous');if(spontaneous)spontaneous.open=false;if(!currentSessionId&&!currentOperationId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Veranstaltung','Einsatz'].includes(sessionType)){if(typeof chooseSessionType==='function')chooseSessionType(sessionType,{calendar:true});else document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
   if(currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));g.syncAttendanceStart?.();if(!automatic&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady())replies().catch(e=>{document.getElementById('portal-calendar-status').textContent=e.message;});}
  // Calendar clicks use the existing picker and its running-session protection.
- function selectCalendarEvent(id){
-  const event=list.find(e=>e.id===id&&!e.completedAt&&e.approved&&e.kind==='probe'),picker=document.getElementById('portal-calendar-pick');
+ function selectCalendarEvent(id,yearEvent=null){
+  const picker=document.getElementById('portal-calendar-pick');
+  let event=list.find(e=>e.id===id&&!e.completedAt&&e.approved&&e.kind==='probe');
+  // The authenticated yearly calendar can finish loading before the rolling
+  // attendance list. Explicitly selected historical events must still work.
+  if(!event&&yearEvent?.id===id&&yearEvent.approved===true&&yearEvent.kind==='probe'&&!yearEvent.completedAt&&Number.isFinite(yearEvent.start)&&Number.isFinite(yearEvent.end)&&yearEvent.end<=Date.now()){
+   event={...yearEvent};
+   list.push(event);list.sort((a,b)=>a.start-b.start);
+   if(picker&&!Array.from(picker.options).some(option=>option.value===id)){
+    const option=node('option',date(event)+' · '+(event.title||event.attendanceType||'Termin'));
+    option.value=id;picker.append(option);
+   }
+  }
   if(!event||!picker){showToast('Dieser Termin ist noch nicht zur Erfassung verfügbar. Bitte den Kalender aktualisieren.','error');return false;}
   picker.value=id;select();return chosen()===id;
  }
