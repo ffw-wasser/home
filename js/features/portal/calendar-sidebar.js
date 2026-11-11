@@ -83,7 +83,7 @@
   // A known calendar appears immediately while an expired snapshot refreshes.
   if(cached&&host().hidden)paint(cached,year);
   if(pending){if(host().hidden)paint({year,events:[],loading:true},year);if(cached)status(stand()+' · Wird aktualisiert …');return;}if(cached&&!refreshRequested&&Date.now()-loadedAt<300000){status(stand()+(cached.refreshing?' · Wird aktualisiert …':cached.stale?' · Aktualisierung nicht bestätigt':''),cached.stale&&!cached.refreshing);return;}
-  const forceGoogle=googleForceRequested;googleForceRequested=false;const epoch=++generation;pending=true;refreshRequested=false;host().hidden=false;
+  const forceGoogle=googleForceRequested;googleForceRequested=false;let displayError=false;const epoch=++generation;pending=true;refreshRequested=false;host().hidden=false;
   if(!cached)paint({year,events:[],loading:true},year);
   else status(stand()+' · Wird aktualisiert …');
   const requestStarted=now();latestTiming={};
@@ -108,9 +108,9 @@
     // One joined refresh, not repeated polling; the shown snapshot remains visible.
     snapshots=await read(false);
    }
-   if(forceGoogle){const updated=await g.PortalAdmin?.refreshAttendance?.(true,true);if(updated===false)status('Google-Kalender teilweise aktualisiert. Die Erfassungsliste konnte nicht bestätigt werden.',true);}
-  }catch(e){if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){if(cached)cached.refreshing=false;const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(!cached)host().replaceChildren(node('h2','Kalender'));status((cached?stand()+' · ':'')+message.textContent,true);}}
-  finally{if(epoch===generation){pending=false;host()?.querySelectorAll('[data-calendar-month]').forEach(button=>button.disabled=false);if(active()&&cached&&!host().querySelector('.calendar-sidebar-load-status'))status(stand());if(googleForceRequested&&active()){refreshRequested=true;void refresh();}}}
+   if(forceGoogle){const updated=await g.PortalAdmin?.refreshAttendance?.(true,true);if(updated===false){displayError=true;status('Google-Kalender teilweise aktualisiert. Die Erfassungsliste konnte nicht bestätigt werden.',true);}}
+  }catch(e){displayError=true;if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){if(cached)cached.refreshing=false;const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(!cached)host().replaceChildren(node('h2','Kalender'));status((cached?stand()+' · ':'')+message.textContent,true);}}
+  finally{if(epoch===generation){pending=false;host()?.querySelectorAll('[data-calendar-month]').forEach(button=>button.disabled=false);if(active()&&cached&&!displayError)status(stand()+(cached.stale?' · Aktualisierung nicht bestätigt':''),cached.stale);if(googleForceRequested&&active()){refreshRequested=true;void refresh();}}}
  }
  g.CalendarSidebar={refresh,hide,clear,eventDeleted,syncSelection,diagnostics:()=>timings.map(t=>({...t}))};g.addEventListener('resize',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(cached&&active())paint(cached,cached.year);refresh();}});setInterval(refresh,60000);setInterval(()=>{if(!authorized()){g.PortalCalendar.forgetDeletions();if(source)clear();}else if(source&&source!==g.DrinksStore.sourceKey()){g.PortalCalendar.forgetDeletions();clear();}else if(source&&!active()&&!host()?.hidden)hide();},1000);document.addEventListener('DOMContentLoaded',()=>{mountDiagnostics();const nav=document.querySelector('.top-nav');if(nav&&g.ResizeObserver)new ResizeObserver(fitExpanded).observe(nav);g.visualViewport?.addEventListener('resize',fitExpanded);refresh();},{once:true});
 })(globalThis);
