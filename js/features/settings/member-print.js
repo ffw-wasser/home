@@ -48,11 +48,88 @@
     if(person.fitnessTrainer===true)values.push('Fitness / Gast');
     return [...new Set(values)];
   }
+  // Gleiche Datenbasis wie die bestehende Statistik: abgeschlossene Berichte aus der Historie.
+  // Ein nicht dokumentierter Einsatz ist KEINE unentschuldigte Fehlzeit.
+  const DRILL_TYPES=new Set(['Allgemeine Probe','Probe','Sonderprobe','Unterricht']);
+  const ATTENDANCE_STATES=new Set(['Anwesend','Entschuldigt','Fehlt']);
+  const normalizedName=value=>String(value||'').normalize('NFC').trim().replace(/\s+/g,' ').replace(/\s*,\s*/g,', ').toLocaleLowerCase('de-DE');
+  const namesOf=person=>new Set([
+    String(person.lastName||'')+', '+String(person.firstName||''),
+    String(person.firstName||'')+' '+String(person.lastName||''),
+    String(person.lastName||'')+' '+String(person.firstName||'')
+  ].map(normalizedName));
+  function rowForPerson(data,person,roster){
+    const nameKeys=namesOf(person),unique=Array.isArray(roster)&&roster.filter(other=>[...namesOf(other)].some(name=>nameKeys.has(name))).length===1;
+    return unique?(data.rows||[]).find(row=>nameKeys.has(normalizedName(row.name))):null;
+  }
+  function isOperation(data){
+    return data.operation===true||Boolean(data.item?.operationData)||
+      String(data.item?.sessionType||'').trim()==='Einsatz'||
+      String(data.rows?.[0]?.sessionType||'').trim()==='Einsatz';
+  }
+  function isDrill(data){return DRILL_TYPES.has(String(data.rows?.[0]?.sessionType||data.item?.sessionType||'').trim());}
+  function participation(person,history,roster,year=null){
+    const operations={present:0,other:0,total:0};
+    const drills={present:0,excused:0,missing:0,total:0};
+    const events=Array.isArray(history)?history:[];
+    for(const data of events){
+      if(!data||!Array.isArray(data.rows))continue;
+      const date=String(data.date||data.item?.operationData?.date||data.rows[0]?.date||'');
+      if(year!==null&&date.slice(0,4)!==String(year))continue;
+      const row=rowForPerson(data,person,roster);
+      if(isOperation(data)){
+        operations.total++;
+        if(row&&row.status==='Anwesend')operations.present++;
+        else operations.other++;
+      }else if(isDrill(data)){
+        // „Betrifft nicht“, leere Status und nicht zugeordnete Personen werden ausgeschlossen.
+        // Das entspricht der normalen Teilnahmequote der bestehenden Statistik.
+        if(!row||!ATTENDANCE_STATES.has(row.status))continue;
+        if(row.status==='Anwesend')drills.present++;
+        else if(row.status==='Entschuldigt')drills.excused++;
+        else drills.missing++;
+        drills.total++;
+      }
+    }
+    return {drills,operations};
+  }
+  function ringSvg(values,total,label){
+    const colors=['#2f7950','#d8a13c','#a4434d'];
+    const circumference=2*Math.PI*44;
+    let offset=0;
+    const segments=values.map((value,i)=>{
+      const fraction=total?value/total:0;
+      if(!fraction)return '';
+      const length=fraction*circumference;
+      const segment='<circle cx="60" cy="60" r="44" fill="none" stroke="'+colors[i]+'" stroke-width="15" stroke-dasharray="'+length.toFixed(5)+' '+(circumference-length).toFixed(5)+'" stroke-dashoffset="'+(-offset).toFixed(5)+'" transform="rotate(-90 60 60)"/>';
+      offset+=length;return segment;
+    }).join('');
+    const percent=total?Math.round(values[0]/total*100)+' %':'–';
+    return '<svg viewBox="0 0 120 120" class="member-print-ring" role="img" aria-label="'+escape(label)+': '+(total?values.join(', ')+' von '+total:'keine Daten')+'"><circle cx="60" cy="60" r="44" fill="none" stroke="#e4e9ec" stroke-width="15"/>'+segments+'<text x="60" y="65" text-anchor="middle" font-size="17" font-weight="700" fill="#163044">'+percent+'</text></svg>';
+  }
+  function chartCard(title,counts,legend,note){
+    const total=counts.reduce((sum,value)=>sum+value,0);
+    return '<div class="member-print-chart"><h3>'+escape(title)+'</h3><div class="member-print-chart-main">'+ringSvg(counts,total,title)+
+      '<div class="member-print-legend">'+legend.map((label,i)=>'<div><i class="member-print-key member-print-key-'+i+'" aria-hidden="true"></i><span>'+escape(label)+'</span><b>'+counts[i]+'</b></div>').join('')+'</div></div>'+
+      '<p>'+escape(total?note:'Noch keine auswertbaren Berichte vorhanden.')+'</p></div>';
+  }
+  function participationHtml(person,history,roster,year){
+    const stats=participation(person,history,roster,year);
+    const d=stats.drills,o=stats.operations;
+    return '<section class="member-print-participation"><h2>Probe- und Einsatzteilnahme</h2>'+
+      '<p class="member-print-participation-period">'+(year!==null?'Kalenderjahr '+year:'Alle verfügbaren abgeschlossenen Berichte')+'</p>'+
+      '<div class="member-print-chart-grid">'+
+      chartCard('Proben & Unterricht',[d.present,d.excused,d.missing],['Anwesend','Entschuldigt','Fehlt'],
+        d.total+' betreffende Termine · „Betrifft nicht“ ausgeschlossen')+
+      chartCard('Einsätze',[o.present,o.other],['Teilgenommen','Nicht als Teilnehmer erfasst'],
+        o.total+' dokumentierte Einsätze · Keine Aussage über Entschuldigung oder Dienstpflicht')+
+      '</div></section>';
+  }
   function rows(items,markYear){
     return '<table class="print-career-table"><thead><tr><th>Datum</th><th>Bezeichnung</th></tr></thead><tbody>'+
       items.map(item=>'<tr'+(markYear&&yearOf(item)===markYear?' class="is-year-match"':'')+'><td>'+formatDate(item.date)+'</td><td>'+escape(String(item.title||''))+(item.notes?'<div class="print-career-notes">'+escape(item.notes)+'</div>':'')+'</td></tr>').join('')+'</tbody></table>';
   }
-  function oneRecord(person,option,number,total){
+  function oneRecord(person,option,number,total,history,roster){
     const year=option.mode==='year'?Number(option.year):null;
     const all=careerEntries(person).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     const special=year?matchedInYear(person,year):[];
@@ -75,6 +152,7 @@
       '<div><dt>Aktueller Dienstgrad</dt><dd>'+escape(currentRank(person))+'</dd></div>'+
       '</dl></section>'+
       '<section class="member-print-function-section"><h2>Funktionen & Zugehörigkeit</h2><p>'+ (functions.length?functions.map(value=>'<span>'+escape(value)+'</span>').join(''):'Keine zusätzlichen Funktionen hinterlegt')+'</p></section>'+
+      participationHtml(person,history,roster,year)+
       (special.length?'<section class="member-print-matches"><h2>Im Jahr '+year+' erreicht</h2>'+
         '<table><thead><tr><th>Datum</th><th>Art</th><th>Erworben</th></tr></thead><tbody>'+
         special.map(item=>'<tr><td>'+formatDate(item.date)+'</td><td>'+escape(CAREER_TYPES.find(([key])=>key===item.type)?.[1]||item.type)+'</td><td>'+escape(item.title||'')+'</td></tr>').join('')+
@@ -83,9 +161,9 @@
       '<footer class="member-print-footer">Interne Mitgliederverwaltung · Stand: '+escape(date)+' · Vertraulich behandeln</footer>'+
     '</article>';
   }
-  function documentHtml(people,option){
+  function documentHtml(people,option,history=[]){
     const selected=candidates(people,option);
-    return selected.map((person,i)=>oneRecord(person,option,i+1,selected.length)).join('');
+    return selected.map((person,i)=>oneRecord(person,option,i+1,selected.length,history,people)).join('');
   }
   function getCurrentMemberId(){
     const box=document.getElementById('memberAdmin');
@@ -122,7 +200,8 @@
     const host=document.getElementById('memberPrintRoot')||document.createElement('div');
     host.id='memberPrintRoot';
     host.setAttribute('aria-label','Druckansicht der Mitgliederakten');
-    host.innerHTML=documentHtml(all,settings);
+    const history=typeof statisticsArchiveData==='function'?statisticsArchiveData():[];
+    host.innerHTML=documentHtml(all,settings,history);
     if(!host.isConnected)document.body.append(host);
     const cleanup=()=>{host.replaceChildren();global.removeEventListener('afterprint',cleanup);};
     global.addEventListener('afterprint',cleanup,{once:true});
@@ -147,7 +226,7 @@
     target.addEventListener('click',event=>{if(event.target.closest('[data-record-choice]'))queueMicrotask(updateForm);});
     updateForm();
   }
-  global.MemberRecordsPrint={candidates,matchedInYear,documentHtml,currentRank,functionsFor,printNow,mount,updateForm};
+  global.MemberRecordsPrint={candidates,matchedInYear,documentHtml,currentRank,functionsFor,participation,participationHtml,printNow,mount,updateForm};
   if(typeof document!=='undefined'){
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
     else mount();
