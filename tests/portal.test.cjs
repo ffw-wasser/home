@@ -242,9 +242,9 @@ test('GF-Übersicht liest aktuelle Rückmeldungen ohne Google-Abruf, auch bei al
 test('Anzeige und Antworten akzeptieren denselben Kalenderstand für 15 Minuten',async()=>{
  const f=await fixture(),e=(await f.call('list')).value.events[0],before=f.calendarFetches();f.offline(true);
  assert.equal((await f.call('reply',{eventId:e.id,status:'maybe',expectedVersion:0,requestId:webcrypto.randomUUID()})).status,200);
- f.clock.now+=301000;assert.equal((await f.call('list')).value.stale,false);
+ const jobs=[];f.clock.now+=301000;assert.equal((await f.call('list',{},f.people[0],false,{waitUntil:job=>jobs.push(job)})).value.stale,false);await Promise.all(jobs);
  assert.equal((await f.call('reply',{eventId:e.id,status:'yes',expectedVersion:1,requestId:webcrypto.randomUUID()})).status,200);
- f.clock.now+=600001;const r=await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:2,requestId:webcrypto.randomUUID()});assert.equal(r.status,503);assert.equal(f.calendarFetches(),before);
+ f.clock.now+=600001;const r=await f.call('reply',{eventId:e.id,status:'excused',expectedVersion:2,requestId:webcrypto.randomUUID()});assert.equal(r.status,503);assert.equal(f.calendarFetches(),before+1,'Anzeige stößt den früheren Hintergrundabgleich an; Antworten starten keinen Google-Abruf');
  const list=await f.call('list');assert.equal(list.value.stale,true);assert.equal(list.value.events[0].status,'yes');
 });
 

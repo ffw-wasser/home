@@ -25,3 +25,19 @@ test('Cron: a fresh cached calendar reuses configuration already read in this in
  await f.c.PortalService.scheduled(f.env);
  assert.equal(configReads,1);
 });
+
+
+test('Google-Änderungen erreichen den H2O-Arbeitsstand bereits beim nächsten Minutenlauf',async()=>{
+ const f=await fixture(),before=f.calendarFetches();f.raw('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:faster-app-import\r\nDTSTART:20261112T180000Z\r\nDTEND:20261112T200000Z\r\nSUMMARY:Probe neuer App-Stand\r\nEND:VEVENT\r\nEND:VCALENDAR');
+ f.clock.now+=61000;await f.c.PortalService.scheduled(f.env);
+ assert.equal(f.calendarFetches(),before+1);
+ const row=f.sql.prepare('SELECT * FROM portal_calendar WHERE id=1').get(),snapshot=await f.L.open(f.env,row.payload,'portal-calendar');
+ assert.equal(snapshot.events[0].title,'Probe neuer App-Stand');
+});
+
+test('H2O-Anfrage stößt Google nach einer Minute im Hintergrund an, ohne den Minutenlauf abzuwarten',async()=>{
+ const f=await fixture(),before=f.calendarFetches(),jobs=[];f.clock.now+=61000;
+ const result=await f.call('list',{},f.people[0],false,{waitUntil:job=>jobs.push(job)});
+ assert.equal(result.status,200);assert.equal(result.value.stale,false);assert.equal(jobs.length,1);await Promise.all(jobs);
+ assert.equal(f.calendarFetches(),before+1);
+});

@@ -166,7 +166,7 @@ test('Persönliches Aktualisieren liest Google neu, gebündelt bei gleichzeitige
  f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/'))await gate;return fetch(url,options);};
  try{
   const member=f.call('year',{year:2026,force:true}),device=f.call('year',{year:2026,force:true},null,true);
-  await new Promise(setImmediate);release();const results=await Promise.all([member,device]);
+  await new Promise(resolve=>setTimeout(resolve,100));release();const results=await Promise.all([member,device]);
   for(const result of results){assert.equal(result.status,200);assert.equal(result.value.events[0].title,'Probe Mitglied aktualisiert');}
   assert.equal(f.calendarFetches(),before+1);
  }finally{release();}
@@ -179,5 +179,35 @@ test('Manueller Google-Abgleich zeigt auch einen erst Sekunden alten Jahresstand
  try{
   const response=await withoutGoogleWait(f.call('year',{year:2026,force:true,background:true},f.people[0],false,{waitUntil:job=>jobs.push(job)}));
   assert.equal(response.status,200);assert.equal(response.value.refreshing,true);assert.equal(response.value.events.length,1);assert.equal(jobs.length,1);
+ }finally{release();await Promise.all(jobs);}
+});
+
+test('Normaler Kalender und Jahresansicht teilen den laufenden Google-Abruf bei manueller Aktualisierung',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});
+ f.raw(ics([event('shared-normal-year','20260617','Probe gemeinsamer Import')]));
+ const fetch=f.c.fetch;let release,calls=0;const gate=new Promise(resolve=>release=resolve);
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/')){calls++;await gate;}return fetch(url,options);};
+ const normal=f.call('list',{force:true},null,true),annual=f.call('year',{year:2026,force:true},null,true);
+ try{
+  for(let i=0;i<100&&!calls;i++)await new Promise(setImmediate);
+  for(let i=0;i<100;i++)await new Promise(setImmediate);
+  assert.equal(calls,1);release();const results=await Promise.all([normal,annual]);
+  assert(results.every(r=>r.status===200&&!r.value.stale));
+  assert(results.every(r=>r.value.events.some(e=>e.title==='Probe gemeinsamer Import')));
+  assert.equal(calls,1,'normaler Import und Jahresimport laden dieselbe ICS-Datei nur einmal');
+ }finally{release();await Promise.all([normal,annual]);}
+});
+
+test('Verwaltungsaktualisierung wartet nach neuen Terminen nicht auf den optionalen Google-Farbdienst',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')}),row=f.sql.prepare('SELECT * FROM portal_config WHERE id=1').get(),config=await f.L.open(f.env,row.payload,'portal-config');
+ config.googleColorBridge={endpoint:'https://script.google.com/macros/s/'+'a'.repeat(25)+'/exec',secret:'s'.repeat(32)};
+ f.sql.prepare('UPDATE portal_config SET payload=? WHERE id=1').run(await f.L.seal(f.env,config,'portal-config'));
+ f.raw(ics([event('admin-fresh','20260618','Probe frisch importiert')]));
+ const fetch=f.c.fetch,jobs=[];let release,calls=0;const gate=new Promise(resolve=>release=resolve);
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://script.google.com/')){calls++;await gate;throw Error('Synthetischer Farbfehler');}return fetch(url,options);};
+ try{
+  const result=await withoutGoogleWait(f.call('list',{force:true},null,true,{waitUntil:job=>jobs.push(job)}));
+  assert.equal(result.status,200);assert.equal(result.value.stale,false);assert.equal(result.value.events[0].title,'Probe frisch importiert');
+  assert.equal(result.value.googleColorStatus,'fallback');assert.equal(calls,1);assert.equal(jobs.length,1);
  }finally{release();await Promise.all(jobs);}
 });

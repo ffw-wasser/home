@@ -122,9 +122,9 @@
  }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
-  const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first(),snapshot=await open(env,row,'portal-calendar'),old=snapshot&&(snapshot.sourceRevision||'')===sourceRevision(c)?row:null;if(old&&!force&&old.fetched_at>Date.now()-300000)return {...snapshot,configured:true,fetchedAt:old.fetched_at,stale:false};
+  const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first(),snapshot=await open(env,row,'portal-calendar'),old=snapshot&&(snapshot.sourceRevision||'')===sourceRevision(c)?row:null;if(old&&!force&&old.fetched_at>Date.now()-60000)return {...snapshot,configured:true,fetchedAt:old.fetched_at,stale:false};
   const running=loads.get(env.DB);if(running?.source===sourceKey(c))return running.promise;
-  const promise=(async()=>{try{const events=await sourceProjection(c),fetchedAt=Date.now(),payload=await L.seal(env,{events,sourceRevision:sourceRevision(c)},'portal-calendar');
+  const promise=(async()=>{try{const events=await sourceProjection(c,null,env.DB,force),fetchedAt=Date.now(),payload=await L.seal(env,{events,sourceRevision:sourceRevision(c)},'portal-calendar');
     // A concurrent administrator change cannot publish the previous calendar.
     const currentRow=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),current=await open(env,currentRow,'portal-config');if(sourceKey(current)!==sourceKey(c))fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
     const saved=await env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) SELECT 1,?,? WHERE EXISTS(SELECT 1 FROM portal_config WHERE id=1 AND payload=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(payload,fetchedAt,currentRow.payload).run();if(!saved.meta.changes)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');return {configured:true,events,fetchedAt,stale:false};
@@ -737,7 +737,10 @@
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&!e.completedAt&&e.approved&&e.kind==='probe'&&visibleEvent(e));
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
-  const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/portal/widget-status','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list',ctx):calendar(env)),undefined,path==='/portal/list'?ctx:undefined,path!=='/portal/reply'&&path!=='/portal/widget-status');
+  // A manual administration reload must bypass the saved snapshot. Normal and
+  // annual imports share the same in-flight Google download via sourceProjection.
+  // Optional colours run in the background for administration reads as well.
+  const cal=await decorate(env,await (path==='/admin/portal/list'&&data.force===true?calendar(env,true):['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/portal/widget-status','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list',ctx):calendar(env)),undefined,ctx,path!=='/portal/reply'&&path!=='/portal/widget-status');
   if(path==='/admin/portal/complete')return completeAttendance(env,data,cal);
   if(path==='/admin/portal/display')return saveCalendarDisplay(env,data,cal,roster);
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
@@ -813,9 +816,11 @@
   const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();
   if(!row)return calendar(env,false,c);
   const snapshot=await open(env,row,'portal-calendar');if((snapshot?.sourceRevision||'')!==sourceRevision(c))return calendar(env,true,c);
-  if(refreshExpired&&(!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs)){
+  // Refresh personal appointments after one minute; retain the independent
+  // fifteen-minute safety limit used by replies during an upstream outage.
+  if(refreshExpired&&(!row.fetched_at||row.fetched_at<Date.now()-60000)){
    if(ctx?.waitUntil)ctx.waitUntil(calendar(env,false,c).catch(()=>{}));
-   else return calendar(env,false,c);
+   else{const fresh=await calendar(env,false,c);if(!fresh.stale)return fresh;}
   }
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};

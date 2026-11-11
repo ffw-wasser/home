@@ -22400,9 +22400,9 @@ g.PortalHydrants={schema,route};
  }
  async function calendar(env,force=false,configuration){
   const c=configuration===undefined?await config(env):configuration;if(!c)return {configured:false,events:[],fetchedAt:null,stale:true};
-  const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first(),snapshot=await open(env,row,'portal-calendar'),old=snapshot&&(snapshot.sourceRevision||'')===sourceRevision(c)?row:null;if(old&&!force&&old.fetched_at>Date.now()-300000)return {...snapshot,configured:true,fetchedAt:old.fetched_at,stale:false};
+  const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first(),snapshot=await open(env,row,'portal-calendar'),old=snapshot&&(snapshot.sourceRevision||'')===sourceRevision(c)?row:null;if(old&&!force&&old.fetched_at>Date.now()-60000)return {...snapshot,configured:true,fetchedAt:old.fetched_at,stale:false};
   const running=loads.get(env.DB);if(running?.source===sourceKey(c))return running.promise;
-  const promise=(async()=>{try{const events=await sourceProjection(c),fetchedAt=Date.now(),payload=await L.seal(env,{events,sourceRevision:sourceRevision(c)},'portal-calendar');
+  const promise=(async()=>{try{const events=await sourceProjection(c,null,env.DB,force),fetchedAt=Date.now(),payload=await L.seal(env,{events,sourceRevision:sourceRevision(c)},'portal-calendar');
     // A concurrent administrator change cannot publish the previous calendar.
     const currentRow=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first(),current=await open(env,currentRow,'portal-config');if(sourceKey(current)!==sourceKey(c))fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
     const saved=await env.DB.prepare('INSERT INTO portal_calendar(id,payload,fetched_at) SELECT 1,?,? WHERE EXISTS(SELECT 1 FROM portal_config WHERE id=1 AND payload=?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at').bind(payload,fetchedAt,currentRow.payload).run();if(!saved.meta.changes)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');return {configured:true,events,fetchedAt,stale:false};
@@ -23015,7 +23015,10 @@ g.PortalHydrants={schema,route};
    const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&!e.completedAt&&e.approved&&e.kind==='probe'&&visibleEvent(e));
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
-  const cal=await decorate(env,await (['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/portal/widget-status','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list',ctx):calendar(env)),undefined,path==='/portal/list'?ctx:undefined,path!=='/portal/reply'&&path!=='/portal/widget-status');
+  // A manual administration reload must bypass the saved snapshot. Normal and
+  // annual imports share the same in-flight Google download via sourceProjection.
+  // Optional colours run in the background for administration reads as well.
+  const cal=await decorate(env,await (path==='/admin/portal/list'&&data.force===true?calendar(env,true):['/portal/list','/admin/portal/list','/portal/reply','/portal/overview','/portal/widget-status','/admin/portal/replies'].includes(path)?cachedCalendar(env,15*60*1000,path==='/portal/list',ctx):calendar(env)),undefined,ctx,path!=='/portal/reply'&&path!=='/portal/widget-status');
   if(path==='/admin/portal/complete')return completeAttendance(env,data,cal);
   if(path==='/admin/portal/display')return saveCalendarDisplay(env,data,cal,roster);
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
@@ -23091,9 +23094,11 @@ g.PortalHydrants={schema,route};
   const row=await env.DB.prepare('SELECT * FROM portal_calendar WHERE id=1').first();
   if(!row)return calendar(env,false,c);
   const snapshot=await open(env,row,'portal-calendar');if((snapshot?.sourceRevision||'')!==sourceRevision(c))return calendar(env,true,c);
-  if(refreshExpired&&(!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs)){
+  // Refresh personal appointments after one minute; retain the independent
+  // fifteen-minute safety limit used by replies during an upstream outage.
+  if(refreshExpired&&(!row.fetched_at||row.fetched_at<Date.now()-60000)){
    if(ctx?.waitUntil)ctx.waitUntil(calendar(env,false,c).catch(()=>{}));
-   else return calendar(env,false,c);
+   else{const fresh=await calendar(env,false,c);if(!fresh.stale)return fresh;}
   }
   return {...await open(env,row,'portal-calendar'),configured:true,fetchedAt:row.fetched_at,
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
@@ -23143,7 +23148,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4e0b32874aea16ef71c4988e45d2b1c05eb0f25d56921622951eb269a28d1ee8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"e0e633d5f50d599da11178f952d868a3129bb5eb3f3ee651e589f349a3ae70d8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
