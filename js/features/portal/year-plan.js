@@ -71,10 +71,11 @@
   message=keep?'Vorhandene Termine werden angezeigt · Kalender wird aktualisiert …':'Jahresplan wird geladen …';render();
   if(!directPdf)jump();
   try{
-   const privateAccess=authorized();let result;
+   const privateAccess=authorized(),deadline=Date.now()+35000;let result;
+   const remaining=()=>{const ms=deadline-Date.now();if(ms<=0)throw Object.assign(Error('Die Kalenderaktualisierung hat zu lange gedauert. Bitte erneut versuchen.'),{name:'TimeoutError'});return ms;};
    if(portal){
     if(!privateAccess)throw Error('Bitte mit deinem persönlichen H₂O-Zugang anmelden.');
-    result=await g.H2OPortal.api('year',{year:selected,background:true,force});
+    result=await g.H2OPortal.api('year',{year:selected,background:true,force},{signal:AbortSignal.timeout(remaining())});
     if(epoch!==generation)return;if(!authorized())throw Error('Der Portalzugang wurde gesperrt.');
    }else{
     if(!privateAccess)throw Error('Bitte die vorhandene OneDrive-Verbindung des Gerätehauses herstellen und den Jahresplan aktualisieren. Eine Verwaltungs-PIN ist nicht erforderlich.');
@@ -85,7 +86,7 @@
     for(let attempt=0;attempt<2;attempt++){
      if(epoch!==generation)return;
      if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
-     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected,background:true,force},35000);break;}
+     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected,background:true,force},remaining());break;}
      catch(e){const network=e instanceof TypeError||['AbortError','TimeoutError'].includes(e?.name)||/load failed|failed to fetch|networkerror|network request failed/i.test(e?.message||'');if(attempt||!network)throw e;}
     }
     if(epoch!==generation)return;if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
@@ -100,7 +101,7 @@
    apply(result);if(directPdf)await openPdf();jump();
    if(result.refreshing){
     message='Vorhandene Termine werden angezeigt · Google-Kalender wird aktualisiert …';$('status').textContent=message;
-    const fresh=portal?await g.H2OPortal.api('year',{year:selected,background:false}):await g.DrinksCentral.connection().then(c=>{if(!c||c.source!==source)throw Error('Der Datenordner wurde gewechselt.');return g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected,background:false},35000);});
+    const fresh=portal?await g.H2OPortal.api('year',{year:selected,background:false},{signal:AbortSignal.timeout(remaining())}):await g.DrinksCentral.connection().then(c=>{if(!c||c.source!==source)throw Error('Der Datenordner wurde gewechselt.');return g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected,background:false},remaining());});
     if(epoch!==generation)return;if(!accessCurrent())return lock();
     if(fresh.year!==selected||!Array.isArray(fresh.events))throw Error('Jahresplan konnte nicht aktualisiert werden.');
     apply(fresh);
