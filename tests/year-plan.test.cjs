@@ -108,3 +108,43 @@ test('Optionale Google-Farben halten den Hauptkalender auch bei kaltem Farbcache
  let release,bridgeCalls=0;const gate=new Promise(resolve=>release=resolve),fetch=f.c.fetch,jobs=[];f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://script.google.com/')){bridgeCalls++;await gate;throw Error('Synthetischer Farbfehler');}return fetch(url,options);};
  try{const result=await withoutGoogleWait(f.call('year',{year:2026,background:true},null,true,{waitUntil:job=>jobs.push(job)}));assert.equal(result.status,200);assert(result.value.events.length>0);assert.equal(result.value.googleColorStatus,'fallback');assert.equal(bridgeCalls,1);assert.equal(jobs.length,1);}finally{release();await Promise.all(jobs);}
 });
+
+test('Verschiedene Jahre teilen denselben Google-Download und lesen Regeln weiterhin aktuell',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});
+ f.raw(ics([2025,2026,2027,2028].map(year=>event('year-'+year,year+'0602','Probe '+year))));
+ const before=f.calendarFetches();
+ const results=await Promise.all([2025,2026].map(year=>f.call('year',{year},null,true)));
+ for(let i=0;i<results.length;i++){assert.equal(results[i].status,200);assert.equal(results[i].value.events[0].title,'Probe '+(2025+i));}
+ assert.equal(f.calendarFetches(),before+1,'two annual projections download the full ICS once');
+ assert.equal((await f.call('year',{year:2027},null,true)).value.events[0].title,'Probe 2027');
+ assert.equal(f.calendarFetches(),before+1,'a quick year switch reuses the same source');
+ f.clock.now+=61000;
+ assert.equal((await f.call('year',{year:2028},null,true)).value.events[0].title,'Probe 2028');
+ assert.equal(f.calendarFetches(),before+2,'raw source expires after one minute');
+});
+
+test('Persönlicher Jahresplan liefert den erlaubten gespeicherten Stand vor Google und lädt frisch nach',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')}),warm=(await f.call('year',{year:2026})).value;
+ f.clock.now+=301000;f.raw(ics([event('new','20260616','Probe Neu')]));
+ const rulesRow=f.sql.prepare('SELECT * FROM portal_rules WHERE id=1').get(),rules=await f.L.open(f.env,rulesRow.payload,'portal-rules');
+ rules[warm.events[0].id].approved=false;
+ f.sql.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1').run(await f.L.seal(f.env,rules,'portal-rules'));
+ let release,calls=0;const gate=new Promise(resolve=>release=resolve),fetch=f.c.fetch,jobs=[];
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/')){calls++;await gate;}return fetch(url,options);};
+ try{
+  const quick=await withoutGoogleWait(f.call('year',{year:2026,background:true},f.people[0],false,{waitUntil:job=>jobs.push(job)}));
+  assert.equal(quick.status,200);assert.equal(quick.value.refreshing,true);assert.equal(quick.value.stale,true);
+  assert.equal(quick.value.events.length,0,'revoked events are excluded even from the old snapshot');
+  release();await Promise.all(jobs);
+  const fresh=await f.call('year',{year:2026,background:false});
+  assert.equal(fresh.status,200);assert.equal(fresh.value.refreshing,false);assert.equal(fresh.value.events[0].title,'Probe Neu');assert.equal(calls,1);
+ }finally{release();await Promise.all(jobs);}
+});
+
+test('Fehlgeschlagener gemeinsamer Google-Abruf kann ohne Warten erneut versucht werden',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});f.offline(true);
+ const failed=await Promise.all([2024,2025].map(year=>f.call('year',{year},null,true)));
+ assert(failed.every(result=>result.status===503));
+ f.offline(false);f.raw(ics([event('retry','20240102','Probe Erneut')]));
+ const result=await f.call('year',{year:2024},null,true);assert.equal(result.status,200);assert.equal(result.value.events[0].title,'Probe Erneut');
+});
