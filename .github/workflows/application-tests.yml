@@ -27,6 +27,8 @@ jobs:
       options: --ipc=host
     steps:
       - uses: actions/checkout@v4
+      - name: Trust the checked-out workspace inside the test container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
