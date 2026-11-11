@@ -10,7 +10,7 @@
  function status(message,retry=false){
   if(!host()||host().hidden)return;let box=host().querySelector('.calendar-sidebar-load-status');
   if(!box){box=node('div');box.className='calendar-sidebar-load-status';box.setAttribute('role','status');const header=host().querySelector('.calendar-sidebar-heading');if(header)header.insertBefore(box,header.querySelector('button'));else host().append(box);}
-  box.replaceChildren(node('small',message));if(retry||(!pending&&loadedAt)){const button=node('button',retry?'Google erneut prüfen':'Google aktualisieren');button.type='button';button.className='outline-button';button.onclick=()=>{googleForceRequested=true;refreshRequested=true;void refresh();};box.append(button);}
+  box.replaceChildren(node('small',message));if(retry||(!pending&&loadedAt)){const label=retry?'Google erneut prüfen':'Google aktualisieren',button=node('button','↻');button.type='button';button.className='outline-button';button.setAttribute('aria-label',label);button.title=label;button.onclick=()=>{googleForceRequested=true;refreshRequested=true;void refresh();};box.append(button);}
  }
  function stand(){return loadedAt?'Stand '+new Date(Number(cached?.fetchedAt)||loadedAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';}
  function mountDiagnostics(){
