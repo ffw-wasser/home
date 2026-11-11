@@ -28,6 +28,13 @@ const root=path.resolve(__dirname,'..');
     {id:'person-b',firstName:'Ben',lastName:'Beispiel',roles:[],careerEntries:[{type:'award',title:'Leistungsabzeichen Silber',date:'2024-05-01',notes:''}]},
     {id:'guest-c',firstName:'Cora',lastName:'Fitness',fitnessTrainer:true,roles:[],careerEntries:[{type:'course',title:'Fortbildung',date:'2024-03-01',notes:''}]}
    ];
+   // Exakt die bereits abgeschlossene Berichts-Historie, die die Statistik auswertet.
+   window.statisticsArchiveData=()=>[
+    {date:'2024-01-01',item:{id:'drill-1',sessionType:'Probe'},rows:[{name:'Muster, Anna',sessionType:'Probe',status:'Anwesend'}]},
+    {date:'2024-02-01',item:{id:'drill-2',sessionType:'Sonderprobe'},rows:[{name:'Anna Muster',sessionType:'Sonderprobe',status:'Entschuldigt'}]},
+    {date:'2024-03-01',item:{id:'operation-1',sessionType:'Einsatz'},operation:true,rows:[{name:'Muster, Anna',sessionType:'Einsatz',status:'Anwesend'}]},
+    {date:'2024-04-01',item:{id:'operation-2',sessionType:'Einsatz'},operation:true,rows:[{name:'Beispiel, Ben',sessionType:'Einsatz',status:'Anwesend'}]}
+   ];
    renderAdmin();showView('settingsMembersView');MemberRecordsPrint.updateForm();
   });
   const scope=page.locator('#memberPrintScope'),year=page.locator('#memberPrintYear'),button=page.locator('[data-print-submit]');
@@ -38,6 +45,10 @@ const root=path.resolve(__dirname,'..');
   await page.waitForFunction(()=>window.printCalls===1);
   assert.equal(await page.locator('#memberPrintRoot .member-print-person').count(),1);
   assert.match(await page.locator('#memberPrintRoot').innerText(),/Anna Muster/);
+  assert.equal(await page.locator('#memberPrintRoot .member-print-ring').count(),2,'je Person zwei Kreisdiagramme');
+  assert.match(await page.locator('#memberPrintRoot').innerText(),/Proben & Unterricht/);
+  assert.match(await page.locator('#memberPrintRoot').innerText(),/Nicht als Teilnehmer erfasst/);
+  assert.match(await page.locator('#memberPrintRoot').innerText(),/50 %/);
   const html=await page.locator('#memberPrintRoot').innerHTML();
   for(const value of ['+49123456','9876','2028-02'])assert.ok(!html.includes(value),'Vertrauliche Daten nicht drucken: '+value);
   await page.emulateMedia({media:'print'});
@@ -62,7 +73,7 @@ const root=path.resolve(__dirname,'..');
   await year.fill('2022');assert.equal(await button.isDisabled(),true);
   await year.fill('2024');
   await page.locator('[data-record-choice="person-a"]').click();
-  await page.locator('[data-record-tab="master"]').click();
+  await page.locator('[data-member-id="person-a"] [data-record-tab="master"]').click();
   await page.locator('[data-member-id="person-a"] [data-first-name]').fill('Anna geändert');
   await button.click();
   assert.equal(await page.evaluate(()=>window.printCalls),3,'Offene Änderungen verhindern veralteten Ausdruck');
