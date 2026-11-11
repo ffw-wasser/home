@@ -206,7 +206,8 @@
     const cleanup=()=>{host.replaceChildren();global.removeEventListener('afterprint',cleanup);};
     global.addEventListener('afterprint',cleanup,{once:true});
     // Das native iPad-/Browser-Druckmenü erlaubt auch "Als PDF sichern".
-    global.requestAnimationFrame?global.requestAnimationFrame(()=>global.print()):global.print();
+    // Direkt innerhalb des Klicks auslösen: iPadOS/Safari erwartet eine Benutzeraktion.
+    global.print();
   }
   function mount(){
     const target=document.getElementById('memberAdmin');
