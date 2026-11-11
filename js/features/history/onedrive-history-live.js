@@ -154,24 +154,36 @@
         const current = newestByLogicalName.get(key);
         if (!current || String(file.lastModifiedDateTime || "") > String(current.lastModifiedDateTime || "")) newestByLogicalName.set(key, file);
       }
-      const reports = [], nextPdfs = new Map(), nextCache = new Map();
-      for (const file of newestByLogicalName.values()) {
-        failedFile = cleanName(file.name);
-        const version = JSON.stringify([file.name, file.eTag, file.cTag, file.lastModifiedDateTime, file.size]);
-        const cached = reportCache.get(file.id);
-        const reusable = Boolean(file.eTag || file.cTag || file.lastModifiedDateTime) && cached?.version === version;
-        const report = reusable ? clone(cached.report) : await reportFromZip(root, file, nextPdfs);
-        if (reusable && cached.pdf) nextPdfs.set(report.id, cached.pdf);
-        if (report) {
-          reports.push(report);
-          nextCache.set(file.id, {version, report: clone(report), pdf: nextPdfs.get(report.id)});
+      const filesToLoad = [...newestByLogicalName.values()];
+      const reports = new Array(filesToLoad.length), nextPdfs = new Map(), nextCache = new Map();
+      let nextIndex = 0, failure = null;
+      async function loadReports() {
+       while (!failure && epoch === loadEpoch && oneDriveSignedIn() && nextIndex < filesToLoad.length) {
+        const index = nextIndex++, file = filesToLoad[index];
+        try {
+          const version = JSON.stringify([file.name, file.eTag, file.cTag, file.lastModifiedDateTime, file.size]);
+          const cached = reportCache.get(file.id);
+          const reusable = Boolean(file.eTag || file.cTag || file.lastModifiedDateTime) && cached?.version === version;
+          const report = reusable ? clone(cached.report) : await reportFromZip(root, file, nextPdfs);
+          if (reusable && cached.pdf) nextPdfs.set(report.id, cached.pdf);
+          if (report) {
+            reports[index] = report;
+            nextCache.set(file.id, {version, report: clone(report), pdf: nextPdfs.get(report.id)});
+          }
+        } catch (error) {
+          if (!failure) { failure = error; failedFile = cleanName(file.name); }
         }
+       }
       }
+      // Drei Abrufe verkürzen die Netzwerkwartezeit, ohne alle ZIPs gleichzeitig
+      // zu laden. Auch bei Fehlern erst die laufenden Abrufe vollständig abwarten.
+      await Promise.all(Array.from({length: Math.min(3, filesToLoad.length)}, loadReports));
+      if (failure) throw failure;
       failedFile = "";
       // Den bisherigen Stand erst nach einem vollständig erfolgreichen Abruf ersetzen.
       // Quelle bleiben ausschließlich die aktuell in OneDrive vorhandenen ZIP-Pakete.
       if(epoch!==loadEpoch||!oneDriveSignedIn())return false;
-      csvArchive = reports.sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
+      csvArchive = reports.filter(Boolean).sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
       reportCache = nextCache;
       pdfByReportId.clear();
       nextPdfs.forEach((pdf, id) => pdfByReportId.set(id, pdf));
