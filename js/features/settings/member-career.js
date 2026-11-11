@@ -135,6 +135,10 @@
           date:form.elements.namedItem('date').value,
           notes:form.elements.namedItem('notes').value.trim()
         };
+        if(!volunteerCatalogItem(item.type,item.title))throw Error('Nur Bezeichnungen der ehrenamtlichen Freiwilligen Feuerwehr Baden-Württemberg sind zulässig. Dienstgrade bitte aus der vorgegebenen Auswahl übernehmen.');
+        const canonical=suggestions(item.type,typeof members!=='undefined'?members:[]).find(title=>keyOf(item.type,title)===keyOf(item.type,item.title));
+        if(canonical)item.title=canonical;
+        if(items.some((existing,index)=>index!==editIndex&&keyOf(existing.type,existing.title)===keyOf(item.type,item.title)&&existing.date===item.date))throw Error('Dieser Laufbahneintrag ist mit demselben Erwerbsdatum bereits vorhanden.');
         if(editIndex>=0)items[editIndex]=item;else items.push(item);
         update(activeRow,items);el.close();
       }catch(error){global.showToast?.(error.message||'Eintrag konnte nicht übernommen werden.','error');}
