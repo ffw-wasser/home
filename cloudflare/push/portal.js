@@ -533,7 +533,7 @@
   }
   if(path==='/portal/regulations/pdf'){
    const url=g.RegulationsModel.pdfUrl(data.url);if(!url)fail('Kein gültiger offizieller PDF-Link.',400);
-   const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first(),items=row?(await open(env,row,'portal-regulations')).items:g.RegulationsModel.defaults();
+   const row=await env.DB.prepare('SELECT * FROM portal_regulations WHERE id=1').first(),items=row?g.RegulationsModel.selection(await open(env,row,'portal-regulations')):g.RegulationsModel.defaults();
    if(!items.some(item=>item.url===url))fail('Diese Vorschrift ist nicht in der freigegebenen Auswahl.',404);
    const upstream=await fetch(url,{redirect:'error',headers:{Accept:'application/pdf'},signal:AbortSignal.timeout(60000),cf:{cacheTtl:86400,cacheEverything:true}});
    if(!upstream.ok||!upstream.body)fail('Die Original-PDF ist derzeit nicht erreichbar.',502);
@@ -551,12 +551,12 @@
    if(admin&&Object.prototype.hasOwnProperty.call(data,'items')){
     let items;try{items=g.RegulationsModel.validate(data.items);}catch(e){fail(e.message,400);}
     if(!Number.isInteger(data.expectedVersion)||data.expectedVersion!==(row?.version||0))fail('Die Auswahl wurde zwischenzeitlich geändert. Bitte erneut laden.',409);
-    const payload=await L.seal(env,{items},'portal-regulations'),version=data.expectedVersion+1;
+    const payload=await L.seal(env,{items,catalogueVersion:1},'portal-regulations'),version=data.expectedVersion+1;
     const saved=await env.DB.prepare('INSERT INTO portal_regulations(id,payload,version) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,version=excluded.version WHERE portal_regulations.version=?').bind(payload,version,data.expectedVersion).run();
     if(!saved.meta.changes)fail('Die Auswahl wurde zwischenzeitlich geändert. Bitte erneut laden.',409);
     return {items,version};
    }
-   return {items:row?(await open(env,row,'portal-regulations')).items:g.RegulationsModel.defaults(),version:row?.version||0};
+   return {items:row?g.RegulationsModel.selection(await open(env,row,'portal-regulations')):g.RegulationsModel.defaults(),version:row?.version||0};
   }
   if(path==='/admin/portal/contacts'){
    const contacts=data.contacts;

@@ -8,7 +8,7 @@
  async function request(path,data={}){
   const version=generation,source=g.DrinksStore.sourceKey(),c=await connection();
   const current=()=>{if(version!==generation)throw Error('Zugang wurde geändert. Bitte erneut öffnen.');if(source!==c.source||g.DrinksStore.sourceKey()!==source){lock();throw Error('Mitgliederordner wurde geändert. Bitte erneut öffnen.');}};
-  try{current();const result=await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});current();if((['private-calendar','classify','groups','colors','google-colors','display'].includes(path)&&Object.keys(data).length>0)||(path==='list'&&data.force===true))g.CalendarSidebar?.clear();return result;}
+  try{current();const result=await g.DrinksPush.request(c,'/admin/portal/'+path,{source:c.source,...data});current();if(Array.isArray(result.events))result.events=g.PortalCalendar.withoutDeleted(result.events,source);if((['private-calendar','classify','groups','colors','google-colors','display'].includes(path)&&Object.keys(data).length>0)||(path==='list'&&data.force===true))g.CalendarSidebar?.clear();return result;}
   catch(e){if(e.status===404&&e.message==='Nicht gefunden.')throw Error('Bitte zuerst den bestehenden Cloudflare-Worker für das H₂O Portal aktualisieren.');throw Object.assign(Error(g.ConnectionStatus?.message(e)||e.message),{status:e.status});}
  }
 
@@ -207,7 +207,7 @@
   if(preserveEdits&&(groupsDirty||reviewEdited.size||reviewOpen.size||groupEditing||g.GoogleCalendarAdmin?.dirty()))return;
   if(automatic&&(groupsDirty||reviewEdited.size||reviewOpen.size||groupEditing||busy||reviewLoading||Date.now()-reviewLastLoad<60000))return;
   const version=++calendarGeneration;reviewLoading=true;$('review-load').hidden=true;try{admin();if(!automatic)$('review-status').textContent='Kalendereinträge werden geladen …';const cal=snapshot||await request('list');if(g.CalendarDisplayAdmin?.dirty()||version!==calendarGeneration||(automatic||preserveEdits)&&(reviewEdited.size||reviewOpen.size||groupsDirty||groupEditing||g.GoogleCalendarAdmin?.dirty()))return;admin();if(!groupsDirty&&cal.groupsVersion!==undefined&&(groupSnapshot?.version!==cal.groupsVersion||groupSnapshot?.rosterUpdatedAt!==cal.rosterUpdatedAt))await loadGroups();if(g.CalendarDisplayAdmin?.dirty()||version!==calendarGeneration||(automatic||preserveEdits)&&(reviewEdited.size||reviewOpen.size||groupsDirty||groupEditing||g.GoogleCalendarAdmin?.dirty()))return;reviewLastLoad=Date.now();$('review-load').hidden=!cal.stale;
-   const upcoming=cal.events.filter(e=>currentEvent(e)&&e.kind!=='birthday');
+   const upcoming=g.PortalCalendar.withoutDeleted(cal.events,g.DrinksStore.sourceKey()).filter(e=>currentEvent(e)&&e.kind!=='birthday');
    const previous=reviewSnapshot;
    // Sort chronologically so a just-saved card does not jump to the bottom.
    upcoming.sort((a,b)=>a.start-b.start);
@@ -518,6 +518,7 @@ continue;}
  // Calendar clicks use the existing picker and its running-session protection.
  function selectCalendarEvent(id,yearEvent=null){
   const picker=document.getElementById('portal-calendar-pick');
+  if(!g.PortalCalendar.withoutDeleted([{id}],g.DrinksStore.sourceKey()).length)return false;
   let event=list.find(e=>e.id===id&&!e.completedAt&&e.approved&&e.kind==='probe');
   // The authenticated yearly calendar can finish loading before the rolling
   // attendance list. Explicitly selected historical events must still work.
@@ -531,6 +532,18 @@ continue;}
   }
   if(!event||!picker){showToast('Dieser Termin ist noch nicht zur Erfassung verfügbar. Bitte den Kalender aktualisieren.','error');return false;}
   picker.value=id;select();return chosen()===id;
+ }
+ function calendarEventDeleted(id){
+  const source=g.DrinksStore.sourceKey();if(!g.PortalCalendar.rememberDeletion(id,source))return;
+  const running=Boolean(currentSessionId||currentOperationId),current=chosen();
+  list=list.filter(event=>event.id!==id||running&&current===id);
+  if(reviewSnapshot)reviewSnapshot.events=reviewSnapshot.events.filter(event=>event.id!==id);
+  for(const ids of [reviewSelection,reviewEdited,reviewOpen,reviewPinned])ids.delete(id);
+  reviewEditors.delete(id);document.querySelector('[data-event-id="'+id+'"]')?.remove();
+  const picker=document.getElementById('portal-calendar-pick');
+  if(!(running&&current===id))for(const option of Array.from(picker?.options||[]))if(option.value===id)option.remove();
+  if(!running&&current===id){selected=null;replyData=null;if(picker){picker.value=list.find(event=>event.end>Date.now())?.id||'';select(true);}}
+  g.CalendarSidebar?.eventDeleted?.();g.YearPlan?.eventDeleted?.();g.syncAttendanceStart?.();
  }
  function isNextEvent(){return chosen()===list.find(e=>e.end>Date.now())?.id;}
  function selectedEvent(){return list.find(e=>e.id===chosen())||null;}
@@ -613,5 +626,5 @@ continue;}
   if(current.groupIds?.length)await request('classify',{...common,recipientMode:'groups',groupIds:current.groupIds,includeIds:current.includeIds||[],excludeIds:[...new Set([...(current.excludeIds||[]),...excluded])]});
   else await request('classify',{...common,recipientMode:'manual',recipientIds:(current.recipientIds||members.map(member=>String(member.id))).filter(id=>!excluded.includes(id))});
  }
- g.PortalAdmin={eventStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('event-statistics',{year});},completeAttendance,finalizeFitnessAudience,fitnessStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('fitness-statistics',{year});},calendarModeChanged:()=>reviewCalendar(),resolveCheckin:code=>request('checkin-resolve',{code}),checkinContext:()=>({eventId:chosen(),replies:replyData,source:g.DrinksStore.sourceKey()}),load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,selectCalendarEvent,isNextEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={calendarEventDeleted,eventStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('event-statistics',{year});},completeAttendance,finalizeFitnessAudience,fitnessStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('fitness-statistics',{year});},calendarModeChanged:()=>reviewCalendar(),resolveCheckin:code=>request('checkin-resolve',{code}),checkinContext:()=>({eventId:chosen(),replies:replyData,source:g.DrinksStore.sourceKey()}),load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,selectCalendarEvent,isNextEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

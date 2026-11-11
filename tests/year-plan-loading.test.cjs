@@ -6,6 +6,7 @@ function fixture(portal=false){
  const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',value:'0',classList:{toggle(){},remove(){}}});return nodes.get(id);};
  let allowed=true,currentSource='synthetic-source',request;const calls=[],paints=[];
  const c=vm.createContext({Intl,Date,AbortSignal,portal,year:2026,events:[],generation:0,privateData:false,loaded:false,loadedYear:null,source:'',message:'',colors:{},$:get,dayKey:ms=>new Date(ms).toISOString().slice(0,10),format:ms=>String(ms),authorized:()=>allowed,accessCurrent:()=>allowed&&(portal||c.source===currentSource),render:()=>paints.push({year:c.year,titles:Array.from(c.events,e=>e.title),loaded:c.loaded,message:c.message}),jump(){},openPdf:async()=>{},document:{getElementById:()=>null},g:{CalendarPresentation:{defaults:()=>({})},DrinksStore:{sourceKey:()=>currentSource},DrinksCentral:{connection:async()=>({source:currentSource})},DrinksPush:{request:async(_c,_path,data,timeout)=>{calls.push(data);return request(data,timeout);}},H2OPortal:{api:async(_path,data)=>{calls.push(data);return request(data);}}}});
+ vm.runInContext(fs.readFileSync('js/features/portal/calendar-model.js','utf8'),c);c.g.PortalCalendar=c.PortalCalendar;
  vm.runInContext(source.slice(source.indexOf(' async function load('),source.indexOf(' function afterView(')),c);
  return {c,calls,paints,get,setRequest:fn=>request=fn,deny:()=>allowed=false,changeSource:()=>currentSource='other-source'};
 }
@@ -61,4 +62,10 @@ test('Jahresplan startet nach ausgeschöpfter Wartezeit keinen weiteren 35-Sekun
  f.setRequest(()=>result());await f.c.load();f.calls.length=0;
  f.setRequest(()=>{clock.now+=35000;throw new TypeError('Failed to fetch');});
  await f.c.load();assert.equal(f.calls.length,1);assert.equal(f.c.events[0].title,'Vorhandener Termin');assert.match(f.c.message,/Zuletzt geladene Termine/);
+});
+
+test('Verspäteter Jahresabruf zeigt einen inzwischen bestätigt gelöschten Termin nicht erneut',async()=>{
+ const f=fixture(),gate=deferred();f.setRequest(()=>gate.promise);const loading=f.c.load();await tick();
+ f.c.PortalCalendar.rememberDeletion('synthetic-deleted','synthetic-source');gate.resolve({...result(),events:[{id:'synthetic-deleted',title:'Gelöscht',start:Date.parse('2026-06-15T12:00Z'),end:Date.parse('2026-06-15T13:00Z')}]});
+ await loading;assert.equal(f.c.events.length,0);
 });

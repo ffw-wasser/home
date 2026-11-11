@@ -16,7 +16,7 @@
   $('status').textContent=message;
   $('holiday-status').textContent=g.SchoolHolidays.complete(year)?'Landesweite Ferien für '+year+' vollständig erfasst.':'Für '+year+' liegen keine vollständigen Feriendaten vor. Einzelne bekannte Zeiträume werden angezeigt.';
   const today=dayKey(Date.now()),filter=$('filter').value,showBirthdays=portal&&$('birthdays')?.checked&&privateData;
-  const visible=events.filter(e=>e.kind==='birthday'?showBirthdays:filter==='all'||e.kind===filter);
+  const visible=(portal?events:g.PortalCalendar.withoutDeleted(events,g.DrinksStore.sourceKey())).filter(e=>e.kind==='birthday'?showBirthdays:filter==='all'||e.kind===filter);
   const next=events.filter(e=>e.kind==='probe'&&e.end>Date.now()).sort((a,b)=>a.start-b.start)[0];
   // Index each event once; mobile must not format every event for every day.
   const byDay=new Map(),first=year+'-01-01',last=year+'-12-31';
@@ -94,7 +94,7 @@
    if(epoch!==generation)return;
    if(result.year!==selected||!Array.isArray(result.events))throw Error('Für den Jahresplan bitte den aktualisierten Kalenderdienst bereitstellen.');
    const apply=result=>{
-    colors=result.colors||g.CalendarPresentation.defaults();events=result.events.filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;loadedYear=selected;
+    colors=result.colors||g.CalendarPresentation.defaults();events=(portal?result.events:g.PortalCalendar.withoutDeleted(result.events,source)).filter(e=>Number.isFinite(e.start)&&Number.isFinite(e.end));privateData=privateAccess;loaded=true;loadedYear=selected;
     message=!result.configured?'Google-Kalender noch nicht eingerichtet.':(result.stale?'Kalenderstand veraltet. ':'')+(portal?'Deine freigegebenen Proben, Kalenderinformationen und dein Geburtstag. ':'Vollständiger Jahresplan für das Gerätehaus. ')+(result.fetchedAt?'Stand: '+format(result.fetchedAt,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'');
     render();
    };
@@ -109,6 +109,7 @@
   }catch(e){if(epoch!==generation)return;if(!authorized()||!portal&&source!==g.DrinksStore.sourceKey()||[401,403].includes(e.status)){lock();message=g.ConnectionStatus?.message(e)||e.message;render();return;}
    if(loaded&&loadedYear===selected){message='Aktualisierung nicht möglich · Zuletzt geladene Termine werden angezeigt. '+(g.ConnectionStatus?.message(e)||e.message);$('status').textContent=message;}else{events=[];privateData=false;message=g.ConnectionStatus?.message(e)||e.message;render();jump();}}finally{if(epoch===generation)section?.classList.remove('year-plan-opening');}
  }
+ function eventDeleted(){if(!portal&&loaded&&accessCurrent()){events=g.PortalCalendar.withoutDeleted(events,g.DrinksStore.sourceKey());render();}}
  function lock(){document.getElementById('more-year-plan')?.classList.remove('year-plan-opening');generation++;events=[];privateData=false;loaded=false;loadedYear=null;source='';message=portal?'Bitte den persönlichen Portalzugang erneut öffnen.':'Bitte den Jahresplan über die Gerätehaus-Verbindung erneut laden.';render();}
  function afterView(view){
   const settings=document.getElementById('settingsView'),tab=document.getElementById('settingsTab');
@@ -153,5 +154,5 @@
   const help=document.getElementById('helpView');if(help){const back=node('button','← Zum Termin');back.type='button';back.className='outline-button';back.onclick=()=>showView('attendanceView');help.prepend(back);}
   render();
  }
- if(portal)g.PortalYearPlan={load,lock,dayKey};else g.YearPlan={load,lock,afterView,dayKey};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ if(portal)g.PortalYearPlan={load,lock,dayKey};else g.YearPlan={load,lock,afterView,dayKey,eventDeleted};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

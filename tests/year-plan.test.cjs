@@ -183,19 +183,21 @@ test('Manueller Google-Abgleich zeigt auch einen erst Sekunden alten Jahresstand
 });
 
 test('Normaler Kalender und Jahresansicht teilen den laufenden Google-Abruf bei manueller Aktualisierung',async()=>{
- const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});await f.call('year',{year:2026},null,true);
  f.raw(ics([event('shared-normal-year','20260617','Probe gemeinsamer Import')]));
- const fetch=f.c.fetch;let release,calls=0;const gate=new Promise(resolve=>release=resolve);
- f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/')){calls++;await gate;}return fetch(url,options);};
- const normal=f.call('list',{force:true},null,true),annual=f.call('year',{year:2026,force:true},null,true);
+ const fetch=f.c.fetch,jobs=[];let release,entered,calls=0;const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve);
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/')){calls++;entered();await gate;}return fetch(url,options);};
+ const normal=f.call('list',{force:true},null,true);
  try{
-  for(let i=0;i<100&&!calls;i++)await new Promise(setImmediate);
-  for(let i=0;i<100;i++)await new Promise(setImmediate);
-  assert.equal(calls,1);release();const results=await Promise.all([normal,annual]);
-  assert(results.every(r=>r.status===200&&!r.value.stale));
-  assert(results.every(r=>r.value.events.some(e=>e.title==='Probe gemeinsamer Import')));
+  await started;
+  // The background response acknowledges joining the pending source import;
+  // no arbitrary event-loop delay is needed before releasing the Google gate.
+  const annual=await f.call('year',{year:2026,force:true,background:true},null,true,{waitUntil:job=>jobs.push(job)});
+  assert.equal(annual.value.refreshing,true);assert.equal(calls,1);release();const result=await normal;await Promise.all(jobs);
+  const fresh=await f.call('year',{year:2026},null,true);
+  for(const r of [result,fresh]){assert.equal(r.status,200);assert.equal(r.value.stale,false);assert(r.value.events.some(e=>e.title==='Probe gemeinsamer Import'));}
   assert.equal(calls,1,'normaler Import und Jahresimport laden dieselbe ICS-Datei nur einmal');
- }finally{release();await Promise.all([normal,annual]);}
+ }finally{release();await normal;await Promise.all(jobs);}
 });
 
 test('Verwaltungsaktualisierung wartet nach neuen Terminen nicht auf den optionalen Google-Farbdienst',async()=>{

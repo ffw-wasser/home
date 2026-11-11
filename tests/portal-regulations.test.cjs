@@ -3,12 +3,12 @@ const {fixture}=require('./helpers/portal-fixture.cjs');
 const ctx=vm.createContext({URL});vm.runInContext(fs.readFileSync(require.resolve('../js/features/portal/regulations-model.js'),'utf8'),ctx);
 const M=ctx.RegulationsModel;
 test('Dienstvorschriften: offizielle Grundauswahl, keine externen, aktiven oder umgeleiteten PDF-Adressen',()=>{
- const items=M.defaults();assert.equal(items.length,6);assert.equal(items[0].label,'FwDV 3');assert.equal(M.validate(items).length,6);
+ const items=M.defaults();assert.equal(items.length,7);assert.equal(items[0].label,'FwDV 3');assert.equal(M.validate(items).length,7);
  for(const url of ['javascript:alert(1)','http://www.lfs-bw.de/test.pdf','https://evil.example/test.pdf','https://www.lfs-bw.de.evil.example/test.pdf',items[0].url+'?redirect=evil',items[0].url+'#secret',items[0].url.replace('.pdf','.html'),'https://x:y@www.lfs-bw.de/fileadmin/LFS-BW/test.pdf'])assert.equal(M.pdfUrl(url),null,url);
  assert.throws(()=>M.validate([...items,items[0]]));assert.throws(()=>M.validate([{...items[0],title:'<script>'}]));assert.throws(()=>M.validate([{...items[0],sourceUpdated:'2026-02-31'}]));
 });
 test('Dienstvorschriften: nur berechtigte Zugriffe, verschlüsselte Auswahl und Konfliktschutz',async()=>{
- const f=await fixture(),initial=await f.call('regulations');assert.equal(initial.status,200);assert.equal(initial.value.version,0);assert.equal(initial.value.items.length,6);
+ const f=await fixture(),initial=await f.call('regulations');assert.equal(initial.status,200);assert.equal(initial.value.version,0);assert.equal(initial.value.items.length,7);
  const items=[{...initial.value.items[2],title:'Testtitel Atemschutz'},initial.value.items[0]];
  const saved=await f.call('regulations',{items,expectedVersion:0},null,true);assert.equal(saved.status,200);assert.equal(saved.value.version,1);
  assert.ok(!f.sql.prepare('SELECT payload FROM portal_regulations WHERE id=1').get().payload.includes('Testtitel Atemschutz'));
@@ -38,4 +38,13 @@ test('Grundauswahl: vollständige PDFs aus derselben App-Adresse ohne Kalenderab
  for(const item of M.defaults()){const file=M.bundledPdf(item.url);assert.match(file,/^assets\/regulations\/fwdv-\d{3}\.pdf$/);const bytes=Buffer.concat(M.bundledParts(item.url).map(part=>fs.readFileSync(require('node:path').join(__dirname,'..',part))));assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert.ok(bytes.length<30*1024*1024);}
  assert.equal(M.bundledPdf('https://evil.example/FwDV_003.pdf'),null);
  assert.equal(M.bundledPdf(M.defaults()[0].url.replace('003','999')),null);
+});
+
+
+test('FwDV/DV 810 ergänzt bestehende ältere Auswahl ohne die gespeicherte Konfiguration zu überschreiben',async()=>{
+ const f=await fixture(),legacy=M.defaults().filter(item=>item.id!=='810');
+ f.sql.prepare('INSERT INTO portal_regulations(id,payload,version) VALUES(1,?,4)').run(await f.L.seal(f.env,{items:legacy},'portal-regulations'));
+ const before=f.sql.prepare('SELECT * FROM portal_regulations WHERE id=1').get(),result=await f.call('regulations');
+ assert.equal(result.value.items.length,7);const entry=result.value.items.find(item=>item.id==='810');assert.equal(entry.title,'Sprech- und Datenfunkverkehr');assert.match(entry.url,/FwDV_DV_810.pdf$/);assert.equal(result.value.version,4);
+ assert.deepEqual(f.sql.prepare('SELECT * FROM portal_regulations WHERE id=1').get(),before);
 });
