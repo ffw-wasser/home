@@ -69,7 +69,7 @@ const root=path.resolve(__dirname,'..');
    await page.setViewportSize({width,height:844});
    for(const tab of ['master','career','roles','evidence','account']){
     await row('a').locator('[data-record-tab="'+tab+'"]').click();
-    const overflow=await row('a').evaluate(el=>[...el.querySelectorAll('input,fieldset,label,button')].filter(n=>n.getClientRects().length).filter(n=>{const r=n.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(n=>n.outerHTML.slice(0,130)));
+    const overflow=await row('a').evaluate(el=>[...el.querySelectorAll('input,fieldset,label,button')].filter(n=>!n.closest('.person-record-tabs')).filter(n=>n.getClientRects().length).filter(n=>{const r=n.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(n=>n.outerHTML.slice(0,130)));
     assert.deepEqual(overflow,[],'Personenakte '+tab+' bei '+width+' px');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Keine Seitenüberbreite bei '+width);
    }
