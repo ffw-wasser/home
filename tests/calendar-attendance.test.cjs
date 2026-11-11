@@ -264,6 +264,17 @@ test('Kalenderauswahl übernimmt Datum und Terminart, startet aber keine Erfassu
  assert.equal(f.c.PortalAdmin.selectCalendarEvent(next.id),true);assert.equal(f.c.PortalAdmin.selectedEvent().id,next.id);assert.equal(f.c.PortalAdmin.isNextEvent(),false);assert.equal(f.typeClicks.at(-1),'Unterricht');assert.equal(f.c.currentProbeDate,new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(next.start));assert.equal(f.c.currentSessionId,'');assert.equal(f.c.currentOperationId,'');assert.equal(f.c.pendingMemberStatuses.size,0);
  assert.equal(f.c.PortalAdmin.selectCalendarEvent(original.id),true);assert.equal(f.c.PortalAdmin.isNextEvent(),true);
 });
+test('Rückwirkender Termin aus der geschützten Jahresansicht ist auch vor dem Listenabruf auswählbar',async()=>{
+ const f=fixture();await f.login();const candidate={...f.privateCal.events[0],id:'historical-year-only',title:'Rückwirkender Unterricht',attendanceType:'Unterricht',start:Date.now()-172800000,end:Date.now()-169200000};
+ assert.equal(f.c.PortalAdmin.selectCalendarEvent(candidate.id,candidate),true);
+ assert.equal(f.c.PortalAdmin.selectedEvent().id,candidate.id);
+ assert.equal(f.c.PortalAdmin.selectedDate(),new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(candidate.start));
+ assert.equal(f.c.currentSessionId,'','Anklicken wählt den Termin, startet ihn aber nicht selbst');
+ f.c.currentSessionId='historical-session';f.c.PortalAdmin.sessionStarted();
+ await f.c.PortalAdmin.refreshAttendance(true);
+ assert.equal(f.c.PortalAdmin.selectedEvent().id,candidate.id,'Laufende Erfassung bleibt auch beim späteren Listenabruf verknüpft');
+ assert.equal(f.c.PortalAdmin.selectCalendarEvent('future-forged',{...candidate,id:'future-forged',start:Date.now()+86400000,end:Date.now()+90000000}),false);
+});
 test('Kalenderwechsel schützt auch eine gerade gestartete Erfassung ohne Anwesenheiten',async()=>{
  const f=fixture(),original=f.privateCal.events[0];f.privateCal.events.push({...original,id:'next-event',start:original.start+86400000,end:original.end+86400000});f.init();await f.login();f.c.currentSessionId='just-started';f.c.PortalAdmin.sessionStarted();const date=f.c.currentProbeDate;
  assert.equal(f.c.PortalAdmin.selectCalendarEvent('next-event'),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,original.id);assert.equal(f.get('portal-calendar-pick').value,original.id);assert.equal(f.c.currentProbeDate,date);assert.equal(f.c.currentSessionId,'just-started');
