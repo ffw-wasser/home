@@ -40,3 +40,9 @@ test('Datenordnerwechsel verhindert die Übernahme des alten Google-Abrufs',asyn
  const f=fixture(),gate=deferred();f.setRequest(data=>data.background?result(2026,'Gespeichert',{refreshing:true}):gate.promise);
  const load=f.c.load();await tick();f.changeSource();gate.resolve(result());await load;assert.equal(f.c.events.length,0);assert.equal(f.c.loaded,false);
 });
+for(const portal of [false,true])test(`Manuelles Aktualisieren erzwingt nur den ersten Google-Abruf, Portal=${portal}`,async()=>{
+ const f=fixture(portal);f.setRequest(data=>result(2026,data.background?'Bisher':'Neu',data.background?{refreshing:true}:{}));
+ await f.c.load(false,{force:true});assert.equal(f.calls[0].force,true);assert.equal(f.calls[0].background,true);
+ assert.equal(f.calls[1].force,undefined,'joining the refresh must not start a second Google download');assert.equal(f.calls[1].background,false);
+ assert.deepEqual(Array.from(f.c.events,e=>e.title),['Neu']);
+});

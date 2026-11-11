@@ -148,3 +148,36 @@ test('Fehlgeschlagener gemeinsamer Google-Abruf kann ohne Warten erneut versucht
  f.offline(false);f.raw(ics([event('retry','20240102','Probe Erneut')]));
  const result=await f.call('year',{year:2024},null,true);assert.equal(result.status,200);assert.equal(result.value.events[0].title,'Probe Erneut');
 });
+
+test('Manuelles Aktualisieren umgeht beide Jahres-Zwischenspeicher sofort',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});
+ f.raw(ics([event('old','20260616','Probe Bisher')]));
+ await f.call('year',{year:2026},null,true);const before=f.calendarFetches();
+ f.raw(ics([event('new','20260616','Probe Direkt aktualisiert')]));
+ const cached=await f.call('year',{year:2026},null,true);assert.equal(cached.value.events[0].title,'Probe Bisher');
+ const refreshed=await f.call('year',{year:2026,force:true},null,true);
+ assert.equal(refreshed.status,200);assert.equal(refreshed.value.events[0].title,'Probe Direkt aktualisiert');assert.equal(f.calendarFetches(),before+1);
+});
+
+test('Persönliches Aktualisieren liest Google neu, gebündelt bei gleichzeitigem Gerätehaus-Abruf',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});await f.call('year',{year:2026});const before=f.calendarFetches();
+ f.raw(ics([event('new','20260616','Probe Mitglied aktualisiert')]));
+ let release;const gate=new Promise(resolve=>release=resolve),fetch=f.c.fetch;
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/'))await gate;return fetch(url,options);};
+ try{
+  const member=f.call('year',{year:2026,force:true}),device=f.call('year',{year:2026,force:true},null,true);
+  await new Promise(setImmediate);release();const results=await Promise.all([member,device]);
+  for(const result of results){assert.equal(result.status,200);assert.equal(result.value.events[0].title,'Probe Mitglied aktualisiert');}
+  assert.equal(f.calendarFetches(),before+1);
+ }finally{release();}
+});
+
+test('Manueller Google-Abgleich zeigt auch einen erst Sekunden alten Jahresstand sofort',async()=>{
+ const f=await fixture({now:Date.parse('2026-06-15T12:00Z')});await f.call('year',{year:2026});
+ let release;const gate=new Promise(resolve=>release=resolve),fetch=f.c.fetch,jobs=[];
+ f.c.fetch=async(url,options)=>{if(String(url).startsWith('https://calendar.google.com/'))await gate;return fetch(url,options);};
+ try{
+  const response=await withoutGoogleWait(f.call('year',{year:2026,force:true,background:true},f.people[0],false,{waitUntil:job=>jobs.push(job)}));
+  assert.equal(response.status,200);assert.equal(response.value.refreshing,true);assert.equal(response.value.events.length,1);assert.equal(jobs.length,1);
+ }finally{release();await Promise.all(jobs);}
+});

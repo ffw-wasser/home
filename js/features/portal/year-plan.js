@@ -63,7 +63,7 @@
   updateToolsOffset();const epoch=generation,selected=year;
   requestAnimationFrame(()=>{if(epoch!==generation||selected!==year||document.getElementById(portal?'portal-page-more-year-plan':'yearPlanView')?.hidden)return;if($('month'))$('month').value=month;const card=document.getElementById('year-plan-month-'+month);if(card){const tools=document.querySelector(portal?'#more-year-plan>.year-plan-controls':'#yearPlanView>.year-plan-controls'),offset=portal?0:parseFloat(getComputedStyle(tools).top)||0;card.style.scrollMarginTop=(tools.getBoundingClientRect().height+offset+(portal?32:16))+'px';}card?.scrollIntoView({block:'start',behavior:'auto'});});
  }
- async function load(scroll=false,{openPdfOnLoad=false}={}){
+ async function load(scroll=false,{openPdfOnLoad=false,force=false}={}){
   if(scroll){const today=dayKey(Date.now());year=Number(today.slice(0,4));if($('month'))$('month').value=Number(today.slice(5,7))-1;}
   const directPdf=portal&&openPdfOnLoad,section=document.getElementById('more-year-plan');section?.classList.toggle('year-plan-opening',directPdf);
   const epoch=++generation,selected=year,keep=loaded&&loadedYear===year&&privateData&&accessCurrent();
@@ -74,7 +74,7 @@
    const privateAccess=authorized();let result;
    if(portal){
     if(!privateAccess)throw Error('Bitte mit deinem persönlichen H₂O-Zugang anmelden.');
-    result=await g.H2OPortal.api('year',{year:selected,background:true});
+    result=await g.H2OPortal.api('year',{year:selected,background:true,force});
     if(epoch!==generation)return;if(!authorized())throw Error('Der Portalzugang wurde gesperrt.');
    }else{
     if(!privateAccess)throw Error('Bitte die vorhandene OneDrive-Verbindung des Gerätehauses herstellen und den Jahresplan aktualisieren. Eine Verwaltungs-PIN ist nicht erforderlich.');
@@ -85,7 +85,7 @@
     for(let attempt=0;attempt<2;attempt++){
      if(epoch!==generation)return;
      if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
-     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected,background:true},35000);break;}
+     try{result=await g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year:selected,background:true,force},35000);break;}
      catch(e){const network=e instanceof TypeError||['AbortError','TimeoutError'].includes(e?.name)||/load failed|failed to fetch|networkerror|network request failed/i.test(e?.message||'');if(attempt||!network)throw e;}
     }
     if(epoch!==generation)return;if(!authorized()||source!==g.DrinksStore.sourceKey())throw Error('Die Gerätehaus-Verbindung oder der Datenordner wurde geändert. Bitte erneut laden.');
@@ -128,7 +128,7 @@
   if(!portal){const nav=document.querySelector('.top-nav');if(nav&&typeof ResizeObserver==='function')new ResizeObserver(updateToolsOffset).observe(nav);g.addEventListener('resize',updateToolsOffset);updateToolsOffset();document.getElementById('yearPlanTab').onclick=()=>showView('yearPlanView');document.getElementById('plansTab').onclick=()=>showView('plansView');}
   const change=next=>{if(!Number.isInteger(next)||next<2000||next>2100){$('year').value=year;return;}year=next;load();};
   $('prev').onclick=()=>change(year-1);$('next').onclick=()=>change(year+1);$('year').onchange=()=>change(Number($('year').value));
-  $('today').onclick=()=>{const today=dayKey(Date.now()),currentYear=Number(today.slice(0,4)),month=Number(today.slice(5,7))-1;if(year!==currentYear){load(true);return;}jump(month);};$('reload').onclick=()=>load();
+  $('today').onclick=()=>{const today=dayKey(Date.now()),currentYear=Number(today.slice(0,4)),month=Number(today.slice(5,7))-1;if(year!==currentYear){load(true);return;}jump(month);};$('reload').onclick=()=>load(false,{force:true});
   $('print').textContent='Als PDF ansehen';$('print').onclick=openPdf;
   for(const id of ['filter','birthdays','holidays'])if($(id))$(id).onchange=()=>{if(privateData&&!accessCurrent())return lock();render();};
   const monthLabel=node('label','Monat '),monthSelect=node('select');monthLabel.className='year-plan-month-jump';monthSelect.id='year-plan-month';monthSelect.setAttribute('aria-label','Zum Monat springen');

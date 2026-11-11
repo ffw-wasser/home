@@ -22328,12 +22328,12 @@ g.PortalHydrants={schema,route};
  }
  const sourceKey=c=>c?c.calendarUrl+'|'+(c.privateCalendarRevision||''):'';
  const sourceRevision=c=>c?.privateCalendarRevision||'';
- async function sourceProjection(c,range=null,db=null){
+ async function sourceProjection(c,range=null,db=null,force=false){
   try{
    if(!db)return await projection(c.calendarUrl,range,c.privateCalendarUrl||c.calendarUrl);
    const key=sourceKey(c)+'|'+(c.privateCalendarUrl||''),previous=yearSources.get(db);
    let entry=previous;
-   if(!entry||entry.key!==key||!entry.pending&&entry.fetchedAt<=Date.now()-60000){
+   if(!entry||entry.key!==key||!entry.pending&&(force||entry.fetchedAt<=Date.now()-60000)){
     entry={key,fetchedAt:0,raw:null,pending:null};yearSources.set(db,entry);
     entry.pending=download(c.privateCalendarUrl||c.calendarUrl).then(raw=>{entry.raw=raw;entry.fetchedAt=Date.now();return raw;}).catch(error=>{if(yearSources.get(db)===entry)yearSources.delete(db);throw error;}).finally(()=>{entry.pending=null;});
    }
@@ -22359,7 +22359,7 @@ g.PortalHydrants={schema,route};
   catch(error){return [401,403,404,410].includes(error.googleStatus)?'blocked':'unknown';}
  }
  async function projection(url,range=null,readUrl=url,raw=null){raw=raw??await download(readUrl);const items=g.PortalCalendar.parse(raw,Date.now(),range),events=[],series=new Map();for(const item of items){const {key,seriesKey,...rest}=item;if(!series.has(seriesKey))series.set(seriesKey,await hash('h2o-series/v1:'+url+':'+seriesKey));events.push({id:await hash('h2o-event/v1:'+url+':'+key),seriesId:series.get(seriesKey),...rest});}return events;}
- async function yearCalendar(env,year,ctx,background=false){
+ async function yearCalendar(env,year,ctx,background=false,force=false){
   if(!Number.isInteger(year)||year<2000||year>2100)fail('Bitte ein Jahr von 2000 bis 2100 wählen.',400);
   const c=await config(env);if(!c)return {year,configured:false,events:[],fetchedAt:null,stale:true};
   const range={from:Date.parse(year+'-01-01T00:00:00+01:00'),to:Date.parse((year+1)+'-01-01T00:00:00+01:00')};
@@ -22368,7 +22368,7 @@ g.PortalHydrants={schema,route};
   let years=yearLoads.get(env.DB);if(!years){years=new Map();yearLoads.set(env.DB,years);}
   for(const [key,value] of years)if(value.source!==sourceKey(c))years.delete(key);
   let entry=years.get(year);
-  if(!entry||!entry.pending&&entry.fetchedAt<=Date.now()-300000){
+  if(!entry||!entry.pending&&(force||entry.fetchedAt<=Date.now()-300000)){
    const previous=entry;entry={source:sourceKey(c),fetchedAt:0,pending:null,fallback:null};let snapshotReady;entry.snapshotReady=new Promise(resolve=>snapshotReady=resolve);years.set(year,entry);
    while(years.size>3)years.delete(years.keys().next().value);
    entry.pending=(async()=>{let fallback=previous?.events?{events:previous.events,fetchedAt:previous.fetchedAt}:null;
@@ -22377,8 +22377,8 @@ g.PortalHydrants={schema,route};
      // historical series. They never contain recipient decisions or reply data.
      const row=await env.DB.prepare('SELECT * FROM portal_calendar_year WHERE year=?').bind(year).first(),saved=await open(env,row,'portal-calendar-year:'+year);if(saved?.calendarUrl===c.calendarUrl&&(saved.sourceRevision||'')===sourceRevision(c)&&Array.isArray(saved.events)&&(!fallback||row.fetched_at>fallback.fetchedAt))fallback={events:saved.events,fetchedAt:row.fetched_at};
      entry.fallback=fallback;snapshotReady();
-     if(fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
-     const events=await sourceProjection(c,range,env.DB),fetchedAt=Date.now();
+     if(!force&&fallback&&fallback.fetchedAt>Date.now()-300000){entry.events=fallback.events;entry.fetchedAt=fallback.fetchedAt;return {events:entry.events,fetchedAt:entry.fetchedAt,stale:false};}
+     const events=await sourceProjection(c,range,env.DB,force),fetchedAt=Date.now();
      const currentRow=await env.DB.prepare('SELECT * FROM portal_config WHERE id=1').first();if(sourceKey(await open(env,currentRow,'portal-config'))!==sourceKey(c))fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
      const payload=await L.seal(env,{calendarUrl:c.calendarUrl,sourceRevision:sourceRevision(c),events},'portal-calendar-year:'+year);
      const written=await env.DB.prepare('INSERT INTO portal_calendar_year(year,payload,fetched_at) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM portal_config WHERE id=1 AND payload=?) ON CONFLICT(year) DO UPDATE SET payload=excluded.payload,fetched_at=excluded.fetched_at WHERE portal_calendar_year.fetched_at<=excluded.fetched_at').bind(year,payload,fetchedAt,currentRow.payload).run();if(!written.meta.changes)fail('Kalenderverbindung wurde geändert. Bitte aktualisieren.');
@@ -22390,7 +22390,7 @@ g.PortalHydrants={schema,route};
   let cal;
   if(background&&ctx?.waitUntil&&entry.pending){
    const pending=entry.pending;await entry.snapshotReady;
-   if(entry.pending&&entry.fallback&&entry.fallback.fetchedAt<=Date.now()-300000){
+   if(entry.pending&&entry.fallback&&(force||entry.fallback.fetchedAt<=Date.now()-300000)){
     // Return the encrypted snapshot before Google; apply current rules below.
     ctx.waitUntil(pending.catch(()=>{}));cal={events:entry.fallback.events,fetchedAt:entry.fallback.fetchedAt,stale:true,refreshing:true};
    }else cal=await pending;
@@ -22938,9 +22938,9 @@ g.PortalHydrants={schema,route};
   if(path==='/admin/portal/colors')return calendarColors(env,data);
   if(path==='/admin/portal/event-statistics')return fitnessStatistics(env,data.year,'Veranstaltung');
   if(path==='/admin/portal/fitness-statistics')return fitnessStatistics(env,data.year);
-  if(path==='/admin/portal/year')return yearCalendar(env,data.year,ctx,data.background===true);
+  if(path==='/admin/portal/year')return yearCalendar(env,data.year,ctx,data.background===true,data.force===true);
   if(path==='/portal/year'){
-   const cal=await yearCalendar(env,data.year,ctx,data.background===true);
+   const cal=await yearCalendar(env,data.year,ctx,data.background===true,data.force===true);
    // Preserve the same audience as the personal appointment list. Other people's
    // birthdays, unapproved entries and administration metadata stay private.
    return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,refreshing:cal.refreshing===true,colors:cal.colors,colorVersion:cal.colorVersion,
@@ -23143,7 +23143,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"a4aef6a339bd8e877d572a69a797868af9022dff1eabbc6659404f0750b1290b",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4e0b32874aea16ef71c4988e45d2b1c05eb0f25d56921622951eb269a28d1ee8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
