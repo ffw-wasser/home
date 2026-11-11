@@ -4,13 +4,13 @@
  const host=()=>document.getElementById('calendar-sidebar'),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  const dateLabel=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}),monthLabel=new Intl.DateTimeFormat('de-DE',{month:'long',timeZone:'UTC'}),weekdayLabel=new Intl.DateTimeFormat('de-DE',{weekday:'short',timeZone:'UTC'}),clockLabel=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});
  let expanded=false,monthOffset=0;
- let generation=0,source='',loadedAt=0,pending=false,cached=null,refreshRequested=false,latestTiming={},timings=[],archiveVerified=false,archiveLoading=null;
+ let generation=0,source='',loadedAt=0,pending=false,cached=null,refreshRequested=false,googleForceRequested=false,latestTiming={},timings=[],archiveVerified=false,archiveLoading=null;
  const now=()=>g.performance?.now?.()??Date.now();
  function recordTiming(values){latestTiming={...latestTiming,...values};timings.push({...latestTiming});if(timings.length>20)timings.shift();}
  function status(message,retry=false){
   if(!host()||host().hidden)return;let box=host().querySelector('.calendar-sidebar-load-status');
   if(!box){box=node('div');box.className='calendar-sidebar-load-status';box.setAttribute('role','status');const header=host().querySelector('.calendar-sidebar-heading');if(header)header.insertBefore(box,header.querySelector('button'));else host().append(box);}
-  box.replaceChildren(node('small',message));if(retry){const button=node('button','Erneut laden');button.type='button';button.className='outline-button';button.onclick=()=>{refreshRequested=true;refresh();};box.append(button);}
+  box.replaceChildren(node('small',message));if(retry||(!pending&&loadedAt)){const label=retry?'Google erneut prüfen':'Google aktualisieren',button=node('button','↻');button.type='button';button.className='outline-button';button.setAttribute('aria-label',label);button.title=label;button.onclick=()=>{googleForceRequested=true;refreshRequested=true;void refresh();};box.append(button);}
  }
  function stand(){return loadedAt?'Stand '+new Date(Number(cached?.fetchedAt)||loadedAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';}
  function mountDiagnostics(){
@@ -29,7 +29,7 @@
   box.style.setProperty('--calendar-expanded-right',Math.max(8,g.innerWidth-bounds.right)+'px');
  }
  function hide(){expanded=false;host()?.classList.remove('is-expanded');host()?.replaceChildren();if(host())host().hidden=true;}
- function clear(){generation++;pending=false;hide();source='';loadedAt=0;cached=null;refreshRequested=false;latestTiming={};timings=[];archiveVerified=false;archiveLoading=null;}
+ function clear(){generation++;pending=false;hide();source='';loadedAt=0;cached=null;refreshRequested=false;googleForceRequested=false;latestTiming={};timings=[];archiveVerified=false;archiveLoading=null;}
  function eventDeleted(){if(cached){cached={...cached,events:g.PortalCalendar.withoutDeleted(cached.events,g.DrinksStore.sourceKey())};if(active())paint(cached,cached.year);}}
  async function verifyArchive(){
   if(archiveLoading)return archiveLoading;
@@ -83,7 +83,7 @@
   // A known calendar appears immediately while an expired snapshot refreshes.
   if(cached&&host().hidden)paint(cached,year);
   if(pending){if(host().hidden)paint({year,events:[],loading:true},year);if(cached)status(stand()+' · Wird aktualisiert …');return;}if(cached&&!refreshRequested&&Date.now()-loadedAt<300000){status(stand()+(cached.refreshing?' · Wird aktualisiert …':cached.stale?' · Aktualisierung nicht bestätigt':''),cached.stale&&!cached.refreshing);return;}
-  const epoch=++generation;pending=true;refreshRequested=false;host().hidden=false;
+  const forceGoogle=googleForceRequested;googleForceRequested=false;let displayError=false;const epoch=++generation;pending=true;refreshRequested=false;host().hidden=false;
   if(!cached)paint({year,events:[],loading:true},year);
   else status(stand()+' · Wird aktualisiert …');
   const requestStarted=now();latestTiming={};
@@ -95,8 +95,8 @@
    // must still discard the response, including after logout.
    if(!key&&!source&&epoch===generation&&authorized()&&c?.source&&c.source===g.DrinksStore.sourceKey())source=c.source;
    if(!current())return;if(!c||c.source!==source)throw Object.assign(Error('Bitte Gerätehaus-Verbindung prüfen.'),{status:403});
-   const years=lastYear===year?[year]:[year,lastYear],read=background=>Promise.all(years.map(year=>g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year,background},35000)));
-   let snapshots=await read(true);
+   const years=lastYear===year?[year]:[year,lastYear],read=(background,force=false)=>Promise.all(years.map(year=>g.DrinksPush.request(c,'/admin/portal/year',{source:c.source,year,background,force},35000)));
+   let snapshots=await read(!forceGoogle,forceGoogle);
    for(let pass=0;pass<2;pass++){
     if(!current())return;
     if(snapshots.some((cal,i)=>cal.year!==years[i]||!Array.isArray(cal.events)))throw Error('Kalender bitte aktualisieren.');
@@ -108,8 +108,9 @@
     // One joined refresh, not repeated polling; the shown snapshot remains visible.
     snapshots=await read(false);
    }
-  }catch(e){if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){if(cached)cached.refreshing=false;const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(!cached)host().replaceChildren(node('h2','Kalender'));status((cached?stand()+' · ':'')+message.textContent,true);}}
-  finally{if(epoch===generation){pending=false;host()?.querySelectorAll('[data-calendar-month]').forEach(button=>button.disabled=false);if(active()&&cached&&!host().querySelector('.calendar-sidebar-load-status'))status(stand());}}
+   if(forceGoogle){const updated=await g.PortalAdmin?.refreshAttendance?.(true,true);if(updated===false){displayError=true;status('Google-Kalender teilweise aktualisiert. Die Erfassungsliste konnte nicht bestätigt werden.',true);}}
+  }catch(e){displayError=true;if(current()&&[401,403].includes(Number(e.status))){clear();if(active()){host().hidden=false;host().replaceChildren(node('h2','Kalender'),node('p',g.ConnectionStatus?.message(e)||e.message));}}else if(current()&&active()){if(cached)cached.refreshing=false;const message=node('p',g.ConnectionStatus?.message(e)||e.message);if(!cached)host().replaceChildren(node('h2','Kalender'));status((cached?stand()+' · ':'')+message.textContent,true);}}
+  finally{if(epoch===generation){pending=false;host()?.querySelectorAll('[data-calendar-month]').forEach(button=>button.disabled=false);if(active()&&cached&&!displayError)status(stand()+(cached.stale?' · Aktualisierung nicht bestätigt':''),cached.stale);if(googleForceRequested&&active()){refreshRequested=true;void refresh();}}}
  }
  g.CalendarSidebar={refresh,hide,clear,eventDeleted,syncSelection,diagnostics:()=>timings.map(t=>({...t}))};g.addEventListener('resize',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(cached&&active())paint(cached,cached.year);refresh();}});setInterval(refresh,60000);setInterval(()=>{if(!authorized()){g.PortalCalendar.forgetDeletions();if(source)clear();}else if(source&&source!==g.DrinksStore.sourceKey()){g.PortalCalendar.forgetDeletions();clear();}else if(source&&!active()&&!host()?.hidden)hide();},1000);document.addEventListener('DOMContentLoaded',()=>{mountDiagnostics();const nav=document.querySelector('.top-nav');if(nav&&g.ResizeObserver)new ResizeObserver(fitExpanded).observe(nav);g.visualViewport?.addEventListener('resize',fitExpanded);refresh();},{once:true});
 })(globalThis);
