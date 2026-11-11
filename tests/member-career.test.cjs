@@ -53,3 +53,29 @@ test('Gemeinsamer Dienstgradkatalog enthält nur Ehrenamt der Freiwilligen Feuer
  assert.equal(module.volunteerCatalogItem('rank','Leitender Hauptbrandmeister'),true);
  assert.equal(module.volunteerCatalogItem('rank','Brandamtsrat'),false);
 });
+
+test('Katalog enthält ausschließlich freiwillige Feuerwehr: Beamten-/Berufsbezeichnungen ausgeschlossen',()=>{
+ const m=api();
+ assert.ok(m.suggestions('rank',[],[]).includes('Oberfeuerwehrmann'));
+ assert.ok(m.suggestions('rank',[],[]).includes('Löschmeister'));
+ assert.equal(m.suggestions('rank',[],[]).includes('Branddirektor'),false);
+ assert.equal(m.volunteerCatalogItem('rank','Branddirektor'),false);
+ assert.equal(m.volunteerCatalogItem('rank','Brandoberinspektor'),false);
+ assert.equal(m.volunteerCatalogItem('rank','Oberbrandmeister'),true);
+ assert.equal(m.volunteerCatalogItem('course','Laufbahnprüfung gehobener feuerwehrtechnischer Dienst'),false);
+ assert.equal(m.volunteerCatalogItem('training','Ausbildung zum hauptamtlichen Brandinspektor'),false);
+ assert.equal(m.volunteerCatalogItem('training','Ausbildung Wasserrettung'),true);
+});
+test('Eigene erlaubte Bezeichnung wird ohne Doppelungen mitgliedsübergreifend angeboten',()=>{
+ const m=api();
+ const members=[{careerEntries:[{...example,type:'training',title:'Schulung Digitalfunk'}]},{careerEntries:[{...example,type:'training',title:'schulung digitalfunk'}]}];
+ const all=m.mergedCatalog([{type:'training',title:'Schulung Digitalfunk'},{type:'rank',title:'Branddirektor'}],members);
+ assert.equal(all.filter(x=>x.type==='training').length,1);
+ assert.equal(all.some(x=>x.title==='Branddirektor'),false);
+ assert.ok(m.suggestions('training',[],all).includes('Schulung Digitalfunk'));
+});
+test('Gemeinsamer Katalog wird im Komplettbackup erhalten',()=>{
+ const terms=[{type:'training',title:'Gemeinsame Fortbildung'}];
+ const backup=Backup.create({members:[{id:'m1',lastName:'Muster',firstName:'Marie'}],careerCatalog:terms,entries:[],csvArchive:[],roleTargets:{}});
+ assert.deepEqual(Backup.normalize(backup).careerCatalog,terms);
+});
