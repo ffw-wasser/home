@@ -97,8 +97,14 @@
      const value=deleting?null:{summary:title.value,location:locationInput.value,description:body,start:allDay.checked?{date:start.value}:time(start,source?.start),end:allDay.checked?{date:end.value}:time(end,source?.end)};
      await api(deleting?'delete':'update',{googleEventId:source.id,etag:source.etag,...(!deleting?{event:value}:{})});
      if(version!==epoch||editor!==dialog)return;
-     editing=false;form.remove();status.textContent=deleting?'Termin in Google Kalender gelöscht.':'In Google Kalender gespeichert.';
-     try{const synced=await request('list',{force:true});g.CalendarSidebar?.clear();await reload?.();if(synced.stale)throw Error('Import noch nicht bestätigt');status.textContent+=' H₂O wurde neu geladen; Änderungen aus Google können beim Import verzögert erscheinen.';}catch{status.textContent+=' Die H₂O-Anzeige konnte noch nicht aktualisiert werden. Bitte den Kalender erneut laden; die Google-Änderung ist gespeichert.';}
+     editing=false;form.remove();const confirmed=deleting?'Termin in Google Kalender gelöscht.':'In Google Kalender gespeichert.';
+     status.textContent=confirmed+' Die Kalenderanzeige wird im Hintergrund aktualisiert. Du kannst dieses Fenster schließen.';
+     // Google's confirmed mutation is complete. Do not keep the dialog locked
+     // while the separate ICS import and calendar view catch up.
+     void (async()=>{
+      try{g.CalendarSidebar?.clear();const synced=await request('list',{force:true});if(version!==epoch)return;await reload?.(synced);if(synced.stale)throw Error('Import noch nicht bestätigt');if(editor===dialog)status.textContent=confirmed+' Kalenderabgleich abgeschlossen. Änderungen aus Google können beim Import verzögert erscheinen.';}
+      catch{if(version===epoch&&editor===dialog)status.textContent=confirmed+' Die Kalenderanzeige konnte noch nicht aktualisiert werden. Bitte den Kalender erneut laden; die Google-Änderung ist bestätigt.';}
+     })();
     }catch(e){if(version===epoch&&editor===dialog){status.textContent=e.message;for(const control of form.elements)control.disabled=false;}}
     finally{sending=false;if(version===epoch&&editor===dialog){saving=false;close.disabled=false;}}
    };

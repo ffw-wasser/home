@@ -5,7 +5,7 @@ function setup({role='writer',aud=client,granted=scope,expires=300,precondition=
  const requests=[],ctx={URL,URLSearchParams,Date,AbortSignal,fetch:async(url,options={})=>{if(options.redirect==='error')throw new TypeError('Invalid redirect value, must be follow or manual');requests.push({url,options});if(url.includes('tokeninfo'))return Response.json({aud,scope:granted,expires_in:expires});if(url.includes('maxResults=1'))return Response.json({accessRole:role});if(options.method&&precondition)return new Response('',{status:412});if(options.method==='DELETE')return new Response(null,{status:204});return Response.json({etag:'"v1"',attendees:attendees?[{email:'synthetic@example.invalid'}]:undefined,items:[]});}};
  vm.runInNewContext(fs.readFileSync('cloudflare/push/google-calendar-api.js','utf8'),ctx);
  const call=(action,data={},env={GOOGLE_CALENDAR_CLIENT_ID:client})=>ctx.GoogleCalendarAPI.route(action,{googleAccessToken:token,...data},env,{calendarUrl:'https://calendar.google.com/calendar/ical/test%40example.invalid/public/basic.ics'});
- return {api:ctx.GoogleCalendarAPI,call,requests};
+ return {api:ctx.GoogleCalendarAPI,call,requests,ctx};
 }
 const event={summary:'Synthetic exercise',description:'Synthetic data',location:'Test place',start:{dateTime:'2026-11-01T18:00:00+01:00'},end:{dateTime:'2026-11-01T20:00:00+01:00'}};
 test('Google API: H2O admin authentication is required before any Google access',async()=>{
@@ -56,3 +56,20 @@ test('Google API: neither access verification nor calendar requests follow crede
 });
 
 test('Google API creates no new calendar entries from H2O',async()=>{const f=setup();await assert.rejects(f.call('create',{event,requestId:'a'.repeat(32)}),e=>e.status===404);assert.equal(f.requests.length,0);});
+
+
+test('Google-Löschung prüft Rechte und Termin parallel, wartet aber vor DELETE auf beide Ergebnisse',async()=>{
+ const f=setup(),fetch=f.ctx.fetch,reads=[];let permissions,eventRead;
+ f.ctx.fetch=async(url,options)=>{if(url.includes('maxResults=1')){reads.push('role');return new Promise(resolve=>permissions=()=>resolve(Response.json({accessRole:'writer'})));}if(url.includes('fields=etag,')){reads.push('event');return new Promise(resolve=>eventRead=()=>resolve(Response.json({etag:'"v1"'})));}return fetch(url,options);};
+ const deleting=f.call('delete',{googleEventId:'event123',etag:'"v1"'});
+ await new Promise(setImmediate);assert.deepEqual(reads,['role','event']);assert.equal(f.requests.some(r=>r.options.method==='DELETE'),false);
+ permissions();await new Promise(setImmediate);assert.equal(f.requests.some(r=>r.options.method==='DELETE'),false);
+ eventRead();assert.equal((await deleting).ok,true);assert.equal(f.requests.filter(r=>r.options.method==='DELETE').length,1);
+});
+
+test('Google-Löschung bleibt trotz paralleler Leseprüfungen ohne Schreibrecht, bei Gästen und geänderter ETag gesperrt',async()=>{
+ for(const options of [{role:'reader'},{role:'freeBusyReader'},{attendees:true}]){
+  const f=setup(options);await assert.rejects(f.call('delete',{googleEventId:'event123',etag:'"v1"'}));assert.equal(f.requests.some(r=>r.options.method==='DELETE'),false);
+ }
+ const f=setup();await assert.rejects(f.call('delete',{googleEventId:'event123',etag:'"old"'}),/inzwischen/);assert.equal(f.requests.some(r=>r.options.method==='DELETE'),false);
+});

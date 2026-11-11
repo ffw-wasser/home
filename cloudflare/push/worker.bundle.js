@@ -21943,7 +21943,14 @@ g.PortalHydrants={schema,route};
   const id=calendarId(configuration),base='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(id);
   // A Google account must itself have access to THIS calendar. No owner credentials.
   // Events.list returns accessRole without requesting calendar-list/ACL scopes.
-  const permissions=await json(base+'/events?maxResults=1&fields=accessRole',token);
+  if(write&&!/^[a-zA-Z0-9_@.-]{1,1024}$/.test(data.googleEventId||''))fail('Ungültige Google-Terminaktion.',400);
+  if(write&&(typeof data.etag!=='string'||!/^"[^"\r\n]{1,200}"$/.test(data.etag)))fail('Bitte den Google-Termin vor der Änderung neu laden.',400);
+  // Both reads are independent after token verification. No mutation is sent
+  // until calendar rights and the current event have both been checked.
+  const [permissions,existing]=await Promise.all([
+   json(base+'/events?maxResults=1&fields=accessRole',token),
+   write?json(base+'/events/'+encodeURIComponent(data.googleEventId)+'?fields=etag,attendees,recurringEventId,recurrence',token):null
+  ]);
   if(write&&!['writer','owner'].includes(permissions.accessRole)||!write&&!['reader','writer','owner'].includes(permissions.accessRole))fail('Google-Kalenderberechtigung reicht nicht aus.');
   if(action==='status')return {ok:true,accessRole:permissions.accessRole,calendarId:id};
   if(action==='resolve'){
@@ -21972,7 +21979,6 @@ g.PortalHydrants={schema,route};
   const headers={'If-Match':data.etag};
   // A delete or source change could notify guests. Reject invited events until the
   // invitation workflow, consent and response conflict policy have been accepted.
-  const existing=await json(url+'?fields=etag,attendees,recurringEventId,recurrence',token);
   if(existing.etag!==data.etag)fail('Der Google-Termin wurde inzwischen geändert.',409);
   if(existing.attendees?.length)fail('Termine mit persönlichen Einladungen sind noch nicht für Änderungen freigegeben.',409);
   if(existing.recurrence?.length)fail('Serienänderungen bitte bis zur Geräteprüfung in Google Kalender vornehmen.',409);
@@ -23148,7 +23154,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"e0e633d5f50d599da11178f952d868a3129bb5eb3f3ee651e589f349a3ae70d8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4c7bcd3116cda8d0d076d14c071238b72837cc959fcc5457ccadac96a7fb5084",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
