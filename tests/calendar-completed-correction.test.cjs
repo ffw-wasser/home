@@ -7,7 +7,7 @@ function fixture(items,options={}){
  const calls=[];let unlocked=options.unlocked!==false,currentSource='original';const now=Date.parse('2026-11-11T10:00:00Z'),event={id:'calendar-event-1',title:'Funkübung',kind:'probe',approved:true,completedAt:now,start:Date.parse('2026-11-10T19:00:00Z'),sessionType:'Sonderprobe',attendanceType:'Sonderprobe'};
  const context={Date,Intl,console,csvArchive:items,adminUnlocked:unlocked,checkAdminSession:()=>unlocked,requireAdmin:()=>{calls.push(['pin',unlocked]);return unlocked;},oneDriveAdministrationReady:()=>options.access!==false,oneDriveSignedIn:()=>options.access!==false,window:{DrinksStore:{sourceKey:()=>currentSource},loadOneDriveHistory:async()=>{calls.push(['load']);return options.load!==false;}},showToast:(...args)=>calls.push(['toast',...args]),confirm:message=>{calls.push(['confirm',message]);return options.confirm!==false;},showView:id=>calls.push(['view',id]),correctArchiveItem:id=>calls.push(['correct',id]),historyDateFromItem:item=>item.date,historyDisplayTitle:item=>item.topic||'Probe'};
  context.window.window=context.window;vm.createContext(context);vm.runInContext(source.slice(start,end),context);
- return {context,calls,event,unlock:()=>{unlocked=true;context.adminUnlocked=true;},changeSource:()=>{currentSource='changed';}};
+ return {context,calls,event,unlock:()=>{unlocked=true;context.adminUnlocked=true;},changeSource:()=>{currentSource='changed';},lock:()=>{unlocked=false;context.adminUnlocked=false;}};
 }
 test('Abgeschlossener Kalendertermin öffnet den exakt verknüpften Originalbericht',async()=>{
  const f=fixture([{id:'wrong',calendarEventId:'other',calendarEventStart:1,date:'2026-11-10',sessionType:'Sonderprobe'},{id:'right',calendarEventId:'calendar-event-1',calendarEventStart:Date.parse('2026-11-10T19:00:00Z'),date:'2026-11-10',sessionType:'Sonderprobe'}]);
@@ -55,6 +55,21 @@ test('Gerätehaus-Quellenwechsel verwirft die vorgemerkte Korrektur',async()=>{
  const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}],{unlocked:false});
  await f.context.window.openCompletedCalendarEvent(f.event);
  f.changeSource();f.unlock();
+ assert.equal(f.context.resumePendingCalendarCorrection(),false);
+ assert.equal(f.calls.some(c=>c[0]==='load'||c[0]==='correct'),false);
+});
+
+for(const reason of ['source','lock'])test('Laufender Historienabruf bricht bei '+reason+' ohne Berichtöffnung ab',async()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}]);
+ let finish;f.context.window.loadOneDriveHistory=()=>new Promise(resolve=>{finish=resolve;});
+ const opening=f.context.window.openCompletedCalendarEvent(f.event);
+ if(reason==='source')f.changeSource();else f.lock();
+ finish(true);assert.equal(await opening,false);
+ assert.equal(f.calls.some(c=>c[0]==='correct'),false);
+});
+test('Abgelaufene vorgemerkte Kalenderkorrektur wird nach PIN nicht fortgesetzt',async()=>{
+ const f=fixture([],{unlocked:false});await f.context.window.openCompletedCalendarEvent(f.event);
+ vm.runInContext('pendingCalendarCorrection.createdAt-=300001',f.context);f.unlock();
  assert.equal(f.context.resumePendingCalendarCorrection(),false);
  assert.equal(f.calls.some(c=>c[0]==='load'||c[0]==='correct'),false);
 });

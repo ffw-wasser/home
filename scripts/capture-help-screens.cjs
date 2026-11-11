@@ -3,6 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),{chromium}=require('playwr
 const consentVersion=require('../js/features/portal/g26-consent.js').version;
 const vm=require('node:vm'),regulationsContext=vm.createContext({URL});vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/features/portal/regulations-model.js'),'utf8'),regulationsContext);const regulationItems=regulationsContext.RegulationsModel.defaults();
 const root=path.resolve(__dirname,'..'),out=path.join(root,'assets/help/guide');
+if(process.argv.includes('--only=geraetehaus-kalender')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/attendance-date-regression-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_CALENDAR_CORRECTION_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-konto,geraetehaus-sicherung')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/drinks-admin-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_CENTRAL_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=h2o-home-anmeldung')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/portal-home-login-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_HOME_LOGIN_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-abos')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/member-subscriptions-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_SUBSCRIPTIONS_HELP:'1'}});process.exit(0);}

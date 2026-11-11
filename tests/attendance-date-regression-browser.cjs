@@ -10,5 +10,29 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
  await page.evaluate(()=>{Date.now=()=>Date.parse('2026-11-01T12:00:00Z');currentOperationId='';currentSessionId='';safeStorage.setItem('fw_v1_current_session_id','');entries=[];pendingMemberStatuses.clear();window.oneDriveAdministrationReady=()=>true;DrinksStore.sourceKey=()=> 'retro-source';DrinksCentral.connection=async()=>({source:'retro-source'});const event={id:'retro-event',title:'Rückwirkender Testunterricht',start:Date.parse('2026-10-31T18:00Z'),end:Date.parse('2026-10-31T19:00Z'),kind:'probe',attendanceType:'Unterricht',approved:true};DrinksPush.request=async(c,path,data)=>path.endsWith('/replies')?{event,replies:[],stale:false}:{year:data.year,configured:true,stale:false,events:[event],fetchedAt:Date.now()};showView('attendanceView');setHomeFlowStage(1);CalendarSidebar.clear();CalendarSidebar.refresh();});
  await page.getByRole('button',{name:'Vorheriger Monat',exact:true}).click();const retro=page.locator('[data-calendar-event="retro-event"]');assert.match(await retro.getAttribute('class'),/is-past-unrecorded/);assert.equal(await retro.locator('.calendar-past-status').innerText(),'Erfassung offen · Nachtragen');await retro.click();assert.equal(await page.evaluate(()=>sessionType),'Unterricht');assert.equal(await page.evaluate(()=>today()),'2026-10-31');assert.equal(await page.evaluate(()=>PortalAdmin.selectedEvent()?.id),'retro-event','real calendar selection remains linked');assert.ok(await page.evaluate(()=>currentSessionId));assert.equal(await page.locator('#attendanceView').evaluate(n=>n.classList.contains('workflow-stage-2')),true);
+ // Exercise the shared PIN screen and resume through the real login handler.
+ await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
+ await page.evaluate(()=>{
+  Date.now=()=>Date.parse('2026-11-11T12:00:00Z');currentOperationId='';currentSessionId='';entries=[];pendingMemberStatuses.clear();
+  window.oneDriveAdministrationReady=()=>true;window.oneDriveSignedIn=()=>true;DrinksStore.sourceKey=()=> 'correction-test-source';DrinksCentral.connection=async()=>({source:'correction-test-source'});
+  window.correctionLoads=0;window.correctedReports=[];window.adminPin=()=> 'synthetic-test-pin';
+  const completed={id:'completed-test',title:'Funkübung',start:Date.parse('2026-11-10T18:00Z'),end:Date.parse('2026-11-10T19:00Z'),completedAt:Date.now()-86400000,kind:'probe',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',approved:true};
+  const open={...completed,id:'open-test',title:'Unterricht · Erfassung offen',attendanceType:'Unterricht',completedAt:null,start:Date.parse('2026-11-09T18:00Z'),end:Date.parse('2026-11-09T19:00Z')};
+  window.loadOneDriveHistory=async()=>{correctionLoads++;csvArchive=[{id:'original-test-report',calendarEventId:completed.id,calendarEventStart:completed.start}];return true;};
+  window.correctArchiveItem=id=>correctedReports.push(id);
+  DrinksPush.request=async(c,path,data)=>({year:data?.year,configured:true,stale:false,events:[open,completed],fetchedAt:Date.now()});
+  adminUnlocked=false;showView('attendanceView');setHomeFlowStage(1);CalendarSidebar.clear();CalendarSidebar.refresh();
+ });
+ const completed=page.locator('[data-calendar-event="completed-test"]');await completed.waitFor();assert.equal(await completed.locator('.calendar-past-status').count(),0);
+ if(process.env.CAPTURE_CALENDAR_CORRECTION_HELP){
+  await page.setViewportSize({width:1366,height:900});await page.getByRole('button',{name:'Kalender vergrößern',exact:true}).click();
+  await page.locator('[data-calendar-event="open-test"]').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(root,'assets/help/guide/geraetehaus-kalender.jpg'),type:'jpeg',quality:78,animations:'disabled'});
+ }
+ await completed.click();await page.locator('#adminLoginView').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>correctionLoads),0);
+ await page.locator('#adminPin').fill('wrong-synthetic-pin');await page.locator('#loginButton').click();await page.locator('#pinError').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>correctionLoads),0);
+ await page.locator('#cancelLoginButton').click();await page.locator('#attendanceView').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>pendingCalendarCorrection),null);
+ await completed.click();await page.locator('#adminPin').fill('synthetic-test-pin');await page.locator('#loginButton').click();
+ await page.waitForFunction(()=>correctedReports.length===1);assert.deepEqual(await page.evaluate(()=>correctedReports),['original-test-report']);assert.equal(await page.evaluate(()=>correctionLoads),1);
  console.log('PASS participants-first date change preserves session and completion, Unterricht supports not applicable, Veranstaltung uses attendance statuses.');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

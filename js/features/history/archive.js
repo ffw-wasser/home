@@ -484,12 +484,18 @@ async function openCompletedCalendarEvent(event){
     return false;
   }
   pendingCalendarCorrection=null;
+  const correctionSource=window.DrinksStore?.sourceKey?.()||"";
   completedCalendarCorrectionOpening=true;
   try{
     // The live archive, not a local cached copy, determines which original ZIP
     // is overwritten. Never create a second attendance session for a finished event.
     if(typeof window.loadOneDriveHistory!=="function"||await window.loadOneDriveHistory()!==true){
       showToast("Die OneDrive-Historie konnte nicht vollständig geprüft werden. Originalbericht bleibt unverändert.","error");
+      return false;
+    }
+    // Loading can outlive the PIN session or a switch of the connected data folder.
+    if(correctionSource!==(window.DrinksStore?.sourceKey?.()||"")||!oneDriveAdministrationReady()||typeof checkAdminSession!=="function"||!checkAdminSession()){
+      showToast("Die Verbindung oder Verwaltungsfreigabe wurde geändert. Bitte den Kalendertermin erneut öffnen.","error");
       return false;
     }
     const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin"}).format(new Date(event.start));

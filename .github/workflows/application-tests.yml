@@ -59,6 +59,7 @@ jobs:
           node tests/qr-checkin-browser.cjs
           node tests/year-plan-browser.cjs
           node scripts/capture-help-screens.cjs --only=geraetehaus-abos
+          node scripts/capture-help-screens.cjs --only=geraetehaus-kalender
       - name: Verify isolated review portal uses actual member UI
         run: |
           node scripts/build-review-portal.cjs --check
