@@ -45,7 +45,14 @@
   const id=calendarId(configuration),base='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(id);
   // A Google account must itself have access to THIS calendar. No owner credentials.
   // Events.list returns accessRole without requesting calendar-list/ACL scopes.
-  const permissions=await json(base+'/events?maxResults=1&fields=accessRole',token);
+  if(write&&!/^[a-zA-Z0-9_@.-]{1,1024}$/.test(data.googleEventId||''))fail('Ungültige Google-Terminaktion.',400);
+  if(write&&(typeof data.etag!=='string'||!/^"[^"\r\n]{1,200}"$/.test(data.etag)))fail('Bitte den Google-Termin vor der Änderung neu laden.',400);
+  // Both reads are independent after token verification. No mutation is sent
+  // until calendar rights and the current event have both been checked.
+  const [permissions,existing]=await Promise.all([
+   json(base+'/events?maxResults=1&fields=accessRole',token),
+   write?json(base+'/events/'+encodeURIComponent(data.googleEventId)+'?fields=etag,attendees,recurringEventId,recurrence',token):null
+  ]);
   if(write&&!['writer','owner'].includes(permissions.accessRole)||!write&&!['reader','writer','owner'].includes(permissions.accessRole))fail('Google-Kalenderberechtigung reicht nicht aus.');
   if(action==='status')return {ok:true,accessRole:permissions.accessRole,calendarId:id};
   if(action==='resolve'){
@@ -74,7 +81,6 @@
   const headers={'If-Match':data.etag};
   // A delete or source change could notify guests. Reject invited events until the
   // invitation workflow, consent and response conflict policy have been accepted.
-  const existing=await json(url+'?fields=etag,attendees,recurringEventId,recurrence',token);
   if(existing.etag!==data.etag)fail('Der Google-Termin wurde inzwischen geändert.',409);
   if(existing.attendees?.length)fail('Termine mit persönlichen Einladungen sind noch nicht für Änderungen freigegeben.',409);
   if(existing.recurrence?.length)fail('Serienänderungen bitte bis zur Geräteprüfung in Google Kalender vornehmen.',409);
