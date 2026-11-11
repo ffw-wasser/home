@@ -26,20 +26,57 @@
     });
   }
   function entries(member){return Array.isArray(member&&member.careerEntries)?member.careerEntries:[];}
-  // Nur Bezeichnungen aus den bestehenden geschützten Mitgliederdaten werden angeboten.
-  function suggestions(type,people){
-    if(!TYPES.some(item=>item.key===type)||!Array.isArray(people))return [];
+
+  // Ausschließlich Dienstgrade der ehrenamtlichen Freiwilligen Feuerwehr BW.
+  // Nicht mit Dienstbezeichnungen des feuerwehrtechnischen Beamten-/Hauptamts verwechseln.
+  const FF_RANKS=[
+    'Feuerwehrmann im Praktikum','Feuerwehrfrau im Praktikum',
+    'Feuerwehrmann','Feuerwehrfrau',
+    'Oberfeuerwehrmann','Oberfeuerwehrfrau',
+    'Hauptfeuerwehrmann','Hauptfeuerwehrfrau',
+    'Löschmeister','Löschmeisterin',
+    'Oberlöschmeister','Oberlöschmeisterin',
+    'Hauptlöschmeister','Hauptlöschmeisterin',
+    'Brandmeister','Brandmeisterin',
+    'Oberbrandmeister','Oberbrandmeisterin',
+    'Hauptbrandmeister','Hauptbrandmeisterin',
+    'Leitender Hauptbrandmeister','Leitende Hauptbrandmeisterin'
+  ];
+  const VOLUNTEER_COURSES=['Truppmann Teil 1','Truppmann Teil 2','Truppführer','Sprechfunker','Atemschutzgeräteträger','Maschinist','Gruppenführer','Zugführer'];
+  const VOLUNTEER_AWARDS=['Feuerwehr-Leistungsabzeichen Bronze','Feuerwehr-Leistungsabzeichen Silber','Feuerwehr-Leistungsabzeichen Gold','Leistungsspange der Deutschen Jugendfeuerwehr'];
+  const BLOCKED_TITLE=/(?:berufsfeuerwehr|beamten?(?:laufbahn|dienst|anwärter|ausbildung)?|beamtin|brandoberinspektor|brandinspektor|brandamtmann|brandamtsrat|brandoberamtsrat|brandreferendar|brandrat|brandoberrat|branddirektor|leitender branddirektor|feuerwehr(?:ober)?inspektor|feuerwehr(?:ober)?amtmann|hauptamtliche?r?|feuerwehrtechnischer dienst|laufbahnprüfung)/i;
+  const keyOf=(type,title)=>type+'|'+String(title).trim().toLocaleLowerCase('de');
+  function volunteerCatalogItem(type,title){
+    if(!TYPES.some(item=>item.key===type)||typeof title!=='string')return false;
+    const trimmed=title.trim();
+    if(!trimmed||trimmed.length>120||BLOCKED_TITLE.test(trimmed))return false;
+    return type!=='rank'||FF_RANKS.some(rank=>rank.toLocaleLowerCase('de')===trimmed.toLocaleLowerCase('de'));
+  }
+  function catalogEntries(catalog){
+    return Array.isArray(catalog)?catalog.filter(item=>item&&volunteerCatalogItem(item.type,item.title)).map(item=>({type:item.type,title:item.title.trim()})):[];
+  }
+  function mergedCatalog(existing,people){
     const terms=new Map();
-    for(const person of people){
-      for(const entry of entries(person)){
-        if(entry?.type!==type)continue;
-        const title=String(entry.title||'').trim();
-        if(!title||title.length>120)continue;
-        const key=title.toLocaleLowerCase('de');
-        if(!terms.has(key))terms.set(key,title);
-      }
-    }
-    return [...terms.values()].sort((a,b)=>a.localeCompare(b,'de')).slice(0,250);
+    const add=(type,title)=>{if(volunteerCatalogItem(type,title)&&!terms.has(keyOf(type,title)))terms.set(keyOf(type,title),{type,title:title.trim()});};
+    for(const item of catalogEntries(existing))add(item.type,item.title);
+    if(Array.isArray(people))for(const person of people)for(const item of entries(person))add(item.type,item.title);
+    return [...terms.values()].slice(0,1000);
+  }
+
+  // Ausschließlich FF-BW-Bezeichnungen in der gemeinsamen Auswahlliste.
+  function suggestions(type,people,catalog){
+    if(!TYPES.some(item=>item.key===type))return [];
+    const entriesByKey=new Map();
+    const add=title=>{
+      if(volunteerCatalogItem(type,title)&&!entriesByKey.has(keyOf(type,title)))entriesByKey.set(keyOf(type,title),title.trim());
+    };
+    if(type==='rank')FF_RANKS.forEach(add);
+    if(type==='course')VOLUNTEER_COURSES.forEach(add);
+    if(type==='award')VOLUNTEER_AWARDS.forEach(add);
+    const shared=catalog===undefined?(typeof careerCatalog!=='undefined'?careerCatalog:[]):catalog;
+    catalogEntries(shared).filter(item=>item.type===type).forEach(item=>add(item.title));
+    if(Array.isArray(people))for(const person of people)for(const item of entries(person))if(item?.type===type)add(item.title);
+    return [...entriesByKey.values()].sort((a,b)=>a.localeCompare(b,'de')).slice(0,250);
   }
   function refreshSuggestions(el){
     const people=typeof members!=='undefined'?members:[];
@@ -59,7 +96,7 @@
     const all=entries(member);
     return '<section class="member-career-settings" aria-label="Ausbildung und Laufbahn">'+
       '<input type="hidden" data-career-json value="'+escape(JSON.stringify(all))+'">'+
-      '<p class="record-section-intro">Lehrgänge, Fortbildungen, Beförderungen, Abzeichen und freie Einträge mit Erwerbsdatum dokumentieren. Bereits gespeicherte Bezeichnungen sind bei anderen Mitgliedern auswählbar, werden aber nicht automatisch zugewiesen.</p>'+
+      '<p class="record-section-intro">Lehrgänge, Fortbildungen, Beförderungen, Abzeichen und freie Einträge mit Erwerbsdatum dokumentieren. Der gemeinsame Auswahlkatalog enthält nur Bezeichnungen der Freiwilligen Feuerwehr Baden-Württemberg. Beamten- und Berufsfeuerwehr-Dienstgrade werden nicht angeboten. Individuelle Freitexte bleiben in der Personalakte möglich.</p>'+
       '<div class="career-groups">'+TYPES.map(type=>groupHtml(type,all)).join('')+'</div></section>';
   }
   function summary(row){
@@ -84,7 +121,7 @@
   function dialog(){
     let el=document.getElementById('memberCareerDialog');if(el)return el;
     el=document.createElement('dialog');el.id='memberCareerDialog';el.className='member-career-dialog';
-    el.innerHTML='<form id="memberCareerForm"><p class="eyebrow">Feuerwehrlaufbahn</p><h3 id="memberCareerHeading">Eintrag hinzufügen</h3><label>Bereich<select class="text-input" name="type" required>'+TYPES.map(type=>'<option value="'+type.key+'">'+escape(type.label)+'</option>').join('')+'</select></label><label>Bezeichnung (Freitext oder vorhandene Auswahl)<input class="text-input" name="title" list="memberCareerTitleSuggestions" maxlength="120" required placeholder="z. B. Truppführer oder eigene Fortbildung"><datalist id="memberCareerTitleSuggestions"></datalist><small>Bereits bei anderen Mitgliedern gespeicherte Bezeichnungen dieser Kategorie werden vorgeschlagen.</small></label><label>Datum der Erlangung<input class="text-input" type="date" name="date" required></label><label>Bemerkung (optional)<textarea class="text-input" name="notes" rows="2" maxlength="500" placeholder="z. B. Ausbildungsort oder Besonderheiten"></textarea></label><div class="career-dialog-actions"><button class="outline-button" type="button" data-career-cancel>Abbrechen</button><button class="primary-button" type="submit">Eintrag übernehmen</button></div></form>';
+    el.innerHTML='<form id="memberCareerForm"><p class="eyebrow">Feuerwehrlaufbahn</p><h3 id="memberCareerHeading">Eintrag hinzufügen</h3><label>Bereich<select class="text-input" name="type" required>'+TYPES.map(type=>'<option value="'+type.key+'">'+escape(type.label)+'</option>').join('')+'</select></label><label>Bezeichnung (Freitext oder vorhandene Auswahl)<input class="text-input" name="title" list="memberCareerTitleSuggestions" maxlength="120" required placeholder="z. B. Truppführer oder eigene Fortbildung"><datalist id="memberCareerTitleSuggestions"></datalist><small>Vorschläge stammen nur aus der Freiwilligen Feuerwehr; Berufsfeuerwehr- und Beamtenbezeichnungen werden nicht in den gemeinsamen Katalog übernommen.</small></label><label>Datum der Erlangung<input class="text-input" type="date" name="date" required></label><label>Bemerkung (optional)<textarea class="text-input" name="notes" rows="2" maxlength="500" placeholder="z. B. Ausbildungsort oder Besonderheiten"></textarea></label><div class="career-dialog-actions"><button class="outline-button" type="button" data-career-cancel>Abbrechen</button><button class="primary-button" type="submit">Eintrag übernehmen</button></div></form>';
     document.body.append(el);
     el.querySelector('[name="type"]').addEventListener('change',()=>refreshSuggestions(el));
     el.querySelector('[data-career-cancel]').addEventListener('click',()=>el.close());
@@ -126,5 +163,5 @@
     const all=rowEntries(row),item=all[index];
     if(confirm('„'+item.title+'“ wirklich aus der Laufbahn entfernen?')){all.splice(index,1);update(row,all);}
   });
-  global.MemberCareer={render,validate,summary,currentRank,entries,suggestions};
+  global.MemberCareer={render,validate,summary,currentRank,entries,suggestions,volunteerCatalogItem,catalogEntries,mergedCatalog};
 })(window);
