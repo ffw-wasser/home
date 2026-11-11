@@ -5,7 +5,8 @@
     {key:'course',label:'Lehrgänge'},
     {key:'training',label:'Fortbildungen'},
     {key:'rank',label:'Dienstgrade'},
-    {key:'award',label:'Leistungsabzeichen & Leistungsspangen'}
+    {key:'award',label:'Leistungsabzeichen & Leistungsspangen'},
+    {key:'other',label:'Weitere Einträge (Freitext)'}
   ];
   const escape=value=>String(value==null?'':value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const validDate=value=>{
@@ -25,6 +26,27 @@
     });
   }
   function entries(member){return Array.isArray(member&&member.careerEntries)?member.careerEntries:[];}
+  // Nur Bezeichnungen aus den bestehenden geschützten Mitgliederdaten werden angeboten.
+  function suggestions(type,people){
+    if(!TYPES.some(item=>item.key===type)||!Array.isArray(people))return [];
+    const terms=new Map();
+    for(const person of people){
+      for(const entry of entries(person)){
+        if(entry?.type!==type)continue;
+        const title=String(entry.title||'').trim();
+        if(!title||title.length>120)continue;
+        const key=title.toLocaleLowerCase('de');
+        if(!terms.has(key))terms.set(key,title);
+      }
+    }
+    return [...terms.values()].sort((a,b)=>a.localeCompare(b,'de')).slice(0,250);
+  }
+  function refreshSuggestions(el){
+    const people=typeof members!=='undefined'?members:[];
+    const type=el.querySelector('[name="type"]')?.value;
+    const list=el.querySelector('#memberCareerTitleSuggestions');
+    if(list)list.innerHTML=suggestions(type,people).map(title=>'<option value="'+escape(title)+'"></option>').join('');
+  }
   function currentRank(all){return all.filter(item=>item.type==='rank').slice().sort((a,b)=>b.date.localeCompare(a.date))[0]?.title||'Kein Dienstgrad hinterlegt';}
   function rowEntries(row){return validate(JSON.parse(row.querySelector('[data-career-json]').value||'[]'));}
   function formatDate(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?m[3]+'.'+m[2]+'.'+m[1]:escape(value);}
@@ -37,7 +59,7 @@
     const all=entries(member);
     return '<section class="member-career-settings" aria-label="Ausbildung und Laufbahn">'+
       '<input type="hidden" data-career-json value="'+escape(JSON.stringify(all))+'">'+
-      '<p class="record-section-intro">Lehrgänge, Fortbildungen, Beförderungen und Abzeichen mit Erwerbsdatum dauerhaft dokumentieren. Alle Änderungen werden zusammen mit den Mitgliederdaten gespeichert.</p>'+
+      '<p class="record-section-intro">Lehrgänge, Fortbildungen, Beförderungen, Abzeichen und freie Einträge mit Erwerbsdatum dokumentieren. Bereits gespeicherte Bezeichnungen sind bei anderen Mitgliedern auswählbar, werden aber nicht automatisch zugewiesen.</p>'+
       '<div class="career-groups">'+TYPES.map(type=>groupHtml(type,all)).join('')+'</div></section>';
   }
   function summary(row){
@@ -62,8 +84,9 @@
   function dialog(){
     let el=document.getElementById('memberCareerDialog');if(el)return el;
     el=document.createElement('dialog');el.id='memberCareerDialog';el.className='member-career-dialog';
-    el.innerHTML='<form id="memberCareerForm"><p class="eyebrow">Feuerwehrlaufbahn</p><h3 id="memberCareerHeading">Eintrag hinzufügen</h3><label>Bereich<select class="text-input" name="type" required>'+TYPES.map(type=>'<option value="'+type.key+'">'+escape(type.label)+'</option>').join('')+'</select></label><label>Lehrgang, Dienstgrad oder Auszeichnung<input class="text-input" name="title" maxlength="120" required placeholder="z. B. Truppführer oder Leistungsabzeichen Bronze"></label><label>Datum der Erlangung<input class="text-input" type="date" name="date" required></label><label>Bemerkung (optional)<textarea class="text-input" name="notes" rows="2" maxlength="500" placeholder="z. B. Ausbildungsort oder Besonderheiten"></textarea></label><div class="career-dialog-actions"><button class="outline-button" type="button" data-career-cancel>Abbrechen</button><button class="primary-button" type="submit">Eintrag übernehmen</button></div></form>';
+    el.innerHTML='<form id="memberCareerForm"><p class="eyebrow">Feuerwehrlaufbahn</p><h3 id="memberCareerHeading">Eintrag hinzufügen</h3><label>Bereich<select class="text-input" name="type" required>'+TYPES.map(type=>'<option value="'+type.key+'">'+escape(type.label)+'</option>').join('')+'</select></label><label>Bezeichnung (Freitext oder vorhandene Auswahl)<input class="text-input" name="title" list="memberCareerTitleSuggestions" maxlength="120" required placeholder="z. B. Truppführer oder eigene Fortbildung"><datalist id="memberCareerTitleSuggestions"></datalist><small>Bereits bei anderen Mitgliedern gespeicherte Bezeichnungen dieser Kategorie werden vorgeschlagen.</small></label><label>Datum der Erlangung<input class="text-input" type="date" name="date" required></label><label>Bemerkung (optional)<textarea class="text-input" name="notes" rows="2" maxlength="500" placeholder="z. B. Ausbildungsort oder Besonderheiten"></textarea></label><div class="career-dialog-actions"><button class="outline-button" type="button" data-career-cancel>Abbrechen</button><button class="primary-button" type="submit">Eintrag übernehmen</button></div></form>';
     document.body.append(el);
+    el.querySelector('[name="type"]').addEventListener('change',()=>refreshSuggestions(el));
     el.querySelector('[data-career-cancel]').addEventListener('click',()=>el.close());
     el.querySelector('form').addEventListener('submit',event=>{
       event.preventDefault();if(!activeRow||!activeRow.isConnected)return el.close();
@@ -89,6 +112,7 @@
     form.elements.namedItem('title').value=item?.title||'';
     form.elements.namedItem('date').value=item?.date||'';
     form.elements.namedItem('notes').value=item?.notes||'';
+    refreshSuggestions(el);
     el.showModal();
   }
   document.addEventListener('click',event=>{
@@ -102,5 +126,5 @@
     const all=rowEntries(row),item=all[index];
     if(confirm('„'+item.title+'“ wirklich aus der Laufbahn entfernen?')){all.splice(index,1);update(row,all);}
   });
-  global.MemberCareer={render,validate,summary,currentRank,entries};
+  global.MemberCareer={render,validate,summary,currentRank,entries,suggestions};
 })(window);
