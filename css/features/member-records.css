@@ -25,7 +25,7 @@
 #settingsMembersView #memberAdmin .person-record-main>.ux-member[hidden]{display:none!important}
 #settingsMembersView #memberAdmin .ux-member>:not(summary){margin:0!important}
 #memberAdmin .person-record-hero{display:flex;gap:16px;align-items:center;padding:24px 26px;background:linear-gradient(115deg,#fff,#f7f9fb);border-bottom:1px solid #e1e7ee}
-#memberAdmin .person-record-hero-icon{width:68px;height:68px;border-radius:50%;flex:0 0 auto;background:#1a2f4a;display:grid;place-items:center;color:#fff;font-size:2rem}
+#memberAdmin .person-record-hero-icon{width:68px;height:68px;border-radius:50%;flex:0 0 auto;background:#1a2f4a;display:grid;place-items:center;color:#fff;font-size:1.1rem;font-weight:800;letter-spacing:-.04em}
 #memberAdmin .person-record-hero-text{min-width:0}
 #memberAdmin .person-record-hero-text .eyebrow{margin:0 0 5px;color:#657381;letter-spacing:.045em}
 #memberAdmin .person-record-title{font-size:clamp(1.35rem,2.4vw,1.8rem);margin:0 0 8px;color:#14283e;overflow-wrap:anywhere}
