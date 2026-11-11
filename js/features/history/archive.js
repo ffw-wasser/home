@@ -84,7 +84,7 @@ function backupRunningState(){
 function completeBackupPayload() {
   return BackupEngine.create({
     members: members.map(member=>({...member,roles:getMemberRoles(member)})),
-    entries, csvArchive, roleTargets:getRoleTargets(),
+    entries, csvArchive, careerCatalog:window.MemberCareer?.mergedCatalog(careerCatalog,members)||[], roleTargets:getRoleTargets(),
     functionEntryEnabled:isFunctionEntryEnabled(),runningState:backupRunningState()
   });
 }
@@ -133,6 +133,8 @@ function normalizeCompleteBackupData(data) {
     roles:Array.isArray(member.roles)?member.roles.filter(role=>AVAILABLE_ROLES.includes(role)&&role!=="Maschinist"):[],
     ageDepartment:Boolean(member.ageDepartment),
     machinistVehicles:Array.isArray(member.machinistVehicles)?member.machinistVehicles.filter(value=>value==="LF"||value==="TSF"):[],
+    careerEntries:Array.isArray(member.careerEntries)?window.MemberCareer?.validate(member.careerEntries)||[]:[],
+    fitnessTrainer:member.fitnessTrainer===true,
     rfidId:String(member.rfidId||"").trim(),
     whatsappPhone:String(member.whatsappPhone||"").trim(),whatsappAllowed:member.whatsappAllowed===true,
     committeeMember:Boolean(member.committeeMember),
@@ -145,6 +147,7 @@ function normalizeCompleteBackupData(data) {
   if(!importedMembers.length)throw new Error("members");
   return {
     members:importedMembers,
+    careerCatalog:window.MemberCareer?.mergedCatalog(data.careerCatalog,importedMembers)||[],
     entries:Array.isArray(data.entries)?data.entries.filter(entry=>entry&&entry.id&&entry.date&&entry.storedName):[],
     csvArchive:Array.isArray(data.csvArchive)?data.csvArchive.filter(item=>item&&item.id&&item.fileName&&typeof item.content==="string"):[],
     runningState:BackupEngine.runningState(data.runningState),
@@ -155,12 +158,14 @@ function normalizeCompleteBackupData(data) {
 function saveCompleteBackupData(data) {
   const serialized={
     members:JSON.stringify(data.members),
+    careerCatalog:JSON.stringify(data.careerCatalog||[]),
     entries:JSON.stringify(data.entries),
     archive:JSON.stringify(data.csvArchive),
     targets:JSON.stringify(Object.fromEntries(AVAILABLE_ROLES.map(role=>[role,Math.max(0,Math.min(99,Number.parseInt(data.roleTargets[role],10)||0))])))
   };
   try{
     safeStorage.setItem(KEYS.members,serialized.members);
+    safeStorage.setItem(KEYS.careerCatalog,serialized.careerCatalog);
     safeStorage.setItem(KEYS.entries,serialized.entries);
     safeStorage.setItem(KEYS.archive,serialized.archive);
     safeStorage.setItem(KEYS.functionEntry,data.functionEntryEnabled===false?"false":"true");
@@ -181,6 +186,7 @@ function saveCompleteBackupData(data) {
     throw new Error("save");
   }
   members=data.members;
+  careerCatalog=data.careerCatalog||[];
   entries=data.entries;
   csvArchive=data.csvArchive;
 }
