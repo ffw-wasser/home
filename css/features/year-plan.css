@@ -66,6 +66,8 @@
 .home-session-type-panel .calendar-sidebar-scroll{height:clamp(240px,32dvh,320px);min-height:240px}
 @media(min-width:761px){.home-session-type-panel .calendar-sidebar:not([hidden]):not(.is-expanded){display:flex;flex:1;flex-direction:column;min-height:0}.home-session-type-panel .calendar-sidebar:not(.is-expanded) .calendar-sidebar-scroll{flex:1 1 auto}}
 .calendar-sidebar button.calendar-sidebar-event{display:block;width:100%;min-height:44px;text-align:left;color:#18344c;border:1px solid #cbd5df;border-left:4px solid;border-radius:9px;white-space:normal;font:inherit;cursor:pointer;box-sizing:border-box}
+.calendar-sidebar .calendar-sidebar-event.is-past-unrecorded{background:#fff0d8!important;border-color:#d79b53!important;border-left-color:#aa5a08!important}
+.calendar-sidebar .calendar-sidebar-event.is-past-unrecorded .calendar-past-status{display:block;margin-top:4px;color:#854108;font-size:.86rem;font-weight:750}
 .calendar-sidebar button.calendar-sidebar-event:hover{box-shadow:0 0 0 1px #526a78}
 .calendar-sidebar button.calendar-sidebar-event.is-selected{outline:2px solid #196e39;outline-offset:1px;box-shadow:inset 0 0 0 1px #fff}
 .calendar-sidebar button.calendar-sidebar-event:focus-visible{outline:3px solid #075baf;outline-offset:2px}

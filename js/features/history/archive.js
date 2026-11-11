@@ -460,6 +460,17 @@ function pairedArchiveFileNames(item){
   return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
 }
 let completedCalendarCorrectionOpening=false;
+let pendingCalendarCorrection=null;
+// Require the existing History administration PIN before loading a protected report.
+function resumePendingCalendarCorrection(){
+  const pending=pendingCalendarCorrection;
+  pendingCalendarCorrection=null;
+  if(!pending||Date.now()-pending.createdAt>300000||typeof adminUnlocked==="undefined"||!adminUnlocked||typeof checkAdminSession!=="function"||!checkAdminSession()||typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady()||pending.source!==(window.DrinksStore?.sourceKey?.()||""))return false;
+  if(showView("attendanceView")===false)return false;
+  void openCompletedCalendarEvent(pending.event);
+  return true;
+}
+function cancelPendingCalendarCorrection(){pendingCalendarCorrection=null;}
 async function openCompletedCalendarEvent(event){
   if(completedCalendarCorrectionOpening)return false;
   if(!event||event.kind!=="probe"||event.approved!==true||!event.completedAt||!Number.isFinite(event.start))return false;
@@ -467,12 +478,24 @@ async function openCompletedCalendarEvent(event){
     showToast("Für die Korrektur bitte die Gerätehaus-Verbindung mit OneDrive herstellen.","error");
     return false;
   }
+  if(typeof requireAdmin!=="function"||!requireAdmin("settingsHistoryView")){
+    // Store only the selected event in memory while the shared PIN screen opens.
+    pendingCalendarCorrection={event:{...event},source:window.DrinksStore?.sourceKey?.()||"",createdAt:Date.now()};
+    return false;
+  }
+  pendingCalendarCorrection=null;
+  const correctionSource=window.DrinksStore?.sourceKey?.()||"";
   completedCalendarCorrectionOpening=true;
   try{
     // The live archive, not a local cached copy, determines which original ZIP
     // is overwritten. Never create a second attendance session for a finished event.
     if(typeof window.loadOneDriveHistory!=="function"||await window.loadOneDriveHistory()!==true){
       showToast("Die OneDrive-Historie konnte nicht vollständig geprüft werden. Originalbericht bleibt unverändert.","error");
+      return false;
+    }
+    // Loading can outlive the PIN session or a switch of the connected data folder.
+    if(correctionSource!==(window.DrinksStore?.sourceKey?.()||"")||!oneDriveAdministrationReady()||typeof checkAdminSession!=="function"||!checkAdminSession()){
+      showToast("Die Verbindung oder Verwaltungsfreigabe wurde geändert. Bitte den Kalendertermin erneut öffnen.","error");
       return false;
     }
     const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin"}).format(new Date(event.start));
@@ -724,4 +747,4 @@ async function openHistoryPdf(id){
 
 
 
-window.ArchiveCorrection={beforeView:archiveCorrectionBeforeView};
+window.ArchiveCorrection={beforeView:archiveCorrectionBeforeView,resumePendingCalendarCorrection,cancelPendingCalendarCorrection};

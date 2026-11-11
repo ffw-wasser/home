@@ -21,8 +21,14 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    # Match package-lock.json; browsers and OS libraries are preinstalled.
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+      options: --ipc=host
     steps:
       - uses: actions/checkout@v4
+      - name: Trust the checked-out workspace inside the test container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -44,14 +50,6 @@ jobs:
         run: node scripts/run-focused-tests.cjs --list
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
-      - name: Install browser for passkey integration test
-        timeout-minutes: 12
-        run: |
-          # The Azure HTTP mirror repeatedly stalls while downloading font packages.
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
-          fi
-          npx playwright install --with-deps chromium webkit
       - name: Verify direct enrollment and capture changed help panels
         run: |
           node tests/portal-release-scan-browser.cjs
@@ -59,6 +57,12 @@ jobs:
           node tests/qr-checkin-browser.cjs
           node tests/year-plan-browser.cjs
           node scripts/capture-help-screens.cjs --only=geraetehaus-abos
+          node scripts/capture-help-screens.cjs --only=geraetehaus-kalender
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2o-calendar-review
+          path: assets/help/guide/geraetehaus-kalender.jpg
+          retention-days: 7
       - name: Verify isolated review portal uses actual member UI
         run: |
           node scripts/build-review-portal.cjs --check
