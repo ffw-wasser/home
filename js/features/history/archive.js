@@ -454,6 +454,44 @@ function correctArchiveItem(id){
   refreshArchiveCorrectionMembers();filterArchiveCorrectionRows();
   panel.scrollIntoView({block:"start",behavior:"instant"});
 }
+let completedCalendarCorrectionOpening=false;
+async function openCompletedCalendarEvent(event){
+  if(completedCalendarCorrectionOpening)return false;
+  if(!event||event.kind!=="probe"||event.approved!==true||!event.completedAt||!Number.isFinite(event.start))return false;
+  if(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady()||typeof oneDriveSignedIn==="function"&&!oneDriveSignedIn()){
+    showToast("Für die Korrektur bitte die Gerätehaus-Verbindung mit OneDrive herstellen.","error");
+    return false;
+  }
+  completedCalendarCorrectionOpening=true;
+  try{
+    // The live archive, not a local cached copy, determines which original ZIP
+    // is overwritten. Never create a second attendance session for a finished event.
+    if(typeof window.loadOneDriveHistory!=="function"||await window.loadOneDriveHistory()!==true){
+      showToast("Die OneDrive-Historie konnte nicht vollständig geprüft werden. Originalbericht bleibt unverändert.","error");
+      return false;
+    }
+    const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin"}).format(new Date(event.start));
+    const type=event.attendanceType||(event.sessionType==="Probe"?"Allgemeine Probe":event.sessionType);
+    const linked=csvArchive.filter(item=>item.calendarEventId===event.id&&(!item.calendarEventStart||item.calendarEventStart===event.start));
+    if(linked.length===1){correctArchiveItem(linked[0].id);return true;}
+    if(linked.length>1){
+      showView("settingsHistoryView");
+      showToast("Mehrere Berichte sind diesem Kalendertermin zugeordnet. Bitte in der Historie den Originalbericht auswählen.","error");
+      return false;
+    }
+    // Old ZIPs have no calendar ID. Only offer a single unlinked match on the
+    // exact date and type, and require a human confirmation before editing.
+    const legacy=csvArchive.filter(item=>!item.calendarEventId&&!item.operationData&&historyDateFromItem(item)===day&&item.sessionType===type);
+    if(legacy.length===1&&confirm("Älterer Bericht ohne Kalenderverknüpfung gefunden:\\n"+historyDisplayTitle(legacy[0])+" · "+day+" · "+type+"\\n\\nIst dies der Originalbericht, den du korrigieren möchtest?")){
+      correctArchiveItem(legacy[0].id);return true;
+    }
+    showView("settingsHistoryView");
+    showToast(legacy.length>1?"Für diesen Tag gibt es mehrere mögliche Berichte. Bitte den richtigen in der Historie wählen.":"Kein eindeutig zugeordneter Originalbericht gefunden. Bitte in der Historie prüfen; es wird keine neue Erfassung erstellt.",legacy.length>1?"info":"error");
+    return false;
+  }catch(error){showToast("Die Korrektur konnte nicht geöffnet werden: "+(error?.message||"Bitte OneDrive prüfen."),"error");return false;}
+  finally{completedCalendarCorrectionOpening=false;}
+}
+window.openCompletedCalendarEvent=openCompletedCalendarEvent;
 function pairedArchiveFileNames(item){
   const current=String(item.fileName||"Probe.csv");
   const base=(item.baseFileName||current).replace(/_korrigiert-v\d+(?=\.csv$)/i,"").replace(/\.csv$/i,"");
