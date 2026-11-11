@@ -25,10 +25,10 @@ const root=path.resolve(__dirname,'..');
    assert.deepEqual((await page.locator('#portal-more-grid [data-portal-tile]').evaluateAll(ns=>ns.map(n=>n.dataset.portalTile))).slice(0,3),['more-water','more-hydrants','more-help'],'existing custom order is preserved');
    const pdfDialog=page.locator('#year-plan-pdf-dialog');
    await tile.click();await firstYear;
-   assert.equal(await page.locator('#year-plan-filter').isVisible(),false,'no intermediate calendar during loading');assert.equal(yearCalls,1);
-   for(const scale of [100,200]){await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);const box=await page.locator('#portal-page-more-year-plan').boundingBox();assert.ok(box.height<=160*scale/100,'loading card remains compact at '+width+'px / '+scale+'%: '+box.height);assert.equal(await page.locator('#year-plan-months').isVisible(),false,'hidden calendar does not reserve loading height');}
+   assert.equal(await page.locator('#year-plan-year').isVisible(),true,'year selection is visible before the PDF');assert.equal(await page.locator('#year-plan-print').isEnabled(),false);assert.equal(yearCalls,1);
+   for(const scale of [100,200]){await page.evaluate(s=>document.documentElement.style.fontSize=s+'%',scale);assert.equal(await page.locator('#portal-page-more-year-plan').evaluate(n=>n.scrollWidth>n.clientWidth+1),false,'year controls fit at enlarged text');assert.equal(await page.locator('#year-plan-months').isVisible(),false,'no empty calendar while loading');}
    await page.evaluate(()=>document.documentElement.style.fontSize='100%');
-   yearMode='success';releaseYear();await pdfDialog.locator('canvas').waitFor();
+   yearMode='success';releaseYear();await page.locator('#year-plan-print').click();await pdfDialog.locator('canvas').waitFor();
    assert.equal(await pdfDialog.isVisible(),true);assert.equal(await pdfDialog.evaluate(n=>n.scrollWidth>n.clientWidth),false);
    const pdfText=await page.evaluate(async()=>{const lib=await import('./js/vendor/pdfjs/pdf-5.4.624.min.mjs'),bytes=new Uint8Array(await testPdfBlobs.get(document.querySelector('#year-plan-pdf-dialog a').href).arrayBuffer()),doc=await lib.getDocument({data:bytes,isEvalSupported:false,useWasm:false}).promise,text=[];for(let i=1;i<=doc.numPages;i++)text.push((await(await doc.getPage(i)).getTextContent()).items.map(n=>n.str).join(' '));await doc.destroy();return text;});
    const openLink=pdfDialog.getByRole('link',{name:'PDF öffnen ↗',exact:true}),saveLink=pdfDialog.getByRole('link',{name:'Speichern',exact:true});
@@ -43,17 +43,17 @@ const root=path.resolve(__dirname,'..');
    await page.getByRole('button',{name:'Nächste PDF-Seite',exact:true}).click();await page.getByText('Seite 2 / 2',{exact:true}).waitFor();
    if(width===390&&process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.screenshot({path:path.join(process.env.QA_OUTPUT,'jahresplan-pdf-handy.png')});}
    const firstUrl=await pdfDialog.locator('a').first().getAttribute('href');await pdfDialog.getByRole('button',{name:'Schließen',exact:true}).click();
-   assert.equal(await page.locator('#deckel-more').isVisible(),true,'close returns directly to More');assert.equal(await page.locator('#more-year-plan').isVisible(),false,'no intermediate view after closing');assert.equal(await page.evaluate(url=>testPdfBlobs.has(url),firstUrl),false,'closing releases personal PDF');
+   assert.equal(await page.locator('#more-year-plan').isVisible(),true,'close returns to the selected year');assert.equal(await page.evaluate(url=>testPdfBlobs.has(url),firstUrl),false,'closing releases personal PDF');
    // Escape uses the same return route; a pinned tile returns to the actual source page.
-   await tile.click();await pdfDialog.locator('canvas').waitFor();await page.keyboard.press('Escape');await page.locator('#deckel-more').waitFor();
+   await page.evaluate(()=>DeckelMobile.jump('deckel-more'));await tile.click();await page.locator('#year-plan-print').click();await pdfDialog.locator('canvas').waitFor();await page.keyboard.press('Escape');await page.locator('#more-year-plan').waitFor();await page.evaluate(()=>DeckelMobile.jump('deckel-more'));
    await page.locator('#portal-layout-open').click();await page.locator('#portal-layout-item').selectOption('more-year-plan');await page.locator('#portal-layout-transfer').click();await page.locator('#portal-layout-close').click();
-   await page.evaluate(()=>DeckelMobile.jump('portal-section'));await tile.click();await pdfDialog.locator('canvas').waitFor();await pdfDialog.getByRole('button',{name:'Schließen',exact:true}).click();assert.equal(await page.locator('#portal-section').isVisible(),true,'pinned annual plan returns to appointments');
+   await page.evaluate(()=>DeckelMobile.jump('portal-section'));await page.evaluate(()=>DeckelMobile.jump('deckel-more'));await tile.click();await page.locator('#year-plan-print').click();await pdfDialog.locator('canvas').waitFor();await pdfDialog.getByRole('button',{name:'Schließen',exact:true}).click();assert.equal(await page.locator('#more-year-plan').isVisible(),true,'pinned annual plan returns to its year controls');await page.evaluate(()=>DeckelMobile.jump('portal-section'));
    // Leaving during a delayed response must not reopen a personal PDF.
    yearMode='wait';const before=yearCalls;await tile.click();await page.waitForTimeout(50);assert.equal(yearCalls,before+1);await page.evaluate(()=>DeckelMobile.jump('deckel-more'));yearMode='success';releaseYear();await page.waitForTimeout(50);assert.equal(await pdfDialog.isVisible(),false);
-   await tile.click();await pdfDialog.locator('canvas').waitFor();const pdfUrl=await pdfDialog.locator('a').first().getAttribute('href');
+   await page.evaluate(()=>DeckelMobile.jump('deckel-more'));await tile.click();await page.locator('#year-plan-print').click();await pdfDialog.locator('canvas').waitFor();const pdfUrl=await pdfDialog.locator('a').first().getAttribute('href');
    await page.evaluate(()=>H2OPortal.clear());assert.equal(await page.locator('.year-plan-event').count(),0,'logout clears personal annual data');assert.equal(await pdfDialog.isVisible(),false);assert.equal(await pdfDialog.locator('a').first().getAttribute('href'),null);assert.equal(await page.evaluate(url=>testPdfBlobs.has(url),pdfUrl),false,'logout revokes PDF bytes');
    assert.deepEqual(errors,[]);await page.close();
   }
-  console.log('PASS direct personal annual PDF ('+(process.env.H2O_TEST_BROWSER||'chromium seven widths')+'): browser PDF links and actual download under real CSP, content, paging, return routes and logout');
+  console.log('PASS selectable personal year and manual annual PDF ('+(process.env.H2O_TEST_BROWSER||'chromium seven widths')+'): browser PDF links and actual download under real CSP, content, paging, return routes and logout');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

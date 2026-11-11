@@ -28,7 +28,7 @@
     const key=new Date(stamp).toISOString().slice(0,10);if(!byDay.has(key))byDay.set(key,[]);byDay.get(key).push({event,starts,time});
    }
   }
-  $('months').replaceChildren();
+  $('months').hidden=!loaded;$('months').replaceChildren();
   for(let half=0;half<2;half++){
    const grid=node('div');grid.className='year-plan-half';$('months').append(grid);
    for(let month=half*6;month<half*6+6;month++){
@@ -107,7 +107,7 @@
    if(privateData&&!accessCurrent())return lock();
    if(!loaded||!privateData)return;
    const epoch=generation,months=[...$('months').querySelectorAll('.year-plan-month')].map(month=>({title:month.querySelector('h2').textContent.replace(' · aktuell',''),days:[...month.querySelectorAll('.year-plan-day')].map(row=>({date:row.querySelector('.year-plan-date').textContent,sunday:row.classList.contains('is-sunday'),holiday:row.classList.contains('is-holiday'),publicHoliday:row.classList.contains('is-public-holiday'),birthday:Boolean(row.querySelector('.is-birthday')),holidays:[...row.querySelectorAll('.year-plan-holiday,.year-plan-public-holiday')].map(n=>n.textContent),compactHolidays:[...row.querySelectorAll('.year-plan-public-holiday,.year-plan-holiday[data-holiday-start="true"]')].map(n=>n.textContent),events:[...row.querySelectorAll('.year-plan-event')].map(event=>({title:event.querySelector('summary').firstChild.textContent.replace('🎂 ',''),details:[...event.querySelectorAll('p')].map(n=>n.textContent).filter(t=>t!==event.dataset.note).join(' · '),note:event.dataset.note||'',type:event.dataset.eventType,googleColor:event.dataset.googleColor,birthday:event.classList.contains('is-birthday')}))}))}));
-   return g.YearPlanPdf.open({year,months,colors,includeBirthdays:portal,...(portal?{onClose:()=>{g.DeckelMobile.jump(returnPage,false);g.history?.replaceState({...g.history.state,portalPage:returnPage},'');}}:{}),isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
+   return g.YearPlanPdf.open({year,months,colors,includeBirthdays:portal,isCurrent:()=>epoch===generation&&loaded&&privateData&&accessCurrent()});
 
  }
  function init(){
