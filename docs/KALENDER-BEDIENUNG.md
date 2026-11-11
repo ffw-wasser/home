@@ -40,8 +40,8 @@ Google-Editor in derselben Anwendung geändert; Zusatzinfos lokal separat speich
 ## Vergangene Termine erfassen und korrigieren
 
 Im Gerätehaus-Kalender mit „Vorheriger Monat“ zurückblättern und einen vergangenen Termin auswählen.
-Bei einem freigegebenen, noch nicht abgeschlossenen Termin öffnet das Antippen direkt die Erfassung in Schritt 2; Datum und Terminart stammen aus dem Kalender.
-Bereits abgeschlossene Termine tragen „Abgeschlossen · Korrigieren“. Ein Tipp öffnet nach dem erneuten Laden der OneDrive-Historie die bestehende Korrektur des Originalberichts, **keine neue Erfassung**.
+Freigegebene vergangene Termine **ohne Abschluss** werden im Gerätehaus-Kalender **orange** mit „Erfassung offen · Nachtragen“ hervorgehoben. Antippen öffnet direkt die Erfassung in Schritt 2; Datum und Terminart stammen aus dem Kalender.
+Bereits abgeschlossene Termine tragen „Abgeschlossen · Korrigieren“. Antippen fordert bei gesperrter Verwaltung **dasselbe Passwort wie die Historie**. Erst nach erfolgreicher PIN-Prüfung wird die OneDrive-Historie geladen und die bestehende Korrektur des Originalberichts geöffnet, **keine neue Erfassung**. Bei gültiger Verwaltungsanmeldung gilt deren zeitlich begrenzte Sitzung.
 Neu gespeicherte Terminpakete tragen eine feste Kalender-ID. Bei älteren Paketen ohne ID wird eine eindeutige Übereinstimmung von Datum und Terminart vor der Korrektur ausdrücklich bestätigt.
 Bei mehreren möglichen Berichten muss der Originalbericht in der Historie gewählt werden; ohne verifizierbare OneDrive-Verbindung bleibt er unverändert.
 Bereits abgeschlossene Termine müssen in der Kalenderverwaltung nicht erneut freigegeben werden.

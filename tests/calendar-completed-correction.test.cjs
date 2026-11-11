@@ -4,10 +4,10 @@ const start=source.indexOf('let completedCalendarCorrectionOpening=false;');
 const end=source.indexOf('async function persistArchiveCorrection(item,rows,correctedDate)',start);
 assert.ok(start>=0&&end>start,'Calendar correction route exists');
 function fixture(items,options={}){
- const calls=[],now=Date.parse('2026-11-11T10:00:00Z'),event={id:'calendar-event-1',title:'Funkübung',kind:'probe',approved:true,completedAt:now,start:Date.parse('2026-11-10T19:00:00Z'),sessionType:'Sonderprobe',attendanceType:'Sonderprobe'};
- const context={Date,Intl,console,csvArchive:items,oneDriveAdministrationReady:()=>options.access!==false,oneDriveSignedIn:()=>options.access!==false,window:{loadOneDriveHistory:async()=>options.load!==false},showToast:(...args)=>calls.push(['toast',...args]),confirm:message=>{calls.push(['confirm',message]);return options.confirm!==false;},showView:id=>calls.push(['view',id]),correctArchiveItem:id=>calls.push(['correct',id]),historyDateFromItem:item=>item.date,historyDisplayTitle:item=>item.topic||'Probe'};
+ const calls=[];let unlocked=options.unlocked!==false,source='original';const now=Date.parse('2026-11-11T10:00:00Z'),event={id:'calendar-event-1',title:'Funkübung',kind:'probe',approved:true,completedAt:now,start:Date.parse('2026-11-10T19:00:00Z'),sessionType:'Sonderprobe',attendanceType:'Sonderprobe'};
+ const context={Date,Intl,console,csvArchive:items,adminUnlocked:unlocked,checkAdminSession:()=>unlocked,requireAdmin:()=>{calls.push(['pin',unlocked]);return unlocked;},oneDriveAdministrationReady:()=>options.access!==false,oneDriveSignedIn:()=>options.access!==false,window:{DrinksStore:{sourceKey:()=>source},loadOneDriveHistory:async()=>{calls.push(['load']);return options.load!==false;}},showToast:(...args)=>calls.push(['toast',...args]),confirm:message=>{calls.push(['confirm',message]);return options.confirm!==false;},showView:id=>calls.push(['view',id]),correctArchiveItem:id=>calls.push(['correct',id]),historyDateFromItem:item=>item.date,historyDisplayTitle:item=>item.topic||'Probe'};
  context.window.window=context.window;vm.createContext(context);vm.runInContext(source.slice(start,end),context);
- return {context,calls,event};
+ return {context,calls,event,unlock:()=>{unlocked=true;context.adminUnlocked=true;},changeSource:()=>{source='changed';}};
 }
 test('Abgeschlossener Kalendertermin öffnet den exakt verknüpften Originalbericht',async()=>{
  const f=fixture([{id:'wrong',calendarEventId:'other',calendarEventStart:1,date:'2026-11-10',sessionType:'Sonderprobe'},{id:'right',calendarEventId:'calendar-event-1',calendarEventStart:Date.parse('2026-11-10T19:00:00Z'),date:'2026-11-10',sessionType:'Sonderprobe'}]);
@@ -31,4 +31,30 @@ test('Ohne aktuelle OneDrive-Historie erfolgt keine automatische Korrektur',asyn
  const f=fixture([{id:'a',date:'2026-11-10',sessionType:'Sonderprobe'}],{load:false});
  assert.equal(await f.context.window.openCompletedCalendarEvent(f.event),false);
  assert.equal(f.calls.some(c=>c[0]==='correct'),false);
+});
+
+test('Kalenderkorrektur verlangt das Verwaltungspasswort vor dem OneDrive-Abruf',async()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}],{unlocked:false});
+ assert.equal(await f.context.window.openCompletedCalendarEvent(f.event),false);
+ assert.equal(f.calls.some(c=>c[0]==='load'||c[0]==='correct'),false);
+ assert.deepEqual(f.calls.filter(c=>c[0]==='pin'),[['pin',false]]);
+ f.unlock();
+ assert.equal(f.context.resumePendingCalendarCorrection(),true);
+ await new Promise(setImmediate);
+ assert.deepEqual(f.calls.filter(c=>c[0]==='correct'),[['correct','right']]);
+ assert.equal(f.calls.filter(c=>c[0]==='load').length,1);
+});
+test('PIN-Abbruch verwirft die vorgemerkte Korrektur',async()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}],{unlocked:false});
+ await f.context.window.openCompletedCalendarEvent(f.event);
+ f.context.cancelPendingCalendarCorrection();f.unlock();
+ assert.equal(f.context.resumePendingCalendarCorrection(),false);
+ assert.equal(f.calls.some(c=>c[0]==='load'||c[0]==='correct'),false);
+});
+test('Gerätehaus-Quellenwechsel verwirft die vorgemerkte Korrektur',async()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}],{unlocked:false});
+ await f.context.window.openCompletedCalendarEvent(f.event);
+ f.changeSource();f.unlock();
+ assert.equal(f.context.resumePendingCalendarCorrection(),false);
+ assert.equal(f.calls.some(c=>c[0]==='load'||c[0]==='correct'),false);
 });

@@ -126,6 +126,7 @@ async function confirmProbeTopic() {
   }
 }
 function cancelAdminLogin(){
+  window.ArchiveCorrection?.cancelPendingCalendarCorrection?.();
   const target=pendingSettingsTarget==="yearPlanView"?"yearPlanView":String(pendingSettingsTarget||"").startsWith("theater")?"eventsView":"attendanceView";
   pendingSettingsTarget="";byId("adminPin").value="";byId("pinError").hidden=true;
   showView(target);
@@ -142,6 +143,7 @@ function login() {
   byId("pinError").hidden = true;
   renderAdmin();
   if(!oneDriveAdministrationReady())pendingSettingsTarget="settingsView";
+  if(window.ArchiveCorrection?.resumePendingCalendarCorrection?.()){pendingSettingsTarget="";return;}
   showView(pendingSettingsTarget||"settingsMembersView");
   window.SmartWorkflow?.settings?.();
   if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();
@@ -161,6 +163,7 @@ function loginArchive() {
   byId("archivePin").value = "";
   byId("archivePinError").hidden = true;
   renderArchive();
+  if(window.ArchiveCorrection?.resumePendingCalendarCorrection?.()){pendingSettingsTarget="";return;}
   showView(pendingSettingsTarget||"settingsFilesView");
   window.SmartWorkflow?.settings?.();
   if(pendingSettingsTarget==="settingsRemindersView")window.DrinksExtras?.loadReminders();

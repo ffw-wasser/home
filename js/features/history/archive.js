@@ -460,6 +460,17 @@ function pairedArchiveFileNames(item){
   return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
 }
 let completedCalendarCorrectionOpening=false;
+let pendingCalendarCorrection=null;
+// Require the existing History administration PIN before loading a protected report.
+function resumePendingCalendarCorrection(){
+  const pending=pendingCalendarCorrection;
+  pendingCalendarCorrection=null;
+  if(!pending||Date.now()-pending.createdAt>300000||typeof adminUnlocked==="undefined"||!adminUnlocked||typeof checkAdminSession!=="function"||!checkAdminSession()||typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady()||pending.source!==(window.DrinksStore?.sourceKey?.()||""))return false;
+  if(showView("attendanceView")===false)return false;
+  void openCompletedCalendarEvent(pending.event);
+  return true;
+}
+function cancelPendingCalendarCorrection(){pendingCalendarCorrection=null;}
 async function openCompletedCalendarEvent(event){
   if(completedCalendarCorrectionOpening)return false;
   if(!event||event.kind!=="probe"||event.approved!==true||!event.completedAt||!Number.isFinite(event.start))return false;
@@ -467,6 +478,12 @@ async function openCompletedCalendarEvent(event){
     showToast("Für die Korrektur bitte die Gerätehaus-Verbindung mit OneDrive herstellen.","error");
     return false;
   }
+  if(typeof requireAdmin!=="function"||!requireAdmin("settingsHistoryView")){
+    // Store only the selected event in memory while the shared PIN screen opens.
+    pendingCalendarCorrection={event:{...event},source:window.DrinksStore?.sourceKey?.()||"",createdAt:Date.now()};
+    return false;
+  }
+  pendingCalendarCorrection=null;
   completedCalendarCorrectionOpening=true;
   try{
     // The live archive, not a local cached copy, determines which original ZIP
@@ -724,4 +741,4 @@ async function openHistoryPdf(id){
 
 
 
-window.ArchiveCorrection={beforeView:archiveCorrectionBeforeView};
+window.ArchiveCorrection={beforeView:archiveCorrectionBeforeView,resumePendingCalendarCorrection,cancelPendingCalendarCorrection};
