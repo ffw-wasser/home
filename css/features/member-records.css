@@ -76,6 +76,9 @@
 .member-career-dialog .career-dialog-actions button{min-height:45px}
 @media(max-width:1000px){#memberAdmin .person-record-layout{grid-template-columns:210px minmax(0,1fr);gap:12px}#memberAdmin .person-record-panel{padding:20px}#memberAdmin .person-record-hero{padding:20px}}
 @media(max-width:730px){
+ #memberAdmin .person-record-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;overflow-x:visible;align-items:stretch;padding:8px 10px 0}
+ #memberAdmin .person-record-tabs button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25;padding:11px 8px;font-size:.83rem}
+
  #memberAdmin .person-record-layout{display:block}
  #memberAdmin .person-record-sidebar{min-height:0;margin-bottom:14px;padding:12px}
  #memberAdmin .person-record-sidebar-heading{margin-bottom:8px}
