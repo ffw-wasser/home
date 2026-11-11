@@ -459,6 +459,22 @@ function pairedArchiveFileNames(item){
   const base=(item.baseFileName||current).replace(/_korrigiert-v\d+(?=\.csv$)/i,"").replace(/\.csv$/i,"");
   return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
 }
+function calendarArchiveStatus(event,reports){
+  if(event?.completedAt)return "completed";
+  if(!event||!Number.isFinite(event.start)||!Array.isArray(reports))return "unknown";
+  const eligible=reports.filter(item=>item&&!item.operationData);
+  const linked=eligible.filter(item=>item.calendarEventId===event.id&&(!item.calendarEventStart||item.calendarEventStart===event.start));
+  if(linked.length===1)return "completed";
+  if(linked.length>1)return "review";
+  const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin"}).format(new Date(event.start));
+  const type=event.attendanceType||(event.sessionType==="Probe"?"Allgemeine Probe":event.sessionType);
+  const sameDay=eligible.filter(item=>historyDateFromItem(item)===day);
+  const legacy=sameDay.filter(item=>!item.calendarEventId&&item.sessionType===type);
+  if(legacy.length===1)return "completed";
+  if(legacy.length>1||sameDay.some(item=>!item.calendarEventId))return "review";
+  return "open";
+}
+window.CalendarArchiveStatus={forEvent:calendarArchiveStatus};
 let completedCalendarCorrectionOpening=false;
 let pendingCalendarCorrection=null;
 // Require the existing History administration PIN before loading a protected report.
@@ -473,7 +489,7 @@ function resumePendingCalendarCorrection(){
 function cancelPendingCalendarCorrection(){pendingCalendarCorrection=null;}
 async function openCompletedCalendarEvent(event){
   if(completedCalendarCorrectionOpening)return false;
-  if(!event||event.kind!=="probe"||event.approved!==true||!event.completedAt||!Number.isFinite(event.start))return false;
+  if(!event||event.kind!=="probe"||event.approved!==true||!Number.isFinite(event.start))return false;
   if(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady()||typeof oneDriveSignedIn==="function"&&!oneDriveSignedIn()){
     showToast("Für die Korrektur bitte die Gerätehaus-Verbindung mit OneDrive herstellen.","error");
     return false;

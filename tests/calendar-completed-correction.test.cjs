@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('js/features/history/archive.js','utf8');
-const start=source.indexOf('let completedCalendarCorrectionOpening=false;');
+const start=source.indexOf('function calendarArchiveStatus(event,reports){');
 const end=source.indexOf('async function persistArchiveCorrection(item,rows,correctedDate)',start);
 assert.ok(start>=0&&end>start,'Calendar correction route exists');
 function fixture(items,options={}){
@@ -72,4 +72,18 @@ test('Abgelaufene vorgemerkte Kalenderkorrektur wird nach PIN nicht fortgesetzt'
  vm.runInContext('pendingCalendarCorrection.createdAt-=300001',f.context);f.unlock();
  assert.equal(f.context.resumePendingCalendarCorrection(),false);
  assert.equal(f.calls.some(c=>c[0]==='load'||c[0]==='correct'),false);
+});
+
+test('Originalbericht ohne Kalender-Abschlussmarkierung wird als abgeschlossen erkannt',()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}]);
+ assert.equal(f.context.calendarArchiveStatus({...f.event,completedAt:null},f.context.csvArchive),'completed');
+});
+test('Ohne Historienprüfung darf ein alter Termin nicht als offen gelten',()=>{
+ const f=fixture([]);
+ assert.equal(f.context.calendarArchiveStatus({...f.event,completedAt:null},null),'unknown');
+ assert.equal(f.context.calendarArchiveStatus({...f.event,completedAt:null},[]),'open');
+});
+test('Nicht eindeutig zuordenbare alte Berichte sperren Nachtragen',()=>{
+ const f=fixture([{id:'legacy',date:'2026-11-10',sessionType:'Unterricht',content:'x'}]);
+ assert.equal(f.context.calendarArchiveStatus({...f.event,completedAt:null},f.context.csvArchive),'review');
 });

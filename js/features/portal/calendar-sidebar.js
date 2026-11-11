@@ -4,7 +4,7 @@
  const host=()=>document.getElementById('calendar-sidebar'),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  const dateLabel=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}),monthLabel=new Intl.DateTimeFormat('de-DE',{month:'long',timeZone:'UTC'}),weekdayLabel=new Intl.DateTimeFormat('de-DE',{weekday:'short',timeZone:'UTC'}),clockLabel=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});
  let expanded=false,monthOffset=0;
- let generation=0,source='',loadedAt=0,pending=false,cached=null,refreshRequested=false,latestTiming={},timings=[];
+ let generation=0,source='',loadedAt=0,pending=false,cached=null,refreshRequested=false,latestTiming={},timings=[],archiveVerified=false,archiveLoading=null;
  const now=()=>g.performance?.now?.()??Date.now();
  function recordTiming(values){latestTiming={...latestTiming,...values};timings.push({...latestTiming});if(timings.length>20)timings.shift();}
  function status(message,retry=false){
@@ -29,12 +29,40 @@
   box.style.setProperty('--calendar-expanded-right',Math.max(8,g.innerWidth-bounds.right)+'px');
  }
  function hide(){expanded=false;host()?.classList.remove('is-expanded');host()?.replaceChildren();if(host())host().hidden=true;}
- function clear(){generation++;pending=false;hide();source='';loadedAt=0;cached=null;refreshRequested=false;latestTiming={};timings=[];}
+ function clear(){generation++;pending=false;hide();source='';loadedAt=0;cached=null;refreshRequested=false;latestTiming={};timings=[];archiveVerified=false;archiveLoading=null;}
+ async function verifyArchive(){
+  if(archiveLoading)return archiveLoading;
+  if(!authorized()||typeof g.loadOneDriveHistory!=="function")return false;
+  const epoch=generation,origin=source;
+  archiveLoading=(async()=>{
+    const ok=await g.loadOneDriveHistory()===true;
+    if(epoch!==generation||origin!==source||!authorized())return false;
+    archiveVerified=ok;
+    if(active()&&cached)paint(cached,cached.year);
+    return ok;
+  })().finally(()=>{archiveLoading=null;});
+  return archiveLoading;
+ }
+ function archiveStatus(e){
+  if(e.completedAt)return "completed";
+  if(e.end>Date.now())return "future";
+  if(!archiveVerified)return "unknown";
+  return g.CalendarArchiveStatus?.forEvent?.(e,typeof csvArchive!=="undefined"?csvArchive:null)||"unknown";
+ }
  function paint(cal,year){const renderStarted=now();host().hidden=false;const header=node('div'),todayButton=node('button','Heute');header.className='calendar-sidebar-heading';todayButton.type='button';todayButton.className='outline-button';todayButton.setAttribute('aria-label','Heute · heutigen Tag anzeigen');const expandButton=node('button'),expandIcon=node('span'),expandLabel=node('span','Kalender vergrößern');expandButton.type='button';expandButton.className='calendar-expand';expandIcon.className='calendar-expand-icon';expandIcon.setAttribute('aria-hidden','true');expandButton.append(expandIcon,expandLabel);expandButton.setAttribute('aria-expanded',String(expanded));expandButton.setAttribute('aria-label',expanded?'Kalender zuklappen':'Kalender vergrößern');header.append(node('h2','Kalender '+year),todayButton,expandButton);host().replaceChildren(header);if(cal.stale&&!cal.refreshing)host().append(node('p','Veralteter Kalenderstand.'));const scroll=node('div');scroll.className='calendar-sidebar-scroll';scroll.id='calendar-sidebar-months';expandButton.setAttribute('aria-controls',scroll.id);host().append(scroll);const today=day(Date.now()),firstMonth=new Date(Date.UTC(Number(today.slice(0,4)),Number(today.slice(5,7))-1+monthOffset,15)).getUTCMonth(),lastYear=new Date(Date.UTC(year,firstMonth+2,1)).getUTCFullYear(),fromMonth=Date.UTC(year,firstMonth,1,12),toMonth=Date.UTC(year,firstMonth+3,0,12);header.querySelector('h2').textContent='Kalender '+year+(lastYear!==year?' / '+lastYear:'');
    const indexed=new Map();for(const e of cal.events){if(e.kind==='birthday'||!Number.isFinite(e.start)||!Number.isFinite(e.end))continue;const from=day(e.start),to=day(Math.max(e.start,e.end-1));for(let t=Math.max(Date.parse(from+'T12:00Z'),fromMonth);t<=Math.min(Date.parse(to+'T12:00Z'),toMonth);t+=86400000){const key=new Date(t).toISOString().slice(0,10);if(!indexed.has(key))indexed.set(key,[]);indexed.get(key).push(e);}}
    const indexedAt=now();for(let offset=0;offset<3;offset++){const stamp=new Date(Date.UTC(year,firstMonth+offset,15)),month=stamp.getUTCMonth(),monthYear=stamp.getUTCFullYear(),section=node('section'),heading=node('h3',monthLabel.format(stamp)+(monthYear!==year?' '+monthYear:''));section.setAttribute('aria-label',monthLabel.format(stamp)+' '+monthYear);section.append(heading);scroll.append(section);
     for(let d=1;d<=new Date(Date.UTC(monthYear,month+1,0)).getUTCDate();d++){const key=monthYear+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),stamp=Date.parse(key+'T12:00Z'),row=node('div');row.className='calendar-sidebar-day';if(new Date(stamp).getUTCDay()===0)row.classList.add('is-sunday');if(key===today)row.classList.add('is-today');row.append(node('strong',d+' '+weekdayLabel.format(stamp)));
-     const content=node('div');for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');content.append(node('small',holiday.name));}for(const holiday of g.PublicHolidays.forDay(key)){const label=node('small',holiday.name);label.className='year-plan-public-holiday';content.append(label);}for(const e of indexed.get(key)||[]){const time=e.allDay?'Ganztägig':clockLabel.format(e.start)+' Uhr',selectable=e.approved===true&&e.kind==='probe'&&!cal.stale,overdue=selectable&&!e.completedAt&&e.end<=Date.now(),item=node(selectable?'button':'div'),style=g.CalendarPresentation.style(e,cal.colors);item.className='calendar-sidebar-event';if(overdue)item.classList.add('is-past-unrecorded');if(selectable){item.type='button';item.dataset.calendarEvent=e.id;item.setAttribute('aria-label',(e.completedAt?'Abgeschlossenen Termin korrigieren: ':overdue?'Vergangenen Termin nachtragen: ':'Termin erfassen: ')+e.title);item.onclick=async()=>{if(!active()||source!==g.DrinksStore.sourceKey())return;if(e.completedAt){await g.openCompletedCalendarEvent?.(e);return;}if(g.PortalAdmin?.selectCalendarEvent(e.id,e)){expanded=false;layout();focusToday();if(e.end<=Date.now()&&typeof continueToAttendance==='function')continueToAttendance();else document.getElementById('continueToAttendanceButton')?.focus();}};}item.style.borderColor=style.accent;item.style.background=style.background;item.append(node('strong',time+' · '+e.title+(e.completedAt?' · Abgeschlossen · Korrigieren':'')));if(overdue){const hint=node('small','Erfassung offen · Nachtragen');hint.className='calendar-past-status';item.append(hint);}if(e.note)item.append(node('p',e.note));content.append(item);}row.append(content);section.append(row);}
+     const content=node('div');for(const holiday of g.SchoolHolidays.forDay(key)){row.classList.add('is-holiday');content.append(node('small',holiday.name));}for(const holiday of g.PublicHolidays.forDay(key)){const label=node('small',holiday.name);label.className='year-plan-public-holiday';content.append(label);}for(const e of indexed.get(key)||[]){const time=e.allDay?'Ganztägig':clockLabel.format(e.start)+' Uhr',selectable=e.approved===true&&e.kind==='probe'&&!cal.stale,recordState=archiveStatus(e),completed=recordState==='completed',overdue=selectable&&recordState==='open',review=selectable&&recordState==='review',unknown=selectable&&recordState==='unknown',item=node(selectable?'button':'div'),style=g.CalendarPresentation.style(e,cal.colors);item.className='calendar-sidebar-event';if(overdue)item.classList.add('is-past-unrecorded');if(review||unknown)item.classList.add('is-past-review');if(selectable){item.type='button';item.dataset.calendarEvent=e.id;item.setAttribute('aria-label',(completed?'Abgeschlossenen Termin korrigieren: ':overdue?'Vergangenen Termin nachtragen: ':review?'Vergangenen Termin in Historie prüfen: ':'Termin erfassen: ')+e.title);item.onclick=async()=>{if(!active()||source!==g.DrinksStore.sourceKey())return;if(e.end<=Date.now()){
+      if(e.completedAt){await g.openCompletedCalendarEvent?.(e);return;}
+      const checked=await verifyArchive();
+      if(!checked){if(typeof showToast==="function")showToast("OneDrive-Historie nicht geprüft. Nachtragen zum Schutz vor Doppelberichten gesperrt.","error");return;}
+      const state=archiveStatus(e);
+      if(state==="completed"){await g.openCompletedCalendarEvent?.(e);return;}
+      if(state==="review"){if(typeof showToast==="function")showToast("Für diesen Tag gibt es einen möglicherweise passenden Bericht. Bitte zuerst in der Historie prüfen.","info");return;}
+      if(state!=="open")return;
+     }
+     if(g.PortalAdmin?.selectCalendarEvent(e.id,e)){expanded=false;layout();focusToday();if(e.end<=Date.now()&&typeof continueToAttendance==='function')continueToAttendance();else document.getElementById('continueToAttendanceButton')?.focus();}};}item.style.borderColor=style.accent;item.style.background=style.background;item.append(node('strong',time+' · '+e.title+(completed?' · Abgeschlossen · Korrigieren':'')));if(overdue||review||unknown){const hint=node('small',overdue?'Erfassung offen · Nachtragen':review?'Bericht prüfen · Historie':'Abschluss wird geprüft');hint.className='calendar-past-status';item.append(hint);}if(e.note)item.append(node('p',e.note));content.append(item);}row.append(content);section.append(row);}
    }const months=[...scroll.querySelectorAll('section')];
    function layout(){host().classList.toggle('is-expanded',expanded);fitExpanded();expandIcon.innerHTML='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="'+(expanded?'M4 9h5V4m6 0v5h5M4 15h5v5m6 0v-5h5':'M9 4H4v5m11-5h5v5M4 15v5h5m6 0h5v-5')+'"/></svg>';expandLabel.textContent=expanded?'Zuklappen':'Kalender vergrößern';expandButton.setAttribute('aria-expanded',String(expanded));expandButton.setAttribute('aria-label',expanded?'Kalender zuklappen':'Kalender vergrößern');expandButton.title=expanded?'Kalender zuklappen':'Kalender vergrößern';months.forEach(section=>{section.tabIndex=expanded?0:-1;section.scrollTop=0;});scroll.scrollTop=0;}
    function focusToday(){const row=scroll.querySelector('.is-today');if(!row)return;const container=expanded&&g.matchMedia('(min-width:761px)').matches?row.parentElement:scroll,heading=row.parentElement.querySelector('h3');container.scrollTop+=row.getBoundingClientRect().top-container.getBoundingClientRect().top-(heading?.getBoundingClientRect().height||0);}
@@ -74,7 +102,7 @@
     const unique=new Map();for(const cal of snapshots)for(const event of cal.events)unique.set(JSON.stringify([event.id||event.title,event.start,event.end]),event);
     const cal={...snapshots[0],monthKey,events:[...unique.values()],stale:snapshots.some(cal=>cal.stale),refreshing:snapshots.some(cal=>cal.refreshing)};
     latestTiming.fetchMs=Math.round(now()-requestStarted);
-    cached=cal;loadedAt=Date.now();if(active())paint(cal,year);
+    cached=cal;loadedAt=Date.now();if(active())paint(cal,year);if(!archiveVerified&&!archiveLoading)void verifyArchive();
     if(!cal.refreshing||pass===1)break;
     // One joined refresh, not repeated polling; the shown snapshot remains visible.
     snapshots=await read(false);

@@ -157,3 +157,5 @@ anzulegen. Mitgliedernamen werden nicht in Google-Termine geschrieben.
 Jede Verbindung lässt sich einzeln trennen; Gruppen bleiben bestehen.
 
 Geburtstagseinträge erscheinen in der Hauptanwendung weder in der Kalenderübersicht noch im Jahresplan oder dessen PDF. Der eigene Geburtstag bleibt im persönlichen H₂O-Plan und Kalenderabo erhalten. Die zentrale Zuordnung für die jährlichen Treuepunkte wird dadurch nicht verändert.
+
+**Abgleich mit OneDrive:** Vor der Kennzeichnung vergangener Termine wird die aktuelle OneDrive-Historie vollständig geprüft. Ein vorhandener Originalbericht zählt auch ohne Cloudflare-Abschlussmarkierung als abgeschlossen. Unklare Zuordnungen werden mit „Bericht prüfen · Historie“ gekennzeichnet und nicht automatisch nacherfasst. Bei OneDrive-Fehlern bleibt das Nachtragen gesperrt, damit kein Doppelbericht entsteht.
