@@ -27,3 +27,9 @@ test('Funkunterlagen: öffentliche Dateien enthalten nur den Abruf, keine Import
  const ui=fs.readFileSync('js/features/portal/portal-training.js','utf8');assert.doesNotMatch(ui,/localStorage|indexedDB|caches\./);assert.match(ui,/URL\.revokeObjectURL/);assert.match(ui,/current!==epoch/);
 });
 test('Gesamte Ausbildungsbibliothek bleibt verschlüsselt und ist nur nach verifizierter Anmeldung lesbar',async()=>{const f=await fixture(),m={...material(),library:require('./helpers/training-library.cjs').library,edition:'test-1'};assert.equal((await f.call('training',{material:m,expectedVersion:0},null,true)).status,200);assert.equal((await f.call('training',{},null,true)).value.edition,'test-1');assert.deepEqual((await f.call('training')).value.material.library,m.library);assert.ok(!f.sql.prepare('SELECT payload FROM portal_training').get().payload.includes('synthetische geschützte Lerninhalte'));const bad={...m,library:{...m.library,'more-training':'<section><script>alert(1)</script></section>'}};assert.equal((await f.call('training',{material:bad,expectedVersion:1},null,true)).status,400);assert.equal((await f.call('training')).value.version,1);});
+
+test('Verifizierte Funkansicht zeigt keinen überflüssigen Mitgliedschaftshinweis',()=>{
+ const ui=fs.readFileSync('js/features/portal/portal-training.js','utf8');
+ assert.doesNotMatch(ui,/Nur für verifizierte Mitglieder · keine Offline-Ablage|Nur für verifizierte Feuerwehrmitglieder\. Bitte persönlich anmelden/);
+ assert.match(ui,/\$\('radio-private-status'\)\.textContent='';/);
+});

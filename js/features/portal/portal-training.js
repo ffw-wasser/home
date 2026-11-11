@@ -7,7 +7,7 @@ function clear(){
  epoch++;busy=false;if(dialog){if(dialog.open)dialog.close();dialog.remove();dialog=null;}
  originalSteps.length=0;for(const [id,shell] of shells){const page=$('portal-page-'+id);page?.replaceChildren(shell.cloneNode(true));}
  $('radio-private-content')?.replaceChildren();if(url)URL.revokeObjectURL(url);url='';
- if($('radio-private-status'))$('radio-private-status').textContent='Nur für verifizierte Feuerwehrmitglieder. Bitte persönlich anmelden.';
+ if($('radio-private-status'))$('radio-private-status').textContent='';
  if($('radio-private-retry'))$('radio-private-retry').hidden=true;
 }
 function section(title){const card=node('section');card.className='training-card';card.append(node('h3',title));return card;}
@@ -49,7 +49,7 @@ async function load(pageId='radio-device'){
   };original.append(enlarge);
   const manuals=new Set();for(const link of document.querySelectorAll('#radio-device .training-source-card a, #radio-private .radio-manual-link a')){if(manuals.has(link.href))continue;manuals.add(link.href);const p=node('p');p.className='radio-manual-link';p.append(link);original.append(p);}
   document.querySelectorAll('#radio-device .training-source-card, #radio-private > .radio-manual-link').forEach(card=>card.remove());
-  content.append(original);$('radio-private-status').textContent='Nur für verifizierte Mitglieder · keine Offline-Ablage.';
+  content.append(original);$('radio-private-status').textContent='';
  }catch(e){if(current===epoch&&status){status.textContent=e.message||'Unterlagen konnten nicht geladen werden.';}}
  finally{if(current===epoch)busy=false;}
 }
