@@ -202,6 +202,8 @@ function prepareMemberUpdate(id, row) {
   for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.monthEnd(value))throw Error("Bitte einen gültigen Monat und ein Jahr für den Nachweis eingeben.");}
   member.lastName = lastName;
   member.firstName = firstName;
+  // Laufbahndaten gehören zur bestehenden, OneDrive-synchronisierten Personalakte.
+  if(row.querySelector("[data-career-json]")) member.careerEntries = window.MemberCareer.validate(JSON.parse(row.querySelector("[data-career-json]").value||"[]"));
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
   member.ageDepartment = Boolean(row.querySelector("[data-age-department]")?.checked);
   member.committeeMember = Boolean(row.querySelector("[data-committee-member]")?.checked);
