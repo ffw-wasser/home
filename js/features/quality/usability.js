@@ -92,7 +92,7 @@
       article.classList.add('ux-member','person-record-card');
       article.setAttribute('aria-label','Personalakte '+nameForTile(member));
       const hero=document.createElement('header');hero.className='person-record-hero';
-      hero.innerHTML='<div class="person-record-hero-icon" aria-hidden="true">♜</div><div class="person-record-hero-text"><p class="eyebrow">Feuerwehr Wasser · Personalakte</p><h3 class="person-record-title">'+escapeHtml(nameForTile(member))+'</h3><div class="person-record-hero-meta"><span class="person-record-badge">'+(member.ageDepartment?'Altersabteilung':member.fitnessTrainer?'Gast / Fitnesstrainer':'Einsatzabteilung')+'</span><span data-record-current-rank>Kein Dienstgrad hinterlegt</span></div></div>';
+      hero.innerHTML='<div class="person-record-hero-icon" aria-hidden="true">FW</div><div class="person-record-hero-text"><p class="eyebrow">Feuerwehr Wasser · Personalakte</p><h3 class="person-record-title">'+escapeHtml(nameForTile(member))+'</h3><div class="person-record-hero-meta"><span class="person-record-badge">'+(member.ageDepartment?'Altersabteilung':member.fitnessTrainer?'Gast / Fitnesstrainer':'Einsatzabteilung')+'</span><span data-record-current-rank>Kein Dienstgrad hinterlegt</span></div></div>';
       const tabs=document.createElement('nav');tabs.className='person-record-tabs';tabs.setAttribute('aria-label','Bereiche der Personalakte');
       const tabList=[['overview','Übersicht'],['master','Stammdaten'],['career','Laufbahn & Ausbildung'],['roles','Berechtigungen'],['evidence','Nachweise'],['account','Konto & Getränke']];
       tabs.innerHTML=tabList.map(pair=>'<button type="button" role="tab" data-record-tab="'+pair[0]+'">'+pair[1]+'</button>').join('');
