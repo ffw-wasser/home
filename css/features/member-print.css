@@ -1,0 +1,77 @@
+/* Druckfunktion der geschützten Mitgliederverwaltung. Ausdrücke sind keine Web-/Server-Exports. */
+#memberPrintRoot{display:none!important}
+#memberPrintControls{margin:16px 0 20px;padding:18px 20px;background:#f8fafc;border:1px solid #dce4ed;border-left:4px solid #a62c35;border-radius:13px;color:#203349}
+.member-print-control-title{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.member-print-control-title h4{font-size:1.1rem;margin:0 0 4px}
+.member-print-control-title p{font-size:.93rem;color:#5b6877;margin:0 0 12px;line-height:1.4}
+.member-print-control-title>span{font-size:1.65rem;color:#99303b}
+.member-print-fields{display:flex;align-items:end;flex-wrap:wrap;gap:10px}
+.member-print-fields>label{font-size:.88rem;font-weight:650;display:grid;gap:5px;flex:2 1 250px;min-width:0}
+.member-print-fields>label[data-print-year-control]{flex:0 1 135px}
+.member-print-fields select,.member-print-fields input{width:100%;max-width:100%;min-height:46px;box-sizing:border-box}
+.member-print-fields>button{flex:0 0 auto;min-height:46px;border:1px solid #9a2e38;background:#fff;color:#8e2430;padding:9px 15px;white-space:normal;font-weight:700}
+#memberPrintResult{margin:12px 0 4px;font-size:.89rem;font-weight:650;color:#254860}
+#memberPrintControls>small{display:block;color:#586c78;line-height:1.5}
+@media(max-width:700px){
+ #memberPrintControls{padding:14px}
+ .member-print-fields{display:grid;grid-template-columns:minmax(0,1fr)}
+ .member-print-fields>label[data-print-year-control]{width:100%}
+ .member-print-fields>button{width:100%}
+}
+@page{size:A4 portrait;margin:15mm 15mm 16mm}
+@media print{
+ html,body{width:auto!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important;color:#182435!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ body::before,body::after{display:none!important}
+ body > :not(#memberPrintRoot){display:none!important}
+ html body #memberPrintRoot{display:block!important;position:static!important;visibility:visible!important;margin:0!important;padding:0!important;width:100%!important;height:auto!important;max-width:none!important;color:#1a2b3c!important;overflow:visible!important;background:#fff!important;font:10.3pt/1.42 Arial,Helvetica,sans-serif!important}
+ #memberPrintRoot *{box-sizing:border-box}
+ #memberPrintRoot .member-print-person{display:block!important;break-after:page;page-break-after:always;max-width:180mm;min-width:0;margin:0 auto;overflow:visible}
+ #memberPrintRoot .member-print-person:last-child{break-after:auto;page-break-after:auto}
+ #memberPrintRoot .member-print-top{display:flex;justify-content:space-between;gap:12pt;border-bottom:2pt solid #9c2c35;padding:0 0 8pt;font-size:8pt;font-weight:700;color:#263d51;letter-spacing:.02em;text-transform:uppercase}
+ #memberPrintRoot .member-print-top span:last-child{color:#8d4b51}
+ #memberPrintRoot .member-print-title{display:flex;align-items:end;justify-content:space-between;gap:14pt;margin:20pt 0 16pt}
+ #memberPrintRoot .member-print-title p{margin:0 0 4pt;text-transform:uppercase;letter-spacing:.08em;color:#657282;font-size:8.5pt;font-weight:700}
+ #memberPrintRoot h1{font-size:23pt;line-height:1.2;color:#162c40;margin:0;overflow-wrap:anywhere}
+ #memberPrintRoot .member-print-pagenum{border:1pt solid #dce2e9;border-radius:5pt;padding:4pt 7pt;font-size:8pt;white-space:nowrap;color:#516577}
+ #memberPrintRoot .member-print-year-label{border-left:3pt solid #a83138;background:#f5eeee;padding:7pt 9pt;margin:-3pt 0 13pt;color:#75232c;font-weight:700;font-size:9.5pt}
+ #memberPrintRoot h2{font-size:11.5pt;color:#152c42;margin:17pt 0 7pt;padding-bottom:4pt;border-bottom:1pt solid #d5e0e8;break-after:avoid}
+ #memberPrintRoot h3{font-size:9.5pt;color:#33475a;margin:12pt 0 5pt;break-after:avoid}
+ #memberPrintRoot .member-print-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6pt 13pt;margin:0}
+ #memberPrintRoot .member-print-details dl>div{padding:5pt 7pt;background:#f4f7f9;border-radius:4pt;min-width:0;break-inside:avoid}
+ #memberPrintRoot dt{color:#667786;font-size:8pt}
+ #memberPrintRoot dd{font-weight:700;margin:3pt 0 0;overflow-wrap:anywhere}
+ #memberPrintRoot .member-print-function-section p{margin:5pt 0;line-height:1.9}
+ #memberPrintRoot .member-print-function-section p span{display:inline-block;background:#edf3f6;border:1pt solid #dce5eb;border-radius:8pt;padding:2pt 7pt;font-size:8.3pt;margin:0 5pt 4pt 0}
+ #memberPrintRoot table{width:100%;table-layout:fixed;border-collapse:collapse;margin:2pt 0 8pt;font-size:8.9pt}
+ #memberPrintRoot th{text-align:left;background:#e9eef2;color:#33465a;font-weight:700;border-bottom:1pt solid #d5dfe8;padding:5pt 7pt}
+ #memberPrintRoot td{padding:5pt 7pt;border-bottom:.6pt solid #e1e7ec;vertical-align:top;overflow-wrap:anywhere}
+ #memberPrintRoot .member-print-matches th:nth-child(1){width:23%}
+ #memberPrintRoot .member-print-matches th:nth-child(2){width:27%}
+ #memberPrintRoot .print-career-table th:first-child{width:24%}
+ #memberPrintRoot tr{break-inside:avoid;page-break-inside:avoid}
+ #memberPrintRoot .member-print-career-section{break-inside:auto}
+ #memberPrintRoot .member-print-matches{break-inside:avoid}
+ #memberPrintRoot .print-career-table tr.is-year-match{background:#fbf1f2;font-weight:650}
+ #memberPrintRoot .print-career-notes{font-size:8.1pt;color:#5b6878;margin-top:2pt}
+ #memberPrintRoot .member-print-footer{margin-top:16pt;padding-top:7pt;border-top:1pt solid #cbd6df;font-size:8pt;color:#596c7c;break-inside:avoid}
+}
+
+/* Kreisdiagramme werden als echte SVG-Vektoren gedruckt und bleiben im PDF scharf. */
+@media print{
+ #memberPrintRoot .member-print-participation{margin-top:16pt;break-inside:avoid;page-break-inside:avoid}
+ #memberPrintRoot .member-print-participation h2{margin-bottom:3pt}
+ #memberPrintRoot .member-print-participation-period{color:#637483;font-size:8pt;margin:0 0 8pt}
+ #memberPrintRoot .member-print-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11pt;align-items:start}
+ #memberPrintRoot .member-print-chart{min-width:0;border:1pt solid #dce3e9;background:#f8fafb;border-radius:6pt;padding:7pt 8pt;break-inside:avoid}
+ #memberPrintRoot .member-print-chart h3{font-size:9pt;margin:0 0 4pt;color:#24384b}
+ #memberPrintRoot .member-print-chart-main{display:flex;align-items:center;gap:5pt}
+ #memberPrintRoot .member-print-ring{width:35mm;height:35mm;min-width:35mm;max-width:35mm;display:block}
+ #memberPrintRoot .member-print-legend{min-width:0;flex:1}
+ #memberPrintRoot .member-print-legend div{display:grid;grid-template-columns:7pt minmax(0,1fr) auto;align-items:center;column-gap:4pt;margin:2pt 0;font-size:7.4pt;line-height:1.3;min-width:0}
+ #memberPrintRoot .member-print-legend span{min-width:0;overflow-wrap:anywhere}
+ #memberPrintRoot .member-print-legend b{font-variant-numeric:tabular-nums;text-align:right}
+ #memberPrintRoot .member-print-key{display:block;width:7pt;height:7pt;border-radius:50%;background:#2f7950}
+ #memberPrintRoot .member-print-key-1{background:#d8a13c}
+ #memberPrintRoot .member-print-key-2{background:#a4434d}
+ #memberPrintRoot .member-print-chart p{font-size:7.3pt;color:#536578;margin:5pt 0 0;line-height:1.28}
+}
