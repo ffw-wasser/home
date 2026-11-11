@@ -10,7 +10,7 @@ const ROLE_GROUPS = [
 
 const DEFAULT_MEMBERS = [];
 
-const KEYS = { members: "fw_v5_members", entries: "fw_v5_entries", pin: "fw_v5_pin", password: "fw_v6_password", archive: "fw_v35_csv_archive", functionEntry: "fw_v1_function_entry_enabled", roleTargets: "fw_v1_annual_role_targets" };
+const KEYS = { members: "fw_v5_members", entries: "fw_v5_entries", pin: "fw_v5_pin", password: "fw_v6_password", archive: "fw_v35_csv_archive", functionEntry: "fw_v1_function_entry_enabled", roleTargets: "fw_v1_annual_role_targets", careerCatalog: "fw_v1_career_catalog" };
 const byId = id => document.getElementById(id);
 const systemToday = () => new Date().toLocaleDateString("sv-SE");
 function formatDisplayDate(value){const raw=String(value||"").trim();const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/);if(match)return `${match[3]}/${match[2]}/${match[1]}`;const date=new Date(raw);if(!raw||Number.isNaN(date.getTime()))return raw;return `${String(date.getDate()).padStart(2,"0")}/${String(date.getMonth()+1).padStart(2,"0")}/${date.getFullYear()}`;}
@@ -47,6 +47,7 @@ function getMemberRoles(member) {
 }
 
 let members;
+let careerCatalog = [];
 let entries;
 let csvArchive;
 let chosenMemberId = "";
