@@ -489,11 +489,12 @@ continue;}
    lastLoad=Date.now();
    const now=Date.now(),running=Boolean(currentSessionId||currentOperationId),current=chosen();
    // The active attendance session stays linked to its event even after that
-   // event ends. Otherwise only future or currently ongoing events appear.
+   // event ends. Past events remain available for direct calendar selection;
+   // the automatic start card advances to the next future or ongoing event.
    const previous=list.find(e=>e.id===current);
    list=cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&(e.end>now-366*86400000||(running&&e.id===current))).sort((a,b)=>a.start-b.start);
    const picker=document.getElementById('portal-calendar-pick');if(!picker)return;
-   const stillAvailable=list.some(e=>e.id===current);
+   const stillAvailable=list.some(e=>e.id===current&&(e.end>now||running));
    const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list.find(e=>e.end>now)?.id||''));
    picker.replaceChildren();const none=node('option','Ohne Kalendertermin / spontan');none.value='';picker.append(none);
    for(const e of list){const kind=e.sessionType||'Probe',title=e.title||kind,label=(title.trim().toLocaleLowerCase('de')===kind.toLocaleLowerCase('de')?title:title+' · '+kind)+(e.audienceRestricted===true||Array.isArray(e.recipientIds)?' · Nur ausgewählte Mitglieder':'');const option=node('option',date(e)+' · '+label);option.value=e.id;picker.append(option);}
