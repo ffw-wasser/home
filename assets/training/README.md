@@ -6,10 +6,10 @@ aktuellen Motorola-MXP600-Kurzübersicht. Daraus wurden die Lerntexte in
 nicht als Fotogalerie verwendet. Die Seite beschränkt sich auf sechs tägliche
 Handgriffe für Einsatz und Probe: Starten, Gruppe wählen, Sprechen, Hören,
 Tastensperre und Ausschalten/Laden. Zu jedem Handgriff gibt es ein neu gezeichnetes schematisches SVG-Bedienbild
-mit markierter Taste, Display oder Ladeschale, direkt im HTML und offline.
+mit markierter Taste, Display oder Ladeschale in der geschützten Bibliothek.
 Dazu kommt ein kurzer Notrufhinweis.
 Lange Geräteerklärungen und Sonderfunktionen stehen nur in der verlinkten
-Originalanleitung. Die Kurzbedienung und Gerätebilder sind mit der App offline verfügbar.
+Originalanleitung. Kurzbedienung und Gerätebilder werden nur nach Anmeldung geladen, ohne Offline-Ablage.
 
 
 Die zuvor nur angenommene allgemeine BW-Taschenkarte und ihr PDF-Leser sind
@@ -41,3 +41,5 @@ hält die Bibliothek nur im Arbeitsspeicher; Abmeldung, Verlassen der Ausbildung
 und Hintergrundwechsel entfernen sie. Öffentliche Hilfe-Bilder zeigen nur
 die Zugangssperre. Eine Änderung der privaten Quelldatei wird über ihren
 Inhaltshash erkannt; private Daten niemals ins Repository kopieren.
+
+Die Bildvorlage und der deutsche PDF-Link stehen gemeinsam unter „Kurzanleitung öffnen“. Die frühere separate Karte „Zum Nachschlagen“ entfällt. Handgriffe, Funkgruppen und ergänzende örtliche Hinweise werden jeweils einmal dargestellt.

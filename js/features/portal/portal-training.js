@@ -29,15 +29,19 @@ async function load(pageId='radio-device'){
   const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');
   if(digest!==material.image.sha256)throw Error('Die Anleitung konnte nicht geprüft werden.');if(current!==epoch)return;
   url=URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
-  const content=$('radio-private-content');content.append(node('h3',material.title));
+  const content=$('radio-private-content');$('radio-private')?.querySelector(':scope > h3')?.remove();
   originalSteps.forEach(({span,title},i)=>{const text=material.steps[i].trim();span.replaceChildren(node('strong',title),node('br'),document.createTextNode(text.startsWith(title)?text.slice(title.length).trim():text));});
   const groups=section('Funkgruppen im Überblick');for(const mode of ['TMO','DMO']){groups.append(node('h4',mode==='TMO'?'TMO · Netzbetrieb':'DMO · Einsatzstellenfunk'));const dl=node('dl');dl.className='radio-group-list';for(const group of material.groups.filter(v=>v.mode===mode)){const row=node('div');row.append(node('dt',group.code),node('dd',group.label));dl.append(row);}groups.append(dl);}content.append(groups);
-  const notes=section('Örtliche Hinweise');for(const text of material.notes)notes.append(node('p',text));content.append(notes);
+  const normalize=text=>text.trim().replace(/\s+/g,' ').toLocaleLowerCase('de');
+  const notes=section('Örtliche Hinweise'),seenNotes=new Set();for(const text of material.notes){const key=normalize(text);if(!key||seenNotes.has(key)||material.steps.some(step=>normalize(step).includes(key)))continue;seenNotes.add(key);notes.append(node('p',text));}if(notes.children.length>1)content.append(notes);
   const original=node('details');original.className='radio-original';original.append(node('summary','Kurzanleitung öffnen'));
   const image=node('img');image.src=url;image.alt='Geschützte örtliche MXP600-Kurzanleitung';original.append(image);
   const enlarge=node('button','Bild vergrößern');enlarge.type='button';enlarge.onclick=()=>{
    if(!url||current!==epoch)return;if(dialog)dialog.remove();dialog=node('dialog');dialog.className='radio-private-dialog';const close=node('button','Schließen');close.type='button';close.onclick=()=>dialog?.close();const full=node('img');full.src=url;full.alt=image.alt;dialog.append(close,full);document.body.append(dialog);dialog.showModal();
-  };original.append(enlarge);content.append(original);$('radio-private-status').textContent='Nur für verifizierte Mitglieder · keine Offline-Ablage.';
+  };original.append(enlarge);
+  const manuals=new Set();for(const link of document.querySelectorAll('#radio-device .training-source-card a, #radio-private .radio-manual-link a')){if(manuals.has(link.href))continue;manuals.add(link.href);const p=node('p');p.className='radio-manual-link';p.append(link);original.append(p);}
+  document.querySelectorAll('#radio-device .training-source-card, #radio-private > .radio-manual-link').forEach(card=>card.remove());
+  content.append(original);$('radio-private-status').textContent='Nur für verifizierte Mitglieder · keine Offline-Ablage.';
  }catch(e){if(current===epoch&&status){status.textContent=e.message||'Unterlagen konnten nicht geladen werden.';}}
  finally{if(current===epoch)busy=false;}
 }

@@ -13,7 +13,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  // Exercise the shared PIN screen and resume through the real login handler.
  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
  await page.evaluate(()=>{
-  Date.now=()=>Date.parse('2026-11-11T12:00:00Z');currentOperationId='';currentSessionId='';entries=[];pendingMemberStatuses.clear();
+  Date.now=()=>Date.parse('2026-11-11T12:00:00Z');currentOperationId='';currentSessionId='';safeStorage.setItem('fw_v1_current_session_id','');currentProbeDate='2026-11-11';pendingSessionType='';entries=[];pendingMemberStatuses.clear();
   window.oneDriveAdministrationReady=()=>true;window.oneDriveSignedIn=()=>true;DrinksStore.sourceKey=()=> 'correction-test-source';DrinksCentral.connection=async()=>({source:'correction-test-source'});
   window.correctionLoads=0;window.correctedReports=[];window.adminPin=()=> 'synthetic-test-pin';
   const completed={id:'completed-test',title:'Funkübung',start:Date.parse('2026-11-10T18:00Z'),end:Date.parse('2026-11-10T19:00Z'),completedAt:Date.now()-86400000,kind:'probe',sessionType:'Sonderprobe',attendanceType:'Sonderprobe',approved:true};
