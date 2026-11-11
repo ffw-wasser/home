@@ -188,6 +188,8 @@ jobs:
           BROWSER_ENGINE=webkit node tests/member-subscriptions-browser.cjs
       - name: Test member batch editing and mobile cards
         run: node tests/members-editor-browser.cjs
+      - name: Test private member records printing and year selection
+        run: node tests/member-print-browser.cjs
       - name: Test appointment replies on mobile viewports
         run: |
           node tests/term-reply-browser.cjs
