@@ -27,7 +27,7 @@
   function entries(member){return Array.isArray(member&&member.careerEntries)?member.careerEntries:[];}
   function currentRank(all){return all.filter(item=>item.type==='rank').slice().sort((a,b)=>b.date.localeCompare(a.date))[0]?.title||'Kein Dienstgrad hinterlegt';}
   function rowEntries(row){return validate(JSON.parse(row.querySelector('[data-career-json]').value||'[]'));}
-  function formatDate(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?m[3]+'.'+m[2]+'.'+m[1]:value;}
+  function formatDate(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?m[3]+'.'+m[2]+'.'+m[1]:escape(value);}
   function groupHtml(type,all){
     const list=all.map((item,index)=>({...item,index})).filter(item=>item.type===type.key).sort((a,b)=>b.date.localeCompare(a.date));
     return '<section class="career-category"><header class="career-category-heading"><h4>'+escape(type.label)+'</h4><button type="button" class="outline-button" data-career-add="'+type.key+'">+ Hinzufügen</button></header>'+
