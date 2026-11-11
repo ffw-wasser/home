@@ -22,45 +22,130 @@
     window.WorkflowUX?.attendance();
   }
   function filterMembers(){
-    const query=memberQuery.trim().toLocaleLowerCase('de');let count=0;
-    document.querySelectorAll('#memberAdmin details[data-member-id]').forEach(row=>{row.hidden=!row.querySelector('summary').textContent.toLocaleLowerCase('de').includes(query);if(!row.hidden)count++;});
-    byId('memberSearchStatus').textContent=count?`${count} Mitglied${count===1?'':'er'} gefunden`:'Kein Mitglied gefunden. Suche nach Vor- oder Nachname.';
+    const box=byId('memberAdmin'),query=memberQuery.trim().toLocaleLowerCase('de');
+    let count=0,first='';
+    box.querySelectorAll('[data-record-choice]').forEach(button=>{
+      const match=button.textContent.toLocaleLowerCase('de').includes(query);
+      button.hidden=!match;
+      if(match){count++;if(!first)first=button.dataset.recordChoice;}
+    });
+    const status=byId('memberSearchStatus');
+    if(status)status.textContent=count?count+' Mitglied'+(count===1?'':'er')+' gefunden':'Kein Mitglied gefunden.';
+    if(first&&!box.querySelector('[data-record-choice].is-selected:not([hidden])'))selectRecord(first);
+    if(!count)box.querySelectorAll('article.ux-member').forEach(row=>row.hidden=true);
+  }
+  function setActiveTab(row,tab){
+    if(!row)return;
+    const available=[...row.querySelectorAll('[data-record-panel]')].map(node=>node.dataset.recordPanel);
+    if(!available.includes(tab))tab='overview';
+    row.dataset.activeRecordTab=tab;
+    row.querySelectorAll('[data-record-tab]').forEach(button=>{
+      const active=button.dataset.recordTab===tab;
+      button.classList.toggle('is-active',active);
+      button.setAttribute('aria-selected',String(active));
+      button.tabIndex=active?0:-1;
+    });
+    row.querySelectorAll('[data-record-panel]').forEach(panel=>panel.hidden=panel.dataset.recordPanel!==tab);
+  }
+  function selectRecord(id){
+    const box=byId('memberAdmin');
+    const former=box.querySelector('article.ux-member:not([hidden])');
+    const previousTab=former?.dataset.activeRecordTab||'overview';
+    const member=box.querySelectorAll('article.ux-member');
+    const row=[...member].find(item=>item.dataset.memberId===id);
+    if(!row)return;
+    openMemberId=id;
+    member.forEach(item=>item.hidden=item!==row);
+    box.querySelectorAll('[data-record-choice]').forEach(button=>{
+      const selected=button.dataset.recordChoice===id;
+      button.classList.toggle('is-selected',selected);
+      button.setAttribute('aria-current',selected?'true':'false');
+    });
+    setActiveTab(row,former===row?previousTab:'overview');
+    window.Drinks?.loadPinStatus(row);
   }
   function renderMemberList(){
     if(!ready)return;
-    const box=byId('memberAdmin');
-    if(!byId('memberSearch')){
-      const search=document.createElement('div');search.className='ux-search';
-      search.innerHTML='<label for="memberSearch">Mitglied suchen</label><input id="memberSearch" class="text-input" type="search" placeholder="Vor- oder Nachname" autocomplete="off"><p id="memberSearchStatus" role="status"></p>';
-      box.before(search);byId('memberSearch').value=memberQuery;
-      byId('memberSearch').addEventListener('input',event=>{memberQuery=event.target.value;filterMembers();});
-    }
-    box.querySelectorAll('article.admin-row').forEach(article=>{
-      const id=article.dataset.memberId,header=article.querySelector('.member-card-header');
-      const row=document.createElement('details');row.className='admin-row member-card ux-member';row.dataset.memberId=id;
-      const summary=document.createElement('summary');summary.innerHTML=header.innerHTML+'<span class="ux-member-open">Bearbeiten</span>';
-      header.remove();row.append(summary);while(article.firstChild)row.append(article.firstChild);article.replaceWith(row);
-      const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in OneDrive';row.querySelector('.member-card-actions').before(dirty);
-      // Names are the quick edit. Qualifications remain grouped inside native disclosures.
-      const roles=row.querySelector('.member-role-editor'),safety=row.querySelector('.member-safety-settings');
-      for(const [node,title] of [[roles,'Funktionen und Fahrberechtigungen'],[safety,'Nachweise und Atemschutz']]){
-        if(!node)continue;const details=document.createElement('details');details.className='ux-member-section';details.innerHTML=`<summary>${title}</summary>`;node.before(details);details.append(node);
-      }
-      row.addEventListener('input',event=>{
-        const pin=event.target.closest('.dr-pin-editor');if(pin){pin.dataset.dirty=event.target.value?'1':'';if(!event.target.value)delete pin.dataset.dirty;pin.querySelector('[data-dr-pin-status]').textContent=event.target.value?'PIN noch nicht gespeichert. „Alle Änderungen speichern“ übernimmt auch die PIN.':'PIN wird separat gespeichert.';}
-        else {row.dataset.memberDirty='1';dirty.textContent='Ungespeicherte Änderungen · oben „Alle Änderungen speichern“ wählen';}
+    const box=byId('memberAdmin'),rows=[...box.querySelectorAll('article.admin-row[data-member-id]')];
+    if(!rows.length)return;
+    byId('memberSearch')?.closest('.ux-search')?.remove();
+    const shell=document.createElement('div');shell.className='person-record-layout';
+    const sidebar=document.createElement('aside');sidebar.className='person-record-sidebar';sidebar.setAttribute('aria-label','Mitglieder auswählen');
+    const main=document.createElement('div');main.className='person-record-main';
+    const heading=document.createElement('div');heading.className='person-record-sidebar-heading';
+    heading.innerHTML='<h4>Personenakten</h4><span>'+rows.length+'</span>';sidebar.append(heading);
+    const search=document.createElement('div');search.className='ux-search';
+    search.innerHTML='<label for="memberSearch">Mitglied suchen</label><input id="memberSearch" class="text-input" type="search" placeholder="Vor- oder Nachname" autocomplete="off"><p id="memberSearchStatus" role="status"></p>';
+    sidebar.append(search);search.querySelector('input').value=memberQuery;
+    search.querySelector('input').addEventListener('input',event=>{memberQuery=event.target.value;filterMembers();});
+    let lastDepartment='';
+    rows.forEach(article=>{
+      const id=article.dataset.memberId,member=members.find(person=>person.id===id);
+      if(!member)return;
+      const department=member.ageDepartment?'Alterskameraden':'Einsatzabteilung';
+      if(department!==lastDepartment){const caption=document.createElement('p');caption.className='person-record-category';caption.textContent=department;sidebar.append(caption);lastDepartment=department;}
+      const button=document.createElement('button');button.type='button';button.className='person-record-person';button.dataset.recordChoice=id;
+      const initials=(String(member.firstName||'').charAt(0)+String(member.lastName||'').charAt(0)).toLocaleUpperCase('de');
+      button.innerHTML='<span class="person-record-avatar" aria-hidden="true">'+escapeHtml(initials)+'</span><span class="person-record-person-name">'+escapeHtml(nameForTile(member))+'</span><span class="person-record-person-arrow" aria-hidden="true">›</span>';
+      sidebar.append(button);
+      const header=article.querySelector('.member-card-header');header?.remove();
+      article.classList.add('ux-member','person-record-card');
+      article.setAttribute('aria-label','Personalakte '+nameForTile(member));
+      const hero=document.createElement('header');hero.className='person-record-hero';
+      hero.innerHTML='<div class="person-record-hero-icon" aria-hidden="true">♜</div><div class="person-record-hero-text"><p class="eyebrow">Feuerwehr Wasser · Personalakte</p><h3 class="person-record-title">'+escapeHtml(nameForTile(member))+'</h3><div class="person-record-hero-meta"><span class="person-record-badge">'+(member.ageDepartment?'Altersabteilung':member.fitnessTrainer?'Gast / Fitnesstrainer':'Einsatzabteilung')+'</span><span data-record-current-rank>Kein Dienstgrad hinterlegt</span></div></div>';
+      const tabs=document.createElement('nav');tabs.className='person-record-tabs';tabs.setAttribute('aria-label','Bereiche der Personalakte');
+      const tabList=[['overview','Übersicht'],['master','Stammdaten'],['career','Laufbahn & Ausbildung'],['roles','Berechtigungen'],['evidence','Nachweise'],['account','Konto & Getränke']];
+      tabs.innerHTML=tabList.map(pair=>'<button type="button" role="tab" data-record-tab="'+pair[0]+'">'+pair[1]+'</button>').join('');
+      const panels={};
+      tabList.forEach(pair=>{const panel=document.createElement('section');panel.className='person-record-panel';panel.dataset.recordPanel=pair[0];panel.setAttribute('role','tabpanel');panel.hidden=true;const title=document.createElement('h4');title.className='person-record-panel-title';title.textContent=pair[1];panel.append(title);panels[pair[0]]=panel;});
+      panels.overview.insertAdjacentHTML('beforeend','<p class="record-section-intro">Persönliche Funktionen und Ausbildung auf einen Blick. Alle Einträge können in den jeweiligen Bereichen gepflegt werden.</p><div class="person-record-metrics"><div><span>Lehrgänge & Fortbildungen</span><strong data-record-qualification-count>0</strong></div><div><span>Abzeichen & Spangen</span><strong data-record-awards-count>0</strong></div></div><h5>Letzte Laufbahneinträge</h5><div data-record-career-preview></div>');
+      const move=(selector,to)=>{const node=article.querySelector(':scope > '+selector);if(node)panels[to].append(node);};
+      move('.member-name-fields','master');
+      move('.age-department-toggle','roles');
+      move('.committee-member-toggle','roles');
+      move('.committee-member-toggle','roles');
+      move('.member-role-editor','roles');
+      move('.age-no-role-note','roles');
+      move('.member-safety-settings','evidence');
+      move('.member-career-settings','career');
+      move('.member-whatsapp-settings','account');
+      const actions=article.querySelector(':scope > .member-card-actions');actions?.remove();
+      // Dynamisch ergänzte Getränkefelder bleiben unverändert und behalten ihre Ereignisse.
+      [...article.children].forEach(node=>panels.account.append(node));
+      if(actions)panels.master.append(actions);
+      article.append(hero,tabs,...tabList.map(pair=>panels[pair[0]]));
+      const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in OneDrive';panels.master.append(dirty);
+      article.addEventListener('input',event=>{
+        const pin=event.target.closest('.dr-pin-editor');
+        if(pin){
+          pin.dataset.dirty=event.target.value?'1':'';
+          if(!event.target.value)delete pin.dataset.dirty;
+          const pinStatus=pin.querySelector('[data-dr-pin-status]');
+          if(pinStatus)pinStatus.textContent=event.target.value?'PIN noch nicht gespeichert. „Alle Änderungen speichern“ übernimmt auch die PIN.':'PIN wird separat gespeichert.';
+        }else{
+          article.dataset.memberDirty='1';
+          dirty.textContent='Ungespeicherte Änderungen · oben „Alle Änderungen speichern“ wählen';
+          const first=article.querySelector('[data-first-name]')?.value||'',last=article.querySelector('[data-last-name]')?.value||'';
+          article.querySelector('.person-record-title').textContent=(first+' '+last).trim();
+          button.querySelector('.person-record-person-name').textContent=(first+' '+last).trim();
+        }
         memberSaveMessage='';refreshMemberSaveState();
       });
-      row.open=id===openMemberId;
-      row.addEventListener('toggle',()=>{
-        if(!row.isConnected)return;
-        if(!row.open){if(openMemberId===id)openMemberId='';return;}
-        openMemberId=id;
-        box.querySelectorAll('details.ux-member[open]').forEach(other=>{if(other!==row)other.open=false;});
-        window.Drinks?.loadPinStatus(row);
-      });
+      window.MemberCareer?.summary(article);
+      main.append(article);
     });
-    ensureMemberSaveBar();filterMembers();refreshMemberSaveState();
+    box.replaceChildren(shell);shell.append(sidebar,main);
+    if(!box.dataset.personRecordBound){
+      box.dataset.personRecordBound='1';
+      box.addEventListener('click',event=>{
+        const choice=event.target.closest('[data-record-choice]');
+        if(choice){selectRecord(choice.dataset.recordChoice);return;}
+        const tab=event.target.closest('[data-record-tab]');if(tab)setActiveTab(tab.closest('.ux-member'),tab.dataset.recordTab);
+      });
+    }
+    ensureMemberSaveBar();
+    const current=rows.some(row=>row.dataset.memberId===openMemberId)?openMemberId:rows[0].dataset.memberId;
+    selectRecord(current);filterMembers();refreshMemberSaveState();
   }
   function changedMemberRows(){
     return [...byId('memberAdmin').querySelectorAll('[data-member-id]')].filter(row=>row.hasAttribute('data-member-dirty')||row.querySelector('.dr-pin-editor[data-dirty]'));
@@ -70,10 +155,11 @@
     if(!button)return;
     button.textContent=memberSaving?'Änderungen werden gespeichert …':'Alle Änderungen speichern'+(count?' ('+count+')':'');
     button.disabled=memberSaving||!count;discard.disabled=memberSaving||!count;
-    document.querySelectorAll('#memberAdmin details[data-member-id]').forEach(row=>{
+    document.querySelectorAll('#memberAdmin article.ux-member').forEach(row=>{
       const pending=row.hasAttribute('data-member-dirty')||Boolean(row.querySelector('.dr-pin-editor[data-dirty]'));
-      const label=row.querySelector('.ux-member-open');
-      if(label){label.textContent=pending?'Ungespeichert':'Bearbeiten';label.classList.toggle('is-pending',pending);}
+      const nav=[...byId('memberAdmin').querySelectorAll('[data-record-choice]')].find(item=>item.dataset.recordChoice===row.dataset.memberId);
+      nav?.classList.toggle('is-pending',pending);
+      if(nav)nav.title=pending?'Ungespeicherte Änderungen':'Personalakte öffnen';
     });
     status.textContent=memberSaving?'Bitte die Speicherung abwarten.':memberSaveMessage||(count?count+' Mitglied'+(count===1?'':'er')+' mit offenen Änderungen.':'Keine offenen Änderungen.');
   }
@@ -100,7 +186,7 @@
     }
     const dataJobs=jobs.filter(job=>job.row.hasAttribute('data-member-dirty'));
     // Validate every row before committing member data or any independent PIN write.
-    for(const job of dataJobs){try{prepareMemberUpdate(job.id,job.row);}catch(error){job.row.open=true;job.row.querySelectorAll('.ux-member-section').forEach(section=>section.open=true);showToast(error.message,'error');job.row.scrollIntoView({block:'center'});return;}}
+    for(const job of dataJobs){try{prepareMemberUpdate(job.id,job.row);}catch(error){selectRecord(job.id);setActiveTab(job.row,/Laufbahn|Erwerbsdatum|Bezeichnung/.test(error.message)?'career':/Führerschein|Maschinist/.test(error.message)?'roles':'evidence');showToast(error.message,'error');job.row.scrollIntoView({block:'center'});return;}}
     const box=byId('memberAdmin');memberSaving=true;box.inert=true;refreshMemberSaveState();
     let pinFailed=0,completed=false;
     try{
