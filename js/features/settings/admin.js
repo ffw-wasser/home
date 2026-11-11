@@ -236,6 +236,12 @@ function updateMembers(rows) {
   if(!updates.size)return true;
   // Validate the complete selection before changing any member or starting sync.
   members=sortMembers(members.map(member=>updates.get(member.id)||member));
+  // Erst nach erfolgreicher Prüfung aller Personen den gemeinsamen FF-Katalog aktualisieren.
+  // Berufsfeuerwehr- und Beamtenbezeichnungen werden nicht als Vorschlag übernommen.
+  if(window.MemberCareer?.mergedCatalog){
+    careerCatalog=window.MemberCareer.mergedCatalog(careerCatalog,members);
+    safeStorage.setItem(KEYS.careerCatalog,JSON.stringify(careerCatalog));
+  }
   saveMembers();
   for(const {row} of rows)window.Usability?.savedMember(row);
   renderMembers();renderAdmin();updateSelection();
