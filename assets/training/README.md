@@ -27,17 +27,17 @@ Der vollständige Download wurde am 30.10.2026 geprüft: gültiges PDF, zwei Sei
 passende MXP600-Bedienung und Geräteübersicht. Der PDF-Link benötigt Internet.
 Der frühere englische Direktlink wurde wegen HTTP 404 entfernt.
 
-## Geschützte örtliche Ergänzung
+## Geschützte Ausbildungsbibliothek
 
-Örtliche Unterlagen werden ausschließlich über `/portal/training` nach der
-zentralen serverseitigen Prüfung der aktiven Mitgliedschaft abgerufen. Gäste,
-Fitnesstrainer, nicht verifizierte oder gesperrte Zugänge erhalten keinen Zugriff.
-Inhalte und Bild liegen verschlüsselt im Dienst, niemals im Repository oder
-App-/Service-Worker-Cache. Der Browser hält sie nur für die aktuelle Ansicht
-im Arbeitsspeicher und verwirft sie bei Seitenwechsel und Abmeldung.
+Die gesamte Rubrik wird erst nach verifizierter Mitgliederanmeldung geladen.
+Alle Lernseiten und die örtliche Funkanleitung liegen außerhalb der öffentlichen
+App-Dateien. Die gemeinsame private OneDrive-Ablage enthält
+`Webseite/Ausbildung-Privat/H2O-Ausbildung-Privat.json`. Beim bestätigten Verbinden
+mit OneDrive gleicht das Gerätehaus die Bibliothek automatisch verschlüsselt
+mit dem Dienst ab. Es gibt keinen manuellen Import oder Freigabeschritt.
 
-Die Verwaltung importiert einmalig ein privat verwahrtes JSON-Paket unter
-Pläne & Pegel → Geschützte Funkausbildung. Das Paket enthält die ergänzten
-Bedienhinweise, Funkgruppen, örtlichen Hinweise und das JPEG-Original.
-Das Importpaket nicht in Git ablegen. Screenshots der öffentlichen Hilfe
-zeigen ausschließlich die bisherigen öffentlichen Grundinformationen.
+Der Server prüft die aktuelle Mitgliedschaft und lehnt Gäste ab. Der Browser
+hält die Bibliothek nur im Arbeitsspeicher; Abmeldung, Verlassen der Ausbildung
+und Hintergrundwechsel entfernen sie. Öffentliche Hilfe-Bilder zeigen nur
+die Zugangssperre. Eine Änderung der privaten Quelldatei wird über ihren
+Inhaltshash erkannt; private Daten niemals ins Repository kopieren.

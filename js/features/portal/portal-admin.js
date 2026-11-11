@@ -243,8 +243,8 @@ continue;}
     const kind=node('input');kind.type='hidden';kind.value=e.kind==='probe'&&e.sessionType==='Sonderprobe'?'special':e.kind;
     const attendanceTypeLabel=node('label','Terminart'),attendanceType=node('select');
     attendanceType.className='text-input';attendanceType.setAttribute('aria-label','Terminart');
-    for(const [value,label] of [['Allgemeine Probe','Probe'],['Sonderprobe','Sonderprobe'],['Unterricht','Unterricht'],['Ausschuss Sitzung','Ausschusssitzung'],['Fitness','Fitness'],['other','Sonstiger Kalendereintrag']]){const o=node('option',label);o.value=value;attendanceType.append(o);}
-    attendanceType.value=kind.value==='other'?'other':['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness'].includes(e.attendanceType)?e.attendanceType:(kind.value==='probe'?'Allgemeine Probe':'Sonderprobe');
+    for(const [value,label] of [['Allgemeine Probe','Probe'],['Sonderprobe','Sonderprobe'],['Unterricht','Unterricht'],['Ausschuss Sitzung','Ausschusssitzung'],['Fitness','Fitness'],['Veranstaltung','Veranstaltung'],['other','Sonstiger Kalendereintrag']]){const o=node('option',label);o.value=value;attendanceType.append(o);}
+    attendanceType.value=kind.value==='other'?'other':['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Veranstaltung'].includes(e.attendanceType)?e.attendanceType:(kind.value==='probe'?'Allgemeine Probe':'Sonderprobe');
     attendanceTypeLabel.append(attendanceType);
     const locationLabel=node('label','Ort'),locationChoice=node('select'),locationText=node('input');
     locationChoice.className=locationText.className='text-input';locationChoice.setAttribute('aria-label','Ort für diesen Termin');locationText.setAttribute('aria-label','Ort als Freitext');locationText.maxLength=300;locationText.placeholder='Individuellen Treffpunkt eingeben';
@@ -491,10 +491,10 @@ continue;}
    // The active attendance session stays linked to its event even after that
    // event ends. Otherwise only future or currently ongoing events appear.
    const previous=list.find(e=>e.id===current);
-   list=cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&(e.end>now||(running&&e.id===current))).sort((a,b)=>a.start-b.start);
+   list=cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&(e.end>now-366*86400000||(running&&e.id===current))).sort((a,b)=>a.start-b.start);
    const picker=document.getElementById('portal-calendar-pick');if(!picker)return;
    const stillAvailable=list.some(e=>e.id===current);
-   const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list[0]?.id||''));
+   const nextId=stillAvailable?current:(running||manualNoCalendar?'':(list.find(e=>e.end>now)?.id||''));
    picker.replaceChildren();const none=node('option','Ohne Kalendertermin / spontan');none.value='';picker.append(none);
    for(const e of list){const kind=e.sessionType||'Probe',title=e.title||kind,label=(title.trim().toLocaleLowerCase('de')===kind.toLocaleLowerCase('de')?title:title+' · '+kind)+(e.audienceRestricted===true||Array.isArray(e.recipientIds)?' · Nur ausgewählte Mitglieder':'');const option=node('option',date(e)+' · '+label);option.value=e.id;picker.append(option);}
    picker.value=nextId||'';
@@ -508,15 +508,15 @@ continue;}
   }catch(e){const status=document.getElementById('portal-calendar-status');if(epoch===attendanceEpoch){if([401,403].includes(e.status)||source!==g.DrinksStore.sourceKey())clearAttendanceCalendar();if(status)status.textContent=g.ConnectionStatus?.message(e)||e.message;}}
   finally{loading=false;g.syncAttendanceStart?.();const again=attendanceRefreshPending;attendanceRefreshPending=false;if(again)await refreshAttendance(true);}
  }
- function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if((currentOperationId||currentSessionId)&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Eine Erfassung läuft bereits. Bitte diesen Termin zuerst abschließen oder verwerfen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){const spontaneous=document.getElementById('attendanceSpontaneous');if(spontaneous)spontaneous.open=false;if(!currentSessionId&&!currentOperationId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Einsatz'].includes(sessionType)){if(typeof chooseSessionType==='function')chooseSessionType(sessionType,{calendar:true});else document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
+ function select(automatic=false){const id=document.getElementById('portal-calendar-pick').value;if(manual){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Bitte zuerst den unbestätigten Erinnerungsversand erneut prüfen.','error');}const e=list.find(e=>e.id===id);if((currentOperationId||currentSessionId)&&id!==chosen()){document.getElementById('portal-calendar-pick').value=chosen()||'';return showToast('Eine Erfassung läuft bereits. Bitte diesen Termin zuerst abschließen oder verwerfen.','error');}selected=id||null;if(!automatic)manualNoCalendar=!id;replyData=null;if(e){const spontaneous=document.getElementById('attendanceSpontaneous');if(spontaneous)spontaneous.open=false;if(!currentSessionId&&!currentOperationId){const sessionType=e.attendanceType||(e.sessionType==='Probe'?'Allgemeine Probe':e.sessionType);if(['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Veranstaltung','Einsatz'].includes(sessionType)){if(typeof chooseSessionType==='function')chooseSessionType(sessionType,{calendar:true});else document.querySelector('#sessionTypes [data-session-type="'+sessionType+'"]')?.click();}}currentProbeDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(e.start));const input=byId('probeDateInput');if(input)input.value=currentProbeDate;}
   if(currentSessionId)safeStorage.setItem('h2o_calendar_session',JSON.stringify({session:currentSessionId,event:selected}));g.syncAttendanceStart?.();if(!automatic&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady())replies().catch(e=>{document.getElementById('portal-calendar-status').textContent=e.message;});}
  // Calendar clicks use the existing picker and its running-session protection.
  function selectCalendarEvent(id){
-  const event=list.find(e=>e.id===id&&e.approved&&e.kind==='probe'&&e.end>Date.now()),picker=document.getElementById('portal-calendar-pick');
+  const event=list.find(e=>e.id===id&&!e.completedAt&&e.approved&&e.kind==='probe'),picker=document.getElementById('portal-calendar-pick');
   if(!event||!picker){showToast('Dieser Termin ist noch nicht zur Erfassung verfügbar. Bitte den Kalender aktualisieren.','error');return false;}
   picker.value=id;select();return chosen()===id;
  }
- function isNextEvent(){return chosen()===list[0]?.id;}
+ function isNextEvent(){return chosen()===list.find(e=>e.end>Date.now())?.id;}
  function selectedEvent(){return list.find(e=>e.id===chosen())||null;}
  function attendanceAudience(){
   const id=chosen();if(!id)return null;
@@ -589,13 +589,13 @@ continue;}
   await retryCompletions();
  }
  async function finalizeFitnessAudience(notApplicableNames){
-  const event=selectedEvent();if(event?.attendanceType!=='Fitness'||!notApplicableNames.length)return;
+  const event=selectedEvent();if(!['Fitness','Veranstaltung'].includes(event?.attendanceType)||!notApplicableNames.length)return;
   const snapshot=await request('list'),current=snapshot.events.find(e=>e.id===event.id);if(!current||snapshot.stale)throw Error('Fitness-Zuordnung vor Abschluss bitte aktualisieren.');
   const excluded=members.filter(member=>notApplicableNames.includes(nameForStorage(member))||notApplicableNames.includes(nameForTile(member))).map(member=>String(member.id));
   if(!excluded.length)return;
-  const common={eventId:event.id,kind:'probe',approved:current.approved,sessionType:'Fitness',attendanceType:'Fitness',location:current.location,clothing:current.clothing,expectedVersion:snapshot.rulesVersion,expectedGroupsVersion:snapshot.groupsVersion};
+  const common={eventId:event.id,kind:'probe',approved:current.approved,sessionType:event.attendanceType,attendanceType:event.attendanceType,location:current.location,clothing:current.clothing,expectedVersion:snapshot.rulesVersion,expectedGroupsVersion:snapshot.groupsVersion};
   if(current.groupIds?.length)await request('classify',{...common,recipientMode:'groups',groupIds:current.groupIds,includeIds:current.includeIds||[],excludeIds:[...new Set([...(current.excludeIds||[]),...excluded])]});
   else await request('classify',{...common,recipientMode:'manual',recipientIds:(current.recipientIds||members.map(member=>String(member.id))).filter(id=>!excluded.includes(id))});
  }
- g.PortalAdmin={completeAttendance,finalizeFitnessAudience,fitnessStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('fitness-statistics',{year});},calendarModeChanged:()=>reviewCalendar(),resolveCheckin:code=>request('checkin-resolve',{code}),checkinContext:()=>({eventId:chosen(),replies:replyData,source:g.DrinksStore.sourceKey()}),load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,selectCalendarEvent,isNextEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ g.PortalAdmin={eventStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('event-statistics',{year});},completeAttendance,finalizeFitnessAudience,fitnessStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('fitness-statistics',{year});},calendarModeChanged:()=>reviewCalendar(),resolveCheckin:code=>request('checkin-resolve',{code}),checkinContext:()=>({eventId:chosen(),replies:replyData,source:g.DrinksStore.sourceKey()}),load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,selectCalendarEvent,isNextEvent,attendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

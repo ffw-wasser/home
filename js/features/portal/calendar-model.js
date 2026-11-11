@@ -4,7 +4,7 @@
  let berlinFormatter;
  function parse(raw,now=Date.now(),range=null){
   if(typeof raw!=='string'||raw.length>2000000||!raw.trimStart().startsWith('BEGIN:VCALENDAR'))throw Error('Keine gültige iCal-Kalenderdatei.');
-  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=range?.from??now-31*86400000,to=range?.to??now+370*86400000,events=[],groups=new Map();let steps=0;
+  const I=g.ICAL,root=new I.Component(I.parse(raw)),from=range?.from??now-366*86400000,to=range?.to??now+370*86400000,events=[],groups=new Map();let steps=0;
   if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from||to-from>740*86400000)throw Error('Ungültiger Kalenderzeitraum.');
   I.TimezoneService.reset();
   for(const c of root.getAllSubcomponents('vtimezone'))I.TimezoneService.register(new I.Timezone(c));
@@ -67,6 +67,7 @@
   {id:'agt',name:'Atemschutz',keywords:['Atemschutz','AGT','AS-Probe'],source:'agt',memberIds:[],enabled:true,general:false},
   {id:'gf',name:'Gruppenführer',keywords:['Gruppenführer','GF'],source:'leader',memberIds:[],enabled:true,general:false},
   {id:'committee',name:'Ausschuss',keywords:['Ausschuss','Ausschusssitzung'],source:'committee',memberIds:[],enabled:true,general:false},
+  {id:'events',name:'Veranstaltung',keywords:['Veranstaltung'],source:'manual',memberIds:[],enabled:true,general:false},
   {id:'fitness',name:'Fitness',keywords:['Fitness'],source:'manual',memberIds:[],trainerIds:[],enabled:true,general:false},
   {id:'age',name:'Alterskameraden',keywords:['Alterskameraden','Altersabteilung'],source:'age',memberIds:[],enabled:true,general:false}
  ];

@@ -21,12 +21,12 @@ function restoreAttendanceDraft(){
     if(!id)return;
     if(saved?.id===id){attendanceDraftSession=id;attendanceDraftScope=saved.source;}
     const rows=entries.filter(e=>e.operationId===id||e.sessionId===id);
-    if(saved&&saved.id===id&&saved.source===attendanceDraftSource()&&saved.version===1&&['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Einsatz'].includes(saved.type)){
+    if(saved&&saved.id===id&&saved.source===attendanceDraftSource()&&saved.version===1&&['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Veranstaltung','Einsatz'].includes(saved.type)){
       if(saved.type==='Einsatz'&&!currentOperationId||saved.type!=='Einsatz'&&currentOperationId)return;
       sessionType=saved.type;if(!currentOperationId)currentSessionId=id;
       if(/^\d{4}-\d{2}-\d{2}$/.test(saved.date)&&!Number.isNaN(Date.parse(saved.date)))currentProbeDate=saved.date;
       currentClosingTopic=String(saved.topic||'').slice(0,300);breathingProtectionPlanned=saved.breathing===true;
-      const allowed=sessionType==='Einsatz'?['Anwesend']:sessionType==='Allgemeine Probe'?['Anwesend','Entschuldigt','Orga']:sessionType==='Sonderprobe'?['Anwesend','Entschuldigt','Betrifft nicht']:['Anwesend','Entschuldigt'];
+      const allowed=sessionType==='Einsatz'?['Anwesend']:sessionType==='Allgemeine Probe'?['Anwesend','Entschuldigt','Orga']:['Sonderprobe','Fitness','Unterricht','Veranstaltung'].includes(sessionType)?['Anwesend','Entschuldigt','Betrifft nicht']:['Anwesend','Entschuldigt'];
       for(const pair of Array.isArray(saved.pending)?saved.pending:[]){if(!Array.isArray(pair))continue;const [memberId,status]=pair,member=members.find(m=>m.id===memberId);if(member&&member.fitnessTrainer!==true&&allowed.includes(status)&&!(sessionType==='Einsatz'&&member.ageDepartment)&&!(sessionType==='Ausschuss Sitzung'&&!member.committeeMember)&&!rows.some(e=>e.storedName===nameForStorage(member)||e.displayName===nameForTile(member)))pendingMemberStatuses.set(memberId,status);}
       chosenMemberIds=new Set(pendingMemberStatuses.keys());chosenRole='Anwesend';
       if(currentOperationId){operationAssignments={...(saved.assignments||{})};operationAssignmentRoles={...(saved.roles||{})};}
@@ -75,13 +75,13 @@ function renderMembers() {
   if (!availableMembers.some(member => member.id === chosenMemberId)) chosenMemberId = "";
   chosenMemberIds = new Set([...chosenMemberIds].filter(id => availableMembers.some(member => member.id === id)));
   const multiMode = (sessionType === "Allgemeine Probe" && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Orga")) ||
-    (["Sonderprobe","Fitness"].includes(sessionType) && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Betrifft nicht")) ||
+    (["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType) && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt" || chosenRole === "Betrifft nicht")) ||
     ((sessionType === "Unterricht" || sessionType === "Ausschuss Sitzung") && (chosenRole === "Anwesend" || chosenRole === "Entschuldigt")) ||
     (sessionType === "Einsatz" && chosenRole === "Anwesend");
   const renderMemberButton = member => {
     const selected = multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId;
     const organizationSelected = selected && chosenRole === "Orga";
-    const extra=["Sonderprobe","Fitness"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
+    const extra=["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
     const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
     return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""}"><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
   };
@@ -91,7 +91,7 @@ function renderMembers() {
     ? `<span><b class="legend-a">✓</b>Anwesend</span>`
     : sessionType==="Allgemeine Probe"
       ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
-      : ["Sonderprobe","Fitness"].includes(sessionType)
+      : ["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)
         ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
         : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
   let headingLegend=byId("stage2StatusLegend");
@@ -172,7 +172,7 @@ function updateSelection() {
   persistAttendanceDraft();
   const selected = members.find(member => member.id === chosenMemberId);
   const isStandard = sessionType === "Allgemeine Probe";
-  const isSpecial = ["Sonderprobe","Fitness"].includes(sessionType);
+  const isSpecial = ["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType);
   const isTraining = sessionType === "Unterricht";
   const isCommittee = sessionType === "Ausschuss Sitzung";
   const isOperation = sessionType === "Einsatz";
@@ -288,7 +288,7 @@ function saveDirectGeneralAttendance(member, status = "Anwesend") {
 function saveQuickMemberStatus(id,status){
   const member=members.find(item=>item.id===id);if(!member||member.fitnessTrainer===true)return false;
   const already=todayEntries().some(entry=>entry.storedName===nameForStorage(member)||entry.displayName===nameForTile(member));if(already)return false;
-  const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
+  const allowed=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!allowed.includes(status))return false;
   window.WorkflowUX?.beforeSelection();
   if(pendingMemberStatuses.get(id)===status)pendingMemberStatuses.delete(id);else pendingMemberStatuses.set(id,status);
@@ -340,7 +340,7 @@ function chooseMember(id) {
   const clickedMember=members.find(member=>member.id===id);
   if(!clickedMember || clickedMember.fitnessTrainer===true || !chosenRole) return;
   const allowed=(sessionType==="Allgemeine Probe" && ["Anwesend","Entschuldigt","Orga"].includes(chosenRole)) ||
-    (["Sonderprobe","Fitness"].includes(sessionType) && ["Anwesend","Entschuldigt","Betrifft nicht"].includes(chosenRole)) ||
+    (["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType) && ["Anwesend","Entschuldigt","Betrifft nicht"].includes(chosenRole)) ||
     ((sessionType==="Unterricht" || sessionType==="Ausschuss Sitzung") && ["Anwesend","Entschuldigt"].includes(chosenRole)) ||
     (sessionType==="Einsatz" && chosenRole==="Anwesend");
   if(!allowed) return;
@@ -357,7 +357,7 @@ function chooseRole(role) {
 function saveAttendance() {
   if(pendingMemberStatuses.size){commitPendingMemberStatuses();return;} 
   const isStandard = sessionType === "Allgemeine Probe";
-  const isSpecial = ["Sonderprobe","Fitness"].includes(sessionType);
+  const isSpecial = ["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType);
   const isTraining = sessionType === "Unterricht";
   const isCommittee = sessionType === "Ausschuss Sitzung";
   const isOperation = sessionType === "Einsatz";
@@ -506,7 +506,7 @@ function removeLegacyStatusRails(){
   const panel=byId("rolesPanel");if(panel){panel.hidden=true;panel.style.setProperty("display","none","important");panel.setAttribute("aria-hidden","true");}
 }
 function updateProbeWorkflow(){
-  const standard=sessionType==="Allgemeine Probe",special=["Sonderprobe","Fitness"].includes(sessionType),training=sessionType==="Unterricht",committee=sessionType==="Ausschuss Sitzung",operation=sessionType==="Einsatz";
+  const standard=sessionType==="Allgemeine Probe",special=["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType),training=sessionType==="Unterricht",committee=sessionType==="Ausschuss Sitzung",operation=sessionType==="Einsatz";
   const hasStatus=Boolean(chosenRole);
   const membersPanel=document.querySelector(".members-panel"),rolesPanel=byId("rolesPanel");
   if(membersPanel)membersPanel.hidden=false;if(rolesPanel){rolesPanel.hidden=true;rolesPanel.style.setProperty("display","none","important");rolesPanel.setAttribute("aria-hidden","true");}
@@ -526,7 +526,7 @@ function updateProbeWorkflow(){
 
 function renderRoles(){
   removeLegacyStatusRails();
-  const statuses=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
+  const statuses=sessionType==="Einsatz"?["Anwesend"]:sessionType==="Allgemeine Probe"?["Anwesend","Entschuldigt","Orga"]:["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)?["Anwesend","Entschuldigt","Betrifft nicht"]:["Anwesend","Entschuldigt"];
   if(!statuses.includes(chosenRole)) chosenRole="Anwesend";
   const workspace=byId("attendanceSelectionWorkspace"),sheet=document.querySelector(".orga-sheet");
   const statusClass=chosenRole==="Entschuldigt"?"status-excused":chosenRole==="Betrifft nicht"?"status-not-applicable":chosenRole==="Orga"?"status-organization":"status-present";
@@ -745,7 +745,7 @@ function ensureStagedHomeFlow(){
   workspace.classList.add("home-flow-card","home-flow-stage-2");
   if(!byId("stage2Heading")){const h=document.createElement("div");h.id="stage2Heading";h.className="attendance-term-options";(byId("attendanceOptionsBody")||workspace).prepend(h);}
   const stage2Heading=byId("stage2Heading");
-  if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Termindatum</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{const linkedDate=window.PortalAdmin?.selectedDate();if(linkedDate&&event.target.value!==linkedDate){event.target.value=linkedDate;showToast("Das Datum kommt aus dem verknüpften Kalendertermin.","error");return;}currentProbeDate=event.target.value||systemToday();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
+  if(stage2Heading&&!byId("probeDateInput")){const dateWrap=document.createElement("label");dateWrap.className="probe-date-control";dateWrap.innerHTML=`<span>Termindatum</span><input id="probeDateInput" type="date" value="${escapeHtml(today())}">`;stage2Heading.appendChild(dateWrap);byId("probeDateInput").addEventListener("change",event=>{const linkedDate=window.PortalAdmin?.selectedDate();if(linkedDate&&event.target.value!==linkedDate){event.target.value=linkedDate;showToast("Das Datum kommt aus dem verknüpften Kalendertermin.","error");return;}const nextDate=event.target.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(nextDate||"")||Number.isNaN(Date.parse(nextDate))){event.target.value=today();return;}const currentRows=todayEntries();currentProbeDate=nextDate;if(sessionType!=="Einsatz"){currentRows.forEach(entry=>entry.date=nextDate);if(currentRows.length)saveEntries();}persistAttendanceDraft();renderEntries();renderMembers();updatePrimaryAction();updateProbeWorkflow();});}
 
   const step3ActionButton=byId("exportResetButton");
   if(step3ActionButton){

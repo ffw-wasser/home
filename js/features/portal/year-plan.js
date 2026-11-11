@@ -124,7 +124,7 @@
   if(portal){
    $('reload').setAttribute('aria-label','Jahresplan aktualisieren');$('print').textContent='Als PDF ansehen';
    // The personal portal has its own authentication and scrolling lifecycle.
-   g.addEventListener('portal-pagechange',e=>{if(e.detail?.page==='more-year-plan'){if(e.detail.previousPage&&e.detail.previousPage!=='more-year-plan')returnPage=e.detail.previousPage;load(true,{openPdfOnLoad:true});}else if(privateData||message==='Jahresplan wird geladen …')lock();});
+   g.addEventListener('portal-pagechange',e=>{if(e.detail?.page==='more-year-plan'){if(e.detail.previousPage&&e.detail.previousPage!=='more-year-plan')returnPage=e.detail.previousPage;load();}else if(privateData||message==='Jahresplan wird geladen …')lock();});
    const other=$('filter').querySelector('option[value="other"]');if(other)other.remove();
   }
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&privateData&&!accessCurrent())lock();});

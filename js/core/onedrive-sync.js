@@ -38,7 +38,7 @@ function getAppStorageState(){
   const detail=navigator.onLine===false?"offline":!oneDriveSignedIn()?"OneDrive nicht verbunden":oneDriveBusy?"OneDrive synchronisiert …":failed?"OneDrive-Synchronisierung fehlgeschlagen – erneut versuchen":"OneDrive noch nicht bestätigt";
   return {kind:failed?"error":"local",text:local+" · "+detail};
 }
-function notifyAppStorageState(){updateOneDriveStartup();updateOneDriveHeaderStatus();window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();window.PortalAdmin?.storageChanged?.();}
+function notifyAppStorageState(){updateOneDriveStartup();updateOneDriveHeaderStatus();window.AttendanceSmart?.storageStatus();window.WorkflowUX?.storage();window.SmartWorkflow?.settings?.();window.PortalAdmin?.storageChanged?.();window.PortalTraining?.sync?.();}
 const odRedirect=()=>"https://ffw-wasser.github.io/home/";
 const odConfig=()=>({clientId:localStorage.getItem(OD_CLIENT_KEY)||"",authority:"https://login.microsoftonline.com/consumers/oauth2/v2.0",scope:"openid profile offline_access Files.ReadWrite"});
 const odB64Url=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
@@ -294,6 +294,8 @@ async function oneDriveReadContacts(){
  return contacts;
 }
 window.oneDriveReadContacts=oneDriveReadContacts;
+async function oneDriveReadTraining(){const {response,assertCurrent}=await oneDriveWebsiteFile('Ausbildung-Privat/H2O-Ausbildung-Privat.json','Die Ausbildungsbibliothek');const data=await response.json();assertCurrent();return data;}
+window.oneDriveReadTraining=oneDriveReadTraining;
 async function oneDriveReadHydrants(){
  const {response,assertCurrent}=await oneDriveWebsiteFile('Hydrantenplan/Hydrantenplan-Wasser.pdf','Der Hydrantenplan');
  if(Number(response.headers.get('content-length'))>8*1024*1024)throw new Error('Der Plan darf höchstens 8 MB groß sein.');
@@ -373,7 +375,7 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
 function scheduleCloudSync(){if(oneDriveApplying)return;oneDriveLocalRevision++;localStorage.setItem("fw_onedrive_state_dirty","1");oneDriveStateConfirmed=false;localStorage.setItem("fw_onedrive_local_updated",new Date().toISOString());notifyAppStorageState();if(!oneDriveSignedIn())return;clearTimeout(oneDriveTimer);oneDriveTimer=setTimeout(()=>syncOneDrive(),900);}
 async function oneDriveUploadTerminPackage(blob,fileName){
  if(!oneDriveAdministrationReady())throw new Error("Bitte zuerst OneDrive verbinden.");
- if(!(blob instanceof Blob)||!blob.size||!/^FFW-Wasser_[^\\/:*?"<>|]+\.zip$/i.test(fileName))throw new Error("Ungültiges Terminpaket.");
+ if(!(blob instanceof Blob)||!blob.size||!/^(?:FFW-Wasser_[^\\/:*?"<>|]+|\d{4}-\d{2}-\d{2}_[A-Za-z0-9_-]+_[a-z0-9]{7})\.zip$/i.test(fileName))throw new Error("Ungültiges Terminpaket.");
  const epoch=oneDriveSessionEpoch,share=localStorage.getItem(OD_SHARE_KEY)||'',clientId=odConfig().clientId;
  const current=()=>{assertOneDriveSession(epoch);if(share!==(localStorage.getItem(OD_SHARE_KEY)||'')||clientId!==odConfig().clientId||!oneDriveAdministrationReady())throw new Error("OneDrive-Verbindung wurde geändert. Die Eingaben bleiben erhalten.");};
  let stage="Datenordner prüfen";

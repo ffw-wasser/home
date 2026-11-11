@@ -16,7 +16,7 @@ function restoreLatestSafetySnapshot(){
 function qualityMinutes(value){if(!/^\d{2}:\d{2}$/.test(value||""))return null;const [h,m]=value.split(":").map(Number);return h*60+m;}
 function validateOperationData(d){return validateOperation(d);}
 function validateProbeBeforeFinish(){
-  const todayEntries=(entries||[]).filter(e=>e.date===today()),errors=[],warnings=[];if(!todayEntries.length)errors.push("Keine Teilnahmen erfasst.");const open=todayEntries.filter(e=>!["Anwesend","Entschuldigt","Fehlt","Betrifft nicht"].includes(e.status));if(open.length)errors.push(`${open.length} Teilnahme(n) ohne gültigen Status.`);if(todayEntries.filter(e=>e.status==="Anwesend").length===0)warnings.push("Keine anwesende Person erfasst.");return {errors,warnings};
+  const current=typeof todayEntries==="function"?todayEntries():(entries||[]).filter(e=>e.date===today()),errors=[],warnings=[];if(!current.length)errors.push("Keine Teilnahmen erfasst.");const open=current.filter(e=>!["Anwesend","Entschuldigt","Fehlt","Betrifft nicht"].includes(e.status));if(open.length)errors.push(`${open.length} Teilnahme(n) ohne gültigen Status.`);if(current.filter(e=>e.status==="Anwesend").length===0)warnings.push("Keine anwesende Person erfasst.");return {errors,warnings};
 }
 function confirmQualityResult(result,label){const all=[...result.errors,...result.warnings];if(!all.length)return true;const text=`${label}\n\n${all.map((x,i)=>`${i+1}. ${x}`).join("\n")}\n\n${result.errors.length?"Abschluss ist nicht möglich.":"Trotz Warnung fortfahren?"}`;if(result.errors.length){alert(text);return false;}return confirm(text);}
 function migrateArchiveSchema(){

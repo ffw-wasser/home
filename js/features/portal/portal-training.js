@@ -2,21 +2,29 @@
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
-let epoch=0,url='',busy=false,uploading=false,dialog=null;const originalSteps=[];
+let epoch=0,url='',busy=false,dialog=null,syncing=false,lastSync=0,syncSource='';const originalSteps=[],shells=new Map();const trainingPages=new Set(['more-training','training-breathing','breathing-basics','breathing-emergency','training-competition','competition-bronze','competition-silver','competition-gold','training-radio','radio-device','radio-status','radio-examples']);
 function clear(){
  epoch++;busy=false;if(dialog){if(dialog.open)dialog.close();dialog.remove();dialog=null;}
- for(const {span,children} of originalSteps)span.replaceChildren(...children.map(n=>n.cloneNode(true)));
+ originalSteps.length=0;for(const [id,shell] of shells){const page=$('portal-page-'+id);page?.replaceChildren(shell.cloneNode(true));}
  $('radio-private-content')?.replaceChildren();if(url)URL.revokeObjectURL(url);url='';
  if($('radio-private-status'))$('radio-private-status').textContent='Nur für verifizierte Feuerwehrmitglieder. Bitte persönlich anmelden.';
  if($('radio-private-retry'))$('radio-private-retry').hidden=true;
 }
 function section(title){const card=node('section');card.className='training-card';card.append(node('h3',title));return card;}
-async function load(){
- clear();if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
- const current=epoch;busy=true;$('radio-private-status').textContent='Örtliche Unterlagen werden geschützt geladen …';
+async function load(pageId='radio-device'){
+ clear();const status=$('portal-page-'+pageId)?.querySelector('[role=status]');if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
+ const current=epoch;busy=true;if(status)status.textContent='Örtliche Unterlagen werden geschützt geladen …';
  try{
   const {material}=await g.H2OPortal.api('training');if(current!==epoch)return;
-  if(!material||material.schemaVersion!==1||!Array.isArray(material.steps)||material.steps.length!==6||!Array.isArray(material.groups)||!Array.isArray(material.notes)||material.image?.mime!=='image/jpeg')throw Error('Die Funkunterlagen sind ungültig.');
+  if(!material||!material.library||material.schemaVersion!==1||!Array.isArray(material.steps)||material.steps.length!==6||!Array.isArray(material.groups)||!Array.isArray(material.notes)||material.image?.mime!=='image/jpeg')throw Error('Die Ausbildungsunterlagen werden noch vom Gerätehaus bereitgestellt. Bitte die Gerätehaus-App aktualisieren.');
+  if(material.library){
+   for(const [id,html] of Object.entries(material.library)){if(!trainingPages.has(id))continue;const page=$('portal-page-'+id);if(!page)continue;const parsed=new DOMParser().parseFromString(html,'text/html');
+    for(const n of parsed.querySelectorAll('script,iframe,object,embed,form,base,meta,link'))n.remove();
+    for(const n of parsed.querySelectorAll('*'))for(const a of [...n.attributes])if(/^on/i.test(a.name)||['srcdoc','action','formaction'].includes(a.name)||['href','src','xlink:href'].includes(a.name)&&(!/^(?:https:\/\/|assets\/|#)/.test(a.value)||/javascript:/i.test(a.value)))n.removeAttribute(a.name);
+    page.replaceChildren(...[...parsed.body.childNodes].map(n=>document.importNode(n,true)));
+   }
+  }
+  for(const span of document.querySelectorAll('#radio-device .radio-daily-steps li>span'))originalSteps.push({span,title:span.querySelector('strong').textContent,children:[...span.childNodes].map(n=>n.cloneNode(true))});
   const raw=atob(material.image.base64),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
   const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');
   if(digest!==material.image.sha256)throw Error('Die Anleitung konnte nicht geprüft werden.');if(current!==epoch)return;
@@ -30,27 +38,25 @@ async function load(){
   const enlarge=node('button','Bild vergrößern');enlarge.type='button';enlarge.onclick=()=>{
    if(!url||current!==epoch)return;if(dialog)dialog.remove();dialog=node('dialog');dialog.className='radio-private-dialog';const close=node('button','Schließen');close.type='button';close.onclick=()=>dialog?.close();const full=node('img');full.src=url;full.alt=image.alt;dialog.append(close,full);document.body.append(dialog);dialog.showModal();
   };original.append(enlarge);content.append(original);$('radio-private-status').textContent='Nur für verifizierte Mitglieder · keine Offline-Ablage.';
- }catch(e){if(current===epoch){$('radio-private-status').textContent=e.message||'Unterlagen konnten nicht geladen werden.';$('radio-private-retry').hidden=false;}}
+ }catch(e){if(current===epoch&&status){status.textContent=e.message||'Unterlagen konnten nicht geladen werden.';}}
  finally{if(current===epoch)busy=false;}
 }
-async function upload(){
- if(uploading)return;if(typeof requireAdmin==='function'&&!requireAdmin('plansView'))return;
- const status=$('training-admin-status'),button=$('training-admin-upload'),input=$('training-admin-file');
- const assertAdmin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked||!g.oneDriveAdministrationReady?.())throw Error('Bitte Verwaltung entsperren und OneDrive verbinden.');};
- uploading=true;button.disabled=true;
- try{
-  assertAdmin();const file=input.files?.[0];if(!file||file.size>740000)throw Error('Bitte ein gültiges privates Importpaket bis 740 KB wählen.');
-  const material=JSON.parse(await file.text());assertAdmin();const c=await g.DrinksCentral.connection();assertAdmin();if(!c)throw Error('Bitte zuerst den zentralen Kontodienst verbinden.');
-  const call=data=>{assertAdmin();return g.DrinksPush.request(c,'/admin/portal/training',{source:c.source,...data});};
-  status.textContent='Unterlagen werden geschützt bereitgestellt …';const {version}=await call({});await call({material,expectedVersion:version});assertAdmin();input.value='';status.textContent='Funkunterlagen sind ausschließlich für verifizierte Feuerwehrmitglieder bereitgestellt.';
- }catch(e){status.textContent=e instanceof SyntaxError?'Das Importpaket ist kein gültiges JSON.':e.message;}
- finally{uploading=false;button.disabled=false;}
+async function sync(){
+ if(!g.oneDriveAdministrationReady?.()||!g.oneDriveReadTraining||syncing)return;
+ const source=g.DrinksStore?.sourceKey();if(source===syncSource&&Date.now()-lastSync<300000)return;
+ syncing=true;const status=$('training-admin-status');
+ const current=()=>{if(!g.oneDriveAdministrationReady?.()||source!==g.DrinksStore?.sourceKey())throw Error('Verbindung wurde geändert.');};
+ try{current();const material=await g.oneDriveReadTraining();current();material.edition=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(material)))),v=>v.toString(16).padStart(2,'0')).join('').slice(0,48);current();const c=await g.DrinksCentral.connection();current();if(!c)return;
+  const call=data=>{current();return g.DrinksPush.request(c,'/admin/portal/training',{source:c.source,...data});};
+  const saved=await call({});if(!saved.configured||saved.edition!==material.edition)await call({material,expectedVersion:saved.version});current();syncSource=source;lastSync=Date.now();if(status)status.textContent='Ausbildungsunterlagen automatisch geschützt bereitgestellt.';
+ }catch(e){lastSync=Date.now()-240000;syncSource=source;if(status)status.textContent='Ausbildungsunterlagen werden beim nächsten Abgleich erneut geladen: '+e.message;}
+ finally{syncing=false;}
 }
 function init(){
- for(const span of document.querySelectorAll('#radio-device .radio-daily-steps li>span'))originalSteps.push({span,title:span.querySelector('strong').textContent,children:[...span.childNodes].map(n=>n.cloneNode(true))});
- $('radio-private-retry')?.addEventListener('click',()=>{if(!busy)load();});$('training-admin-upload')?.addEventListener('click',upload);
- g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='radio-device'&&$('radio-private'))load();else clear();});
- g.addEventListener('pagehide',clear);document.addEventListener('visibilitychange',()=>{if(document.hidden)clear();else if($('portal-page-radio-device')&&!$('portal-page-radio-device').hidden)load();});
+ for(const id of trainingPages){const page=$('portal-page-'+id);if(page?.firstElementChild)shells.set(id,page.firstElementChild.cloneNode(true));}
+ g.addEventListener('portal-pagechange',event=>{if(trainingPages.has(event.detail?.page))load(event.detail.page);else clear();});
+ g.addEventListener('pagehide',clear);document.addEventListener('visibilitychange',()=>{if(document.hidden)clear();else{for(const id of trainingPages)if($('portal-page-'+id)&&!$('portal-page-'+id).hidden){load(id);break;}sync();}});
+ sync();
 }
-g.PortalTraining={clear};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+g.PortalTraining={clear,sync};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

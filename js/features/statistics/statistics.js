@@ -93,7 +93,7 @@ function renderFellowshipStatistics(yearData){
   root.querySelector("[data-fellowship-chart]").innerHTML=events.length?renderBarChart([...grouped.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,"de")).map(item=>[item.label,item.count]),"Veranstaltungen nach Thema","#65439b"):'<p class="empty-state">Keine abgeschlossenen Veranstaltungsberichte im gewählten Jahr geladen.</p>';
 }
 function statisticsArchiveData() {
-  return csvArchive.filter(item=>String(item.sessionType||'')!=='Fitness'&&!parseCsvRows(item.content).some(row=>row.sessionType==='Fitness')).map(item => {
+  return csvArchive.filter(item=>!['Fitness','Veranstaltung'].includes(String(item.sessionType||''))&&!parseCsvRows(item.content).some(row=>['Fitness','Veranstaltung'].includes(row.sessionType))).map(item => {
     const operationRows=statisticsOperationRows(item);
     const rows=operationRows.length?operationRows:parseCsvRows(item.content);
     const headers=statisticsParseCsvMatrix(item.content)[0]||[];
@@ -339,21 +339,22 @@ function arrangeStatisticsPage(){
 }
 
 let fitnessStatisticsGeneration=0;
-function clearFitnessStatistics(){fitnessStatisticsGeneration++;byId('fitnessStatistics')?.replaceChildren();}
+function clearFitnessStatistics(){fitnessStatisticsGeneration++;byId('fitnessStatistics')?.replaceChildren();byId('eventStatistics')?.replaceChildren();}
 function renderFitnessStatistics(){
   const host=byId('statisticsView')||byId('settingsStatisticsView');if(!host)return;
-  let panel=byId('fitnessStatistics');if(!panel){panel=document.createElement('section');panel.id='fitnessStatistics';panel.className='panel statistics-panel';host.append(panel);}
-  panel.replaceChildren();const heading=document.createElement('h3');heading.textContent='Fitness';const note=document.createElement('p');note.textContent='Eigene Kategorie · keine Feuerwehrdienststatistik. Zusagen sind keine bestätigten Anwesenheiten.';const load=document.createElement('button');load.type='button';load.className='outline-button';load.textContent='Fitnessstatistik laden (Verwaltung)';const result=document.createElement('div');result.setAttribute('role','status');panel.append(heading,note,load,result);
-  const generation=++fitnessStatisticsGeneration,year=Number(selectedStatisticsYear);
-  load.onclick=async()=>{load.disabled=true;result.textContent='Fitnessstatistik wird geladen …';try{const data=await globalThis.PortalAdmin.fitnessStatistics(year);if(generation!==fitnessStatisticsGeneration||!adminUnlocked)return;const totals=data.totals,format=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:1});
+  const generation=++fitnessStatisticsGeneration,year=Number(selectedStatisticsYear);for(const type of ['Fitness','Veranstaltung']){const panelId=type==='Fitness'?'fitnessStatistics':'eventStatistics';
+  let panel=byId(panelId);if(!panel){panel=document.createElement('section');panel.id=panelId;panel.className='panel statistics-panel';host.append(panel);}
+  panel.replaceChildren();const heading=document.createElement('h3');heading.textContent=type;const note=document.createElement('p');note.textContent='Eigene Kategorie · keine Feuerwehrdienststatistik. Zusagen sind keine bestätigten Anwesenheiten.';const load=document.createElement('button');load.type='button';load.className='outline-button';load.textContent=type+'statistik laden (Verwaltung)';const result=document.createElement('div');result.setAttribute('role','status');panel.append(heading,note,load,result);
+  load.onclick=async()=>{load.disabled=true;result.textContent=type+'statistik wird geladen …';try{const data=await globalThis.PortalAdmin[type==='Fitness'?'fitnessStatistics':'eventStatistics'](year);if(generation!==fitnessStatisticsGeneration||!adminUnlocked)return;const totals=data.totals,format=n=>Number(n).toLocaleString('de-DE',{maximumFractionDigits:1});
    result.replaceChildren();const metrics=[['Angebotene Termine',totals.offered],['Zusagen',totals.yes],['Entschuldigungen',totals.excused],['Ohne Rückmeldung',totals.open],['Unsicher',totals.maybe],['Ø Zusagequote pro Termin',totals.quoteEvents?format(100*totals.quoteSum/totals.quoteEvents)+' %':'–'],['Ø zugesagte Teilnehmer pro auswertbarem Termin',totals.evaluated?format(totals.yes/totals.evaluated):'–'],['Termine mit verfügbaren Rückmeldedaten',totals.evaluated]];
    for(const [label,value] of metrics){const p=document.createElement('p');p.textContent=label+': '+value;result.append(p);}
    const table=document.createElement('table'),caption=document.createElement('caption');caption.textContent='Beteiligung nach Monaten · '+year;table.append(caption);const header=document.createElement('tr');for(const label of ['Monat','Termine','Zusagen','Entschuldigt','Unsicher','Offen','Ø Zusagequote']){const th=document.createElement('th');th.scope='col';th.textContent=label;header.append(th);}const thead=document.createElement('thead');thead.append(header);table.append(thead);const tbody=document.createElement('tbody');for(const month of data.months){const tr=document.createElement('tr');for(const value of [new Intl.DateTimeFormat('de-DE',{month:'short',timeZone:'UTC'}).format(new Date(Date.UTC(year,month.month-1,1))),month.offered,month.yes,month.excused,month.maybe,month.open,month.quoteEvents?format(100*month.quoteSum/month.quoteEvents)+' %':'–']){const td=document.createElement('td');td.textContent=String(value);tr.append(td);}tbody.append(tr);}table.append(tbody);const scroll=document.createElement('div');scroll.style.overflowX='auto';scroll.append(table);result.append(scroll);
    // Existing attendance reports remain authoritative. Keep them separate from responses.
-   const reports=csvArchive.filter(item=>item.sessionType==='Fitness').map(item=>({item,rows:parseCsvRows(item.content)})).filter(report=>report.rows.some(row=>String(row.date).startsWith(String(year))));
+   const reports=csvArchive.filter(item=>item.sessionType===type).map(item=>({item,rows:parseCsvRows(item.content)})).filter(report=>report.rows.some(row=>String(row.date).startsWith(String(year))));
    const actual=document.createElement('p');actual.textContent=reports.length?'Tatsächlich erfasst: '+reports.length+' Termine · Ø '+format(reports.reduce((sum,report)=>sum+new Set(report.rows.filter(row=>row.status==='Anwesend').map(row=>statisticsMemberNameKey(row.name))).size,0)/reports.length)+' Teilnehmer pro erfasstem Termin. „Betrifft nicht“ zählt nicht als Fehlzeit.':'Tatsächliche Anwesenheit: keine abgeschlossenen Fitnessberichte für dieses Jahr geladen.';result.append(actual);
    const basis=document.createElement('p');basis.textContent='Abgesagte Termine werden nicht gezählt. Quote = Zusagen / zugeordnete Personen; „Unsicher“ bleibt separat. Der Durchschnitt gewichtet jeden Termin gleich. Vergangene Rückmeldungen werden ab Einführung gesichert.';result.append(basis);
   }catch(e){if(generation===fitnessStatisticsGeneration)result.textContent=e.message;}finally{if(generation===fitnessStatisticsGeneration)load.disabled=false;}};
+}
 }
 
 function renderStatistics({refreshDrinks=true}={}) {

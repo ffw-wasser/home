@@ -32,3 +32,5 @@ test('Graph-Fehler nennt den Speicherschritt und bestätigt keinen Abschluss',as
   assert.equal(f.calls.filter(c=>c[0]==='upload').length,0);
  }
 });
+
+test('Aktueller Erzeugername wird ohne Umbenennung vom OneDrive-Upload akzeptiert',async()=>{const name='2026-11-10_Sonderprobe_0abcdef.zip',f=fixture();f.c.fetch=async()=>({ok:true,status:201,json:async()=>({id:'item',name,size:3,file:{}})});assert.equal((await f.c.oneDriveUploadTerminPackage(new Blob(['ZIP']),name)).id,'item');assert.ok(f.calls.some(call=>call[0]==='session'&&decodeURIComponent(call[1]).includes(name)));for(const bad of ['../2026-11-10_Sonderprobe_0abcdef.zip','2026-11-10_Sonderprobe_0abcdef.zip/evil','random.zip'])await assert.rejects(f.c.oneDriveUploadTerminPackage(new Blob(['ZIP']),bad),/Ungültiges Terminpaket/);});

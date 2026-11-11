@@ -27,7 +27,7 @@
    say('Wie möchtest du starten?');
    const login=choice('Bereits eingerichtet',()=>{first=false;go('method');});login.className='';
    choice('Erstmals einrichten',()=>{first=true;go(hasRelease()?'method':'release');});
-   const more=help();choice('Zugang verloren',release,more);choice('Ausbildung & Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();},more);
+   const more=help();choice('Zugang verloren',release,more);choice('Hilfe ohne Anmeldung',()=>{close();$('portal-offline-open')?.click();},more);
   }else if(step==='release'){
    say('Scanne den persönlichen QR der Verwaltung direkt hier. Oder gib deine Freigabe ein.');
    const label=node('label','Freigabe');label.htmlFor='identity-code';content.append(label);place('identity-release-controls');
