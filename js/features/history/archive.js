@@ -454,6 +454,11 @@ function correctArchiveItem(id){
   refreshArchiveCorrectionMembers();filterArchiveCorrectionRows();
   panel.scrollIntoView({block:"start",behavior:"instant"});
 }
+function pairedArchiveFileNames(item){
+  const current=String(item.fileName||"Probe.csv");
+  const base=(item.baseFileName||current).replace(/_korrigiert-v\d+(?=\.csv$)/i,"").replace(/\.csv$/i,"");
+  return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
+}
 let completedCalendarCorrectionOpening=false;
 async function openCompletedCalendarEvent(event){
   if(completedCalendarCorrectionOpening)return false;
@@ -482,7 +487,7 @@ async function openCompletedCalendarEvent(event){
     // Old ZIPs have no calendar ID. Only offer a single unlinked match on the
     // exact date and type, and require a human confirmation before editing.
     const legacy=csvArchive.filter(item=>!item.calendarEventId&&!item.operationData&&historyDateFromItem(item)===day&&item.sessionType===type);
-    if(legacy.length===1&&confirm("Älterer Bericht ohne Kalenderverknüpfung gefunden:\\n"+historyDisplayTitle(legacy[0])+" · "+day+" · "+type+"\\n\\nIst dies der Originalbericht, den du korrigieren möchtest?")){
+    if(legacy.length===1&&confirm("Älterer Bericht ohne Kalenderverknüpfung gefunden:\n"+historyDisplayTitle(legacy[0])+" · "+day+" · "+type+"\n\nIst dies der Originalbericht, den du korrigieren möchtest?")){
       correctArchiveItem(legacy[0].id);return true;
     }
     showView("settingsHistoryView");
@@ -492,11 +497,6 @@ async function openCompletedCalendarEvent(event){
   finally{completedCalendarCorrectionOpening=false;}
 }
 window.openCompletedCalendarEvent=openCompletedCalendarEvent;
-function pairedArchiveFileNames(item){
-  const current=String(item.fileName||"Probe.csv");
-  const base=(item.baseFileName||current).replace(/_korrigiert-v\d+(?=\.csv$)/i,"").replace(/\.csv$/i,"");
-  return {base,csv:`${base}.csv`,pdf:`${base}.pdf`};
-}
 async function persistArchiveCorrection(item,rows,correctedDate){
   // All correction entry points share exactly the same archive and OneDrive overwrite.
   // Preserve the original filename and item ID, including when the report date changes.
