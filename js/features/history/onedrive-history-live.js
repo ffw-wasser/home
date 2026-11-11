@@ -97,6 +97,8 @@
       topic: isOperation ? [operationData?.type, operationData?.location].filter(Boolean).join(" · ") : (first.topic || ""),
       createdAt: file.lastModifiedDateTime || info.createdAt || new Date().toISOString(),
       originalReportDate: reportDate,
+      calendarEventId:typeof info.calendarEventId==="string"?info.calendarEventId:null,
+      calendarEventStart:Number.isFinite(info.calendarEventStart)?info.calendarEventStart:null,
       operationData,
       correctedAt:info.correctedAt||"",
       revisions:Array.isArray(info.revisions)?clone(info.revisions):[],
