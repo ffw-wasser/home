@@ -304,6 +304,15 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 #radio-device .radio-daily-steps li>span{min-width:0;overflow-wrap:anywhere}
 @media(max-width:360px){#radio-device .radio-daily-steps li{grid-template-columns:64px minmax(0,1fr);gap:10px}#radio-device .radio-daily-picture{width:64px}}
 
+#radio-device .radio-group-list{margin:0;display:grid;gap:8px}
+#radio-device .radio-group-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+#radio-device .radio-group-list dt{font-weight:750}
+#radio-device .radio-group-list dd{margin:0}
+#radio-device .radio-original summary{cursor:pointer;font-weight:700;padding-block:8px}
+#radio-device .radio-original img{display:block;width:100%;height:auto;border-radius:8px}
+#radio-device .radio-original a{display:block}
+@media(max-width:360px){#radio-device .radio-group-list>div{grid-template-columns:minmax(0,1fr)}}
+
 .training-device summary{padding:0 0 12px;font-size:1.1rem}
 .training-device summary small,.training-dialogue summary small{display:block;font-weight:400}
 .training-image-button{padding:0;background:white;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -402,3 +411,8 @@ body.h2o-portal #deckel-main #identity-security-slot>#identity-panel{background:
 .h2o-onboarding[data-step="calendar"] #identity-calendar-settings>h3,.h2o-onboarding[data-step="calendar"] #identity-calendar-settings>p:first-of-type{display:none}
 
 .h2o-onboarding .onboarding-review-link{display:block;padding:12px 0;font-size:.875rem;color:#164b64}
+
+.radio-private-dialog{width:min(94vw,1100px);max-width:94vw;max-height:90vh;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text)}
+.radio-private-dialog img{display:block;width:100%;height:auto;margin-top:12px}
+.radio-private-dialog::backdrop{background:#101c2ccc}
+#radio-private-content>.training-card{margin-top:20px}

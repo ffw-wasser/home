@@ -26,3 +26,18 @@ https://kbi-mil.de/wp-content/uploads/2024/03/Kurzanleitung_MXP600.pdf
 Der vollständige Download wurde am 30.10.2026 geprüft: gültiges PDF, zwei Seiten,
 passende MXP600-Bedienung und Geräteübersicht. Der PDF-Link benötigt Internet.
 Der frühere englische Direktlink wurde wegen HTTP 404 entfernt.
+
+## Geschützte örtliche Ergänzung
+
+Örtliche Unterlagen werden ausschließlich über `/portal/training` nach der
+zentralen serverseitigen Prüfung der aktiven Mitgliedschaft abgerufen. Gäste,
+Fitnesstrainer, nicht verifizierte oder gesperrte Zugänge erhalten keinen Zugriff.
+Inhalte und Bild liegen verschlüsselt im Dienst, niemals im Repository oder
+App-/Service-Worker-Cache. Der Browser hält sie nur für die aktuelle Ansicht
+im Arbeitsspeicher und verwirft sie bei Seitenwechsel und Abmeldung.
+
+Die Verwaltung importiert einmalig ein privat verwahrtes JSON-Paket unter
+Pläne & Pegel → Geschützte Funkausbildung. Das Paket enthält die ergänzten
+Bedienhinweise, Funkgruppen, örtlichen Hinweise und das JPEG-Original.
+Das Importpaket nicht in Git ablegen. Screenshots der öffentlichen Hilfe
+zeigen ausschließlich die bisherigen öffentlichen Grundinformationen.
