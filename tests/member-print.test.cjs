@@ -61,3 +61,48 @@ test('Korrekte Chronologie und deutliche Jahresauswahl',()=>{
  assert.equal(m.documentHtml(people,{mode:'year',year:2035}),'');
  assert.deepEqual(Array.from(m.functionsFor(people[2])),['Altersabteilung']);
 });
+
+
+test('Kreisdiagramme basieren auf dokumentierten abgeschlossenen Proben und Einsätzen',()=>{
+ const m=api();
+ const member=people[0];
+ const history=[
+  {date:'2024-01-11',item:{id:'probe-1',sessionType:'Allgemeine Probe'},rows:[{name:'Test, Anna',sessionType:'Allgemeine Probe',status:'Anwesend'}]},
+  {date:'2024-01-25',item:{id:'probe-2',sessionType:'Sonderprobe'},rows:[{name:'Anna Test',sessionType:'Sonderprobe',status:'Entschuldigt'}]},
+  {date:'2024-02-10',item:{id:'probe-3',sessionType:'Unterricht'},rows:[{name:'Test Anna',sessionType:'Unterricht',status:'Fehlt'}]},
+  {date:'2024-03-13',item:{id:'probe-4',sessionType:'Probe'},rows:[{name:'Test, Anna',sessionType:'Probe',status:'Betrifft nicht'}]},
+  {date:'2024-04-15',item:{id:'probe-5',sessionType:'Probe'},rows:[{name:'Beispiel, Ben',sessionType:'Probe',status:'Anwesend'}]},
+  {date:'2024-05-17',item:{id:'op-1',sessionType:'Einsatz'},rows:[{name:'Test, Anna',sessionType:'Einsatz',status:'Anwesend'}],operation:true},
+  {date:'2024-06-19',item:{id:'op-2',sessionType:'Einsatz'},rows:[{name:'Beispiel, Ben',sessionType:'Einsatz',status:'Anwesend'}],operation:true},
+  {date:'2023-03-19',item:{id:'op-old',sessionType:'Einsatz'},rows:[{name:'Test, Anna',sessionType:'Einsatz',status:'Anwesend'}],operation:true},
+  {date:'2024-07-19',item:{id:'fit',sessionType:'Fitness'},rows:[{name:'Test, Anna',sessionType:'Fitness',status:'Anwesend'}]}
+ ];
+ const all=m.participation(member,history,people);
+ assert.deepEqual(JSON.parse(JSON.stringify(all)),{
+  drills:{present:1,excused:1,missing:1,total:3},
+  operations:{present:2,other:1,total:3}
+ });
+ const only2024=m.participation(member,history,people,2024);
+ assert.deepEqual(JSON.parse(JSON.stringify(only2024)),{
+  drills:{present:1,excused:1,missing:1,total:3},
+  operations:{present:1,other:1,total:2}
+ });
+ const html=m.documentHtml(people,{mode:'selected',memberId:'member-a'},history);
+ assert.equal((html.match(/class="member-print-ring"/g)||[]).length,2);
+ assert.match(html,/Proben & Unterricht/);
+ assert.match(html,/Einsätze/);
+ assert.match(html,/Nicht als Teilnehmer erfasst/);
+ assert.match(html,/33 %/);
+ const filtered=m.documentHtml(people,{mode:'year',year:2024},history);
+ assert.match(filtered,/Kalenderjahr 2024/);
+ assert.match(filtered,/50 %/);
+});
+test('Einsatzteilnahme ist keine erfundene Fehlzeit; bei fehlender Historie gibt es keine Quote',()=>{
+ const m=api(),html=m.documentHtml(people,{mode:'selected',memberId:'member-a'});
+ assert.match(html,/Noch keine auswertbaren Berichte vorhanden/);
+ assert.match(html,/keine Daten/);
+ assert.doesNotMatch(html,/100 %/);
+ const sameName=[{...people[0],id:'x'}, {...people[0],id:'y'}];
+ const history=[{date:'2024-01-01',item:{id:'a',sessionType:'Einsatz'},operation:true,rows:[{name:'Test, Anna',sessionType:'Einsatz',status:'Anwesend'}]}];
+ assert.equal(m.participation(sameName[0],history,sameName).operations.present,0,'doppelte Namen dürfen nicht falsch zugeordnet werden');
+});
