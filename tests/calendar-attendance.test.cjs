@@ -268,10 +268,10 @@ test('Kalenderwechsel schützt auch eine gerade gestartete Erfassung ohne Anwese
  const f=fixture(),original=f.privateCal.events[0];f.privateCal.events.push({...original,id:'next-event',start:original.start+86400000,end:original.end+86400000});f.init();await f.login();f.c.currentSessionId='just-started';f.c.PortalAdmin.sessionStarted();const date=f.c.currentProbeDate;
  assert.equal(f.c.PortalAdmin.selectCalendarEvent('next-event'),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,original.id);assert.equal(f.get('portal-calendar-pick').value,original.id);assert.equal(f.c.currentProbeDate,date);assert.equal(f.c.currentSessionId,'just-started');
 });
-test('Nicht freigegebene, unbekannte und inzwischen beendete Termine bleiben ohne Auswahlwirkung',async()=>{
+test('Nicht freigegebene und unbekannte Termine bleiben gesperrt; rückwirkende Termine sind auswählbar',async()=>{
  const f=fixture(),original=f.privateCal.events[0];f.privateCal.events.push({...original,id:'not-approved',approved:false});await f.login();
  for(const id of ['not-approved','unknown']){assert.equal(f.c.PortalAdmin.selectCalendarEvent(id),false);assert.equal(f.c.PortalAdmin.selectedEvent().id,original.id);}
- const Base=Date;f.c.Date=class extends Base{static now(){return original.end;}};assert.equal(f.c.PortalAdmin.selectCalendarEvent(original.id),false);assert.equal(f.c.currentSessionId,'');
+ const Base=Date;f.c.Date=class extends Base{static now(){return original.end;}};assert.equal(f.c.PortalAdmin.selectCalendarEvent(original.id),true);assert.equal(f.c.currentSessionId,'');
 });
 
 test('Geladene Empfänger und spätere Gruppenänderungen aktualisieren den Live-Zähler ohne Statusänderung',async()=>{
