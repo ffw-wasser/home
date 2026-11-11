@@ -30,6 +30,14 @@ async function load(pageId='radio-device'){
   if(digest!==material.image.sha256)throw Error('Die Anleitung konnte nicht geprüft werden.');if(current!==epoch)return;
   url=URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
   const content=$('radio-private-content');$('radio-private')?.querySelector(':scope > h3')?.remove();
+  const illustrations=document.querySelector('#radio-device .radio-illustrations'),captions=[...illustrations?.querySelectorAll('figcaption')||[]];
+  const captionText=caption=>[...caption.childNodes].filter(n=>n.nodeName!=='STRONG'&&n.nodeName!=='BR').map(n=>n.textContent).join(' ').trim();
+  const commonCaption=captions.length>1?captionText(captions[0]):'';
+  if(commonCaption&&captions.every(caption=>captionText(caption)===commonCaption)){
+   for(const caption of captions){const heading=caption.querySelector('strong');if(heading)caption.replaceChildren(heading);}
+   const note=illustrations.parentElement.querySelector(':scope > .note')||node('p');note.classList.add('note');
+   const context=note.textContent.trim().match(/^[^.!?]+[.!?]?/)?.[0]||'';note.textContent=[context,commonCaption].filter(Boolean).join(' ');illustrations.after(note);
+  }
   originalSteps.forEach(({span,title},i)=>{const text=material.steps[i].trim();span.replaceChildren(node('strong',title),node('br'),document.createTextNode(text.startsWith(title)?text.slice(title.length).trim():text));});
   const groups=section('Funkgruppen im Überblick');for(const mode of ['TMO','DMO']){groups.append(node('h4',mode==='TMO'?'TMO · Netzbetrieb':'DMO · Einsatzstellenfunk'));const dl=node('dl');dl.className='radio-group-list';for(const group of material.groups.filter(v=>v.mode===mode)){const row=node('div');row.append(node('dt',group.code),node('dd',group.label));dl.append(row);}groups.append(dl);}content.append(groups);
   const normalize=text=>text.trim().replace(/\s+/g,' ').toLocaleLowerCase('de');
