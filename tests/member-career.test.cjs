@@ -30,8 +30,26 @@ test('Ungültige, zukünftige und zu lange Einträge werden abgelehnt',()=>{
 });
 test('Laufbahndaten bleiben im Mitglieder-Komplettbackup erhalten',()=>{
  const record={id:'m1',lastName:'Test',firstName:'Max',roles:['GF'],careerEntries:[example],fitnessTrainer:true};
- const backup=Backup.create({members:[record],entries:[],csvArchive:[],roleTargets:{}});
+ const backup=Backup.create({members:[record],entries:[],csvArchive:[],roleTargets:{},careerCatalog:[{type:'rank',title:'Oberlöschmeister'}]});
  const restored=Backup.normalize(backup);
  assert.deepEqual(restored.members[0].careerEntries,[example]);
  assert.equal(restored.members[0].fitnessTrainer,true);
+ assert.equal(restored.careerCatalog[0].title,'Oberlöschmeister');
+});
+
+test('Gemeinsamer Dienstgradkatalog enthält nur Ehrenamt der Freiwilligen Feuerwehr Baden-Württemberg',()=>{
+ const module=api(),member=[{careerEntries:[
+  {type:'rank',title:'Brandrat',date:'2023-01-01'},
+  {type:'rank',title:'Hauptbrandmeister',date:'2023-01-01'},
+  {type:'course',title:'Sonderausbildung Hochwasser',date:'2024-01-01'}]}];
+ const ranks=module.suggestions('rank',member);
+ assert.ok(ranks.includes('Hauptbrandmeister'));
+ for(const blocked of ['Brandrat','Branddirektor','Brandamtmann','Brandoberinspektor'])
+   assert.equal(ranks.includes(blocked),false);
+ assert.ok(module.suggestions('course',member).includes('Sonderausbildung Hochwasser'));
+ const catalog=module.mergedCatalog([{type:'rank',title:'Branddirektor'},{type:'training',title:'Beamtenlaufbahn'}],member);
+ assert.ok(catalog.some(item=>item.type==='rank'&&item.title==='Hauptbrandmeister'));
+ assert.equal(catalog.some(item=>/Branddirektor|Brandrat|Beamtenlaufbahn/i.test(item.title)),false);
+ assert.equal(module.volunteerCatalogItem('rank','Leitender Hauptbrandmeister'),true);
+ assert.equal(module.volunteerCatalogItem('rank','Brandamtsrat'),false);
 });
