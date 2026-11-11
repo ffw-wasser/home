@@ -41,9 +41,10 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
         calls.list++;
         if (state.waitForList) await state.waitForList;
         if (state.fail) throw new Error('Network unavailable');
-        return {json: async () => ({value: state.empty ? [] : [{id: 'zip-1', name: 'probe.zip', file: {}, lastModifiedDateTime: state.version, size: state.size}]})};
+        return {json: async () => ({value: state.empty ? [] : state.files || [{id: 'zip-1', name: 'probe.zip', file: {}, lastModifiedDateTime: state.version, size: state.size}]})};
       }
       calls.download++;
+      if (state.onDownload) await state.onDownload(url);
       if (state.fail) throw new Error('Download unavailable');
       if (state.downloadError) throw state.downloadError;
       return {blob: async () => state.corrupt ? new Uint8Array([1,2,3]) : bytes};
@@ -209,4 +210,71 @@ for(const reloading of [false,true])test(`Versionsprüfung beendet sich vor jede
  const {context,calls}=await app();let resolve;context.window.AppRelease={ready:new Promise(r=>resolve=r)};
  const started=context.initCloudSync();await new Promise(r=>setImmediate(r));assert.equal(calls.callback,0);assert.equal(calls.read,0);assert.equal(calls.write,0);
  resolve(reloading);await started;assert.equal(calls.callback,reloading?0:1);assert.equal(calls.read,reloading?0:1);assert.equal(calls.write,0);
+});
+
+const parallelFiles = () => Array.from({length: 6}, (_, i) => ({
+  id: `zip-${i + 1}`, name: `probe-${i + 1}.zip`, file: {},
+  lastModifiedDateTime: `2026-10-${String(i + 10).padStart(2, '0')}T18:00:00Z`, size: 100
+}));
+const tick = () => new Promise(resolve => setImmediate(resolve));
+function deferred() { let resolve; const promise = new Promise(r => resolve = r); return {promise, resolve}; }
+
+test('Historie lädt höchstens drei Pakete gleichzeitig und veröffentlicht erst den vollständigen Stand', async () => {
+  const {context, calls, state} = await app();
+  state.files = parallelFiles();
+  const gates = state.files.map(deferred), started = [];
+  let active = 0, maximum = 0;
+  state.onDownload = async url => {
+    const index = Number(url.match(/items\/zip-(\d+)/)[1]) - 1;
+    started.push(index); maximum = Math.max(maximum, ++active);
+    await gates[index].promise; active--;
+  };
+  const load = context.window.loadOneDriveHistory();
+  await tick(); assert.deepEqual(started, [0, 1, 2]);
+  gates[2].resolve();
+  for (let attempt = 0; attempt < 100 && !started.includes(3); attempt++) await tick();
+  assert.ok(started.includes(3));
+  assert.equal(context.csvArchive.length, 0);
+  for (const gate of gates) gate.resolve();
+  assert.equal(await load, true); assert.equal(maximum, 3);
+  assert.equal(calls.download, 6); assert.equal(calls.statistics, 1);
+  assert.deepEqual(Array.from(context.csvArchive, report => report.id), [6,5,4,3,2,1].map(id => `onedrive-zip:zip-${id}`));
+  for (const report of context.csvArchive) assert.ok(await context.window.loadOneDriveHistoryPdf(report));
+  await context.window.loadOneDriveHistory(); assert.equal(calls.download, 6);
+});
+
+test('Fehler beendet neue Abrufe, wartet laufende ab und erhält Berichte samt PDF', async () => {
+  const {context, calls, state, status} = await app();
+  await context.window.loadOneDriveHistory();
+  const previous = context.csvArchive, pdf = await context.window.loadOneDriveHistoryPdf(previous[0]);
+  state.files = parallelFiles();
+  const failed = deferred(), running = deferred();
+  state.onDownload = async url => {
+    if (url.includes('/zip-2/')) { await failed.promise; throw Object.assign(new Error('forbidden'), {status: 403}); }
+    await running.promise;
+  };
+  let settled = false;
+  const load = context.window.loadOneDriveHistory().then(result => {settled = true; return result;});
+  await tick(); assert.equal(calls.download, 4);
+  failed.resolve(); await tick(); assert.equal(settled, false);
+  assert.equal(context.window.loadOneDriveHistory(), context.window.loadOneDriveHistory());
+  running.resolve(); assert.equal(await load, false); assert.equal(calls.download, 4);
+  assert.equal(context.csvArchive, previous);
+  assert.equal(await context.window.loadOneDriveHistoryPdf(previous[0]), pdf);
+  assert.match(status.textContent, /probe-2.zip/); assert.match(status.textContent, /403/);
+  state.onDownload = null;
+  assert.equal(await context.window.loadOneDriveHistory(), true);
+  assert.equal(context.csvArchive.length, 6);
+});
+
+test('Abmeldung während paralleler Abrufe verhindert weitere Downloads und verspätete Datenübernahme', async () => {
+  const {context, calls, state} = await app();
+  state.files = parallelFiles(); const gate = deferred();
+  state.onDownload = () => gate.promise;
+  const load = context.window.loadOneDriveHistory();
+  await tick(); assert.equal(calls.download, 3);
+  context.window.clearOneDriveHistory(); state.signedIn = false; gate.resolve();
+  assert.equal(await load, false); assert.equal(calls.download, 3);
+  assert.equal(context.csvArchive.length, 0); assert.equal(calls.statistics, 0);
+  assert.equal(await context.window.loadOneDriveHistoryPdf({id: 'onedrive-zip:zip-1'}), null);
 });

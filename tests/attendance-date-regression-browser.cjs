@@ -29,10 +29,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.locator('[data-calendar-event="open-test"]').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(root,'assets/help/guide/geraetehaus-kalender.jpg'),type:'jpeg',quality:78,animations:'disabled'});
  }
- await completed.click();await page.locator('#adminLoginView').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>correctionLoads),0);
- await page.locator('#adminPin').fill('wrong-synthetic-pin');await page.locator('#loginButton').click();await page.locator('#pinError').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>correctionLoads),0);
+ // The calendar verifies the archive in the background before enabling retroactive capture.
+ // Count only additional reads triggered by the protected correction action.
+ await page.waitForFunction(()=>document.querySelector('[data-calendar-event="open-test"]')?.classList.contains('is-past-unrecorded'));
+ const beforeCorrectionLoads=await page.evaluate(()=>correctionLoads);
+ await completed.click();await page.locator('#adminLoginView').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>correctionLoads),beforeCorrectionLoads);
+ await page.locator('#adminPin').fill('wrong-synthetic-pin');await page.locator('#loginButton').click();await page.locator('#pinError').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>correctionLoads),beforeCorrectionLoads);
  await page.locator('#cancelLoginButton').click();await page.locator('#attendanceView').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>pendingCalendarCorrection),null);
  await completed.click();await page.locator('#adminPin').fill('synthetic-test-pin');await page.locator('#loginButton').click();
- await page.waitForFunction(()=>correctedReports.length===1);assert.deepEqual(await page.evaluate(()=>correctedReports),['original-test-report']);assert.equal(await page.evaluate(()=>correctionLoads),1);
+ await page.waitForFunction(()=>correctedReports.length===1);assert.deepEqual(await page.evaluate(()=>correctedReports),['original-test-report']);assert.equal(await page.evaluate(()=>correctionLoads),beforeCorrectionLoads+1);
  console.log('PASS participants-first date change preserves session and completion, Unterricht supports not applicable, Veranstaltung uses attendance statuses.');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});
