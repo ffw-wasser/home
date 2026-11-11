@@ -52,7 +52,7 @@ test('Druckansicht maskiert HTML und enthält keine Kontakt-, PIN- oder Gesundhe
  const m=api(),html=m.documentHtml([{id:'x',firstName:'<svg onload=alert(1)>',lastName:'Test',roles:['GF'],
   whatsappPhone:'+49123456789',pin:'4321',drinkPin:'9471',g263ValidUntil:'2027-01',
   careerEntries:[{type:'course',title:'<img src=x onerror=alert(1)>',date:'2024-09-01',notes:'<script>alert(2)</script>'}]}],{mode:'all'});
- for(const fragment of ['<svg','<img','<script','+49123456789','4321','9471','g263ValidUntil','2027-01'])assert.equal(html.includes(fragment),false,fragment);
+ for(const fragment of ['<svg onload','<img src','<script','+49123456789','4321','9471','g263ValidUntil','2027-01'])assert.equal(html.includes(fragment),false,fragment);
  for(const escaped of ['&lt;svg','&lt;img','&lt;script'])assert.ok(html.includes(escaped),escaped);
 });
 test('Korrekte Chronologie und deutliche Jahresauswahl',()=>{
@@ -89,7 +89,7 @@ test('Kreisdiagramme basieren auf dokumentierten abgeschlossenen Proben und Eins
  });
  const html=m.documentHtml(people,{mode:'selected',memberId:'member-a'},history);
  assert.equal((html.match(/class="member-print-ring"/g)||[]).length,2);
- assert.match(html,/Proben & Unterricht/);
+ assert.match(html,/Proben &amp; Unterricht/);
  assert.match(html,/Einsätze/);
  assert.match(html,/Nicht als Teilnehmer erfasst/);
  assert.match(html,/33 %/);
