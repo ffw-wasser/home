@@ -1,0 +1,103 @@
+/* Persönliche Akten: ruhige, iPad- und mobilgerechte Mitgliederverwaltung. */
+#settingsMembersView .admin-members-grid{display:block!important}
+#settingsMembersView .member-admin-panel{grid-row:auto;width:100%;max-width:none;min-width:0}
+#settingsMembersView #memberAdmin{display:block;min-width:0}
+#memberAdmin .person-record-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}
+#memberAdmin .person-record-sidebar{min-width:0;min-height:520px;padding:14px;background:#f5f7fa;border:1px solid #dce3e9;border-radius:16px}
+#memberAdmin .person-record-sidebar-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+#memberAdmin .person-record-sidebar-heading h4{margin:0;font-size:1.125rem;color:#162940}
+#memberAdmin .person-record-sidebar-heading span{font-weight:700;color:#6a7480}
+#memberAdmin .person-record-sidebar .ux-search{margin:0 0 14px}
+#memberAdmin .person-record-sidebar .ux-search label{font-size:.875rem}
+#memberAdmin .person-record-sidebar .ux-search input{font-size:.9375rem;min-height:44px}
+#memberAdmin .person-record-sidebar .ux-search p{font-size:.8125rem;margin:6px 0 0}
+#memberAdmin .person-record-category{font-size:.75rem;font-weight:800;letter-spacing:.075em;text-transform:uppercase;color:#687887;margin:18px 8px 8px}
+#memberAdmin .person-record-person{border:1px solid transparent;border-radius:11px;display:flex;gap:10px;align-items:center;width:100%;background:transparent;color:#1c2b3b;padding:10px 9px;margin:2px 0;text-align:left;min-height:54px;font:inherit;cursor:pointer}
+#memberAdmin .person-record-person:hover{background:#e8eef3}
+#memberAdmin .person-record-person.is-selected{background:#f9e8e8;border-color:#e5b8bc;color:#831d25}
+#memberAdmin .person-record-person.is-pending::after{content:'●';color:#a16b09;font-size:.8rem}
+#memberAdmin .person-record-person-name{font-size:.925rem;font-weight:650;min-width:0;overflow-wrap:anywhere;flex:1}
+#memberAdmin .person-record-person-arrow{font-size:1.5rem;font-weight:400;color:#9aa4ac}
+#memberAdmin .person-record-avatar{width:37px;height:37px;border-radius:50%;background:#dfe6ed;color:#25374b;display:grid;place-items:center;font-size:.78rem;font-weight:700;flex:0 0 auto}
+#memberAdmin .is-selected .person-record-avatar{background:#a82831;color:white}
+#memberAdmin .person-record-main{min-width:0}
+#settingsMembersView #memberAdmin .person-record-main>.ux-member{display:block!important;grid-template-columns:none!important;margin:0!important;padding:0!important;border:1px solid #dbe2e8!important;border-radius:16px!important;background:#fff!important;overflow:hidden;box-shadow:0 2px 12px #13283e12}
+#settingsMembersView #memberAdmin .person-record-main>.ux-member[hidden]{display:none!important}
+#settingsMembersView #memberAdmin .ux-member>:not(summary){margin:0!important}
+#memberAdmin .person-record-hero{display:flex;gap:16px;align-items:center;padding:24px 26px;background:linear-gradient(115deg,#fff,#f7f9fb);border-bottom:1px solid #e1e7ee}
+#memberAdmin .person-record-hero-icon{width:68px;height:68px;border-radius:50%;flex:0 0 auto;background:#1a2f4a;display:grid;place-items:center;color:#fff;font-size:1.1rem;font-weight:800;letter-spacing:-.04em}
+#memberAdmin .person-record-hero-text{min-width:0}
+#memberAdmin .person-record-hero-text .eyebrow{margin:0 0 5px;color:#657381;letter-spacing:.045em}
+#memberAdmin .person-record-title{font-size:clamp(1.35rem,2.4vw,1.8rem);margin:0 0 8px;color:#14283e;overflow-wrap:anywhere}
+#memberAdmin .person-record-hero-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px 15px;color:#516170;font-size:.91rem}
+#memberAdmin .person-record-badge{display:inline-block;border-radius:50px;background:#e4f2e8;color:#216338;font-size:.8rem;padding:5px 11px;font-weight:700}
+#memberAdmin .person-record-tabs{display:flex;gap:6px;align-items:stretch;overflow-x:auto;scrollbar-width:thin;padding:10px 16px 0;border-bottom:1px solid #e0e7ed;background:#fff}
+#memberAdmin .person-record-tabs button{flex:0 0 auto;border:0;border-bottom:3px solid transparent;background:transparent;color:#566477;padding:13px 12px;min-height:49px;font-size:.9rem;font-weight:650;border-radius:0;cursor:pointer;white-space:nowrap}
+#memberAdmin .person-record-tabs button.is-active{color:#9f2129;border-bottom-color:#b72b34}
+#memberAdmin .person-record-panel{padding:24px 26px;min-height:360px;min-width:0}
+#memberAdmin .person-record-panel-title{margin:0 0 16px;font-size:1.22rem;color:#1a2d43}
+#memberAdmin .record-section-intro{font-size:.95rem;color:#536374;line-height:1.55;margin:0 0 20px}
+#memberAdmin .person-record-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:24px}
+#memberAdmin .person-record-metrics>div{padding:19px 20px;border:1px solid #dfe6ec;border-radius:13px;background:#f8fafc}
+#memberAdmin .person-record-metrics span{display:block;font-size:.89rem;color:#5b6977;margin-bottom:8px}
+#memberAdmin .person-record-metrics strong{font-size:1.9rem;color:#172f48;font-weight:750}
+#memberAdmin .person-record-panel h5{font-size:1rem;margin:20px 0 8px}
+#memberAdmin .career-preview-item{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #edf0f3;font-size:.92rem}
+#memberAdmin .career-preview-item time{color:#657381;white-space:nowrap}
+#memberAdmin .member-name-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:20px!important}
+#memberAdmin .person-record-panel .member-safety-settings{margin:0!important}
+#memberAdmin .person-record-panel .member-role-editor{min-width:0}
+#memberAdmin .person-record-panel .member-whatsapp-settings{margin-bottom:18px}
+#memberAdmin .person-record-panel .member-card-actions{border-top:1px solid #e4e8ee;margin-top:24px;padding-top:20px}
+#memberAdmin .person-record-panel .ux-member-status{margin:20px 0 0!important}
+#memberAdmin .member-career-settings{min-width:0}
+#memberAdmin .career-groups{display:grid;gap:16px}
+#memberAdmin .career-category{border:1px solid #dfe5ec;border-radius:13px;overflow:hidden;background:#fff}
+#memberAdmin .career-category-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;background:#f8fafc;border-bottom:1px solid #e8edf1}
+#memberAdmin .career-category-heading h4{margin:0;color:#1a3047;font-size:1.03rem}
+#memberAdmin .career-category-heading .outline-button{min-height:38px;font-size:.84rem;padding:7px 10px;white-space:nowrap}
+#memberAdmin .career-entry-list{list-style:none;margin:0;padding:0 18px}
+#memberAdmin .career-entry{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #edf0f4;min-width:0}
+#memberAdmin .career-entry:last-child{border-bottom:0}
+#memberAdmin .career-entry-icon{width:30px;height:30px;flex:0 0 auto;border-radius:50%;background:#e8f3ec;color:#327449;display:grid;place-items:center;font-weight:800}
+#memberAdmin .career-entry-text{flex:1;min-width:0}
+#memberAdmin .career-entry-text strong{display:block;color:#1d2c3c;font-size:.93rem;overflow-wrap:anywhere}
+#memberAdmin .career-entry-text small{display:block;color:#607182;margin-top:4px}
+#memberAdmin .career-entry-text p{color:#556575;font-size:.87rem;margin:5px 0 0;overflow-wrap:anywhere}
+#memberAdmin .career-entry button{border:0;background:transparent;font-size:.84rem;color:#315c81;padding:6px;min-height:36px;cursor:pointer}
+#memberAdmin .career-entry .career-delete-button{color:#a22f34}
+#memberAdmin .career-empty{font-size:.92rem;color:#637381;padding:16px 18px;margin:0}
+.member-career-dialog{width:min(520px,calc(100% - 24px));border:1px solid #dce4eb;border-radius:16px;padding:24px;background:#fff;color:#1b2b3d;box-shadow:0 16px 60px #11243b2f}
+.member-career-dialog::backdrop{background:#101d2da6}
+.member-career-dialog h3{font-size:1.4rem;margin:5px 0 20px}
+.member-career-dialog form>label{display:grid;gap:7px;margin:0 0 14px;font-weight:650;font-size:.94rem}
+.member-career-dialog :is(input,select,textarea){width:100%;box-sizing:border-box;min-height:45px}
+.member-career-dialog .career-dialog-actions{display:flex;justify-content:end;gap:10px;flex-wrap:wrap;margin-top:18px}
+.member-career-dialog .career-dialog-actions button{min-height:45px}
+@media(max-width:1000px){#memberAdmin .person-record-layout{grid-template-columns:210px minmax(0,1fr);gap:12px}#memberAdmin .person-record-panel{padding:20px}#memberAdmin .person-record-hero{padding:20px}}
+@media(max-width:730px){
+ #memberAdmin .person-record-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;overflow-x:visible;align-items:stretch;padding:8px 10px 0}
+ #memberAdmin .person-record-tabs button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25;padding:11px 8px;font-size:.83rem}
+
+ #memberAdmin .person-record-layout{display:block}
+ #memberAdmin .person-record-sidebar{min-height:0;margin-bottom:14px;padding:12px}
+ #memberAdmin .person-record-sidebar-heading{margin-bottom:8px}
+ #memberAdmin .person-record-sidebar .ux-search{margin:0 0 8px}
+ #memberAdmin .person-record-sidebar .ux-search p{margin:3px 0}
+ #memberAdmin .person-record-category{display:none}
+ #memberAdmin .person-record-person{display:inline-flex;width:auto;vertical-align:top;margin:3px 5px 3px 0;max-width:240px}
+ #memberAdmin .person-record-hero{gap:12px;padding:16px}
+ #memberAdmin .person-record-hero-icon{width:52px;height:52px;font-size:1.5rem}
+ #memberAdmin .person-record-tabs{padding-left:10px;padding-right:10px}
+ #memberAdmin .person-record-tabs button{padding:11px 9px;font-size:.85rem}
+ #memberAdmin .person-record-panel{padding:16px;min-height:240px}
+ #memberAdmin .person-record-metrics{gap:8px}
+ #memberAdmin .person-record-metrics>div{padding:12px}
+ #memberAdmin .career-category-heading{padding:10px;flex-wrap:wrap}
+ #memberAdmin .career-entry-list{padding:0 10px}
+ #memberAdmin .career-entry{flex-wrap:wrap;gap:8px}
+ #memberAdmin .career-entry-text{flex-basis:calc(100% - 44px)}
+ #memberAdmin .career-entry button{margin-left:40px}
+ #memberAdmin .career-entry button+button{margin-left:0}
+ #memberAdmin .person-record-panel .member-name-fields{grid-template-columns:1fr}
+}

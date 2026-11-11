@@ -6,6 +6,7 @@ function loadArray(key, fallback) {
     return fallback;
   }
 }
+function saveCareerCatalog() { safeStorage.setItem(KEYS.careerCatalog, JSON.stringify(careerCatalog)); scheduleCloudSync?.(); }
 function saveMembers() { safeStorage.setItem(KEYS.members, JSON.stringify(members)); scheduleCloudSync?.(); }
 function saveEntries() { safeStorage.setItem(KEYS.entries, JSON.stringify(entries)); scheduleCloudSync?.(); }
 function saveArchive() { safeStorage.setItem(KEYS.archive, JSON.stringify(csvArchive)); scheduleCloudSync?.(); }

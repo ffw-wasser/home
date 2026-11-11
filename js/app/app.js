@@ -166,6 +166,7 @@ function buildSettingsSubpages(){
 }
 
 members = loadArray(KEYS.members, DEFAULT_MEMBERS);
+careerCatalog = loadArray(KEYS.careerCatalog, []);
 entries = loadArray(KEYS.entries, []);
 csvArchive = loadArray(KEYS.archive, []);
 restoreAttendanceDraft();

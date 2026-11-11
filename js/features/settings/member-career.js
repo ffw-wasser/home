@@ -5,7 +5,8 @@
     {key:'course',label:'Lehrgänge'},
     {key:'training',label:'Fortbildungen'},
     {key:'rank',label:'Dienstgrade'},
-    {key:'award',label:'Leistungsabzeichen & Leistungsspangen'}
+    {key:'award',label:'Leistungsabzeichen & Leistungsspangen'},
+    {key:'other',label:'Weitere Einträge (Freitext)'}
   ];
   const escape=value=>String(value==null?'':value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const validDate=value=>{
@@ -25,9 +26,67 @@
     });
   }
   function entries(member){return Array.isArray(member&&member.careerEntries)?member.careerEntries:[];}
+
+  // Ausschließlich Dienstgrade der ehrenamtlichen Freiwilligen Feuerwehr BW.
+  // Nicht mit Dienstbezeichnungen des feuerwehrtechnischen Beamten-/Hauptamts verwechseln.
+  const FF_RANKS=[
+    'Feuerwehrmann im Praktikum','Feuerwehrfrau im Praktikum',
+    'Feuerwehrmann','Feuerwehrfrau',
+    'Oberfeuerwehrmann','Oberfeuerwehrfrau',
+    'Hauptfeuerwehrmann','Hauptfeuerwehrfrau',
+    'Löschmeister','Löschmeisterin',
+    'Oberlöschmeister','Oberlöschmeisterin',
+    'Hauptlöschmeister','Hauptlöschmeisterin',
+    'Brandmeister','Brandmeisterin',
+    'Oberbrandmeister','Oberbrandmeisterin',
+    'Hauptbrandmeister','Hauptbrandmeisterin',
+    'Leitender Hauptbrandmeister','Leitende Hauptbrandmeisterin'
+  ];
+  const VOLUNTEER_COURSES=['Truppmann Teil 1','Truppmann Teil 2','Truppführer','Sprechfunker','Atemschutzgeräteträger','Maschinist','Gruppenführer','Zugführer'];
+  const VOLUNTEER_AWARDS=['Feuerwehr-Leistungsabzeichen Bronze','Feuerwehr-Leistungsabzeichen Silber','Feuerwehr-Leistungsabzeichen Gold','Leistungsspange der Deutschen Jugendfeuerwehr'];
+  const BLOCKED_TITLE=/(?:berufsfeuerwehr|beamten?(?:laufbahn|dienst|anwärter|ausbildung)?|beamtin|brandoberinspektor|brandinspektor|brandamtmann|brandamtsrat|brandoberamtsrat|brandreferendar|brandrat|brandoberrat|branddirektor|leitender branddirektor|feuerwehr(?:ober)?inspektor|feuerwehr(?:ober)?amtmann|hauptamtliche?r?|feuerwehrtechnischer dienst|laufbahnprüfung)/i;
+  const keyOf=(type,title)=>type+'|'+String(title).trim().toLocaleLowerCase('de');
+  function volunteerCatalogItem(type,title){
+    if(!TYPES.some(item=>item.key===type)||typeof title!=='string')return false;
+    const trimmed=title.trim();
+    if(!trimmed||trimmed.length>120||BLOCKED_TITLE.test(trimmed))return false;
+    return type!=='rank'||FF_RANKS.some(rank=>rank.toLocaleLowerCase('de')===trimmed.toLocaleLowerCase('de'));
+  }
+  function catalogEntries(catalog){
+    return Array.isArray(catalog)?catalog.filter(item=>item&&volunteerCatalogItem(item.type,item.title)).map(item=>({type:item.type,title:item.title.trim()})):[];
+  }
+  function mergedCatalog(existing,people){
+    const terms=new Map();
+    const add=(type,title)=>{if(volunteerCatalogItem(type,title)&&!terms.has(keyOf(type,title)))terms.set(keyOf(type,title),{type,title:title.trim()});};
+    for(const item of catalogEntries(existing))add(item.type,item.title);
+    if(Array.isArray(people))for(const person of people)for(const item of entries(person))add(item.type,item.title);
+    return [...terms.values()].slice(0,1000);
+  }
+
+  // Ausschließlich FF-BW-Bezeichnungen in der gemeinsamen Auswahlliste.
+  function suggestions(type,people,catalog){
+    if(!TYPES.some(item=>item.key===type))return [];
+    const entriesByKey=new Map();
+    const add=title=>{
+      if(volunteerCatalogItem(type,title)&&!entriesByKey.has(keyOf(type,title)))entriesByKey.set(keyOf(type,title),title.trim());
+    };
+    if(type==='rank')FF_RANKS.forEach(add);
+    if(type==='course')VOLUNTEER_COURSES.forEach(add);
+    if(type==='award')VOLUNTEER_AWARDS.forEach(add);
+    const shared=catalog===undefined?(typeof careerCatalog!=='undefined'?careerCatalog:[]):catalog;
+    catalogEntries(shared).filter(item=>item.type===type).forEach(item=>add(item.title));
+    if(Array.isArray(people))for(const person of people)for(const item of entries(person))if(item?.type===type)add(item.title);
+    return [...entriesByKey.values()].sort((a,b)=>a.localeCompare(b,'de')).slice(0,250);
+  }
+  function refreshSuggestions(el){
+    const people=typeof members!=='undefined'?members:[];
+    const type=el.querySelector('[name="type"]')?.value;
+    const list=el.querySelector('#memberCareerTitleSuggestions');
+    if(list)list.innerHTML=suggestions(type,people).map(title=>'<option value="'+escape(title)+'"></option>').join('');
+  }
   function currentRank(all){return all.filter(item=>item.type==='rank').slice().sort((a,b)=>b.date.localeCompare(a.date))[0]?.title||'Kein Dienstgrad hinterlegt';}
   function rowEntries(row){return validate(JSON.parse(row.querySelector('[data-career-json]').value||'[]'));}
-  function formatDate(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?m[3]+'.'+m[2]+'.'+m[1]:value;}
+  function formatDate(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?m[3]+'.'+m[2]+'.'+m[1]:escape(value);}
   function groupHtml(type,all){
     const list=all.map((item,index)=>({...item,index})).filter(item=>item.type===type.key).sort((a,b)=>b.date.localeCompare(a.date));
     return '<section class="career-category"><header class="career-category-heading"><h4>'+escape(type.label)+'</h4><button type="button" class="outline-button" data-career-add="'+type.key+'">+ Hinzufügen</button></header>'+
@@ -37,7 +96,7 @@
     const all=entries(member);
     return '<section class="member-career-settings" aria-label="Ausbildung und Laufbahn">'+
       '<input type="hidden" data-career-json value="'+escape(JSON.stringify(all))+'">'+
-      '<p class="record-section-intro">Lehrgänge, Fortbildungen, Beförderungen und Abzeichen mit Erwerbsdatum dauerhaft dokumentieren. Alle Änderungen werden zusammen mit den Mitgliederdaten gespeichert.</p>'+
+      '<p class="record-section-intro">Lehrgänge, Fortbildungen, Beförderungen, Abzeichen und freie Einträge mit Erwerbsdatum dokumentieren. Der gemeinsame Auswahlkatalog enthält nur Bezeichnungen der Freiwilligen Feuerwehr Baden-Württemberg. Beamten- und Berufsfeuerwehr-Dienstgrade werden nicht angeboten. Individuelle Freitexte bleiben in der Personalakte möglich.</p>'+
       '<div class="career-groups">'+TYPES.map(type=>groupHtml(type,all)).join('')+'</div></section>';
   }
   function summary(row){
@@ -62,8 +121,9 @@
   function dialog(){
     let el=document.getElementById('memberCareerDialog');if(el)return el;
     el=document.createElement('dialog');el.id='memberCareerDialog';el.className='member-career-dialog';
-    el.innerHTML='<form id="memberCareerForm"><p class="eyebrow">Feuerwehrlaufbahn</p><h3 id="memberCareerHeading">Eintrag hinzufügen</h3><label>Bereich<select class="text-input" name="type" required>'+TYPES.map(type=>'<option value="'+type.key+'">'+escape(type.label)+'</option>').join('')+'</select></label><label>Lehrgang, Dienstgrad oder Auszeichnung<input class="text-input" name="title" maxlength="120" required placeholder="z. B. Truppführer oder Leistungsabzeichen Bronze"></label><label>Datum der Erlangung<input class="text-input" type="date" name="date" required></label><label>Bemerkung (optional)<textarea class="text-input" name="notes" rows="2" maxlength="500" placeholder="z. B. Ausbildungsort oder Besonderheiten"></textarea></label><div class="career-dialog-actions"><button class="outline-button" type="button" data-career-cancel>Abbrechen</button><button class="primary-button" type="submit">Eintrag übernehmen</button></div></form>';
+    el.innerHTML='<form id="memberCareerForm"><p class="eyebrow">Feuerwehrlaufbahn</p><h3 id="memberCareerHeading">Eintrag hinzufügen</h3><label>Bereich<select class="text-input" name="type" required>'+TYPES.map(type=>'<option value="'+type.key+'">'+escape(type.label)+'</option>').join('')+'</select></label><label>Bezeichnung (Freitext oder vorhandene Auswahl)<input class="text-input" name="title" list="memberCareerTitleSuggestions" maxlength="120" required placeholder="z. B. Truppführer oder eigene Fortbildung"><datalist id="memberCareerTitleSuggestions"></datalist><small>Vorschläge stammen nur aus der Freiwilligen Feuerwehr; Berufsfeuerwehr- und Beamtenbezeichnungen werden nicht in den gemeinsamen Katalog übernommen.</small></label><label>Datum der Erlangung<input class="text-input" type="date" name="date" required></label><label>Bemerkung (optional)<textarea class="text-input" name="notes" rows="2" maxlength="500" placeholder="z. B. Ausbildungsort oder Besonderheiten"></textarea></label><div class="career-dialog-actions"><button class="outline-button" type="button" data-career-cancel>Abbrechen</button><button class="primary-button" type="submit">Eintrag übernehmen</button></div></form>';
     document.body.append(el);
+    el.querySelector('[name="type"]').addEventListener('change',()=>refreshSuggestions(el));
     el.querySelector('[data-career-cancel]').addEventListener('click',()=>el.close());
     el.querySelector('form').addEventListener('submit',event=>{
       event.preventDefault();if(!activeRow||!activeRow.isConnected)return el.close();
@@ -75,6 +135,10 @@
           date:form.elements.namedItem('date').value,
           notes:form.elements.namedItem('notes').value.trim()
         };
+        if(!volunteerCatalogItem(item.type,item.title))throw Error('Nur Bezeichnungen der ehrenamtlichen Freiwilligen Feuerwehr Baden-Württemberg sind zulässig. Dienstgrade bitte aus der vorgegebenen Auswahl übernehmen.');
+        const canonical=suggestions(item.type,typeof members!=='undefined'?members:[]).find(title=>keyOf(item.type,title)===keyOf(item.type,item.title));
+        if(canonical)item.title=canonical;
+        if(items.some((existing,index)=>index!==editIndex&&keyOf(existing.type,existing.title)===keyOf(item.type,item.title)&&existing.date===item.date))throw Error('Dieser Laufbahneintrag ist mit demselben Erwerbsdatum bereits vorhanden.');
         if(editIndex>=0)items[editIndex]=item;else items.push(item);
         update(activeRow,items);el.close();
       }catch(error){global.showToast?.(error.message||'Eintrag konnte nicht übernommen werden.','error');}
@@ -89,6 +153,7 @@
     form.elements.namedItem('title').value=item?.title||'';
     form.elements.namedItem('date').value=item?.date||'';
     form.elements.namedItem('notes').value=item?.notes||'';
+    refreshSuggestions(el);
     el.showModal();
   }
   document.addEventListener('click',event=>{
@@ -102,5 +167,5 @@
     const all=rowEntries(row),item=all[index];
     if(confirm('„'+item.title+'“ wirklich aus der Laufbahn entfernen?')){all.splice(index,1);update(row,all);}
   });
-  global.MemberCareer={render,validate,summary,currentRank,entries};
+  global.MemberCareer={render,validate,summary,currentRank,entries,suggestions,volunteerCatalogItem,catalogEntries,mergedCatalog};
 })(window);
