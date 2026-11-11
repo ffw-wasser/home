@@ -146,6 +146,7 @@
     ensureMemberSaveBar();
     const current=rows.some(row=>row.dataset.memberId===openMemberId)?openMemberId:rows[0].dataset.memberId;
     selectRecord(current);filterMembers();refreshMemberSaveState();
+    window.MemberRecordsPrint?.updateForm();
   }
   function changedMemberRows(){
     return [...byId('memberAdmin').querySelectorAll('[data-member-id]')].filter(row=>row.hasAttribute('data-member-dirty')||row.querySelector('.dr-pin-editor[data-dirty]'));
