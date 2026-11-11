@@ -48,7 +48,7 @@ const root=path.resolve(__dirname,'..');
   assert.equal(await page.locator('#memberPrintRoot .member-print-ring').count(),2,'je Person zwei Kreisdiagramme');
   assert.match(await page.locator('#memberPrintRoot').innerText(),/Proben & Unterricht/);
   assert.match(await page.locator('#memberPrintRoot').innerText(),/Nicht als Teilnehmer erfasst/);
-  assert.match(await page.locator('#memberPrintRoot').innerText(),/50 %/);
+  assert.equal(await page.locator('#memberPrintRoot .member-print-ring text').first().textContent(),'50 %');
   const html=await page.locator('#memberPrintRoot').innerHTML();
   for(const value of ['+49123456','9876','2028-02'])assert.ok(!html.includes(value),'Vertrauliche Daten nicht drucken: '+value);
   await page.emulateMedia({media:'print'});
