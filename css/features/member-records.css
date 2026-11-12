@@ -101,3 +101,27 @@
  #memberAdmin .career-entry button+button{margin-left:0}
  #memberAdmin .person-record-panel .member-name-fields{grid-template-columns:1fr}
 }
+/* Erreichte Abzeichen: ein ruhiger Dienstgradblock, darunter gleichwertige Leistungszeichen. */
+#memberAdmin .member-honors{display:grid;gap:12px;margin:0 0 22px}
+#memberAdmin .member-honor{display:flex;align-items:center;gap:16px;min-width:0;padding:16px;border:1px solid #dfe6ec;border-radius:12px;background:#f8fafc}
+#memberAdmin .member-honor>div{min-width:0}
+#memberAdmin .member-honor small{display:block;color:#637180;font-size:.8rem;margin-bottom:5px}
+#memberAdmin .member-honor strong{display:block;color:#1a3047;font-size:1rem;line-height:1.35;overflow-wrap:anywhere}
+#memberAdmin .member-honor time{display:block;color:#637180;font-size:.83rem;margin-top:6px}
+#memberAdmin .member-honors-awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px}
+#memberAdmin .member-insignia{display:block;object-fit:contain;flex:0 0 auto;width:82px;height:54px}
+#memberAdmin .member-insignia-rank{width:40px;height:96px}
+#memberAdmin .career-entry-icon:has(.member-insignia){width:64px;height:64px;border-radius:0;background:transparent}
+#memberAdmin .career-entry-icon .member-insignia{max-width:64px;max-height:64px;width:auto;height:auto}
+@media(max-width:700px){
+ #memberAdmin .member-honor{padding:12px;gap:12px}
+ #memberAdmin .career-entry:has(.member-insignia) .career-entry-text{flex-basis:calc(100% - 76px)}
+ #memberAdmin .career-entry:has(.member-insignia) button{margin-left:76px}
+ #memberAdmin .career-entry:has(.member-insignia) button+button{margin-left:0}
+}
+
+#memberAdmin .member-insignia-honor{width:54px;height:76px}
+#memberAdmin .member-honors-section>h5{margin:4px 0 9px;color:#596c7c;font-size:.88rem;font-weight:650}
+
+#memberAdmin .member-joined-field{grid-column:1/-1;max-width:280px}
+@media(max-width:700px){#memberAdmin .member-joined-field{max-width:none}}

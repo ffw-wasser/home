@@ -187,9 +187,17 @@ jobs:
           node tests/member-subscriptions-browser.cjs
           BROWSER_ENGINE=webkit node tests/member-subscriptions-browser.cjs
       - name: Test member batch editing and mobile cards
-        run: node tests/members-editor-browser.cjs
+        run: CAPTURE_MEMBER_HONORS_HELP=1 node tests/members-editor-browser.cjs
       - name: Test private member records printing and year selection
-        run: node tests/member-print-browser.cjs
+        run: CAPTURE_MEMBER_HONORS_HELP=1 node tests/member-print-browser.cjs
+      - name: Keep member records visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-member-records-review
+          path: qa/member-honors
+          if-no-files-found: warn
+          retention-days: 7
       - name: Test appointment replies on mobile viewports
         run: |
           node tests/term-reply-browser.cjs

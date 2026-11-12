@@ -98,7 +98,7 @@
       tabs.innerHTML=tabList.map(pair=>'<button type="button" role="tab" data-record-tab="'+pair[0]+'">'+pair[1]+'</button>').join('');
       const panels={};
       tabList.forEach(pair=>{const panel=document.createElement('section');panel.className='person-record-panel';panel.dataset.recordPanel=pair[0];panel.setAttribute('role','tabpanel');panel.hidden=true;const title=document.createElement('h4');title.className='person-record-panel-title';title.textContent=pair[1];panel.append(title);panels[pair[0]]=panel;});
-      panels.overview.insertAdjacentHTML('beforeend','<p class="record-section-intro">Persönliche Funktionen und Ausbildung auf einen Blick. Alle Einträge können in den jeweiligen Bereichen gepflegt werden.</p><div class="person-record-metrics"><div><span>Lehrgänge & Fortbildungen</span><strong data-record-qualification-count>0</strong></div><div><span>Abzeichen & Spangen</span><strong data-record-awards-count>0</strong></div></div><h5>Letzte Laufbahneinträge</h5><div data-record-career-preview></div>');
+      panels.overview.insertAdjacentHTML('beforeend','<p class="record-section-intro">Persönliche Funktionen und Ausbildung auf einen Blick. Alle Einträge können in den jeweiligen Bereichen gepflegt werden.</p><div data-record-honors></div><div class="person-record-metrics"><div><span>Lehrgänge & Fortbildungen</span><strong data-record-qualification-count>0</strong></div><div><span>Abzeichen & Ehrungen</span><strong data-record-awards-count>0</strong></div></div><h5>Letzte Laufbahneinträge</h5><div data-record-career-preview></div>');
       const move=(selector,to)=>{const node=article.querySelector(':scope > '+selector);if(node)panels[to].append(node);};
       move('.member-name-fields','master');
       move('.age-department-toggle','roles');
@@ -262,4 +262,3 @@
   window.Usability={beforeLeave,savedMember,hasMemberDraft:()=>memberSaving||dirtyRows().length>0,attendanceState,editEntry:entryEditor,members:renderMemberList,memberSaveState:refreshMemberSaveState,statistics,historyStatus};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();
-

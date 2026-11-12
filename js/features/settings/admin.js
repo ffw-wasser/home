@@ -194,6 +194,12 @@ function prepareMemberUpdate(id, row) {
   const current = members.find(item => item.id === id);
   if (!current) throw Error("Mitglied wurde inzwischen entfernt. Bitte die Liste neu laden.");
   const member = {...current};
+  const joinedInput=row.querySelector("[data-joined-on]");
+  if(joinedInput){
+    const joinedOn=joinedInput.value||"";
+    if(joinedOn&&(!MemberEvidence.date(joinedOn)||joinedOn>systemToday()))throw Error("Bitte ein gültiges Eintrittsdatum bis heute eingeben.");
+    member.joinedOn=joinedOn;
+  }
   const driverDate=row.querySelector("[data-driver-license-checked]")?.value||"";
   if(row.querySelectorAll("[data-machinist-vehicle]:checked").length&&!driverDate)throw Error("Bitte das Datum der letzten Führerscheinkontrolle eintragen.");
   const interval=Number(row.querySelector("[data-driver-license-interval]")?.value||12);
@@ -274,5 +280,3 @@ function changePin() {
   window.SmartWorkflow?.settings();
   showToast("Admin-Passwort wurde geändert.");
 }
-
-

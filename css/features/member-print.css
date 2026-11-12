@@ -75,3 +75,19 @@
  #memberPrintRoot .member-print-key-2{background:#a4434d}
  #memberPrintRoot .member-print-chart p{font-size:7.3pt;color:#536578;margin:5pt 0 0;line-height:1.28}
 }
+@media print{
+ #memberPrintRoot .member-honors{display:grid;gap:6pt;margin:10pt 0;break-inside:avoid}
+ #memberPrintRoot .member-honor{display:flex;align-items:center;gap:9pt;border:1pt solid #dce3e9;border-radius:5pt;padding:7pt;background:#f8fafb;break-inside:avoid}
+ #memberPrintRoot .member-honor small,#memberPrintRoot .member-honor strong,#memberPrintRoot .member-honor time{display:block}
+ #memberPrintRoot .member-honor small,#memberPrintRoot .member-honor time{font-size:8pt;color:#596b7c}
+ #memberPrintRoot .member-honor strong{font-size:10pt;margin:3pt 0;overflow-wrap:anywhere}
+ #memberPrintRoot .member-honors-awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6pt}
+ #memberPrintRoot .member-insignia{object-fit:contain;width:23mm;height:13mm;flex:0 0 auto}
+ #memberPrintRoot .member-insignia-rank{width:10mm;height:24mm}
+}
+
+@media print{
+ #memberPrintRoot .member-insignia-honor{width:14mm;height:21mm}
+ #memberPrintRoot .member-honors-section>h5{font-size:9pt;color:#596c7c;margin:5pt 0}
+ #memberPrintRoot .member-honors{break-inside:auto}
+}
