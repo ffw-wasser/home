@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium,webkit}=require('playwright'),PDFLib=require('../js/vendor/pdf-lib.min.js');
 const root=path.resolve(__dirname,'..');
 (async()=>{
- const browser=await (process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true,args:['--no-sandbox']});
+ const browser=await (process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true,...(process.env.BROWSER_ENGINE==='webkit'?{}:{args:['--no-sandbox']})});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
