@@ -36,7 +36,7 @@
   if(!authorized()||typeof g.loadOneDriveHistory!=="function")return false;
   const epoch=generation,origin=source;
   archiveLoading=(async()=>{
-    const ok=await g.loadOneDriveHistory()===true;
+    const ok=await g.loadOneDriveHistory({reuseLoaded:true})===true;
     if(epoch!==generation||origin!==source||!authorized())return false;
     archiveVerified=ok;
     if(active()&&cached)paint(cached,cached.year);

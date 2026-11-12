@@ -277,3 +277,14 @@ test('Ein Wechsel der OneDrive-Quelle verwirft den laufenden Vorladeabruf',async
  f.S.list=async()=>{lists++;source='drive:new';return [...f.accounts.values()];};
  assert.equal(await f.context.Drinks.preload(),null);await f.context.Drinks.open();assert.equal(lists,2);
 });
+
+
+test('Bestätigte Mitglieder aus dem Startabgleich vermeiden einen weiteren OneDrive-Abruf', async()=>{
+ const f=await fixture();let reads=0,lists=0;
+ f.context.oneDriveSignedIn=()=>true;
+ f.context.oneDriveReadState=async()=>{reads++;throw new Error('Kein erneuter Abruf erforderlich');};
+ f.S.sourceKey=()=> 'drive:root';f.S.list=async()=>{lists++;return [];};
+ await f.context.Drinks.preload({confirmedMembers:[{id:'a',lastName:'Alpha',firstName:'Mitglied'},{id:'b',lastName:'Beta',firstName:'Mitglied'},{id:'guest',lastName:'Gast',firstName:'Test',fitnessTrainer:true}]});
+ assert.equal(reads,0);assert.equal(lists,1);
+ await f.context.Drinks.open();assert.equal(reads,0);assert.equal(lists,1);assert.equal(f.nodes['dr-directory'].children.length,2);
+});

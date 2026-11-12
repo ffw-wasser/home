@@ -1,7 +1,7 @@
 "use strict";
 (() => {
-  let pendingLoad = null,loadEpoch=0;
-  window.clearOneDriveHistory=()=>{loadEpoch++;pdfByReportId.clear();reportCache.clear();cacheRoot="";csvArchive=[];window.oneDriveHistoryLastError="";};
+  let pendingLoad = null,loadEpoch=0,historyConfirmed=false;
+  window.clearOneDriveHistory=()=>{loadEpoch++;historyConfirmed=false;pdfByReportId.clear();reportCache.clear();cacheRoot="";csvArchive=[];window.oneDriveHistoryLastError="";};
   const pdfByReportId = new Map();
   let reportCache = new Map(), cacheRoot = "";
   const clone = value => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
@@ -24,12 +24,21 @@
     return result;
   }
 
-  async function zipFiles(root, itemId = root.id, depth = 0) {
-    if (depth > 4) return [];
-    const result = [];
-    for (const item of await children(root, itemId)) {
-      if (item.folder) result.push(...await zipFiles(root, item.id, depth + 1));
-      else if (item.file && /\.zip$/i.test(item.name)) result.push(item);
+  async function zipFiles(root, epoch) {
+    const result = [], folders = [{id: root.id, depth: 0}];
+    // Auch große Berichtsablagen mit höchstens drei Ordnerabrufen durchsuchen.
+    // Laufende Abrufe bei Fehlern abwarten, bevor ein neuer Versuch beginnen darf.
+    while (folders.length && epoch === loadEpoch && oneDriveSignedIn()) {
+      const batch = folders.splice(0, 3);
+      const listings = await Promise.allSettled(batch.map(folder => children(root, folder.id)));
+      const failed = listings.find(listing => listing.status === "rejected");
+      if (failed) throw failed.reason;
+      listings.forEach((listing, index) => {
+        for (const item of listing.value) {
+          if (item.folder && batch[index].depth < 4) folders.push({id: item.id, depth: batch[index].depth + 1});
+          else if (item.file && /\.zip$/i.test(item.name)) result.push(item);
+        }
+      });
     }
     return result;
   }
@@ -84,7 +93,8 @@
     } : undefined;
     const id = `onedrive-zip:${file.id}`;
     const pdfEntry = (info.pdfName && zip.file(info.pdfName)) || Object.values(zip.files).find(entry => !entry.dir && /\.pdf$/i.test(entry.name));
-    if (pdfEntry) nextPdfs.set(id, await pdfEntry.async("blob"));
+    // PDF erst beim Öffnen entpacken; für Historie und Statistik genügt die CSV.
+    if (pdfEntry) nextPdfs.set(id, {entry: pdfEntry, pending: null});
     const operationData = info.operationData ? clone(info.operationData) : detectedOperationData;
     if (operationData && reportDate) operationData.date = reportDate;
     return {
@@ -123,9 +133,10 @@
     return pendingLoad;
   }
 
-  async function refreshOneDriveHistory({ manual = false } = {}) {
+  async function refreshOneDriveHistory({ manual = false, reuseLoaded = false } = {}) {
     const epoch=loadEpoch;
     if (!oneDriveSignedIn()) {
+      historyConfirmed = false;
       csvArchive = [];
       pdfByReportId.clear();
       reportCache.clear(); cacheRoot = "";
@@ -146,8 +157,11 @@
     try {
       const root = await oneDriveResolveSharedRoot();
       const rootKey = `${root.driveId}:${root.id}`;
-      if (cacheRoot !== rootKey) { reportCache.clear(); cacheRoot = rootKey; }
-      const files = await zipFiles(root);
+      // Der Startabgleich hat denselben Ordner bereits vollständig geladen.
+      // Nur die erste Kalenderanzeige darf diesen Sitzungsstand übernehmen.
+      if (reuseLoaded && historyConfirmed && cacheRoot === rootKey) {historyStatus(""); return true;}
+      if (cacheRoot !== rootKey) { reportCache.clear(); cacheRoot = rootKey; historyConfirmed = false; }
+      const files = await zipFiles(root, epoch);
       const newestByLogicalName = new Map();
       for (const file of files) {
         const key = `${logicalBase(file.name)}::${file.id}`;
@@ -185,6 +199,7 @@
       if(epoch!==loadEpoch||!oneDriveSignedIn())return false;
       csvArchive = reports.filter(Boolean).sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
       reportCache = nextCache;
+      historyConfirmed = true;
       pdfByReportId.clear();
       nextPdfs.forEach((pdf, id) => pdfByReportId.set(id, pdf));
       renderHistory?.();
@@ -196,6 +211,7 @@
       return true;
     } catch (error) {
       if(epoch!==loadEpoch)return false;
+      historyConfirmed = false;
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
       const hint = ["oneDriveFolderUnavailable","oneDriveFolderLinkInvalid"].includes(error.code) ? error.message
         : error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
@@ -275,7 +291,12 @@
     reportCache.delete(fileId);
   };
   window.loadOneDriveHistory = loadOneDriveHistory;
-  window.loadOneDriveHistoryPdf = async item => pdfByReportId.get(item?.id) || null;
+  window.loadOneDriveHistoryPdf = async item => {
+    const pdf = pdfByReportId.get(item?.id);
+    if (!pdf) return null;
+    if (!pdf.pending) pdf.pending = pdf.entry.async("blob").catch(error => {pdf.pending = null; throw error;});
+    return pdf.pending;
+  };
 })();
 
 
