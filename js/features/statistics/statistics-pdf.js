@@ -47,7 +47,7 @@
       if(node.matches('table')){
         blocks.push({kind:'table',headers:[...node.querySelectorAll('thead th')].map(text),rows:[...node.querySelectorAll('tbody tr')].map(row=>[...row.children].map(text))});return;
       }
-      if(node.matches('h2,h3,h4,h5')){blocks.push({kind:'heading',value:text(node)});return;}
+      if(node.matches('h3,h4,h5')||node.matches('h2')&&node.closest('.member-print-person')){blocks.push({kind:'heading',value:text(node)});return;}
       if(node.matches('p,.statistics-note')){if(text(node))blocks.push({kind:'paragraph',value:text(node)});return;}
       if(node.matches('summary')){
         if(!node.parentElement.matches('.statistics-collapsible,#statisticsFurtherDetails,#statisticsFellowshipDetails')&&text(node))blocks.push({kind:'heading',value:text(node)});
@@ -71,7 +71,7 @@
     if(!library?.PDFDocument)throw Error('Das PDF-Modul ist nicht geladen. Bitte die App aktualisieren.');
     const {PDFDocument,StandardFonts,rgb}=library,pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
     pdf.setTitle(model.title);pdf.setAuthor('Feuerwehr Wasser');pdf.setSubject(model.subtitle||'Statistik');
-    const member=model.kind==='members',W=515,L=40,B=48,ink=member?rgb(.10,.18,.26):rgb(.10,.18,.15),green=member?rgb(.57,.16,.20):rgb(.09,.42,.21),muted=rgb(.25,.34,.38),pale=member?rgb(.95,.96,.97):rgb(.90,.94,.91),line=rgb(.80,.85,.87),images=new Map();
+    const member=model.kind==='members',W=515,L=40,B=48,ink=member?rgb(.10,.18,.26):rgb(.10,.18,.15),green=member?rgb(.57,.16,.20):rgb(.09,.42,.21),muted=member?rgb(.25,.34,.38):rgb(.25,.34,.30),pale=member?rgb(.95,.96,.97):rgb(.90,.94,.91),line=member?rgb(.80,.85,.87):rgb(.80,.85,.82),images=new Map();
     const clean=value=>[...String(value??'').replace(/[–—−]/g,'-').replace(/[\u00a0\u202f]/g,' ').replace(/[\r\n\t]+/g,' ').replace(/→/g,'>')].map(char=>{try{regular.encodeText(char);return char;}catch{const plain=char.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');try{regular.encodeText(plain);return plain;}catch{return '?';}}}).join('');
     const face=heavy=>heavy?bold:regular;
     const wrap=(value,width,size=9,heavy=false)=>{
