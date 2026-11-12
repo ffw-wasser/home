@@ -68,6 +68,7 @@ jobs:
           BROWSER_ENGINE=webkit node tests/portal-release-scan-browser.cjs
           node tests/qr-checkin-browser.cjs
           node tests/year-plan-browser.cjs
+          node tests/onedrive-startup-browser.cjs
           node scripts/capture-help-screens.cjs --only=geraetehaus-abos
           node scripts/capture-help-screens.cjs --only=geraetehaus-kalender
       - uses: actions/upload-artifact@v4

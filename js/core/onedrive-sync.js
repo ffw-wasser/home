@@ -2,7 +2,7 @@
 const OD_CLIENT_KEY="fw_onedrive_client_id",OD_SHARE_KEY="fw_onedrive_shared_folder_url",OD_TOKEN_KEY="fw_onedrive_tokens",OD_PKCE_KEY="fw_onedrive_pkce",OD_STATE_FILE="feuerwehr-wasser-daten.json";
 let oneDriveBusy=false,oneDriveTimer=null,oneDriveApplying=false,oneDriveSharedRoot=null,oneDriveLastError="",oneDriveRetryUntil=0,oneDriveLastFailure=null;
 let oneDriveAccessConfirmed=false,oneDriveSessionEpoch=0,oneDriveStartupConfirmed=false,oneDriveStartupStage="OneDrive-Anmeldung wird geprüft …",oneDriveStartupChecking=false;
-function updateOneDriveStartup(){window.AppStartup?.update({ready:oneDriveStartupConfirmed&&oneDriveSignedIn(),busy:oneDriveBusy,signed:oneDriveSignedIn(),error:oneDriveNeedsLogin||Boolean(oneDriveLastError),stage:oneDriveStartupStage,connecting:oneDriveAuthorizing||oneDriveStartupChecking,needsLogin:oneDriveNeedsLogin,offline:navigator.onLine===false});}
+function updateOneDriveStartup(){window.AppStartup?.update({ready:oneDriveStartupConfirmed&&oneDriveSignedIn()&&oneDriveAccessConfirmed&&!oneDriveNeedsLogin,busy:oneDriveBusy,signed:oneDriveSignedIn(),error:oneDriveNeedsLogin||Boolean(oneDriveLastError),errorDetail:oneDriveLastError,stage:oneDriveStartupStage,connecting:oneDriveAuthorizing||oneDriveStartupChecking,needsLogin:oneDriveNeedsLogin,offline:navigator.onLine===false});}
 window.updateOneDriveStartup=updateOneDriveStartup;
 const OD_ADMIN_RETURN_KEY='fw_onedrive_admin_return';
 const OD_VERIFIED_ROOT_KEY='fw_onedrive_verified_root';
@@ -330,7 +330,7 @@ async function odEnsureFolder(parentId,name){const root=await oneDriveResolveSha
 async function syncOneDrive({manual=false,refreshHistory=manual}={}){
   if(!oneDriveSignedIn()||!navigator.onLine){notifyAppStorageState();return;}
   if(oneDriveBusy||oneDriveDirectBusy){oneDriveResyncRequested=true;return;}
-  const epoch=oneDriveSessionEpoch;const startRevision=oneDriveLocalRevision;oneDriveBusy=true;notifyAppStorageState();oneDriveStatus("Synchronisiert","syncing");
+  const epoch=oneDriveSessionEpoch;const startRevision=oneDriveLocalRevision;oneDriveBusy=true;oneDriveLastError="";oneDriveLastFailure=null;notifyAppStorageState();oneDriveStatus("Synchronisiert","syncing");
   try{
     let stateError=null;
     try{
@@ -350,8 +350,12 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
         localStorage.setItem("fw_onedrive_local_updated",remote.updatedAt);localStorage.setItem("fw_onedrive_last_sync",new Date().toISOString());
         localStorage.setItem("fw_onedrive_state_base",JSON.stringify({source,updatedAt:remote.updatedAt}));
       }else {const writeRevision=oneDriveLocalRevision;const updatedAt=await oneDriveWriteState(expected);oneDriveSyncedRevision=writeRevision;if(writeRevision===oneDriveLocalRevision)localStorage.setItem("fw_onedrive_state_dirty","0");localStorage.setItem("fw_onedrive_state_base",JSON.stringify({source,updatedAt}));}
-      assertOneDriveSession(epoch);window.Drinks?.preload?.();oneDriveAccessConfirmed=true;oneDriveStateConfirmed=oneDriveSyncedRevision===oneDriveLocalRevision;notifyAppStorageState();
-    }catch(error){if(epoch!==oneDriveSessionEpoch)return;oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;stateError=error;notifyAppStorageState();}
+      assertOneDriveSession(epoch);window.Drinks?.preload?.();oneDriveAccessConfirmed=true;oneDriveStateConfirmed=oneDriveSyncedRevision===oneDriveLocalRevision;
+      // Aktuelle Daten sind bestätigt. Langsame oder hängende ZIP-Abrufe
+      // laufen anschließend mit eigenem Ladestatus, ohne den Start zu sperren.
+      if(oneDriveStateConfirmed&&oneDriveAdministrationReady())oneDriveStartupConfirmed=true;
+      notifyAppStorageState();
+    }catch(error){if(epoch!==oneDriveSessionEpoch)return;oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;stateError=error;oneDriveLastError=String(error.message||error);notifyAppStorageState();}
     // ZIP-Berichte liefern die Statistik, unabhängig davon, welche Ansicht offen ist.
     // Auch bei einer fehlerhaften Datendatei versuchen, die Berichte zu laden.
     let historyError=null;
@@ -364,7 +368,8 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
       // Ein Berichtsfehler darf bestätigte aktuelle Daten nicht hinter dem
       // Startbildschirm sperren. Anmeldung und Datenabgleich bleiben Pflicht.
       assertOneDriveSession(epoch);
-      if(oneDriveStateConfirmed&&oneDriveAdministrationReady())oneDriveStartupConfirmed=true;
+      if(!oneDriveAdministrationReady())oneDriveStartupConfirmed=false;
+      else if(oneDriveStateConfirmed)oneDriveStartupConfirmed=true;
       throw historyError;
     }
     assertOneDriveSession(epoch);if(refreshHistory&&oneDriveStateConfirmed)oneDriveStartupConfirmed=true;oneDriveLastError="";oneDriveLastFailure=null;oneDriveStatus(oneDriveStateConfirmed?"Aktuell":"Änderungen ausstehend",oneDriveStateConfirmed?"online":"syncing");

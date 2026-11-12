@@ -205,7 +205,8 @@
         : error.status === 404 ? "Eine Datei oder ein Ordner wurde verschoben oder gelöscht. Bitte erneut synchronisieren."
         : error.code === "invalidReportPackage" ? "Dieses ZIP-Paket ist nicht lesbar. Bitte die Datei in OneDrive prüfen oder neu exportieren."
         : "Bitte Internetverbindung prüfen und erneut synchronisieren.";
-      const detail = `${failedFile ? " Datei: " + failedFile + "." : ""}${error.status ? " OneDrive-Fehler " + error.status + "." : ""}`;
+      const cause = String(error.message || "").slice(0,240);
+      const detail = `${failedFile ? " Datei: " + failedFile + "." : ""}${error.status ? " OneDrive-Fehler " + error.status + "." : ""}${cause ? " Ursache: " + cause + "." : ""}`;
       const message = `Historie konnte nicht aktualisiert werden.${detail} Historie und Statistik zeigen den zuletzt geladenen Stand. ${hint}`;
       window.oneDriveHistoryLastError = message;
       historyStatus(message);
