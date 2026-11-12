@@ -4,6 +4,6 @@
  const link=document.createElement('link');
  link.id='deckelManifest';
  link.rel='manifest';
- link.href=(/Android/i.test(navigator.userAgent)?'deckel-android.webmanifest':'deckel.webmanifest')+'?v=20261112.3';
+ link.href=(/Android/i.test(navigator.userAgent)?'deckel-android.webmanifest':'deckel.webmanifest')+'?v=20261112.4';
  document.head.appendChild(link);
 })();

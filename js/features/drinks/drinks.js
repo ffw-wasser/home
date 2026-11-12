@@ -342,9 +342,9 @@
     for(const row of rows.slice(-5).reverse()){const li=document.createElement('li'),title=document.createElement('strong'),date=document.createElement('small');title.textContent=row.text;date.textContent=new Date(row.booking.createdAt).toLocaleString('de-DE');li.append(title,date);list.append(li);}
     if(!list.children.length){const li=document.createElement('li');li.textContent='Noch keine Buchungen vorhanden.';list.append(li);}
   }
-  async function preload(){
+  async function preload({confirmedMembers=null}={}){
     if(preloading)return preloading;if(preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.())return preloaded;if(typeof oneDriveSignedIn!=='function'||!oneDriveSignedIn()||stagedCount()||busy||pending||cardQueue.length)return null;const epoch=preloadEpoch;
-    const job=(async()=>{try{const data=await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();const sourceKey=S.sourceKey?.(),accounts=await S.list(next.map(p=>p.id),{replaceCache:false});if(epoch!==preloadEpoch||sourceKey!==S.sourceKey?.())return null;preloaded={people:next,accounts,at:Date.now(),sourceKey};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
+    const job=(async()=>{try{const data=Array.isArray(confirmedMembers)?{members:confirmedMembers}:await oneDriveReadState();if(!data||!Array.isArray(data.members))return null;const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)return null;await S.previewRewards?.();const sourceKey=S.sourceKey?.(),accounts=await S.list(next.map(p=>p.id),{replaceCache:false});if(epoch!==preloadEpoch||sourceKey!==S.sourceKey?.())return null;preloaded={people:next,accounts,at:Date.now(),sourceKey};return preloaded;}catch{return null;}finally{if(epoch===preloadEpoch)preloading=null;}})();preloading=job;return job;
   }
   function init(){
     root=byId('drinksView');if(!root)return;
@@ -401,7 +401,8 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden)lockAccount();});
     global.addEventListener('offline',()=>{if(!root.hidden)message(pending?'Keine Verbindung. Der Speicherstatus ist unklar. Verbindung herstellen und Speicherung erneut prüfen.':'Keine Verbindung. Vorgemerkte Änderungen sind noch nicht gespeichert. Internetverbindung herstellen und erneut prüfen.');});
     global.addEventListener('beforeunload',event=>{if(stagedCount()||pending||busy||cardQueue.length){event.preventDefault();event.returnValue='';}});
-    render();if(typeof oneDriveSignedIn==='function'&&oneDriveSignedIn())setTimeout(preload,0);
+    // Erst nach dem zentralen Startabgleich vorladen; dieser liefert die Mitglieder.
+    render();
   }
   async function loadPinStatus(row){
     const box=row.querySelector('.dr-pin-editor'),status=box?.querySelector('[data-dr-pin-status]');if(!status)return;
