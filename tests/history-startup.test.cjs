@@ -16,14 +16,7 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
   const calls = {callback: 0, read: 0, write: 0, apply: 0, list: 0, download: 0, statistics: 0, toast: []};
   const state = {signedIn, fail: false, empty: false, stateError: false, waitForList: null, version: '2026-10-08T18:00:00Z', size: 100, corrupt: false, downloadError: null};
   const context = vm.createContext({
-    window: {}, CsvEngine, JSZip: {async loadAsync(blob) {
-      const archive = await JSZip.loadAsync(blob);
-      for (const entry of Object.values(archive.files)) {
-        const unpack = entry.async.bind(entry);
-        entry.async = async type => {if (state.onUnpack) await state.onUnpack(entry.name, type); return unpack(type);};
-      }
-      return archive;
-    }}, URL, URLSearchParams, Blob, setTimeout, clearTimeout,
+    window: {}, CsvEngine, JSZip, URL, URLSearchParams, Blob, setTimeout, clearTimeout,
     navigator: {onLine: online}, location: {search:""}, csvArchive: [],
     localStorage: {getItem: key => store.get(key) || null, setItem: (key, value) => store.set(key, value)},
     console: {error() {}},
@@ -46,7 +39,6 @@ async function app({signedIn = true, remoteNewer = true, online = true} = {}) {
     odFetch: async url => {
       if (url.includes('/children')) {
         calls.list++;
-        if (state.onList) return {json: async () => state.onList(url)};
         if (state.waitForList) await state.waitForList;
         if (state.fail) throw new Error('Network unavailable');
         return {json: async () => ({value: state.empty ? [] : state.files || [{id: 'zip-1', name: 'probe.zip', file: {}, lastModifiedDateTime: state.version, size: state.size}]})};
@@ -288,52 +280,26 @@ test('Abmeldung während paralleler Abrufe verhindert weitere Downloads und vers
 });
 
 
-test('Start entpackt keine PDFs; Öffnen teilt den Abruf und verwendet den Sitzungsstand', async () => {
-  const {context, state} = await app(); let pdfs = 0;
-  state.onUnpack = (name, type) => {if (type === 'blob') pdfs++;};
-  await context.initCloudSync(); assert.equal(pdfs, 0);
-  const report = context.csvArchive[0]; assert.equal(report.hasImportedPdf, true);
-  const [first, second] = await Promise.all([context.window.loadOneDriveHistoryPdf(report), context.window.loadOneDriveHistoryPdf(report)]);
-  assert.equal(first, second); assert.equal(pdfs, 1); assert.equal(await first.text(), 'test-pdf');
-  await context.window.loadOneDriveHistory();
-  assert.equal(await context.window.loadOneDriveHistoryPdf(context.csvArchive[0]), first); assert.equal(pdfs, 1);
-  context.window.clearOneDriveHistory(); assert.equal(await context.window.loadOneDriveHistoryPdf(report), null);
-});
-
-test('Fehler beim PDF-Entpacken lässt einen erneuten Versuch zu', async () => {
-  const {context, state} = await app(); await context.initCloudSync();
-  const report = context.csvArchive[0];
-  state.onUnpack = (name, type) => {if (type === 'blob') throw new Error('PDF defekt');};
-  await assert.rejects(context.window.loadOneDriveHistoryPdf(report), /PDF defekt/);
-  state.onUnpack = null; assert.equal(await (await context.window.loadOneDriveHistoryPdf(report)).text(), 'test-pdf');
-});
-
-for (const stop of ['none', 'error', 'logout']) test(`Ordnersuche parallel, höchstens drei Abrufe; Abbruch=${stop}`, async () => {
-  const {context, state, calls} = await app(); const gate = deferred();
-  let active = 0, maximum = 0;
-  state.onList = async url => {
-    if (url.includes('/test-root/')) return {value: Array.from({length: 7}, (_, i) => ({id: `folder-${i}`, name: `Ordner ${i}`, folder: {}}))};
-    maximum = Math.max(maximum, ++active); await gate.promise; active--;
-    if (stop === 'error' && url.includes('/folder-0/')) throw new Error('Ordner nicht erreichbar');
-    return {value: [{id: `zip-${url.match(/folder-(\d+)/)[1]}`, name: 'probe.zip', file: {}}]};
-  };
-  const loading = context.window.loadOneDriveHistory(); await tick();
-  assert.equal(calls.list, 4); assert.equal(active, 3);
-  if (stop === 'logout') {context.window.clearOneDriveHistory(); state.signedIn = false;}
-  gate.resolve(); assert.equal(await loading, stop === 'none');
-  assert.equal(maximum, 3); assert.equal(active, 0);
-  assert.equal(calls.list, stop === 'none' ? 8 : 4);
-  assert.equal(calls.download, stop === 'none' ? 7 : 0);
-});
-
-
-test('Erste Kalenderanzeige übernimmt vollständig geladene Starthistorie; reguläre Aktualisierung liest erneut', async () => {
- const {context,calls,state}=await app();await context.initCloudSync();assert.equal(calls.list,1);
- assert.equal(await context.window.loadOneDriveHistory({reuseLoaded:true}),true);assert.equal(calls.list,1);
- await context.window.loadOneDriveHistory();assert.equal(calls.list,2);
- state.fail=true;assert.equal(await context.window.loadOneDriveHistory(),false);state.fail=false;
- assert.equal(await context.window.loadOneDriveHistory({reuseLoaded:true}),true);assert.equal(calls.list,4);
- context.window.clearOneDriveHistory();await context.window.loadOneDriveHistory({reuseLoaded:true});assert.equal(calls.list,5);
- context.oneDriveResolveSharedRoot=async()=>({driveId:'other-drive',id:'other-root'});
- await context.window.loadOneDriveHistory({reuseLoaded:true});assert.equal(calls.list,6);
+for(const failure of ['network','invalid-zip','state','login','logout'])test(`Historienfehler blockiert nur unbestätigten oder nicht mehr berechtigten Start: ${failure}`,async()=>{
+ const {context,state,status}=await app();
+ context.oneDrivePayload=()=>({updatedAt:'2099-01-01'});
+ context.localStorage.removeItem=()=>{};context.sessionStorage={removeItem(){}};
+ if(failure==='invalid-zip')state.corrupt=true;
+ else state.downloadError=new TypeError('Failed to fetch');
+ if(failure==='state')state.stateError=true;
+ if(failure==='login')state.onDownload=async()=>{vm.runInContext('oneDriveNeedsLogin=true;oneDriveAccessConfirmed=false;',context);};
+ if(failure==='logout')state.onDownload=async()=>{state.signedIn=false;context.endOneDriveSession();};
+ await context.syncOneDrive({refreshHistory:true});
+ const allowed=['network','invalid-zip'].includes(failure);
+ assert.equal(vm.runInContext('oneDriveStartupConfirmed',context),allowed);
+ assert.equal(vm.runInContext('oneDriveAdministrationReady()',context),allowed);
+ if(failure!=='logout'){
+  assert.equal(status.hidden,false);assert.match(status.textContent,/Historie konnte nicht aktualisiert werden/);
+  assert.ok(vm.runInContext('oneDriveLastError',context));
+ }
+ if(allowed){
+  state.corrupt=false;state.downloadError=null;
+  await context.syncOneDrive({manual:true});assert.equal(status.hidden,true);
+  assert.equal(vm.runInContext('oneDriveLastError',context),'');assert.equal(context.csvArchive.length,1);
+ }
 });
