@@ -145,7 +145,7 @@ const downloadMetadata={id:'file',eTag:'v1','@microsoft.graph.downloadUrl':signe
 test('Browser-CORS-Fehler am Dateiabruf nutzt frische Downloadadresse ohne Anmeldung oder Sonderheader',async()=>{
  const {context,calls,store}=app((address,options)=>{
   if(address===contentAddress)throw new TypeError('Load failed');
-  if(address===signedAddress){assert.equal(options.headers,undefined);assert.equal(options.credentials,'omit');assert.equal(options.referrerPolicy,'no-referrer');assert.equal(options.redirect,'error');return response(200,{}, {synthetic:true});}
+  if(address===signedAddress){assert.equal(options.headers,undefined);assert.equal(options.credentials,'omit');assert.equal(options.referrerPolicy,'no-referrer');assert.equal(options.redirect,'follow');return response(200,{}, {synthetic:true});}
   assert.equal(options.headers.get('Authorization'),'Bearer initial');return response(200,{},downloadMetadata);
  });
  assert.deepEqual(await (await context.odFetch(contentAddress,{headers:{'If-Match':'v1'}})).json(),{synthetic:true});
@@ -235,4 +235,22 @@ for(const host of ['microsoftpersonalcontent.com.evil.test','evil-microsoftperso
  const {context,calls}=app(address=>{if(address===contentAddress)throw new TypeError('Load failed');return response(200,{}, {...downloadMetadata,'@microsoft.graph.downloadUrl':'https://'+host+'/private-path?tempauth=synthetic-secret'});});
  await assert.rejects(context.odFetch(contentAddress),e=>e.message.includes(host)&&!e.message.includes('private-path')&&!e.message.includes('synthetic-secret'));
  assert.equal(calls.length,2);
+});
+
+
+for(const target of ['https://final.files.1drv.com/content','https://my.microsoftpersonalcontent.com/final'])test(`Direktdownload folgt Weiterleitungen ohne zusätzliche Zugangsdaten und prüft das Ziel: ${target}`,async()=>{
+ const {context}=app((address,options)=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  if(address===signedAddress){assert.equal(options.redirect,'follow');assert.equal(options.credentials,'omit');assert.equal(options.headers,undefined);const r=response(200);Object.defineProperty(r,'url',{value:target});return r;}
+  return response(200,{},downloadMetadata);
+ });
+ assert.equal((await context.odFetch(contentAddress)).status,200);
+});
+test('Downloadantwort von einem unerwarteten Weiterleitungsziel wird verworfen',async()=>{
+ const {context}=app(address=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  if(address===signedAddress){const r=response(200);Object.defineProperty(r,'url',{value:'https://evil.test/private?tempauth=synthetic-secret'});return r;}
+  return response(200,{},downloadMetadata);
+ });
+ await assert.rejects(context.odFetch(contentAddress),e=>/Host: evil.test/.test(e.message)&&!e.message.includes('synthetic-secret'));
 });

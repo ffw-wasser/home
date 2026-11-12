@@ -4,10 +4,10 @@ const {chromium,webkit}=require('playwright');
 (async()=>{
  const browser=await (process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true});
  try{
-  for(const signedHost of ['synthetic.files.1drv.com','my.microsoftpersonalcontent.com'])for(const projected of [true,false]){
+  for(const signedHost of ['synthetic.files.1drv.com','my.microsoftpersonalcontent.com'])for(const projected of [true,false])for(const redirected of [false,true]){
   const page=await browser.newPage(),requests=[],errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
-  const graph='https://graph.microsoft.com/v1.0/drives/synthetic/items/state',signed='https://'+signedHost+'/download?temporary=synthetic';
+  const graph='https://graph.microsoft.com/v1.0/drives/synthetic/items/state',signed='https://'+signedHost+'/download?temporary=synthetic',final='https://final.files.1drv.com/blob?temporary=synthetic';
   const cors={'access-control-allow-origin':'*','access-control-allow-methods':'GET,OPTIONS','access-control-allow-headers':'authorization,if-match'};
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());requests.push({url:u.href,method:req.method(),headers:req.headers()});
@@ -22,8 +22,9 @@ const {chromium,webkit}=require('playwright');
     if(u.pathname.endsWith('/content'))return route.abort('failed');
     return route.fulfill({contentType:'application/json',headers:cors,body:JSON.stringify(projected&&u.search?{id:'state',eTag:'v1'}:{id:'state',eTag:'v1',file:{},'@microsoft.graph.downloadUrl':signed})});
    }
-   if(u.href===signed){
+   if(u.href===signed||u.href===final){
     assert.equal(req.method(),'GET');for(const key of ['authorization','if-match','cookie'])assert.equal(req.headers()[key],undefined,key+' must not reach download host');
+    if(u.href===signed&&redirected)return route.fulfill({status:302,headers:{'access-control-allow-origin':'*',location:final}});
     return route.fulfill({contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({members:[],entries:[],synthetic:true})});
    }
    return route.abort();
@@ -32,6 +33,7 @@ const {chromium,webkit}=require('playwright');
   const data=await page.evaluate(async address=>{oneDriveAccessToken=async()=> 'synthetic-token';return (await odFetch(address+'/content',{headers:{'If-Match':'v1'}})).json();},graph);
   assert.equal(data.synthetic,true);assert.deepEqual(errors,[]);
   assert.equal(requests.filter(r=>r.url===signed).length,1);
+  assert.equal(requests.filter(r=>r.url===final).length,redirected?1:0);
   assert.equal(requests.filter(r=>r.url.startsWith(graph+'?')&&r.method==='GET').length,2);
   assert.equal(await page.evaluate(()=>localStorage.length),0,'signed URLs and credentials are not persisted');
   await page.close();
