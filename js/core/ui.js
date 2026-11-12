@@ -23,6 +23,7 @@ function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   return false;
 }
 function lockAdministration(){
+  window.MemberRecordsPrint?.clear();
   if(typeof clearFitnessStatistics==='function')clearFitnessStatistics();
   const theaterReturn=window.TheaterAdmin?.route?.();
   if(byId('pushAdminToken'))byId('pushAdminToken').value='';
@@ -60,6 +61,7 @@ function showView(viewId) {
   if(viewId==="drinksView")lockAdministration();
   clearTimeout(toastTimer);byId("toast")?.classList.remove("visible");
   closeCompactMenu();
+  if(viewId!=="settingsMembersView")window.MemberRecordsPrint?.clear();
   if(viewId!=="attendanceView")hideDocumentReportUi?.();
   document.querySelectorAll("main.app-shell > .view").forEach(view => view.hidden = view.id !== viewId);
   byId("drinksShortcut")?.classList.toggle("active",viewId==="drinksView");
@@ -141,5 +143,3 @@ function chooseSessionType(type,{calendar=false}={}) {
   const stage2Type=byId("stage2Heading")?.querySelector("small");if(stage2Type)stage2Type.textContent=type;
   if(typeof syncAttendanceStart==="function")syncAttendanceStart();
 }
-
-
