@@ -48,7 +48,7 @@ test('Verlorene PUT-Antwort wird anhand identischen Inhalts bestätigt, ohne zwe
 });
 
 
-test('Start wartet auf den ersten Abgleich; ein reiner Historienfehler sperrt bestätigte Daten nicht',async()=>{
+test('Bestätigte aktuelle Daten öffnen die App bereits während des laufenden Historienabrufs',async()=>{
  for(const historyOk of [false,true]){
   const f=fixture(),states=[];let finish;
   f.c.window.AppStartup={update:state=>states.push({...state})};
@@ -56,7 +56,7 @@ test('Start wartet auf den ersten Abgleich; ein reiner Historienfehler sperrt be
   f.c.window.loadOneDriveHistory=()=>new Promise(resolve=>{finish=()=>resolve(historyOk);});
   const syncing=f.c.syncOneDrive({refreshHistory:true});
   while(!finish)await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(states.at(-1).ready,false,'der laufende erste Historienabruf wird noch abgewartet');
+  assert.equal(states.at(-1).ready,true,'ein noch nicht abgeschlossener Historienabruf blockiert bestätigte Daten nicht');
   finish();await syncing;
   assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,!historyOk);
   if(historyOk){f.c.scheduleCloudSync();assert.equal(states.at(-1).ready,true,'editing does not reopen the start screen');}
@@ -74,4 +74,16 @@ test('Startstatus verwendet die tatsächlichen OneDrive-Phasen',()=>{
  for(const [label,expected] of [['Verbindet','OneDrive-Anmeldung'],['Synchronisiert','Gemeinsame Daten'],['Lädt Historie','Berichte und Historie']]){
   c.oneDriveStatus(label,'syncing');assert.ok(states.at(-1).stage.startsWith(expected));assert.equal(states.at(-1).ready,false);
  }
+});
+
+
+test('Fehler aktueller Daten werden schon vor Ende eines hängenden Historienabrufs angezeigt',async()=>{
+ const f=fixture(),states=[];let finish;
+ f.c.window.AppStartup={update:state=>states.push({...state})};
+ f.c.window.loadOneDriveHistory=()=>new Promise(resolve=>finish=resolve);
+ const syncing=f.c.syncOneDrive({refreshHistory:true});
+ while(!finish)await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(states.at(-1).ready,false);assert.equal(states.at(-1).error,true);
+ assert.match(states.at(-1).errorDetail,/must preserve local data/);
+ finish(false);await syncing;assert.equal(states.at(-1).ready,false);
 });
