@@ -1,5 +1,18 @@
 const CACHE_NAME="ffw-wasser-20261112.2";
 const CORE=[
+  "./assets/member-insignia/honor-bw-bronze.jpg",
+  "./assets/member-insignia/honor-bw-gold-50.jpg",
+  "./assets/member-insignia/honor-bw-gold.jpg",
+  "./assets/member-insignia/honor-bw-silver.jpg",
+  "./assets/member-insignia/honor-bw-special.jpg",
+  "./assets/member-insignia/honor-dfv-bronze.jpg",
+  "./assets/member-insignia/honor-dfv-gold.jpg",
+  "./assets/member-insignia/honor-dfv-silver.jpg",
+  "./assets/member-insignia/honor-lfv-albert.jpg",
+  "./assets/member-insignia/honor-lfv-medal-gold.jpg",
+  "./assets/member-insignia/honor-lfv-medal-silver.jpg",
+  "./assets/member-insignia/honor-lfv-pin-gold.jpg",
+  "./assets/member-insignia/honor-lfv-pin-silver.jpg",
   "./assets/member-insignia/achievement-bronze.png",
   "./assets/member-insignia/achievement-gold.png",
   "./assets/member-insignia/achievement-silver.png",
@@ -336,7 +349,3 @@ self.addEventListener('notificationclick',event=>{
   if(existing){const navigated=await existing.navigate(url);await (navigated||existing).focus();}else await self.clients.openWindow(url);
  })());
 });
-
-
-
-

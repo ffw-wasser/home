@@ -130,6 +130,7 @@ function normalizeCompleteBackupData(data) {
     id:String(member.id),
     lastName:String(member.lastName).trim(),
     firstName:String(member.firstName).trim(),
+    joinedOn:String(member.joinedOn||""),
     roles:Array.isArray(member.roles)?member.roles.filter(role=>AVAILABLE_ROLES.includes(role)&&role!=="Maschinist"):[],
     ageDepartment:Boolean(member.ageDepartment),
     machinistVehicles:Array.isArray(member.machinistVehicles)?member.machinistVehicles.filter(value=>value==="LF"||value==="TSF"):[],

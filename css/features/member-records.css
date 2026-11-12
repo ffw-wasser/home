@@ -119,3 +119,9 @@
  #memberAdmin .career-entry:has(.member-insignia) button{margin-left:76px}
  #memberAdmin .career-entry:has(.member-insignia) button+button{margin-left:0}
 }
+
+#memberAdmin .member-insignia-honor{width:54px;height:76px}
+#memberAdmin .member-honors-section>h5{margin:4px 0 9px;color:#596c7c;font-size:.88rem;font-weight:650}
+
+#memberAdmin .member-joined-field{grid-column:1/-1;max-width:280px}
+@media(max-width:700px){#memberAdmin .member-joined-field{max-width:none}}

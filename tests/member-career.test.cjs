@@ -95,3 +95,51 @@ test('Abzeichen gehören exakt zu FF-Dienstgrad und erworbener Auszeichnung',()=
  assert.equal(m.honorsHtml([]),'');
  for(const name of ['Feuerwehrfrau','Oberfeuerwehrfrau','Löschmeisterin','Leitende Hauptbrandmeisterin'])assert.ok(fs.existsSync(path.join(__dirname,'../assets/member-insignia',m.insigniaAsset({type:'rank',title:name}))));
 });
+
+test('Ehrungen sind getrennt von Leistungszeichen; passende Originalbilder und bestehende Einträge bleiben erhalten',()=>{
+ const m=api(),choices=m.suggestions('honor',[],[]);
+ assert.equal(choices.length,13);
+ for(const title of choices){const item={type:'award',title,date:'2024-05-01'};assert.ok(m.isHonor(item));assert.ok(fs.existsSync(path.join(__dirname,'../assets/member-insignia',m.insigniaAsset(item))),title);}
+ const old={id:'old',type:'award',title:'Feuerwehr-Ehrenzeichen in Bronze',date:'2024-05-01',notes:''};
+ assert.equal(m.insigniaAsset(old),'honor-bw-bronze.jpg');
+ assert.equal(m.insigniaAsset({...old,title:'Deutsches Feuerwehr-Ehrenkreuz Bronze'}),'honor-dfv-bronze.jpg');
+ assert.equal(m.insigniaAsset({...old,title:'Feuerwehr-Leistungsabzeichen Bronze'}),'achievement-bronze.png');
+ assert.equal(m.insigniaAsset({...old,title:'Ehrenabzeichen Bronze'}),'','Unklare Organisation erhält kein geratenes Symbol');
+ const html=m.render({careerEntries:[old,{...old,id:'performance',title:'Leistungsabzeichen Bronze'}]});
+ const groups=html.split('<section class="career-category">').slice(1);
+ assert.ok(groups.find(x=>x.includes('data-career-add="honor"')).includes('Feuerwehr-Ehrenzeichen in Bronze'));
+ assert.ok(!groups.find(x=>x.includes('data-career-add="award"')).includes('Feuerwehr-Ehrenzeichen in Bronze'));
+ assert.deepEqual(JSON.parse(JSON.stringify(m.validate([old])[0])),old,'Vorhandene Daten werden nicht umbenannt');
+ assert.equal(m.honorsHtml([]),'','Eintritt und Dienstjahre verleihen keine Ehrung');
+ assert.equal(m.honorsHtml([{...old,date:'2099-01-01'}]),'','Keine zukünftige Ehrung als verliehen darstellen');
+});
+test('Freie Ehrungen behalten ihre Kategorie im Katalog und Backup ohne erfundenes Symbol',()=>{
+ const m=api(),item={id:'free',type:'award',awardKind:'honor',title:'Besonderer Dank der Abteilung',date:'2024-05-01',notes:'Urkunde'};
+ const validated=m.validate([item]);assert.equal(validated[0].awardKind,'honor');assert.ok(m.isHonor(validated[0]));
+ const catalog=m.mergedCatalog([],[{careerEntries:validated}]);
+ assert.equal(catalog[0].awardKind,'honor');assert.ok(m.suggestions('honor',[],catalog).includes(item.title));assert.ok(!m.suggestions('award',[],catalog).includes(item.title));
+ const restored=Backup.normalize(Backup.create({members:[{id:'m',firstName:'Test',lastName:'Muster',joinedOn:'2001-03-17',careerEntries:validated}],careerCatalog:catalog}));
+ assert.equal(restored.members[0].joinedOn,'2001-03-17');assert.equal(restored.members[0].careerEntries[0].awardKind,'honor');assert.equal(restored.careerCatalog[0].awardKind,'honor');
+ assert.equal(m.insigniaAsset(item),'');
+ const html=m.honorsHtml(validated);assert.match(html,/Ehrungen/);assert.match(html,/Verliehen am 01.05.2024/);assert.doesNotMatch(html,/<img/);
+});
+
+test('Ehrungen und vorhandene Dienstgrade bleiben nach Datum absteigend sortiert',()=>{
+ const m=api(),html=m.render({careerEntries:[
+  {type:'award',awardKind:'honor',title:'Ältere Ehrung',date:'2020-01-01'},
+  {type:'award',awardKind:'honor',title:'Neuere Ehrung',date:'2024-01-01'},
+  {type:'rank',title:'Feuerwehrmann',date:'2019-01-01'},
+  {type:'rank',title:'Oberfeuerwehrmann',date:'2022-01-01'}]});
+ const group=html.split('<section class="career-category">').find(x=>x.includes('data-career-add="honor"'));
+ assert.ok(group.indexOf('<strong>Neuere Ehrung</strong>')<group.indexOf('<strong>Ältere Ehrung</strong>'));
+ const honors=m.honorsHtml([{type:'award',awardKind:'honor',title:'Ältere Ehrung',date:'2020-01-01'},{type:'award',awardKind:'honor',title:'Neuere Ehrung',date:'2024-01-01'}]);
+ assert.ok(honors.indexOf('Neuere Ehrung')<honors.indexOf('Ältere Ehrung'));
+});
+test('Echte Wiederherstellungsnormalisierung erhält Eintrittsdatum und freie Ehrungen',()=>{
+ const m=api(),source=fs.readFileSync(path.join(__dirname,'../js/features/history/archive.js'),'utf8');
+ const start=source.indexOf('function normalizeCompleteBackupData('),end=source.indexOf('\nfunction saveCompleteBackupData(',start);
+ const context={window:{MemberCareer:m},AVAILABLE_ROLES:['GF'],BackupEngine:Backup,validBackupMember:member=>member&&typeof member.id==='string'&&typeof member.firstName==='string'&&typeof member.lastName==='string'};
+ vm.runInNewContext(source.slice(start,end)+';this.restore=normalizeCompleteBackupData;',context);
+ const result=context.restore({members:[{id:'m',firstName:'Test',lastName:'Muster',joinedOn:'2001-03-17',careerEntries:[{id:'x',type:'award',awardKind:'honor',title:'Besonderer Dank der Abteilung',date:'2024-05-01'}]}]});
+ assert.equal(result.members[0].joinedOn,'2001-03-17');assert.equal(result.members[0].careerEntries[0].awardKind,'honor');assert.equal(result.careerCatalog[0].awardKind,'honor');
+});

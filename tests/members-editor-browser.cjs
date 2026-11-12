@@ -65,6 +65,40 @@ const root=path.resolve(__dirname,'..');
   await row('a').locator('[data-first-name]').fill('Entwurf verwerfen');
   page.once('dialog',d=>d.accept());await page.locator('#membersDiscardAll').click();
   await choose('a');assert.equal(await row('a').locator('[data-first-name]').inputValue(),'Mitglied gespeichert');
+  // Eintrittsdatum und Ehrungen bleiben personenbezogen, editierbar und im gemeinsamen Katalog verfügbar.
+  await row('a').locator('[data-joined-on]').fill('2001-03-17');
+  await row('a').locator('[data-record-tab="career"]').click();
+  await row('a').locator('[data-career-add="honor"]').click();
+  assert.equal(await dialog.locator('[data-career-date-label]').innerText(),'Verleihungsdatum');
+  await dialog.locator('[name="title"]').fill('Feuerwehr-Ehrenzeichen Baden-Württemberg Bronze (15 Jahre)');
+  await dialog.locator('[name="date"]').fill('2024-05-17');await dialog.locator('button[type="submit"]').click();
+  await row('a').locator('[data-career-add="honor"]').click();
+  await dialog.locator('[name="title"]').fill('Besonderer Dank der Abteilung');
+  await dialog.locator('[name="date"]').fill('2024-05-18');await dialog.locator('button[type="submit"]').click();
+  await page.locator('#membersSaveAll').click();
+  assert.equal(await page.evaluate(()=>memberSaved.find(m=>m.id==='synthetic-a').joinedOn),'2001-03-17');
+  assert.equal(await page.evaluate(()=>memberSaved.find(m=>m.id==='synthetic-a').careerEntries.find(x=>x.title==='Besonderer Dank der Abteilung').awardKind),'honor');
+  await choose('a','career');
+  const honorGroup=row('a').locator('.career-category').filter({has:page.locator('[data-career-add="honor"]')});
+  assert.equal(await honorGroup.locator('.career-entry').count(),2);
+  const free=honorGroup.locator('.career-entry').filter({hasText:'Besonderer Dank der Abteilung'});
+  await free.locator('[data-career-edit]').click();
+  assert.equal(await dialog.locator('[name="type"]').inputValue(),'honor');
+  await dialog.locator('[name="notes"]').fill('Verleihung dokumentiert');await dialog.locator('button[type="submit"]').click();
+  await page.locator('#membersSaveAll').click();
+  await choose('b','career');await row('b').locator('[data-career-add="honor"]').click();
+  assert.equal(await dialog.locator('datalist option[value="Besonderer Dank der Abteilung"]').count(),1,'Freie Ehrung wird mitgliedsübergreifend angeboten');
+  await dialog.locator('[data-career-cancel]').click();
+  await choose('a','overview');
+  assert.match(await row('a').locator('[data-record-honors]').innerText(),/Ehrungen/);
+  assert.match(await row('a').locator('[data-record-honors]').innerText(),/Verliehen am 17.05.2024/);
+  await page.waitForFunction(()=>[...document.querySelectorAll('[data-record-honors] img')].every(img=>img.complete&&img.naturalWidth>0));
+  if(process.env.CAPTURE_MEMBER_HONORS_HELP){
+   fs.mkdirSync(path.join(root,'qa/member-honors'),{recursive:true});
+   for(const width of [390,1100]){await page.setViewportSize({width,height:1000});await row('a').screenshot({path:path.join(root,'qa/member-honors/overview-'+width+'.png')});}
+   await row('a').locator('[data-record-tab="master"]').click();await row('a').screenshot({path:path.join(root,'qa/member-honors/master.png')});
+   await row('a').locator('[data-record-tab="career"]').click();await row('a').screenshot({path:path.join(root,'qa/member-honors/career.png')});
+  }
   for(const width of [320,390,768]){
    await page.setViewportSize({width,height:844});
    for(const tab of ['master','career','roles','evidence','account']){

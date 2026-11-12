@@ -6,7 +6,7 @@
   const MATCH_TYPES=new Set(['course','training','rank']);
   const CAREER_TYPES=[
     ['course','Lehrgänge'],['training','Fortbildungen'],['rank','Dienstgrade'],
-    ['award','Leistungsabzeichen & Leistungsspangen'],['other','Weitere Einträge']
+    ['award','Leistungsabzeichen & Leistungsspangen'],['honor','Ehrungen'],['other','Weitere Einträge']
   ];
   const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const formatDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')?value.slice(8,10)+'.'+value.slice(5,7)+'.'+value.slice(0,4):'–';
@@ -134,7 +134,7 @@
     const all=careerEntries(person).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     const special=year?matchedInYear(person,year):[];
     const sections=CAREER_TYPES.map(([type,title])=>{
-      const entries=all.filter(item=>item.type===type);
+      const entries=all.filter(item=>window.MemberCareer?.matchesGroup?window.MemberCareer.matchesGroup(item,type):item.type===type);
       if(!entries.length)return '';
       return '<section class="member-print-career-section"><h3>'+escape(title)+'</h3>'+rows(entries,year)+'</section>';
     }).join('');
@@ -150,6 +150,7 @@
       '<div><dt>Nachname</dt><dd>'+escape(person.lastName||'–')+'</dd></div>'+
       '<div><dt>Vorname</dt><dd>'+escape(person.firstName||'–')+'</dd></div>'+
       '<div><dt>Abteilung</dt><dd>'+escape(label)+'</dd></div>'+
+      '<div><dt>Eintrittsdatum</dt><dd>'+formatDate(person.joinedOn)+'</dd></div>'+
       '<div><dt>Aktueller Dienstgrad</dt><dd>'+escape(currentRank(person))+'</dd></div>'+
       '</dl></section>'+
       '<section class="member-print-function-section"><h2>Funktionen & Zugehörigkeit</h2><p>'+ (functions.length?functions.map(value=>'<span>'+escape(value)+'</span>').join(''):'Keine zusätzlichen Funktionen hinterlegt')+'</p></section>'+

@@ -32,3 +32,17 @@ test('Sammelspeichern bricht bei zwischenzeitlich entferntem Mitglied ohne Teil�
  assert.equal(f.c.updateMembers([{id:'a',row:row()},{id:'removed',row:row()}]),false);
  assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);
 });
+
+test('Eintrittsdatum ist freiwillig, wird gespeichert und kann geleert werden',()=>{
+ const f=fixture();f.c.members=[{id:'test-member',lastName:'Muster',firstName:'Test',careerEntries:[{type:'award',title:'Auszeichnung'}]}];
+ f.c.updateMember('test-member',row({'data-joined-on':'2001-03-17'}));assert.equal(f.c.members[0].joinedOn,'2001-03-17');
+ f.c.updateMember('test-member',row());assert.equal(f.c.members[0].joinedOn,'2001-03-17','Ältere Formulare löschen das Datum nicht');
+ f.c.updateMember('test-member',row({'data-joined-on':''}));assert.equal(f.c.members[0].joinedOn,'');
+ assert.equal(f.c.members[0].careerEntries.length,1,'Keine automatische Änderung an Ehrungen');
+});
+test('Ungültiges oder zukünftiges Eintrittsdatum verhindert jede Teiländerung',()=>{
+ for(const date of ['2026-02-30','2099-01-01','2026-1-2']){
+  const f=fixture();f.c.members=[{id:'test-member',lastName:'Alt',firstName:'Test',joinedOn:'2001-03-17'}];const before=JSON.stringify(f.c.members);
+  f.c.updateMember('test-member',row({'data-joined-on':date}));assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);assert.match(f.messages[0],/Eintrittsdatum/);
+ }
+});

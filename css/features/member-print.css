@@ -85,3 +85,9 @@
  #memberPrintRoot .member-insignia{object-fit:contain;width:23mm;height:13mm;flex:0 0 auto}
  #memberPrintRoot .member-insignia-rank{width:10mm;height:24mm}
 }
+
+@media print{
+ #memberPrintRoot .member-insignia-honor{width:14mm;height:21mm}
+ #memberPrintRoot .member-honors-section>h5{font-size:9pt;color:#596c7c;margin:5pt 0}
+ #memberPrintRoot .member-honors{break-inside:auto}
+}

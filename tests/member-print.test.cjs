@@ -6,6 +6,7 @@ const path=require('node:path');
 const code=fs.readFileSync(path.join(__dirname,'../js/features/settings/member-print.js'),'utf8');
 function api(){
  const window={},document={readyState:'loading',addEventListener(){}};
+ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../js/features/settings/member-career.js'),'utf8'),{window,document,console,Date});
  vm.runInNewContext(code,{window,document,console,Date});
  return window.MemberRecordsPrint;
 }
@@ -105,4 +106,11 @@ test('Einsatzteilnahme ist keine erfundene Fehlzeit; bei fehlender Historie gibt
  const sameName=[{...people[0],id:'x'}, {...people[0],id:'y'}];
  const history=[{date:'2024-01-01',item:{id:'a',sessionType:'Einsatz'},operation:true,rows:[{name:'Test, Anna',sessionType:'Einsatz',status:'Anwesend'}]}];
  assert.equal(m.participation(sameName[0],history,sameName).operations.present,0,'doppelte Namen dürfen nicht falsch zugeordnet werden');
+});
+
+test('Stammdatenausdruck zeigt Eintrittsdatum und Ehrungen in eigener Gruppe; Jahresfilter bleibt fachlich unverändert',()=>{
+ const m=api(),person={id:'x',firstName:'Test',lastName:'Muster',joinedOn:'2001-03-17',careerEntries:[{type:'award',title:'Feuerwehr-Ehrenzeichen in Bronze',date:'2024-05-01'}]};
+ const html=m.documentHtml([person],{mode:'all'});
+ assert.match(html,/Eintrittsdatum/);assert.match(html,/17.03.2001/);assert.match(html,/<h3>Ehrungen<\/h3>/);assert.match(html,/honor-bw-bronze.jpg/);assert.match(html,/Verliehen am 01.05.2024/);
+ assert.equal(m.candidates([person],{mode:'year',year:2024}).length,0,'Ehrung ist kein Lehrgang, keine Fortbildung und kein Dienstgrad');
 });
