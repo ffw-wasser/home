@@ -4,10 +4,10 @@ const {chromium,webkit}=require('playwright');
 (async()=>{
  const browser=await (process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true});
  try{
-  for(const projected of [true,false]){
+  for(const signedHost of ['synthetic.files.1drv.com','my.microsoftpersonalcontent.com'])for(const projected of [true,false]){
   const page=await browser.newPage(),requests=[],errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
-  const graph='https://graph.microsoft.com/v1.0/drives/synthetic/items/state',signed='https://synthetic.files.1drv.com/download?temporary=synthetic';
+  const graph='https://graph.microsoft.com/v1.0/drives/synthetic/items/state',signed='https://'+signedHost+'/download?temporary=synthetic';
   const cors={'access-control-allow-origin':'*','access-control-allow-methods':'GET,OPTIONS','access-control-allow-headers':'authorization,if-match'};
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());requests.push({url:u.href,method:req.method(),headers:req.headers()});

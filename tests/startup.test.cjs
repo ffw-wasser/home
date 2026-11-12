@@ -3,7 +3,7 @@ const html=fs.readFileSync(require.resolve('../index.html'),'utf8');
 function fixture(release=null){
  const events={},frames=[],classes=new Set(['app-starting']);let timer,cancelled=false,removed=false,clicks=0;
  const nodes={appStartupStatus:{},appStartupProgress:{dataset:{}},appStartupRetry:{hidden:true},appStartupConnect:{hidden:true},cloudSyncButton:{click(){clicks++;}},protectedAppContent:{setAttribute(){},removeAttribute(name){this.removed=name;}},appStartup:{hidden:false}};
- const c=vm.createContext({window:{AppRelease:release,addEventListener(type,handler){events[type]=handler;}},document:{querySelector:()=>({content:"2026.11.13.1"}),getElementById:id=>nodes[id],documentElement:{classList:{toggle(name,on){if(on)classes.add(name);else classes.delete(name);}}}},setTimeout(fn){timer=fn;return 1;},clearTimeout(){cancelled=true;},requestAnimationFrame:fn=>frames.push(fn),location:{reload(){}}});
+ const c=vm.createContext({window:{AppRelease:release,addEventListener(type,handler){events[type]=handler;}},document:{querySelector:()=>({content:"2026.11.13.2"}),getElementById:id=>nodes[id],documentElement:{classList:{toggle(name,on){if(on)classes.add(name);else classes.delete(name);}}}},setTimeout(fn){timer=fn;return 1;},clearTimeout(){cancelled=true;},requestAnimationFrame:fn=>frames.push(fn),location:{reload(){}}});
  vm.runInContext(html.match(/<script id="app-startup-script">([\s\S]*?)<\/script>/)[1],c);
  return {update:state=>c.window.AppStartup.update(state),get clicks(){return clicks;},events,nodes,classes,frames,timeout:()=>timer(),get removed(){return nodes.appStartup.hidden;},get cancelled(){return cancelled;},paint(){while(frames.length)frames.shift()();}};
 }
@@ -51,6 +51,6 @@ test('Startfehler zeigt Ursache und laufende Version auch während weiterer Hint
  const f=fixture();f.events.load();f.paint();
  f.update({ready:false,signed:true,busy:true,connecting:true,error:true,errorDetail:'Datenkonflikt <script>synthetic</script>'});
  assert.match(f.nodes.appStartupStatus.textContent,/Datenkonflikt <script>synthetic<\/script>/);
- assert.match(f.nodes.appStartupStatus.textContent,/Version 2026\.11\.13\.1/);
+ assert.match(f.nodes.appStartupStatus.textContent,/Version 2026\.11\.13\.2/);
  assert.equal(f.nodes.appStartupProgress.dataset.active,'false');assert.equal(f.removed,false);
 });

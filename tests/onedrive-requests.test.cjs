@@ -220,3 +220,19 @@ test('Pfadbasierte Dateianfrage behält beim vollständigen Metadatenabruf exakt
  const {context,calls}=app(address=>{if(address===original)throw new TypeError('Load failed');if(address===signedAddress)return response(200);return response(200,{},address.includes('?')?{id:'file',eTag:'v1'}:downloadMetadata);});
  await context.odFetch(original);assert.equal(calls[1].url.split('?')[0],target);assert.equal(calls[2].url,target);
 });
+
+
+for(const host of ['my.microsoftpersonalcontent.com','home.microsoftpersonalcontent.com','synthetic.usercontent.microsoftpersonalcontent.com','synthetic.onedrive.live.com','synthetic.livefilestore.com','synthetic.storage.msn.com'])test(`Microsoft-OneDrive-Downloadhost wird ohne Credential-Weitergabe akzeptiert: ${host}`,async()=>{
+ const direct='https://'+host+'/download?tempauth=synthetic-secret';
+ const {context,calls}=app((address,options)=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  if(address===direct){assert.equal(options.headers,undefined);assert.equal(options.credentials,'omit');return response(200);}
+  return response(200,{}, {...downloadMetadata,'@microsoft.graph.downloadUrl':direct});
+ });
+ assert.equal((await context.odFetch(contentAddress)).status,200);assert.equal(calls.at(-1).url,direct);
+});
+for(const host of ['microsoftpersonalcontent.com.evil.test','evil-microsoftpersonalcontent.com','onedrive.live.com.evil.test'])test(`Ähnlich benannter Fremdhost wird abgelehnt und die Meldung zeigt keine Downloadgeheimnisse: ${host}`,async()=>{
+ const {context,calls}=app(address=>{if(address===contentAddress)throw new TypeError('Load failed');return response(200,{}, {...downloadMetadata,'@microsoft.graph.downloadUrl':'https://'+host+'/private-path?tempauth=synthetic-secret'});});
+ await assert.rejects(context.odFetch(contentAddress),e=>e.message.includes(host)&&!e.message.includes('private-path')&&!e.message.includes('synthetic-secret'));
+ assert.equal(calls.length,2);
+});

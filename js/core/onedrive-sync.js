@@ -158,8 +158,8 @@ async function odBrowserDownload(metadataUrl,options={}){
   }
   if(expected&&expected!=='*'&&metadata.eTag!==expected)throw Object.assign(new Error('Die OneDrive-Dateiversion wurde geändert. Bitte erneut laden.'),{status:412});
   let download;try{download=new URL(addressOf(metadata));}catch{throw new Error('OneDrive-Dateimetadaten enthalten keine gültige Downloadadresse ('+(metadata.folder?'Ordner':metadata.file?'Datei':metadata.remoteItem?'Verknüpfung':'unvollständige Dateiangaben')+').');}
-  const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','sharepoint.com','sharepoint-df.com','storage.live.com'].some(domain=>host===domain||host.endsWith('.'+domain));
-  if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert.');
+  const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','onedrive.live.com','microsoftpersonalcontent.com','sharepoint.com','sharepoint-df.com','storage.live.com','livefilestore.com','storage.msn.com'].some(domain=>host===domain||host.endsWith('.'+domain));
+  if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert (Host: '+host+').');
   const controller=typeof AbortController!=='undefined'?new AbortController():null,cancel=()=>controller?.abort();
   let timer,response;
   if(controller){oneDriveRequests.add(controller);options.signal?.addEventListener('abort',cancel,{once:true});timer=setTimeout(cancel,25000);}
