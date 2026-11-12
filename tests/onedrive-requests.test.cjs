@@ -186,3 +186,37 @@ test('Fehler bei Microsoft-Token-Erneuerung nennen die betroffene Phase',async()
  const {context}=app(()=>{throw new TypeError('Load failed');},{expired:true});
  await assert.rejects(context.odFetch(url),/Microsoft-Anmeldung erneuern: Load failed/);
 });
+
+
+test('Fehlende Downloadannotation in Projektion wird aus vollständigen Metadaten derselben Datei gelesen',async()=>{
+ const {context,calls}=app(address=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  if(address===signedAddress)return response(200,{}, {recovered:true});
+  return response(200,{},address.includes('?')?{id:'file',eTag:'v1'}:{...downloadMetadata,file:{}});
+ });
+ assert.equal((await (await context.odFetch(contentAddress,{headers:{'If-Match':'v1'}})).json()).recovered,true);
+ assert.equal(calls.filter(c=>c.url==='https://graph.microsoft.com/v1.0/drives/test/items/file').length,1);
+ assert.equal(calls.filter(c=>c.url===signedAddress).length,1);
+});
+for(const change of ['id','eTag'])test(`Vollständige Metadaten dürfen ${change} nicht am Versionsschutz vorbeischleusen`,async()=>{
+ const {context,calls}=app(address=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  return response(200,{},address.includes('?')?{id:'file',eTag:'v1'}:{...downloadMetadata,[change]:'different'});
+ });
+ await assert.rejects(context.odFetch(contentAddress,{headers:{'If-Match':'v1'}}),e=>e.status===412);
+ assert.equal(calls.some(c=>c.url===signedAddress),false);
+});
+test('Auch ohne Downloadadresse in vollständigen Metadaten bleiben Abrufe begrenzt und nennen die Antwortart',async()=>{
+ const {context,calls}=app(address=>{if(address===contentAddress)throw new TypeError('Load failed');return response(200,{}, {id:'file',eTag:'v1',folder:{}});});
+ await assert.rejects(context.odFetch(contentAddress),/Downloadadresse \(Ordner\)/);assert.equal(calls.length,3);
+});
+test('Legacy-Downloadannotation wird nur aus authentifizierter Microsoft-Antwort verwendet',async()=>{
+ const {context}=app(address=>{if(address===contentAddress)throw new TypeError('Load failed');if(address===signedAddress)return response(200);return response(200,{}, {id:'file',eTag:'v1','@content.downloadUrl':signedAddress});});
+ assert.equal((await context.odFetch(contentAddress)).status,200);
+});
+test('Pfadbasierte Dateianfrage behält beim vollständigen Metadatenabruf exakt denselben Pfad',async()=>{
+ const original='https://graph.microsoft.com/v1.0/drives/test/items/root:/Ordner/Datei.json:/content';
+ const target='https://graph.microsoft.com/v1.0/drives/test/items/root:/Ordner/Datei.json';
+ const {context,calls}=app(address=>{if(address===original)throw new TypeError('Load failed');if(address===signedAddress)return response(200);return response(200,{},address.includes('?')?{id:'file',eTag:'v1'}:downloadMetadata);});
+ await context.odFetch(original);assert.equal(calls[1].url.split('?')[0],target);assert.equal(calls[2].url,target);
+});

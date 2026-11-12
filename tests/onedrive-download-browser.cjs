@@ -4,6 +4,7 @@ const {chromium,webkit}=require('playwright');
 (async()=>{
  const browser=await (process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true});
  try{
+  for(const projected of [true,false]){
   const page=await browser.newPage(),requests=[],errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
   const graph='https://graph.microsoft.com/v1.0/drives/synthetic/items/state',signed='https://synthetic.files.1drv.com/download?temporary=synthetic';
@@ -19,7 +20,7 @@ const {chromium,webkit}=require('playwright');
     assert.equal(req.headers().authorization,'Bearer synthetic-token');
     // Simulate the browser rejecting the preflighted Graph /content redirect.
     if(u.pathname.endsWith('/content'))return route.abort('failed');
-    return route.fulfill({contentType:'application/json',headers:cors,body:JSON.stringify({id:'state',eTag:'v1','@microsoft.graph.downloadUrl':signed})});
+    return route.fulfill({contentType:'application/json',headers:cors,body:JSON.stringify(projected&&u.search?{id:'state',eTag:'v1'}:{id:'state',eTag:'v1',file:{},'@microsoft.graph.downloadUrl':signed})});
    }
    if(u.href===signed){
     assert.equal(req.method(),'GET');for(const key of ['authorization','if-match','cookie'])assert.equal(req.headers()[key],undefined,key+' must not reach download host');
@@ -33,6 +34,8 @@ const {chromium,webkit}=require('playwright');
   assert.equal(requests.filter(r=>r.url===signed).length,1);
   assert.equal(requests.filter(r=>r.url.startsWith(graph+'?')&&r.method==='GET').length,2);
   assert.equal(await page.evaluate(()=>localStorage.length),0,'signed URLs and credentials are not persisted');
-  console.log('PASS browser download fallback: failed Graph content redirect, authenticated metadata, simple signed GET, no credential forwarding, before/after version protection.');
+  await page.close();
+  }
+  console.log('PASS browser download fallback including omitted projection annotations: failed Graph content redirect, authenticated metadata, simple signed GET, no credential forwarding, before/after version protection.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
