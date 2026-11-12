@@ -142,6 +142,11 @@ function odDownloadMetadataUrl(address){
  try{const u=new URL(address);if(u.origin!=="https://graph.microsoft.com"||!u.pathname.endsWith("/content")||u.search)return "";u.pathname=u.pathname.slice(0,-8).replace(/:$/,'');u.search='?$select=id,eTag,@microsoft.graph.downloadUrl';return u.href;}catch{return "";}
 }
 function odNetworkError(error,stage){if(error&&typeof error.message==='string'&&!error.oneDriveStage){error.message=stage+": "+error.message;error.oneDriveStage=stage;}return error;}
+function odValidateDownloadUrl(download){
+ const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','onedrive.live.com','microsoftpersonalcontent.com','sharepoint.com','sharepoint-df.com','storage.live.com','livefilestore.com','storage.msn.com'].some(domain=>host===domain||host.endsWith('.'+domain));
+  if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert (Host: '+host+').');
+ return download;
+}
 async function odBrowserDownload(metadataUrl,options={}){
  const epoch=oneDriveSessionEpoch,expected=new Headers(options.headers||{}).get('If-Match');
  const check=()=>{assertOneDriveSession(epoch);if(options.signal?.aborted)throw Object.assign(new Error('OneDrive-Abruf abgebrochen.'),{name:'AbortError'});};
@@ -158,8 +163,7 @@ async function odBrowserDownload(metadataUrl,options={}){
   }
   if(expected&&expected!=='*'&&metadata.eTag!==expected)throw Object.assign(new Error('Die OneDrive-Dateiversion wurde geändert. Bitte erneut laden.'),{status:412});
   let download;try{download=new URL(addressOf(metadata));}catch{throw new Error('OneDrive-Dateimetadaten enthalten keine gültige Downloadadresse ('+(metadata.folder?'Ordner':metadata.file?'Datei':metadata.remoteItem?'Verknüpfung':'unvollständige Dateiangaben')+').');}
-  const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','onedrive.live.com','microsoftpersonalcontent.com','sharepoint.com','sharepoint-df.com','storage.live.com','livefilestore.com','storage.msn.com'].some(domain=>host===domain||host.endsWith('.'+domain));
-  if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert (Host: '+host+').');
+  odValidateDownloadUrl(download);
   const controller=typeof AbortController!=='undefined'?new AbortController():null,cancel=()=>controller?.abort();
   let timer,response;
   if(controller){oneDriveRequests.add(controller);options.signal?.addEventListener('abort',cancel,{once:true});timer=setTimeout(cancel,25000);}
@@ -167,9 +171,10 @@ async function odBrowserDownload(metadataUrl,options={}){
    check();
    // Never forward bearer tokens, If-Match, cookies or a referrer to the
    // pre-authorized URL. It is kept only in this local request, never stored.
-   response=await fetch(download.href,{method:'GET',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',cache:'no-store',...(controller?{signal:controller.signal}:options.signal?{signal:options.signal}:{})});check();
-  }catch(error){check();throw odNetworkError(error,'OneDrive-Datei direkt herunterladen');}
+   response=await fetch(download.href,{method:'GET',credentials:'omit',referrerPolicy:'no-referrer',redirect:'follow',cache:'no-store',...(controller?{signal:controller.signal}:options.signal?{signal:options.signal}:{})});check();
+  }catch(error){check();throw odNetworkError(error,'OneDrive-Datei direkt herunterladen ('+download.hostname+')');}
   finally{clearTimeout(timer);if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener('abort',cancel);}
+  if(response.url)odValidateDownloadUrl(new URL(response.url));
   // A temporary signed URL can expire. Resolve it once more, not indefinitely.
   if((response.status===401||response.status===403)&&attempt===0)continue;
   if(!response.ok)throw Object.assign(new Error('OneDrive-Dateidownload fehlgeschlagen ('+response.status+').'),{status:response.status});
