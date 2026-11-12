@@ -69,6 +69,8 @@ jobs:
           node tests/qr-checkin-browser.cjs
           node tests/year-plan-browser.cjs
           node tests/onedrive-startup-browser.cjs
+          node tests/onedrive-download-browser.cjs
+          BROWSER_ENGINE=webkit node tests/onedrive-download-browser.cjs
           node scripts/capture-help-screens.cjs --only=geraetehaus-abos
           node scripts/capture-help-screens.cjs --only=geraetehaus-kalender
       - uses: actions/upload-artifact@v4

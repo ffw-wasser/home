@@ -138,3 +138,51 @@ test('Hydrantenplan: Format- und Größenprüfung bleiben nach gemeinsamem Datei
  let f=app(()=>new Response('not a PDF'));shared(f.context);await assert.rejects(f.context.oneDriveReadHydrants(),/keine PDF/);
  f=app(()=>new Response('%PDF-test',{headers:{'content-length':String(8*1024*1024+1)}}));shared(f.context);await assert.rejects(f.context.oneDriveReadHydrants(),/höchstens 8 MB/);
 });
+
+const contentAddress='https://graph.microsoft.com/v1.0/drives/test/items/file/content';
+const signedAddress='https://synthetic.files.1drv.com/download?temporary=synthetic';
+const downloadMetadata={id:'file',eTag:'v1','@microsoft.graph.downloadUrl':signedAddress};
+test('Browser-CORS-Fehler am Dateiabruf nutzt frische Downloadadresse ohne Anmeldung oder Sonderheader',async()=>{
+ const {context,calls,store}=app((address,options)=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  if(address===signedAddress){assert.equal(options.headers,undefined);assert.equal(options.credentials,'omit');assert.equal(options.referrerPolicy,'no-referrer');assert.equal(options.redirect,'error');return response(200,{}, {synthetic:true});}
+  assert.equal(options.headers.get('Authorization'),'Bearer initial');return response(200,{},downloadMetadata);
+ });
+ assert.deepEqual(await (await context.odFetch(contentAddress,{headers:{'If-Match':'v1'}})).json(),{synthetic:true});
+ assert.equal(calls.length,4);assert.ok(calls[1].url.includes('microsoft.graph.downloadUrl'));
+ assert.equal(JSON.stringify([...store.values()]).includes('temporary=synthetic'),false);
+});
+for(const changed of ['before','during'])test(`Versionsschutz bleibt beim direkten Download erhalten: ${changed}`,async()=>{
+ let metadataReads=0,direct=0;
+ const {context}=app(address=>{
+  if(address===contentAddress)throw new TypeError('Load failed');
+  if(address===signedAddress){direct++;return response(200);}
+  metadataReads++;return response(200,{}, {...downloadMetadata,eTag:changed==='before'||metadataReads>1?'v2':'v1'});
+ });
+ await assert.rejects(context.odFetch(contentAddress,{headers:{'If-Match':'v1'}}),e=>e.status===412);
+ assert.equal(direct,changed==='before'?0:1);
+});
+for(const address of ['http://synthetic.files.1drv.com/download','https://files.1drv.com.evil.test/download','https://user:password@synthetic.files.1drv.com/download','https://synthetic.files.1drv.com:8443/download'])test(`Unerwartete Downloadadresse wird nicht aufgerufen: ${address}`,async()=>{
+ const {context,calls}=app(u=>{if(u===contentAddress)throw new TypeError('Load failed');return response(200,{}, {...downloadMetadata,'@microsoft.graph.downloadUrl':address});});
+ await assert.rejects(context.odFetch(contentAddress),/unerwartete Downloadadresse/);assert.equal(calls.length,2);
+});
+test('Abgelaufene Downloadadresse wird einmal erneuert, ohne Token an den Downloadhost zu senden',async()=>{
+ let direct=0,metadata=0;
+ const {context}=app((u,o)=>{if(u===contentAddress)throw new TypeError('Load failed');if(u===signedAddress){direct++;assert.equal(o.headers,undefined);return response(direct===1?403:200);}metadata++;return response(200,{},downloadMetadata);});
+ assert.equal((await context.odFetch(contentAddress)).status,200);assert.equal(metadata,2);assert.equal(direct,2);
+});
+test('Abmeldung während Direktdownload verwirft die verspätete Antwort',async()=>{
+ let release,started;const waiting=new Promise(r=>release=r),directStarted=new Promise(r=>started=r);
+ const {context}=app(async u=>{if(u===contentAddress)throw new TypeError('Load failed');if(u===signedAddress){started();await waiting;return response(200);}return response(200,{},downloadMetadata);});
+ const load=context.odFetch(contentAddress);await directStarted;
+ vm.runInContext('oneDriveSessionEpoch++',context);release();
+ await assert.rejects(load,/Anmeldung wurde beendet/);
+});
+test('Ein fehlgeschlagener Schreibabruf wird niemals auf eine Downloadadresse umgeleitet',async()=>{
+ const {context,calls}=app(()=>{throw new TypeError('Load failed');});
+ await assert.rejects(context.odFetch(contentAddress,{method:'PUT',body:'synthetic'},false),/Load failed/);assert.equal(calls.length,1);
+});
+test('Fehler bei Microsoft-Token-Erneuerung nennen die betroffene Phase',async()=>{
+ const {context}=app(()=>{throw new TypeError('Load failed');},{expired:true});
+ await assert.rejects(context.odFetch(url),/Microsoft-Anmeldung erneuern: Load failed/);
+});
