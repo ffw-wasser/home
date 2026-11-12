@@ -110,7 +110,7 @@ const root=path.resolve(__dirname,'..');
   await button.click();
   assert.equal(await preview.isVisible(),false,'Offene Änderungen verhindern einen veralteten Ausdruck');
   assert.match(await page.locator('#memberPrintResult').textContent(),/offene Mitgliederänderungen/);
-  await page.evaluate(()=>renderAdmin());
+  page.once('dialog',dialog=>dialog.accept());await page.locator('#membersDiscardAll').click();
   await button.click();await preview.locator('[data-member-pdf-save]').waitFor({state:'visible'});
   const oldUrl=await preview.locator('[data-member-pdf-save]').getAttribute('href');
   await page.evaluate(()=>lockAdministration());
