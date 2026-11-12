@@ -354,11 +354,19 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
     }catch(error){if(epoch!==oneDriveSessionEpoch)return;oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;stateError=error;notifyAppStorageState();}
     // ZIP-Berichte liefern die Statistik, unabhängig davon, welche Ansicht offen ist.
     // Auch bei einer fehlerhaften Datendatei versuchen, die Berichte zu laden.
+    let historyError=null;
     if(refreshHistory&&typeof window.loadOneDriveHistory==="function"){
       oneDriveStatus("Lädt Historie","syncing");
-      if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
+      if(await window.loadOneDriveHistory()===false)historyError=new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
     }
     if(stateError)throw stateError;
+    if(historyError){
+      // Ein Berichtsfehler darf bestätigte aktuelle Daten nicht hinter dem
+      // Startbildschirm sperren. Anmeldung und Datenabgleich bleiben Pflicht.
+      assertOneDriveSession(epoch);
+      if(oneDriveStateConfirmed&&oneDriveAdministrationReady())oneDriveStartupConfirmed=true;
+      throw historyError;
+    }
     assertOneDriveSession(epoch);if(refreshHistory&&oneDriveStateConfirmed)oneDriveStartupConfirmed=true;oneDriveLastError="";oneDriveLastFailure=null;oneDriveStatus(oneDriveStateConfirmed?"Aktuell":"Änderungen ausstehend",oneDriveStateConfirmed?"online":"syncing");
     if(manual)showToast(oneDriveStateConfirmed?"Daten und Historie im gemeinsamen OneDrive-Ordner wurden synchronisiert.":"Neue Änderungen werden noch mit OneDrive synchronisiert.");
   }catch(error){

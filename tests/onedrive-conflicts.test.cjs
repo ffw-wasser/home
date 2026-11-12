@@ -48,7 +48,7 @@ test('Verlorene PUT-Antwort wird anhand identischen Inhalts bestätigt, ohne zwe
 });
 
 
-test('Startfreigabe wartet auf Daten UND Historie und bleibt bei Fehler gesperrt',async()=>{
+test('Start wartet auf den ersten Abgleich; ein reiner Historienfehler sperrt bestätigte Daten nicht',async()=>{
  for(const historyOk of [false,true]){
   const f=fixture(),states=[];let finish;
   f.c.window.AppStartup={update:state=>states.push({...state})};
@@ -56,16 +56,16 @@ test('Startfreigabe wartet auf Daten UND Historie und bleibt bei Fehler gesperrt
   f.c.window.loadOneDriveHistory=()=>new Promise(resolve=>{finish=()=>resolve(historyOk);});
   const syncing=f.c.syncOneDrive({refreshHistory:true});
   while(!finish)await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(states.at(-1).ready,false,'data alone is insufficient');
+  assert.equal(states.at(-1).ready,false,'der laufende erste Historienabruf wird noch abgewartet');
   finish();await syncing;
-  assert.equal(states.at(-1).ready,historyOk);
+  assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,!historyOk);
   if(historyOk){f.c.scheduleCloudSync();assert.equal(states.at(-1).ready,true,'editing does not reopen the start screen');}
  }
 });
-test('Ein späterer erfolgreicher vollständiger Abruf gibt die Startansicht frei',async()=>{
+test('Erfolgreicher Historien-Neuabruf beseitigt den Fehler ohne erneute Startsperre',async()=>{
  const f=fixture(),states=[];f.c.window.AppStartup={update:state=>states.push({...state})};f.c.applyOneDrivePayload=()=>{};
- f.c.window.loadOneDriveHistory=async()=>false;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,false);
- f.c.window.loadOneDriveHistory=async()=>true;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);
+ f.c.window.loadOneDriveHistory=async()=>false;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,true);
+ f.c.window.loadOneDriveHistory=async()=>true;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,false);
 });
 
 test('Startstatus verwendet die tatsächlichen OneDrive-Phasen',()=>{
