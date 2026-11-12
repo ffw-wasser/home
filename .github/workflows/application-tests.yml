@@ -50,6 +50,18 @@ jobs:
         run: node scripts/run-focused-tests.cjs --list
       - name: Run all unit tests
         run: node --test tests/*.test.cjs
+      - name: Test member PDF preview and download in Chromium and WebKit
+        run: |
+          CAPTURE_MEMBER_HONORS_HELP=1 node tests/member-print-browser.cjs
+          BROWSER_ENGINE=webkit node tests/member-print-browser.cjs
+      - name: Keep member print regression output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-member-print-review
+          path: qa/member-honors
+          if-no-files-found: warn
+          retention-days: 7
       - name: Verify direct enrollment and capture changed help panels
         run: |
           node tests/portal-release-scan-browser.cjs
@@ -188,8 +200,6 @@ jobs:
           BROWSER_ENGINE=webkit node tests/member-subscriptions-browser.cjs
       - name: Test member batch editing and mobile cards
         run: CAPTURE_MEMBER_HONORS_HELP=1 node tests/members-editor-browser.cjs
-      - name: Test private member records printing and year selection
-        run: CAPTURE_MEMBER_HONORS_HELP=1 node tests/member-print-browser.cjs
       - name: Keep member records visual review
         if: always()
         uses: actions/upload-artifact@v4

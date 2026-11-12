@@ -9,6 +9,19 @@
       if(!node||node.nodeType!==1||node.hidden||exclude&&node.matches(exclude))return;
       if(node.matches('details')&&!node.matches('.statistics-collapsible,#statisticsFurtherDetails,#statisticsFellowshipDetails,.participant-target-card')&&!node.querySelector('.metric-row,table,.participant-target-items'))return;
       if(node.matches('button,a,input,select,label,.statistics-print-header,.individual-print-header,.individual-statistics-controls,.individual-person-heading'))return;
+      if(node.matches('.member-print-top,.member-print-title,.member-print-footer,.member-print-toolbar'))return;
+      if(node.matches('.member-honor')){
+        const image=node.querySelector('img');
+        blocks.push({kind:'insignia',src:image?.getAttribute('src')||'',label:text(node.querySelector('small')),value:text(node.querySelector('strong')),detail:text(node.querySelector('time'))});return;
+      }
+      if(node.matches('.member-print-details dl>div')){blocks.push({kind:'row',label:text(node.querySelector('dt')),value:text(node.querySelector('dd'))});return;}
+      if(node.matches('.member-print-function-section p')){blocks.push({kind:'paragraph',value:[...node.querySelectorAll('span')].map(text).join(' · ')||text(node)});return;}
+      if(node.matches('.member-print-chart')){
+        const svg=node.querySelector('svg'),circumference=2*Math.PI*44;
+        blocks.push({kind:'ring',label:text(node.querySelector('h3')),value:text(svg?.querySelector('text')),
+          segments:[...svg.querySelectorAll('circle[stroke-dasharray]')].map(circle=>({percent:parseFloat(circle.getAttribute('stroke-dasharray'))/circumference*100,color:color(circle.getAttribute('stroke'))})),
+          legendColors:['#2f7950','#d8a13c','#a4434d'],legend:[...node.querySelectorAll('.member-print-legend>div')].map(row=>[...row.querySelectorAll('span,b')].map(text).join(' ')),detail:text(node.querySelector('p'))});return;
+      }
       if(node.matches('.statistics-kpis,.individual-kpis')){
         blocks.push({kind:'kpis',items:[...node.children].map(item=>({label:text(item.querySelector('span')),value:text(item.querySelector('strong')),detail:[...item.querySelectorAll('small')].map(text).join(' · ')}))});return;
       }
@@ -34,7 +47,7 @@
       if(node.matches('table')){
         blocks.push({kind:'table',headers:[...node.querySelectorAll('thead th')].map(text),rows:[...node.querySelectorAll('tbody tr')].map(row=>[...row.children].map(text))});return;
       }
-      if(node.matches('h3,h4,h5')){blocks.push({kind:'heading',value:text(node)});return;}
+      if(node.matches('h2,h3,h4,h5')){blocks.push({kind:'heading',value:text(node)});return;}
       if(node.matches('p,.statistics-note')){if(text(node))blocks.push({kind:'paragraph',value:text(node)});return;}
       if(node.matches('summary')){
         if(!node.parentElement.matches('.statistics-collapsible,#statisticsFurtherDetails,#statisticsFellowshipDetails')&&text(node))blocks.push({kind:'heading',value:text(node)});
@@ -58,7 +71,7 @@
     if(!library?.PDFDocument)throw Error('Das PDF-Modul ist nicht geladen. Bitte die App aktualisieren.');
     const {PDFDocument,StandardFonts,rgb}=library,pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
     pdf.setTitle(model.title);pdf.setAuthor('Feuerwehr Wasser');pdf.setSubject(model.subtitle||'Statistik');
-    const W=515,L=40,B=48,ink=rgb(.10,.18,.15),green=rgb(.09,.42,.21),muted=rgb(.25,.34,.30),pale=rgb(.90,.94,.91),line=rgb(.80,.85,.82);
+    const member=model.kind==='members',W=515,L=40,B=48,ink=member?rgb(.10,.18,.26):rgb(.10,.18,.15),green=member?rgb(.57,.16,.20):rgb(.09,.42,.21),muted=rgb(.25,.34,.38),pale=member?rgb(.95,.96,.97):rgb(.90,.94,.91),line=rgb(.80,.85,.87),images=new Map();
     const clean=value=>[...String(value??'').replace(/[–—−]/g,'-').replace(/[\u00a0\u202f]/g,' ').replace(/[\r\n\t]+/g,' ').replace(/→/g,'>')].map(char=>{try{regular.encodeText(char);return char;}catch{const plain=char.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');try{regular.encodeText(plain);return plain;}catch{return '?';}}}).join('');
     const face=heavy=>heavy?bold:regular;
     const wrap=(value,width,size=9,heavy=false)=>{
@@ -75,7 +88,7 @@
     function next(){page=pdf.addPage([595,842]);y=802;draw('FEUERWEHR WASSER',L,y,13,true,green);y-=22;draw(model.title,L,y,11,true);y-=21;page.drawLine({start:{x:L,y},end:{x:L+W,y},thickness:1,color:green});y-=18;}
     const ensure=height=>{if(y-height<B)next();};
     const paragraph=(value,size=9)=>{for(const item of wrap(value,W,size)){ensure(size+7);draw(item,L,y,size,false,muted);y-=size+4;}y-=6;};
-    const heading=(value,major=false)=>{ensure(major?190:175);y-=major?12:5;for(const item of wrap(value,W,major?16:11,true)){draw(item,L,y,major?16:11,true,green);y-=major?22:16;}y-=5;};
+    const heading=(value,major=false)=>{ensure(member?(major?80:65):(major?190:175));y-=major?12:5;for(const item of wrap(value,W,major?16:11,true)){draw(item,L,y,major?16:11,true,green);y-=major?22:16;}y-=5;};
     function cells(values,widths,heavy=false,background=false){
       const lines=values.map((value,i)=>wrap(value,widths[i]-14,8,heavy)),height=Math.max(1,...lines.map(v=>v.length))*11+12;ensure(height);
       if(background)page.drawRectangle({x:L,y:y-height,width:W,height,color:pale});
@@ -83,10 +96,28 @@
       y-=height;page.drawLine({start:{x:L,y},end:{x:L+W,y},thickness:.4,color:line});return height;
     }
     next();paragraph(model.subtitle||'');
-    for(const section of model.sections){
+    for(const [sectionIndex,section] of model.sections.entries()){
+      if(sectionIndex&&section.newPage)next();
       heading(section.title,true);
       for(const block of section.blocks){
-        if(block.kind==='heading'){if(block.value!==section.title)heading(block.value);}
+        if(block.kind==='insignia'){
+          let image=null;
+          if(block.src){
+            // Nur fest eingebaute öffentliche Abzeichen; keine privaten Daten oder fremden URLs abrufen.
+            if(!/^assets\/member-insignia\/[a-z0-9-]+\.(png|jpg)$/.test(block.src))throw Error('Ungültige Abzeichenquelle.');
+            if(!images.has(block.src)){
+              const response=await global.fetch(block.src,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(10000)});
+              if(!response.ok)throw Error('Ein Abzeichen konnte nicht geladen werden. Bitte erneut versuchen.');
+              const bytes=await response.arrayBuffer();images.set(block.src,block.src.endsWith('.jpg')?await pdf.embedJpg(bytes):await pdf.embedPng(bytes));
+            }
+            image=images.get(block.src);
+          }
+          const offset=image?76:10,lines=wrap(block.value,W-offset-12,10,true),details=wrap(block.detail,W-offset-12,8),height=Math.max(image?86:56,lines.length*14+details.length*11+34);ensure(height+8);
+          page.drawRectangle({x:L,y:y-height,width:W,height,color:pale});
+          if(image){const scale=Math.min(58/image.width,70/image.height);page.drawImage(image,{x:L+9+(58-image.width*scale)/2,y:y-height/2-image.height*scale/2,width:image.width*scale,height:image.height*scale});}
+          let top=y-8;draw(block.label,L+offset,top,8,false,muted);top-=15;
+          lines.forEach(value=>{draw(value,L+offset,top,10,true);top-=14;});details.forEach(value=>{draw(value,L+offset,top-3,8,false,muted);top-=11;});y-=height+8;
+        }else if(block.kind==='heading'){if(block.value!==section.title)heading(block.value);}
         else if(block.kind==='paragraph')paragraph(block.value);
         else if(block.kind==='row')cells([block.label,block.value],[W*.55,W*.45],false,true);
         else if(block.kind==='bar'){
@@ -99,7 +130,7 @@
             prepared.forEach((item,index)=>{const x=L+index*(width+10);page.drawRectangle({x,y:y-height,width,height,color:pale});let top=y-8;item.label.forEach(value=>{draw(value,x+8,top,8,true);top-=11;});top-=5;item.value.forEach(value=>{draw(value,x+8,top,17,true,green);top-=20;});item.detail.forEach(value=>{draw(value,x+8,top,8,false,muted);top-=11;});});y-=height+12;
           }
         }else if(block.kind==='ring'){
-          const legend=block.legend.map((value,index)=>({lines:wrap(value,W-145,9),color:block.segments[index]?.color||'#667680'})),detail=wrap(block.detail||'',W-145,9),height=Math.max(110,(legend.reduce((sum,item)=>sum+item.lines.length,0)+detail.length)*13+25);ensure(height);
+          const legend=block.legend.map((value,index)=>({lines:wrap(value,W-145,9),color:block.legendColors?.[index]||block.segments[index]?.color||'#667680'})),detail=wrap(block.detail||'',W-145,9),height=Math.max(110,(legend.reduce((sum,item)=>sum+item.lines.length,0)+detail.length)*13+25);ensure(height);
           if(block.label){draw(block.label,L,y,10,true);y-=18;}
           const cx=L+50,cy=y-40,radius=33;
           const tone=hex=>rgb(parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255);

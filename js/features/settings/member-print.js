@@ -185,31 +185,75 @@
     status.textContent=(selection.mode==='selected'?'Ausgewählte Person':selection.mode==='all'?'Alle Mitglieder':'Jahresauswahl '+(validYear?selection.year:'–'))+': '+count+' '+(count===1?'Person':'Personen')+' für den Druck.';
     form.querySelector('[data-print-submit]').disabled=!validYear&&selection.mode==='year'||count===0;
   }
+  let previewGeneration=0,previewUrl='',previewSource='',previewFocus=null;
+  function sourceKey(){return JSON.stringify([typeof oneDriveSessionEpoch==='undefined'?0:oneDriveSessionEpoch,typeof oneDriveSharedRoot==='undefined'?null:oneDriveSharedRoot?.id,typeof oneDriveSharedRoot==='undefined'?null:oneDriveSharedRoot?.parentReference?.driveId]);}
+  function clear(){
+    previewGeneration++;previewSource='';
+    if(previewUrl){global.URL.revokeObjectURL(previewUrl);previewUrl='';}
+    const host=document.getElementById('memberPrintRoot');
+    if(host?.open)host.close();
+    host?.replaceChildren();
+    if(previewFocus?.isConnected)previewFocus.focus({preventScroll:true});previewFocus=null;
+  }
+  function previewAuthorized(){
+    return previewSource===sourceKey()&&typeof adminUnlocked!=='undefined'&&adminUnlocked&&typeof checkAdminSession==='function'&&checkAdminSession()&&typeof oneDriveAdministrationReady==='function'&&oneDriveAdministrationReady();
+  }
+  function pdfModel(host,settings){
+    return {kind:'members',title:'Mitgliederakten',subtitle:settings.mode==='year'?'Ausbildung und Beförderung im Jahr '+settings.year:'Gespeicherte Stammdaten und Laufbahn',
+      sections:[...host.querySelectorAll('.member-print-person')].map(person=>({title:person.querySelector('h1').textContent,newPage:true,blocks:global.StatisticsPdf.collect(person)}))};
+  }
+  function nativePrint(){
+    if(!previewAuthorized()){clear();global.showToast?.('Bitte die Verwaltung erneut öffnen und die Druckansicht neu erstellen.','error');return;}
+    const host=document.getElementById('memberPrintRoot'),status=host.querySelector('[data-member-pdf-status]');
+    status.textContent='Druckdialog angefordert. Falls er nicht erscheint, kannst du die fertige PDF öffnen oder speichern.';
+    try{if(typeof global.print!=='function')throw Error();global.print();}
+    catch{status.textContent='Der Druckdialog ist hier nicht verfügbar. Bitte die PDF öffnen oder speichern.';}
+  }
+  async function preparePdf(host,settings,request){
+    const status=host.querySelector('[data-member-pdf-status]');
+    try{
+      if(!global.StatisticsPdf?.create)throw Error('Das PDF-Modul ist nicht geladen. Bitte die App aktualisieren.');
+      const blob=await global.StatisticsPdf.create(pdfModel(host,settings));
+      if(request!==previewGeneration)return;
+      if(!previewAuthorized()){clear();return;}
+      previewUrl=global.URL.createObjectURL(blob);
+      const open=host.querySelector('[data-member-pdf-open]'),save=host.querySelector('[data-member-pdf-save]');
+      open.href=save.href=previewUrl;
+      save.download='Feuerwehr-Wasser-Personenakten-'+(settings.mode==='year'?settings.year:new Date().toLocaleDateString('sv-SE'))+'.pdf';
+      open.hidden=save.hidden=false;
+      status.textContent='PDF ist fertig. Öffnen oder auf dem Gerät speichern; über die PDF ist auch Drucken möglich.';
+    }catch(error){if(request===previewGeneration)status.textContent='PDF konnte nicht erstellt werden. '+(error.message||'Bitte die Vorschau schließen und erneut versuchen.');}
+  }
   function printNow(){
     const form=document.getElementById('memberPrintControls');
     if(!form||typeof requireAdmin!=='function'||!requireAdmin('settingsMembersView'))return;
+    const report=message=>{form.querySelector('#memberPrintResult').textContent=message;global.showToast?.(message,'error');};
     if(global.Usability?.hasMemberDraft?.()){
-      global.showToast?.('Bitte zuerst offene Mitgliederänderungen speichern oder verwerfen, damit der Ausdruck den gespeicherten Daten entspricht.','error');return;
+      report('Bitte zuerst offene Mitgliederänderungen speichern oder verwerfen, damit der Ausdruck den gespeicherten Daten entspricht.');return;
     }
     const settings=selectionFromForm(form),yearNow=new Date().getFullYear();
     if(settings.mode==='year'&&(!Number.isInteger(settings.year)||settings.year<1900||settings.year>yearNow)){
-      global.showToast?.('Bitte ein gültiges Jahr zwischen 1900 und '+yearNow+' eingeben.','error');return;
+      report('Bitte ein gültiges Jahr zwischen 1900 und '+yearNow+' eingeben.');return;
     }
     if(!['all','selected','year'].includes(settings.mode))return;
     const all=typeof members!=='undefined'?members:[];
-    const list=candidates(all,settings);
-    if(!list.length){global.showToast?.('Keine passenden Mitglieder mit gespeicherten Einträgen gefunden.','error');return;}
-    const host=document.getElementById('memberPrintRoot')||document.createElement('div');
-    host.id='memberPrintRoot';
-    host.setAttribute('aria-label','Druckansicht der Mitgliederakten');
-    const history=typeof statisticsArchiveData==='function'?statisticsArchiveData():[];
-    host.innerHTML=documentHtml(all,settings,history);
-    if(!host.isConnected)document.body.append(host);
-    const cleanup=()=>{host.replaceChildren();global.removeEventListener('afterprint',cleanup);};
-    global.addEventListener('afterprint',cleanup,{once:true});
-    // Das native iPad-/Browser-Druckmenü erlaubt auch "Als PDF sichern".
-    // Direkt innerhalb des Klicks auslösen: iPadOS/Safari erwartet eine Benutzeraktion.
-    global.print();
+    if(!candidates(all,settings).length){report('Keine passenden Mitglieder mit gespeicherten Einträgen gefunden.');return;}
+    let host=document.getElementById('memberPrintRoot');
+    clear();previewFocus=document.activeElement;previewSource=sourceKey();
+    if(host&&host.localName!=='dialog'){host.remove();host=null;}
+    if(!host){
+      host=document.createElement('dialog');host.id='memberPrintRoot';host.setAttribute('aria-labelledby','memberPrintPreviewTitle');
+      host.addEventListener('close',()=>{if(!host.open)clear();});document.body.append(host);
+    }
+    try{
+      const history=typeof statisticsArchiveData==='function'?statisticsArchiveData():[];
+      host.innerHTML='<header class="member-print-toolbar"><h2 id="memberPrintPreviewTitle" tabindex="-1">Druckansicht / PDF</h2><p role="status" aria-live="polite" data-member-pdf-status>PDF wird erstellt …</p><div><a class="primary-button" data-member-pdf-open target="_blank" rel="noopener noreferrer" hidden>PDF öffnen</a><a class="outline-button" data-member-pdf-save hidden>PDF speichern</a><button type="button" class="outline-button" data-member-native-print>Drucken</button><button type="button" class="outline-button" data-member-preview-close>Schließen</button></div></header><div class="member-print-document">'+documentHtml(all,settings,history)+'</div>';
+      host.querySelector('[data-member-preview-close]').addEventListener('click',()=>host.close());
+      host.querySelector('[data-member-native-print]').addEventListener('click',nativePrint);
+      for(const link of host.querySelectorAll('[data-member-pdf-open],[data-member-pdf-save]'))link.addEventListener('click',event=>{if(!previewAuthorized()){event.preventDefault();clear();report('Die Verwaltungssitzung wurde beendet. Bitte die Druckansicht neu erstellen.');}});
+      host.showModal();host.querySelector('#memberPrintPreviewTitle').focus({preventScroll:true});
+      void preparePdf(host,settings,++previewGeneration);
+    }catch(error){clear();report('Druckansicht konnte nicht erstellt werden. '+(error.message||'Bitte erneut versuchen.'));}
   }
   function mount(){
     const target=document.getElementById('memberAdmin');
@@ -229,7 +273,7 @@
     target.addEventListener('click',event=>{if(event.target.closest('[data-record-choice]'))queueMicrotask(updateForm);});
     updateForm();
   }
-  global.MemberRecordsPrint={candidates,matchedInYear,documentHtml,currentRank,functionsFor,participation,participationHtml,printNow,mount,updateForm};
+  global.MemberRecordsPrint={candidates,matchedInYear,documentHtml,currentRank,functionsFor,participation,participationHtml,pdfModel,printNow,nativePrint,clear,mount,updateForm};
   if(typeof document!=='undefined'){
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
     else mount();

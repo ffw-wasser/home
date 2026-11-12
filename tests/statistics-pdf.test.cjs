@@ -9,3 +9,10 @@ test('PDF enthält echte Seiten, Text und Vektorbalken; lange Daten werden umgeb
  for(const page of doc.getPages()){assert.equal(page.getWidth(),595);assert.equal(page.getHeight(),842);}
 });
 test('Fehlendes PDF-Modul liefert einen verständlichen Fehler statt einer leeren Ausgabe',async()=>{await assert.rejects(()=>fixture().create({title:'Test',sections:[]},null),/PDF-Modul ist nicht geladen/);});
+
+test('Mitglieder-PDF beginnt jede weitere Person auf einer neuen Seite und verbietet fremde Abzeichenquellen',async()=>{
+ const model={kind:'members',title:'Mitgliederakten',sections:[{title:'Anna Muster',newPage:true,blocks:[{kind:'row',label:'Eintrittsdatum',value:'17.03.2001'},{kind:'insignia',src:'',label:'Ehrung',value:'Besonderer Dank',detail:'Verliehen am 01.05.2024'}]},{title:'Ben Beispiel',newPage:true,blocks:[{kind:'paragraph',value:'Weitere Person'}]}]};
+ const doc=await PDFLib.PDFDocument.load(new Uint8Array(await (await fixture().create(model)).arrayBuffer()));
+ assert.equal(doc.getPageCount(),2);const raw=content(doc);for(const value of ['Anna Muster','17.03.2001','Besonderer Dank','Ben Beispiel'])assert.ok(raw.includes(value),value);
+ await assert.rejects(()=>fixture().create({kind:'members',title:'Test',sections:[{title:'Test',blocks:[{kind:'insignia',src:'https://example.com/private.png'}]}]}),/Ungültige Abzeichenquelle/);
+});
