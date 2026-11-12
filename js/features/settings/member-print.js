@@ -145,6 +145,7 @@
       '<header class="member-print-top"><span>Feuerwehr Emmendingen · Abteilung Wasser</span><span>Interne Personalakte</span></header>'+
       '<div class="member-print-title"><div><p>Personalakte</p><h1>'+escape(fullName(person))+'</h1></div><span class="member-print-pagenum">'+number+' / '+total+'</span></div>'+
       (year?'<div class="member-print-year-label">Jahresauswahl '+year+' · Lehrgänge, Fortbildungen und Dienstgrade</div>':'')+
+      (window.MemberCareer?.honorsHtml(all)||'')+
       '<section class="member-print-details"><h2>Stammdaten</h2><dl>'+
       '<div><dt>Nachname</dt><dd>'+escape(person.lastName||'–')+'</dd></div>'+
       '<div><dt>Vorname</dt><dd>'+escape(person.firstName||'–')+'</dd></div>'+

@@ -79,3 +79,19 @@ test('Gemeinsamer Katalog wird im Komplettbackup erhalten',()=>{
  const backup=Backup.create({members:[{id:'m1',lastName:'Muster',firstName:'Marie'}],careerCatalog:terms,entries:[],csvArchive:[],roleTargets:{}});
  assert.deepEqual(Backup.normalize(backup).careerCatalog,terms);
 });
+
+test('Abzeichen gehören exakt zu FF-Dienstgrad und erworbener Auszeichnung',()=>{
+ const m=api();
+ assert.equal(m.insigniaAsset({type:'rank',title:'Oberfeuerwehrfrau'}),'senior-firefighter.png');
+ assert.equal(m.insigniaAsset({type:'rank',title:'Oberfeuerwehrmann'}),'senior-firefighter.png');
+ assert.equal(m.insigniaAsset({type:'rank',title:'Brandoberinspektor'}),'');
+ assert.equal(m.insigniaAsset({type:'award',title:'Leistungsabzeichen Silber'}),'achievement-silver.png');
+ assert.equal(m.insigniaAsset({type:'award',title:'Feuerwehr-Leistungsabzeichen Gold'}),'achievement-gold.png');
+ assert.equal(m.insigniaAsset({type:'training',title:'Leistungsabzeichen Gold'}),'');
+ assert.equal(m.insigniaAsset({type:'award',title:'Freies Abzeichen'}),'');
+ const html=m.honorsHtml([{type:'rank',title:'Feuerwehrfrau',date:'2020-01-01'},{type:'rank',title:'Oberfeuerwehrfrau',date:'2024-05-01'},{type:'rank',title:'Hauptfeuerwehrfrau',date:'2099-01-01'},{type:'award',title:'Leistungsabzeichen Gold',date:'2024-06-01'}]);
+ assert.match(html,/Oberfeuerwehrfrau/);assert.doesNotMatch(html,/>Feuerwehrfrau<|Hauptfeuerwehrfrau/);
+ assert.match(html,/01.05.2024/);assert.match(html,/achievement-gold.png/);
+ assert.equal(m.honorsHtml([]),'');
+ for(const name of ['Feuerwehrfrau','Oberfeuerwehrfrau','Löschmeisterin','Leitende Hauptbrandmeisterin'])assert.ok(fs.existsSync(path.join(__dirname,'../assets/member-insignia',m.insigniaAsset({type:'rank',title:name}))));
+});

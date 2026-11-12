@@ -85,12 +85,38 @@
     if(list)list.innerHTML=suggestions(type,people).map(title=>'<option value="'+escape(title)+'"></option>').join('');
   }
   function currentRank(all){return all.filter(item=>item.type==='rank').slice().sort((a,b)=>b.date.localeCompare(a.date))[0]?.title||'Kein Dienstgrad hinterlegt';}
+  const RANK_ASSETS=['trainee','firefighter','senior-firefighter','chief-firefighter','crew-chief','senior-crew-chief','chief-crew-chief','officer','senior-officer','chief-officer','leading-chief-officer'];
+  function insigniaAsset(item){
+    const title=String(item?.title||'').trim().toLocaleLowerCase('de');
+    if(item?.type==='rank'){
+      const index=FF_RANKS.findIndex(rank=>rank.toLocaleLowerCase('de')===title);
+      return index<0?'':RANK_ASSETS[Math.floor(index/2)]+'.png';
+    }
+    if(item?.type==='award'){
+      const match=/^(?:feuerwehr-)?leistungsabzeichen (bronze|silber|gold)$/.exec(title);
+      if(match)return 'achievement-'+({bronze:'bronze',silber:'silver',gold:'gold'}[match[1]])+'.png';
+      if(title==='leistungsspange der deutschen jugendfeuerwehr')return 'youth-clasp.png';
+    }
+    return '';
+  }
+  function insigniaHtml(item){
+    const asset=insigniaAsset(item);
+    return asset?'<img class="member-insignia member-insignia-'+item.type+'" src="assets/member-insignia/'+asset+'" alt="" aria-hidden="true" width="80" height="80">':'';
+  }
+  function honorsHtml(all){
+    const attained=all.filter(item=>validDate(item.date)&&item.date<=new Date().toLocaleDateString('sv-SE'));
+    const rank=attained.filter(item=>item.type==='rank').sort((a,b)=>b.date.localeCompare(a.date))[0];
+    const awards=attained.filter(item=>item.type==='award').sort((a,b)=>b.date.localeCompare(a.date));
+    if(!rank&&!awards.length)return '';
+    const tile=(item,label)=>'<div class="member-honor member-honor-'+item.type+'">'+insigniaHtml(item)+'<div><small>'+label+'</small><strong>'+escape(item.title)+'</strong><time datetime="'+escape(item.date)+'">'+(item.type==='rank'?'Seit ':'Erworben am ')+formatDate(item.date)+'</time></div></div>';
+    return '<section class="member-honors" aria-label="Dienstgrad und erworbene Leistungszeichen">'+(rank?tile(rank,'Aktueller Dienstgrad'):'')+(awards.length?'<div class="member-honors-awards">'+awards.map(item=>tile(item,'Leistungszeichen')).join('')+'</div>':'')+'</section>';
+  }
   function rowEntries(row){return validate(JSON.parse(row.querySelector('[data-career-json]').value||'[]'));}
   function formatDate(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?m[3]+'.'+m[2]+'.'+m[1]:escape(value);}
   function groupHtml(type,all){
     const list=all.map((item,index)=>({...item,index})).filter(item=>item.type===type.key).sort((a,b)=>b.date.localeCompare(a.date));
     return '<section class="career-category"><header class="career-category-heading"><h4>'+escape(type.label)+'</h4><button type="button" class="outline-button" data-career-add="'+type.key+'">+ Hinzufügen</button></header>'+
-      (list.length?'<ul class="career-entry-list">'+list.map(item=>'<li class="career-entry"><div class="career-entry-icon" aria-hidden="true">'+(type.key==='rank'?'◆':type.key==='award'?'★':'✓')+'</div><div class="career-entry-text"><strong>'+escape(item.title)+'</strong><small>Erworben am '+formatDate(item.date)+'</small>'+(item.notes?'<p>'+escape(item.notes)+'</p>':'')+'</div><button type="button" class="career-edit-button" data-career-edit="'+item.index+'" aria-label="'+escape(item.title)+' bearbeiten">Bearbeiten</button><button type="button" class="career-delete-button" data-career-delete="'+item.index+'" aria-label="'+escape(item.title)+' entfernen">Entfernen</button></li>').join('')+'</ul>':'<p class="career-empty">Noch kein Eintrag hinterlegt.</p>')+'</section>';
+      (list.length?'<ul class="career-entry-list">'+list.map(item=>'<li class="career-entry"><div class="career-entry-icon" aria-hidden="true">'+(insigniaHtml(item)||(type.key==='rank'?'◆':type.key==='award'?'★':'✓'))+'</div><div class="career-entry-text"><strong>'+escape(item.title)+'</strong><small>Erworben am '+formatDate(item.date)+'</small>'+(item.notes?'<p>'+escape(item.notes)+'</p>':'')+'</div><button type="button" class="career-edit-button" data-career-edit="'+item.index+'" aria-label="'+escape(item.title)+' bearbeiten">Bearbeiten</button><button type="button" class="career-delete-button" data-career-delete="'+item.index+'" aria-label="'+escape(item.title)+' entfernen">Entfernen</button></li>').join('')+'</ul>':'<p class="career-empty">Noch kein Eintrag hinterlegt.</p>')+'</section>';
   }
   function render(member){
     const all=entries(member);
@@ -102,6 +128,7 @@
   function summary(row){
     const all=rowEntries(row),rank=currentRank(all);
     const node=row.querySelector('[data-record-current-rank]');if(node)node.textContent=rank;
+    const honors=row.querySelector('[data-record-honors]');if(honors)honors.innerHTML=honorsHtml(all);
     const count=row.querySelector('[data-record-qualification-count]');if(count)count.textContent=all.filter(item=>item.type==='course'||item.type==='training').length;
     const awards=row.querySelector('[data-record-awards-count]');if(awards)awards.textContent=all.filter(item=>item.type==='award').length;
     const preview=row.querySelector('[data-record-career-preview]');
@@ -167,5 +194,5 @@
     const all=rowEntries(row),item=all[index];
     if(confirm('„'+item.title+'“ wirklich aus der Laufbahn entfernen?')){all.splice(index,1);update(row,all);}
   });
-  global.MemberCareer={render,validate,summary,currentRank,entries,suggestions,volunteerCatalogItem,catalogEntries,mergedCatalog};
+  global.MemberCareer={insigniaAsset,insigniaHtml,honorsHtml,render,validate,summary,currentRank,entries,suggestions,volunteerCatalogItem,catalogEntries,mergedCatalog};
 })(window);

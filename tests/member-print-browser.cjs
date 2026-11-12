@@ -23,7 +23,7 @@ const root=path.resolve(__dirname,'..');
    window.printCalls=0;window.print=()=>window.printCalls++;
    members=[
     {id:'person-a',firstName:'Anna',lastName:'Muster',roles:['GF'],machinistVehicles:['LF'],driverLicenseCheckedOn:'2026-08-01',
-     careerEntries:[{type:'course',title:'Truppführer',date:'2024-03-01',notes:''},{type:'rank',title:'Oberfeuerwehrfrau',date:'2023-01-01',notes:''}],
+     careerEntries:[{type:'course',title:'Truppführer',date:'2024-03-01',notes:''},{type:'rank',title:'Oberfeuerwehrfrau',date:'2023-01-01',notes:''},{type:'award',title:'Feuerwehr-Leistungsabzeichen Gold',date:'2024-06-01'},{type:'award',title:'Leistungsspange der Deutschen Jugendfeuerwehr',date:'2020-05-01'}],
      whatsappPhone:'+49123456',drinkPin:'9876',g263ValidUntil:'2028-02'},
     {id:'person-b',firstName:'Ben',lastName:'Beispiel',roles:[],careerEntries:[{type:'award',title:'Leistungsabzeichen Silber',date:'2024-05-01',notes:''}]},
     {id:'guest-c',firstName:'Cora',lastName:'Fitness',fitnessTrainer:true,roles:[],careerEntries:[{type:'course',title:'Fortbildung',date:'2024-03-01',notes:''}]}
@@ -39,6 +39,15 @@ const root=path.resolve(__dirname,'..');
   });
   const scope=page.locator('#memberPrintScope'),year=page.locator('#memberPrintYear'),button=page.locator('[data-print-submit]');
   await page.locator('[data-record-choice="person-a"]').click();
+  const honors=page.locator('article[data-member-id="person-a"] [data-record-honors]');
+  assert.equal(await honors.locator('img').count(),3);
+  await page.waitForFunction(()=>[...document.querySelectorAll('[data-record-honors] img')].every(img=>img.complete&&img.naturalWidth>0));
+  for(const width of [390,768,1100]){
+   await page.setViewportSize({width,height:1000});
+   assert.equal(await honors.evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Abzeichen passen bei '+width+'px');
+   if(width===1100&&process.env.CAPTURE_MEMBER_HONORS_HELP){fs.mkdirSync(path.join(root,'qa/member-honors'),{recursive:true});await page.locator('.person-record-main').screenshot({path:path.join(root,'qa/member-honors/overview.png')});}
+  }
+  await page.setViewportSize({width:390,height:844});
   await scope.selectOption('selected');
   assert.match(await page.locator('#memberPrintResult').innerText(),/1 Person/);
   await button.click();
@@ -49,6 +58,7 @@ const root=path.resolve(__dirname,'..');
   assert.match(await page.locator('#memberPrintRoot').innerText(),/Proben & Unterricht/);
   assert.match(await page.locator('#memberPrintRoot').innerText(),/Nicht als Teilnehmer erfasst/);
   assert.equal(await page.locator('#memberPrintRoot .member-print-ring text').first().textContent(),'50 %');
+  assert.equal(await page.locator('#memberPrintRoot .member-insignia').count(),3,'Erworbene Abzeichen werden mitgedruckt');
   const html=await page.locator('#memberPrintRoot').innerHTML();
   for(const value of ['+49123456','9876','2028-02'])assert.ok(!html.includes(value),'Vertrauliche Daten nicht drucken: '+value);
   await page.emulateMedia({media:'print'});
