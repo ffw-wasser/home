@@ -117,7 +117,9 @@ async function oneDriveAccessToken(force=false,rejectedToken=""){
   const saved=localStorage.getItem(OD_TOKEN_KEY),epoch=oneDriveSessionEpoch;
   oneDriveTokenRefresh=(async()=>{
     const c=odConfig(),body=new URLSearchParams({client_id:c.clientId,grant_type:"refresh_token",refresh_token:token.refresh_token,scope:c.scope});
-    const response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
+    let response;
+    try{response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});}
+    catch(error){throw odNetworkError(error,'Microsoft-Anmeldung erneuern');}
     const data=await response.json();assertOneDriveSession(epoch);
     if(!response.ok){const required=['invalid_grant','interaction_required','login_required','consent_required'].includes(data.error);oneDriveNeedsLogin=required;if(required)oneDriveAccessConfirmed=false;const error=new Error(required?"OneDrive-Anmeldung muss erneuert werden. Bitte Anmeldung erneuern wählen.":"OneDrive-Anmeldung konnte derzeit nicht erneuert werden. Bitte später erneut synchronisieren.");error.status=response.status;error.code=data.error;throw error;}
     if(localStorage.getItem(OD_TOKEN_KEY)!==saved)throw new Error("OneDrive-Anmeldung wurde während des Abrufs geändert. Bitte erneut synchronisieren.");
@@ -133,6 +135,38 @@ function odRetryDelay(response,attempt){
   const date=header?Date.parse(header):NaN;
   if(Number.isFinite(date))return Math.max(0,date-Date.now());
   return Math.min(1000*2**attempt,8000);
+}
+// Microsoft /content can fail at the browser's CORS redirect. Resolve the
+// temporary download URL through authenticated Graph, then use a simple GET.
+function odDownloadMetadataUrl(address){
+ try{const u=new URL(address);if(u.origin!=="https://graph.microsoft.com"||!u.pathname.endsWith("/content")||u.search)return "";u.pathname=u.pathname.slice(0,-8).replace(/:$/,'');u.search='?$select=id,eTag,@microsoft.graph.downloadUrl';return u.href;}catch{return "";}
+}
+function odNetworkError(error,stage){if(error&&typeof error.message==='string'&&!error.oneDriveStage){error.message=stage+": "+error.message;error.oneDriveStage=stage;}return error;}
+async function odBrowserDownload(metadataUrl,options={}){
+ const epoch=oneDriveSessionEpoch,expected=new Headers(options.headers||{}).get('If-Match');
+ const check=()=>{assertOneDriveSession(epoch);if(options.signal?.aborted)throw Object.assign(new Error('OneDrive-Abruf abgebrochen.'),{name:'AbortError'});};
+ for(let attempt=0;attempt<2;attempt++){
+  check();const metadata=await (await odFetch(metadataUrl,{signal:options.signal,cache:'no-store'})).json();check();
+  if(expected&&expected!=='*'&&metadata.eTag!==expected)throw Object.assign(new Error('Die OneDrive-Dateiversion wurde geändert. Bitte erneut laden.'),{status:412});
+  let download;try{download=new URL(metadata['@microsoft.graph.downloadUrl']);}catch{throw new Error('OneDrive hat keine gültige Downloadadresse geliefert.');}
+  const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','sharepoint.com','sharepoint-df.com','storage.live.com'].some(domain=>host===domain||host.endsWith('.'+domain));
+  if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert.');
+  const controller=typeof AbortController!=='undefined'?new AbortController():null,cancel=()=>controller?.abort();
+  let timer,response;
+  if(controller){oneDriveRequests.add(controller);options.signal?.addEventListener('abort',cancel,{once:true});timer=setTimeout(cancel,25000);}
+  try{
+   check();
+   // Never forward bearer tokens, If-Match, cookies or a referrer to the
+   // pre-authorized URL. It is kept only in this local request, never stored.
+   response=await fetch(download.href,{method:'GET',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',cache:'no-store',...(controller?{signal:controller.signal}:options.signal?{signal:options.signal}:{})});check();
+  }catch(error){check();throw odNetworkError(error,'OneDrive-Datei direkt herunterladen');}
+  finally{clearTimeout(timer);if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener('abort',cancel);}
+  // A temporary signed URL can expire. Resolve it once more, not indefinitely.
+  if((response.status===401||response.status===403)&&attempt===0)continue;
+  if(!response.ok)throw Object.assign(new Error('OneDrive-Dateidownload fehlgeschlagen ('+response.status+').'),{status:response.status});
+  if(expected){const after=await (await odFetch(metadataUrl,{signal:options.signal,cache:'no-store'})).json();check();if(after.eTag!==metadata.eTag)throw Object.assign(new Error('Die OneDrive-Datei wurde während des Downloads geändert. Bitte erneut laden.'),{status:412});}
+  return response;
+ }
 }
 async function odFetch(url,options={},retry=true){
   const epoch=oneDriveSessionEpoch;
@@ -152,7 +186,9 @@ async function odFetch(url,options={},retry=true){
     try{response=await fetch(url,{...options,headers,...(controller?{signal:controller.signal}:{})});assertOneDriveSession(epoch);}
     catch(error){
       assertOneDriveSession(epoch);
-      if(!retry||!readable||error?.name==="AbortError"||options.signal?.aborted||navigator.onLine===false||attempts>=3)throw error;
+      const metadataUrl=readable&&String(options.method||'GET').toUpperCase()==='GET'&&odDownloadMetadataUrl(url);
+      if(retry&&metadataUrl&&error?.name==='TypeError'&&!options.signal?.aborted&&navigator.onLine!==false)return odBrowserDownload(metadataUrl,options);
+      if(!retry||!readable||error?.name==="AbortError"||options.signal?.aborted||navigator.onLine===false||attempts>=3)throw odNetworkError(error,'OneDrive-Ordner oder Metadaten abrufen');
       await new Promise(resolve=>setTimeout(resolve,odRetryDelay(null,attempts++)));continue;
     }
     finally{if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener("abort",cancel);}
