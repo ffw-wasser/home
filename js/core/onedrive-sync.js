@@ -146,9 +146,18 @@ async function odBrowserDownload(metadataUrl,options={}){
  const epoch=oneDriveSessionEpoch,expected=new Headers(options.headers||{}).get('If-Match');
  const check=()=>{assertOneDriveSession(epoch);if(options.signal?.aborted)throw Object.assign(new Error('OneDrive-Abruf abgebrochen.'),{name:'AbortError'});};
  for(let attempt=0;attempt<2;attempt++){
-  check();const metadata=await (await odFetch(metadataUrl,{signal:options.signal,cache:'no-store'})).json();check();
+  check();let metadata=await (await odFetch(metadataUrl,{signal:options.signal,cache:'no-store'})).json();check();
+  // Some OneDrive responses omit download annotations from a projection.
+  // Retry the exact same item without $select, never a different drive/path.
+  const addressOf=item=>item?.['@microsoft.graph.downloadUrl']||item?.['@content.downloadUrl'];
+  if(!addressOf(metadata)){
+   const fullUrl=new URL(metadataUrl);fullUrl.search='';
+   const full=await (await odFetch(fullUrl.href,{signal:options.signal,cache:'no-store'})).json();check();
+   if(!metadata.id||full.id!==metadata.id)throw Object.assign(new Error('Die OneDrive-Dateizuordnung konnte nicht bestätigt werden.'),{status:412});
+   metadata=full;
+  }
   if(expected&&expected!=='*'&&metadata.eTag!==expected)throw Object.assign(new Error('Die OneDrive-Dateiversion wurde geändert. Bitte erneut laden.'),{status:412});
-  let download;try{download=new URL(metadata['@microsoft.graph.downloadUrl']);}catch{throw new Error('OneDrive hat keine gültige Downloadadresse geliefert.');}
+  let download;try{download=new URL(addressOf(metadata));}catch{throw new Error('OneDrive-Dateimetadaten enthalten keine gültige Downloadadresse ('+(metadata.folder?'Ordner':metadata.file?'Datei':metadata.remoteItem?'Verknüpfung':'unvollständige Dateiangaben')+').');}
   const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','sharepoint.com','sharepoint-df.com','storage.live.com'].some(domain=>host===domain||host.endsWith('.'+domain));
   if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert.');
   const controller=typeof AbortController!=='undefined'?new AbortController():null,cancel=()=>controller?.abort();
