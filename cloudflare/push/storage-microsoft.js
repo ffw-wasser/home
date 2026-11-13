@@ -23,7 +23,10 @@
   const ledger=await g.CentralLedger.meta(env),source=ledger?.source||'',index=source.indexOf(':');
   if(ledger?.state!=='active'||index<1||Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(source))),x=>x.toString(16).padStart(2,'0')).join('')!==cfg.source_hash)fail('Die Datenquelle wurde geändert.',409);
   const drive=source.slice(0,index),item=source.slice(index+1),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);let response,folder;
-  try{response=await fetch('https://graph.microsoft.com/v1.0/drives/'+encodeURIComponent(drive)+'/items/'+encodeURIComponent(item)+'?$select=id,parentReference,folder,deleted',{headers:{Authorization:'Bearer '+data.accessToken},redirect:'error',signal:controller.signal});if(response.ok)folder=await response.json();}catch{fail('Microsoft ist derzeit nicht erreichbar. Bitte erneut versuchen.',503);}finally{clearTimeout(timer);}
+  // Workers rejects redirect:'error' before making any request. Manual mode
+  // preserves the same no-redirect policy without forwarding the bearer token.
+  try{response=await fetch('https://graph.microsoft.com/v1.0/drives/'+encodeURIComponent(drive)+'/items/'+encodeURIComponent(item)+'?$select=id,parentReference,folder,deleted',{headers:{Authorization:'Bearer '+data.accessToken},redirect:'manual',signal:controller.signal});if(response.ok)folder=await response.json();}catch{fail('Microsoft ist derzeit nicht erreichbar. Bitte erneut versuchen.',503);}finally{clearTimeout(timer);}
+  if(response.status>=300&&response.status<400)fail('Microsoft hat die Ordnerprüfung unerwartet umgeleitet. Bitte die Verbindung erneut prüfen.',503);
   if(response.status===429||response.status>=500)fail('Microsoft ist derzeit nicht erreichbar. Bitte erneut versuchen.',503);
   if(!response.ok)fail(response.status===401?'Microsoft-Anmeldung abgelaufen. Bitte erneut anmelden.':'Dieses Microsoft-Konto hat keinen bestätigten Zugriff auf den gemeinsamen Ordner „Webseite“.',response.status===401?401:403);
   if(!folder.folder||folder.deleted||folder.id!==item||String(folder.parentReference?.driveId||'').toLowerCase()!==drive.toLowerCase())fail('Microsoft hat einen anderen Ordner zurückgegeben.');

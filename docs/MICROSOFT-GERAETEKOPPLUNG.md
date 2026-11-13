@@ -45,3 +45,7 @@ müssen vor der Freigabe mit den tatsächlichen Konten geprüft werden.
 Referenzen:
 - https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow
 - https://learn.microsoft.com/en-us/graph/api/driveitem-get?view=graph-rest-1.0
+
+Die serverseitige Graph-Anfrage verwendet Workers-kompatibles `redirect: manual`.
+Weiterleitungen werden abgelehnt; Microsoft-Tokens werden keinem weiteren Ziel übermittelt.
+Referenz: https://developers.cloudflare.com/workers/runtime-apis/request/
