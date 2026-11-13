@@ -150,3 +150,14 @@ html body .view[id^="settings"]>.screen-heading>.view-home-button{order:2}
  .settings-view>.screen-heading>div,.settings-subpage>.screen-heading>div{width:100%;min-width:0}
  .settings-view>.screen-heading>button,.settings-subpage>.screen-heading>.view-home-button{flex:none;width:100%;text-align:left;margin-left:0}
 }
+
+/* Shared spacing for the administration overview and its settings submenus. */
+#settingsView .administration-grid>.administration-card:last-child{grid-column:1/-1}
+#settingsOptionsView>.settings-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#settingsOptionsView>.settings-menu-grid>.administration-card{min-height:116px;padding:20px}
+#settingsOptionsView>.settings-advanced{margin-top:20px;padding:18px 20px;border:1px solid #c2cfd5;border-radius:14px;background:#f4f7f8}
+#settingsOptionsView>.settings-advanced>summary,#centralBackupCard>summary{cursor:pointer;font-weight:750;min-height:44px;align-content:center;overflow-wrap:anywhere}
+#settingsOptionsView>.settings-advanced[open]>button{margin-top:12px;min-height:44px;white-space:normal}
+#centralBackupCard[open]>article{margin-top:16px}
+#settingsDrinksView>.settings-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch}
+@media(max-width:600px){#settingsOptionsView>.settings-menu-grid,#settingsDrinksView>.settings-menu-grid{grid-template-columns:1fr}#settingsOptionsView>.settings-menu-grid>.administration-card{min-height:0;padding:18px}}

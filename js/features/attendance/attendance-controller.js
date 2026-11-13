@@ -68,7 +68,9 @@ function renderMembers() {
   members = sortMembers(members);
   const current = todayEntries();
   const recordedNames = new Set(current.flatMap(entry => [entry.storedName, entry.displayName].filter(Boolean)));
-  const eligibleMembers = members.filter(member => member.fitnessTrainer !== true &&
+  const audience=sessionType==="Einsatz"?null:window.PortalAdmin?.attendanceAudience?.();
+  const invited=Array.isArray(audience?.recipientIds)?new Set(audience.recipientIds.map(String)):null;
+  const eligibleMembers = members.filter(member => member.fitnessTrainer !== true && !audience?.pending && (!invited||invited.has(String(member.id))) &&
     (sessionType === "Ausschuss Sitzung" ? member.committeeMember : sessionType === "Einsatz" ? !member.ageDepartment : true));
   for(const member of members)if(member.fitnessTrainer===true)pendingMemberStatuses.delete(member.id);
   const availableMembers = eligibleMembers.filter(member => !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member)));
@@ -108,7 +110,7 @@ function renderMembers() {
     `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
     ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
-  byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
+  byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.</p>' : audience?.pending ? '<p class="empty-state" role="status">Die Gruppenzuordnung dieses Kalendertermins wird geprüft.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
   window.AttendanceSmart?.refresh(availableMembers.length);
   requestAnimationFrame(fitMemberLastNames);
   byId("memberCount").textContent = multiMode ? `${chosenMemberIds.size} ausgewählt · ${availableMembers.length} offen` : `${availableMembers.length} offen`;

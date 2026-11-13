@@ -174,3 +174,8 @@ test('Probe mit Funktionsverteilung verlangt weiterhin die Funktion einer qualif
   assert.equal(f.captured.length,0);
   assert.ok(f.calls.some(call=>call[0]==='toast'&&call[1].includes('Funktion')));
 });
+
+test('Calendar correction scopes the member picker and display without dropping historical rows on save',async()=>{
+ const f=fixture();f.c.members=[{id:'team',name:'Mustermann Erika'},{id:'outside',name:'Muster Max'},{id:'extra',name:'Weitere Person'}];f.c.correctArchiveItem(f.item.id,{audience:{recipientIds:['team','extra']}});assert.equal(f.c.archiveCorrectionIncludesMember(f.c.members[0]),true);assert.equal(f.c.archiveCorrectionIncludesMember(f.c.members[1]),false);assert.equal(f.c.archiveCorrectionIncludesRow(f.rows[0]),true);assert.equal(f.c.archiveCorrectionIncludesRow(f.rows[1]),false);assert.equal(f.c.archiveCorrectionState.rows.length,2);
+ f.get('archiveCorrectionList').children=[editableCard(0,'Mustermann Erika','Entschuldigt'),editableCard(1,'Muster Max','Fehlt')];await f.c.saveArchiveCorrectionStep2();assert.equal(f.captured.length,1);assert.equal(f.captured[0][1].length,2);assert.equal(f.captured[0][1][1].name,'Muster Max');assert.equal(f.captured[0][1][1].status,'Fehlt');
+});

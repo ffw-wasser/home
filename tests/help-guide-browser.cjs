@@ -23,7 +23,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const policy=guide.locator('a[href="privacy.html"]');assert.equal(await policy.count(),1);assert.equal(await policy.getAttribute('target'),'_blank');assert.match(await policy.innerText(),/Datenschutzerklärung/);assert.doesNotMatch(await guide.locator('.guide-privacy').innerText(),/G26|OneDrive|Cloudflare/);
   if(file==='deckel.html')assert.match(await guide.textContent(),/TestFlight\/App Store/,'Apple update settings remain discoverable');
   if(file==='deckel.html')assert.equal(await guide.locator('img[src="assets/help/guide/h2o-konto-loeschen.jpg"]').count(),1);
-  if(file==='index.html')assert.equal(await guide.locator('img[src="assets/help/guide/geraetehaus-backlog.jpg"]').count(),1,'Backlog is illustrated in the main administration guide');
+  if(file==='index.html')assert.equal(await guide.locator('img[src="assets/help/guide/geraetehaus-einstellungen.jpg"]').count(),1,'Unified settings are illustrated in the main administration guide');
   if(file==='index.html')assert.match(await guide.locator('.guide-manual').innerText(),/Persönliche Mitgliederakte/,'Personalakten-Anleitung mit Abzeichen bleibt auffindbar');
   const before=await page.evaluate(()=>location.hash);
   for(const width of [320,390,768,1280])for(const scale of [100,200]){

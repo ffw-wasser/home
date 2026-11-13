@@ -196,8 +196,8 @@
     "height": 900
   },
   "geraetehaus-getraenkeverwaltung": {
-    "width": 1366,
-    "height": 900
+    "width": 984,
+    "height": 473
   },
   "geraetehaus-konto": {
     "width": 1024,
@@ -205,7 +205,7 @@
   },
   "geraetehaus-sicherung": {
     "width": 984,
-    "height": 1922
+    "height": 1548
   },
   "h2o-atemschutz-ausbildung": {
     "width": 390,
@@ -269,6 +269,10 @@
   },
   "geraetehaus-cloudflare": {
     "width": 560,
-    "height": 880
+    "height": 601
+  },
+  "geraetehaus-einstellungen": {
+    "width": 984,
+    "height": 427
   }
 }

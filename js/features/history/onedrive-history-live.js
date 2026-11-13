@@ -25,7 +25,7 @@
   }
 
   async function zipFiles(root, itemId = root.id, depth = 0) {
-    if(window.CloudStorage?.connected&&itemId===root.id)return (await CloudStorage.walk('Berichte')).filter(file=>/\.(zip|csv|pdf)$/i.test(file.path)).map(file=>({id:file.id,name:file.name,path:file.path,file:{},size:file.size,eTag:'"f-'+file.version+'"',lastModifiedDateTime:file.modifiedAt}));
+    if(window.CloudStorage?.connected&&itemId===root.id)return (await CloudStorage.walk('Berichte')).filter(file=>/\.(zip|csv|pdf)$/i.test(file.path)).map(file=>({id:file.id,name:file.name,path:file.path,version:file.version,file:{},size:file.size,eTag:'"f-'+file.version+'"',lastModifiedDateTime:file.modifiedAt}));
     if (depth > 32) throw new Error('Die Berichtsordner sind zu tief verschachtelt.');
     const result = [];
     for (const item of await children(root, itemId)) {
@@ -36,6 +36,15 @@
   }
 
   async function itemBlob(root, item) {
+    // The authenticated listing already pins the file version. Read that exact
+    // version directly instead of fetching the same metadata once per report.
+    if(window.CloudStorage?.connected && item.path && Number.isSafeInteger(item.version) && item.version>0){
+      const epoch=loadEpoch,source=`${root.driveId}:${root.id}`;
+      if(CloudStorage.source!==source)throw new Error("Die Datenquelle wurde geändert.");
+      const bytes=await CloudStorage.readFile(item.path,item.version);
+      if(epoch!==loadEpoch||!oneDriveSignedIn()||CloudStorage.source!==source)throw new Error("Gerätezugang beendet. Abruf verworfen.");
+      return new Blob([bytes]);
+    }
     return (await odFetch(`h2o-storage://drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(item.id)}/content`)).blob();
   }
 

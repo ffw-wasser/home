@@ -41,3 +41,10 @@ test('Saved members disappear from the selection; deleting attendance restores t
   c.todayEntries=()=>[];c.renderMembers();assert.match(nodes.get('members').innerHTML,/data-quick-member="member"/);assert.match(nodes.get('memberCount').textContent,/2 offen$/);
  }
 });
+
+test('Calendar attendance displays only invited group members; empty or unconfirmed groups never expand to everyone',()=>{
+ const f=fixture('Unterricht');f.people.push({id:'outside',lastName:'Andere',firstName:'Gruppe'});let audience={recipientIds:['member']};f.c.window.PortalAdmin={attendanceAudience:()=>audience};f.c.renderMembers();assert.match(f.nodes.get('members').innerHTML,/data-quick-member="member"/);assert.doesNotMatch(f.nodes.get('members').innerHTML,/data-quick-member="outside"/);assert.match(f.nodes.get('memberCount').textContent,/1 offen$/);
+ audience={recipientIds:['outside']};f.c.renderMembers();assert.doesNotMatch(f.nodes.get('members').innerHTML,/data-quick-member="member"/);assert.match(f.nodes.get('members').innerHTML,/data-quick-member="outside"/);
+ for(const value of [{recipientIds:[]},{pending:true}]){audience=value;f.c.renderMembers();assert.doesNotMatch(f.nodes.get('members').innerHTML,/data-quick-member=/);assert.match(f.nodes.get('memberCount').textContent,/0 offen$/);}
+ audience=null;f.c.renderMembers();assert.match(f.nodes.get('memberCount').textContent,/2 offen$/);audience={recipientIds:[]};f.c.sessionType='Einsatz';f.c.renderMembers();assert.match(f.nodes.get('memberCount').textContent,/2 offen$/,'incident attendance keeps the eligible operational roster');
+});

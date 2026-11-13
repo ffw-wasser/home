@@ -78,6 +78,7 @@ function ensureSettingsNavigation(){
     pageButton.dataset.bound="true";
     pageButton.addEventListener("click",()=>{
       const target=pageButton.dataset.settingsPage;
+      if(target==="settingsPushView"&&!oneDriveAdministrationReady()){byId("cloudSyncButton")?.click();return;}
       pendingSettingsTarget=target;
       if((pageButton.hasAttribute("data-protected")||pageButton.hasAttribute("data-archive-protected"))&&!oneDriveAdministrationReady()){showToast("Bitte zuerst Cloudflare verbinden und erfolgreich synchronisieren.","error");pendingSettingsTarget="";window.WorkflowUX?.connectionNotice();return;}
       if(pageButton.hasAttribute("data-protected")&&!adminUnlocked)return showView("adminLoginView");
@@ -124,9 +125,9 @@ function restructureMainViews(){
 
 function buildSettingsSubpages(){
   const main=document.querySelector("main.app-shell"),legacyAdmin=byId("adminView");
-  const makePage=(id,title,description,node)=>{
+  const makePage=(id,title,description,node,parent="settingsView")=>{
     let page=byId(id);
-    if(!page){page=document.createElement("section");page.id=id;page.className="view settings-subpage";page.hidden=true;page.innerHTML=`<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>${title}</h2></div><button class="outline-button view-home-button" data-settings-back type="button">← Zur Verwaltung</button></div><div class="settings-subpage-content"></div>`;main.appendChild(page);page.querySelector("[data-settings-back]").addEventListener("click",()=>showView("settingsView"));}
+    if(!page){page=document.createElement("section");page.id=id;page.className="view settings-subpage";page.hidden=true;page.innerHTML=`<div class="screen-heading"><div><p class="eyebrow">Einstellungen</p><h2>${title}</h2></div><button class="outline-button view-home-button" data-settings-back type="button">${parent==="settingsView"?"← Zur Verwaltung":"← Zu Einstellungen"}</button></div><div class="settings-subpage-content"></div>`;main.appendChild(page);page.querySelector("[data-settings-back]").addEventListener("click",()=>showView(parent));}
     if(node)page.querySelector(".settings-subpage-content").appendChild(node);
     return page;
   };
@@ -138,8 +139,8 @@ function buildSettingsSubpages(){
     byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync');button.disabled=true;try{await window.PortalAdmin.syncRoster(true);}catch{/* The status card shows the confirmed sync result. */}finally{window.PortalAdmin.renderSyncStatus();}};
     window.PortalAdmin?.renderSyncStatus?.();
   }
-  const goalsPage=makePage("settingsGoalsView","Funktionsziele","Jährliche Mindestziele getrennt bearbeiten.",goals);
-  makePage("settingsSecurityView","Sicherheit","Admin-Passwort für geschützte Bereiche ändern.",pinArticle);
+  const goalsPage=makePage("settingsGoalsView","Funktionsziele","Jährliche Mindestziele getrennt bearbeiten.",goals,"settingsOptionsView");
+  makePage("settingsSecurityView","Sicherheit","Admin-Passwort für geschützte Bereiche ändern.",pinArticle,"settingsOptionsView");
   // Nummern aus der früheren Admin-Sammelansicht haben auf eigenständigen
   // Unterseiten keine Bedeutung mehr.
   [[membersPage,"4"],[goalsPage,"2"]].forEach(([page,legacyNumber])=>{
@@ -155,7 +156,7 @@ function buildSettingsSubpages(){
   const files=byId("settingsFilesView")||byId("archiveView");if(files){files.id="settingsFilesView";files.classList.add("settings-subpage");}
   for(const page of [statistics,history]){const back=page?.querySelector(".view-home-button");if(back)back.textContent="← Zum Termin";}
   const statisticsHome=statistics?.querySelector("[data-statistics-home]");if(statisticsHome)statisticsHome.onclick=()=>showView("attendanceView");
-  const filesBack=files?.querySelector(".view-home-button,[data-home-button]");if(filesBack){filesBack.textContent="← Zur Verwaltung";filesBack.onclick=()=>showView("settingsView");}
+  const filesBack=files?.querySelector(".view-home-button,[data-home-button]");if(filesBack){filesBack.textContent="← Zu Einstellungen";}
   legacyAdmin?.remove();
   document.querySelectorAll(".admin-section-nav,.admin-card-number").forEach(node=>node.remove());
   ensureArchiveStorageCenter();
@@ -187,7 +188,7 @@ byId("attendanceTab").addEventListener("click", () => {
   if(!requestReturnToHomeStage())return;
   if(showView("attendanceView")===false)return;
 });
-document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => {const target=button.closest("#settingsView")?"attendanceView":"settingsView";if(target==="attendanceView"&&!requestReturnToHomeStage())return;showView(target);}));
+document.querySelectorAll("[data-home-button]").forEach(button => button.addEventListener("click", () => {const target=button.closest("#settingsView")?"attendanceView":button.closest("#settingsFilesView,#archiveView")?"settingsOptionsView":"settingsView";if(target==="attendanceView"&&!requestReturnToHomeStage())return;showView(target);}));
 byId("adminTab")?.addEventListener("click", () => showView(adminUnlocked ? "adminView" : "adminLoginView"));
 byId("archiveTab")?.addEventListener("click", () => { if (adminUnlocked) { renderArchive(); showView("archiveView"); } else showView("archiveLoginView"); });
 document.querySelectorAll("[data-info-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.infoView)));
