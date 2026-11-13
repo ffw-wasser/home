@@ -30,6 +30,7 @@ async function activate(sourceDirectory,{fetcher=fetch,log=console.log,expectedF
   const check=await call('/admin/storage-runtime/status');status=check;if(!check.active||check.source!==source||check.run!==run)throw Error('Der aktive Speicher konnte nicht bestätigt werden.');
   log('Cloudflare ist als produktiver Speicher aktiviert. Originaldateien bleiben erhalten.');
  }
+ await call('/admin/storage-runtime/permanent-devices',{source,run});
  const device={deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Verwaltung · Windows',expiresAt:status.serverTime?status.serverTime+30*86400000:Date.now()+29*86400000,access:'application-admin'};
  await call('/admin/storage-state/pair',{source,run,...device});
  try{
@@ -43,6 +44,6 @@ async function activate(sourceDirectory,{fetcher=fetch,log=console.log,expectedF
  return {active:true,source,run};
 }
 async function choose(){if(process.platform!=='win32')throw Error('Die Ordnerauswahl ist für Windows vorgesehen.');const script="Add-Type -AssemblyName System.Windows.Forms; [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $picker = New-Object System.Windows.Forms.FolderBrowserDialog; $picker.Description = 'Aktuellen OneDrive-Originalordner Webseite auswählen (nicht die frühere Downloads-Kopie). Alle Gerätehaus-Fenster vorher schließen und OneDrive abwarten.'; $picker.ShowNewFolderButton = $false; if ($picker.ShowDialog() -eq 'OK') { [Console]::Write($picker.SelectedPath) }";const result=await promisify(execFile)('powershell.exe',['-NoProfile','-STA','-Command',script],{maxBuffer:10000});if(!result.stdout.trim())throw Error('Die Ordnerauswahl wurde abgebrochen.');return result.stdout.trim();}
-const EXPECTED_WORKER_FINGERPRINT='4d0bd06669bbd079c5c3a7a11fbfb1ba00d009dd041a0e3d10c9fd5bb73b0540';
+const EXPECTED_WORKER_FINGERPRINT='9c4ad43aa00e05b04b086a17a20471e52d08d5561f6bdc1e676df7f9dbac94e1';
 module.exports={activate};
 if(require.main===module)(async()=>{const source=process.argv[2]==='--choose'?await choose():process.argv[2];if(!source)throw Error('Aufruf: node activate-cloudflare-storage.cjs --choose');await activate(path.resolve(source),{expectedFingerprint:EXPECTED_WORKER_FINGERPRINT});})().catch(error=>{const safe=/^(Cloudflare hat|Cloudflare ist|Die vorhandenen|Die bereitgestellte|Es ist bereits|Der Quellordner|Der aktive Speicher|Die Übernahmekopie|Der neue Gerätezugang|Die Ordnerauswahl|Bitte die Verbindung|Aufruf:)/.test(error.message);console.error(safe?error.message:'Umschaltung nicht vollständig bestätigt. Originaldaten bleiben erhalten. Vor einem erneuten Versuch den Dienststatus prüfen.');process.exitCode=1;});

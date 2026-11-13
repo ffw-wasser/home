@@ -48,3 +48,34 @@ test('Production: issuer revocation cancels an unclaimed device ticket, also dur
 test('Production CLI: wrong deployed Worker fingerprint stops before transmitting any administrative credential',async t=>{
  const f=await setup(t);let gets=0;await assert.rejects(activate(f.sourceDirectory,{...f.options,expectedFingerprint:'1'.repeat(64),fetcher:async(url,options)=>{gets++;assert.ok(url.endsWith('/health'));assert.equal(options.method,'GET');assert.equal(options.headers,undefined);return new Response(JSON.stringify({sourceFingerprint:'2'.repeat(64)}));}}),/Worker-Version stimmt/);assert.equal(gets,1);assert.equal(f.opens,0);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM storage_runtime').get().n,0);
 });
+test('Administration devices remain usable after months of inactivity, including state and file writes; explicit revocation still wins',async t=>{
+ const f=await setup(t),result=await activate(f.sourceDirectory,f.options),scope={source:f.source,run:result.run};assert.equal(f.credential.permanent,true);assert.equal(f.credential.expiresAt,Number.MAX_SAFE_INTEGER);
+ const current=Date.now();f.context.Date=class extends Date{static now(){return current+180*86400000;}};
+ assert.equal((await f.api('/storage/config')).status,200);assert.equal((await f.api('/storage/renew')).data.permanent,true);const read=await f.api('/storage-state/read',scope);assert.equal(read.status,200);
+ assert.equal((await f.api('/storage-state/write',{...scope,expectedVersion:read.data.version,operationId:randomUUID(),value:{...read.data.value,entries:[]}})).status,200);
+ assert.equal((await f.api('/admin/storage-files/mkdir',{...scope,path:'Berichte/after-inactivity',expectedVersion:0,operationId:randomUUID()})).status,200);
+ await f.api('/admin/storage-runtime/revoke',{deviceId:f.credential.deviceId});assert.equal((await f.api('/storage/config')).status,401);assert.equal((await f.api('/storage/renew')).status,401);assert.equal((await f.api('/storage-state/read',scope)).status,401);
+});
+test('Only an existing valid administration device adopts the permanent policy; expired devices remain blocked',async t=>{
+ const f=await setup(t);await activate(f.sourceDirectory,f.options);f.db.prepare('UPDATE storage_devices SET expires_at=? WHERE id=?').run(Date.now()+60000,f.credential.deviceId);
+ const before=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(f.credential.deviceId);assert.equal((await f.api('/storage/config')).data.permanent,true);const after=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(f.credential.deviceId);assert.deepEqual({...after,expires_at:before.expires_at},{...before});assert.equal(after.expires_at,Number.MAX_SAFE_INTEGER);
+ f.db.prepare('UPDATE storage_devices SET expires_at=0 WHERE id=?').run(f.credential.deviceId);assert.equal((await f.api('/storage/config')).status,401);assert.equal((await f.api('/storage/renew')).status,401);assert.equal(f.db.prepare('SELECT expires_at FROM storage_devices WHERE id=?').get(f.credential.deviceId).expires_at,0);
+});
+test('Permanent device access does not extend the five-minute one-use pairing invitation',async t=>{
+ const f=await setup(t);await activate(f.sourceDirectory,f.options);const ticket=randomBytes(32).toString('base64url');await f.api('/admin/storage-runtime/pairing',{ticket,expiresAt:Date.now()+120000});
+ const current=Date.now();f.context.Date=class extends Date{static now(){return current+10*60000;}};
+ assert.equal((await f.api('/storage/config')).status,200);assert.equal((await f.api('/storage/claim',{ticket,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Expired invitation'},'')).status,401);
+});
+test('Permanent administration grants retain the ten-device limit and explicit revocation frees a slot',async t=>{
+ const f=await setup(t),result=await activate(f.sourceDirectory,f.options),scope={source:f.source,run:result.run},devices=[];
+ const record=()=>({...scope,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Synthetic administration laptop',access:'application-admin',expiresAt:Date.now()+60000});
+ for(let i=0;i<9;i++){const device=record();devices.push(device);assert.equal((await f.api('/admin/storage-state/pair',device,f.env.ADMIN_TOKEN)).status,200);}
+ const extra=record();assert.equal((await f.api('/admin/storage-state/pair',extra,f.env.ADMIN_TOKEN)).status,409);assert.equal((await f.api('/admin/storage-runtime/revoke',{deviceId:devices[0].deviceId})).status,200);assert.equal((await f.api('/admin/storage-state/pair',extra,f.env.ADMIN_TOKEN)).status,200);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM storage_devices WHERE revoked_at IS NULL AND expires_at=?').get(Number.MAX_SAFE_INTEGER).n,10);
+});
+test('The rollout policy upgrades only currently valid administration devices of the active source',async t=>{
+ const f=await setup(t),result=await activate(f.sourceDirectory,f.options),scope={source:f.source,run:result.run},records=[];
+ for(const kind of ['valid','expired','revoked','state']){const record={...scope,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Synthetic '+kind,expiresAt:Date.now()+60000,...(kind==='state'?{}:{access:'application-admin'})};assert.equal((await f.api('/admin/storage-state/pair',record,f.env.ADMIN_TOKEN)).status,200);records.push({...record,kind});f.db.prepare('UPDATE storage_devices SET expires_at=?,revoked_at=? WHERE id=?').run(kind==='expired'?0:Date.now()+60000,kind==='revoked'?1:null,record.deviceId);}
+ assert.equal((await f.api('/admin/storage-runtime/permanent-devices',{...scope,source:'f'.repeat(64)},f.env.ADMIN_TOKEN)).status,403);const policy=await f.api('/admin/storage-runtime/permanent-devices',scope,f.env.ADMIN_TOKEN);assert.equal(policy.status,200);assert.equal(policy.data.updated,1);
+ for(const record of records){const row=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(record.deviceId);assert.equal(row.expires_at===Number.MAX_SAFE_INTEGER,record.kind==='valid');}
+ assert.equal((await f.api('/admin/storage-runtime/permanent-devices',scope,f.env.ADMIN_TOKEN)).data.updated,0);assert.equal((await f.api('/storage/config',{},records.find(x=>x.kind==='expired').token)).status,401);assert.equal((await f.api('/storage/config',{},records.find(x=>x.kind==='revoked').token)).status,401);
+});

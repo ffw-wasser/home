@@ -4,6 +4,10 @@ const root=path.resolve(__dirname,'..');
 (async()=>{const browser=await(process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true});try{
  const page=await browser.newPage({acceptDownloads:true,serviceWorkers:'block',viewport:{width:768,height:1000}}),errors=[];page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(10000);
  await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});return route.abort();});
+ await page.addInitScript(()=>{
+  // Model the operating-system picker contract without touching real files.
+  window.backupEvents=[];window.backupMode='save';window.showSaveFilePicker=async options=>{window.backupOptions=options;backupEvents.push('picker');if(backupMode==='cancel')throw new DOMException('Cancelled','AbortError');return {name:'Manuelle-Sicherung.zip',createWritable:async()=>({write:async blob=>{backupEvents.push('write');window.backupBytes=Array.from(new Uint8Array(await blob.arrayBuffer()));if(backupMode==='lock'){CloudStorage.connected=false;dispatchEvent(new Event('h2o-storage-lock'));}},close:async()=>backupEvents.push('close'),abort:async()=>backupEvents.push('abort')})};};
+ });
  await page.goto('https://ffw-wasser.github.io/home/index.html');
  await page.evaluate(async()=>{
   AppStartup.update({ready:true});AppStartup.update=()=>{};adminUnlocked=true;resetAdminTimeout();oneDriveAdministrationReady=()=>true;
@@ -27,7 +31,12 @@ const root=path.resolve(__dirname,'..');
  await month.selectOption('01');assert.equal(await save.isDisabled(),true);await month.selectOption('');await download('H2O-Berichte-2025.zip',1);
  await year.selectOption('');assert.equal(await month.isDisabled(),true);assert.equal(await month.inputValue(),'');await download('H2O-Berichte-Komplett.zip',3);
  for(const width of [320,390,768,1280])for(const scale of [100,200]){await page.setViewportSize({width,height:1000});await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await panel.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'panel overflow '+width+'/'+scale);}
+ // Explicit Save As writes the complete selected ZIP to the chosen handle.
+ await page.evaluate(()=>{window.backupEvents=[];});await panel.locator('#reportZipSaveAs').click();await status.getByText(/Manuelle-Sicherung.zip · Im gewählten Ordner gespeichert/).waitFor();assert.equal(await page.evaluate(()=>backupOptions.suggestedName),'H2O-Berichte-Komplett.zip');assert.deepEqual(await page.evaluate(()=>backupEvents),['picker','write','close']);const copied=await JSZip.loadAsync(Buffer.from(await page.evaluate(()=>backupBytes)));assert.equal(Object.values(copied.files).filter(x=>!x.dir&&x.name.startsWith('Originale/')).length,3);
+ let accidentalDownloads=0;page.on('download',()=>accidentalDownloads++);await page.evaluate(()=>{backupMode='cancel';backupEvents=[];});await panel.locator('#reportZipSaveAs').click();await status.getByText('Speichern abgebrochen.').waitFor();assert.deepEqual(await page.evaluate(()=>backupEvents),['picker']);assert.equal(accidentalDownloads,0);
+ await page.evaluate(()=>{backupMode='lock';backupEvents=[];});await panel.locator('#reportZipSaveAs').click();await page.waitForFunction(()=>backupEvents.includes('abort'));assert.equal(await page.evaluate(()=>backupEvents.includes('close')),false);assert.equal(accidentalDownloads,0);
  await page.evaluate(()=>{CloudStorage.connected=false;window.dispatchEvent(new Event('h2o-storage-lock'));});assert.equal(await save.isDisabled(),true);assert.equal(await year.locator('option').count(),1);assert.match(await status.innerText(),/erneut laden/);
  await panel.locator('#reportZipRefresh').click();await status.getByText(/zuerst dieses Verwaltungsgerät/).waitFor();assert.equal(await save.isDisabled(),true);
+ assert.equal(await page.evaluate(()=>{const picker=window.showSaveFilePicker;window.showSaveFilePicker=undefined;document.getElementById('reportZipDownload').remove();const host=document.createElement('div');document.body.append(host);ReportDownload.mount(host);const hidden=host.querySelector('#reportZipSaveAs').hidden;window.showSaveFilePicker=picker;return hidden;}),true,'unsupported browsers retain the normal download');
  assert.deepEqual(errors,[]);console.log('ZIP-Download: Jahr, Monat, Gesamtexport, Originale, Gerätesperre und mobile Darstellung geprüft.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

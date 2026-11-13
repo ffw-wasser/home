@@ -94,19 +94,21 @@
     const cell=value=>'"'+String(value).replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
     zip.file('Berichtsverzeichnis.csv','\uFEFF'+rows.map(row=>row.map(cell).join(';')).join('\r\n'));
     const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}},value=>onProgress(Math.round(value.percent)));
-    return {blob,fileName:'H2O-Berichte-'+(year?year+(month?'-'+month:''):'Komplett')+'.zip',count:selected.length};
+    return {blob,fileName:exportName({year,month}),count:selected.length};
   }
+  const exportName=({year='',month=''}={})=>'H2O-Berichte-'+(year?year+(month?'-'+month:''):'Komplett')+'.zip';
   function mount(container) {
     if(!container||document.getElementById('reportZipDownload'))return;
     const panel=document.createElement('section');panel.id='reportZipDownload';panel.className='storage-card';
-    panel.innerHTML='<h3>Berichte als ZIP herunterladen</h3><p>Proben und Einsätze mit vollständigen Originaldateien und Anlagen. PDF und CSV aus Terminpaketen liegen zusätzlich einzeln bei.</p><div class="storage-card-actions"><label>Jahr <select id="reportZipYear" aria-label="Jahr für ZIP-Download"><option value="">Alle Jahre</option></select></label><label>Monat <select id="reportZipMonth" aria-label="Monat für ZIP-Download" disabled><option value="">Ganzes Jahr</option></select></label><button type="button" class="outline-button" id="reportZipRefresh">Berichte laden</button><button type="button" class="primary-button" id="reportZipSave" disabled>ZIP herunterladen</button></div><p>Der Zeitraum richtet sich nach dem Termin, auch bei späteren Korrekturen. Berichte ohne erkennbares Termindatum sind im Gesamtexport enthalten.</p><p role="status" aria-live="polite" id="reportZipStatus">Berichte vor der Auswahl laden.</p>';
+    panel.innerHTML='<h3>Berichte als ZIP herunterladen</h3><p>Proben und Einsätze mit vollständigen Originaldateien und Anlagen. PDF und CSV aus Terminpaketen liegen zusätzlich einzeln bei.</p><div class="storage-card-actions"><label>Jahr <select id="reportZipYear" aria-label="Jahr für ZIP-Download"><option value="">Alle Jahre</option></select></label><label>Monat <select id="reportZipMonth" aria-label="Monat für ZIP-Download" disabled><option value="">Ganzes Jahr</option></select></label><button type="button" class="outline-button" id="reportZipRefresh">Berichte laden</button><button type="button" class="primary-button" id="reportZipSave" disabled>ZIP herunterladen</button><button type="button" class="primary-button" id="reportZipSaveAs" hidden disabled>ZIP speichern unter …</button></div><p id="reportZipSaveHelp">Für ein manuelles Backup außerhalb von Cloudflare beim Speichern den synchronisierten OneDrive-Ordner „Webseite“ wählen. Ohne Ordnerauswahl im Browser die heruntergeladene ZIP dorthin verschieben.</p><p>Der Zeitraum richtet sich nach dem Termin, auch bei späteren Korrekturen. Berichte ohne erkennbares Termindatum sind im Gesamtexport enthalten.</p><p role="status" aria-live="polite" id="reportZipStatus">Berichte vor der Auswahl laden.</p>';
     container.append(panel);
-    const year=panel.querySelector('#reportZipYear'),month=panel.querySelector('#reportZipMonth'),refresh=panel.querySelector('#reportZipRefresh'),save=panel.querySelector('#reportZipSave'),status=panel.querySelector('#reportZipStatus');
+    const year=panel.querySelector('#reportZipYear'),month=panel.querySelector('#reportZipMonth'),refresh=panel.querySelector('#reportZipRefresh'),save=panel.querySelector('#reportZipSave'),status=panel.querySelector('#reportZipStatus'),saveAs=panel.querySelector('#reportZipSaveAs');
+    saveAs.hidden=typeof globalThis.showSaveFilePicker!=='function';
     months.forEach((name,index)=>month.add(new Option(name,String(index+1).padStart(2,'0'))));
     let records=null,busy=false,epoch=0,source='';
     const identity=()=>CloudStorage.sourceHash+':'+CloudStorage.deviceId;
     const assertSession=expected=>{if(expected!==epoch||!globalThis.CloudStorage?.connected||source!==identity()||typeof checkAdminSession==='function'&&!checkAdminSession())throw new Error('Der Gerätezugang wurde beendet oder geändert. Berichte bitte erneut laden.');};
-    const update=()=>{month.disabled=busy||!year.value;if(!year.value)month.value='';const selected=(records||[]).filter(record=>matches(record.date,year.value,month.value));save.disabled=busy||!selected.length;};
+    const update=()=>{month.disabled=busy||!year.value;if(!year.value)month.value='';const selected=(records||[]).filter(record=>matches(record.date,year.value,month.value));save.disabled=busy||!selected.length;saveAs.disabled=save.disabled;};
     const lock=value=>{busy=value;year.disabled=value;refresh.disabled=value;update();panel.setAttribute('aria-busy',String(value));};
     clearHandlers.add(()=>{epoch++;records=null;source='';year.replaceChildren(new Option('Alle Jahre',''));month.value='';lock(false);status.textContent='Berichte vor der Auswahl erneut laden.';});
     year.addEventListener('change',update);month.addEventListener('change',update);
@@ -120,13 +122,19 @@
         status.textContent=`${records.length} Berichtsdateien geladen.`+(unknown?` ${unknown} ohne Termindatum: im Gesamtexport enthalten.`:'');
       }catch(error){if(requestEpoch===epoch){records=null;status.textContent=error.message||'Berichte konnten nicht geladen werden.';}}finally{if(requestEpoch===epoch)lock(false);}
     });
-    save.addEventListener('click',async()=>{
-      if(busy||!records)return;const selection={year:year.value,month:month.value},requestEpoch=epoch;lock(true);
+    async function saveArchive(chooseTarget){
+      if(busy||!records)return;const selection={year:year.value,month:month.value},requestEpoch=epoch;lock(true);let writable;
       try{
-        assertSession(requestEpoch);const result=await build(records,selection,percent=>{assertSession(requestEpoch);status.textContent=`ZIP wird erstellt: ${percent} %`;});assertSession(requestEpoch);
-        downloadBlob(result.fileName,result.blob);status.textContent=`${result.count} Berichtsdateien: ${result.fileName} · Download gestartet.`;
-      }catch(error){if(requestEpoch===epoch)status.textContent=error.message||'ZIP konnte nicht erstellt werden.';}finally{if(requestEpoch===epoch)lock(false);}
-    });
+        // The picker must run inside the click's user activation, before ZIP work.
+        assertSession(requestEpoch);const handle=chooseTarget?await globalThis.showSaveFilePicker({suggestedName:exportName(selection),types:[{description:'ZIP-Berichtssicherung',accept:{'application/zip':['.zip']}}]}):null;assertSession(requestEpoch);
+        const result=await build(records,selection,percent=>{assertSession(requestEpoch);status.textContent=`ZIP wird erstellt: ${percent} %`;});assertSession(requestEpoch);
+        if(handle){
+          writable=await handle.createWritable();assertSession(requestEpoch);await writable.write(result.blob);assertSession(requestEpoch);await writable.close();writable=null;
+          if(requestEpoch===epoch)status.textContent=`${result.count} Berichtsdateien: ${handle.name||result.fileName} · Im gewählten Ordner gespeichert.`;
+        }else{downloadBlob(result.fileName,result.blob);status.textContent=`${result.count} Berichtsdateien: ${result.fileName} · Download gestartet.`;}
+      }catch(error){if(writable)await writable.abort().catch(()=>{});if(requestEpoch===epoch)status.textContent=error.name==='AbortError'?'Speichern abgebrochen.':error.message||'ZIP konnte nicht gespeichert werden.';}finally{if(requestEpoch===epoch)lock(false);}
+    }
+    save.addEventListener('click',()=>saveArchive(false));saveAs.addEventListener('click',()=>saveArchive(true));
   }
   globalThis.ReportDownload={date,eventDate,matches,inventory,build,mount,clear};
 })();

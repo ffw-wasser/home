@@ -1,6 +1,6 @@
 /* Production storage and revocable administration devices. No Microsoft dependency. */
 (function(g){
- 'use strict';const L=g.CentralLedger,utf=new TextEncoder();
+ 'use strict';const L=g.CentralLedger,utf=new TextEncoder(),PERMANENT_EXPIRY=Number.MAX_SAFE_INTEGER;
  const fail=(message,status=409)=>{throw Object.assign(Error(message),{status});};
  const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
  const secret=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value);
@@ -23,7 +23,18 @@
   return actor;
  }
  async function adminScope(env,token,data){if(equal(token,env.ADMIN_TOKEN))return null;const actor=await administrator(env,token);if(data&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Zugriff auf einen anderen Datenstand ist nicht erlaubt.',403);return actor;}
- async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',serverTime:Date.now(),run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
+ // Existing valid administration devices adopt the permanent policy on their
+ // next authenticated configuration check. Expired or revoked tokens never
+ // reach this function. The primary key, secret and source identity stay intact.
+ async function config(env,actor){
+  if(actor.expires_at!==PERMANENT_EXPIRY){
+   await env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>?').bind(PERMANENT_EXPIRY,actor.id,actor.token_hash,Date.now()).run();
+   const saved=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND token_hash=?').bind(actor.id,actor.token_hash).first();
+   if(!saved||saved.revoked_at!==null||saved.expires_at!==PERMANENT_EXPIRY)fail('Gerätezugang gesperrt oder abgelaufen.',401);actor=saved;
+  }
+  const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',serverTime:Date.now(),run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,permanent:true,version:runtime.version};
+ }
+
  async function route(path,data,env,auth){
   if(path==='/storage/status'){const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first();return {provider:'cloudflare',version:1,active:Boolean(table&&await current(env))};}
   if(path==='/storage/logout'){
@@ -38,7 +49,7 @@
    if(ticket.used_at!==null){const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();if(ticket.device_id!==data.deviceId||!old||old.revoked_at!==null||old.expires_at<=now)fail('Die Gerätekopplung wurde bereits verwendet.',401);return {ok:true,...await config(env,old)};}
    const label=await L.seal(env,{label:data.label,access:'application-admin'},'storage-device:'+data.deviceId);
    await env.DB.batch([
-    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings t WHERE t.id=? AND t.used_at IS NULL AND t.expires_at>? AND (t.device_id IS NULL OR EXISTS(SELECT 1 FROM storage_devices issuer WHERE 'issuer:'||issuer.id=t.device_id AND issuer.run=t.run AND issuer.source_hash=t.source_hash AND issuer.revoked_at IS NULL AND issuer.expires_at>?))) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,now,ticket.run,now),
+    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings t WHERE t.id=? AND t.used_at IS NULL AND t.expires_at>? AND (t.device_id IS NULL OR EXISTS(SELECT 1 FROM storage_devices issuer WHERE 'issuer:'||issuer.id=t.device_id AND issuer.run=t.run AND issuer.source_hash=t.source_hash AND issuer.revoked_at IS NULL AND issuer.expires_at>?))) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,PERMANENT_EXPIRY,ticketId,now,now,ticket.run,now),
     env.DB.prepare('UPDATE storage_pairings SET used_at=?,device_id=? WHERE id=? AND used_at IS NULL AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND registration_hash=?)').bind(now,data.deviceId,ticketId,data.deviceId,registrationHash)
    ]);
    const claimed=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(ticketId).first(),actor=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();
@@ -60,10 +71,19 @@
   const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
   if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),serverTime:Date.now(),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
   if(!runtime)fail('Der Cloudflare-Datenstand ist noch nicht aktiviert.');
+  if(path==='/admin/storage-runtime/permanent-devices'){
+   if(data.run!==runtime.run||data.source!==runtime.source_hash)fail('Die Datenquelle stimmt nicht mit dem aktiven Speicher überein.',403);
+   const now=Date.now(),rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? AND source_hash=? AND revoked_at IS NULL AND expires_at>? AND expires_at<?').bind(runtime.run,runtime.source_hash,now,PERMANENT_EXPIRY).all()).results,updates=[];
+   for(const row of rows){if(await role(env,row)!=='application-admin')continue;
+    const guard=actor?' AND EXISTS(SELECT 1 FROM storage_devices a WHERE a.id=? AND a.token_hash=? AND a.revoked_at IS NULL AND a.expires_at>?)':'';
+    updates.push(env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND run=? AND source_hash=? AND revoked_at IS NULL AND expires_at>?'+guard).bind(PERMANENT_EXPIRY,row.id,runtime.run,runtime.source_hash,now,...(actor?[actor.id,actor.token_hash,now]:[])));
+   }
+   const results=updates.length?await env.DB.batch(updates):[];return {ok:true,updated:results.reduce((sum,row)=>sum+Number(row.meta.changes),0),permanent:true};
+  }
   if(path==='/storage/config'){if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);return config(env,actor);}
   if(path==='/storage/renew'){
    if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);
-   await env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>?').bind(Date.now()+30*86400000,actor.id,actor.token_hash,Date.now()).run();const saved=await g.StorageState.tokenDevice(env,auth);return {ok:true,...await config(env,saved)};
+   return {ok:true,...await config(env,actor)};
   }
   if(path==='/admin/storage-runtime/pairing'){
    if(!secret(data.ticket)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+5*60000)fail('Ein Kopplungscode ist maximal fünf Minuten gültig.',400);
@@ -72,7 +92,7 @@
   }
   if(path==='/admin/storage-runtime/devices'){
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
-   for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
+   for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,permanent:row.expires_at===PERMANENT_EXPIRY,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
   }
   if(path==='/admin/storage-runtime/revoke'){
    if(!uuid(data.deviceId))fail('Ungültige Gerätekennung.',400);
@@ -80,5 +100,5 @@
   }
   fail('Nicht gefunden.',404);
  }
- g.StorageRuntime={route,current,role,assertDevice,administrator,adminScope};
+ g.StorageRuntime={route,current,role,assertDevice,administrator,adminScope,permanentExpiry:PERMANENT_EXPIRY};
 })(globalThis);

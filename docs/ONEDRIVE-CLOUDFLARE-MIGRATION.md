@@ -263,14 +263,25 @@ bestätigt keine Umschaltung.
    Schlusskopie unter Downloads, prüft Original und Kopie vor und nach der
    Übertragung sowie alle Inhalte beim Nachlesen aus Cloudflare.
 6. Nach bestätigter Aktivierung öffnet das Skript den Browser mit einem eigenen
-   Gerätezugang. Es protokolliert keine Schlüssel und verändert den
+   Gerätezugang. Der aktuelle Assistent stellt dabei auch alle noch gültigen
+   Verwaltungszugänge derselben Quelle auf dauerhafte Berechtigung um;
+   abgelaufene, gesperrte und reine Testzugänge bleiben unverändert.
+   Es protokolliert keine Schlüssel und verändert den
    OneDrive-Originalordner nicht. Ein erneuter Lauf bei bereits aktivem
    Cloudflare-Speicher importiert niemals alte Daten über den laufenden Stand.
-7. In Einstellungen → H₂O-Dienst weitere Verwaltungsgeräte koppeln. Code bzw.
+7. Weitere Laptops mit Zugriff auf den gemeinsamen lokalen OneDrive-Ordner:
+   Anwendung öffnen → Cloudflare-Verbindung öffnen → Ordner „Webseite“ auswählen.
+   Die Anwendung liest nur die zwei Verbindungsdateien unter `Getraenke` und
+   richtet einen eigenen Gerätezugang ein. Die übrigen Dateien werden nicht
+   gelesen oder hochgeladen. Die ausgewählten Dateien sind kein Datenimport.
+   Der Hauptschlüssel wird nicht im Browser gespeichert.
+   Alternative ohne Ordnerzugriff: In Einstellungen → H₂O-Dienst weitere
+   Verwaltungsgeräte koppeln. Code bzw.
    Link: einmalig, fünf Minuten gültig. Bei der installierten Gerätehaus-App den
-   Link direkt im Verbindungsfenster einfügen. Aktive Geräte verlängern ihre
-   Verbindung; unbenutzte Zugänge laufen nach 30 Tagen aus. Einzelne Geräte
-   können jederzeit gesperrt werden. Persönliche Mitgliederzugänge, Apps,
+   Link direkt im Verbindungsfenster einfügen. Eingerichtete Verwaltungsgeräte bleiben bis zur ausdrücklichen Sperrung
+   berechtigt. Der Ordnerzugriff wird bei der Einrichtung geprüft; spätere
+   Änderungen an der OneDrive-Freigabe werden nicht automatisch erkannt.
+   Einzelne Geräte können jederzeit gesperrt werden. Persönliche Mitgliederzugänge, Apps,
    Kalenderabos und Widgets behalten ihre bisherigen Dienstidentitäten.
 
 Nicht synchronisierte iPad-Daten werden vor einer Übernahme unter
@@ -334,3 +345,16 @@ aus der tatsächlichen Oberfläche erzeugt.
 Tests dieser Phase: `node --test tests/storage-migration.test.cjs`; die Datei ist
 auch in `cloudflare` und `sicherheit` der fokussierten Tests aufgenommen.
 Produktives R2, reale OneDrive-Daten und native Geräte werden damit nicht geprüft.
+
+### Manuelle Berichts-ZIPs außerhalb von Cloudflare
+
+Unter Verwaltung → Berichte & Datensicherung die Berichte laden und alle
+Jahre, ein Jahr oder einen Monat auswählen. „ZIP speichern unter …“ öffnet
+in unterstützten Browsern die Dateiauswahl. Als Ziel den synchronisierten
+OneDrive-Ordner „Webseite“ oder einen dortigen Backup-Unterordner wählen.
+Die Anwendung bestätigt erst nach abgeschlossenem Dateischreiben. Die
+anschließende OneDrive-Synchronisation übernimmt der OneDrive-Client.
+Abbrechen erzeugt keinen zusätzlichen Download. Der normale ZIP-Download
+bleibt für Browser ohne diese Dateiauswahl verfügbar; die Datei anschließend
+manuell in den gewünschten Ordner verschieben. Solche Sicherungen werden
+nicht automatisch zurück nach Cloudflare importiert.
