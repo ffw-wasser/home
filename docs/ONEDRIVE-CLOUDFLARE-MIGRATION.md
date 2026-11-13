@@ -371,3 +371,9 @@ Ungenutzte OneDrive-Hilfsfunktionen und veraltete Oberflächenhinweise sind entf
 ## Weniger Abrufe beim Laden der Historie
 
 Die authentifizierte Cloudflare-Ordnerliste enthält bereits die konkrete Dateiversion. ZIP-, CSV- und PDF-Inhalte werden direkt mit dieser Version gelesen; eine weitere Metadatenabfrage je Datei entfällt. Bei Abmeldung oder Quellenwechsel werden verspätete Antworten verworfen. Die Historie wird weiterhin erst nach vollständigem Erfolg ersetzt und für den Start bestätigt. Nach Microsoft-Anmeldung wird die bereits erfolgreich geprüfte Geräteverbindung nicht erneut abgefragt.
+
+## Aufgeräumte Verwaltung
+
+Die Hauptübersicht enthält Mitglieder, H₂O Portal, Kalender & Gruppen, Getränke und Einstellungen. Unter Einstellungen bündelt „Verbindung & Geräte“ Anmeldung, Kopplung und Geräteverwaltung. Sicherheit, Datensicherung und Funktionsziele haben jeweils einen eindeutigen Einstieg und kehren zur übergeordneten Einstellungsauswahl zurück. Die Merkliste pausierter Funktionen liegt eingeklappt unter „Weitere Hinweise“. Sicherungen und das Zurücksetzen von Testbuchungen sind ausschließlich in der Datensicherung erreichbar; die zusätzliche Getränkesicherung und lokale Wiederherstellung bleiben eingeklappt. Vorhandene Daten, Berechtigungen und Sicherungsfunktionen bleiben erhalten.
+
+Kalendertermine begrenzen die Teilnehmerliste beim Nachtragen und die Personenauswahl in der Kalenderkorrektur auf die authentifiziert zugeordneten Mitglieder, einschließlich persönlicher Ergänzungen und Ausnahmen. Fehlende Gruppendaten ergeben keine Auswahl aller Personen. In bestehenden Berichten bleiben Einträge außerhalb der aktuellen Gruppe erhalten; sie werden nicht als neue Kandidaten angeboten. Einsätze und spontane Erfassungen behalten ihren eigenen Teilnehmerumfang.

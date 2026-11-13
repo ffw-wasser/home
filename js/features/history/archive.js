@@ -323,22 +323,32 @@ function archiveCorrectionWorkspace(){
   byId("archiveCorrectionAdd").onclick=addArchiveCorrectionMember;
   return panel;
 }
+function archiveCorrectionIncludesMember(member){
+ const ids=archiveCorrectionState?.audience?.recipientIds;
+ return !Array.isArray(ids)||ids.map(String).includes(String(member.id));
+}
+function archiveCorrectionIncludesRow(row){
+ if(!Array.isArray(archiveCorrectionState?.audience?.recipientIds))return true;
+ const name=String(row.name||'').trim().toLocaleLowerCase('de');
+ return (members||[]).some(member=>archiveCorrectionIncludesMember(member)&&[nameForStorage(member),nameForTile(member)].some(value=>String(value).trim().toLocaleLowerCase('de')===name));
+}
 function filterArchiveCorrectionRows(){
   const query=String(byId("archiveCorrectionSearch")?.value||"").trim().toLocaleLowerCase("de");
   const status=byId("archiveCorrectionFilter")?.value||"";
-  let visible=0;
+  let visible=0,total=0;
   for(const card of byId("archiveCorrectionList")?.children||[]){
+    if(card.dataset.audience!=="outside")total++;
     const rowStatus=card.querySelector('[data-correction-field="status"]')?.value||"";
     const name=card.querySelector('[data-correction-field="name"]')?.value||"";
-    card.hidden=Boolean(query&&!name.toLocaleLowerCase("de").includes(query)||status&&rowStatus!==status);
+    card.hidden=card.dataset.audience==="outside"||Boolean(query&&!name.toLocaleLowerCase("de").includes(query)||status&&rowStatus!==status);
     if(!card.hidden)visible++;
   }
   const count=byId("archiveCorrectionCount");
-  if(count)count.textContent=visible+" von "+(archiveCorrectionState?.rows.length||0)+" Personen angezeigt";
+  if(count)count.textContent=visible+" von "+total+" Personen angezeigt";
 }
 function appendArchiveCorrectionPerson(row,index){
   const container=byId("archiveCorrectionList");
-  const card=document.createElement("article");card.className="archive-correction-person";card.dataset.row=String(index);card.dataset.status=row.status||"Fehlt";
+  const card=document.createElement("article");card.className="archive-correction-person";card.dataset.row=String(index);card.dataset.audience=archiveCorrectionIncludesRow(row)?"inside":"outside";card.dataset.status=row.status||"Fehlt";
   const top=document.createElement("div");top.className="archive-correction-person-header";
   const heading=document.createElement("strong");heading.textContent="Person "+(index+1);
   const state=document.createElement("span");state.className="archive-correction-person-state";top.append(heading,state);
@@ -360,6 +370,7 @@ function refreshArchiveCorrectionMembers(){
   select.replaceChildren();
   const empty=document.createElement("option");empty.value="";empty.textContent="Mitglied auswählen";select.append(empty);
   for(const member of members||[]){
+    if(member.fitnessTrainer===true||!archiveCorrectionIncludesMember(member))continue;
     if(archiveCorrectionState?.item.sessionType==="Ausschuss Sitzung"&&!member.committeeMember)continue;
     const name=nameForStorage(member);if(listed.has(name.toLocaleLowerCase("de")))continue;
     const option=document.createElement("option");option.value=name;option.textContent=nameForTile(member);select.append(option);
@@ -443,13 +454,13 @@ async function saveArchiveCorrectionStep2(){
   }catch(error){console.error("Terminkorrektur fehlgeschlagen",error);showToast("Korrektur nicht bestätigt: "+(error.message||"Bitte erneut versuchen."),"error");}
   finally{button.disabled=false;}
 }
-function correctArchiveItem(id){
+function correctArchiveItem(id,{audience=null}={}){
   if(!requireAdmin("settingsHistoryView"))return;
   if(!archiveCorrectionBeforeView("settingsHistoryView"))return;
   const item=csvArchive.find(entry=>entry.id===id);if(!item)return;
   const rows=archiveRowsFromContent(item.content);
   if(!rows.length)return showToast("Keine korrigierbaren Einträge.","error");
-  archiveCorrectionState={item,rows:structuredClone(rows)};
+  archiveCorrectionState={item,rows:structuredClone(rows),audience};
   const panel=archiveCorrectionWorkspace();
   if(showView("archiveCorrectionView")===false){clearArchiveCorrectionStep2();return;}
   byId("archiveCorrectionHeading").textContent=(item.sessionType||rows[0].sessionType||"Termin")+" korrigieren";
@@ -524,7 +535,16 @@ async function openCompletedCalendarEvent(event){
     const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin"}).format(new Date(event.start));
     const type=event.attendanceType||(event.sessionType==="Probe"?"Allgemeine Probe":event.sessionType);
     const linked=csvArchive.filter(item=>item.calendarEventId===event.id&&(!item.calendarEventStart||item.calendarEventStart===event.start));
-    if(linked.length===1){correctArchiveItem(linked[0].id);return true;}
+    const openCorrection=async item=>{
+      let audience=Array.isArray(event.recipientIds)?{recipientIds:[...event.recipientIds]}:null;
+      if(!audience&&event.audienceRestricted===true){
+        audience=await window.PortalAdmin?.resolveAttendanceAudience?.(event.id);
+        if(!audience||audience.pending)throw Error('Die Gruppenzuordnung des Kalendertermins konnte nicht bestätigt werden.');
+      }
+      if(correctionSource!==(window.DrinksStore?.sourceKey?.()||'')||!oneDriveAdministrationReady()||!checkAdminSession())throw Error('Verbindung oder Verwaltungsfreigabe geändert. Bitte den Kalendertermin erneut öffnen.');
+      correctArchiveItem(item.id,{audience});return true;
+    };
+    if(linked.length===1)return await openCorrection(linked[0]);
     if(linked.length>1){
       showView("settingsHistoryView");
       showToast("Mehrere Berichte sind diesem Kalendertermin zugeordnet. Bitte in der Historie den Originalbericht auswählen.","error");
@@ -534,7 +554,7 @@ async function openCompletedCalendarEvent(event){
     // exact date and type, and require a human confirmation before editing.
     const legacy=csvArchive.filter(item=>!item.calendarEventId&&!item.operationData&&historyDateFromItem(item)===day&&item.sessionType===type);
     if(legacy.length===1&&confirm("Älterer Bericht ohne Kalenderverknüpfung gefunden:\n"+historyDisplayTitle(legacy[0])+" · "+day+" · "+type+"\n\nIst dies der Originalbericht, den du korrigieren möchtest?")){
-      correctArchiveItem(legacy[0].id);return true;
+      return await openCorrection(legacy[0]);
     }
     showView("settingsHistoryView");
     showToast(legacy.length>1?"Für diesen Tag gibt es mehrere mögliche Berichte. Bitte den richtigen in der Historie wählen.":"Kein eindeutig zugeordneter Originalbericht gefunden. Bitte in der Historie prüfen; es wird keine neue Erfassung erstellt.",legacy.length>1?"info":"error");

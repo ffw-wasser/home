@@ -87,3 +87,10 @@ test('Nicht eindeutig zuordenbare alte Berichte sperren Nachtragen',()=>{
  const f=fixture([{id:'legacy',date:'2026-11-10',sessionType:'Unterricht',content:'x'}]);
  assert.equal(f.context.calendarArchiveStatus({...f.event,completedAt:null},f.context.csvArchive),'review');
 });
+
+test('Calendar correction carries the selected group audience into the original report editor',async()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}]);f.event.recipientIds=['team-member'];let received;f.context.correctArchiveItem=(id,options)=>{received={id,options};};assert.equal(await f.context.window.openCompletedCalendarEvent(f.event),true);assert.equal(received.id,'right');assert.deepEqual([...received.options.audience.recipientIds],['team-member']);
+});
+for(const changed of [false,true])test('Restricted correction resolves missing group IDs and rechecks the access after waiting: '+changed,async()=>{
+ const f=fixture([{id:'right',calendarEventId:'calendar-event-1',date:'2026-11-10',sessionType:'Sonderprobe'}]);f.event.audienceRestricted=true;let received;f.context.correctArchiveItem=(id,options)=>received=options;f.context.window.PortalAdmin={resolveAttendanceAudience:async()=>{if(changed)f.lock();return {recipientIds:[]};}};assert.equal(await f.context.window.openCompletedCalendarEvent(f.event),!changed);if(changed)assert.equal(received,undefined);else assert.equal(received.audience.recipientIds.length,0);
+});

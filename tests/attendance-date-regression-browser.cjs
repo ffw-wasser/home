@@ -38,5 +38,21 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.locator('#cancelLoginButton').click();await page.locator('#attendanceView').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>pendingCalendarCorrection),null);
  await completed.click();await page.locator('#adminPin').fill('synthetic-test-pin');await page.locator('#loginButton').click();
  await page.waitForFunction(()=>correctedReports.length===1);assert.deepEqual(await page.evaluate(()=>correctedReports),['original-test-report']);assert.equal(await page.evaluate(()=>correctionLoads),beforeCorrectionLoads+1);
+ // The rendered participant grid and correction editor share the calendar group scope.
+ await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
+ await page.evaluate(()=>{
+  oneDriveAdministrationReady=()=>true;oneDriveSignedIn=()=>true;oneDriveStateConfirmed=true;adminUnlocked=true;resetAdminTimeout();currentOperationId='';currentSessionId='synthetic-group-session';sessionType='Unterricht';entries=[];pendingMemberStatuses.clear();chosenMemberIds.clear();chosenRole='Anwesend';
+  members=[{id:'team',firstName:'Anna',lastName:'Gruppe',roles:[]},{id:'outside',firstName:'Bea',lastName:'Andere',roles:[]},{id:'extra',firstName:'Clara',lastName:'Gruppe',roles:[]}];window.testGroup={recipientIds:['team']};PortalAdmin.attendanceAudience=()=>testGroup;setHomeFlowStage(2);renderMembers();
+ });
+ assert.equal(await page.locator('#members [data-quick-status="Anwesend"]').count(),1);assert.equal(await page.locator('#members [data-quick-member="team"][data-quick-status="Anwesend"]').count(),1);assert.equal(await page.locator('#members [data-quick-member="outside"]').count(),0);
+ await page.evaluate(()=>{testGroup={recipientIds:[]};renderMembers();});assert.equal(await page.locator('#members [data-quick-member]').count(),0);
+ await page.evaluate(()=>{testGroup={pending:true};renderMembers();});assert.match(await page.locator('#members').innerText(),/Gruppenzuordnung/);assert.equal(await page.locator('#members [data-quick-member]').count(),0);
+ await page.evaluate(()=>{testGroup={recipientIds:['team']};renderMembers();});
+ if(process.env.CAPTURE_CALENDAR_CORRECTION_HELP){const target=page.locator('#attendanceSelectionWorkspace .members-panel');await target.screenshot({path:path.join(root,'assets/help/guide/geraetehaus-anwesenheit.jpg'),type:'jpeg',quality:78,animations:'disabled'});const box=await target.boundingBox(),meta=path.join(root,'assets/help/guide/screens.json'),sizes=JSON.parse(fs.readFileSync(meta,'utf8'));sizes['geraetehaus-anwesenheit']={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(meta,JSON.stringify(sizes,null,2)+'\n');}
+ await page.evaluate(()=>{
+  csvArchive=[{id:'synthetic-group-report',sessionType:'Sonderprobe',topic:'Gruppenübung',content:'Datum;Uhrzeit;Name;Terminart;Status;Funktion / Status;Thema\n'+members.slice(0,2).map((m,i)=>'2026-11-10;18:00;'+nameForStorage(m)+';Sonderprobe;'+(i?'Fehlt':'Anwesend')+';;Gruppenübung').join('\n')}];
+  correctArchiveItem('synthetic-group-report',{audience:{recipientIds:['team','extra']}});
+ });
+ assert.equal(await page.locator('#archiveCorrectionList .archive-correction-person:visible').count(),1);assert.equal(await page.locator('#archiveCorrectionList .archive-correction-person').count(),2,'existing outside-group row stays in the report');assert.equal(await page.locator('#archiveCorrectionAddPerson option').count(),2);assert.equal(await page.locator('#archiveCorrectionAddPerson option').last().innerText(),await page.evaluate(()=>nameForTile(members[2])));
  console.log('PASS participants-first date change preserves session and completion, Unterricht supports not applicable, Veranstaltung uses attendance statuses.');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

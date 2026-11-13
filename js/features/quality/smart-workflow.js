@@ -87,6 +87,7 @@
     else if(calendar.stale||Date.now()-calendar.checkedAt>300000)tasks.push({title:'Kalender aktualisieren',text:'Die Prüfung benötigt einen aktuellen Kalenderstand.',run:()=>window.PortalAdmin?.openReview()});
     else if(calendar.count)tasks.push({title:calendar.count+' Termine prüfen',text:calendar.groups?calendar.groups+' Termine mit Hinweisen zu den Google-Angaben.':'Einordnung oder Freigabe noch offen.',run:()=>window.PortalAdmin?.openReview()});
     const quality=qualityData();if(quality.length)tasks.push({title:'Berichte vervollständigen',text:quality.length+' Hinweise in den geladenen Berichten.',run:()=>{showView('settingsStatisticsView');window.SmartWorkflow.statistics();document.getElementById('smartDataQualityPanel')?.scrollIntoView({block:'start'});}});
+    panel.hidden=!tasks.length;
     panel.innerHTML='<h3>Handlungsbedarf</h3><p class="help-text">Aktueller Speicherstand und geladene Kalender- und Berichtsdaten.</p><div class="smart-task-list"></div>';
     const list=panel.querySelector('.smart-task-list');
     if(!tasks.length){list.textContent='Keine offenen Hinweise in den geladenen Daten.';return;}
