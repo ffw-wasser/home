@@ -35,6 +35,10 @@ export default {
    const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
+   if(globalThis.StorageMigration&&path.startsWith('/admin/storage-migration/')){
+    try{const result=await globalThis.StorageMigration.route(path,request,env,auth);if(result instanceof Response){const privateHeaders=new Headers(headers);for(const [key,value] of result.headers)privateHeaders.set(key,value);return new Response(result.body,{status:result.status,headers:privateHeaders});}return reply(result);}
+    catch(error){return reply({error:error.status?error.message:'Übernahme derzeit nicht bestätigt. Bitte denselben Vorgang erneut prüfen.'},error.status||503);}
+   }
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
     const value=await body(request,path==='/admin/portal/training'?750000:path==='/portal/calendar-addon/groups'?130000:path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
     try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(path==='/portal/regulations/pdf'&&result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline'}});return reply(result);}
