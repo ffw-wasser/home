@@ -1,4 +1,4 @@
-// Real account invitation UI and Worker; synthetic OneDrive only.
+// Real invitation UI/Worker; synthetic legacy item identities behind the migrated file interface.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require('playwright'),{fixture}=require('./helpers/portal-fixture.cjs');
 const root=path.resolve(__dirname,'..');
@@ -19,6 +19,7 @@ const root=path.resolve(__dirname,'..');
    window.qaMembers=[{id:record.memberId,firstName:'Anna',lastName:'Testperson'},{id:'new-member',firstName:'Ben',lastName:'Testperson'}];
    window.oneDriveReadState=async()=>({members:qaMembers});
    oneDriveSignedIn=()=>true;oneDriveResolveSharedRoot=async()=>({driveId:'A1B2C3D4E5F60718',id:'root'});
+   DrinksPush.config=async()=>({origin:'https://test.account.workers.dev',token});
    window.qaFiles=new Map([[await DrinksStore.mobileFileName(record.memberId),{data:record,item:{eTag:'synthetic-1'}}]]);
    qaFiles.set('konten-zentrale.json',{data:{version:1,source,state:'active'},item:{eTag:'synthetic-marker'}});
    qaFiles.set('push-verbindung.json',{data:{origin:'https://test.account.workers.dev',token},item:{eTag:'synthetic-push'}});
@@ -31,6 +32,7 @@ const root=path.resolve(__dirname,'..');
     const saved=qaFiles.get(name);if(!saved)throw Object.assign(Error('Synthetic missing file'),{status:404});
     return reply(p.endsWith('/content')?saved.data:{id:'qa-file-'+name,eTag:saved.item.eTag,file:{}});
    };
+   await DrinksCentral.connection();
    showView('attendanceView');
   },{token:f.env.ADMIN_TOKEN,record:f.people[0],source});
   await page.locator('#calendar-sidebar .calendar-sidebar-event').first().waitFor({state:'attached'});

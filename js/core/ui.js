@@ -13,7 +13,7 @@ function closeCompactMenu() {
 }
 function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   if(!allowDisconnected&&(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady())){
-    showToast("Bitte OneDrive verbinden und erfolgreich synchronisieren, bevor du diesen Verwaltungsbereich öffnest.","error");window.WorkflowUX?.connectionNotice();return false;
+    showToast("Bitte Cloudflare verbinden und erfolgreich synchronisieren, bevor du diesen Verwaltungsbereich öffnest.","error");window.WorkflowUX?.connectionNotice();return false;
   }
   if(adminUnlocked&&checkAdminSession()){resetAdminTimeout();return true;}
   pendingSettingsTarget=target;
@@ -23,6 +23,7 @@ function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   return false;
 }
 function lockAdministration(){
+  window.ReportDownload?.clear();
   window.MemberRecordsPrint?.clear();
   if(typeof clearFitnessStatistics==='function')clearFitnessStatistics();
   const theaterReturn=window.TheaterAdmin?.route?.();

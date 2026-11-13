@@ -8,7 +8,7 @@ test('Auch entsperrte Verwaltung benötigt bestätigtes OneDrive; Einrichtung bl
 });
 test('Verspätete Graph-Antwort wird nach Abmelden verworfen',async()=>{
  let release;const localStorage=storage({fw_onedrive_tokens:JSON.stringify({access_token:'test',obtained_at:Date.now(),expires_in:3600})});
- const c=vm.createContext({localStorage,sessionStorage:storage(),window:{},navigator:{onLine:true},Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,fetch:()=>new Promise(resolve=>release=resolve)});vm.runInContext(read('js/core/onedrive-sync.js'),c);
+ const c=vm.createContext({localStorage,sessionStorage:storage(),window:{},navigator:{onLine:true},Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,fetch:()=>new Promise(resolve=>release=resolve)});vm.runInContext(read('tests/fixtures/onedrive-sync-legacy.js'),c);
  vm.runInContext('oneDriveAccessConfirmed=true',c);assert.equal(c.oneDriveAdministrationReady(),true);
  const pending=c.odFetch('https://graph.microsoft.com/v1.0/test');await new Promise(resolve=>setImmediate(resolve));c.endOneDriveSession();release(new Response('{}'));
  await assert.rejects(pending,/Anmeldung wurde beendet/);assert.equal(c.oneDriveAdministrationReady(),false);assert.equal(localStorage.getItem('fw_onedrive_tokens'),null);
@@ -25,4 +25,5 @@ test('Abmelden entfernt personenbezogenen Speicher und Berichte, erhält Einrich
  assert.equal(f.c.members.length,0);assert.equal(f.c.entries.length,0);assert.equal(f.c.adminUnlocked,false);assert.equal(f.deleted.length,4);assert.equal(f.ended,1);assert.equal(f.reloaded,1);assert.equal(f.main.hidden,true);
 });
 test('Abbrechen bewahrt ungespeicherte Daten und Anmeldung',async()=>{const f=privacy(false);assert.equal(await f.c.window.AppPrivacy.logout(),false);assert.equal(f.c.members.length,1);assert.equal(f.ended,0);assert.equal(f.deleted.length,0);});
+test('Offline-Abmelden entfernt lokale private Daten auch bei nicht erreichbarer Gerätesperre',async()=>{const f=privacy();f.c.window.CloudStorage={logout:async()=>{throw Error('offline');}};assert.equal(await f.c.window.AppPrivacy.logout(),true);assert.equal(f.local.getItem('fw_v5_members'),null);assert.equal(f.deleted.length,4);assert.equal(f.reloaded,1);});
 

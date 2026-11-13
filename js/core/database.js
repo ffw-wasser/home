@@ -73,13 +73,13 @@ function supportsPersistentDirectoryPicker() {
 }
 function setIpadStorageCardState(kind) {
   const map={
-    csv:{name:"csvFolderName",choose:"chooseCsvFolderButton",clear:"clearCsvFolderButton",hint:"csvSupportHint",label:"Terminpakete werden beim Abschluss über den iPad-Teilen-Dialog ausgegeben. Dort „In Dateien sichern“ und OneDrive wählen."},
-    pdf:{name:"pdfFolderName",choose:"choosePdfFolderButton",clear:"clearPdfFolderButton",hint:"pdfSupportHint",label:"PDF und CSV befinden sich im Terminpaket. Im iPad-Teilen-Dialog „In Dateien sichern“ und OneDrive wählen."},
-    backup:{name:"backupFolderName",choose:"chooseBackupFolderButton",clear:"clearBackupFolderButton",hint:"backupSupportHint",label:"Backups werden über den iPad-Teilen-Dialog ausgegeben. Dort „In Dateien sichern“ und OneDrive wählen."}
+    csv:{name:"csvFolderName",choose:"chooseCsvFolderButton",clear:"clearCsvFolderButton",hint:"csvSupportHint",label:"Terminpakete werden beim Abschluss über den iPad-Teilen-Dialog ausgegeben. Dort „In Dateien sichern“ und Cloudflare wählen."},
+    pdf:{name:"pdfFolderName",choose:"choosePdfFolderButton",clear:"clearPdfFolderButton",hint:"pdfSupportHint",label:"PDF und CSV befinden sich im Terminpaket. Im iPad-Teilen-Dialog „In Dateien sichern“ und Cloudflare wählen."},
+    backup:{name:"backupFolderName",choose:"chooseBackupFolderButton",clear:"clearBackupFolderButton",hint:"backupSupportHint",label:"Backups werden über den iPad-Teilen-Dialog ausgegeben. Dort „In Dateien sichern“ und Cloudflare wählen."}
   };
   const item=map[kind];if(!item)return;
   const name=byId(item.name),choose=byId(item.choose),clear=byId(item.clear),hint=byId(item.hint);
-  if(name){name.textContent="Auswahl beim Speichern";name.title="OneDrive-Ordner im iPad-Dialog auswählen";}
+  if(name){name.textContent="Auswahl beim Speichern";name.title="Cloudflare-Ordner im iPad-Dialog auswählen";}
   if(choose){choose.hidden=true;choose.disabled=true;choose.setAttribute("aria-hidden","true");}
   if(clear){clear.hidden=true;clear.disabled=true;clear.setAttribute("aria-hidden","true");}
   if(hint)hint.textContent="Beim Speichern: Teilen → In Dateien sichern → Ordner wählen.";
@@ -119,7 +119,7 @@ async function ensureDirectoryWritePermission(handle) {
 
 // Muss unmittelbar aus dem Klick auf „Weiter zum Abschluss“ aufgerufen werden.
 // Alle requestPermission-Aufrufe werden vor dem ersten await gestartet, damit
-// die Browser-Benutzeraktivierung auch bei einem OneDrive-Synchronordner gilt.
+// die Browser-Benutzeraktivierung auch bei einem Cloudflare-Synchronordner gilt.
 async function requestExportFolderPermissionsNow() {
   const handles=[csvDirectoryHandle,pdfDirectoryHandle].filter(Boolean);
   const uniqueHandles=handles.filter((handle,index)=>handles.indexOf(handle)===index);
@@ -312,7 +312,7 @@ function ensureArchiveStorageCenter(){
       completeBackupPanel=document.createElement("article");
       completeBackupPanel.id="completeBackupStorageCard";
       completeBackupPanel.className="storage-card storage-backup-card";
-      completeBackupPanel.innerHTML=`<div class="storage-card-heading"><span class="storage-card-kicker">Datensicherung</span><h3>App-Datensicherungen</h3><p class="help-text">App-Daten sichern. Bei aktiver zentraler Kontenführung wird zusätzlich eine geprüfte Getränkesicherung in OneDrive erstellt und in der App-Datei vermerkt.</p></div><div class="storage-folder-status backup-folder-status"><span class="storage-status-label">Ausgewählter Ordner</span><strong id="backupFolderName">Kein Backup-Ordner ausgewählt</strong><small id="backupSupportHint">Der gewählte Ordner wird für App-Datensicherungen verwendet.</small></div><div class="storage-card-actions storage-folder-actions" id="backupFolderActions"></div><div class="storage-card-actions storage-backup-actions" id="completeBackupActions"></div>`;
+      completeBackupPanel.innerHTML=`<div class="storage-card-heading"><span class="storage-card-kicker">Datensicherung</span><h3>App-Datensicherungen</h3><p class="help-text">App-Daten sichern. Bei aktiver zentraler Kontenführung wird zusätzlich eine geprüfte Getränkesicherung in Cloudflare erstellt und in der App-Datei vermerkt.</p></div><div class="storage-folder-status backup-folder-status"><span class="storage-status-label">Ausgewählter Ordner</span><strong id="backupFolderName">Kein Backup-Ordner ausgewählt</strong><small id="backupSupportHint">Der gewählte Ordner wird für App-Datensicherungen verwendet.</small></div><div class="storage-card-actions storage-folder-actions" id="backupFolderActions"></div><div class="storage-card-actions storage-backup-actions" id="completeBackupActions"></div>`;
       backupGrid.appendChild(completeBackupPanel);
     }
     const folderActions=byId("backupFolderActions");

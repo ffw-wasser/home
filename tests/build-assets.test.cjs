@@ -2,6 +2,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8').replace(/\r\n/g,'\n');
 test('Worker-Bundle entspricht sämtlichen Quellen und bewahrt Kalenderfunktionen beim Neubau',()=>{
  const built=require('../cloudflare/push/build.cjs').build();assert.equal(read('cloudflare/push/worker.bundle.js'),built.worker);assert.equal(read('js/vendor/passkeys-browser.js'),built.browser);
+ const fingerprint=built.worker.match(/sourceFingerprint:\s*"([a-f0-9]{64})"/)[1];
+ assert.ok(read('scripts/activate-cloudflare-storage.cjs').includes("EXPECTED_WORKER_FINGERPRINT='"+fingerprint+"'"),'activation requires the exact checked Worker version');
 });
 test('Öffentliche HTML-, CSS-, Manifest- und Dokumentverweise zeigen auf vorhandene lokale Dateien',()=>{
  const problems=[];let checked=0;

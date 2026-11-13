@@ -15,17 +15,19 @@
  // Migration source hashes use hex rather than the legacy base64url hash helper.
  async function sourceDigest(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',utf.encode(value))),x=>x.toString(16).padStart(2,'0')).join('');}
  async function checkSource(env,data){const ledger=await L.meta(env);if(ledger?.state!=='active'||!hex(data.source)||!equal(await sourceDigest(ledger.source),data.source))fail('Die Datenquelle stimmt nicht mit dem bestehenden Dienst überein.');}
- async function device(env,data,auth){
+ async function tokenDevice(env,auth){
   if(!/^[A-Za-z0-9_-]{43}$/.test(auth||''))fail('Gerätezugang ungültig.',401);
   const row=await env.DB.prepare('SELECT * FROM storage_devices WHERE token_hash=?').bind(await hash('storage-device/v1:'+auth)).first();
-  if(!row||row.run!==data.run||row.source_hash!==data.source||row.revoked_at!==null||row.expires_at<=Date.now())fail('Gerätezugang abgelaufen oder gesperrt.',401);
+  if(!row||row.revoked_at!==null||row.expires_at<=Date.now())fail('Gerätezugang abgelaufen oder gesperrt.',401);
   return row;
  }
+ async function device(env,data,auth){const row=await tokenDevice(env,auth);if(row.run!==data.run||row.source_hash!==data.source)fail('Gerätezugang gehört zu einem anderen Datenstand.',401);if(g.StorageRuntime)await g.StorageRuntime.assertDevice(env,row);return row;}
  async function route(path,data,env,auth){
   const admin=path.startsWith('/admin/storage-state/');
-  if(admin&&(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN)))fail('Admin-Zugang ungültig.',401);
+  if(admin){if(g.StorageRuntime)await g.StorageRuntime.adminScope(env,auth,data);else if(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN))fail('Admin-Zugang ungültig.',401);}
   if(!hex(data.run))fail('Ungültige Übernahmekennung.',400);
   const actor=admin?null:await device(env,data,auth);
+  const runtime=g.StorageRuntime?await g.StorageRuntime.current(env):null,phase=runtime?.run===data.run?{mode:'active',liveStorage:'cloudflare'}:{mode:'rehearsal',liveStorage:'onedrive'};
   await checkSource(env,data);
   if(path==='/admin/storage-state/prepare'){
    const bytes=await g.StorageMigration.verifiedFile(env,data.source,data.run,'feuerwehr-wasser-daten.json');
@@ -33,23 +35,24 @@
    const payload=await L.seal(env,value,purpose(data.run));
    await env.DB.prepare('INSERT OR IGNORE INTO storage_states(run,source_hash,payload,version,created_at) VALUES(?,?,?,1,?)').bind(data.run,data.source,payload,Date.now()).run();
    const row=await get(env,data.run);if(row.source_hash!==data.source)fail('Die Datenquelle wurde geändert.');
-   return {version:row.version,mode:'rehearsal',liveStorage:'onedrive'};
+   return {version:row.version,...phase};
   }
   const row=await get(env,data.run);if(!row||row.source_hash!==data.source)fail('Der Datenstand wurde noch nicht vorbereitet.',404);
   if(path==='/admin/storage-state/status'){
    const value=await L.open(env,row.payload,purpose(data.run));
-   return {version:row.version,mode:'rehearsal',liveStorage:'onedrive',members:value.members.length,entries:value.entries.length};
+   return {version:row.version,...phase,members:value.members.length,entries:value.entries.length};
   }
   if(path==='/admin/storage-state/pair'){
    if(!uuid(data.deviceId)||!/^[A-Za-z0-9_-]{43}$/.test(data.token||'')||typeof data.label!=='string'||!data.label.trim()||data.label.length>100||/[\x00-\x1f\x7f]/.test(data.label)||!Number.isSafeInteger(data.expiresAt))fail('Ungültige Geräteanmeldung.',400);
-   const tokenHash=await hash('storage-device/v1:'+data.token),registrationHash=await hash(JSON.stringify({run:data.run,source:data.source,tokenHash,label:data.label,expiresAt:data.expiresAt}));
+   if(data.access!==undefined&&!['state','application-admin'].includes(data.access))fail('Ungültige Geräteberechtigung.',400);
+   const access=data.access||'state',tokenHash=await hash('storage-device/v1:'+data.token),registrationHash=await hash(JSON.stringify({run:data.run,source:data.source,tokenHash,label:data.label,expiresAt:data.expiresAt,...(access==='application-admin'?{access}:{})}));
    const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
-   if(old){if(old.registration_hash!==registrationHash||old.revoked_at!==null||old.expires_at<=Date.now())fail('Die Gerätekennung ist bereits vergeben oder gesperrt.');return {ok:true,deviceId:old.id,expiresAt:old.expires_at,duplicate:true,mode:'rehearsal'};}
+   if(old){if(old.registration_hash!==registrationHash||old.revoked_at!==null||old.expires_at<=Date.now())fail('Die Gerätekennung ist bereits vergeben oder gesperrt.');return {ok:true,deviceId:old.id,expiresAt:old.expires_at,duplicate:true,mode:phase.mode};}
    const now=Date.now();if(data.expiresAt<=now||data.expiresAt>now+30*86400000)fail('Ein Gerätezugang gilt maximal 30 Tage.',400);
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label},'storage-device:'+data.deviceId),now,data.expiresAt,data.run,now).run();
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label,...(access==='application-admin'?{access}:{})},'storage-device:'+data.deviceId),now,data.expiresAt,data.run,now).run();
    const saved=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
    if(!saved||saved.registration_hash!==registrationHash||saved.revoked_at!==null)fail('Geräteanmeldung nicht bestätigt oder Gerätelimit erreicht.');
-   return {ok:true,deviceId:saved.id,expiresAt:saved.expires_at,duplicate:false,mode:'rehearsal'};
+   return {ok:true,deviceId:saved.id,expiresAt:saved.expires_at,duplicate:false,mode:phase.mode};
   }
   if(path==='/admin/storage-state/revoke'){
    if(!uuid(data.deviceId))fail('Ungültige Gerätekennung.',400);
@@ -58,24 +61,28 @@
   }
   if(path==='/storage-state/read'){
    const value=await L.open(env,row.payload,purpose(data.run));await device(env,data,auth);
-   return {value,version:row.version,mode:'rehearsal',liveStorage:'onedrive'};
+   return {value,version:row.version,...phase};
   }
   if(path!=='/storage-state/write')fail('Nicht gefunden.',404);
   if(!uuid(data.operationId)||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<1)fail('Ungültiger Speichervorgang.',400);
   const value=state(data.value),digest=await hash(JSON.stringify({expectedVersion:data.expectedVersion,value}));
   const previous=await env.DB.prepare('SELECT * FROM storage_state_receipts WHERE run=? AND operation_id=?').bind(data.run,data.operationId).first();
-  if(previous){if(previous.device_id!==actor.id||previous.digest!==digest)fail('Die Vorgangskennung wurde bereits anders verwendet.');return {version:previous.version,currentVersion:row.version,duplicate:true,mode:'rehearsal'};}
+  if(previous){if(previous.device_id!==actor.id||previous.digest!==digest)fail('Die Vorgangskennung wurde bereits anders verwendet.');return {version:previous.version,currentVersion:row.version,duplicate:true,mode:phase.mode};}
   if(row.version!==data.expectedVersion)fail('Der Datenstand wurde gleichzeitig geändert. Lokale Änderungen behalten und erneut vergleichen.');
   const payload=await L.seal(env,value,purpose(data.run)),version=data.expectedVersion+1;
+  const access=g.StorageRuntime?await g.StorageRuntime.role(env,actor):'state';
+  const runtimeGuard=access==='application-admin'?"EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)":"NOT EXISTS(SELECT 1 FROM storage_runtime WHERE run=?)";
+  const runtimeArgs=access==='application-admin'?[data.run,data.source]:[data.run];
   // Check revocation and expiry again inside the same transaction as the CAS.
   const result=await env.DB.batch([
-   env.DB.prepare('UPDATE storage_states SET payload=?,version=version+1 WHERE run=? AND source_hash=? AND version=? AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND token_hash=? AND run=? AND revoked_at IS NULL AND expires_at>?)').bind(payload,data.run,data.source,data.expectedVersion,actor.id,actor.token_hash,data.run,Date.now()),
-   env.DB.prepare('INSERT OR IGNORE INTO storage_state_receipts(run,operation_id,device_id,digest,version) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,data.operationId,actor.id,digest,version,data.run,payload,version)
+   env.DB.prepare('UPDATE storage_states SET payload=?,version=version+1 WHERE run=? AND source_hash=? AND version=? AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND token_hash=? AND run=? AND revoked_at IS NULL AND expires_at>?) AND '+runtimeGuard).bind(payload,data.run,data.source,data.expectedVersion,actor.id,actor.token_hash,data.run,Date.now(),...runtimeArgs),
+   env.DB.prepare('INSERT OR IGNORE INTO storage_state_receipts(run,operation_id,device_id,digest,version) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,data.operationId,actor.id,digest,version,data.run,payload,version),
+   env.DB.prepare('INSERT OR IGNORE INTO storage_state_versions(run,version,payload,saved_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,row.version,row.payload,Date.now(),data.run,payload,version)
   ]);
   // Do not infer success from the HTTP delivery or a prior read.
   const receipt=await env.DB.prepare('SELECT * FROM storage_state_receipts WHERE run=? AND operation_id=?').bind(data.run,data.operationId).first();
   if(!receipt||receipt.device_id!==actor.id||receipt.digest!==digest)fail('Speicherung nicht bestätigt. Denselben Vorgang erneut prüfen.');
-  return {version:receipt.version,currentVersion:receipt.version,duplicate:!result[0].meta.changes,mode:'rehearsal'};
+  return {version:receipt.version,currentVersion:receipt.version,duplicate:!result[0].meta.changes,mode:phase.mode};
  }
- g.StorageState={route,assertSource:checkSource};
+ g.StorageState={route,assertSource:checkSource,tokenDevice};
 })(globalThis);

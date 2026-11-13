@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync(require.resolve('../js/core/onedrive-sync.js'),'utf8');
+const source=fs.readFileSync(require.resolve('./fixtures/onedrive-sync-legacy.js'),'utf8');
 function fixture(){
  const store=new Map(),calls=[];
  const c=vm.createContext({window:{},navigator:{onLine:true},Headers,localStorage:{getItem:k=>store.get(k)||'',setItem:(k,v)=>store.set(k,v)},console:{error(){}},setTimeout:()=>1,clearTimeout(){},members:[{id:'synthetic-member'}],entries:[],csvArchive:[],byId:()=>null});

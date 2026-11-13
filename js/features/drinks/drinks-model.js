@@ -108,7 +108,7 @@
       }
       else throw new Error('Eine Getränkebuchung ist ungültig.');
       applyEntry(s,b);
-      if(!Number.isSafeInteger(s.balance)||s.balance<0||!Number.isSafeInteger(s.credit)||s.credit<0||!Number.isSafeInteger(s.count)||s.count<0||!Number.isSafeInteger(s.points)||!Number.isSafeInteger(s.rewardCredit)||s.rewardCredit<0||s.rewardCredit>s.credit)throw new Error('Der Getränkestand ist ungültig. Bitte die OneDrive-Datei prüfen.');
+      if(!Number.isSafeInteger(s.balance)||s.balance<0||!Number.isSafeInteger(s.credit)||s.credit<0||!Number.isSafeInteger(s.count)||s.count<0||!Number.isSafeInteger(s.points)||!Number.isSafeInteger(s.rewardCredit)||s.rewardCredit<0||s.rewardCredit>s.credit)throw new Error('Der Getränkestand ist ungültig. Bitte die Cloudflare-Datei prüfen.');
     }
     return account;
   }
@@ -204,7 +204,7 @@
   function appendWithReward(account,booking,policy){
     if(global.H2OFeatures?.rewards===false)return append(account,booking);
     validateRewardSettings(policy);
-    // Both entries are one conditional OneDrive write; retries never grant twice.
+    // Both entries are one conditional Cloudflare write; retries never grant twice.
     if(account.bookings.some(b=>b.id===booking.id))return append(account,booking);
     let next=append({...account,schemaVersion:Math.max(policy.schemaVersion===2?6:2,account.schemaVersion)},booking);
     if(booking.type!=='payment'||Date.parse(booking.createdAt)<Date.parse(policy.startedAt))return next;

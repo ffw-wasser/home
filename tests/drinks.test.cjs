@@ -8,7 +8,7 @@ const store=fs.readFileSync(require.resolve('../js/features/drinks/drinks-store.
 const copy=v=>JSON.parse(JSON.stringify(v));
 const drink=(id='drink-0001',count=5)=>({id,type:'drinks',count,cents:count*150,createdAt:'2026-10-08T16:00:00Z'});
 const pay=(id='payment-0001',cents=500,method='cash')=>({id,type:'payment',cents,method,confirmation:'member',createdAt:'2026-10-08T17:00:00Z'});
-test('Zentrale Store-Anbindung bucht mit Version und ohne OneDrive-Konto-Schreibzugriff',async()=>{
+test('Zentrale Store-Anbindung bucht mit Version und ohne Cloudflare-Konto-Schreibzugriff',async()=>{
  const {ctx,M,S,calls}=app();let account=M.empty('a'),version=0;
  const policy={schemaVersion:2,id:'policy-001',revision:'policy-001',startedAt:'2020-01-01T00:00:00Z',thresholdCents:3000,awardUnits:300,beerUnits:150,wineUnits:150};
  ctx.DrinksCentral={connection:async()=>({source:'drive:root'}),call:async(c,action,data)=>{if(action==='policy')return {policy};if(action==='read')return {account:copy(account),version};if(action==='write'){assert.equal(data.version,version);account=copy(data.account);return {version:++version};}if(action==='members')return {members:['a']};throw Error(action);}};
@@ -138,7 +138,7 @@ test('PIN wird gesalzen/abgeleitet, niemals im Klartext gespeichert; falsche PIN
   assert.equal(pin.algorithm,'PBKDF2-SHA256');assert.match(pin.salt,/^4826[a-f0-9]{28}$/);assert.match(pin.hash,/^[a-f0-9]{64}$/);
   assert.notEqual((await M.createPin('4826')).salt,pin.salt);await assert.rejects(M.createPin('111'));
 });
-test('PIN-Verwaltung legt OneDrive-Ordner an und speichert ausschließlich dort',async()=>{
+test('PIN-Verwaltung legt Cloudflare-Ordner an und speichert ausschließlich dort',async()=>{
   const {S,M,setFolder,storageWrites,files}=app();setFolder(false);const a=await S.setPin('a','4826');assert.equal(await M.verifyPin('4826',a.pin),true);assert.equal(files.size,1);assert.deepEqual(storageWrites,[]);
 });
 test('PIN-Änderung erhält alle gebuchten Striche und Zahlungen',async()=>{
@@ -185,7 +185,7 @@ test('Geänderte Dateiversion lädt aktuelle Buchungen und PIN; alte Sitzung ble
   assert.equal(calls.slice(start).filter(c=>c.url.endsWith('/content')).length,1);
   await assert.rejects(S.book('a',drink('drink-0003',1),'null'),/PIN wurde geändert/);
 });
-test('Wartende Kartenbuchung darf nach einem OneDrive-Ordnerwechsel nicht in einen anderen Ordner schreiben',async()=>{
+test('Wartende Kartenbuchung darf nach einem Cloudflare-Ordnerwechsel nicht in einen anderen Ordner schreiben',async()=>{
   const {ctx,S,calls}=app();await S.list(['a']);const source=S.sourceKey();assert.equal(source,'drive:root');
   ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:'other-drive'});const start=calls.length;
   await assert.rejects(S.book('a',drink(),'null',source),/ursprüngliche Verbindung/);
@@ -201,7 +201,7 @@ test('Ausgelieferter Code enthält lokale QR-Erzeugung, Fass ohne Legende und ke
 
 const rewardPolicy=(count=20,cents=300)=>({schemaVersion:1,id:'program-0001',revision:'revision-0001',startedAt:'2026-10-01T00:00:00Z',count,cents});
 const configure=(a,policy=rewardPolicy())=>a.files.set('bonus-einstellungen.json',{data:copy(policy),eTag:'"config-1"'});
-test('Bonus startet mit 20 Strichen und 3 Euro; Verwaltung ändert die Werte ausschließlich in OneDrive',async()=>{
+test('Bonus startet mit 20 Strichen und 3 Euro; Verwaltung ändert die Werte ausschließlich in Cloudflare',async()=>{
   const a=app(),p=await a.S.rewards();assert.equal(p.thresholdCents,3000);assert.equal(p.awardUnits,300);
   const changed=await a.S.saveRewards(10,150,p.revision);
   assert.equal(changed.thresholdCents,1500);assert.equal(changed.awardUnits,150);assert.equal(changed.id,p.id);assert.equal(changed.startedAt,p.startedAt);assert.notEqual(changed.revision,p.revision);
@@ -266,7 +266,7 @@ test('Gleichzeitiger Bonusstart nutzt eine gemeinsame Regel; parallele Verwaltun
   const results=await Promise.allSettled([a.S.saveRewards(10,150,one.revision),a.S.saveRewards(30,450,two.revision)]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.match(results.find(r=>r.status==='rejected').reason.message,/inzwischen geändert/);
 });
-test('Verlorene Antwort beim Bonusstart und Speichern wird anhand der OneDrive-Version geprüft',async()=>{
+test('Verlorene Antwort beim Bonusstart und Speichern wird anhand der Cloudflare-Version geprüft',async()=>{
   const a=app();a.ctx.loseReply=true;const p=await a.S.rewards();assert.equal(p.thresholdCents,3000);assert.equal(a.files.size,1);
   a.ctx.loseReply=true;const saved=await a.S.saveRewards(25,400,p.revision);assert.equal(saved.thresholdCents,3750);assert.equal((await a.S.rewards()).awardUnits,400);
   a.ctx.navigator.onLine=false;await assert.rejects(a.S.saveRewards(10,150,saved.revision),/Offline/);assert.equal(a.files.get('bonus-einstellungen.json').data.thresholdCents,3750);
@@ -323,7 +323,7 @@ test('Teilweise bezahlte oder mit Bonus verrechnete Buchungen sind geschützt; u
  a=M.append(a,drink('unpaid-new-beer',1));assert.equal(M.correctable(a,'2026-10-08T18:00:00Z').targetId,'unpaid-new-beer');a=M.append(a,correction('unpaid-new-beer'));assert.equal(M.totals(a).balance,200);
  let partial=M.append(M.empty('b'),drink('partial-drinks',5));partial=M.append(partial,pay('partial-payment',1));assert.throws(()=>M.append(partial,correction('partial-drinks')),/bereits ganz oder teilweise bezahlt/);
 });
-test('Korrektur in OneDrive übersteht verlorene Antwort, Konflikte und parallele Rücknahmen',async()=>{
+test('Korrektur in Cloudflare übersteht verlorene Antwort, Konflikte und parallele Rücknahmen',async()=>{
   const a=app(),now=new Date().toISOString(),d={...drink('drink-today',1),createdAt:now};await a.S.book('a',d,'null');
   const c=correction(d.id,'correct-today',1,now);a.ctx.forceConflict=1;a.ctx.loseReply=true;
   const corrected=await a.S.book('a',c,'null');assert.equal(a.M.totals(corrected).count,0);
@@ -351,7 +351,7 @@ test('Unbezahlter Wein wird centgenau korrigiert; bezahlter Wein bleibt für Mit
  assert.throws(()=>M.append(a,{...c,cents:150}),/korrigiert/);assert.throws(()=>M.append(a,{...c,drink:'beer'}),/korrigiert/);const corrected=M.append(a,c);assert.equal(M.totals(corrected).balance,0);assert.equal(M.append(corrected,c),corrected);
  const paid=M.appendWithReward(a,{...pay('wine-payment-001',300),createdAt:'2026-10-09T12:01:00Z'},p);assert.throws(()=>M.append(paid,c),/bereits ganz oder teilweise bezahlt/);assert.equal(M.rewardState(paid,p).credit,300);
 });
-test('Gemischte Sammlung wird in einem OneDrive-Schreibvorgang gespeichert; Wiederholung nach verlorener Antwort zählt einmal',async()=>{
+test('Gemischte Sammlung wird in einem Cloudflare-Schreibvorgang gespeichert; Wiederholung nach verlorener Antwort zählt einmal',async()=>{
  const {ctx,S,M,calls}=app(),entries=[drink('mixed-beer-001',5),wine('mixed-wine-001',2)];await S.rewards();const start=calls.length;
  ctx.loseReply=true;ctx.forceConflict=1;const a=await S.bookMany('a',entries,'null');assert.equal(M.totals(a).balance,1350);assert.equal(a.bookings.length,2);
  const writes=calls.slice(start).filter(c=>c.options.method==='PUT'&&c.options.body.includes('mixed-beer-001'));
@@ -389,9 +389,9 @@ test('Verwaltung darf auch alte bezahlte Getränke löschen; Mitglieder können 
  await assert.rejects(S.book('a',entry,'null'),/Administration/);await assert.rejects(S.bookMany('a',[entry],'null'),/Ungültige/);
  const next=await S.adminDelete('a',entry);assert.equal(next.schemaVersion,6);assert.equal(M.totals(next).count,0);assert.equal(M.rewardState(next,null).credit,150);assert.equal((await S.adminDelete('a',entry)).bookings.length,3);
 });
-test('Admin-Löschung verlangt Freigabe, Grund und ursprüngliche OneDrive-Quelle',async()=>{
+test('Admin-Löschung verlangt Freigabe, Grund und ursprüngliche Cloudflare-Quelle',async()=>{
  const {S,ctx}=app();await S.book('a',drink('admin-restricted-drink',1),'null');const entry=adminRemoval('admin-restricted-drink');ctx.adminUnlocked=false;await assert.rejects(S.adminDelete('a',entry),/Administration/);ctx.adminUnlocked=true;
- await assert.rejects(S.adminDelete('a',{...entry,reason:''}),/ungültig/);await assert.rejects(S.adminDelete('a',entry,'other:folder'),/vorherigen OneDrive/);assert.equal((await S.read('a')).bookings.length,1);
+ await assert.rejects(S.adminDelete('a',{...entry,reason:''}),/ungültig/);await assert.rejects(S.adminDelete('a',entry,'other:folder'),/vorherigen Cloudflare/);assert.equal((await S.read('a')).bookings.length,1);
 });
 test('Admin-Zahlungslöschung nimmt Bonus zurück und funktioniert idempotent bei verlorener Antwort',async()=>{
  const {S,M,ctx}=app();await S.book('a',drink('admin-twenty-beer',20),'null');const now=new Date().toISOString();await S.book('a',{...pay('admin-full-payment',3000),createdAt:now},'null');
@@ -545,7 +545,7 @@ test('Punktestatistik trennt Einzahlungen, Challenge und Einlösungen; Stornos b
 });
 test('Historische Bonusbruchteile und Jahre mit ausschließlich Punkten bleiben in der Statistik sichtbar',()=>{const {M}=app(),p=rewardPolicy(1,1);let a=M.appendWithReward(M.append(M.empty('a'),drink('stats-legacy-drink',1)),pay('stats-legacy-payment',150),p);const result=M.consumption([a],'2026');assert.equal(result.paymentPointUnits,1);assert.equal(result.currentPointUnits,1);const id=webcrypto.randomUUID(),b=M.appendChallengeReward(M.empty('b'),{id:'challenge-reward-'+id,gameId:id,type:'challenge-reward',confirmation:'challenge',month:'2025-12',score:7,cents:300,createdAt:'2025-12-30T10:00:00Z'});assert.equal(M.consumption([b],'2025').total,0);assert.equal(M.consumption([b],'2025').earnedPointUnits,300);assert.deepEqual(copy(M.consumption([b],'2026').years),['2025']);});
 
-test('Persönliche OneDrive-Laufwerkskennung bleibt trotz Microsoft-Großschreibung dieselbe Quelle',async()=>{
+test('Persönliche Cloudflare-Laufwerkskennung bleibt trotz Microsoft-Großschreibung dieselbe Quelle',async()=>{
  const {ctx,S,files}=app();const personalDrive='A1B2C3D4E5F60718';
  ctx.oneDriveResolveSharedRoot=async()=>({id:'root',driveId:personalDrive});
  files.set('konten-zentrale.json',{data:{version:1,source:personalDrive.toLowerCase()+':root',state:'active'},eTag:'"marker-1"'});

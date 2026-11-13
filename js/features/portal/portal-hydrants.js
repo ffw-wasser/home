@@ -42,7 +42,7 @@ function clearIpad(){
  if($('hydrants-ipad-state'))$('hydrants-ipad-state').textContent='';
 }
 async function viewIpad(){
- clearIpad();const epoch=ipadGeneration,status=$('hydrants-ipad-state'),button=$('hydrants-ipad-open');button.disabled=true;status.textContent='Hydrantenplan wird aus OneDrive geladen …';
+ clearIpad();const epoch=ipadGeneration,status=$('hydrants-ipad-state'),button=$('hydrants-ipad-open');button.disabled=true;status.textContent='Hydrantenplan wird aus Cloudflare geladen …';
  try{
   const bytes=await g.oneDriveReadHydrants();if(epoch!==ipadGeneration)return;
   ipadUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));$('hydrants-ipad-large').href=ipadUrl;
@@ -55,9 +55,9 @@ async function sync(){
  if(syncing)return;
  if(typeof requireAdmin==='function'&&!requireAdmin('helpView'))return;
  const status=$('hydrants-admin-state'),button=$('hydrants-sync');syncing=true;button.disabled=true;
- const assertAdmin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked||!g.oneDriveAdministrationReady?.())throw Error('Bitte Verwaltung entsperren und OneDrive verbinden.');};
+ const assertAdmin=()=>{if(typeof adminUnlocked==='undefined'||!adminUnlocked||!g.oneDriveAdministrationReady?.())throw Error('Bitte Verwaltung entsperren und Cloudflare verbinden.');};
  try{
-  assertAdmin();status.textContent='PDF wird aus OneDrive geladen …';
+  assertAdmin();status.textContent='PDF wird aus Cloudflare geladen …';
   const bytes=await g.oneDriveReadHydrants();assertAdmin();const c=await g.DrinksCentral.connection();assertAdmin();
   if(!c)throw Error('Bitte zuerst den zentralen Kontodienst verbinden.');
   const call=(action,data={})=>{assertAdmin();return g.DrinksPush.request(c,'/admin/portal/hydrants/'+action,{source:c.source,...data});};

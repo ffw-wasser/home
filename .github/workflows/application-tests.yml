@@ -36,6 +36,33 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.cjs
+      - name: Verify production storage with actual browser transport
+        run: |
+          node tests/cloud-storage-browser.cjs
+          BROWSER_ENGINE=webkit node tests/cloud-storage-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-cloud-storage-review
+          path: |
+            assets/help/guide/geraetehaus-cloudflare.jpg
+            assets/help/guide/screens.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Check report ZIP periods and capture the download controls
+        run: |
+          node --test tests/report-download.test.cjs
+          node scripts/capture-help-screens.cjs --only=geraetehaus-berichte-download
+          BROWSER_ENGINE=webkit node tests/report-download-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-report-download-review
+          path: |
+            assets/help/guide/geraetehaus-berichte-download.jpg
+            assets/help/guide/screens.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Check illustrated guide matches its shared content
         run: node scripts/build-help-guide.cjs --check
       - name: Check bundled Cloudflare worker matches sources
@@ -111,10 +138,15 @@ jobs:
       - name: Capture and review all H2O portal screens
         env:
           PORTAL_REVIEW_OUTPUT: qa/portal-review
-        run: node scripts/capture-help-screens.cjs --only=geraetehaus-h2o-einladung,geraetehaus-backlog,geraetehaus-getraenkeverwaltung,geraetehaus-getraenke,geraetehaus-statistik,geraetehaus-auswertungen,h2o-install-iphone,h2o-install-android,h2o-anmeldung,h2o-jahresplan-laden,h2o-atemschutz,h2o-ausbildung,h2o-wettkampf,h2o-wettkampf-bronze,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+        run: node scripts/capture-help-screens.cjs --only=geraetehaus-abschluss,geraetehaus-datenstatus,geraetehaus-h2o-einladung,geraetehaus-backlog,geraetehaus-getraenkeverwaltung,geraetehaus-getraenke,geraetehaus-statistik,geraetehaus-auswertungen,h2o-install-iphone,h2o-install-android,h2o-anmeldung,h2o-jahresplan-laden,h2o-atemschutz,h2o-ausbildung,h2o-wettkampf,h2o-wettkampf-bronze,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+      - name: Capture Cloudflare connection and backup instructions
+        run: |
+          node scripts/capture-help-screens.cjs --only=geraetehaus-cloudflare
+          node scripts/capture-help-screens.cjs --only=geraetehaus-konto,geraetehaus-sicherung
       - name: Capture account deletion with synthetic credentials
         run: node scripts/capture-help-screens.cjs --only=h2o-konto-loeschen
       - name: Keep refreshed portal help screens for visual review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: h2o-help-screens
@@ -224,8 +256,6 @@ jobs:
         run: node tests/home-operation-browser.cjs
       - name: Test football favorites, cups and responsive views
         run: node tests/portal-bundesliga-browser.cjs
-      - name: Test authenticated direct OneDrive folder conversion
-        run: node tests/onedrive-direct-browser.cjs
       - name: Test local drafts, resume and administration tasks
         run: node tests/workflow-drafts-browser.cjs
       - name: Test home icon, administration cards and portal navigation

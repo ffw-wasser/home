@@ -44,16 +44,14 @@ test('Höchstens fünf Geräte je Deckel; ein Handy wird nicht unbemerkt einem a
  assert.equal((await call('/subscribe',{alias,endpoint:'https://fcm.googleapis.com/fixture-6'},cap)).status,409);
  const other='2'.repeat(32),othercap=(await call('/admin/account',{alias:other,revision})).data.capability;assert.equal((await call('/subscribe',{alias:other,endpoint:'https://fcm.googleapis.com/fixture-1'},othercap)).status,409);f.db.close();
 });
-test('iPad: Kontodienst bleibt in OneDrive verbunden, Erinnerungsversand ist entfernt',async()=>{
- const files=new Map(),calls=[];let balance=300;
- const ctx=vm.createContext({URL,crypto:webcrypto,AbortController,setTimeout,clearTimeout,adminUnlocked:true,document:{readyState:'loading',addEventListener(){}},
-  DrinksStore:{readMobileFile:async f=>files.get(f)||null,writeMobileFile:async(f,data)=>files.set(f,{data}),mobileFileName:async()=> 'handy-fixture.json',read:async()=>({balance})},DrinksModel:{totals:a=>a},DrinksMobile:{publish:async()=>true},fetch:async(url,o)=>{calls.push({url,options:o});return {ok:true,json:async()=>({publicKey:'B'.repeat(87),accepted:1,status:'accepted'})};}});
+test('iPad: Cloudflare-Gerätezugang ersetzt den gemeinsamen Root-Zugang; Erinnerungsversand bleibt entfernt',async()=>{
+ const calls=[],credential={origin:'https://test.account.workers.dev',token:'d'.repeat(43),source:'synthetic-source'};
+ const ctx=vm.createContext({URL,adminUnlocked:true,document:{readyState:'loading',addEventListener(){}},DrinksStore:{},CloudStorage:{connected:true,config:()=>credential,adminRequest:async(path,data)=>{calls.push({path,data});return {ok:true};}}});
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/drinks-push.js'),'utf8'),ctx);const P=ctx.DrinksPush;
- await assert.rejects(P.send('member-name','request-001'),/entfernt/);await assert.rejects(P.connect('https://evil.invalid','a'.repeat(64)),/ungültig/);
- await P.connect('https://test.account.workers.dev','a'.repeat(64));assert.equal(files.get('push-verbindung.json').data.token,'a'.repeat(64));files.set('handy-fixture.json',{data:{alias:'1'.repeat(32),revision:'revision-0001',key:'c'.repeat(64)}});
- balance=0;await assert.rejects(P.send('member-name','request-001'),/entfernt/);balance=300;await assert.rejects(P.send('member-name','request-001'),/entfernt/);
- assert.equal(calls.some(c=>c.url.endsWith('/admin/send')),false);ctx.adminUnlocked=false;await assert.rejects(P.send('member-name','request-002'),/entfernt/);
+ assert.deepEqual(await P.config(),credential);await P.request(credential,'/admin/check',{});assert.equal(calls[0].path,'/admin/check');
+ await assert.rejects(P.connect('https://evil.invalid','a'.repeat(64)),/Verwaltungsgeräte/);await assert.rejects(P.send(),/entfernt/);assert.equal(calls.some(call=>call.path.endsWith('/admin/send')),false);
 });
+
 test('Service Worker zeigt Portal-Erinnerung und öffnet den lokal gespeicherten Link',async()=>{
  const events={},shown=[],opened=[];const url='https://ffw-wasser.github.io/home/deckel.html#a='+ '1'.repeat(32)+'&k='+ 'a'.repeat(64);
  const ctx=vm.createContext({URL,Promise,importScripts:()=>{},DeckelDevice:{read:async()=>({url})},

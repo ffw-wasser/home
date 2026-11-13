@@ -13,12 +13,12 @@ const groups = {
   kalender: [/^(year-plan|calendar|portal-calendar|portal-reply|portal-priority|portal-sync|portal-settings|term-)/],
   einsatz: [/^(operation-|report-|termin-package-|document-report|tactics-|archive-step2)/],
   geraetehaus: [/^(attendance-|tactics-|term-|termin-package-|operation-|smart-flows|startup)/],
-  historie: [/^(history-|archive-|operation-correction|operation-overwrite|backup-)/],
+  historie: [/^(history-|archive-|report-download|operation-correction|operation-overwrite|backup-)/],
   deckel: [/^(deckel|drinks)(-|\.test)/],
   theater: [/^theater(-|\.test)/],
   portal: [/^portal\.test/, /^(portal|calendar)-/, /^member-(evidence|subscriptions)/],
-  sicherheit: [/^storage-(migration|state|files)\.test/, /^portal-identity\.test/,/^portal\.test/, /^(private-|admin-|setup-|termin-package-|onedrive-|member-|deckel-encrypted|portal-sync|portal-settings|calendar-invitations)/],
-  cloudflare: [/^storage-(migration|state|files)\.test/, /^portal-identity\.test/,/^portal\.test/, /^deckel-challenge\.test/, /^(deckel-push|drinks-central|drinks-phone-sync|portal-sync|portal-reply|portal-calendar|calendar-invitations|portal-settings|member-evidence|member-subscriptions|theater-phone-flow|drinks-challenge)/],
+  sicherheit: [/^cloud-sync\.test/,/^storage-(migration|state|files|runtime|portal-compat)\.test/, /^portal-identity\.test/,/^portal\.test/, /^(private-|admin-|setup-|termin-package-|onedrive-|member-|deckel-encrypted|portal-sync|portal-settings|calendar-invitations)/],
+  cloudflare: [/^cloud-sync\.test/,/^storage-(migration|state|files|runtime|portal-compat)\.test/, /^portal-identity\.test/,/^portal\.test/, /^deckel-challenge\.test/, /^(deckel-push|drinks-central|drinks-phone-sync|portal-sync|portal-reply|portal-calendar|calendar-invitations|portal-settings|member-evidence|member-subscriptions|theater-phone-flow|drinks-challenge)/],
   basis: [/^app-(update|release)\.test/, /^(build-assets|release-consistency|plausibility|consolidation|startup|usability|home-icons|backup-integrity)/]
 };
 const names = Object.keys(groups);

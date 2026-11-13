@@ -9,9 +9,9 @@
   async function load(force=false){
     if(globalThis.H2OFeatures?.rewards===false)return;
     globalThis.DrinksChallengeSettings?.load(force);globalThis.DrinksBirthdaySettings?.load(force);
-    if(!requireAdmin('settingsRewardsView')||busy||(!force&&dirty))return;if(force&&dirty&&!confirm('Eingaben verwerfen und neu aus OneDrive laden?'))return;
+    if(!requireAdmin('settingsRewardsView')||busy||(!force&&dirty))return;if(force&&dirty&&!confirm('Eingaben verwerfen und neu aus Cloudflare laden?'))return;
     const status=byId('bonusSettingsStatus');busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden geladen …';
-    try{const next=await DrinksStore.rewards();if(!adminUnlocked)return;policy=M.rewardPolicy(next);dirty=false;byId('bonusCount').value=(policy.thresholdCents/100).toFixed(2).replace('.',',');byId('bonusEuro').value=policy.awardUnits/M.POINT_UNIT;byId('bonusBeer').value=policy.beerUnits/M.POINT_UNIT;byId('bonusWine').value=policy.wineUnits/M.POINT_UNIT;status.textContent='In OneDrive gespeichert: '+description(policy);}
+    try{const next=await DrinksStore.rewards();if(!adminUnlocked)return;policy=M.rewardPolicy(next);dirty=false;byId('bonusCount').value=(policy.thresholdCents/100).toFixed(2).replace('.',',');byId('bonusEuro').value=policy.awardUnits/M.POINT_UNIT;byId('bonusBeer').value=policy.beerUnits/M.POINT_UNIT;byId('bonusWine').value=policy.wineUnits/M.POINT_UNIT;status.textContent='In Cloudflare gespeichert: '+description(policy);}
     catch(error){status.textContent=error.message||'Einstellungen konnten nicht geladen werden.';}finally{busy=false;byId('bonusSettingsSave').disabled=!policy;}
   }
   async function save(event){
@@ -19,7 +19,7 @@
     const settings={thresholdCents:M.parseEuro(byId('bonusCount').value),awardUnits:Number(byId('bonusEuro').value)*M.POINT_UNIT,beerUnits:Number(byId('bonusBeer').value)*M.POINT_UNIT,wineUnits:Number(byId('bonusWine').value)*M.POINT_UNIT};
     try{M.validateRewardSettings({...policy,...settings});}catch(error){status.textContent=error.message;return;}
     busy=true;byId('bonusSettingsSave').disabled=true;status.textContent='Treuepunkte-Einstellungen werden gespeichert …';
-    try{policy=await DrinksStore.saveRewards(settings,policy.revision);dirty=false;status.textContent='In OneDrive gespeichert: '+description(policy);showToast('Treuepunkte gespeichert.');globalThis.Drinks?.updateCards?.();globalThis.DrinksMobile?.refreshAll().catch(()=>{});}
+    try{policy=await DrinksStore.saveRewards(settings,policy.revision);dirty=false;status.textContent='In Cloudflare gespeichert: '+description(policy);showToast('Treuepunkte gespeichert.');globalThis.Drinks?.updateCards?.();globalThis.DrinksMobile?.refreshAll().catch(()=>{});}
     catch(error){status.textContent=error.message||'Speicherung nicht bestätigt. Bitte erneut laden und prüfen.';}finally{busy=false;byId('bonusSettingsSave').disabled=false;}
   }
   function render(account){

@@ -79,7 +79,7 @@ function ensureSettingsNavigation(){
     pageButton.addEventListener("click",()=>{
       const target=pageButton.dataset.settingsPage;
       pendingSettingsTarget=target;
-      if((pageButton.hasAttribute("data-protected")||pageButton.hasAttribute("data-archive-protected"))&&!oneDriveAdministrationReady()){showToast("Bitte zuerst OneDrive verbinden und erfolgreich synchronisieren.","error");pendingSettingsTarget="";window.WorkflowUX?.connectionNotice();return;}
+      if((pageButton.hasAttribute("data-protected")||pageButton.hasAttribute("data-archive-protected"))&&!oneDriveAdministrationReady()){showToast("Bitte zuerst Cloudflare verbinden und erfolgreich synchronisieren.","error");pendingSettingsTarget="";window.WorkflowUX?.connectionNotice();return;}
       if(pageButton.hasAttribute("data-protected")&&!adminUnlocked)return showView("adminLoginView");
       if(pageButton.hasAttribute("data-archive-protected")&&!adminUnlocked)return showView("archiveLoginView");
       showView(target);
@@ -287,7 +287,7 @@ if (!safeStorage.persistent) {
 
 
 
-/* Direkter Start. Persönliche Daten stammen aus dem Gerätespeicher oder OneDrive. */
+/* Direkter Start. Persönliche Daten stammen aus dem Gerätespeicher oder Cloudflare. */
 setTimeout(()=>{showBreathingClearanceWarnings();showDriverLicenseControlWarnings();},350);
 
 

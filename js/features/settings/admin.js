@@ -99,7 +99,7 @@ async function confirmProbeTopic() {
   const folderPermission=await requestExportFolderPermissionsNow();
   if(!folderPermission.ok){
     if(confirmButton){confirmButton.disabled=false;confirmButton.textContent="Weiter zum Abschluss";}
-    showToast("Kein Schreibzugriff auf den gewählten OneDrive-Ordner. Bitte Zugriff erlauben oder den Speicherort neu auswählen.","error");
+    showToast("Kein Schreibzugriff auf den gewählten Cloudflare-Ordner. Bitte Zugriff erlauben oder den Speicherort neu auswählen.","error");
     return;
   }
   if(confirmButton)confirmButton.textContent="Abschluss wird erstellt …";
@@ -152,7 +152,7 @@ function login() {
 }
 
 function loginArchive() {
-  if(!oneDriveAdministrationReady())return showToast("Bitte zuerst OneDrive verbinden und erfolgreich synchronisieren.","error");
+  if(!oneDriveAdministrationReady())return showToast("Bitte zuerst Cloudflare verbinden und erfolgreich synchronisieren.","error");
   if (byId("archivePin").value !== adminPin()) {
     byId("archivePinError").hidden = false;
     byId("archivePin").select();
@@ -208,7 +208,7 @@ function prepareMemberUpdate(id, row) {
   for(const selector of ['data-g262-valid-until','data-g263-valid-until','data-agt-instruction-valid-until','data-ffi-valid-until']){const value=row.querySelector('['+selector+']')?.value||'';if(value&&!MemberEvidence.monthEnd(value))throw Error("Bitte einen gültigen Monat und ein Jahr für den Nachweis eingeben.");}
   member.lastName = lastName;
   member.firstName = firstName;
-  // Laufbahndaten gehören zur bestehenden, OneDrive-synchronisierten Personalakte.
+  // Laufbahndaten gehören zur bestehenden, Cloudflare-synchronisierten Personalakte.
   if(row.querySelector("[data-career-json]")) member.careerEntries = window.MemberCareer.validate(JSON.parse(row.querySelector("[data-career-json]").value||"[]"));
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
   member.ageDepartment = Boolean(row.querySelector("[data-age-department]")?.checked);
@@ -251,7 +251,7 @@ function updateMembers(rows) {
   saveMembers();
   for(const {row} of rows)window.Usability?.savedMember(row);
   renderMembers();renderAdmin();updateSelection();
-  showToast(updates.size===1?"Mitglied auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt.":updates.size+" Mitglieder auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt.");
+  showToast(updates.size===1?"Mitglied auf diesem Gerät gespeichert. Cloudflare-Synchronisierung folgt.":updates.size+" Mitglieder auf diesem Gerät gespeichert. Cloudflare-Synchronisierung folgt.");
   return true;
 }
 function updateMember(id,row){return updateMembers([{id,row}]);}
@@ -266,7 +266,7 @@ function deleteMember(id) {
   renderMembers();
   renderAdmin();
   updateSelection();
-  showToast("Mitglied auf diesem Gerät entfernt. OneDrive und Handyzugänge werden abgeglichen; bitte den Synchronisierungsstatus prüfen.");
+  showToast("Mitglied auf diesem Gerät entfernt. Cloudflare und Handyzugänge werden abgeglichen; bitte den Synchronisierungsstatus prüfen.");
 }
 function changePin() {
   if(!requireAdmin("settingsSecurityView"))return;

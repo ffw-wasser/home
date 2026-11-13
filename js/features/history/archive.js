@@ -4,7 +4,7 @@ async function addCsvToArchive(fileName, content, sessionLabel, topic="") {
   const excusedCount = closedEntries.filter(entry => entry.status === "Entschuldigt").length;
   const recordedNames = new Set(closedEntries.flatMap(entry => [entry.storedName, entry.displayName].filter(Boolean)));
   const missingCount = members.filter(member => !member.ageDepartment && !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member))).length;
-  const archiveItem={ id: makeId(), fileName, content, sessionType: sessionLabel, createdAt: new Date().toISOString(), presentCount, excusedCount, missingCount, topic };
+  const archiveItem={ id: makeId(), fileName, content, cloudSaved:Boolean(window.CloudStorage?.connected), sessionType: sessionLabel, createdAt: new Date().toISOString(), presentCount, excusedCount, missingCount, topic };
   csvArchive = [archiveItem, ...csvArchive];
   await commitPendingDocumentReport?.(archiveItem.id);
   saveArchive(); renderArchive();
@@ -20,7 +20,7 @@ async function deleteArchiveItem(id){
   if(!requireAdmin("settingsHistoryView")||deletingArchiveIds.has(id))return;
   const item=csvArchive.find(entry=>entry.id===id);if(!item)return;
   const name=item.packageFileName||item.fileName;
-  const message=item.oneDriveLive?`Terminpaket „${name}“ in OneDrive löschen? Der Bericht einschließlich CSV, PDF und Zusatzdokumenten wird entfernt.`:`Archivdatei „${name}“ löschen?`;
+  const message=item.oneDriveLive?`Terminpaket „${name}“ in Cloudflare löschen? Der Bericht einschließlich CSV, PDF und Zusatzdokumenten wird entfernt.`:`Archivdatei „${name}“ löschen?`;
   if(!confirm(message))return;
   if(typeof captureQualitySnapshot==="function")captureQualitySnapshot("Vor Löschen eines Archiveintrags");
   deletingArchiveIds.add(id);
@@ -29,9 +29,9 @@ async function deleteArchiveItem(id){
     csvArchive=csvArchive.filter(entry=>entry.id!==id);
     try{await deleteImportedReportPdf?.(id);await deleteDocumentReportsForArchive?.(id);}catch(error){console.warn("Lokale Berichtskopien konnten nicht vollständig entfernt werden",error);}
     saveArchive();renderArchive();renderHistory();renderStatistics();
-    showToast(item.oneDriveLive?"Terminpaket in OneDrive gelöscht.":"Archivdatei gelöscht.");
+    showToast(item.oneDriveLive?"Terminpaket in Cloudflare gelöscht.":"Archivdatei gelöscht.");
     if(item.oneDriveLive)await window.loadOneDriveHistory();
-  }catch(error){console.error("Bericht konnte nicht gelöscht werden",error);showToast(`Löschen in OneDrive nicht bestätigt. ${error.message||"Bitte erneut versuchen."}`,"error");}
+  }catch(error){console.error("Bericht konnte nicht gelöscht werden",error);showToast(`Löschen in Cloudflare nicht bestätigt. ${error.message||"Bitte erneut versuchen."}`,"error");}
   finally{deletingArchiveIds.delete(id);}
 }
 
@@ -92,7 +92,7 @@ async function exportCompleteBackup() { if(!requireAdmin("settingsFilesView"))re
   try{
     const source=typeof attendanceDraftSource==='function'?attendanceDraftSource():'';
     if(typeof flushAttendanceDraft==='function')flushAttendanceDraft();
-    if(window.loadOneDriveHistory&&await window.loadOneDriveHistory({manual:true})!==true)throw new Error('Die OneDrive-Historie konnte nicht vollständig geladen werden.');
+    if(window.loadOneDriveHistory&&await window.loadOneDriveHistory({manual:true})!==true)throw new Error('Die Cloudflare-Historie konnte nicht vollständig geladen werden.');
     if(!requireAdmin("settingsFilesView"))return;
     const fileName = `FFW-Wasser_App-Daten_${today()}.json`;
     const payload=completeBackupPayload();
@@ -107,7 +107,7 @@ async function exportCompleteBackup() { if(!requireAdmin("settingsFilesView"))re
     if(!requireAdmin("settingsFilesView"))return;
     if(source!==(typeof attendanceDraftSource==='function'?attendanceDraftSource():''))throw new Error('Der Datenordner wurde während der Sicherung geändert.');
     payload.data.backupInfo={pdfCount:payload.data.importedPdfs.length,documentReportCount:payload.data.documentReports.length,includesImportedPdfs:true,includesDocumentReports:true,includesRunningState:true,centralBackup,
-      excludes:[centralBackup?'Getränkekonten und Handyzugänge: geprüft in separater OneDrive-Sicherung '+centralBackup.file:'Getränkekonten und Handyzugänge (separate OneDrive-Sicherung; zentrale Kontenführung nicht aktiv)','Cloudflare/D1: Portal, Rückmeldungen, Challenge, Theater und Zugänge','Zusätzliche OneDrive-Dateien: Kontakte, Hydrantenplan, Originalpakete und Verwaltungsverbindungen','Dienstschlüssel und Microsoft-Anmeldungen'],encrypted:false};
+      excludes:[centralBackup?'Getränkekonten und Handyzugänge: geprüft in separater Cloudflare-Sicherung '+centralBackup.file:'Getränkekonten und Handyzugänge (separate Cloudflare-Sicherung; zentrale Kontenführung nicht aktiv)','Cloudflare/D1: Portal, Rückmeldungen, Challenge, Theater und Zugänge','Zusätzliche Cloudflare-Dateien: Kontakte, Hydrantenplan, Originalpakete und Verwaltungsverbindungen','Dienstschlüssel und Microsoft-Anmeldungen'],encrypted:false};
     const result=await shareOrDownloadJson(fileName,payload,`App-Datensicherung wurde mit ${payload.data.importedPdfs.length} PDF-Datei(en) ausgegeben.`);
     if(["saved","shared","downloaded"].includes(result))window.WorkflowUX?.backupResult(fileName,payload,result);
   }catch(error){showToast(`Sicherung nicht erstellt: ${error.message||'Daten konnten nicht vollständig gelesen werden.'}`,"error");}
@@ -210,7 +210,7 @@ function refreshAfterCompleteBackupImport() {
 }
 async function importCompleteBackup(file) { if(!requireAdmin("settingsFilesView"))return;
   const input=byId("completeBackupFileInput");
-  if(!confirm("Diese App-Datensicherung ersetzt Mitglieder, Einstellungen, Jahresziele, Tagesdaten und die Historie. Getränkekonten und Getränke-PINs werden separat in OneDrive gesichert. Wirklich wiederherstellen?")){if(input)input.value="";return;}
+  if(!confirm("Diese App-Datensicherung ersetzt Mitglieder, Einstellungen, Jahresziele, Tagesdaten und die Historie. Getränkekonten und Getränke-PINs werden separat in Cloudflare gesichert. Wirklich wiederherstellen?")){if(input)input.value="";return;}
   try{
     const backup=await parseCompleteBackupFile(file);
     const normalized=normalizeCompleteBackupData(backup.data);
@@ -498,7 +498,7 @@ async function openCompletedCalendarEvent(event){
   if(completedCalendarCorrectionOpening)return false;
   if(!event||event.kind!=="probe"||event.approved!==true||!Number.isFinite(event.start))return false;
   if(typeof oneDriveAdministrationReady!=="function"||!oneDriveAdministrationReady()||typeof oneDriveSignedIn==="function"&&!oneDriveSignedIn()){
-    showToast("Für die Korrektur bitte die Gerätehaus-Verbindung mit OneDrive herstellen.","error");
+    showToast("Für die Korrektur bitte die Gerätehaus-Verbindung mit Cloudflare herstellen.","error");
     return false;
   }
   if(typeof requireAdmin!=="function"||!requireAdmin("settingsHistoryView")){
@@ -513,7 +513,7 @@ async function openCompletedCalendarEvent(event){
     // The live archive, not a local cached copy, determines which original ZIP
     // is overwritten. Never create a second attendance session for a finished event.
     if(typeof window.loadOneDriveHistory!=="function"||await window.loadOneDriveHistory()!==true){
-      showToast("Die OneDrive-Historie konnte nicht vollständig geprüft werden. Originalbericht bleibt unverändert.","error");
+      showToast("Die Cloudflare-Historie konnte nicht vollständig geprüft werden. Originalbericht bleibt unverändert.","error");
       return false;
     }
     // Loading can outlive the PIN session or a switch of the connected data folder.
@@ -539,12 +539,12 @@ async function openCompletedCalendarEvent(event){
     showView("settingsHistoryView");
     showToast(legacy.length>1?"Für diesen Tag gibt es mehrere mögliche Berichte. Bitte den richtigen in der Historie wählen.":"Kein eindeutig zugeordneter Originalbericht gefunden. Bitte in der Historie prüfen; es wird keine neue Erfassung erstellt.",legacy.length>1?"info":"error");
     return false;
-  }catch(error){showToast("Die Korrektur konnte nicht geöffnet werden: "+(error?.message||"Bitte OneDrive prüfen."),"error");return false;}
+  }catch(error){showToast("Die Korrektur konnte nicht geöffnet werden: "+(error?.message||"Bitte Cloudflare prüfen."),"error");return false;}
   finally{completedCalendarCorrectionOpening=false;}
 }
 window.openCompletedCalendarEvent=openCompletedCalendarEvent;
 async function persistArchiveCorrection(item,rows,correctedDate){
-  // All correction entry points share exactly the same archive and OneDrive overwrite.
+  // All correction entry points share exactly the same archive and Cloudflare overwrite.
   // Preserve the original filename and item ID, including when the report date changes.
   item.topic=String(item.topic||rows[0]?.topic||"").trim();
   item.content=archiveCsvFromRows(rows,item.topic);
@@ -570,7 +570,7 @@ async function persistArchiveCorrection(item,rows,correctedDate){
   if(item.oneDriveLive){
     await window.saveOneDriveHistoryCorrection(item,correctedPdf);
     await window.loadOneDriveHistory();
-    return {message:"Korrigierter Originalbericht in OneDrive gespeichert.",type:"success"};
+    return {message:"Korrigierter Originalbericht in Cloudflare gespeichert.",type:"success"};
   }
   await saveImportedReportPdf(item.id,new File([correctedPdf],names.pdf,{type:"application/pdf"}));
   item.hasImportedPdf=true;
@@ -622,7 +622,10 @@ function historyNormalizeDate(value){
 }
 function historyDateFromItem(item){
   const rows=parseCsvRows(item.content);
-  return historyNormalizeDate(item.operationData?.date||rows[0]?.date||String(item.createdAt||"").slice(0,10));
+  const eventDate=historyNormalizeDate(item.operationData?.date||item.originalReportDate||rows[0]?.date||"");
+  if(eventDate)return eventDate;
+  if(window.CloudStorage?.connected)return window.ReportDownload?.eventDate({path:item.packageFileName||item.fileName||""})||"";
+  return historyNormalizeDate(String(item.createdAt||"").slice(0,10));
 }
 function historyDateLabel(item){return formatDisplayDate(historyDateFromItem(item));}
 function historyDisplayTitle(item){

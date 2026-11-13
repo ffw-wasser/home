@@ -3,7 +3,7 @@
 const fs=require('node:fs/promises'),path=require('node:path'),{createHash,randomUUID}=require('node:crypto');
 const {inventory}=require('./migrate-onedrive-snapshot.cjs');
 const ORIGIN='https://feuerwehr-wasser-deckel-push.522dn4fc5f.workers.dev',sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-async function prepareFiles(directory,{fetcher=fetch,log=console.log}={}){
+async function prepareFiles(directory,{fetcher=fetch,log=console.log,prepareOnly=false}={}){
  const config=JSON.parse(await fs.readFile(path.join(directory,'Getraenke','push-verbindung.json'),'utf8')),central=JSON.parse(await fs.readFile(path.join(directory,'Getraenke','konten-zentrale.json'),'utf8'));
  if(config.origin!==ORIGIN||typeof config.token!=='string'||!/^[a-f0-9]{64}$/.test(config.token)||typeof central.source!=='string'||!central.source||central.source.length>500)throw Error('Die vorhandene Dienstverbindung ist nicht gültig.');
  const files=await inventory(directory),source=sha(central.source),run=sha(JSON.stringify({version:1,source,files}));
@@ -21,6 +21,7 @@ async function prepareFiles(directory,{fetcher=fetch,log=console.log}={}){
   log('Dateien geprüft: '+(n+1)+' / '+documents.length);
  }
  if(JSON.stringify(await inventory(directory))!==JSON.stringify(files))throw Error('Die lokale Übernahmekopie wurde während der Prüfung verändert.');
+ if(prepareOnly)return {run,files:documents.length};
  const folder='__H2O-Speichertest-'+randomUUID(),testPath=folder+'/probe.bin',first=Buffer.from('H2O synthetic test version 1'),second=Buffer.from('H2O synthetic test version 2');
  const op=()=>randomUUID();
  async function removeIfPresent(itemPath){

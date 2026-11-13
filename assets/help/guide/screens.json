@@ -43,13 +43,9 @@
     "width": 390,
     "height": 780
   },
-  "geraetehaus-onedrive": {
-    "width": 560,
-    "height": 880
-  },
   "geraetehaus-datenstatus": {
     "width": 390,
-    "height": 67
+    "height": 60
   },
   "geraetehaus-kalender": {
     "width": 1366,
@@ -209,7 +205,7 @@
   },
   "geraetehaus-sicherung": {
     "width": 984,
-    "height": 1420
+    "height": 1802
   },
   "h2o-atemschutz-ausbildung": {
     "width": 390,
@@ -266,5 +262,13 @@
   "geraetehaus-funkausbildung": {
     "width": 1326,
     "height": 158
+  },
+  "geraetehaus-berichte-download": {
+    "width": 728,
+    "height": 382
+  },
+  "geraetehaus-cloudflare": {
+    "width": 560,
+    "height": 442
   }
 }

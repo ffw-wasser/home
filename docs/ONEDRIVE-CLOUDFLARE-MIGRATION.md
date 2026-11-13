@@ -235,6 +235,91 @@ endgültigen Umschaltung sind Schreibpause und Schlussabgleich mit OneDrive nöt
 
 ## Nächste Umsetzung vor der Umschaltung
 
+Ab Version `2026.11.13.9` verwenden die ausgelieferten Gerätehaus-Module den
+Cloudflare-Transport. Die Microsoft-Anmeldung und Word-Konvertierung werden nicht
+mehr geladen. Die tatsächliche produktive Umschaltung ist erst durch den
+abschließenden lokalen Aktivierungslauf bestätigt; ein GitHub-Commit allein
+bestätigt keine Umschaltung.
+
+### Manuelle Aktivierung
+
+1. `storage-runtime.sql` einmal in der bestehenden D1-Datenbank `deckel-push`
+   ausführen. Die bisherigen Tabellen und Secrets bleiben erhalten.
+2. Den geprüften Worker bereitstellen und seinen `/health`-Fingerprint mit dem
+   gebauten Bundle vergleichen. R2-Bindung und EU-Jurisdiktion beibehalten.
+3. Alle alten Gerätehaus-Fenster einschließlich des iPads schließen. OneDrive
+   vollständig synchronisieren lassen. Während der Schlusskopie keine Dateien
+   im Originalordner bearbeiten.
+4. Die vier zusammengehörigen Skripte aus demselben geprüften Commit lokal
+   bereitstellen: `activate-cloudflare-storage.cjs`,
+   `migrate-onedrive-snapshot.cjs`, `prepare-cloudflare-storage.cjs` und
+   `prepare-cloudflare-files.cjs`. Unter Windows starten mit
+   `node activate-cloudflare-storage.cjs --choose`.
+   Das Skript prüft zuerst den öffentlichen Worker-Fingerprint und sendet bei
+   einer abweichenden Bereitstellung keinen Verwaltungszugang.
+5. Den aktuellen synchronisierten Originalordner `Webseite` auswählen, der
+   `feuerwehr-wasser-daten.json`, `Getraenke` und `Berichte` enthält. Keine alte
+   Downloads-Kopie auswählen. Das Skript erstellt eine unabhängige neue
+   Schlusskopie unter Downloads, prüft Original und Kopie vor und nach der
+   Übertragung sowie alle Inhalte beim Nachlesen aus Cloudflare.
+6. Nach bestätigter Aktivierung öffnet das Skript den Browser mit einem eigenen
+   Gerätezugang. Es protokolliert keine Schlüssel und verändert den
+   OneDrive-Originalordner nicht. Ein erneuter Lauf bei bereits aktivem
+   Cloudflare-Speicher importiert niemals alte Daten über den laufenden Stand.
+7. In Einstellungen → H₂O-Dienst weitere Verwaltungsgeräte koppeln. Code bzw.
+   Link: einmalig, fünf Minuten gültig. Bei der installierten Gerätehaus-App den
+   Link direkt im Verbindungsfenster einfügen. Aktive Geräte verlängern ihre
+   Verbindung; unbenutzte Zugänge laufen nach 30 Tagen aus. Einzelne Geräte
+   können jederzeit gesperrt werden. Persönliche Mitgliederzugänge, Apps,
+   Kalenderabos und Widgets behalten ihre bisherigen Dienstidentitäten.
+
+Nicht synchronisierte iPad-Daten werden vor einer Übernahme unter
+`Backups/Umstellung` privat gesichert. Ein unveränderter alter Ausgangsstand
+kann lokale Änderungen mit Versionsschutz übernehmen. Bei abweichenden
+Änderungen entscheidet die Verwaltung zwischen gesichertem lokalem Stand und
+Cloudflare-Stand. Keine automatische Entscheidung anhand des jüngeren Datums.
+Frühere D1-Stände und Dateiversionen bleiben erhalten. Vorhandene historische
+Archivdaten, Laufbahnangaben und Zusatzfelder werden nicht stillschweigend
+entfernt. Lokale PDF-Kopien bleiben beim Handover erhalten.
+
+Die neue Einsatz-PDF wird vollständig lokal mit eingebetteten Schriften
+erstellt. Fahrzeuge, Mannschaft/Funktionen, persönliche Reservezeiten,
+Stromausfall, Alarmierungswege sowie sämtliche Berichtsfelder sind enthalten.
+Passt der gesamte Inhalt nicht auf zwei Seiten, wird die Ausgabe mit einem
+Hinweis gestoppt; Eingaben werden nicht gekürzt. Die optionalen früheren
+Word-Quelldateien bleiben als Projektbestand erhalten, werden jedoch nicht
+mehr in die Anwendung oder ihren Offline-Cache geladen.
+
+Prüfungen: `tests/storage-runtime.test.cjs`, `tests/cloud-sync.test.cjs`,
+`tests/cloud-storage-browser.cjs` (realer Transport gegen künstlichen Worker/
+D1/R2-Bestand), `tests/operation-local-pdf.test.cjs` sowie die bestehenden
+Berichts-, Kalender-, Getränke-, Sicherheits- und Backupprüfungen. Reale
+native Geräte und produktive Nutzerdateien sind damit nicht automatisch geprüft.
+
+### Vollständiger Berichtsdownload
+
+Unter Einstellungen → Berichte & Datensicherung wird der ZIP-Download mit
+„Alle Jahre“, einem ganzen Jahr oder einem Monat innerhalb des gewählten Jahres
+vorbereitet. „Berichte laden“ liest die privaten Cloudflare-Berichtsdateien mit
+ihren konkreten Dateiversionen. Die Auswahl verwendet das ursprüngliche
+Termindatum aus CSV oder Einsatzdaten, ersatzweise aus dem datierten Dateinamen;
+Uploadzeit und Korrekturzeit bestimmen niemals den Zeitraum. Berichte ohne
+erkennbares Termindatum werden ausdrücklich nur im Gesamtexport aufgenommen.
+
+Die ZIP-Datei enthält alle ausgewählten Originaldateien unter `Originale/`
+einschließlich vollständiger Terminpakete und darin enthaltener Anlagen. PDF
+und CSV aus den Paketen sind zusätzlich unter `PDF/` und `CSV/` zugänglich.
+`Berichtsverzeichnis.csv` dokumentiert Pfad, Dateiversion und Termindatum.
+Bei einem fehlgeschlagenen Abruf oder einem ungültigen Paket wird kein
+unvollständiger Download erzeugt. Nach Geräteabmeldung werden geladene
+Exportdaten verworfen; ein laufender Export darf nicht mehr ausgegeben werden.
+
+Prüfungen: `tests/report-download.test.cjs` und
+`tests/report-download-browser.cjs` (Chromium und WebKit, nur Beispieldaten).
+Das zugehörige Hilfebild wird mit
+`node scripts/capture-help-screens.cjs --only=geraetehaus-berichte-download`
+aus der tatsächlichen Oberfläche erzeugt.
+
 1. Tatsächlichen OneDrive-Bestand erfassen und Übernahmekopie nachlesen.
 2. Gerätehaus-/Admin-Anmeldung von Microsoft lösen; Geräte sperrbar machen.
 3. Datenhaltung hinter den zuständigen Modulen ersetzen: Stammdaten, Anwesenheit,

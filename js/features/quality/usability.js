@@ -114,7 +114,7 @@
       [...article.children].forEach(node=>panels.account.append(node));
       if(actions)panels.master.append(actions);
       article.append(hero,tabs,...tabList.map(pair=>panels[pair[0]]));
-      const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in OneDrive';panels.master.append(dirty);
+      const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in Cloudflare';panels.master.append(dirty);
       article.addEventListener('input',event=>{
         const pin=event.target.closest('.dr-pin-editor');
         if(pin){
@@ -196,11 +196,11 @@
         if(!job.pin)continue;
         const button=job.row.querySelector('[data-dr-save-pin]');
         const saved=await window.Drinks.saveAdminPin(button);
-        job.row.dataset.pinOutcome=saved?'PIN in OneDrive gespeichert':'PIN nicht gespeichert · bitte erneut eingeben';
+        job.row.dataset.pinOutcome=saved?'PIN in Cloudflare gespeichert':'PIN nicht gespeichert · bitte erneut eingeben';
         if(!saved)pinFailed++;
         job.row.querySelector('.ux-member-status').textContent='Mitgliederdaten: '+getAppStorageState().text+' · '+job.row.dataset.pinOutcome;
       }
-      memberSaveMessage=(dataJobs.length?dataJobs.length+' Mitglied'+(dataJobs.length===1?'':'er')+' auf diesem Gerät gespeichert. OneDrive-Synchronisierung folgt. ':'')+(pinFailed?pinFailed+' PIN nicht gespeichert. Bitte erneut eingeben.':jobs.some(job=>job.pin)?'PIN-Eingaben in OneDrive gespeichert.':'');
+      memberSaveMessage=(dataJobs.length?dataJobs.length+' Mitglied'+(dataJobs.length===1?'':'er')+' auf diesem Gerät gespeichert. Cloudflare-Synchronisierung folgt. ':'')+(pinFailed?pinFailed+' PIN nicht gespeichert. Bitte erneut eingeben.':jobs.some(job=>job.pin)?'PIN-Eingaben in Cloudflare gespeichert.':'');
       completed=true;
     }catch(error){
       memberSaveMessage='Speicherung nicht abgeschlossen. Bitte die Angaben und den Speicherstatus prüfen.';showToast(error.message||memberSaveMessage,'error');
@@ -217,7 +217,7 @@
       const view=byId(id);if(!view)continue;
       let box=view.querySelector('.ux-history-status');
       if(!box){box=document.createElement('div');box.className='ux-history-status';box.innerHTML='<p role="status"></p><button class="outline-button" type="button">Erneut laden</button>';view.querySelector('.screen-heading')?.after(box);box.querySelector('button').onclick=()=>window.loadOneDriveHistory?.({manual:true});}
-      box.querySelector('p').textContent=[lastHistoryLoad?'Stand: '+new Date(lastHistoryLoad).toLocaleString('de-DE'):'Noch kein OneDrive-Abruf in dieser Sitzung abgeschlossen.',historyMessage].filter(Boolean).join(' · ');
+      box.querySelector('p').textContent=[lastHistoryLoad?'Stand: '+new Date(lastHistoryLoad).toLocaleString('de-DE'):'Noch kein Cloudflare-Abruf in dieser Sitzung abgeschlossen.',historyMessage].filter(Boolean).join(' · ');
       box.classList.toggle('is-error',Boolean(window.oneDriveHistoryLastError));
     }
   }
@@ -253,7 +253,7 @@
       const member=members.find(p=>p.id===button.dataset.quickMember);button.setAttribute('aria-label',`${member?nameForTile(member):'Mitglied'} als ${button.dataset.quickStatus} markieren`);
     });labelButtons();new MutationObserver(labelButtons).observe(byId('members'),{childList:true,subtree:true});
     const view=byId('settingsHistoryView'),search=document.createElement('div');search.className='ux-search';search.innerHTML='<label for="historySearch">Bericht suchen</label><input id="historySearch" class="text-input" type="search" autocomplete="off" placeholder="Thema, Datum oder Einsatzart">';view.querySelector('.history-reports')?.prepend(search);byId('historySearch').oninput=renderHistory;
-    const backup=document.createElement('section');backup.className='ux-backup-scope';backup.innerHTML='<details><summary>Was enthält die Sicherung?</summary><p>Mitglieder, Ziele, laufende Tagesdaten, Historie und gespeicherte Dokumente. Das Admin-Passwort ist nicht enthalten. Bei aktiver zentraler Kontenführung wird eine zusätzliche geprüfte OneDrive-Sicherung der Getränkekonten erstellt und in der App-Datei vermerkt.</p><p>Die Getränkesicherung und lokale Sicherungspunkte liegen ebenfalls hier. Sie wird beim Einlesen einer App-Datei nicht automatisch zurückgespielt.</p></details>';byId('exportCompleteBackupButton').closest('article')?.prepend(backup);
+    const backup=document.createElement('section');backup.className='ux-backup-scope';backup.innerHTML='<details><summary>Was enthält die Sicherung?</summary><p>Mitglieder, Ziele, laufende Tagesdaten, Historie und gespeicherte Dokumente. Das Admin-Passwort ist nicht enthalten. Bei aktiver zentraler Kontenführung wird eine zusätzliche geprüfte Cloudflare-Sicherung der Getränkekonten erstellt und in der App-Datei vermerkt.</p><p>Die Getränkesicherung und lokale Sicherungspunkte liegen ebenfalls hier. Sie wird beim Einlesen einer App-Datei nicht automatisch zurückgespielt.</p></details>';byId('exportCompleteBackupButton').closest('article')?.prepend(backup);
     byId('exportCompleteBackupButton').textContent='App-Daten sichern';byId('importCompleteBackupButton').textContent='App-Datensicherung wiederherstellen';
     renderMemberList();statistics();historyStatus();
 

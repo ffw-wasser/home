@@ -1,4 +1,4 @@
-/* Private OneDrive contacts. H2O loads only after server-side membership validation. */
+/* Private Cloudflare contacts. H2O loads only after server-side membership validation. */
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -35,9 +35,9 @@ async function loadPhone(){
  finally{state.phone=false;}
 }
 async function loadIpad(){
- if(state.ipad)return;state.ipad=true;const status=$('contacts-status-ipad');if(status)status.textContent='Kontakte werden aus OneDrive geladen …';
+ if(state.ipad)return;state.ipad=true;const status=$('contacts-status-ipad');if(status)status.textContent='Kontakte werden aus Cloudflare geladen …';
  try{
-  if(typeof g.oneDriveReadContacts!=='function'||!oneDriveAdministrationReady())throw Error('Bitte auf diesem iPad OneDrive verbinden.');
+  if(typeof g.oneDriveReadContacts!=='function'||!oneDriveAdministrationReady())throw Error('Bitte auf diesem iPad Cloudflare verbinden.');
   const contacts=await g.oneDriveReadContacts();paint(contacts,'-ipad');
   try{
    const c=await g.DrinksCentral.connection();if(!c)throw Error('Kontodienst nicht verbunden.');

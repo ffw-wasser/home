@@ -105,12 +105,9 @@ test('Gleiche persönliche Gruppenzeiten erscheinen einmal, abweichende Zeiten w
 test('Kompakte persönliche Zeiten erhalten den Tageswechsel einschließlich Jahreswechsel',async()=>{
  const xml=await reportXml({...sample,date:'2026-12-31',times:{arrived:'22:00',ended:'02:00'},assignments:{'Person, Test':'Reserve Gerätehaus'},reserveTimes:{'Person, Test':{from:'2026-12-31T23:00',to:'2027-01-01T01:30'}}});assert.ok(xml.includes('23:00 - 01:30 (+1 Tag) · 2:30 h'));
 });
-async function pdfPages(count){const d=await PDFLib.PDFDocument.create();for(let i=0;i<count;i++)d.addPage();return new Blob([await d.save()],{type:'application/pdf'});}
-function limitedReport(outputs){const calls=[];const c=vm.createContext({window:{OperationDocx:{create:async(d,options)=>options}},PDFLib,Blob,oneDriveConvertDocxToPdf:async(options,name)=>{calls.push({options,name});return outputs[options.compactCrew?1:0];}});const s=fs.readFileSync(path.join(__dirname,'../js/features/operations/operations.js'),'utf8');vm.runInContext(s.slice(s.indexOf('async function operationDocxBlob'),s.indexOf('async function showOperationPdfPreview')),c);return {c,calls};}
-test('Die Seitenprüfung gibt zwei Seiten unverändert aus und versucht bei Überlauf nur einen kompakteren Mannschaftsblock',async()=>{
- const good=await pdfPages(2),large=await pdfPages(3);let f=limitedReport([good,good]);assert.equal(await f.c.operationPdfBlob(sample),good);assert.equal(f.calls.length,1);
- f=limitedReport([large,good]);assert.equal(await f.c.operationPdfBlob(sample),good);assert.equal(f.calls.length,2);assert.equal(f.calls[0].options.compactCrew,false);assert.equal(f.calls[1].options.compactCrew,true);
-});
-test('Mehr als zwei Protokollseiten werden mit einem klaren Hinweis gestoppt, ohne Inhalt abzuschneiden',async()=>{
- const large=await pdfPages(3),f=limitedReport([large,large]);await assert.rejects(f.c.operationPdfBlob(sample),/maximal zwei Seiten.*keine Angaben abgeschnitten/);assert.equal(f.calls.length,2);
+test('PDF-Erstellung nutzt ausschließlich lokale Schriften und den vollständigen lokalen Renderer',async()=>{
+ const calls=[],fonts=[new Uint8Array([1]),new Uint8Array([2])],expected=new Blob(['synthetic'],{type:'application/pdf'});let next=0;
+ const c=vm.createContext({window:{},PDFLib,Uint8Array,fontkit:{synthetic:true},OperationPdfLayout:{create:async(lib,templates,data,assets)=>{calls.push({data,assets});return expected;}},fetch:async url=>{assert.match(url,/^assets\/fonts\/DejaVuSans(?:-Bold)?\.ttf$/);return {ok:true,arrayBuffer:async()=>fonts[next++].buffer};}});
+ const s=fs.readFileSync(path.join(__dirname,'../js/features/operations/operations.js'),'utf8');vm.runInContext(s.slice(s.indexOf('let operationFontBytes='),s.indexOf('async function showOperationPdfPreview')),c);
+ assert.equal(await c.operationPdfBlob(sample),expected);assert.equal(calls.length,1);assert.equal(calls[0].data,sample);assert.equal(next,2);await c.operationPdfBlob(sample);assert.equal(next,2,'local font bytes reused');
 });

@@ -1,0 +1,8 @@
+@pdf-lib/fontkit 1.1.1
+Source: https://github.com/Hopding/fontkit
+Declared license: MIT
+Author metadata: "Andrew Dillon <andrew.dillon.j@gmail.com>"
+Contributors metadata: ["Devon Govett <devongovett@gmail.com> (http://badassjs.com/)"]
+
+The published package has no root LICENSE or copyright notice. No copyright holder or year has been invented here. Upstream README declares MIT and links to https://choosealicense.com/licenses/mit/.
+The full UMD distribution is preserved in fontkit.min.js, including its embedded third-party copyright and license comments.

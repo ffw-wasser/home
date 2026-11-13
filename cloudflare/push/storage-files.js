@@ -29,8 +29,8 @@
  }
  async function save(env,data,old,kind,value,deletedAt=null){
   const id=await pathId(value.path),parent=await pathId(parentPath(value.path)),version=(old?.version||0)+1,payload=await L.seal(env,value,purpose(data.run,id));
-  const root=await pathId(''),parentGuard=parent===root?'1=1':"EXISTS(SELECT 1 FROM storage_files p WHERE p.run=? AND p.id=? AND p.kind='folder' AND p.deleted_at IS NULL)";
-  const parentArgs=parent===root?[]:[data.run,parent];
+  const root=await pathId(''),actor=data._actor,parentGuard=(parent===root?'1=1':"EXISTS(SELECT 1 FROM storage_files p WHERE p.run=? AND p.id=? AND p.kind='folder' AND p.deleted_at IS NULL)")+(actor?' AND EXISTS(SELECT 1 FROM storage_devices d JOIN storage_runtime r ON r.run=d.run AND r.source_hash=d.source_hash WHERE d.id=? AND d.token_hash=? AND d.revoked_at IS NULL AND d.expires_at>?)':'');
+  const parentArgs=[...(parent===root?[]:[data.run,parent]),...(actor?[actor.id,actor.token_hash,Date.now()]:[])];
   // Atomic version check also prevents creation beneath a concurrently deleted parent.
   const q=old?env.DB.prepare('UPDATE storage_files SET payload=?,version=?,deleted_at=? WHERE run=? AND id=? AND version=? AND '+parentGuard+(kind==='folder'&&deletedAt!==null?' AND NOT EXISTS(SELECT 1 FROM storage_files c WHERE c.run=? AND c.parent=? AND c.deleted_at IS NULL)':'')).bind(payload,version,deletedAt,data.run,id,old.version,...parentArgs,...(kind==='folder'&&deletedAt!==null?[data.run,id]:[])):
    env.DB.prepare('INSERT OR IGNORE INTO storage_files(run,id,parent,kind,payload,version) SELECT ?,?,?,?,?,1 WHERE '+parentGuard).bind(data.run,id,parent,kind,payload,...parentArgs);
@@ -44,15 +44,17 @@
   return {id,version:receipt.version,mode:'rehearsal',liveStorage:'onedrive'};
  }
  async function route(path,request,env,auth){
-  if(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN))fail('Admin-Zugang ungültig.',401);
+  const actor=equal(auth,env.ADMIN_TOKEN)?null:g.StorageRuntime?await g.StorageRuntime.administrator(env,auth):fail('Admin-Zugang ungültig.',401);
   if(!env.MIGRATION_FILES)fail('Die private Dateiablage fehlt.',503);
   const upload=path==='/admin/storage-files/write',raw=await M.bounded(request,upload?MAX+8192:6000);
   let data,bytes;
   try{if(upload){const newline=raw.indexOf(10);if(newline<0||newline>8000)fail('Ungültiger Dateiheader.',400);data=JSON.parse(dec.decode(raw.slice(0,newline)));bytes=raw.slice(newline+1);}else data=JSON.parse(dec.decode(raw));}catch(error){if(error.status)throw error;fail('Ungültige Anfrage.',400);}
   if(!data||typeof data!=='object'||Array.isArray(data)||!hex(data.run))fail('Ungültige Anfrage.',400);
+  if(actor&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Ein anderer Datenstand ist nicht freigegeben.',403);data._actor=actor;
   await g.StorageState.assertSource(env,data);
   if(!await env.DB.prepare('SELECT run FROM storage_states WHERE run=? AND source_hash=?').bind(data.run,data.source).first())fail('Der getrennte Datenstand ist noch nicht vorbereitet.');
   if(path==='/admin/storage-files/prepare'){
+   if(actor)fail('Die Erstübernahme benötigt den ursprünglichen Dienstzugang.',403);
    const path=validPath(data.path),manifest=await M.verifiedManifest(env,data.source,data.run),file=manifest.files.find(f=>f.path===path);
    if(!file)fail('Die Datei fehlt in der bestätigten Übernahme.',404);
    if(typeof data.modifiedAt!=='string'||!Number.isFinite(Date.parse(data.modifiedAt)))fail('Ungültiges Änderungsdatum.',400);
@@ -69,15 +71,18 @@
    const parent=validPath(data.path,{root:true}),id=await pathId(parent);
    if(parent){const folder=await get(env,data.run,id);if(!folder||folder.kind!=='folder'||folder.deleted_at!==null)fail('Ordner nicht gefunden.',404);}
    const rows=(await env.DB.prepare('SELECT * FROM storage_files WHERE run=? AND parent=? AND deleted_at IS NULL ORDER BY id').bind(data.run,id).all()).results;
-   const items=[];for(const row of rows)items.push(await details(env,row));return {items,mode:'rehearsal',liveStorage:'onedrive'};
+   const items=[];for(const row of rows){const item=await details(env,row);if(!actor||!/(?:^|\/)push-verbindung\.json$/i.test(item.path))items.push(item);}return {items};
   }
-  const filePath=validPath(data.path),id=await pathId(filePath),old=await get(env,data.run,id);
+  let filePath=data.path;
+  if(filePath===undefined&&hex(data.id)){const byId=await get(env,data.run,data.id);if(!byId)fail('Datei nicht gefunden.',404);filePath=(await open(env,byId)).path;}
+  filePath=validPath(filePath);if(actor&&/(?:^|\/)push-verbindung\.json$/i.test(filePath))fail('Der ursprüngliche Dienstzugang wird nicht an Geräte ausgegeben.',403);
+  const id=await pathId(filePath),old=await get(env,data.run,id);
   if(path==='/admin/storage-files/stat'){if(!old||old.deleted_at!==null)fail('Datei nicht gefunden.',404);return details(env,old);}
   if(path==='/admin/storage-files/read'){
    if(!old)fail('Datei nicht gefunden.',404);let record=old;
    if(data.version!==undefined){if(!Number.isSafeInteger(data.version)||data.version<1)fail('Ungültige Dateiversion.',400);if(data.version!==old.version){const version=await env.DB.prepare('SELECT * FROM storage_file_versions WHERE run=? AND id=? AND version=?').bind(data.run,id,data.version).first();if(!version)fail('Dateiversion nicht gefunden.',404);record={...old,...version};}}
    if(record.deleted_at!==null||record.kind!=='file')fail('Datei nicht gefunden.',404);
-   return new Response(await content(env,data.run,id,await open(env,record)),{headers:{'Content-Type':'application/octet-stream','Content-Disposition':'attachment','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+   const bytes=await content(env,data.run,id,await open(env,record));if(actor)await g.StorageRuntime.administrator(env,auth);return new Response(bytes,{headers:{'Content-Type':'application/octet-stream','Content-Disposition':'attachment','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
   }
   if(!['/admin/storage-files/write','/admin/storage-files/mkdir','/admin/storage-files/delete','/admin/storage-files/restore'].includes(path))fail('Nicht gefunden.',404);
   if(!uuid(data.operationId)||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültiger Dateivorgang.',400);

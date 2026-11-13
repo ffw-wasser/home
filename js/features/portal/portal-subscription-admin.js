@@ -1,4 +1,4 @@
-/* Private status only; names are joined in memory from the existing OneDrive roster. */
+/* Private status only; names are joined in memory from the existing Cloudflare roster. */
 (function(g){
  'use strict';
  const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
@@ -23,10 +23,10 @@
   if(busy||!el('list')||document.getElementById('settingsPortalView').hidden)return;
   const version=++epoch;busy=true;loaded=false;rows=[];people=[];el('list').replaceChildren();el('refresh').disabled=true;el('status').textContent='Abo-Status wird geladen …';
   let source;
-  const current=()=>{if(version!==epoch)return false;if(!g.requireAdmin('settingsPortalView'))throw Error('Bitte die Verwaltung entsperren.');if(!g.oneDriveAdministrationReady())throw Error('Bitte OneDrive verbinden.');if(source!==g.DrinksStore.sourceKey())throw Error('Mitgliederordner wurde geändert. Bitte neu laden.');return true;};
+  const current=()=>{if(version!==epoch)return false;if(!g.requireAdmin('settingsPortalView'))throw Error('Bitte die Verwaltung entsperren.');if(!g.oneDriveAdministrationReady())throw Error('Bitte Cloudflare verbinden.');if(source!==g.DrinksStore.sourceKey())throw Error('Mitgliederordner wurde geändert. Bitte neu laden.');return true;};
   try{
    if(!g.requireAdmin('settingsPortalView'))throw Error('Bitte die Verwaltung entsperren.');
-   if(!g.oneDriveAdministrationReady())throw Error('Bitte OneDrive verbinden.');
+   if(!g.oneDriveAdministrationReady())throw Error('Bitte Cloudflare verbinden.');
    const initialSource=g.DrinksStore.sourceKey(),connection=await g.DrinksCentral.connection();if(version!==epoch)return;
    source=connection?.source;snapshotSource=source||null;
    if(!connection||!source||initialSource&&initialSource!==source)throw Error('Kontodienst nicht mit diesem Mitgliederordner verbunden.');
