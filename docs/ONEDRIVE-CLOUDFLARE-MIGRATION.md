@@ -358,3 +358,9 @@ Abbrechen erzeugt keinen zusätzlichen Download. Der normale ZIP-Download
 bleibt für Browser ohne diese Dateiauswahl verfügbar; die Datei anschließend
 manuell in den gewünschten Ordner verschieben. Solche Sicherungen werden
 nicht automatisch zurück nach Cloudflare importiert.
+
+## Bereinigung nach bestätigter Übernahme
+
+Nach bestätigtem Cloudflare-Datenstand und vollständig geladenen Berichten entfernt die App alte OneDrive-Transport- und Synchronisierungseinstellungen dieses Browsers. Offene lokale Änderungen oder nicht zuordenbare Anwesenheitsentwürfe verhindern die Bereinigung. Passende Entwürfe und die abgeschlossene Einrichtung werden vorher der Cloudflare-Quelle zugeordnet. Die weiterhin benötigte öffentliche Microsoft-Anwendungs-ID erhält einen eigenen Einstellungsnamen.
+
+Ungenutzte OneDrive-Hilfsfunktionen und veraltete Oberflächenhinweise sind entfernt. Historische Kennungen in Berichten und kompatible Funktionsnamen bleiben für vorhandene Daten erhalten. Sicherungspunkte übernehmen keine alten Transport- oder aktuellen Gerätezugänge; vorhandene Sicherungspunkte werden entsprechend bereinigt. Microsoft-Anmeldung, QR-Kopplung, Verbindungsdateien und manuelle ZIP-Ablage bleiben verfügbar. OneDrive-Dateien werden dabei weder gelöscht noch verändert.

@@ -1,9 +1,16 @@
 "use strict";
 const QUALITY_SNAPSHOT_KEY="fw_v1_safety_snapshots";
+function snapshotCredentialKey(key){return /^fw_onedrive_(?:tokens|pkce|admin_return|silent_retry|verified_root)$/.test(key)||/^fw_(?:cloud_device_v1|cloud_pair_pending|microsoft_enrollment_pkce)$/.test(key);}
+function sanitizeSafetySnapshots(){
+ try{const list=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||'[]');if(!Array.isArray(list))return false;let changed=false;
+  for(const snapshot of list){if(!snapshot?.data||typeof snapshot.data!=='object'||Array.isArray(snapshot.data))continue;for(const key of Object.keys(snapshot.data))if(snapshotCredentialKey(key)){delete snapshot.data[key];changed=true;}}
+  if(changed)safeStorage.setItem(QUALITY_SNAPSHOT_KEY,JSON.stringify(list));return true;
+ }catch{return false;}
+}
 function qualityNow(){return new Date().toISOString();}
 function createSafetySnapshot(reason="Automatische Sicherung"){
   try{
-    const data={};for(let i=0;i<safeStorage.length;i++){const key=safeStorage.key(i);if(key?.startsWith("fw_")&&key!==QUALITY_SNAPSHOT_KEY&&!/^fw_onedrive_(?:tokens|pkce)$/.test(key))data[key]=safeStorage.getItem(key);}
+    const data={};for(let i=0;i<safeStorage.length;i++){const key=safeStorage.key(i);if(key?.startsWith("fw_")&&key!==QUALITY_SNAPSHOT_KEY&&!snapshotCredentialKey(key))data[key]=safeStorage.getItem(key);}
     const list=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]");
     list.unshift({id:`snapshot-${Date.now()}`,createdAt:qualityNow(),reason,data});
     safeStorage.setItem(QUALITY_SNAPSHOT_KEY,JSON.stringify(list.slice(0,10)));return true;
@@ -11,7 +18,7 @@ function createSafetySnapshot(reason="Automatische Sicherung"){
 }
 function restoreLatestSafetySnapshot(){
   if(!requireAdmin("settingsFilesView"))return;
-  try{const list=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]"),latest=list[0];if(!latest)return showToast("Kein Sicherungspunkt vorhanden.","error");if(!confirm(`Sicherung vom ${new Date(latest.createdAt).toLocaleString("de-DE")} wiederherstellen?`))return;Object.entries(latest.data).forEach(([key,value])=>safeStorage.setItem(key,value));location.reload();}catch(error){showToast("Sicherung konnte nicht wiederhergestellt werden.","error");}
+  try{const list=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]"),latest=list[0];if(!latest)return showToast("Kein Sicherungspunkt vorhanden.","error");if(!confirm(`Sicherung vom ${new Date(latest.createdAt).toLocaleString("de-DE")} wiederherstellen?`))return;Object.entries(latest.data).forEach(([key,value])=>{if(!snapshotCredentialKey(key))safeStorage.setItem(key,value);});location.reload();}catch(error){showToast("Sicherung konnte nicht wiederhergestellt werden.","error");}
 }
 function qualityMinutes(value){if(!/^\d{2}:\d{2}$/.test(value||""))return null;const [h,m]=value.split(":").map(Number);return h*60+m;}
 function validateOperationData(d){return validateOperation(d);}
