@@ -266,7 +266,14 @@ bestätigt keine Umschaltung.
    Gerätezugang. Es protokolliert keine Schlüssel und verändert den
    OneDrive-Originalordner nicht. Ein erneuter Lauf bei bereits aktivem
    Cloudflare-Speicher importiert niemals alte Daten über den laufenden Stand.
-7. In Einstellungen → H₂O-Dienst weitere Verwaltungsgeräte koppeln. Code bzw.
+7. Weitere Laptops mit Zugriff auf den gemeinsamen lokalen OneDrive-Ordner:
+   Anwendung öffnen → Cloudflare-Verbindung öffnen → Ordner „Webseite“ auswählen.
+   Die Anwendung liest nur die zwei Verbindungsdateien unter `Getraenke` und
+   richtet einen eigenen Gerätezugang ein. Die übrigen Dateien werden nicht
+   gelesen oder hochgeladen. Die ausgewählten Dateien sind kein Datenimport.
+   Der Hauptschlüssel wird nicht im Browser gespeichert.
+   Alternative ohne Ordnerzugriff: In Einstellungen → H₂O-Dienst weitere
+   Verwaltungsgeräte koppeln. Code bzw.
    Link: einmalig, fünf Minuten gültig. Bei der installierten Gerätehaus-App den
    Link direkt im Verbindungsfenster einfügen. Aktive Geräte verlängern ihre
    Verbindung; unbenutzte Zugänge laufen nach 30 Tagen aus. Einzelne Geräte
