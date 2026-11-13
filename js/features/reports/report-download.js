@@ -130,7 +130,7 @@
         const result=await build(records,selection,percent=>{assertSession(requestEpoch);status.textContent=`ZIP wird erstellt: ${percent} %`;});assertSession(requestEpoch);
         if(handle){
           writable=await handle.createWritable();assertSession(requestEpoch);await writable.write(result.blob);assertSession(requestEpoch);await writable.close();writable=null;
-          if(requestEpoch===epoch)status.textContent=`${result.count} Berichtsdateien: ${result.fileName} · Im gewählten Ordner gespeichert.`;
+          if(requestEpoch===epoch)status.textContent=`${result.count} Berichtsdateien: ${handle.name||result.fileName} · Im gewählten Ordner gespeichert.`;
         }else{downloadBlob(result.fileName,result.blob);status.textContent=`${result.count} Berichtsdateien: ${result.fileName} · Download gestartet.`;}
       }catch(error){if(writable)await writable.abort().catch(()=>{});if(requestEpoch===epoch)status.textContent=error.name==='AbortError'?'Speichern abgebrochen.':error.message||'ZIP konnte nicht gespeichert werden.';}finally{if(requestEpoch===epoch)lock(false);}
     }
