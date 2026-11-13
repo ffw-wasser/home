@@ -79,3 +79,23 @@ test('The rollout policy upgrades only currently valid administration devices of
  for(const record of records){const row=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(record.deviceId);assert.equal(row.expires_at===Number.MAX_SAFE_INTEGER,record.kind==='valid');}
  assert.equal((await f.api('/admin/storage-runtime/permanent-devices',scope,f.env.ADMIN_TOKEN)).data.updated,0);assert.equal((await f.api('/storage/config',{},records.find(x=>x.kind==='expired').token)).status,401);assert.equal((await f.api('/storage/config',{},records.find(x=>x.kind==='revoked').token)).status,401);
 });
+
+test('Microsoft enrollment requires exact server-verified folder access and never stores Microsoft tokens',async t=>{
+ const f=await setup(t);await activate(f.sourceDirectory,f.options);
+ const clientId='11111111-1111-4111-8111-111111111111',accessToken='synthetic-microsoft-access-token';
+ assert.equal((await f.api('/storage/microsoft/config',{},'')).status,409);
+ assert.equal((await f.api('/admin/storage-runtime/microsoft',{clientId},'')).status,401);
+ assert.equal((await f.api('/admin/storage-runtime/microsoft',{clientId})).status,200);
+ assert.equal((await f.api('/storage/microsoft/config',{},'')).data.clientId,clientId);
+ const request={accessToken,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Synthetic Microsoft laptop'};
+ let calls=0;f.context.fetch=async(url,options)=>{calls++;assert.equal(url,'https://graph.microsoft.com/v1.0/drives/drive-fixture/items/root-fixture?$select=id,parentReference,folder,deleted');assert.equal(options.headers.Authorization,'Bearer '+accessToken);assert.equal(options.redirect,'error');return new Response(JSON.stringify({id:'root-fixture',parentReference:{driveId:'drive-fixture'},folder:{}}));};
+ const enrolled=await f.api('/storage/microsoft/enroll',request,'');assert.equal(enrolled.status,200,JSON.stringify(enrolled));assert.equal(calls,1);
+ assert.equal((await f.api('/storage/microsoft/enroll',request,'')).status,200,'retry uses same device');
+ assert.equal((await f.api('/storage/config',{},request.token)).status,200);
+ assert.equal(JSON.stringify(f.db.prepare('SELECT * FROM storage_devices').all()).includes(accessToken),false);
+ for(const reply of [new Response('{}',{status:403}),new Response('{}',{status:401}),new Response(JSON.stringify({id:'other-folder',parentReference:{driveId:'drive-fixture'},folder:{}})),new Response(JSON.stringify({id:'root-fixture',parentReference:{driveId:'other-drive'},folder:{}})),new Response(JSON.stringify({id:'root-fixture',parentReference:{driveId:'drive-fixture'},file:{}}))]){
+  f.context.fetch=async()=>reply;const candidate={...request,deviceId:randomUUID(),token:randomBytes(32).toString('base64url')};assert.ok((await f.api('/storage/microsoft/enroll',candidate,'')).status>=400);assert.equal(f.db.prepare('SELECT id FROM storage_devices WHERE id=?').get(candidate.deviceId),undefined);
+ }
+ f.context.fetch=async()=>{throw Error('Network failure '+accessToken);};const failed=await f.api('/storage/microsoft/enroll',{...request,deviceId:randomUUID()},'');assert.equal(failed.status,503);assert.equal(JSON.stringify(failed).includes(accessToken),false);
+ await f.api('/admin/storage-runtime/microsoft',{clientId:''});assert.equal((await f.api('/storage/microsoft/config',{},'')).status,409);
+});

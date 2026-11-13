@@ -31,3 +31,9 @@ test('Verified Cloudflare source identity is available before the first asynchro
  vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/drinks-store.js'),'utf8'),c);
  assert.equal(c.DrinksStore.sourceKey(),'a1b2c3d4e5f60718:root');c.CloudStorage.connected=false;assert.equal(c.DrinksStore.sourceKey(),'');
 });
+
+test('Connection picker hides folder access on iPhone and desktop-mode iPad, keeps files available',()=>{
+ for(const [nav,supported,hidden] of [[{userAgent:'iPhone',platform:'iPhone'},true,true],[{userAgent:'Macintosh',platform:'MacIntel',maxTouchPoints:5},true,true],[{userAgent:'Macintosh',platform:'MacIntel',maxTouchPoints:0},true,false],[{userAgent:'Windows'},true,false],[{userAgent:'Other'},false,true]]){
+  const {c}=setup(),elements={cloudConnectionFolder:supported?{webkitdirectory:false}:{},cloudFolderSetup:{},cloudFileSetupHint:{},cloudFileSetup:{}};Object.assign(c.navigator,nav);c.byId=id=>elements[id];c.configureCloudConnectionPicker();assert.equal(elements.cloudFolderSetup.hidden,hidden);assert.equal(elements.cloudFileSetup.open,hidden);
+ }
+});

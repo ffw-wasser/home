@@ -38,7 +38,7 @@ jobs:
         run: node scripts/check-syntax.cjs
       - name: Verify production storage with actual browser transport
         run: |
-          node tests/cloud-storage-browser.cjs
+          CAPTURE_CLOUD_CONNECTION_HELP=1 node tests/cloud-storage-browser.cjs
           BROWSER_ENGINE=webkit node tests/cloud-storage-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()

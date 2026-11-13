@@ -58,6 +58,12 @@
       ]
     },
     {
+      "title": "Microsoft für die erstmalige Geräteeinrichtung",
+      "paragraphs": [
+        "Optional bestätigt eine Microsoft-Anmeldung den Zugriff auf den bestehenden gemeinsamen OneDrive-Ordner. Microsoft verarbeitet die Anmeldung; der Cloudflare-Dienst prüft mit dem kurzfristigen Zugriffstoken ausschließlich die Kennung dieses Ordners. Der Microsoft-Zugang wird nicht dauerhaft gespeichert und nicht zur laufenden Synchronisation verwendet. Anschließend bleibt ein eigener, sperrbarer Cloudflare-Gerätezugang im Browser erhalten. Eine spätere Entfernung der OneDrive-Freigabe sperrt bereits gekoppelte Geräte nicht automatisch; diese müssen zusätzlich in der Geräteverwaltung gesperrt werden."
+      ]
+    },
+    {
       "title": "Dienste und Empfänger",
       "paragraphs": [
         "GitHub Pages liefert die öffentlichen Programmdateien. Cloudflare betreibt den geschützten Portaldienst und die Datenbank. Cloudflare D1 und R2 speichern zusätzlich die geschützten Verwaltungsdaten und Berichte. Frühere OneDrive-Kopien bleiben als unabhängige Sicherung erhalten und werden nicht mehr mit der Anwendung abgeglichen. Google liefert die eingerichteten Kalendertermine. Berechtigte Verwaltungs- und Führungskräfte erhalten nur die für ihre Funktionen freigegebenen Informationen.",
