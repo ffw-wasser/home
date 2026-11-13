@@ -20695,7 +20695,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
       }
       else throw new Error('Eine Getränkebuchung ist ungültig.');
       applyEntry(s,b);
-      if(!Number.isSafeInteger(s.balance)||s.balance<0||!Number.isSafeInteger(s.credit)||s.credit<0||!Number.isSafeInteger(s.count)||s.count<0||!Number.isSafeInteger(s.points)||!Number.isSafeInteger(s.rewardCredit)||s.rewardCredit<0||s.rewardCredit>s.credit)throw new Error('Der Getränkestand ist ungültig. Bitte die OneDrive-Datei prüfen.');
+      if(!Number.isSafeInteger(s.balance)||s.balance<0||!Number.isSafeInteger(s.credit)||s.credit<0||!Number.isSafeInteger(s.count)||s.count<0||!Number.isSafeInteger(s.points)||!Number.isSafeInteger(s.rewardCredit)||s.rewardCredit<0||s.rewardCredit>s.credit)throw new Error('Der Getränkestand ist ungültig. Bitte die Cloudflare-Datei prüfen.');
     }
     return account;
   }
@@ -20791,7 +20791,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
   function appendWithReward(account,booking,policy){
     if(global.H2OFeatures?.rewards===false)return append(account,booking);
     validateRewardSettings(policy);
-    // Both entries are one conditional OneDrive write; retries never grant twice.
+    // Both entries are one conditional Cloudflare write; retries never grant twice.
     if(account.bookings.some(b=>b.id===booking.id))return append(account,booking);
     let next=append({...account,schemaVersion:Math.max(policy.schemaVersion===2?6:2,account.schemaVersion)},booking);
     if(booking.type!=='payment'||Date.parse(booking.createdAt)<Date.parse(policy.startedAt))return next;
@@ -23279,6 +23279,7 @@ g.PortalHydrants={schema,route};
   if(admin){if(g.StorageRuntime)await g.StorageRuntime.adminScope(env,auth,data);else if(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN))fail('Admin-Zugang ungültig.',401);}
   if(!hex(data.run))fail('Ungültige Übernahmekennung.',400);
   const actor=admin?null:await device(env,data,auth);
+  const runtime=g.StorageRuntime?await g.StorageRuntime.current(env):null,phase=runtime?.run===data.run?{mode:'active',liveStorage:'cloudflare'}:{mode:'rehearsal',liveStorage:'onedrive'};
   await checkSource(env,data);
   if(path==='/admin/storage-state/prepare'){
    const bytes=await g.StorageMigration.verifiedFile(env,data.source,data.run,'feuerwehr-wasser-daten.json');
@@ -23286,24 +23287,24 @@ g.PortalHydrants={schema,route};
    const payload=await L.seal(env,value,purpose(data.run));
    await env.DB.prepare('INSERT OR IGNORE INTO storage_states(run,source_hash,payload,version,created_at) VALUES(?,?,?,1,?)').bind(data.run,data.source,payload,Date.now()).run();
    const row=await get(env,data.run);if(row.source_hash!==data.source)fail('Die Datenquelle wurde geändert.');
-   return {version:row.version,mode:'rehearsal',liveStorage:'onedrive'};
+   return {version:row.version,...phase};
   }
   const row=await get(env,data.run);if(!row||row.source_hash!==data.source)fail('Der Datenstand wurde noch nicht vorbereitet.',404);
   if(path==='/admin/storage-state/status'){
    const value=await L.open(env,row.payload,purpose(data.run));
-   return {version:row.version,mode:'rehearsal',liveStorage:'onedrive',members:value.members.length,entries:value.entries.length};
+   return {version:row.version,...phase,members:value.members.length,entries:value.entries.length};
   }
   if(path==='/admin/storage-state/pair'){
    if(!uuid(data.deviceId)||!/^[A-Za-z0-9_-]{43}$/.test(data.token||'')||typeof data.label!=='string'||!data.label.trim()||data.label.length>100||/[\x00-\x1f\x7f]/.test(data.label)||!Number.isSafeInteger(data.expiresAt))fail('Ungültige Geräteanmeldung.',400);
    if(data.access!==undefined&&!['state','application-admin'].includes(data.access))fail('Ungültige Geräteberechtigung.',400);
    const access=data.access||'state',tokenHash=await hash('storage-device/v1:'+data.token),registrationHash=await hash(JSON.stringify({run:data.run,source:data.source,tokenHash,label:data.label,expiresAt:data.expiresAt,...(access==='application-admin'?{access}:{})}));
    const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
-   if(old){if(old.registration_hash!==registrationHash||old.revoked_at!==null||old.expires_at<=Date.now())fail('Die Gerätekennung ist bereits vergeben oder gesperrt.');return {ok:true,deviceId:old.id,expiresAt:old.expires_at,duplicate:true,mode:'rehearsal'};}
+   if(old){if(old.registration_hash!==registrationHash||old.revoked_at!==null||old.expires_at<=Date.now())fail('Die Gerätekennung ist bereits vergeben oder gesperrt.');return {ok:true,deviceId:old.id,expiresAt:old.expires_at,duplicate:true,mode:phase.mode};}
    const now=Date.now();if(data.expiresAt<=now||data.expiresAt>now+30*86400000)fail('Ein Gerätezugang gilt maximal 30 Tage.',400);
    await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label,...(access==='application-admin'?{access}:{})},'storage-device:'+data.deviceId),now,data.expiresAt,data.run,now).run();
    const saved=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
    if(!saved||saved.registration_hash!==registrationHash||saved.revoked_at!==null)fail('Geräteanmeldung nicht bestätigt oder Gerätelimit erreicht.');
-   return {ok:true,deviceId:saved.id,expiresAt:saved.expires_at,duplicate:false,mode:'rehearsal'};
+   return {ok:true,deviceId:saved.id,expiresAt:saved.expires_at,duplicate:false,mode:phase.mode};
   }
   if(path==='/admin/storage-state/revoke'){
    if(!uuid(data.deviceId))fail('Ungültige Gerätekennung.',400);
@@ -23312,25 +23313,28 @@ g.PortalHydrants={schema,route};
   }
   if(path==='/storage-state/read'){
    const value=await L.open(env,row.payload,purpose(data.run));await device(env,data,auth);
-   return {value,version:row.version,mode:'rehearsal',liveStorage:'onedrive'};
+   return {value,version:row.version,...phase};
   }
   if(path!=='/storage-state/write')fail('Nicht gefunden.',404);
   if(!uuid(data.operationId)||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<1)fail('Ungültiger Speichervorgang.',400);
   const value=state(data.value),digest=await hash(JSON.stringify({expectedVersion:data.expectedVersion,value}));
   const previous=await env.DB.prepare('SELECT * FROM storage_state_receipts WHERE run=? AND operation_id=?').bind(data.run,data.operationId).first();
-  if(previous){if(previous.device_id!==actor.id||previous.digest!==digest)fail('Die Vorgangskennung wurde bereits anders verwendet.');return {version:previous.version,currentVersion:row.version,duplicate:true,mode:'rehearsal'};}
+  if(previous){if(previous.device_id!==actor.id||previous.digest!==digest)fail('Die Vorgangskennung wurde bereits anders verwendet.');return {version:previous.version,currentVersion:row.version,duplicate:true,mode:phase.mode};}
   if(row.version!==data.expectedVersion)fail('Der Datenstand wurde gleichzeitig geändert. Lokale Änderungen behalten und erneut vergleichen.');
   const payload=await L.seal(env,value,purpose(data.run)),version=data.expectedVersion+1;
+  const access=g.StorageRuntime?await g.StorageRuntime.role(env,actor):'state';
+  const runtimeGuard=access==='application-admin'?"EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)":"NOT EXISTS(SELECT 1 FROM storage_runtime WHERE run=?)";
+  const runtimeArgs=access==='application-admin'?[data.run,data.source]:[data.run];
   // Check revocation and expiry again inside the same transaction as the CAS.
   const result=await env.DB.batch([
-   env.DB.prepare('UPDATE storage_states SET payload=?,version=version+1 WHERE run=? AND source_hash=? AND version=? AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND token_hash=? AND run=? AND revoked_at IS NULL AND expires_at>?)').bind(payload,data.run,data.source,data.expectedVersion,actor.id,actor.token_hash,data.run,Date.now()),
+   env.DB.prepare('UPDATE storage_states SET payload=?,version=version+1 WHERE run=? AND source_hash=? AND version=? AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND token_hash=? AND run=? AND revoked_at IS NULL AND expires_at>?) AND '+runtimeGuard).bind(payload,data.run,data.source,data.expectedVersion,actor.id,actor.token_hash,data.run,Date.now(),...runtimeArgs),
    env.DB.prepare('INSERT OR IGNORE INTO storage_state_receipts(run,operation_id,device_id,digest,version) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,data.operationId,actor.id,digest,version,data.run,payload,version),
    env.DB.prepare('INSERT OR IGNORE INTO storage_state_versions(run,version,payload,saved_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,row.version,row.payload,Date.now(),data.run,payload,version)
   ]);
   // Do not infer success from the HTTP delivery or a prior read.
   const receipt=await env.DB.prepare('SELECT * FROM storage_state_receipts WHERE run=? AND operation_id=?').bind(data.run,data.operationId).first();
   if(!receipt||receipt.device_id!==actor.id||receipt.digest!==digest)fail('Speicherung nicht bestätigt. Denselben Vorgang erneut prüfen.');
-  return {version:receipt.version,currentVersion:receipt.version,duplicate:!result[0].meta.changes,mode:'rehearsal'};
+  return {version:receipt.version,currentVersion:receipt.version,duplicate:!result[0].meta.changes,mode:phase.mode};
  }
  g.StorageState={route,assertSource:checkSource,tokenDevice};
 })(globalThis);
@@ -23490,7 +23494,7 @@ g.PortalHydrants={schema,route};
    if(ticket.used_at!==null){const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();if(ticket.device_id!==data.deviceId||!old||old.revoked_at!==null||old.expires_at<=now)fail('Die Gerätekopplung wurde bereits verwendet.',401);return {ok:true,...await config(env,old)};}
    const label=await L.seal(env,{label:data.label,access:'application-admin'},'storage-device:'+data.deviceId);
    await env.DB.batch([
-    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings WHERE id=? AND used_at IS NULL AND expires_at>?) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,ticket.run,now),
+    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings t WHERE t.id=? AND t.used_at IS NULL AND t.expires_at>? AND (t.device_id IS NULL OR EXISTS(SELECT 1 FROM storage_devices issuer WHERE 'issuer:'||issuer.id=t.device_id AND issuer.run=t.run AND issuer.source_hash=t.source_hash AND issuer.revoked_at IS NULL AND issuer.expires_at>?))) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,now,ticket.run,now),
     env.DB.prepare('UPDATE storage_pairings SET used_at=?,device_id=? WHERE id=? AND used_at IS NULL AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND registration_hash=?)').bind(now,data.deviceId,ticketId,data.deviceId,registrationHash)
    ]);
    const claimed=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(ticketId).first(),actor=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();
@@ -23499,13 +23503,15 @@ g.PortalHydrants={schema,route};
   if(path==='/admin/storage-runtime/activate'){
    if(!equal(auth,env.ADMIN_TOKEN))fail('Die erste Umschaltung benötigt den ursprünglichen Dienstzugang.',401);
    await g.StorageState.assertSource(env,data);
+   const active=await current(env);if(active?.run===data.run&&active.source_hash===data.source)return {ok:true,version:active.version,mode:'active'};
+   if(active)fail('Es ist bereits ein anderer Datenstand aktiv. Ein Standwechsel benötigt eine gesonderte Migration.');
    const manifest=await g.StorageMigration.verifiedManifest(env,data.source,data.run),state=await env.DB.prepare('SELECT * FROM storage_states WHERE run=? AND source_hash=?').bind(data.run,data.source).first();if(!state)fail('Der Datenstand wurde noch nicht übernommen.');
-   const files=(await env.DB.prepare("SELECT id FROM storage_files WHERE run=? AND kind='file' AND deleted_at IS NULL").bind(data.run).all()).results,ids=new Set(files.map(f=>f.id));
-   for(const file of manifest.files)if(file.path!=='feuerwehr-wasser-daten.json'&&!ids.has(file.fileId))fail('Die Dateiablage ist noch nicht vollständig übernommen.');
-   const old=await current(env);if(old?.run===data.run&&old.source_hash===data.source)return {ok:true,version:old.version,mode:'active'};
-   if(old)fail('Es ist bereits ein anderer Datenstand aktiv. Ein Standwechsel benötigt eine gesonderte Migration.');
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_runtime(id,run,source_hash,version,activated_at) VALUES(1,?,?,1,?)').bind(data.run,data.source,Date.now()).run();
-   const saved=await current(env);if(saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
+   if(!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion!==state.version||state.version!==1)fail('Der vorbereitete Datenstand wurde verändert. Bitte den Schlussabgleich wiederholen.');
+   const files=(await env.DB.prepare("SELECT id,version FROM storage_files WHERE run=? AND kind='file' AND deleted_at IS NULL").bind(data.run).all()).results,ids=new Set(files.filter(f=>f.version===1).map(f=>f.id));
+   for(const file of manifest.files)if(file.path!=='feuerwehr-wasser-daten.json'&&!ids.has(file.fileId))fail('Die Dateiablage ist noch nicht vollständig oder wurde nach der Übernahme geändert.');
+   const ledger=await L.meta(env);
+   await env.DB.prepare("INSERT OR IGNORE INTO storage_runtime(id,run,source_hash,version,activated_at) SELECT 1,?,?,1,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND source_hash=? AND version=?) AND EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND state='active' AND source=?)").bind(data.run,data.source,Date.now(),data.run,data.source,data.expectedVersion,ledger.source).run();
+   const saved=await current(env);if(!saved||saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
   }
   const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
   if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
@@ -23518,7 +23524,7 @@ g.PortalHydrants={schema,route};
   if(path==='/admin/storage-runtime/pairing'){
    if(!secret(data.ticket)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+5*60000)fail('Ein Kopplungscode ist maximal fünf Minuten gültig.',400);
    const id=await hash('storage-pair/v1:'+data.ticket),old=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(id).first();if(old&&(old.used_at!==null||old.run!==runtime.run||old.source_hash!==runtime.source_hash||old.expires_at!==data.expiresAt))fail('Der Kopplungscode wurde bereits verwendet.');
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_pairings(id,run,source_hash,expires_at) VALUES(?,?,?,?)').bind(id,runtime.run,runtime.source_hash,data.expiresAt).run();return {ok:true,expiresAt:data.expiresAt};
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_pairings(id,run,source_hash,expires_at,device_id) VALUES(?,?,?,?,?)').bind(id,runtime.run,runtime.source_hash,data.expiresAt,actor?'issuer:'+actor.id:null).run();return {ok:true,expiresAt:data.expiresAt};
   }
   if(path==='/admin/storage-runtime/devices'){
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
@@ -23554,7 +23560,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"87e406646b817eb3bab55da415d60ca5817a08273d906e4e64f6103920d3d7e6",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"5431e062c764bfa84470834ff7f12a5cf610a074ccd5f4582bedff911ee0ed78",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

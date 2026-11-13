@@ -78,7 +78,7 @@
     result=await g.H2OPortal.api('year',{year:selected,background:true,force},{signal:AbortSignal.timeout(remaining())});
     if(epoch!==generation)return;if(!authorized())throw Error('Der Portalzugang wurde gesperrt.');
    }else{
-    if(!privateAccess)throw Error('Bitte die vorhandene OneDrive-Verbindung des Gerätehauses herstellen und den Jahresplan aktualisieren. Eine Verwaltungs-PIN ist nicht erforderlich.');
+    if(!privateAccess)throw Error('Bitte die vorhandene Cloudflare-Verbindung des Gerätehauses herstellen und den Jahresplan aktualisieren. Eine Verwaltungs-PIN ist nicht erforderlich.');
     const c=await g.DrinksCentral.connection();if(!c)throw Error('Bitte den Kontodienst verbinden.');source=g.DrinksStore.sourceKey();
     if(c.source!==source)throw Error('Der Datenordner wurde gewechselt.');
     // This read-only view uses the configured device connection independently

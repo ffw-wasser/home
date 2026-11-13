@@ -124,15 +124,15 @@
   const access=oneDriveAdministrationReady(),changed=access!==attendanceAccess;
   if(changed){attendanceAccess=access;attendanceEpoch++;}
   const refresh=changed?refreshAttendance(true):Promise.resolve();
-  if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Auf diesem Gerät gespeichert · OneDrive-Speicherung noch nicht bestätigt. Handyportal noch nicht aktualisiert.');return refresh;}
-  if(!access){syncStatus('pending','Für den Handyabgleich bitte OneDrive verbinden.');return refresh;}
+  if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Auf diesem Gerät gespeichert · Cloudflare-Speicherung noch nicht bestätigt. Handyportal noch nicht aktualisiert.');return refresh;}
+  if(!access){syncStatus('pending','Für den Handyabgleich bitte Cloudflare verbinden.');return refresh;}
   if(rosterBusy){rosterResyncRequested=true;return refresh;}
   return Promise.all([refresh,syncRoster().catch(()=>{})]); // Both operations expose failures in their status cards.
  }
  async function syncRoster(force=false){
   if(rosterBusy){rosterResyncRequested=true;return false;}
   if(!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){storageChanged();return false;}
-  rosterBusy=true;syncStatus('syncing','In OneDrive gespeichert · Handyportal wird abgeglichen …');
+  rosterBusy=true;syncStatus('syncing','In Cloudflare gespeichert · Handyportal wird abgeglichen …');
   try{
    const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),firstName:m.firstName||'',ageDepartment:m.ageDepartment===true,committeeMember:m.committeeMember===true,fitnessTrainer:m.fitnessTrainer===true,leader:Array.isArray(m.roles)&&m.roles.includes('GF'),replyRoles:[...(Array.isArray(m.roles)&&m.roles.includes('ATF')?['ATF']:[]),...(Array.isArray(m.machinistVehicles)&&m.machinistVehicles.some(v=>['LF','TSF'].includes(v))?['Maschinist']:[])],agt:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m),evidence:g.MemberEvidence.project({...m,breathingQualified:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m)})})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
    if(key!==rosterKey||force){
@@ -142,8 +142,8 @@
     if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert. Bitte erneut abgleichen.');
     rosterKey=key;rosterSyncedAt=Date.now();
    }
-   if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Weitere Änderungen warten auf OneDrive und Handyabgleich.');return false;}
-   syncStatus('success','In OneDrive gespeichert · Handyportal abgeglichen am '+new Date(rosterSyncedAt).toLocaleString('de-DE')+'. Auf dem Handy „Aktualisieren“ wählen.');return true;
+   if(typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){syncStatus('pending','Weitere Änderungen warten auf Cloudflare und Handyabgleich.');return false;}
+   syncStatus('success','In Cloudflare gespeichert · Handyportal abgeglichen am '+new Date(rosterSyncedAt).toLocaleString('de-DE')+'. Auf dem Handy „Aktualisieren“ wählen.');return true;
   }catch(e){syncStatus('error','Handyportal noch nicht aktualisiert. '+(g.ConnectionStatus?.message(e)||e.message)+' Mit „Nachweise fürs Handy aktualisieren“ erneut versuchen.');throw e;
   }finally{rosterBusy=false;renderSyncStatus();const again=rosterResyncRequested;rosterResyncRequested=false;if(again)storageChanged();}
  }
@@ -286,7 +286,7 @@ continue;}
       selectedCount.textContent=restricted?checked+' von '+people.length+' Mitgliedern ausgewählt':'Alle Mitglieder ('+people.length+')';
       selectedCount.dataset.empty=String(restricted&&!checked);
       missingMembers.hidden=people.length>0||!restricted;
-      missingMembers.textContent='Mitgliederliste noch nicht verfügbar. Bitte zuerst OneDrive synchronisieren und die Kalenderverwaltung neu öffnen.';
+      missingMembers.textContent='Mitgliederliste noch nicht verfügbar. Bitte zuerst Cloudflare synchronisieren und die Kalenderverwaltung neu öffnen.';
       for(const c of people)c.disabled=!restricted;
 
     };
@@ -328,7 +328,7 @@ continue;}
       if(kind.value!=='birthday'&&clothing.value==='custom'&&!clothingText.value.trim())throw Error('Bitte eine Kleidung im Freitext eingeben.');
       const isProbe=['probe','special'].includes(kind.value),restricted=isProbe&&audienceMode.value==='selected';
       const ids=restricted?people.filter(check=>check.checked).map(check=>check.value):null;
-      if(restricted&&!people.length)throw Error('Keine Mitglieder geladen. Bitte OneDrive synchronisieren und die Kalenderverwaltung erneut öffnen.');
+      if(restricted&&!people.length)throw Error('Keine Mitglieder geladen. Bitte Cloudflare synchronisieren und die Kalenderverwaltung erneut öffnen.');
       if(restricted&&!ids.length&&recipientMode!=='automatic')throw Error('Bitte mindestens ein Mitglied für diesen Termin auswählen.');
       if(restricted&&Array.isArray(e.recipientIds)&&e.recipientIds.some(id=>!people.some(check=>check.value===id)))throw Error('Bisherige Empfänger sind nicht vollständig in der Mitgliederliste vorhanden. Bitte Mitgliederabgleich prüfen, bevor du die Auswahl änderst.');
       // Read the live rule version before editing any targeted member audience.
@@ -482,7 +482,7 @@ continue;}
   try{
    if(typeof oneDriveAdministrationReady!=='function'||!oneDriveAdministrationReady()){
     clearAttendanceCalendar();
-    throw Error('Für den privaten Kalender bitte die OneDrive-Verbindung des Gerätehauses herstellen.');
+    throw Error('Für den privaten Kalender bitte die Cloudflare-Verbindung des Gerätehauses herstellen.');
    }
    await retryCompletions();
    const cal=await request('list',forceGoogle?{force:true}:{},forceGoogle?{keepSidebar:true}:{});
@@ -610,7 +610,7 @@ continue;}
   const event=selectedEvent();if(!event)return;
   const sessionId=currentSessionId;if(!sessionId)throw Error('Die laufende Erfassungskennung fehlt.');
   const source=g.DrinksStore.sourceKey(),job={source,eventId:event.id,eventStart:event.start,sessionId};
-  // Only called after OneDrive has acknowledged the saved report. Retrying this
+  // Only called after Cloudflare has acknowledged the saved report. Retrying this
   // metadata write must never upload the report again or recreate attendance.
   saveCompletionQueue([...completionQueue().filter(item=>!(item.source===source&&item.sessionId===sessionId)),job]);
   list=list.filter(item=>item.id!==event.id);lastLoad=0;

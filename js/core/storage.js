@@ -9,7 +9,7 @@ function loadArray(key, fallback) {
 function saveCareerCatalog() { safeStorage.setItem(KEYS.careerCatalog, JSON.stringify(careerCatalog)); scheduleCloudSync?.(); }
 function saveMembers() { safeStorage.setItem(KEYS.members, JSON.stringify(members)); scheduleCloudSync?.(); }
 function saveEntries() { safeStorage.setItem(KEYS.entries, JSON.stringify(entries)); scheduleCloudSync?.(); }
-function saveArchive() { safeStorage.setItem(KEYS.archive, JSON.stringify(csvArchive)); scheduleCloudSync?.(); }
+function saveArchive() { safeStorage.setItem(KEYS.archive, JSON.stringify(csvArchive)); if(window.CloudStorage?.connected)safeStorage.setItem('fw_cloud_archive_dirty','1'); scheduleCloudSync?.(); }
 function adminPassword() { return safeStorage.getItem(KEYS.password) || safeStorage.getItem(KEYS.pin) || "112"; }
 function passwordSecurityStatus(){const value=adminPassword();return {secure:value!=="112"&&value.length>=8,message:value==="112"?"Standardpasswort 112 ersetzen.":value.length<8?"Mindestens 8 Zeichen verwenden.":"Passwortlänge in Ordnung."};}
 function adminPin(){return adminPassword();}

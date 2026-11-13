@@ -1,4 +1,4 @@
-/* The signed-in iPad applies encrypted requests to OneDrive, then acknowledges them. */
+/* The signed-in iPad applies encrypted requests to Cloudflare, then acknowledges them. */
 (function(g){
  'use strict';let working=false;const S=g.DrinksStore;
  async function sync(){

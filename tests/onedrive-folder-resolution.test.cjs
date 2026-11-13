@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const {webcrypto} = require('node:crypto');
-const source = fs.readFileSync(require.resolve('../js/core/onedrive-sync.js'), 'utf8');
+const source = fs.readFileSync(require.resolve('./fixtures/onedrive-sync-legacy.js'), 'utf8');
 const token = sub => ({access_token:'TEST-TOKEN',obtained_at:Date.now(),expires_in:3600,
   id_token:'a.'+Buffer.from(JSON.stringify({iss:'test-issuer',sub})).toString('base64url')+'.b'});
 const folder = {id:'test-folder',name:'Testordner',folder:{},parentReference:{driveId:'test-drive'}};

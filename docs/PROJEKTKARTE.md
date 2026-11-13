@@ -16,12 +16,12 @@ Architektur- oder Sicherheitsgutachten. Vor dem Ändern betroffene Aufrufstellen
 | Ausbildung / Funk / Wettkampf / Atemschutz | `deckel.html`, `assets/training/README.md` | Gesamte Ausbildung erst nach verifizierter Anmeldung, ausschließlich geschützt aus `/portal/training`, ohne öffentliche Offline-Inhalte; bebilderter MXP600-Alltagscheck mit sechs Handgriffen und zwei Gerätebildern, deutsche Originalanleitung als PDF-Link; automatischer Abgleich der privaten OneDrive-Quelle durch `portal-training.js`, örtliche Ergänzung und `/portal/training` nur nach serverseitig verifizierter Mitgliedschaft, verschlüsselt und ohne Offline-Ablage, kompakte BW-Status und Übungsdialoge; Wettkampf → Bronze/Silber/Gold mit direkten offiziellen LFS-Unterlagen (2026 und klar getrennte auslaufende Fassung) |
 | Dienstvorschriften / FwDV | `js/features/portal/portal-regulations.js`, `regulations-model.js` | `deckel-mobile.js`, `cloudflare/push/portal.js`; zentrale Auswahl, offizielle PDF-Links, Buchansicht mit `plan-zoom.js` und authentifiziertem PDF-Transport |
 | Nachweise, Eignung, Mitgliederdaten | `js/features/portal/member-evidence.js`, `js/features/settings/admin.js`, `portal-evidence-admin.js` (Mitglieder → Nachweise prüfen) | `js/core/database.js`, Cloudflare `portal.js` |
-| Historie, Korrektur, Löschen | `js/features/history/archive.js`, `onedrive-history-live.js` | `js/core/onedrive-sync.js`, Berichtsdateien |
+| Historie, Korrektur, Löschen | `js/features/history/archive.js`, `onedrive-history-live.js` (kompatible Historienkennungen; Cloudflare-Transport) | `js/core/cloud-sync.js`, `js/core/cloud-storage.js`, Berichtsdateien |
 | Statistik | `js/features/statistics/statistics.js`, PDF-Datei: `js/features/statistics/statistics-pdf.js` | Historie, Anwesenheit, Nachweise, Getränke, lokale PDF-Bibliothek |
 | PDF, DOCX, CSV und ZIP | `js/features/reports/` | Einsatz, Korrektur- und Speicherabläufe |
 | Mein Deckel, Zahlungen; Punkte/Challenge im Backlog | `js/features/drinks/`, `deckel.html`; Sicherungen: `drinks-central.js` / `settingsFilesView`, gemeinsame H₂O-Verbindung: Einstellungen → H₂O-Dienst, `drinks-push.js` / `settingsPushView` | Cloudflare `central.js`, `challenge.js`, `js/core/privacy.js`; Auslieferungsrichtlinie `js/core/optional-features.js`, Merkliste `docs/BACKLOG.md` / Verwaltung → Backlog |
 | Theater / Veranstaltungen | `js/features/theater/` | Cloudflare `theater.js`, `css/features/` |
-| Synchronisierung, Microsoft-Zugriff | `js/core/onedrive-sync.js`, `database.js` | Cloudflare-Schnittstellen, geschützte Zustände |
+| Synchronisierung, Verwaltungsgeräte | `js/core/cloud-sync.js`, `js/core/cloud-storage.js`, `database.js` | Cloudflare-Schnittstellen, geschützte Zustände |
 | OneDrive-Ablösung vorbereiten | `docs/ONEDRIVE-CLOUDFLARE-MIGRATION.md`, `cloudflare/push/storage-migration.js` | `storage-migration.sql`, `scripts/migrate-onedrive-snapshot.cjs`; isolierte private Übernahmekopie, noch keine Umschaltung |
 | Cloudflare-Datenstand und Gerätezugang testen | `cloudflare/push/storage-state.js`, `storage-state.sql` | `scripts/prepare-cloudflare-storage.cjs`, `tests/storage-state.test.cjs`; verschlüsselter D1-Testbetrieb mit sperrbaren Gerätezugängen, keine Umschaltung |
 | Private Cloudflare-Dateiablage testen | `cloudflare/push/storage-files.js`, `storage-files.sql` | `scripts/prepare-cloudflare-files.cjs`, `tests/storage-files.test.cjs`; verschlüsselte Metadaten, R2-Dateiversionen und Wiederherstellung im getrennten Testbetrieb, keine Umschaltung |
@@ -125,3 +125,13 @@ Die Mitgliederrolle heißt „Gast“. Bestehende Daten verwenden kompatibel wei
 `fitnessTrainer`; es findet keine Migration statt. Gäste fehlen bei Gerätehaus-Anwesenheit
 und Getränkeauswahl einschließlich Top 3 und Vorladen. Die Fitnessgruppe vergibt über
 `trainerIds` getrennt die Berechtigung für Rückmeldungsübersicht und Erinnerungen.
+
+## Produktiver Speicher ab 2026.11.13.9
+
+`storage-runtime.js` bindet den vollständig übernommenen Stand an den produktiven
+D1-/R2-Speicher. Verwaltungsgeräte verwenden eigene sperrbare Zugänge. Alte
+Microsoft-Anmeldelogik wird ausschließlich als historischer Testbestand unter
+`tests/fixtures/onedrive-sync-legacy.js` behalten; sie wird nicht ausgeliefert.
+`activate-cloudflare-storage.cjs` erstellt und prüft die lokale Schlusskopie,
+aktiviert einmalig den Speicher und richtet den ersten Gerätezugang ein.
+Bereits aktiver Cloudflare-Bestand wird bei Wiederholung niemals neu importiert.

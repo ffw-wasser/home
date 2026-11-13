@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const source = fs.readFileSync(require.resolve('../js/core/onedrive-sync.js'), 'utf8');
+const source = fs.readFileSync(require.resolve('./fixtures/onedrive-sync-legacy.js'), 'utf8');
 function app(respond, {expired = false} = {}) {
   let now = Date.now();
   const token = {access_token:'initial', refresh_token:'refresh', obtained_at:expired ? 0 : now, expires_in:3600};

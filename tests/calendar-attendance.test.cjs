@@ -13,7 +13,7 @@ function fixture(){
  return {c,get,events,intervals,microtasks,observers,typeClicks,requests,calls,removedSettings,privateCal,logout:()=>{ready=false;c.oneDriveStateConfirmed=false;return c.PortalAdmin.storageChanged();},init:()=>events['doc:DOMContentLoaded'](),login:()=>{ready=true;c.oneDriveStateConfirmed=true;return c.PortalAdmin.storageChanged();},label:()=>get('portal-calendar-pick').children[1]?.textContent};
 }
 test('Hauptansicht lädt Termine ausschließlich nach bestätigter Gerätehaus-Verbindung',async()=>{
- const f=fixture();await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.match(f.get('portal-calendar-status').textContent,/OneDrive-Verbindung/);assert.equal(f.requests.length,0);
+ const f=fixture();await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.match(f.get('portal-calendar-status').textContent,/Cloudflare-Verbindung/);assert.equal(f.requests.length,0);
  await f.login();assert.match(f.label(),/Funkübung · Sonderprobe/);assert.ok(f.requests.some(p=>p.endsWith('/replies')));
 });
 test('Privater Gerätehaus-Kalender kennzeichnet Termine für ausgewählte Mitglieder',async()=>{
@@ -307,7 +307,7 @@ test('Alte lokale Kalender-Dienstadresse wird ohne Änderung anderer Einstellung
 test('Abmeldung während eines privaten Kalenderabrufs stellt später keine Termine wieder her',async()=>{
  const f=fixture(),request=f.c.DrinksPush.request;let release,started;const gate=new Promise(r=>release=r),waiting=new Promise(r=>started=r);
  f.c.DrinksPush.request=async(...args)=>{if(args[1].endsWith('/list')){started();await gate;}return request(...args);};
- const opening=f.login();await waiting;const logout=f.logout();release();await opening;await logout;assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/OneDrive-Verbindung/);
+ const opening=f.login();await waiting;const logout=f.logout();release();await opening;await logout;assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/Cloudflare-Verbindung/);
 });
 
 for(const status of [401,403])test('Abgewiesener Kalenderzugriff '+status+' entfernt den bisherigen privaten Stand',async()=>{const f=fixture();await f.login();f.c.DrinksPush.request=async()=>{throw Object.assign(Error('Kalenderzugang abgelaufen.'),{status});};await f.c.PortalAdmin.refreshAttendance(true);assert.equal(f.label(),undefined);assert.equal(f.c.PortalAdmin.selectedEvent(),null);assert.match(f.get('portal-calendar-status').textContent,/abgelaufen/);});

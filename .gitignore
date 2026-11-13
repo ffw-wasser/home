@@ -14,3 +14,6 @@ native/association/generated/
 *.mobileprovision
 native/.build/
 native/.swiftpm/
+
+# Local synthetic rendering checks
+/tmp/

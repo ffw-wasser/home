@@ -1,4 +1,4 @@
-/* Nur OneDrive und Arbeitsspeicher. Keine Finanzdaten/PINs im Browser-Speicher. */
+/* Nur Cloudflare und Arbeitsspeicher. Keine Finanzdaten/PINs im Browser-Speicher. */
 (function(global){
   'use strict';
   const M=global.DrinksModel, FOLDER='Getraenke';
@@ -6,13 +6,13 @@
   const clone=value=>JSON.parse(JSON.stringify(value));
   const notFound=e=>e?.status===404;
   const conflict=e=>[409,412].includes(e?.status);
-  const itemUrl=(root,id)=>`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(id)}`;
+  const itemUrl=(root,id)=>`h2o-storage://drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(id)}`;
   function reset(){generation++;contextKey='';cache.clear();rewardCache=null;}
   async function context(create=false,expectedSource=null,localOnly=false){
-    if(!oneDriveSignedIn())throw new Error('Bitte OneDrive verbinden. Getränke werden nur dort gespeichert.');
+    if(!oneDriveSignedIn())throw new Error('Bitte Cloudflare verbinden. Getränke werden nur dort gespeichert.');
     if(navigator.onLine===false)throw new Error('Offline. Bitte vor dem Buchen die Internetverbindung herstellen.');
     const root=await oneDriveResolveSharedRoot();
-    // Personal OneDrive drive IDs are hexadecimal and Graph now also returns
+    // Personal Cloudflare drive IDs are hexadecimal and Graph now also returns
     // them uppercase. Preserve the existing lowercase service source identity;
     // SharePoint drive IDs and all item IDs remain opaque and case-sensitive.
     const driveId=/^[a-f0-9]{16}$/i.test(root.driveId)?root.driveId.toLowerCase():root.driveId,key=driveId+':'+root.id;
@@ -28,13 +28,13 @@
         catch(e){if(!conflict(e))throw e;folder=await(await odFetch(`${itemUrl(root,root.id)}:/${FOLDER}?$select=id,folder`)).json();}
       }
     }
-    if(folder&&!folder.folder)throw new Error('Getraenke muss ein Ordner in OneDrive sein.');
+    if(folder&&!folder.folder)throw new Error('Getraenke muss ein Ordner in Cloudflare sein.');
     const ctx={root,key,folder,gen};
     if(!localOnly&&global.DrinksCentral){const c=await global.DrinksCentral.connection();assertCurrent(ctx);if(c)ctx.central=c;}
     return ctx;
   }
-  function assertCurrent(ctx){if(ctx.gen!==generation||ctx.key!==contextKey||!oneDriveSignedIn())throw new Error('OneDrive-Verbindung geändert. Bitte das Getränkekonto erneut öffnen.');}
-  function assertSource(ctx,expected){if(expected&&ctx.key!==expected)throw Object.assign(new Error('Diese Buchung gehört zum vorherigen OneDrive-Ordner. Bitte die ursprüngliche Verbindung wiederherstellen und erneut prüfen.'),{code:'contextChanged'});}
+  function assertCurrent(ctx){if(ctx.gen!==generation||ctx.key!==contextKey||!oneDriveSignedIn())throw new Error('Cloudflare-Verbindung geändert. Bitte das Getränkekonto erneut öffnen.');}
+  function assertSource(ctx,expected){if(expected&&ctx.key!==expected)throw Object.assign(new Error('Diese Buchung gehört zum vorherigen Cloudflare-Ordner. Bitte die ursprüngliche Verbindung wiederherstellen und erneut prüfen.'),{code:'contextChanged'});}
   const REWARDS_FILE='bonus-einstellungen.json';
   async function readRewards(ctx){
     if(ctx.central){const r=await global.DrinksCentral.call(ctx.central,'policy');assertCurrent(ctx);rewardCache=M.validateRewardSettings(r.policy);return {policy:clone(rewardCache),item:{eTag:r.policy.revision}};}
@@ -277,7 +277,7 @@
   async function centralPlaceholder(ctx,id){
     const path=`${itemUrl(ctx.root,ctx.folder.id)}:/${await fileName(id)}`;
     for(let attempt=0;attempt<3;attempt++){
-      let item=null,original=M.empty(id);try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();const raw=await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json();if(raw.schemaVersion===99&&raw.migratedTo==='cloudflare'){assertCurrent(ctx);return;}original=M.validate(raw,String(id));if(original.bookings.length)throw Error('Für dieses Mitglied liegt noch eine alte OneDrive-Buchung vor. Bitte durch die Verwaltung prüfen lassen, bevor weiter gebucht wird.');}catch(e){if(!notFound(e))throw e;}
+      let item=null,original=M.empty(id);try{item=await(await odFetch(path+'?$select=id,eTag,file')).json();const raw=await(await odFetch(itemUrl(ctx.root,item.id)+'/content',{cache:'no-store'})).json();if(raw.schemaVersion===99&&raw.migratedTo==='cloudflare'){assertCurrent(ctx);return;}original=M.validate(raw,String(id));if(original.bookings.length)throw Error('Für dieses Mitglied liegt noch eine alte Cloudflare-Buchung vor. Bitte durch die Verwaltung prüfen lassen, bevor weiter gebucht wird.');}catch(e){if(!notFound(e))throw e;}
       assertCurrent(ctx);try{await odFetch(path+':/content',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':item?.eTag||'"0"'},body:JSON.stringify({schemaVersion:99,migratedTo:'cloudflare',original})},false);assertCurrent(ctx);return;}catch(e){if(!conflict(e))throw e;}
     }throw Error('Das Konto wird gerade geändert. Bitte erneut öffnen.');
   }

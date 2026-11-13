@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const JSZip = require('../js/vendor/jszip.min.js');
 const CsvEngine = require('../js/features/reports/csv-engine.js');
-const syncSource = fs.readFileSync(require.resolve('../js/core/onedrive-sync.js'), 'utf8');
+const syncSource = fs.readFileSync(require.resolve('./fixtures/onedrive-sync-legacy.js'), 'utf8');
 const historySource = fs.readFileSync(require.resolve('../js/features/history/onedrive-history-live.js'), 'utf8');
 
 async function app({signedIn = true, remoteNewer = true, online = true} = {}) {

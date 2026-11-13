@@ -38,7 +38,7 @@
    if(ticket.used_at!==null){const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();if(ticket.device_id!==data.deviceId||!old||old.revoked_at!==null||old.expires_at<=now)fail('Die Gerätekopplung wurde bereits verwendet.',401);return {ok:true,...await config(env,old)};}
    const label=await L.seal(env,{label:data.label,access:'application-admin'},'storage-device:'+data.deviceId);
    await env.DB.batch([
-    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings WHERE id=? AND used_at IS NULL AND expires_at>?) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,ticket.run,now),
+    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings t WHERE t.id=? AND t.used_at IS NULL AND t.expires_at>? AND (t.device_id IS NULL OR EXISTS(SELECT 1 FROM storage_devices issuer WHERE 'issuer:'||issuer.id=t.device_id AND issuer.run=t.run AND issuer.source_hash=t.source_hash AND issuer.revoked_at IS NULL AND issuer.expires_at>?))) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,now,ticket.run,now),
     env.DB.prepare('UPDATE storage_pairings SET used_at=?,device_id=? WHERE id=? AND used_at IS NULL AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND registration_hash=?)').bind(now,data.deviceId,ticketId,data.deviceId,registrationHash)
    ]);
    const claimed=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(ticketId).first(),actor=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();
@@ -47,13 +47,15 @@
   if(path==='/admin/storage-runtime/activate'){
    if(!equal(auth,env.ADMIN_TOKEN))fail('Die erste Umschaltung benötigt den ursprünglichen Dienstzugang.',401);
    await g.StorageState.assertSource(env,data);
+   const active=await current(env);if(active?.run===data.run&&active.source_hash===data.source)return {ok:true,version:active.version,mode:'active'};
+   if(active)fail('Es ist bereits ein anderer Datenstand aktiv. Ein Standwechsel benötigt eine gesonderte Migration.');
    const manifest=await g.StorageMigration.verifiedManifest(env,data.source,data.run),state=await env.DB.prepare('SELECT * FROM storage_states WHERE run=? AND source_hash=?').bind(data.run,data.source).first();if(!state)fail('Der Datenstand wurde noch nicht übernommen.');
-   const files=(await env.DB.prepare("SELECT id FROM storage_files WHERE run=? AND kind='file' AND deleted_at IS NULL").bind(data.run).all()).results,ids=new Set(files.map(f=>f.id));
-   for(const file of manifest.files)if(file.path!=='feuerwehr-wasser-daten.json'&&!ids.has(file.fileId))fail('Die Dateiablage ist noch nicht vollständig übernommen.');
-   const old=await current(env);if(old?.run===data.run&&old.source_hash===data.source)return {ok:true,version:old.version,mode:'active'};
-   if(old)fail('Es ist bereits ein anderer Datenstand aktiv. Ein Standwechsel benötigt eine gesonderte Migration.');
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_runtime(id,run,source_hash,version,activated_at) VALUES(1,?,?,1,?)').bind(data.run,data.source,Date.now()).run();
-   const saved=await current(env);if(saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
+   if(!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion!==state.version||state.version!==1)fail('Der vorbereitete Datenstand wurde verändert. Bitte den Schlussabgleich wiederholen.');
+   const files=(await env.DB.prepare("SELECT id,version FROM storage_files WHERE run=? AND kind='file' AND deleted_at IS NULL").bind(data.run).all()).results,ids=new Set(files.filter(f=>f.version===1).map(f=>f.id));
+   for(const file of manifest.files)if(file.path!=='feuerwehr-wasser-daten.json'&&!ids.has(file.fileId))fail('Die Dateiablage ist noch nicht vollständig oder wurde nach der Übernahme geändert.');
+   const ledger=await L.meta(env);
+   await env.DB.prepare("INSERT OR IGNORE INTO storage_runtime(id,run,source_hash,version,activated_at) SELECT 1,?,?,1,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND source_hash=? AND version=?) AND EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND state='active' AND source=?)").bind(data.run,data.source,Date.now(),data.run,data.source,data.expectedVersion,ledger.source).run();
+   const saved=await current(env);if(!saved||saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
   }
   const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
   if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
@@ -66,7 +68,7 @@
   if(path==='/admin/storage-runtime/pairing'){
    if(!secret(data.ticket)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+5*60000)fail('Ein Kopplungscode ist maximal fünf Minuten gültig.',400);
    const id=await hash('storage-pair/v1:'+data.ticket),old=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(id).first();if(old&&(old.used_at!==null||old.run!==runtime.run||old.source_hash!==runtime.source_hash||old.expires_at!==data.expiresAt))fail('Der Kopplungscode wurde bereits verwendet.');
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_pairings(id,run,source_hash,expires_at) VALUES(?,?,?,?)').bind(id,runtime.run,runtime.source_hash,data.expiresAt).run();return {ok:true,expiresAt:data.expiresAt};
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_pairings(id,run,source_hash,expires_at,device_id) VALUES(?,?,?,?,?)').bind(id,runtime.run,runtime.source_hash,data.expiresAt,actor?'issuer:'+actor.id:null).run();return {ok:true,expiresAt:data.expiresAt};
   }
   if(path==='/admin/storage-runtime/devices'){
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];

@@ -1,7 +1,7 @@
 const pendingMemberStatuses=new Map();
 const attendanceDraftKey='fw_v1_attendance_draft';
 let attendanceDraftOutcome='',attendanceDraftSignature='',attendanceDraftSession='',attendanceDraftScope='';
-function attendanceDraftSource(){return JSON.stringify(['fw_onedrive_client_id','fw_onedrive_shared_folder_url'].map(key=>safeStorage.getItem(key)||''));}
+function attendanceDraftSource(){if(window.CloudStorage?.connected)return CloudStorage.source;return JSON.stringify(['fw_onedrive_client_id','fw_onedrive_shared_folder_url'].map(key=>safeStorage.getItem(key)||''));}
 function persistAttendanceDraft(){
   if(window.AppPrivacy?.clearing)return;
   const id=currentOperationId||currentSessionId;
@@ -108,7 +108,7 @@ function renderMembers() {
     `<section class="member-section member-section-active"><div class="member-section-heading"><h4>Einsatzabteilung</h4><span>${activeMembers.length}</span></div><div class="member-subgrid">${activeMembers.map(renderMemberButton).join("")}</div></section>`,
     ageMembers.length ? `<section class="member-section member-section-age"><div class="member-section-heading"><h4>Alterskameraden</h4><span>${ageMembers.length}</span></div><p>Anwesende Mitglieder auswählen. Nicht ausgewählte Mitglieder werden beim Abschluss als „Fehlt“ gewertet.</p><div class="member-subgrid">${ageMembers.map(renderMemberButton).join("")}</div></section>` : ""
   ];
-  byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
+  byId("members").innerHTML = !members.length ? '<p class="empty-state" role="status">Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.</p>' : !eligibleMembers.length ? '<p class="empty-state" role="status">Für diese Terminart sind keine Mitglieder hinterlegt. Bitte die Mitgliedereinstellungen prüfen.</p>' : sections.join("");
   window.AttendanceSmart?.refresh(availableMembers.length);
   requestAnimationFrame(fitMemberLastNames);
   byId("memberCount").textContent = multiMode ? `${chosenMemberIds.size} ausgewählt · ${availableMembers.length} offen` : `${availableMembers.length} offen`;
@@ -155,7 +155,7 @@ function updatePrimaryAction() {
   button.title=pending?"Bitte zuerst die Markierungen übernehmen.":hasEntries?"Nächsten Schritt öffnen":"Mindestens eine Teilnahme erfassen";
   const save=byId('saveButton');if(save)save.hidden=pending===0;
   const summary=byId("step3ActionSummary");
-  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte OneDrive verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
+  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
   syncAttendanceStart();window.PortalAdmin?.attendanceChanged?.();
 }
 function backToMembers() {

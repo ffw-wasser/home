@@ -8,7 +8,7 @@ test('Auch entsperrte Verwaltung benötigt bestätigtes OneDrive; Einrichtung bl
 });
 test('Verspätete Graph-Antwort wird nach Abmelden verworfen',async()=>{
  let release;const localStorage=storage({fw_onedrive_tokens:JSON.stringify({access_token:'test',obtained_at:Date.now(),expires_in:3600})});
- const c=vm.createContext({localStorage,sessionStorage:storage(),window:{},navigator:{onLine:true},Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,fetch:()=>new Promise(resolve=>release=resolve)});vm.runInContext(read('js/core/onedrive-sync.js'),c);
+ const c=vm.createContext({localStorage,sessionStorage:storage(),window:{},navigator:{onLine:true},Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,fetch:()=>new Promise(resolve=>release=resolve)});vm.runInContext(read('tests/fixtures/onedrive-sync-legacy.js'),c);
  vm.runInContext('oneDriveAccessConfirmed=true',c);assert.equal(c.oneDriveAdministrationReady(),true);
  const pending=c.odFetch('https://graph.microsoft.com/v1.0/test');await new Promise(resolve=>setImmediate(resolve));c.endOneDriveSession();release(new Response('{}'));
  await assert.rejects(pending,/Anmeldung wurde beendet/);assert.equal(c.oneDriveAdministrationReady(),false);assert.equal(localStorage.getItem('fw_onedrive_tokens'),null);

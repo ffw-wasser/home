@@ -36,6 +36,19 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.cjs
+      - name: Verify production storage with actual browser transport
+        run: |
+          CAPTURE_CLOUD_CONNECTION_HELP=1 node tests/cloud-storage-browser.cjs
+          BROWSER_ENGINE=webkit node tests/cloud-storage-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-cloud-storage-review
+          path: |
+            assets/help/guide/geraetehaus-cloudflare.jpg
+            assets/help/guide/screens.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Check report ZIP periods and capture the download controls
         run: |
           node --test tests/report-download.test.cjs
@@ -238,8 +251,6 @@ jobs:
         run: node tests/home-operation-browser.cjs
       - name: Test football favorites, cups and responsive views
         run: node tests/portal-bundesliga-browser.cjs
-      - name: Test authenticated direct OneDrive folder conversion
-        run: node tests/onedrive-direct-browser.cjs
       - name: Test local drafts, resume and administration tasks
         run: node tests/workflow-drafts-browser.cjs
       - name: Test home icon, administration cards and portal navigation

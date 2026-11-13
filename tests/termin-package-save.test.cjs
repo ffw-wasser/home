@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-const source=fs.readFileSync(require.resolve('../js/core/onedrive-sync.js'),'utf8');
+const source=fs.readFileSync(require.resolve('./fixtures/onedrive-sync-legacy.js'),'utf8');
 function fixture({status=201,item,fail=false}={}){
  const calls=[],store=new Map([['share','synthetic-folder']]);let epoch=1,ready=true;
  const c=vm.createContext({Blob,URL,AbortController,oneDriveRequests:new Set(),oneDriveSessionEpoch:1,OD_SHARE_KEY:'share',localStorage:{getItem:k=>store.get(k)},odConfig:()=>({clientId:'synthetic'}),oneDriveAdministrationReady:()=>ready,assertOneDriveSession:e=>{if(e!==c.oneDriveSessionEpoch)throw Error('session ended');},oneDriveResolveSharedRoot:async()=>({id:'root',driveId:'drive'}),odEnsureFolder:async(p,n)=>{calls.push(['folder',n]);return n;},odFetch:async(u,o)=>{calls.push(['session',u,JSON.parse(o.body)]);if(fail)throw Error('existing name');return {json:async()=>({uploadUrl:'https://upload.example.invalid/session'})};},fetch:async(u,o)=>{calls.push(['upload',u,o]);return {ok:status<400,status,json:async()=>item||({id:'item',name:'FFW-Wasser_2026-10-23_Unterricht.zip',size:3,file:{}})};}});

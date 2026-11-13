@@ -231,21 +231,13 @@ function showOperationAttendance(){
   requestAnimationFrame(()=>(byId("homeFlowProgress")||byId("attendanceSelectionWorkspace"))?.scrollIntoView({behavior:"smooth",block:"start"}));
 }
 function showOperationForm(){const f=byId("operationReportForm");if(f&&!f.hidden){try{persistOperationDraft(collectOperationData());}catch(error){console.warn("Einsatzbericht konnte beim Zurückgehen nicht zwischengespeichert werden",error);}f.hidden=true;f.style.display="none";f.setAttribute("aria-hidden","true");}const s=ensureOperationAssignmentStep();s.hidden=false;s.style.display="block";s.removeAttribute("aria-hidden");renderOperationAssignmentStep();syncHomeFlowProgress?.(3);window.SmartWorkflow?.operationForm?.();requestAnimationFrame(()=>requestAnimationFrame(()=>s.scrollIntoView({behavior:"smooth",block:"start"})))}
-function operationPdfEscape(v){return pdfEscape(pdfLatin1(String(v||"")))}function opPdfBytes(v){const t=String(v??""),b=new Uint8Array(t.length);for(let i=0;i<t.length;i++)b[i]=t.charCodeAt(i)&255;return b}function opConcatBytes(p){const l=p.reduce((s,x)=>s+x.length,0),r=new Uint8Array(l);let o=0;for(const x of p){r.set(x,o);o+=x.length}return r}
-async function operationDocxBlob(d,options){d=d||collectOperationData();if(!window.OperationDocx)throw new Error("Word-Modul ist nicht geladen");return window.OperationDocx.create(d,options);}
+let operationFontBytes=null;
 async function operationPdfBlob(d){
-  d=d||collectOperationData();
-  const safeTime=String(d.times?.alarm||"Einsatz").replace(":","-");
-  const name=`FFW-Wasser_${d.date||today()}_${safeTime}.docx`;
-  if(typeof oneDriveConvertDocxToPdf!=="function")throw new Error("Die PDF-Erstellung über die Word-Vorlage ist nicht verfügbar.");
-  if(!globalThis.PDFLib?.PDFDocument)throw new Error("Die Seitenprüfung des Einsatzprotokolls ist nicht verfügbar.");
-  for(const compactCrew of [false,true]){
-    const docx=await operationDocxBlob(d,{compactCrew});
-    const blob=await oneDriveConvertDocxToPdf(docx,name);
-    const pdf=await PDFLib.PDFDocument.load(await blob.arrayBuffer());
-    if(pdf.getPageCount()<=2)return blob;
-    if(compactCrew)throw new Error(`Das Einsatzprotokoll würde ${pdf.getPageCount()} Seiten umfassen. Erlaubt sind maximal zwei Seiten. Bitte sehr lange Berichtstexte kürzen. Bei außergewöhnlich großer Mannschaft bitte die Verwaltung informieren. Es wurden keine Angaben abgeschnitten.`);
-  }
+ d=d||collectOperationData();
+ if(!globalThis.PDFLib?.PDFDocument||!globalThis.OperationPdfLayout||!globalThis.fontkit)throw new Error('Das lokale PDF-Modul ist nicht vollständig geladen. Bitte Anwendung aktualisieren.');
+ if(!operationFontBytes)operationFontBytes=Promise.all(['DejaVuSans.ttf','DejaVuSans-Bold.ttf'].map(async name=>{const response=await fetch('assets/fonts/'+name,{credentials:'omit'});if(!response.ok)throw new Error('Die lokale PDF-Schrift konnte nicht geladen werden.');return new Uint8Array(await response.arrayBuffer());})).catch(error=>{operationFontBytes=null;throw error;});
+ const [regular,bold]=await operationFontBytes;
+ return OperationPdfLayout.create(PDFLib,[],d,{fontkit,regular,bold});
 }
 
 async function showOperationPdfPreview(blob,fileName,onConfirm){

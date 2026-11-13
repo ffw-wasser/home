@@ -3,7 +3,7 @@ const read=file=>fs.readFileSync(require.resolve('../'+file),'utf8');
 function syncApp(){
  const store=new Map(),timers=new Map();let id=0;
  const c=vm.createContext({window:{},members:[],entries:[],csvArchive:[],navigator:{onLine:true},safeStorage:{persistent:true},console:{error(){}},byId:()=>null,showToast(){},localStorage:{getItem:k=>store.get(k)||'',setItem:(k,v)=>store.set(k,v)},setTimeout:fn=>{timers.set(++id,fn);return id;},clearTimeout:i=>timers.delete(i)});
- vm.runInContext(read('js/core/onedrive-sync.js'),c);
+ vm.runInContext(read('tests/fixtures/onedrive-sync-legacy.js'),c);
  Object.assign(c,{oneDriveSignedIn:()=>true,oneDriveStatus(){},renderOneDriveDialog(){},oneDriveResolveSharedRoot:async()=>({driveId:'test',id:'root'}),oneDriveReadState:async()=>null,oneDriveWriteState:async()=>{},applyOneDrivePayload(){}});
  return {c,timers};
 }

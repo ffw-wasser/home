@@ -1,4 +1,4 @@
-/* Publishing credentials and member keys stay in private OneDrive files and RAM. */
+/* Publishing credentials and member keys stay in private Cloudflare files and RAM. */
 (function(global){
   'use strict';
   const S=global.DrinksStore,M=global.DrinksModel,C=global.DeckelCrypto;
@@ -54,7 +54,7 @@
     }
     // Fresh authority and key checks also apply when the QR URL is reused from RAM.
     const [current,check]=await Promise.all([S.readMobileFile(filename),S.read(id)]);
-    if(current?.data.revision!==record.revision||current.data.key!==record.key||current.data.alias!==record.alias||S.sourceKey&&S.sourceKey()!==sourceKey)throw new Error('Der Zugang oder die OneDrive-Verbindung wurde gerade geändert. Bitte erneut öffnen.');
+    if(current?.data.revision!==record.revision||current.data.key!==record.key||current.data.alias!==record.alias||S.sourceKey&&S.sourceKey()!==sourceKey)throw new Error('Der Zugang oder die Cloudflare-Verbindung wurde gerade geändert. Bitte erneut öffnen.');
     if(JSON.stringify(check.pin)!==signature)throw Object.assign(new Error('Bitte erneut mit deiner PIN anmelden.'),{code:'pinChanged'});
     linkCache.set(String(id),{revision:record.revision,key:record.key,sourceKey,url:url.href,until:Date.now()+300000});
     if(!created)queue(id);return url.href;

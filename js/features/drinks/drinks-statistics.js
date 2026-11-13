@@ -9,7 +9,7 @@
   const pointKeys=['paymentPointUnits','challengePointUnits','birthdayPointUnits','earnedPointUnits','redeemedPointUnits','currentPointUnits'];
   const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
   function clear(){for(const id of ['Beer','Wine','Total','BeerCents','WineCents','TotalCents','OpenCents','OutstandingCents','PrepaidCents',...pointFields])if(el(id))el(id).textContent='–';el('Months')?.replaceChildren();el('PointMonths')?.replaceChildren();}
-  function reset(){generation++;last=null;knownYears=[];inFlight=null;clear();if(el('Status'))el('Status').textContent='Zum Laden des Getränkeverbrauchs bitte OneDrive verbinden.';}
+  function reset(){generation++;last=null;knownYears=[];inFlight=null;clear();if(el('Status'))el('Status').textContent='Zum Laden des Getränkeverbrauchs bitte Cloudflare verbinden.';}
   async function load(year){
     if(!el('Status'))return;
     year=String(year);if(inFlight?.year===year)return inFlight.promise;
@@ -25,7 +25,7 @@
       global.renderStatisticsYearSelect?.();
     }catch(error){if(number!==generation)return;
       if(last&&last.sourceKey!==global.DrinksStore.sourceKey()){last=null;clear();}
-      const reason=error?.name==='TypeError'||error?.name==='AbortError'?'Internet- und OneDrive-Verbindung prüfen.':error.message||'Bitte erneut versuchen.';
+      const reason=error?.name==='TypeError'||error?.name==='AbortError'?'Internet- und Cloudflare-Verbindung prüfen.':error.message||'Bitte erneut versuchen.';
       el('Status').textContent='Getränkeverbrauch konnte nicht aktualisiert werden. '+reason+(last?' Letzter geladener Stand: '+last.loadedAt+'.':'');
     }finally{if(inFlight===job)inFlight=null;if(number===generation)el('Refresh').disabled=false;}})();return job.promise;
   }

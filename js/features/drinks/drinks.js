@@ -1,4 +1,4 @@
-/* Getränke auf dem gemeinsamen iPad. PINs/Buchungen werden nur in OneDrive gespeichert. */
+/* Getränke auf dem gemeinsamen iPad. PINs/Buchungen werden nur in Cloudflare gespeichert. */
 (function(global){
   'use strict';
   const M=global.DrinksModel,S=global.DrinksStore;
@@ -47,7 +47,7 @@
   function touch(){if(menuMemberId&&currentScreen==='members'&&!busy&&!document.hidden){const value=S.cached(menuMemberId);if(value.pin&&cardUnlocked(menuMemberId,value))rememberCardSession(menuMemberId,value,JSON.stringify(value.pin));}clearTimeout(timer);if(memberId&&signature&&account?.pin&&!busy){rememberCardSession(memberId,account,signature);timer=setTimeout(()=>lockAccount(false),60000);}}
   function clearPinInputs(){for(const id of ['own-current','own-new','own-repeat'])if(el(id))el(id).value='';}
   function resetSession(){clearTimeout(paidTimer);global.DrinksExtras?.dismiss?.();cardIntent=null;clearTimeout(timer);memberId='';account=null;signature='';payment=0;pending=null;if(el('pin'))el('pin').value='';clearPinInputs();setPinChecking(false);}
-  function reset(){menuMemberId='';preloadEpoch++;preloaded=null;preloading=null;global.DrinksConsumption?.reset();cardDrafts.clear();confirmRequested=false;clearCardSessions();cardNotices.clear();openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte OneDrive verbinden und Getränke neu öffnen.';}}
+  function reset(){menuMemberId='';preloadEpoch++;preloaded=null;preloading=null;global.DrinksConsumption?.reset();cardDrafts.clear();confirmRequested=false;clearCardSessions();cardNotices.clear();openNumber++;loaded=false;people=[];resetSession();S.reset();if(root){renderPeople();renderRanking();screen('members');el('status').textContent='Bitte Cloudflare verbinden und Getränke neu öffnen.';}}
   function beforeView(view){
     if(!root||root.hidden||view==='drinksView')return true;
     if(busy||pending||cardQueue.length){showToast('Die Getränkebuchung bitte zuerst fertig speichern oder erneut prüfen.','error');return false;}
@@ -99,7 +99,7 @@
       const save=document.createElement('button');save.type='button';save.className='dr-primary dr-member-save';save.dataset.drMember=p.id;save.dataset.drCardAction='save';save.textContent='OK · Diese Karte speichern';
       card.append(heading,label,balance,credit,points,bonus,progress,lock,actions,redeemActions,draftLabel,draftGlasses,save,undo,discard,hint,status,retry);container.append(card);cardNodes.set(p.id,{card,tile,tileBalance,balance,credit,points,redeemBeer,redeemWine,redeemActions,deposit,bonus,progress,draftLabel,draftGlasses,save,undo,discard,hint,lock,add,wine,pay,more,status,retry});
     }
-    if(!container.children.length){const p=document.createElement('p');p.textContent=stagedOnly?'Keine passenden Vormerkungen.':people.length?'Kein Mitglied gefunden. Suche nach Vor- oder Nachname.':loaded?'Noch keine Mitglieder vorhanden. Namen unter Einstellungen → Mitglieder anlegen.':'Mitglieder werden aus OneDrive geladen.';container.append(p);const empty=document.createElement('p');empty.textContent=p.textContent;el('directory').append(empty);}
+    if(!container.children.length){const p=document.createElement('p');p.textContent=stagedOnly?'Keine passenden Vormerkungen.':people.length?'Kein Mitglied gefunden. Suche nach Vor- oder Nachname.':loaded?'Noch keine Mitglieder vorhanden. Namen unter Einstellungen → Mitglieder anlegen.':'Mitglieder werden aus Cloudflare geladen.';container.append(p);const empty=document.createElement('p');empty.textContent=p.textContent;el('directory').append(empty);}
     renderCards();
   }
   function renderCards(){
@@ -249,12 +249,12 @@
   async function open({fresh=false}={}){
     if(busy||pending||(cardQueue.length&&!cardError)){showToast('Die aktuelle Buchung bitte zuerst fertig speichern.','error');return;}
     if(stagedCount()&&!confirm('Vorgemerkte Änderungen verwerfen und Getränkekarten neu laden?'))return;
-    if(showView('drinksView')===false)return;menuMemberId='';rankingReady=false;rankingAccounts=null;cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus OneDrive geladen …';
+    if(showView('drinksView')===false)return;menuMemberId='';rankingReady=false;rankingAccounts=null;cardDrafts.clear();clearCardSessions();cardNotices.clear();resetSession();screen('members');el('search').value='';stagedOnly=false;loaded=false;renderPeople();renderRanking();el('status').textContent='Mitglieder und Getränkekonten werden aus Cloudflare geladen …';
     const number=++openNumber;
     await run(async()=>{
       let ready=preloaded&&Date.now()-preloaded.at<60000&&preloaded.sourceKey===S.sourceKey?.()?preloaded:null;if(!ready&&preloading)ready=await preloading;if(fresh||ready&&(Date.now()-ready.at>=60000||ready.sourceKey!==S.sourceKey?.()))ready=null;preloaded=null;
       const data=ready?{members:ready.people.map(p=>({id:p.id,lastName:p.lastName,firstName:p.firstName}))}:await oneDriveReadState();
-      if(!data||!Array.isArray(data.members))throw new Error('Die Mitgliederdatei in OneDrive ist nicht lesbar.');
+      if(!data||!Array.isArray(data.members))throw new Error('Die Mitgliederdatei in Cloudflare ist nicht lesbar.');
       const next=data.members.filter(p=>p.fitnessTrainer!==true).map(p=>({id:String(p.id||''),lastName:String(p.lastName||'').trim(),firstName:String(p.firstName||'').trim(),name:[p.lastName,p.firstName].filter(Boolean).join(' ')}));
       if(next.some(p=>!p.id||!p.name)||new Set(next.map(p=>p.id)).size!==next.length)throw new Error('Die Mitglieder benötigen eindeutige Kennungen und Namen.');
       if(!S.cachedRewards?.())await S.rewards();if(number!==openNumber)return;
@@ -262,7 +262,7 @@
       people=next.sort((a,b)=>a.name.localeCompare(b.name,'de'));loaded=true;renderPeople();el('status').textContent='Mitglieder geladen · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});renderRanking();
     });
     if(loaded&&!rankingReady)loadRanking();
-    if(!loaded)el('status').textContent='Getränke konnten nicht geladen werden. OneDrive-Verbindung prüfen und aktualisieren.';
+    if(!loaded)el('status').textContent='Getränke konnten nicht geladen werden. Cloudflare-Verbindung prüfen und aktualisieren.';
     renderPeople();
   }
   async function paymentChoices(){
@@ -302,7 +302,7 @@
       try{global.DrinksExtras?.celebrate(bonus,finishPaid);}catch{}
     }
   }
-  function adminFields(member){if(member.fitnessTrainer===true)return '';return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie über „Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus OneDrive laden.</span></fieldset>`;}
+  function adminFields(member){if(member.fitnessTrainer===true)return '';return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie über „Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus Cloudflare laden.</span></fieldset>`;}
   async function saveAdminPin(button){
     if(!adminUnlocked)return showToast('Bitte zuerst die Administration entsperren.','error');
     const box=button.closest('.dr-pin-editor'),input=box.querySelector('[data-dr-new-pin]'),status=box.querySelector('[data-dr-pin-status]'),pin=input.value;
@@ -405,9 +405,9 @@
   }
   async function loadPinStatus(row){
     const box=row.querySelector('.dr-pin-editor'),status=box?.querySelector('[data-dr-pin-status]');if(!status)return;
-    status.textContent='PIN-Status wird aus OneDrive geladen …';
+    status.textContent='PIN-Status wird aus Cloudflare geladen …';
     try{const data=await S.read(row.dataset.memberId);if(!box.isConnected||box.dataset.dirty)return;status.textContent=data.pin?'Freiwillige PIN eingerichtet. Ein neuer Wert ersetzt sie.':'Ohne PIN nutzbar. Das Mitglied kann selbst eine PIN einrichten.';}
-    catch(error){if(box.isConnected)status.textContent='PIN-Status nicht geladen. '+(error.message||'OneDrive-Verbindung prüfen.');}
+    catch(error){if(box.isConnected)status.textContent='PIN-Status nicht geladen. '+(error.message||'Cloudflare-Verbindung prüfen.');}
   }
   global.Drinks={open,preload,updateCards:()=>{renderCards();if(rankingReady)renderRanking();},reset,beforeView,adminFields,loadPinStatus,lock:lockAccount,saveAdminPin};
   // Der vollständige Getränke-Bereich steht vor diesem Script bereits im DOM.

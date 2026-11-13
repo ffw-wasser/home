@@ -21,13 +21,13 @@ test('Fehlendes Vorschaubild blockiert die Anwendung nicht',()=>{
 });
 
 
-test('Dateien geladen, aber OneDrive noch nicht synchronisiert: Wappen bleibt',()=>{
+test('Dateien geladen, aber Cloudflare noch nicht synchronisiert: Wappen bleibt',()=>{
  const f=fixture();f.events.load();f.paint();assert.equal(f.removed,false);f.update({ready:false,signed:true,busy:true});assert.match(f.nodes.appStartupStatus.textContent,/synchronisiert/);assert.equal(f.classes.has('app-starting'),true);
 });
 test('Frühe Synchronisation wartet auf alle Programmdateien',()=>{
  const f=fixture();f.update({ready:true});assert.equal(f.removed,false);f.events.load();f.paint();assert.equal(f.removed,true);
 });
-test('Fehler und fehlende Anmeldung behalten den erreichbaren OneDrive-Zugang',()=>{
+test('Fehler und fehlende Anmeldung behalten den erreichbaren Cloudflare-Zugang',()=>{
  const f=fixture();f.events.load();f.paint();f.update({ready:false,signed:false});assert.match(f.nodes.appStartupStatus.textContent,/verbinden/);assert.equal(f.nodes.appStartupConnect.hidden,false);f.nodes.appStartupConnect.onclick();assert.equal(f.clicks,1);f.update({ready:false,error:true});assert.match(f.nodes.appStartupStatus.textContent,/erneut versuchen/);assert.equal(f.removed,false);
 });
 test('Abmeldung sperrt eine zuvor freigegebene Oberfläche wieder',()=>{
@@ -36,20 +36,20 @@ test('Abmeldung sperrt eine zuvor freigegebene Oberfläche wieder',()=>{
 
 test('Ladebalken zeigt Aktivität mit aktuellem Schritt und stoppt bei Fehler oder Offline',()=>{
  const f=fixture();f.events.load();f.paint();
- for(const stage of ['OneDrive-Anmeldung wird geprüft …','Gemeinsame Daten werden synchronisiert …','Berichte und Historie werden geladen …']){
+ for(const stage of ['Cloudflare-Anmeldung wird geprüft …','Gemeinsame Daten werden synchronisiert …','Berichte und Historie werden geladen …']){
   f.update({ready:false,signed:true,busy:true,stage});assert.equal(f.nodes.appStartupStatus.textContent,stage);assert.equal(f.nodes.appStartupProgress.dataset.active,'true');assert.equal(f.removed,false);
  }
  f.update({ready:false,signed:true,error:true});assert.equal(f.nodes.appStartupProgress.dataset.active,'false');assert.match(f.nodes.appStartupStatus.textContent,/erneut versuchen/);
  f.update({ready:false,signed:true,offline:true});assert.match(f.nodes.appStartupStatus.textContent,/Internetverbindung/);assert.equal(f.nodes.appStartupProgress.dataset.active,'false');
- f.update({ready:false,signed:true,needsLogin:true});assert.match(f.nodes.appStartupStatus.textContent,/Anmeldung bestätigen/);
+ f.update({ready:false,signed:true,needsLogin:true});assert.match(f.nodes.appStartupStatus.textContent,/erneut koppeln/);
 });
 
-test('OneDrive-bereite Anwendung wartet weiterhin auf die Start-Versionsprüfung',async()=>{let resolve;const release={pending:true,redirecting:false,ready:new Promise(r=>resolve=r)},f=fixture(release);f.events.load();f.paint();f.update({ready:true});assert.equal(f.removed,false);assert.match(f.nodes.appStartupStatus.textContent,/Updates/);assert.equal(f.nodes.appStartupConnect.hidden,true);release.pending=false;resolve(false);await new Promise(r=>setImmediate(r));assert.equal(f.removed,true);});
+test('Cloudflare-bereite Anwendung wartet weiterhin auf die Start-Versionsprüfung',async()=>{let resolve;const release={pending:true,redirecting:false,ready:new Promise(r=>resolve=r)},f=fixture(release);f.events.load();f.paint();f.update({ready:true});assert.equal(f.removed,false);assert.match(f.nodes.appStartupStatus.textContent,/Updates/);assert.equal(f.nodes.appStartupConnect.hidden,true);release.pending=false;resolve(false);await new Promise(r=>setImmediate(r));assert.equal(f.removed,true);});
 
 test('Microsoft serviceReadOnly wird nicht als fehlende Internetverbindung ausgegeben',()=>{
  const f=fixture();f.events.load();f.paint();
  f.update({ready:false,signed:true,error:true,errorCode:'serviceReadOnly'});
- assert.match(f.nodes.appStartupStatus.textContent,/Microsoft.*serviceReadOnly/);
+ assert.match(f.nodes.appStartupStatus.textContent,/Cloudflare.*vorübergehend/);
  assert.doesNotMatch(f.nodes.appStartupStatus.textContent,/Verbindung prüfen/);
  assert.equal(f.removed,false);assert.equal(f.nodes.appStartupConnect.hidden,false);
 });

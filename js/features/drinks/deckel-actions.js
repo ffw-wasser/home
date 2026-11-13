@@ -1,4 +1,4 @@
-/* Personal phone menu. Money and points change only after the iPad confirms OneDrive. */
+/* Personal phone menu. Money and points change only after the iPad confirms Cloudflare. */
 (function(g){
  'use strict';const $=id=>document.getElementById(id);let data=null,record=null,draft=[],pending=null,busy=false,timer=null,epoch=0,service=null;
  const money=c=>(c/100).toLocaleString('de-DE',{style:'currency',currency:'EUR'}),points=n=>(n/150).toLocaleString('de-DE');

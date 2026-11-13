@@ -14,7 +14,7 @@
 
   async function children(root, itemId) {
     const result = [];
-    let url = `https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(itemId)}/children?$select=id,name,file,folder,lastModifiedDateTime,size,eTag,cTag`;
+    let url = `h2o-storage://drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(itemId)}/children?$select=id,name,file,folder,lastModifiedDateTime,size,eTag,cTag`;
     while (url) {
       const response = await odFetch(url);
       const data = await response.json();
@@ -25,7 +25,8 @@
   }
 
   async function zipFiles(root, itemId = root.id, depth = 0) {
-    if (depth > 4) return [];
+    if(window.CloudStorage?.connected&&itemId===root.id)return (await CloudStorage.walk('Berichte')).filter(file=>/\.(zip|csv|pdf)$/i.test(file.path)).map(file=>({id:file.id,name:file.name,path:file.path,file:{},size:file.size,eTag:'"f-'+file.version+'"',lastModifiedDateTime:file.modifiedAt}));
+    if (depth > 32) throw new Error('Die Berichtsordner sind zu tief verschachtelt.');
     const result = [];
     for (const item of await children(root, itemId)) {
       if (item.folder) result.push(...await zipFiles(root, item.id, depth + 1));
@@ -35,7 +36,7 @@
   }
 
   async function itemBlob(root, item) {
-    return (await odFetch(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(item.id)}/content`)).blob();
+    return (await odFetch(`h2o-storage://drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(item.id)}/content`)).blob();
   }
 
   function counts(rows) {
@@ -74,7 +75,7 @@
     const rows = isOperation ? [] : CsvEngine.parse(content);
     const first = rows[0] || {};
     const valueFor = name => { const index=headerIndex(name); return index>=0 ? String(values[index]||"").trim() : ""; };
-    const reportDate = [isOperation ? valueFor("Datum") : first.date,info.operationData?.date,info.createdAt,file.lastModifiedDateTime].map(CsvEngine.normalizeDate).find(Boolean)||"";
+    const reportDate = [isOperation ? valueFor("Datum") : first.date,info.operationData?.date,info.originalReportDate].map(CsvEngine.normalizeDate).find(Boolean)||"";
     const detectedOperationData = isOperation ? {
       date: reportDate,
       type: valueFor("Einsatzart") || "Einsatz",
@@ -101,13 +102,21 @@
       calendarEventStart:Number.isFinite(info.calendarEventStart)?info.calendarEventStart:null,
       operationData,
       correctedAt:info.correctedAt||"",
-      revisions:Array.isArray(info.revisions)?clone(info.revisions):[],
+      revisions:Array.isArray(info.revisions)?clone(info.revisions):[],legacySourceId:info.legacySourceId||"",legacySourceVersion:info.legacySourceVersion,legacyPdf:info.legacyPdf||null,
       oneDriveLive: true,
       oneDriveETag: file.eTag || "",
       hasImportedPdf: Boolean(pdfEntry),
       ...(isOperation ? {presentCount:Math.max(0,matrix.length-1),excusedCount:0,missingCount:0} : counts(rows))
     };
     } catch (error) { error.code = "invalidReportPackage"; throw error; }
+  }
+
+  async function reportFromCsv(root,file,all,nextPdfs){
+    const content=await(await itemBlob(root,file)).text(),rows=CsvEngine.parse(content),first=rows[0]||{};
+    if(!rows.length)return null;
+    const id='cloud-csv:'+file.id,stem=file.name.replace(/\.csv$/i,'').toLocaleLowerCase('de'),pdfs=all.filter(item=>item.name.toLocaleLowerCase('de')===stem+'.pdf');
+    if(pdfs.length===1)nextPdfs.set(id,await itemBlob(root,pdfs[0]));
+    return {id,fileName:file.name,pdfFileName:pdfs[0]?.name||file.name.replace(/\.csv$/i,'.pdf'),content,sessionType:first.sessionType||'Probe',topic:first.topic||'',originalReportDate:first.date||'',createdAt:file.lastModifiedDateTime||'',oneDriveLive:true,cloudCsv:true,cloudPath:file.path,cloudPdf:pdfs.length===1?pdfs[0]:null,oneDriveETag:file.eTag,hasImportedPdf:pdfs.length===1,...counts(rows)};
   }
 
   function historyStatus(text) {
@@ -131,8 +140,8 @@
       reportCache.clear(); cacheRoot = "";
       renderHistory?.();
       renderStatistics?.();
-      historyStatus("Bitte OneDrive verbinden, um Historie und Statistik zu laden.");
-      if (manual) showToast("Bitte zuerst OneDrive verbinden.", "error");
+      historyStatus("Bitte Cloudflare verbinden, um Historie und Statistik zu laden.");
+      if (manual) showToast("Bitte zuerst Cloudflare verbinden.", "error");
       return false;
     }
     if (navigator.onLine === false) {
@@ -141,13 +150,14 @@
       return false;
     }
     let failedFile = "";
-    historyStatus("Historie wird aus OneDrive geladen. Die Statistik aktualisiert sich anschließend automatisch.");
+    historyStatus("Historie wird aus Cloudflare geladen. Die Statistik aktualisiert sich anschließend automatisch.");
     document.documentElement.classList.add("onedrive-history-loading");
     try {
       const root = await oneDriveResolveSharedRoot();
       const rootKey = `${root.driveId}:${root.id}`;
       if (cacheRoot !== rootKey) { reportCache.clear(); cacheRoot = rootKey; }
-      const files = await zipFiles(root);
+      const allFiles=await zipFiles(root),packageNames=new Set(allFiles.filter(file=>/\.zip$/i.test(file.name)).map(file=>logicalBase(file.name)));
+      const files=allFiles.filter(file=>/\.zip$/i.test(file.name)||/\.csv$/i.test(file.name)&&!packageNames.has(logicalBase(file.name.replace(/\.csv$/i,'.zip'))));
       const newestByLogicalName = new Map();
       for (const file of files) {
         const key = `${logicalBase(file.name)}::${file.id}`;
@@ -161,10 +171,11 @@
        while (!failure && epoch === loadEpoch && oneDriveSignedIn() && nextIndex < filesToLoad.length) {
         const index = nextIndex++, file = filesToLoad[index];
         try {
-          const version = JSON.stringify([file.name, file.eTag, file.cTag, file.lastModifiedDateTime, file.size]);
+          const paired=/\.csv$/i.test(file.name)?allFiles.filter(other=>other.name.toLowerCase()===file.name.replace(/\.csv$/i,'.pdf').toLowerCase()):[];
+          const version = JSON.stringify([file.name, file.eTag, file.cTag, file.lastModifiedDateTime, file.size,paired.map(other=>[other.id,other.eTag,other.lastModifiedDateTime,other.size])]);
           const cached = reportCache.get(file.id);
           const reusable = Boolean(file.eTag || file.cTag || file.lastModifiedDateTime) && cached?.version === version;
-          const report = reusable ? clone(cached.report) : await reportFromZip(root, file, nextPdfs);
+          const report = reusable ? clone(cached.report) : /\.csv$/i.test(file.name)?await reportFromCsv(root,file,allFiles,nextPdfs):await reportFromZip(root, file, nextPdfs);
           if (reusable && cached.pdf) nextPdfs.set(report.id, cached.pdf);
           if (report) {
             reports[index] = report;
@@ -181,9 +192,11 @@
       if (failure) throw failure;
       failedFile = "";
       // Den bisherigen Stand erst nach einem vollständig erfolgreichen Abruf ersetzen.
-      // Quelle bleiben ausschließlich die aktuell in OneDrive vorhandenen ZIP-Pakete.
+      // Quelle bleiben ausschließlich die aktuell in Cloudflare vorhandenen ZIP-Pakete.
       if(epoch!==loadEpoch||!oneDriveSignedIn())return false;
-      csvArchive = reports.filter(Boolean).sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
+      const loaded=reports.filter(Boolean),superseded=new Set(loaded.map(report=>report.legacySourceId).filter(Boolean)),names=new Set(loaded.map(report=>report.fileName));
+      const fallback=(window.CloudStorage?.legacyArchive||[]).filter(report=>!names.has(report.fileName)).map(report=>({...report,oneDriveLive:false,legacyRetained:true}));
+      csvArchive = [...loaded.filter(report=>!superseded.has(report.id.replace(/^cloud-csv:/,''))),...fallback].sort((a, b) => historyDateFromItem(b).localeCompare(historyDateFromItem(a)) || String(b.createdAt).localeCompare(String(a.createdAt)));
       reportCache = nextCache;
       pdfByReportId.clear();
       nextPdfs.forEach((pdf, id) => pdfByReportId.set(id, pdf));
@@ -192,22 +205,22 @@
       window.oneDriveHistoryLastError = "";
       historyStatus("");
       window.Usability?.historyStatus("",new Date().toISOString());
-      if (manual) showToast(`Historie aus ${files.length} OneDrive-ZIP-Datei${files.length === 1 ? "" : "en"} geladen.`);
+      if (manual) showToast(`Historie aus ${files.length} Cloudflare-ZIP-Datei${files.length === 1 ? "" : "en"} geladen.`);
       return true;
     } catch (error) {
       if(epoch!==loadEpoch)return false;
-      console.error("OneDrive-Historie konnte nicht geladen werden", error);
-      const hint = error.code === "oneDriveRequestTimeout" ? "OneDrive hat nicht rechtzeitig geantwortet. Bitte erneut synchronisieren."
-        : error.code === "serviceReadOnly" ? "Microsoft schränkt den automatischen OneDrive-Zugriff vorübergehend ein (serviceReadOnly). Bitte später erneut synchronisieren."
+      console.error("Cloudflare-Historie konnte nicht geladen werden", error);
+      const hint = error.code === "oneDriveRequestTimeout" ? "Cloudflare hat nicht rechtzeitig geantwortet. Bitte erneut synchronisieren."
+        : error.code === "serviceReadOnly" ? "Die bisherige Datenquelle ist vorübergehend schreibgeschützt. Bitte den Datenstand erneut prüfen."
         : ["oneDriveFolderUnavailable","oneDriveFolderLinkInvalid"].includes(error.code) ? error.message
         : error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
-        ? "Bitte OneDrive erneut anmelden."
-        : error.status === 403 ? "Bitte die Zugriffsrechte auf den gemeinsamen OneDrive-Ordner prüfen."
-        : error.status === 429 ? "OneDrive begrenzt momentan die Abrufe. Bitte etwas später erneut synchronisieren."
+        ? "Bitte Cloudflare erneut anmelden."
+        : error.status === 403 ? "Bitte die Zugriffsrechte auf den gemeinsamen Cloudflare-Ordner prüfen."
+        : error.status === 429 ? "Cloudflare begrenzt momentan die Abrufe. Bitte etwas später erneut synchronisieren."
         : error.status === 404 ? "Eine Datei oder ein Ordner wurde verschoben oder gelöscht. Bitte erneut synchronisieren."
-        : error.code === "invalidReportPackage" ? "Dieses ZIP-Paket ist nicht lesbar. Bitte die Datei in OneDrive prüfen oder neu exportieren."
+        : error.code === "invalidReportPackage" ? "Dieses ZIP-Paket ist nicht lesbar. Bitte die Datei in Cloudflare prüfen oder neu exportieren."
         : "Bitte Internetverbindung prüfen und erneut synchronisieren.";
-      const detail = `${failedFile ? " Datei: " + failedFile + "." : ""}${error.status ? " OneDrive-Fehler " + error.status + "." : ""}`;
+      const detail = `${failedFile ? " Datei: " + failedFile + "." : ""}${error.status ? " Cloudflare-Fehler " + error.status + "." : ""}`;
       const message = `Historie konnte nicht aktualisiert werden.${detail} Historie und Statistik zeigen den zuletzt geladenen Stand. ${hint}`;
       window.oneDriveHistoryLastError = message;
       historyStatus(message);
@@ -224,12 +237,24 @@
     return metadata.eTag;
   }
   window.deleteOneDriveHistoryItem = async item => {
+    if(item?.cloudCsv){
+      const metadata=await CloudStorage.stat(item.cloudPath);checkedReportTag(item,{eTag:'"f-'+metadata.version+'"'});
+      const config=CloudStorage.config();await CloudStorage.call('/admin/storage-files/delete',{source:CloudStorage.sourceHash,run:config.run,path:item.cloudPath,expectedVersion:metadata.version,operationId:crypto.randomUUID()});reportCache.delete(metadata.id);return;
+    }
+
     if(pendingLoad)await pendingLoad;
     if(!item?.oneDriveLive||!String(item.id||"").startsWith("onedrive-zip:"))throw new Error("Das Original-Terminpaket fehlt.");
     const fileId=item.id.slice("onedrive-zip:".length);
-    if(!fileId)throw new Error("Die OneDrive-Dateikennung fehlt.");
+    if(item.legacySourceId&&window.CloudStorage?.connected){
+      const cfg=CloudStorage.config(),targets=[];
+      try{const metadata=await CloudStorage.stat(item.legacySourceId,{id:true});if(metadata.version!==item.legacySourceVersion)throw new Error('Das frühere Original wurde zwischenzeitlich geändert. Bitte die Historie prüfen.');targets.push(metadata);}catch(error){if(error.status!==404)throw error;}
+      if(item.legacyPdf)try{const metadata=await CloudStorage.stat(item.legacyPdf.path);if(metadata.version!==item.legacyPdf.version)throw new Error('Das frühere PDF wurde zwischenzeitlich geändert. Bitte die Historie prüfen.');targets.push(metadata);}catch(error){if(error.status!==404)throw error;}
+      for(const target of targets)await CloudStorage.call('/admin/storage-files/delete',{source:CloudStorage.sourceHash,run:cfg.run,path:target.path,expectedVersion:target.version,operationId:crypto.randomUUID()});
+    }
+
+    if(!fileId)throw new Error("Die Cloudflare-Dateikennung fehlt.");
     const root=await oneDriveResolveSharedRoot();
-    const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
+    const url=`h2o-storage://drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
     try{
       const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
       await odFetch(url,{method:"DELETE",headers:{"If-Match":checkedReportTag(item,metadata)}});
@@ -240,13 +265,24 @@
     if(pendingLoad)await pendingLoad;
   };
   window.saveOneDriveHistoryCorrection = async (item, pdf, {preserveAttachments=true}={}) => {
-    // Vorhandene Datei anhand ihrer ID ersetzen, auch bei geändertem Termindatum.
+    if(item?.cloudCsv){
+      const metadata=await CloudStorage.stat(item.cloudPath);checkedReportTag(item,{eTag:'"f-'+metadata.version+'"'});
+      const original=new JSZip(),originalCsv=await CloudStorage.readFile(item.cloudPath,metadata.version);
+      original.file(item.fileName,originalCsv);
+      let originalPdf=pdf,legacyPdf=null;
+      if(item.cloudPdf){const meta=await CloudStorage.stat(item.cloudPdf.path);if('"f-'+meta.version+'"'!==item.cloudPdf.eTag)throw Object.assign(new Error('Das zugehörige PDF wurde inzwischen geändert. Bitte Historie erneut laden.'),{status:412});originalPdf=await CloudStorage.readFile(meta.path,meta.version);legacyPdf={path:meta.path,version:meta.version};}
+      original.file(item.pdfFileName,originalPdf);
+      original.file('paket-info.json',JSON.stringify({format:'FFW-Wasser-Terminpaket',version:'2.0',type:item.sessionType,createdAt:item.createdAt,originalReportDate:item.originalReportDate,baseName:item.fileName.replace(/\.csv$/i,''),csvName:item.fileName,pdfName:item.pdfFileName,operationData:item.operationData,legacySourceId:metadata.id,legacySourceVersion:metadata.version,legacyPdf}));
+      const saved=await CloudStorage.writeFile(item.cloudPath.replace(/\.csv$/i,'.zip'),await original.generateAsync({type:'uint8array',compression:'DEFLATE'}),0);reportCache.delete(metadata.id);
+      return window.saveOneDriveHistoryCorrection({...item,cloudCsv:false,id:'onedrive-zip:'+saved.id,oneDriveETag:'"f-'+saved.version+'"'},pdf,{preserveAttachments:Boolean(legacyPdf)&&preserveAttachments});
+    }
+
     if(pendingLoad)await pendingLoad;
     if(!item?.oneDriveLive||!String(item.id||"").startsWith("onedrive-zip:"))throw new Error("Das Original-Terminpaket fehlt.");
     const fileId=item.id.slice("onedrive-zip:".length);
-    if(!fileId)throw new Error("Die OneDrive-Dateikennung fehlt.");
+    if(!fileId)throw new Error("Die Cloudflare-Dateikennung fehlt.");
     const root=await oneDriveResolveSharedRoot();
-    const url=`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
+    const url=`h2o-storage://drives/${encodeURIComponent(root.driveId)}/items/${encodeURIComponent(fileId)}`;
     const metadata=await (await odFetch(url+"?$select=id,eTag")).json();
     const eTag=checkedReportTag(item,metadata);
     const zip=await JSZip.loadAsync(await (await odFetch(url+"/content",{headers:{"If-Match":eTag}})).blob());

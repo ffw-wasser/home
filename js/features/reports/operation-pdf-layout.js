@@ -1,16 +1,59 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.OperationPdfLayout=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
-  const clean=v=>String(v??'').replace(/\s+/g,' ').trim().replace(/[–—]/g,'-').replace(/×/g,'x');
-  const dateDE=v=>{const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}.${m[2]}.${m[1]}`:clean(v);};
-  function linesFor(text,font,size,width){const words=clean(text).split(' ').filter(Boolean),lines=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(line&&font.widthOfTextAtSize(next,size)>width){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);return lines;}
-  function drawBox(page,text,box,font,bold,rgb){text=clean(text);if(!text)return;let size=box.size||9,min=box.min||6,lines=[];const face=box.bold?bold:font;for(;size>=min;size-=0.25){lines=linesFor(text,face,size,box.w);if(lines.length<=box.lines&&lines.length*(size+(box.gap??1.5))<=box.h)break;}lines=lines.slice(0,box.lines);const step=size+(box.gap??1.5),used=lines.length*step-(box.gap??1.5);let y=box.y+box.h-size+3-((box.valign==='middle')?Math.max(0,(box.h-used)/2):0);for(const line of lines){let x=box.x;if(box.align==='center')x+=Math.max(0,(box.w-face.widthOfTextAtSize(line,size))/2);if(box.align==='right')x+=Math.max(0,box.w-face.widthOfTextAtSize(line,size));page.drawText(line,{x,y,size,font:face,color:rgb(0,0,0)});y-=step;}}
-  async function create(PDFLib,templates,d){const {PDFDocument,StandardFonts,rgb}=PDFLib,pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);const bg1=await pdf.embedJpg(templates[0]),bg2=await pdf.embedJpg(templates[1]);const p1=pdf.addPage([595,842]),p2=pdf.addPage([595,842]);p1.drawImage(bg1,{x:0,y:0,width:595,height:842});p2.drawImage(bg2,{x:0,y:0,width:595,height:842});const box=(p,t,x,y,w,h,size=9,lines=1,o={})=>drawBox(p,t,{x,y,w,h,size,lines,...o},font,bold,rgb),date=dateDE(d.date);
-    box(p1,date,484,763,65,13,9,1);box(p1,d.number,154,725,65,13,9,1);box(p1,d.type,154,711,385,13,9,1);box(p1,d.location,154,697,385,13,9,1);box(p1,d.leader,154,683,385,13,9,1);box(p1,d.zvd,154,669,385,13,9,1);box(p1,d.affected,154,640,385,13,9,1);box(p1,d.affectedAddress,154,626,385,13,9,1);
-    const has=(a,t)=>(a||[]).some(v=>clean(v).toLowerCase().includes(t));[['schleife',162],['telefon',248],['funk',330],['münd',414],['selbst',496]].forEach(([t,x])=>{if(has(d.alarmMethods,t))box(p1,'X',x,573,20,14,9,1,{align:'center'});});[[d.times?.alarm,158],[d.times?.departed,244],[d.times?.arrived,326],[d.times?.ended,410],[d.times?.returned,492]].forEach(([t,x])=>box(p1,t,x,543,32,14,9,1,{align:'center'}));
-    [[d.pipes?.c,194],[d.pipes?.b,316],[d.pipes?.monitor,438],[d.pipes?.smallExtinguishers,539]].forEach(([t,x])=>box(p1,Number(t)>0?t:'',x,503,22,14,9,1,{align:'center'}));[['tank',194],['hydrant',316],['offen',438],['löschteich',539]].forEach(([t,x])=>{if(has(d.waterSources,t))box(p1,'X',x,476,22,14,9,1,{align:'center'});});
-    const dev={"Wärmebildkamera":[49,436],"Pressluftatmer":[171,436],"Kettensäge":[293,436],"Sprungpolster":[415,436],"Belüftungsgerät":[49,423],"Stromerzeuger":[171,423],"Tauchpumpe":[293,423],"Wassersauger":[415,423],"Rettungsschere":[49,409],"Rettungsspreizer":[171,409],"Rettungszylinder":[293,409],"Türöffnungswerkzeug":[415,409]};Object.entries(d.deviceAmounts||{}).forEach(([n,v])=>{if(dev[n]&&Number(v)>0)box(p1,v,dev[n][0],dev[n][1],22,13,8.5,1,{align:'center'});});box(p1,d.deviceOther,99,378,440,18,8,2);box(p1,d.oil?.description,99,348,440,18,8,2);
-    const groups={};(d.members||[]).forEach(n=>{const g=d.assignments?.[n]||'Ohne Zuordnung',role=d.assignmentRoles?.[n]||'';(groups[g]??=[]).push(role?`${n} (${role})`:n);});const memberText=Object.entries(groups).map(([g,n])=>`${g}: ${n.join(', ')}`).join('\n').replace(/\n/g,' ');box(p1,memberText,56,112,483,75,8,7,{min:5.5,gap:1});box(p1,(d.members||[]).length||'',101,93,28,15,9,1,{bold:true,align:'center'});
-    box(p2,d.situation,56,728,483,34,9,3,{min:7});box(p2,d.actions,56,646,483,55,9,5,{min:7});box(p2,d.persons,56,581,483,38,9,3,{min:7});box(p2,d.special,56,454,483,38,9,3,{min:7});box(p2,(d.agencies||[]).join(', '),56,330,483,40,8.5,4,{min:6.5});p2.drawRectangle({x:50,y:185,width:530,height:45,color:rgb(1,1,1)});box(p2,date,138,124,85,14,9,1);
-    return new Blob([await pdf.save()],{type:'application/pdf'});
+ 'use strict';
+ const clean=value=>String(value??'').replace(/\r\n?/g,'\n').replace(/[\t\u00a0]/g,' ').trim();
+ const dateDE=value=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');return m?`${m[3]}.${m[2]}.${m[1]}`:clean(value);};
+ function lines(text,font,size,width){
+  const result=[];
+  for(const paragraph of clean(text).split('\n')){
+   let line='';
+   for(const word of paragraph.split(/ +/).filter(Boolean)){
+    const candidate=line?line+' '+word:word;
+    if(font.widthOfTextAtSize(candidate,size)<=width){line=candidate;continue;}
+    if(line){result.push(line);line='';}
+    if(font.widthOfTextAtSize(word,size)<=width){line=word;continue;}
+    for(const char of word){if(font.widthOfTextAtSize(line+char,size)>width&&line){result.push(line);line='';}line+=char;}
+   }
+   result.push(line);
   }
-  return {create,dateDE};
+  return result;
+ }
+ const list=value=>(Array.isArray(value)?value:[]).map(clean).filter(Boolean).join('; ');
+ function reserve(d,name){
+  const value=d.reserveTimes?.[name];if(!value?.from&&!value?.to)return '';
+  const stamps={};let day=0,previous='';for(const key of ['alarm','departed','arrived','ended']){const time=d.times?.[key];if(!/^\d{2}:\d{2}$/.test(time||'')||!/^\d{4}-\d{2}-\d{2}$/.test(d.date||''))continue;if(previous&&time<previous)day++;const date=new Date(d.date+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+day);stamps[key]=date.toISOString().slice(0,10)+'T'+time;previous=time;}
+  const show=stamp=>{const [date,time]=String(stamp||'').split('T');return dateDE(date)+(time?' '+time:'');};
+  return ' · '+show(value.from||stamps.arrived)+' bis '+show(value.to||stamps.ended);
+ }
+ function crew(d){const groups=new Map();for(const name of d.members||[]){const group=d.assignments?.[name]||'Ohne Zuordnung';if(!groups.has(group))groups.set(group,[]);groups.get(group).push(clean(name)+(d.assignmentRoles?.[name]?' ('+clean(d.assignmentRoles[name])+')':'')+reserve(d,name));}return [...groups].map(([group,people])=>group+': '+people.join('; ')).join('\n');}
+ async function create(PDFLib,_templates,d,assets){
+  if(!assets?.fontkit||!assets.regular||!assets.bold)throw new Error('Die lokalen PDF-Schriften fehlen. Bitte die Anwendung aktualisieren.');
+  const {PDFDocument,rgb}=PDFLib,pdf=await PDFDocument.create();pdf.registerFontkit(assets.fontkit);
+  const regular=await pdf.embedFont(assets.regular,{subset:true}),bold=await pdf.embedFont(assets.bold,{subset:true}),characters=new Set(regular.getCharacterSet());
+  for(const char of JSON.stringify(d))if(char>=' '&&!characters.has(char.codePointAt(0)))throw new Error('Die PDF-Schrift unterstützt das Zeichen „'+char+'“ nicht. Die Eingaben bleiben erhalten.');
+  const vehicles=d.stationOnly?'Keine · Gerätehausbesetzung':list([...new Set([...(d.reportVehicles||[]),...Object.values(d.assignments||{}).filter(value=>/^EM /.test(value))])]);
+  const amounts=Object.entries(d.deviceAmounts||{}).filter(([,amount])=>Number(amount)>0).map(([name,amount])=>amount+' × '+name);
+  for(const name of d.devices||[])if(!(name in (d.deviceAmounts||{})))amounts.push(name);
+  const sections1=[['Alarmierung',list(d.alarmMethods)],['Zeiten', [['Alarm',d.times?.alarm],['Ausgerückt',d.times?.departed],['Einsatzstelle',d.times?.arrived],['Einsatzende',d.times?.ended],['Eingerückt',d.times?.returned]].map(([label,time])=>label+': '+(time||'offen')).join(' · ')],['Eingesetzte Fahrzeuge',vehicles],['Rohre / Schlauchmaterial',[d.pipes?.c?'C-Rohre: '+d.pipes.c:'',d.pipes?.b?'B-Rohre: '+d.pipes.b:'',d.pipes?.monitor?'Wasserwerfer: '+d.pipes.monitor:'',d.pipes?.smallExtinguishers?'Kleinlöschgeräte: '+d.pipes.smallExtinguishers:'',d.pipes?.description].filter(Boolean).join('; ')],['Wasserentnahme',list(d.waterSources)],['Geräte / Sonstiges',[amounts.join('; '),d.deviceOther].filter(Boolean).join('; ')],['Ölbindemittel / Betriebsstoffe',d.oil?.description],['Mannschaft · '+(d.members||[]).length+' Einsatzkräfte',crew(d)]];
+  const sections2=[['Lage beim Eintreffen',d.situation],['Verlauf der Tätigkeit',d.actions],['Personen / Menschenrettung / Verletzungen',d.persons],['Besondere Vorkommnisse',d.special],['Anwesende Behörden und Organisationen',list(d.agencies)]];
+  const fields=[['Einsatznummer',d.number],['Einsatzart',clean(d.type)+(d.powerOutage&&!/stromausfall/i.test(d.type||'')?' · Stromausfall':'')],['Einsatzstelle',d.location],['Einsatzleiter',d.leader],['ZvD',d.zvd],['Verursacher / Geschädigte',d.affected],['Anschrift',d.affectedAddress]];
+  const impossible=regular.widthOfTextAtSize([...fields,...sections1,...sections2].map(([,value])=>clean(value).replace(/\n/g,' ')).join(' '),7)>2*658/10*491;
+  if(impossible)throw new Error('Das Einsatzprotokoll passt nicht auf zwei Seiten. Es wurden keine Angaben abgeschnitten; die Eingaben bleiben erhalten.');
+  let layout;
+  for(let size=9;size>=7;size-=0.25){
+   const plan=blocks=>blocks.map(([title,text])=>({title,lines:lines(text||'—',regular,size,491)}));
+   const first=plan(sections1),second=plan(sections2),fieldPlan=fields.map(([title,text])=>({title,lines:lines(text||'—',regular,size,355)})),step=size+3;
+   const height=blocks=>blocks.reduce((sum,block)=>sum+20+block.lines.length*step+7,0);
+   const fieldHeight=fieldPlan.reduce((sum,field)=>sum+Math.max(17,field.lines.length*step+4),0);
+   if(fieldHeight+height(first)<=658&&height(second)<=658){layout={size,step,first,second,fieldPlan};break;}
+  }
+  if(!layout)throw new Error('Das Einsatzprotokoll passt vollständig nicht auf zwei Seiten. Bitte sehr lange Berichtstexte kürzen. Es wurden keine Angaben abgeschnitten; die Eingaben bleiben erhalten.');
+  const text=(page,value,x,y,size,font=regular)=>page.drawText(clean(value),{x,y,size,font,color:rgb(0,0,0)});
+  const header=(page,number)=>{page.drawRectangle({x:48,y:778,width:499,height:25,color:rgb(.9,.9,.9)});text(page,'EINSATZBERICHT Feuerwehr Emmendingen',56,786,13,bold);text(page,'Feuerwehr Emmendingen, Abt. Wasser',48,754,9);text(page,'Datum: '+dateDE(d.date),415,754,9);text(page,'Seite '+number+' / 2',493,35,8);};
+  const render=(page,blocks,start)=>{let y=start;for(const block of blocks){page.drawRectangle({x:48,y:y-16,width:499,height:18,color:rgb(.93,.93,.93)});text(page,block.title,52,y-11,9,bold);y-=20;for(const line of block.lines){text(page,line,52,y-layout.size,layout.size);y-=layout.step;}y-=7;}return y;};
+  const first=pdf.addPage([595,842]),second=pdf.addPage([595,842]);header(first,1);header(second,2);let y=730;
+  for(const field of layout.fieldPlan){text(first,field.title+':',48,y-layout.size,Math.min(layout.size,8),bold);for(let i=0;i<field.lines.length;i++)text(first,field.lines[i],188,y-layout.size-i*layout.step,layout.size);y-=Math.max(17,field.lines.length*layout.step+4);}
+  render(first,layout.first,y);render(second,layout.second,730);text(second,'Emmendingen, '+dateDE(d.date),48,53,9);
+  return new Blob([await pdf.save()],{type:'application/pdf'});
+ }
+ return {create,dateDE,lines,reserve};
 });
