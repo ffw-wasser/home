@@ -25,16 +25,19 @@ OneDrive abgelöst ist oder der Export dem aktuell laufenden Bestand entspricht.
    öffentliche Domain und keinen `r2.dev`-Zugriff aktivieren. EU-Jurisdiktion und
    Anforderungen für die übrigen Daten und Dienste vor dem produktiven Umzug prüfen.
    Keine kostenpflichtigen Tarif-Upgrades automatisch aktivieren.
-2. Erst nach tatsächlicher Erstellung folgende Bindung in `cloudflare/push/wrangler.jsonc`
-   ergänzen. Der Platzhalter wird durch den tatsächlich angelegten Bucketnamen ersetzt:
+2. Für den am 13.11.2026 vom Nutzer als erstellt bestätigten Bucket ist folgende
+   Bindung in `cloudflare/push/wrangler.jsonc` vorbereitet:
 
    ```json
-   "r2_buckets": [{"binding":"MIGRATION_FILES","bucket_name":"BUCKETNAME"}]
+   "r2_buckets": [{"binding":"MIGRATION_FILES","bucket_name":"feuerwehr-wasser-migration","jurisdiction":"eu"}]
    ```
 
-   Die Bindung steht noch nicht in der Produktionskonfiguration, damit vorhandene
-   Builds ohne eingerichtetes R2 weiterhin funktionieren. Fehlende Bindung führt
-   ausschließlich bei den neuen Übernahmeendpunkten zu HTTP 503.
+   Im Dashboard des vorhandenen Workers unter Bindungen denselben EU-Bucket mit
+   dem Variablennamen `MIGRATION_FILES` verbinden. Kein API-Token und kein
+   öffentlicher Zugriff sind dafür nötig. Name, Konto und EU-Jurisdiktion vor der
+   Veröffentlichung abgleichen; die Bestätigung des Nutzers ersetzt keinen
+   erfolgreichen Worker-/R2-Zugriffstest. Fehlende Bindung führt ausschließlich
+   bei den neuen Übernahmeendpunkten zu HTTP 503.
 3. `cloudflare/push/storage-migration.sql` in der bestehenden D1-Datenbank ausführen.
    Es werden zwei zusätzliche Tabellen erstellt; bestehende Tabellen bleiben unverändert.
 4. Worker aus den Quellen bauen, prüfen und erst danach bereitstellen. Ein Merge
