@@ -2,7 +2,7 @@
 const OD_CLIENT_KEY="fw_onedrive_client_id",OD_SHARE_KEY="fw_onedrive_shared_folder_url",OD_TOKEN_KEY="fw_onedrive_tokens",OD_PKCE_KEY="fw_onedrive_pkce",OD_STATE_FILE="feuerwehr-wasser-daten.json";
 let oneDriveBusy=false,oneDriveTimer=null,oneDriveApplying=false,oneDriveSharedRoot=null,oneDriveLastError="",oneDriveRetryUntil=0,oneDriveLastFailure=null;
 let oneDriveAccessConfirmed=false,oneDriveSessionEpoch=0,oneDriveStartupConfirmed=false,oneDriveStartupStage="OneDrive-Anmeldung wird geprüft …",oneDriveStartupChecking=false;
-function updateOneDriveStartup(){window.AppStartup?.update({ready:oneDriveStartupConfirmed&&oneDriveSignedIn()&&oneDriveAccessConfirmed&&!oneDriveNeedsLogin,busy:oneDriveBusy,signed:oneDriveSignedIn(),error:oneDriveNeedsLogin||Boolean(oneDriveLastError),errorDetail:oneDriveLastError,stage:oneDriveStartupStage,connecting:oneDriveAuthorizing||oneDriveStartupChecking,needsLogin:oneDriveNeedsLogin,offline:navigator.onLine===false});}
+function updateOneDriveStartup(){window.AppStartup?.update({ready:oneDriveStartupConfirmed&&oneDriveSignedIn(),busy:oneDriveBusy,signed:oneDriveSignedIn(),error:oneDriveNeedsLogin||Boolean(oneDriveLastError),stage:oneDriveStartupStage,connecting:oneDriveAuthorizing||oneDriveStartupChecking,needsLogin:oneDriveNeedsLogin,offline:navigator.onLine===false});}
 window.updateOneDriveStartup=updateOneDriveStartup;
 const OD_ADMIN_RETURN_KEY='fw_onedrive_admin_return';
 const OD_VERIFIED_ROOT_KEY='fw_onedrive_verified_root';
@@ -117,9 +117,7 @@ async function oneDriveAccessToken(force=false,rejectedToken=""){
   const saved=localStorage.getItem(OD_TOKEN_KEY),epoch=oneDriveSessionEpoch;
   oneDriveTokenRefresh=(async()=>{
     const c=odConfig(),body=new URLSearchParams({client_id:c.clientId,grant_type:"refresh_token",refresh_token:token.refresh_token,scope:c.scope});
-    let response;
-    try{response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});}
-    catch(error){throw odNetworkError(error,'Microsoft-Anmeldung erneuern');}
+    const response=await fetch(c.authority+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
     const data=await response.json();assertOneDriveSession(epoch);
     if(!response.ok){const required=['invalid_grant','interaction_required','login_required','consent_required'].includes(data.error);oneDriveNeedsLogin=required;if(required)oneDriveAccessConfirmed=false;const error=new Error(required?"OneDrive-Anmeldung muss erneuert werden. Bitte Anmeldung erneuern wählen.":"OneDrive-Anmeldung konnte derzeit nicht erneuert werden. Bitte später erneut synchronisieren.");error.status=response.status;error.code=data.error;throw error;}
     if(localStorage.getItem(OD_TOKEN_KEY)!==saved)throw new Error("OneDrive-Anmeldung wurde während des Abrufs geändert. Bitte erneut synchronisieren.");
@@ -135,52 +133,6 @@ function odRetryDelay(response,attempt){
   const date=header?Date.parse(header):NaN;
   if(Number.isFinite(date))return Math.max(0,date-Date.now());
   return Math.min(1000*2**attempt,8000);
-}
-// Microsoft /content can fail at the browser's CORS redirect. Resolve the
-// temporary download URL through authenticated Graph, then use a simple GET.
-function odDownloadMetadataUrl(address){
- try{const u=new URL(address);if(u.origin!=="https://graph.microsoft.com"||!u.pathname.endsWith("/content")||u.search)return "";u.pathname=u.pathname.slice(0,-8).replace(/:$/,'');u.search='?$select=id,eTag,@microsoft.graph.downloadUrl';return u.href;}catch{return "";}
-}
-function odNetworkError(error,stage){if(error&&typeof error.message==='string'&&!error.oneDriveStage){error.message=stage+": "+error.message;error.oneDriveStage=stage;}return error;}
-function odValidateDownloadUrl(download){
- const host=download.hostname.toLowerCase(),allowed=['1drv.com','onedrive.com','onedrive.live.com','microsoftpersonalcontent.com','sharepoint.com','sharepoint-df.com','storage.live.com','livefilestore.com','storage.msn.com'].some(domain=>host===domain||host.endsWith('.'+domain));
-  if(download.protocol!=='https:'||download.username||download.password||download.port&&download.port!=='443'||!allowed)throw new Error('OneDrive hat eine unerwartete Downloadadresse geliefert (Host: '+host+').');
- return download;
-}
-async function odBrowserDownload(metadataUrl,options={}){
- const epoch=oneDriveSessionEpoch,expected=new Headers(options.headers||{}).get('If-Match');
- const check=()=>{assertOneDriveSession(epoch);if(options.signal?.aborted)throw Object.assign(new Error('OneDrive-Abruf abgebrochen.'),{name:'AbortError'});};
- for(let attempt=0;attempt<2;attempt++){
-  check();let metadata=await (await odFetch(metadataUrl,{signal:options.signal,cache:'no-store'})).json();check();
-  // Some OneDrive responses omit download annotations from a projection.
-  // Retry the exact same item without $select, never a different drive/path.
-  const addressOf=item=>item?.['@microsoft.graph.downloadUrl']||item?.['@content.downloadUrl'];
-  if(!addressOf(metadata)){
-   const fullUrl=new URL(metadataUrl);fullUrl.search='';
-   const full=await (await odFetch(fullUrl.href,{signal:options.signal,cache:'no-store'})).json();check();
-   if(!metadata.id||full.id!==metadata.id)throw Object.assign(new Error('Die OneDrive-Dateizuordnung konnte nicht bestätigt werden.'),{status:412});
-   metadata=full;
-  }
-  if(expected&&expected!=='*'&&metadata.eTag!==expected)throw Object.assign(new Error('Die OneDrive-Dateiversion wurde geändert. Bitte erneut laden.'),{status:412});
-  let download;try{download=new URL(addressOf(metadata));}catch{throw new Error('OneDrive-Dateimetadaten enthalten keine gültige Downloadadresse ('+(metadata.folder?'Ordner':metadata.file?'Datei':metadata.remoteItem?'Verknüpfung':'unvollständige Dateiangaben')+').');}
-  odValidateDownloadUrl(download);
-  const controller=typeof AbortController!=='undefined'?new AbortController():null,cancel=()=>controller?.abort();
-  let timer,response;
-  if(controller){oneDriveRequests.add(controller);options.signal?.addEventListener('abort',cancel,{once:true});timer=setTimeout(cancel,25000);}
-  try{
-   check();
-   // Never forward bearer tokens, If-Match, cookies or a referrer to the
-   // pre-authorized URL. It is kept only in this local request, never stored.
-   response=await fetch(download.href,{method:'GET',credentials:'omit',referrerPolicy:'no-referrer',redirect:'follow',cache:'no-store',...(controller?{signal:controller.signal}:options.signal?{signal:options.signal}:{})});check();
-  }catch(error){check();throw odNetworkError(error,'OneDrive-Datei direkt herunterladen ('+download.hostname+')');}
-  finally{clearTimeout(timer);if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener('abort',cancel);}
-  if(response.url)odValidateDownloadUrl(new URL(response.url));
-  // A temporary signed URL can expire. Resolve it once more, not indefinitely.
-  if((response.status===401||response.status===403)&&attempt===0)continue;
-  if(!response.ok)throw Object.assign(new Error('OneDrive-Dateidownload fehlgeschlagen ('+response.status+').'),{status:response.status});
-  if(expected){const after=await (await odFetch(metadataUrl,{signal:options.signal,cache:'no-store'})).json();check();if(after.eTag!==metadata.eTag)throw Object.assign(new Error('Die OneDrive-Datei wurde während des Downloads geändert. Bitte erneut laden.'),{status:412});}
-  return response;
- }
 }
 async function odFetch(url,options={},retry=true){
   const epoch=oneDriveSessionEpoch;
@@ -200,9 +152,7 @@ async function odFetch(url,options={},retry=true){
     try{response=await fetch(url,{...options,headers,...(controller?{signal:controller.signal}:{})});assertOneDriveSession(epoch);}
     catch(error){
       assertOneDriveSession(epoch);
-      const metadataUrl=readable&&String(options.method||'GET').toUpperCase()==='GET'&&odDownloadMetadataUrl(url);
-      if(retry&&metadataUrl&&error?.name==='TypeError'&&!options.signal?.aborted&&navigator.onLine!==false)return odBrowserDownload(metadataUrl,options);
-      if(!retry||!readable||error?.name==="AbortError"||options.signal?.aborted||navigator.onLine===false||attempts>=3)throw odNetworkError(error,'OneDrive-Ordner oder Metadaten abrufen');
+      if(!retry||!readable||error?.name==="AbortError"||options.signal?.aborted||navigator.onLine===false||attempts>=3)throw error;
       await new Promise(resolve=>setTimeout(resolve,odRetryDelay(null,attempts++)));continue;
     }
     finally{if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener("abort",cancel);}
@@ -380,7 +330,7 @@ async function odEnsureFolder(parentId,name){const root=await oneDriveResolveSha
 async function syncOneDrive({manual=false,refreshHistory=manual}={}){
   if(!oneDriveSignedIn()||!navigator.onLine){notifyAppStorageState();return;}
   if(oneDriveBusy||oneDriveDirectBusy){oneDriveResyncRequested=true;return;}
-  const epoch=oneDriveSessionEpoch;const startRevision=oneDriveLocalRevision;oneDriveBusy=true;oneDriveLastError="";oneDriveLastFailure=null;notifyAppStorageState();oneDriveStatus("Synchronisiert","syncing");
+  const epoch=oneDriveSessionEpoch;const startRevision=oneDriveLocalRevision;oneDriveBusy=true;notifyAppStorageState();oneDriveStatus("Synchronisiert","syncing");
   try{
     let stateError=null;
     try{
@@ -400,28 +350,15 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
         localStorage.setItem("fw_onedrive_local_updated",remote.updatedAt);localStorage.setItem("fw_onedrive_last_sync",new Date().toISOString());
         localStorage.setItem("fw_onedrive_state_base",JSON.stringify({source,updatedAt:remote.updatedAt}));
       }else {const writeRevision=oneDriveLocalRevision;const updatedAt=await oneDriveWriteState(expected);oneDriveSyncedRevision=writeRevision;if(writeRevision===oneDriveLocalRevision)localStorage.setItem("fw_onedrive_state_dirty","0");localStorage.setItem("fw_onedrive_state_base",JSON.stringify({source,updatedAt}));}
-      assertOneDriveSession(epoch);window.Drinks?.preload?.();oneDriveAccessConfirmed=true;oneDriveStateConfirmed=oneDriveSyncedRevision===oneDriveLocalRevision;
-      // Aktuelle Daten sind bestätigt. Langsame oder hängende ZIP-Abrufe
-      // laufen anschließend mit eigenem Ladestatus, ohne den Start zu sperren.
-      if(oneDriveStateConfirmed&&oneDriveAdministrationReady())oneDriveStartupConfirmed=true;
-      notifyAppStorageState();
-    }catch(error){if(epoch!==oneDriveSessionEpoch)return;oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;stateError=error;oneDriveLastError=String(error.message||error);notifyAppStorageState();}
+      assertOneDriveSession(epoch);window.Drinks?.preload?.();oneDriveAccessConfirmed=true;oneDriveStateConfirmed=oneDriveSyncedRevision===oneDriveLocalRevision;notifyAppStorageState();
+    }catch(error){if(epoch!==oneDriveSessionEpoch)return;oneDriveAccessConfirmed=false;oneDriveStateConfirmed=false;stateError=error;notifyAppStorageState();}
     // ZIP-Berichte liefern die Statistik, unabhängig davon, welche Ansicht offen ist.
     // Auch bei einer fehlerhaften Datendatei versuchen, die Berichte zu laden.
-    let historyError=null;
     if(refreshHistory&&typeof window.loadOneDriveHistory==="function"){
       oneDriveStatus("Lädt Historie","syncing");
-      if(await window.loadOneDriveHistory()===false)historyError=new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
+      if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
     }
     if(stateError)throw stateError;
-    if(historyError){
-      // Ein Berichtsfehler darf bestätigte aktuelle Daten nicht hinter dem
-      // Startbildschirm sperren. Anmeldung und Datenabgleich bleiben Pflicht.
-      assertOneDriveSession(epoch);
-      if(!oneDriveAdministrationReady())oneDriveStartupConfirmed=false;
-      else if(oneDriveStateConfirmed)oneDriveStartupConfirmed=true;
-      throw historyError;
-    }
     assertOneDriveSession(epoch);if(refreshHistory&&oneDriveStateConfirmed)oneDriveStartupConfirmed=true;oneDriveLastError="";oneDriveLastFailure=null;oneDriveStatus(oneDriveStateConfirmed?"Aktuell":"Änderungen ausstehend",oneDriveStateConfirmed?"online":"syncing");
     if(manual)showToast(oneDriveStateConfirmed?"Daten und Historie im gemeinsamen OneDrive-Ordner wurden synchronisiert.":"Neue Änderungen werden noch mit OneDrive synchronisiert.");
   }catch(error){

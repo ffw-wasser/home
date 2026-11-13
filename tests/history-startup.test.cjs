@@ -278,28 +278,3 @@ test('Abmeldung während paralleler Abrufe verhindert weitere Downloads und vers
   assert.equal(context.csvArchive.length, 0); assert.equal(calls.statistics, 0);
   assert.equal(await context.window.loadOneDriveHistoryPdf({id: 'onedrive-zip:zip-1'}), null);
 });
-
-
-for(const failure of ['network','invalid-zip','state','login','logout'])test(`Historienfehler blockiert nur unbestätigten oder nicht mehr berechtigten Start: ${failure}`,async()=>{
- const {context,state,status}=await app();
- context.oneDrivePayload=()=>({updatedAt:'2099-01-01'});
- context.localStorage.removeItem=()=>{};context.sessionStorage={removeItem(){}};
- if(failure==='invalid-zip')state.corrupt=true;
- else state.downloadError=new TypeError('Failed to fetch');
- if(failure==='state')state.stateError=true;
- if(failure==='login')state.onDownload=async()=>{vm.runInContext('oneDriveNeedsLogin=true;oneDriveAccessConfirmed=false;',context);};
- if(failure==='logout')state.onDownload=async()=>{state.signedIn=false;context.endOneDriveSession();};
- await context.syncOneDrive({refreshHistory:true});
- const allowed=['network','invalid-zip'].includes(failure);
- assert.equal(vm.runInContext('oneDriveStartupConfirmed',context),allowed);
- assert.equal(vm.runInContext('oneDriveAdministrationReady()',context),allowed);
- if(failure!=='logout'){
-  assert.equal(status.hidden,false);assert.match(status.textContent,/Historie konnte nicht aktualisiert werden/);
-  assert.ok(vm.runInContext('oneDriveLastError',context));
- }
- if(allowed){
-  state.corrupt=false;state.downloadError=null;
-  await context.syncOneDrive({manual:true});assert.equal(status.hidden,true);
-  assert.equal(vm.runInContext('oneDriveLastError',context),'');assert.equal(context.csvArchive.length,1);
- }
-});

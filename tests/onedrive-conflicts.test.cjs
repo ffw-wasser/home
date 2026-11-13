@@ -48,7 +48,7 @@ test('Verlorene PUT-Antwort wird anhand identischen Inhalts bestätigt, ohne zwe
 });
 
 
-test('Bestätigte aktuelle Daten öffnen die App bereits während des laufenden Historienabrufs',async()=>{
+test('Startfreigabe wartet auf Daten UND Historie und bleibt bei Fehler gesperrt',async()=>{
  for(const historyOk of [false,true]){
   const f=fixture(),states=[];let finish;
   f.c.window.AppStartup={update:state=>states.push({...state})};
@@ -56,16 +56,16 @@ test('Bestätigte aktuelle Daten öffnen die App bereits während des laufenden 
   f.c.window.loadOneDriveHistory=()=>new Promise(resolve=>{finish=()=>resolve(historyOk);});
   const syncing=f.c.syncOneDrive({refreshHistory:true});
   while(!finish)await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(states.at(-1).ready,true,'ein noch nicht abgeschlossener Historienabruf blockiert bestätigte Daten nicht');
+  assert.equal(states.at(-1).ready,false,'data alone is insufficient');
   finish();await syncing;
-  assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,!historyOk);
+  assert.equal(states.at(-1).ready,historyOk);
   if(historyOk){f.c.scheduleCloudSync();assert.equal(states.at(-1).ready,true,'editing does not reopen the start screen');}
  }
 });
-test('Erfolgreicher Historien-Neuabruf beseitigt den Fehler ohne erneute Startsperre',async()=>{
+test('Ein späterer erfolgreicher vollständiger Abruf gibt die Startansicht frei',async()=>{
  const f=fixture(),states=[];f.c.window.AppStartup={update:state=>states.push({...state})};f.c.applyOneDrivePayload=()=>{};
- f.c.window.loadOneDriveHistory=async()=>false;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,true);
- f.c.window.loadOneDriveHistory=async()=>true;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);assert.equal(states.at(-1).error,false);
+ f.c.window.loadOneDriveHistory=async()=>false;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,false);
+ f.c.window.loadOneDriveHistory=async()=>true;await f.c.syncOneDrive({refreshHistory:true});assert.equal(states.at(-1).ready,true);
 });
 
 test('Startstatus verwendet die tatsächlichen OneDrive-Phasen',()=>{
@@ -74,16 +74,4 @@ test('Startstatus verwendet die tatsächlichen OneDrive-Phasen',()=>{
  for(const [label,expected] of [['Verbindet','OneDrive-Anmeldung'],['Synchronisiert','Gemeinsame Daten'],['Lädt Historie','Berichte und Historie']]){
   c.oneDriveStatus(label,'syncing');assert.ok(states.at(-1).stage.startsWith(expected));assert.equal(states.at(-1).ready,false);
  }
-});
-
-
-test('Fehler aktueller Daten werden schon vor Ende eines hängenden Historienabrufs angezeigt',async()=>{
- const f=fixture(),states=[];let finish;
- f.c.window.AppStartup={update:state=>states.push({...state})};
- f.c.window.loadOneDriveHistory=()=>new Promise(resolve=>finish=resolve);
- const syncing=f.c.syncOneDrive({refreshHistory:true});
- while(!finish)await new Promise(resolve=>setImmediate(resolve));
- assert.equal(states.at(-1).ready,false);assert.equal(states.at(-1).error,true);
- assert.match(states.at(-1).errorDetail,/must preserve local data/);
- finish(false);await syncing;assert.equal(states.at(-1).ready,false);
 });
