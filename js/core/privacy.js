@@ -9,7 +9,7 @@
  function clear(){if(running)return running;clearing=true;running=(async()=>{
   safeStorage.setItem(MARKER,'1');
   // Clear all currently displayed data immediately; reloading releases remaining JS references.
-  global.Drinks?.reset();global.clearOneDriveHistory?.();global.WorkflowUX?.reset();
+  global.Drinks?.reset();global.clearOneDriveHistory?.();global.WorkflowUX?.reset();global.ReportDownload?.clear();
   global.TerminPackageStatus=null;
   members=[];entries=[];csvArchive=[];adminUnlocked=false;pendingSettingsTarget='';chosenMemberId='';chosenMemberIds.clear();
   if(typeof pendingMemberStatuses!=='undefined')pendingMemberStatuses.clear();

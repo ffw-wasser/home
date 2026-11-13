@@ -13,7 +13,7 @@ const groups = {
   kalender: [/^(year-plan|calendar|portal-calendar|portal-reply|portal-priority|portal-sync|portal-settings|term-)/],
   einsatz: [/^(operation-|report-|termin-package-|document-report|tactics-|archive-step2)/],
   geraetehaus: [/^(attendance-|tactics-|term-|termin-package-|operation-|smart-flows|startup)/],
-  historie: [/^(history-|archive-|operation-correction|operation-overwrite|backup-)/],
+  historie: [/^(history-|archive-|report-download|operation-correction|operation-overwrite|backup-)/],
   deckel: [/^(deckel|drinks)(-|\.test)/],
   theater: [/^theater(-|\.test)/],
   portal: [/^portal\.test/, /^(portal|calendar)-/, /^member-(evidence|subscriptions)/],

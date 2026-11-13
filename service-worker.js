@@ -152,6 +152,7 @@ const CORE=[
   "./js/features/history/backup-engine.js?v=20261113.8",
   "./js/vendor/pdf-lib.min.js?v=20261113.8",
   "./js/vendor/jszip.min.js?v=20261113.8",
+  "./js/features/reports/report-download.js?v=20261113.8",
   "./js/features/reports/ipad-document-editor.js?v=20261113.8",
   "./js/features/reports/document-report.js?v=20261113.8",
   "./js/features/reports/probe-pdf.js?v=20261113.8",

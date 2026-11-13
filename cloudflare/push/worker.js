@@ -31,10 +31,15 @@ export default {
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}
     catch(error){return reply({error:error.status?error.message:'Kalender derzeit nicht erreichbar. Bitte erneut versuchen.'},error.status||503);}
    }
+   if(path==='/storage/status'&&request.method==='GET'&&globalThis.StorageRuntime)return reply(await globalThis.StorageRuntime.route(path,{},env,''));
    if(request.method!=='POST')return reply({error:'Nicht gefunden.'},404);
-   const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
-   if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
+   const admin=path.startsWith('/admin/');let auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');const presentedAuth=auth;
+   if(admin&&!equal(auth,env.ADMIN_TOKEN)){try{if(!globalThis.StorageRuntime)return reply({error:'Admin-Zugang ungültig.'},401);await globalThis.StorageRuntime.administrator(env,auth);if(!path.startsWith('/admin/storage-'))auth=env.ADMIN_TOKEN;}catch{return reply({error:'Verwaltungsgerät nicht verbunden oder gesperrt.'},401);}}
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
+   if(globalThis.StorageRuntime&&(path.startsWith('/storage/')||path.startsWith('/admin/storage-runtime/'))){
+    try{let value;try{value=JSON.parse(new TextDecoder().decode(await globalThis.StorageMigration.bounded(request,6000)));}catch(error){if(error.status)throw error;throw Object.assign(new Error('Ungültige Anfrage.'),{status:400});}if(!value||Array.isArray(value)||typeof value!=='object')return reply({error:'Ungültige Anfrage.'},400);return reply(await globalThis.StorageRuntime.route(path,value,env,presentedAuth));}
+    catch(error){return reply({error:error.status?error.message:'Cloudflare-Speicher derzeit nicht erreichbar. Bitte erneut versuchen.'},error.status||503);}
+   }
    if(globalThis.StorageFiles&&path.startsWith('/admin/storage-files/')){
     try{const result=await globalThis.StorageFiles.route(path,request,env,auth);if(result instanceof Response){const privateHeaders=new Headers(headers);for(const [key,value] of result.headers)privateHeaders.set(key,value);return new Response(result.body,{status:result.status,headers:privateHeaders});}return reply(result);}
     catch(error){return reply({error:error.status?error.message:'Die private Dateiablage ist derzeit nicht bestätigt. Denselben Vorgang erneut prüfen.'},error.status||503);}

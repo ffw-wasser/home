@@ -235,6 +235,35 @@ endgültigen Umschaltung sind Schreibpause und Schlussabgleich mit OneDrive nöt
 
 ## Nächste Umsetzung vor der Umschaltung
 
+Der Arbeitsbranch `feature/cloudflare-production` bereitet den aktiven Speicher
+und getrennte, sperrbare Verwaltungsgeräte vor. Er ist kein Nachweis einer
+produktiven Umschaltung. Die Anwendungsanbindung, der Schlussabgleich und die
+lokale PDF-Erstellung müssen vor Veröffentlichung vollständig integriert sein.
+
+### Vollständiger Berichtsdownload
+
+Unter Einstellungen → Berichte & Datensicherung wird der ZIP-Download mit
+„Alle Jahre“, einem ganzen Jahr oder einem Monat innerhalb des gewählten Jahres
+vorbereitet. „Berichte laden“ liest die privaten Cloudflare-Berichtsdateien mit
+ihren konkreten Dateiversionen. Die Auswahl verwendet das ursprüngliche
+Termindatum aus CSV oder Einsatzdaten, ersatzweise aus dem datierten Dateinamen;
+Uploadzeit und Korrekturzeit bestimmen niemals den Zeitraum. Berichte ohne
+erkennbares Termindatum werden ausdrücklich nur im Gesamtexport aufgenommen.
+
+Die ZIP-Datei enthält alle ausgewählten Originaldateien unter `Originale/`
+einschließlich vollständiger Terminpakete und darin enthaltener Anlagen. PDF
+und CSV aus den Paketen sind zusätzlich unter `PDF/` und `CSV/` zugänglich.
+`Berichtsverzeichnis.csv` dokumentiert Pfad, Dateiversion und Termindatum.
+Bei einem fehlgeschlagenen Abruf oder einem ungültigen Paket wird kein
+unvollständiger Download erzeugt. Nach Geräteabmeldung werden geladene
+Exportdaten verworfen; ein laufender Export darf nicht mehr ausgegeben werden.
+
+Prüfungen: `tests/report-download.test.cjs` und
+`tests/report-download-browser.cjs` (Chromium und WebKit, nur Beispieldaten).
+Das zugehörige Hilfebild wird mit
+`node scripts/capture-help-screens.cjs --only=geraetehaus-berichte-download`
+aus der tatsächlichen Oberfläche erzeugt.
+
 1. Tatsächlichen OneDrive-Bestand erfassen und Übernahmekopie nachlesen.
 2. Gerätehaus-/Admin-Anmeldung von Microsoft lösen; Geräte sperrbar machen.
 3. Datenhaltung hinter den zuständigen Modulen ersetzen: Stammdaten, Anwesenheit,

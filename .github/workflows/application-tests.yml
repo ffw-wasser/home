@@ -36,6 +36,20 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.cjs
+      - name: Check report ZIP periods and capture the download controls
+        run: |
+          node --test tests/report-download.test.cjs
+          node scripts/capture-help-screens.cjs --only=geraetehaus-berichte-download
+          BROWSER_ENGINE=webkit node tests/report-download-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2o-report-download-review
+          path: |
+            assets/help/guide/geraetehaus-berichte-download.jpg
+            assets/help/guide/screens.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Check illustrated guide matches its shared content
         run: node scripts/build-help-guide.cjs --check
       - name: Check bundled Cloudflare worker matches sources

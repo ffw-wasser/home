@@ -23,6 +23,7 @@ function requireAdmin(target="settingsView",{allowDisconnected=false}={}) {
   return false;
 }
 function lockAdministration(){
+  window.ReportDownload?.clear();
   window.MemberRecordsPrint?.clear();
   if(typeof clearFitnessStatistics==='function')clearFitnessStatistics();
   const theaterReturn=window.TheaterAdmin?.route?.();

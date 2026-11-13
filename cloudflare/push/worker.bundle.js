@@ -23267,15 +23267,16 @@ g.PortalHydrants={schema,route};
  // Migration source hashes use hex rather than the legacy base64url hash helper.
  async function sourceDigest(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',utf.encode(value))),x=>x.toString(16).padStart(2,'0')).join('');}
  async function checkSource(env,data){const ledger=await L.meta(env);if(ledger?.state!=='active'||!hex(data.source)||!equal(await sourceDigest(ledger.source),data.source))fail('Die Datenquelle stimmt nicht mit dem bestehenden Dienst überein.');}
- async function device(env,data,auth){
+ async function tokenDevice(env,auth){
   if(!/^[A-Za-z0-9_-]{43}$/.test(auth||''))fail('Gerätezugang ungültig.',401);
   const row=await env.DB.prepare('SELECT * FROM storage_devices WHERE token_hash=?').bind(await hash('storage-device/v1:'+auth)).first();
-  if(!row||row.run!==data.run||row.source_hash!==data.source||row.revoked_at!==null||row.expires_at<=Date.now())fail('Gerätezugang abgelaufen oder gesperrt.',401);
+  if(!row||row.revoked_at!==null||row.expires_at<=Date.now())fail('Gerätezugang abgelaufen oder gesperrt.',401);
   return row;
  }
+ async function device(env,data,auth){const row=await tokenDevice(env,auth);if(row.run!==data.run||row.source_hash!==data.source)fail('Gerätezugang gehört zu einem anderen Datenstand.',401);if(g.StorageRuntime)await g.StorageRuntime.assertDevice(env,row);return row;}
  async function route(path,data,env,auth){
   const admin=path.startsWith('/admin/storage-state/');
-  if(admin&&(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN)))fail('Admin-Zugang ungültig.',401);
+  if(admin){if(g.StorageRuntime)await g.StorageRuntime.adminScope(env,auth,data);else if(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN))fail('Admin-Zugang ungültig.',401);}
   if(!hex(data.run))fail('Ungültige Übernahmekennung.',400);
   const actor=admin?null:await device(env,data,auth);
   await checkSource(env,data);
@@ -23294,11 +23295,12 @@ g.PortalHydrants={schema,route};
   }
   if(path==='/admin/storage-state/pair'){
    if(!uuid(data.deviceId)||!/^[A-Za-z0-9_-]{43}$/.test(data.token||'')||typeof data.label!=='string'||!data.label.trim()||data.label.length>100||/[\x00-\x1f\x7f]/.test(data.label)||!Number.isSafeInteger(data.expiresAt))fail('Ungültige Geräteanmeldung.',400);
-   const tokenHash=await hash('storage-device/v1:'+data.token),registrationHash=await hash(JSON.stringify({run:data.run,source:data.source,tokenHash,label:data.label,expiresAt:data.expiresAt}));
+   if(data.access!==undefined&&!['state','application-admin'].includes(data.access))fail('Ungültige Geräteberechtigung.',400);
+   const access=data.access||'state',tokenHash=await hash('storage-device/v1:'+data.token),registrationHash=await hash(JSON.stringify({run:data.run,source:data.source,tokenHash,label:data.label,expiresAt:data.expiresAt,...(access==='application-admin'?{access}:{})}));
    const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
    if(old){if(old.registration_hash!==registrationHash||old.revoked_at!==null||old.expires_at<=Date.now())fail('Die Gerätekennung ist bereits vergeben oder gesperrt.');return {ok:true,deviceId:old.id,expiresAt:old.expires_at,duplicate:true,mode:'rehearsal'};}
    const now=Date.now();if(data.expiresAt<=now||data.expiresAt>now+30*86400000)fail('Ein Gerätezugang gilt maximal 30 Tage.',400);
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label},'storage-device:'+data.deviceId),now,data.expiresAt,data.run,now).run();
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label,...(access==='application-admin'?{access}:{})},'storage-device:'+data.deviceId),now,data.expiresAt,data.run,now).run();
    const saved=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
    if(!saved||saved.registration_hash!==registrationHash||saved.revoked_at!==null)fail('Geräteanmeldung nicht bestätigt oder Gerätelimit erreicht.');
    return {ok:true,deviceId:saved.id,expiresAt:saved.expires_at,duplicate:false,mode:'rehearsal'};
@@ -23322,14 +23324,15 @@ g.PortalHydrants={schema,route};
   // Check revocation and expiry again inside the same transaction as the CAS.
   const result=await env.DB.batch([
    env.DB.prepare('UPDATE storage_states SET payload=?,version=version+1 WHERE run=? AND source_hash=? AND version=? AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND token_hash=? AND run=? AND revoked_at IS NULL AND expires_at>?)').bind(payload,data.run,data.source,data.expectedVersion,actor.id,actor.token_hash,data.run,Date.now()),
-   env.DB.prepare('INSERT OR IGNORE INTO storage_state_receipts(run,operation_id,device_id,digest,version) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,data.operationId,actor.id,digest,version,data.run,payload,version)
+   env.DB.prepare('INSERT OR IGNORE INTO storage_state_receipts(run,operation_id,device_id,digest,version) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,data.operationId,actor.id,digest,version,data.run,payload,version),
+   env.DB.prepare('INSERT OR IGNORE INTO storage_state_versions(run,version,payload,saved_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_states WHERE run=? AND payload=? AND version=?)').bind(data.run,row.version,row.payload,Date.now(),data.run,payload,version)
   ]);
   // Do not infer success from the HTTP delivery or a prior read.
   const receipt=await env.DB.prepare('SELECT * FROM storage_state_receipts WHERE run=? AND operation_id=?').bind(data.run,data.operationId).first();
   if(!receipt||receipt.device_id!==actor.id||receipt.digest!==digest)fail('Speicherung nicht bestätigt. Denselben Vorgang erneut prüfen.');
   return {version:receipt.version,currentVersion:receipt.version,duplicate:!result[0].meta.changes,mode:'rehearsal'};
  }
- g.StorageState={route,assertSource:checkSource};
+ g.StorageState={route,assertSource:checkSource,tokenDevice};
 })(globalThis);
 
 /* Versioned private file rehearsal. Only the existing server administrator may access it. */
@@ -23363,8 +23366,8 @@ g.PortalHydrants={schema,route};
  }
  async function save(env,data,old,kind,value,deletedAt=null){
   const id=await pathId(value.path),parent=await pathId(parentPath(value.path)),version=(old?.version||0)+1,payload=await L.seal(env,value,purpose(data.run,id));
-  const root=await pathId(''),parentGuard=parent===root?'1=1':"EXISTS(SELECT 1 FROM storage_files p WHERE p.run=? AND p.id=? AND p.kind='folder' AND p.deleted_at IS NULL)";
-  const parentArgs=parent===root?[]:[data.run,parent];
+  const root=await pathId(''),actor=data._actor,parentGuard=(parent===root?'1=1':"EXISTS(SELECT 1 FROM storage_files p WHERE p.run=? AND p.id=? AND p.kind='folder' AND p.deleted_at IS NULL)")+(actor?' AND EXISTS(SELECT 1 FROM storage_devices d JOIN storage_runtime r ON r.run=d.run AND r.source_hash=d.source_hash WHERE d.id=? AND d.token_hash=? AND d.revoked_at IS NULL AND d.expires_at>?)':'');
+  const parentArgs=[...(parent===root?[]:[data.run,parent]),...(actor?[actor.id,actor.token_hash,Date.now()]:[])];
   // Atomic version check also prevents creation beneath a concurrently deleted parent.
   const q=old?env.DB.prepare('UPDATE storage_files SET payload=?,version=?,deleted_at=? WHERE run=? AND id=? AND version=? AND '+parentGuard+(kind==='folder'&&deletedAt!==null?' AND NOT EXISTS(SELECT 1 FROM storage_files c WHERE c.run=? AND c.parent=? AND c.deleted_at IS NULL)':'')).bind(payload,version,deletedAt,data.run,id,old.version,...parentArgs,...(kind==='folder'&&deletedAt!==null?[data.run,id]:[])):
    env.DB.prepare('INSERT OR IGNORE INTO storage_files(run,id,parent,kind,payload,version) SELECT ?,?,?,?,?,1 WHERE '+parentGuard).bind(data.run,id,parent,kind,payload,...parentArgs);
@@ -23378,15 +23381,17 @@ g.PortalHydrants={schema,route};
   return {id,version:receipt.version,mode:'rehearsal',liveStorage:'onedrive'};
  }
  async function route(path,request,env,auth){
-  if(!env.ADMIN_TOKEN||!equal(auth,env.ADMIN_TOKEN))fail('Admin-Zugang ungültig.',401);
+  const actor=equal(auth,env.ADMIN_TOKEN)?null:g.StorageRuntime?await g.StorageRuntime.administrator(env,auth):fail('Admin-Zugang ungültig.',401);
   if(!env.MIGRATION_FILES)fail('Die private Dateiablage fehlt.',503);
   const upload=path==='/admin/storage-files/write',raw=await M.bounded(request,upload?MAX+8192:6000);
   let data,bytes;
   try{if(upload){const newline=raw.indexOf(10);if(newline<0||newline>8000)fail('Ungültiger Dateiheader.',400);data=JSON.parse(dec.decode(raw.slice(0,newline)));bytes=raw.slice(newline+1);}else data=JSON.parse(dec.decode(raw));}catch(error){if(error.status)throw error;fail('Ungültige Anfrage.',400);}
   if(!data||typeof data!=='object'||Array.isArray(data)||!hex(data.run))fail('Ungültige Anfrage.',400);
+  if(actor&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Ein anderer Datenstand ist nicht freigegeben.',403);data._actor=actor;
   await g.StorageState.assertSource(env,data);
   if(!await env.DB.prepare('SELECT run FROM storage_states WHERE run=? AND source_hash=?').bind(data.run,data.source).first())fail('Der getrennte Datenstand ist noch nicht vorbereitet.');
   if(path==='/admin/storage-files/prepare'){
+   if(actor)fail('Die Erstübernahme benötigt den ursprünglichen Dienstzugang.',403);
    const path=validPath(data.path),manifest=await M.verifiedManifest(env,data.source,data.run),file=manifest.files.find(f=>f.path===path);
    if(!file)fail('Die Datei fehlt in der bestätigten Übernahme.',404);
    if(typeof data.modifiedAt!=='string'||!Number.isFinite(Date.parse(data.modifiedAt)))fail('Ungültiges Änderungsdatum.',400);
@@ -23403,15 +23408,18 @@ g.PortalHydrants={schema,route};
    const parent=validPath(data.path,{root:true}),id=await pathId(parent);
    if(parent){const folder=await get(env,data.run,id);if(!folder||folder.kind!=='folder'||folder.deleted_at!==null)fail('Ordner nicht gefunden.',404);}
    const rows=(await env.DB.prepare('SELECT * FROM storage_files WHERE run=? AND parent=? AND deleted_at IS NULL ORDER BY id').bind(data.run,id).all()).results;
-   const items=[];for(const row of rows)items.push(await details(env,row));return {items,mode:'rehearsal',liveStorage:'onedrive'};
+   const items=[];for(const row of rows){const item=await details(env,row);if(!actor||!/(?:^|\/)push-verbindung\.json$/i.test(item.path))items.push(item);}return {items};
   }
-  const filePath=validPath(data.path),id=await pathId(filePath),old=await get(env,data.run,id);
+  let filePath=data.path;
+  if(filePath===undefined&&hex(data.id)){const byId=await get(env,data.run,data.id);if(!byId)fail('Datei nicht gefunden.',404);filePath=(await open(env,byId)).path;}
+  filePath=validPath(filePath);if(actor&&/(?:^|\/)push-verbindung\.json$/i.test(filePath))fail('Der ursprüngliche Dienstzugang wird nicht an Geräte ausgegeben.',403);
+  const id=await pathId(filePath),old=await get(env,data.run,id);
   if(path==='/admin/storage-files/stat'){if(!old||old.deleted_at!==null)fail('Datei nicht gefunden.',404);return details(env,old);}
   if(path==='/admin/storage-files/read'){
    if(!old)fail('Datei nicht gefunden.',404);let record=old;
    if(data.version!==undefined){if(!Number.isSafeInteger(data.version)||data.version<1)fail('Ungültige Dateiversion.',400);if(data.version!==old.version){const version=await env.DB.prepare('SELECT * FROM storage_file_versions WHERE run=? AND id=? AND version=?').bind(data.run,id,data.version).first();if(!version)fail('Dateiversion nicht gefunden.',404);record={...old,...version};}}
    if(record.deleted_at!==null||record.kind!=='file')fail('Datei nicht gefunden.',404);
-   return new Response(await content(env,data.run,id,await open(env,record)),{headers:{'Content-Type':'application/octet-stream','Content-Disposition':'attachment','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+   const bytes=await content(env,data.run,id,await open(env,record));if(actor)await g.StorageRuntime.administrator(env,auth);return new Response(bytes,{headers:{'Content-Type':'application/octet-stream','Content-Disposition':'attachment','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
   }
   if(!['/admin/storage-files/write','/admin/storage-files/mkdir','/admin/storage-files/delete','/admin/storage-files/restore'].includes(path))fail('Nicht gefunden.',404);
   if(!uuid(data.operationId)||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültiger Dateivorgang.',400);
@@ -23442,6 +23450,89 @@ g.PortalHydrants={schema,route};
  g.StorageFiles={route};
 })(globalThis);
 
+/* Production storage and revocable administration devices. No Microsoft dependency. */
+(function(g){
+ 'use strict';const L=g.CentralLedger,utf=new TextEncoder();
+ const fail=(message,status=409)=>{throw Object.assign(Error(message),{status});};
+ const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
+ const secret=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value);
+ async function digest(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',utf.encode(value))),x=>x.toString(16).padStart(2,'0')).join('');}
+ const current=env=>env.DB.prepare('SELECT * FROM storage_runtime WHERE id=1').first();
+ async function role(env,row){return (await L.open(env,row.label,'storage-device:'+row.id)).access||'state';}
+ async function assertDevice(env,row){
+  const access=await role(env,row),runtime=await current(env);
+  if(access==='application-admin'){
+   if(!runtime||runtime.run!==row.run||runtime.source_hash!==row.source_hash)fail('Dieser Gerätezugang gehört nicht zum aktiven Datenstand.',401);
+  }else if(runtime?.run===row.run)fail('Dieser Zugang ist für den produktiven Datenstand nicht berechtigt.',401);
+  return access;
+ }
+ async function administrator(env,token){
+  if(!secret(token))fail('Verwaltungszugang ungültig.',401);
+  if(!await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first())fail('Verwaltungszugang ungültig.',401);
+  const actor=await g.StorageState.tokenDevice(env,token);
+  if(await assertDevice(env,actor)!=='application-admin')fail('Verwaltungszugang ungültig.',401);
+  const ledger=await L.meta(env);if(ledger?.state!=='active'||await digest(ledger.source)!==actor.source_hash)fail('Datenquelle wurde geändert.',401);
+  return actor;
+ }
+ async function adminScope(env,token,data){if(equal(token,env.ADMIN_TOKEN))return null;const actor=await administrator(env,token);if(data&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Zugriff auf einen anderen Datenstand ist nicht erlaubt.',403);return actor;}
+ async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
+ async function route(path,data,env,auth){
+  if(path==='/storage/status'){const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first();return {provider:'cloudflare',version:1,active:Boolean(table&&await current(env))};}
+  if(path==='/storage/logout'){
+   if(!secret(auth))fail('Gerätezugang ungültig.',401);
+   await env.DB.prepare('UPDATE storage_devices SET revoked_at=COALESCE(revoked_at,?) WHERE token_hash=?').bind(Date.now(),await hash('storage-device/v1:'+auth)).run();return {ok:true};
+  }
+  if(path==='/storage/claim'){
+   if(!secret(data.ticket)||!secret(data.token)||!uuid(data.deviceId)||typeof data.label!=='string'||!data.label.trim()||data.label.length>100||/[\x00-\x1f\x7f]/.test(data.label))fail('Ungültige Gerätekopplung.',400);
+   const ticketId=await hash('storage-pair/v1:'+data.ticket),ticket=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(ticketId).first(),runtime=await current(env);
+   if(!ticket||!runtime||ticket.run!==runtime.run||ticket.source_hash!==runtime.source_hash||ticket.expires_at<=Date.now())fail('Die Gerätekopplung ist abgelaufen.',401);
+   const tokenHash=await hash('storage-device/v1:'+data.token),registrationHash=await hash(JSON.stringify({ticketId,deviceId:data.deviceId,tokenHash,label:data.label})),now=Date.now();
+   if(ticket.used_at!==null){const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();if(ticket.device_id!==data.deviceId||!old||old.revoked_at!==null||old.expires_at<=now)fail('Die Gerätekopplung wurde bereits verwendet.',401);return {ok:true,...await config(env,old)};}
+   const label=await L.seal(env,{label:data.label,access:'application-admin'},'storage-device:'+data.deviceId);
+   await env.DB.batch([
+    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings WHERE id=? AND used_at IS NULL AND expires_at>?) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,ticket.run,now),
+    env.DB.prepare('UPDATE storage_pairings SET used_at=?,device_id=? WHERE id=? AND used_at IS NULL AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND registration_hash=?)').bind(now,data.deviceId,ticketId,data.deviceId,registrationHash)
+   ]);
+   const claimed=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(ticketId).first(),actor=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();
+   if(!actor||claimed.device_id!==actor.id||claimed.used_at===null)fail('Die Gerätekopplung konnte nicht bestätigt werden.');return {ok:true,...await config(env,actor)};
+  }
+  if(path==='/admin/storage-runtime/activate'){
+   if(!equal(auth,env.ADMIN_TOKEN))fail('Die erste Umschaltung benötigt den ursprünglichen Dienstzugang.',401);
+   await g.StorageState.assertSource(env,data);
+   const manifest=await g.StorageMigration.verifiedManifest(env,data.source,data.run),state=await env.DB.prepare('SELECT * FROM storage_states WHERE run=? AND source_hash=?').bind(data.run,data.source).first();if(!state)fail('Der Datenstand wurde noch nicht übernommen.');
+   const files=(await env.DB.prepare("SELECT id FROM storage_files WHERE run=? AND kind='file' AND deleted_at IS NULL").bind(data.run).all()).results,ids=new Set(files.map(f=>f.id));
+   for(const file of manifest.files)if(file.path!=='feuerwehr-wasser-daten.json'&&!ids.has(file.fileId))fail('Die Dateiablage ist noch nicht vollständig übernommen.');
+   const old=await current(env);if(old?.run===data.run&&old.source_hash===data.source)return {ok:true,version:old.version,mode:'active'};
+   if(old)fail('Es ist bereits ein anderer Datenstand aktiv. Ein Standwechsel benötigt eine gesonderte Migration.');
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_runtime(id,run,source_hash,version,activated_at) VALUES(1,?,?,1,?)').bind(data.run,data.source,Date.now()).run();
+   const saved=await current(env);if(saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
+  }
+  const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
+  if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
+  if(!runtime)fail('Der Cloudflare-Datenstand ist noch nicht aktiviert.');
+  if(path==='/storage/config'){if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);return config(env,actor);}
+  if(path==='/storage/renew'){
+   if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);
+   await env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>?').bind(Date.now()+30*86400000,actor.id,actor.token_hash,Date.now()).run();const saved=await g.StorageState.tokenDevice(env,auth);return {ok:true,...await config(env,saved)};
+  }
+  if(path==='/admin/storage-runtime/pairing'){
+   if(!secret(data.ticket)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+5*60000)fail('Ein Kopplungscode ist maximal fünf Minuten gültig.',400);
+   const id=await hash('storage-pair/v1:'+data.ticket),old=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(id).first();if(old&&(old.used_at!==null||old.run!==runtime.run||old.source_hash!==runtime.source_hash||old.expires_at!==data.expiresAt))fail('Der Kopplungscode wurde bereits verwendet.');
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_pairings(id,run,source_hash,expires_at) VALUES(?,?,?,?)').bind(id,runtime.run,runtime.source_hash,data.expiresAt).run();return {ok:true,expiresAt:data.expiresAt};
+  }
+  if(path==='/admin/storage-runtime/devices'){
+   const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
+   for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
+  }
+  if(path==='/admin/storage-runtime/revoke'){
+   if(!uuid(data.deviceId))fail('Ungültige Gerätekennung.',400);
+   await env.DB.prepare('UPDATE storage_devices SET revoked_at=COALESCE(revoked_at,?) WHERE id=? AND run=? AND source_hash=?').bind(Date.now(),data.deviceId,runtime.run,runtime.source_hash).run();return {ok:true};
+  }
+  fail('Nicht gefunden.',404);
+ }
+ g.StorageRuntime={route,current,role,assertDevice,administrator,adminScope};
+})(globalThis);
+
 /* Cloudflare Workers Free + D1 Free. Financial records are encrypted at rest. */
 const ORIGIN='https://ffw-wasser.github.io',ALIAS=/^[a-f0-9]{32}$/,REV=/^[a-zA-Z0-9-]{8,80}$/;
 const enc=new TextEncoder();
@@ -23463,7 +23554,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"56c4bda17f5ba9a5b4bddcef911c74835ec5cc314bd4921a2cd0df8caddee852",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"87e406646b817eb3bab55da415d60ca5817a08273d906e4e64f6103920d3d7e6",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
@@ -23475,10 +23566,15 @@ export default {
     try{const year=new URL(request.url).searchParams.get('year');return reply(await globalThis.PortalService.publicCalendar(env,year===null?null:Number(year)));}
     catch(error){return reply({error:error.status?error.message:'Kalender derzeit nicht erreichbar. Bitte erneut versuchen.'},error.status||503);}
    }
+   if(path==='/storage/status'&&request.method==='GET'&&globalThis.StorageRuntime)return reply(await globalThis.StorageRuntime.route(path,{},env,''));
    if(request.method!=='POST')return reply({error:'Nicht gefunden.'},404);
-   const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
-   if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
+   const admin=path.startsWith('/admin/');let auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');const presentedAuth=auth;
+   if(admin&&!equal(auth,env.ADMIN_TOKEN)){try{if(!globalThis.StorageRuntime)return reply({error:'Admin-Zugang ungültig.'},401);await globalThis.StorageRuntime.administrator(env,auth);if(!path.startsWith('/admin/storage-'))auth=env.ADMIN_TOKEN;}catch{return reply({error:'Verwaltungsgerät nicht verbunden oder gesperrt.'},401);}}
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
+   if(globalThis.StorageRuntime&&(path.startsWith('/storage/')||path.startsWith('/admin/storage-runtime/'))){
+    try{let value;try{value=JSON.parse(new TextDecoder().decode(await globalThis.StorageMigration.bounded(request,6000)));}catch(error){if(error.status)throw error;throw Object.assign(new Error('Ungültige Anfrage.'),{status:400});}if(!value||Array.isArray(value)||typeof value!=='object')return reply({error:'Ungültige Anfrage.'},400);return reply(await globalThis.StorageRuntime.route(path,value,env,presentedAuth));}
+    catch(error){return reply({error:error.status?error.message:'Cloudflare-Speicher derzeit nicht erreichbar. Bitte erneut versuchen.'},error.status||503);}
+   }
    if(globalThis.StorageFiles&&path.startsWith('/admin/storage-files/')){
     try{const result=await globalThis.StorageFiles.route(path,request,env,auth);if(result instanceof Response){const privateHeaders=new Headers(headers);for(const [key,value] of result.headers)privateHeaders.set(key,value);return new Response(result.body,{status:result.status,headers:privateHeaders});}return reply(result);}
     catch(error){return reply({error:error.status?error.message:'Die private Dateiablage ist derzeit nicht bestätigt. Denselben Vorgang erneut prüfen.'},error.status||503);}
