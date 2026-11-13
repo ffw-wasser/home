@@ -108,7 +108,7 @@
     const assertSession=expected=>{if(expected!==epoch||!globalThis.CloudStorage?.connected||source!==identity()||typeof checkAdminSession==='function'&&!checkAdminSession())throw new Error('Der Gerätezugang wurde beendet oder geändert. Berichte bitte erneut laden.');};
     const update=()=>{month.disabled=busy||!year.value;if(!year.value)month.value='';const selected=(records||[]).filter(record=>matches(record.date,year.value,month.value));save.disabled=busy||!selected.length;};
     const lock=value=>{busy=value;year.disabled=value;refresh.disabled=value;update();panel.setAttribute('aria-busy',String(value));};
-    clearHandlers.add(()=>{epoch++;records=null;source='';year.replaceChildren(new Option('Alle Jahre',''));month.value='';lock(false);status.textContent='Gerät abgemeldet. Berichte vor der Auswahl erneut laden.';});
+    clearHandlers.add(()=>{epoch++;records=null;source='';year.replaceChildren(new Option('Alle Jahre',''));month.value='';lock(false);status.textContent='Berichte vor der Auswahl erneut laden.';});
     year.addEventListener('change',update);month.addEventListener('change',update);
     refresh.addEventListener('click',async()=>{
       if(busy)return;lock(true);records=null;const requestEpoch=++epoch;

@@ -26,3 +26,8 @@ test('Lost response is recognized from matching state rather than duplicating or
 test('Revocation during a response prevents late data from becoming available',async()=>{
  const f=setup();f.read(async()=>{f.c.CloudStorage.connected=false;f.c.endOneDriveSession();});assert.equal(await f.c.syncOneDrive(),false);assert.equal(f.c.oneDriveAdministrationReady(),false);assert.equal(f.writes,0);assert.deepEqual(f.events,[]);
 });
+test('Verified Cloudflare source identity is available before the first asynchronous account-folder lookup',()=>{
+ const c=vm.createContext({DrinksModel:{},CloudStorage:{connected:true,source:'a1b2c3d4e5f60718:root'},TextEncoder,crypto:webcrypto});
+ vm.runInContext(fs.readFileSync(require.resolve('../js/features/drinks/drinks-store.js'),'utf8'),c);
+ assert.equal(c.DrinksStore.sourceKey(),'a1b2c3d4e5f60718:root');c.CloudStorage.connected=false;assert.equal(c.DrinksStore.sourceKey(),'');
+});

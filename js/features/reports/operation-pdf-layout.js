@@ -25,7 +25,11 @@
   const from=value.from||stamps.arrived,to=value.to||stamps.ended,minutes=Math.round((Date.parse(to)-Date.parse(from))/60000),duration=Number.isFinite(minutes)&&minutes>=0?' ('+Math.floor(minutes/60)+':'+String(minutes%60).padStart(2,'0')+' h)':'';
   return ' · '+show(from)+' bis '+show(to)+duration;
  }
- function crew(d){const groups=new Map();for(const name of d.members||[]){const group=d.assignments?.[name]||'Ohne Zuordnung';if(!groups.has(group))groups.set(group,[]);groups.get(group).push(clean(name)+(d.assignmentRoles?.[name]?' ('+clean(d.assignmentRoles[name])+')':'')+reserve(d,name));}return [...groups].map(([group,people])=>group+': '+people.join('; ')).join('\n');}
+ function crew(d){
+  const groups=new Map();for(const name of d.members||[]){const group=d.assignments?.[name]||'Ohne Zuordnung';if(!groups.has(group))groups.set(group,[]);groups.get(group).push(name);}
+  return [...groups].map(([group,names])=>{const times=names.map(name=>reserve(d,name)),shared=times[0]&&times.every(time=>time===times[0])?times[0]:'';return group+shared+': '+names.map((name,index)=>clean(name)+(d.assignmentRoles?.[name]?' ('+clean(d.assignmentRoles[name])+')':'')+(shared?'':times[index])).join('; ');}).join('\n');
+ }
+
  async function create(PDFLib,_templates,d,assets){
   if(!assets?.fontkit||!assets.regular||!assets.bold)throw new Error('Die lokalen PDF-Schriften fehlen. Bitte die Anwendung aktualisieren.');
   const {PDFDocument,rgb}=PDFLib,pdf=await PDFDocument.create();pdf.registerFontkit(assets.fontkit);

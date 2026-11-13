@@ -27,7 +27,7 @@ const root=path.resolve(__dirname,'..');
  await month.selectOption('01');assert.equal(await save.isDisabled(),true);await month.selectOption('');await download('H2O-Berichte-2025.zip',1);
  await year.selectOption('');assert.equal(await month.isDisabled(),true);assert.equal(await month.inputValue(),'');await download('H2O-Berichte-Komplett.zip',3);
  for(const width of [320,390,768,1280])for(const scale of [100,200]){await page.setViewportSize({width,height:1000});await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await panel.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'panel overflow '+width+'/'+scale);}
- await page.evaluate(()=>{CloudStorage.connected=false;window.dispatchEvent(new Event('h2o-storage-lock'));});assert.equal(await save.isDisabled(),true);assert.equal(await year.locator('option').count(),1);assert.match(await status.innerText(),/abgemeldet/);
+ await page.evaluate(()=>{CloudStorage.connected=false;window.dispatchEvent(new Event('h2o-storage-lock'));});assert.equal(await save.isDisabled(),true);assert.equal(await year.locator('option').count(),1);assert.match(await status.innerText(),/erneut laden/);
  await panel.locator('#reportZipRefresh').click();await status.getByText(/zuerst dieses Verwaltungsgerät/).waitFor();assert.equal(await save.isDisabled(),true);
  assert.deepEqual(errors,[]);console.log('ZIP-Download: Jahr, Monat, Gesamtexport, Originale, Gerätesperre und mobile Darstellung geprüft.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
