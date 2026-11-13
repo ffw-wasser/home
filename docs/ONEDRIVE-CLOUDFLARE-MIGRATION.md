@@ -19,6 +19,71 @@ OneDrive abgelöst ist oder der Export dem aktuell laufenden Bestand entspricht.
 | PDFs, Terminpakete, Sicherungen, private Unterlagen | Privates R2, nach Migration mit kontrolliertem Zugriff |
 | Anmeldung Gerätehaus / Verwaltung | Widerrufbarer Gerätezugang und persönliche Admin-Identität, noch umzusetzen |
 
+## Zweite Phase: isolierter D1-Testbetrieb
+
+`storage-state.js` und `storage-state.sql` ergänzen einen getrennten Datenstand
+für den Testbetrieb. Auch diese Phase stellt die laufende Anwendung **nicht** um.
+Sie schafft noch keine vollständige Gerätehaus-Anmeldung oder persönliche
+Admin-Oberfläche. Die bestehenden Microsoft-Zugänge werden noch gebraucht.
+
+1. `storage-state.sql` zusätzlich in derselben D1-Datenbank ausführen. Es ergänzt
+   drei Tabellen und einen Index. Keine vorhandenen Tabellen löschen oder ersetzen.
+2. Den aus den geprüften Quellen erzeugten Worker bereitstellen. Vorhandene
+   Secrets und Bindungen beibehalten.
+3. Die beiden Skripte `migrate-onedrive-snapshot.cjs` und
+   `prepare-cloudflare-storage.cjs` derselben geprüften Revision außerhalb der
+   Übernahmekopie im selben lokalen Ordner speichern. Dann ausführen:
+
+   ```sh
+   node scripts/prepare-cloudflare-storage.cjs /pfad/zur/uebernahmekopie
+   ```
+
+   Bei gemeinsam gespeicherten Skripten den tatsächlichen Skriptpfad angeben.
+   Die Quelle muss dieselbe unveränderte, bereits vollständig geprüfte Kopie sein.
+   Das Skript liest die bestehende Verbindung nur lokal, akzeptiert ausschließlich
+   den bekannten Produktionsworker und gibt keine Zugangsdaten oder Namen aus.
+
+Der Datenstand wird nur aus einer nachgelesenen, in R2 geprüften Datendatei
+`feuerwehr-wasser-daten.json` übernommen. Er liegt AES-GCM-verschlüsselt in D1;
+alle bisherigen Felder bleiben erhalten. Wiederholte Vorbereitung überschreibt
+keine zwischenzeitlichen Änderungen im Testbetrieb. Die erste Grenze für den
+einzelnen JSON-Datenstand beträgt 500.000 UTF-8-Bytes; größere Daten werden
+abgewiesen und benötigen eine gesonderte Aufteilung.
+
+Das Skript legt einen zufälligen Testzugang für höchstens fünf Minuten an,
+liest den D1-Bestand über diesen unabhängigen Zugang nach und vergleicht ihn
+mit der lokalen Datendatei. Anschließend sperrt es den Zugang wieder und prüft
+per erneutem Abruf, dass er tatsächlich HTTP 401 erhält. Eine unbestätigte
+Sperrung führt zu einem Fehler. Bei einem harten Prozessabbruch begrenzt der
+automatische Ablauf die Gültigkeit des Testzugangs.
+
+### Rechte und parallele Änderungen
+
+- Nur der bestehende Server-Admin-Zugang darf einen bestätigten Datenstand
+  vorbereiten, ein Gerät anmelden oder sperren. Eine lokale PIN reicht nicht.
+- Geräte erhalten einen eigenen zufälligen Zugang nur für **einen** Teststand
+  und **eine** Datenquelle. Ein Gerätezugang ist kein Portal-, Widget-, Dokumenten-
+  oder Server-Admin-Zugang. Er kann keine ursprünglichen Verbindungsdateien lesen.
+- Tokens werden nur als SHA-256-Prüfwert gespeichert, Gerätebezeichnungen
+  verschlüsselt. Maximal zehn aktuell gültige Geräte pro Teststand, maximal
+  30 Tage je Registrierung. Gesperrte Kennungen können nicht wieder aktiviert werden.
+- Schreiben prüft die erwartete Version und bestätigt die zufällige Vorgangskennung
+  in derselben D1-Transaktion. Unveränderte Wiederholungen werden quittiert;
+  geänderte Wiederverwendung oder parallele Überschreibung führt zu HTTP 409.
+- Gerätesperrung und Ablauf werden beim Schreiben nochmals innerhalb der
+  Transaktion geprüft. Antworten sind `no-store`. Die Originalkopie, OneDrive,
+  Getränkekonten und bestehende Mitgliederzugänge werden nicht verändert.
+
+Vor dem tatsächlichen Betrieb fehlen weiterhin Gerätehaus-/Admin-Oberflächen,
+persönliche Verwaltungsidentitäten, Dokumenten-/Historienzugriffe, die neue
+Synchronisierung samt Offline-Warteschlange und der abschließende Abgleich.
+Ein erfolgreicher Testbetrieb ist keine abgeschlossene OneDrive-Ablösung.
+
+Tests: `tests/storage-state.test.cjs` prüft Import aus dem bestätigten R2-Bestand,
+Geräte- und Quellengrenzen, Sperrung/Ablauf, CAS-Konflikte, Wiederholung nach
+verlorenen Antworten und Transaktionsrollback sowie den lokalen Vorbereitungslauf.
+Reale iPad-, iOS-, Android- und R2-/D1-Abläufe bleiben gesondert zu prüfen.
+
 ## Vorbereitung in Cloudflare
 
 1. Im bestehenden Konto einen **privaten** R2-Standard-Bucket erstellen. Keine
