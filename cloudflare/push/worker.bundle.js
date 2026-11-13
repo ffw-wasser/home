@@ -23301,7 +23301,8 @@ g.PortalHydrants={schema,route};
    const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
    if(old){if(old.registration_hash!==registrationHash||old.revoked_at!==null||old.expires_at<=Date.now())fail('Die Gerätekennung ist bereits vergeben oder gesperrt.');return {ok:true,deviceId:old.id,expiresAt:old.expires_at,duplicate:true,mode:phase.mode};}
    const now=Date.now();if(data.expiresAt<=now||data.expiresAt>now+30*86400000)fail('Ein Gerätezugang gilt maximal 30 Tage.',400);
-   await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label,...(access==='application-admin'?{access}:{})},'storage-device:'+data.deviceId),now,data.expiresAt,data.run,now).run();
+   const expiresAt=access==='application-admin'&&phase.mode==='active'?g.StorageRuntime.permanentExpiry:data.expiresAt;
+   await env.DB.prepare('INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10').bind(data.deviceId,data.run,data.source,tokenHash,registrationHash,await L.seal(env,{label:data.label,...(access==='application-admin'?{access}:{})},'storage-device:'+data.deviceId),now,expiresAt,data.run,now).run();
    const saved=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=?').bind(data.deviceId).first();
    if(!saved||saved.registration_hash!==registrationHash||saved.revoked_at!==null)fail('Geräteanmeldung nicht bestätigt oder Gerätelimit erreicht.');
    return {ok:true,deviceId:saved.id,expiresAt:saved.expires_at,duplicate:false,mode:phase.mode};
@@ -23456,7 +23457,7 @@ g.PortalHydrants={schema,route};
 
 /* Production storage and revocable administration devices. No Microsoft dependency. */
 (function(g){
- 'use strict';const L=g.CentralLedger,utf=new TextEncoder();
+ 'use strict';const L=g.CentralLedger,utf=new TextEncoder(),PERMANENT_EXPIRY=Number.MAX_SAFE_INTEGER;
  const fail=(message,status=409)=>{throw Object.assign(Error(message),{status});};
  const uuid=value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
  const secret=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value);
@@ -23479,7 +23480,18 @@ g.PortalHydrants={schema,route};
   return actor;
  }
  async function adminScope(env,token,data){if(equal(token,env.ADMIN_TOKEN))return null;const actor=await administrator(env,token);if(data&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Zugriff auf einen anderen Datenstand ist nicht erlaubt.',403);return actor;}
- async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',serverTime:Date.now(),run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
+ // Existing valid administration devices adopt the permanent policy on their
+ // next authenticated configuration check. Expired or revoked tokens never
+ // reach this function. The primary key, secret and source identity stay intact.
+ async function config(env,actor){
+  if(actor.expires_at!==PERMANENT_EXPIRY){
+   await env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>?').bind(PERMANENT_EXPIRY,actor.id,actor.token_hash,Date.now()).run();
+   const saved=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND token_hash=?').bind(actor.id,actor.token_hash).first();
+   if(!saved||saved.revoked_at!==null||saved.expires_at!==PERMANENT_EXPIRY)fail('Gerätezugang gesperrt oder abgelaufen.',401);actor=saved;
+  }
+  const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',serverTime:Date.now(),run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,permanent:true,version:runtime.version};
+ }
+
  async function route(path,data,env,auth){
   if(path==='/storage/status'){const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first();return {provider:'cloudflare',version:1,active:Boolean(table&&await current(env))};}
   if(path==='/storage/logout'){
@@ -23494,7 +23506,7 @@ g.PortalHydrants={schema,route};
    if(ticket.used_at!==null){const old=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();if(ticket.device_id!==data.deviceId||!old||old.revoked_at!==null||old.expires_at<=now)fail('Die Gerätekopplung wurde bereits verwendet.',401);return {ok:true,...await config(env,old)};}
    const label=await L.seal(env,{label:data.label,access:'application-admin'},'storage-device:'+data.deviceId);
    await env.DB.batch([
-    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings t WHERE t.id=? AND t.used_at IS NULL AND t.expires_at>? AND (t.device_id IS NULL OR EXISTS(SELECT 1 FROM storage_devices issuer WHERE 'issuer:'||issuer.id=t.device_id AND issuer.run=t.run AND issuer.source_hash=t.source_hash AND issuer.revoked_at IS NULL AND issuer.expires_at>?))) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,now+30*86400000,ticketId,now,now,ticket.run,now),
+    env.DB.prepare("INSERT OR IGNORE INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM storage_pairings t WHERE t.id=? AND t.used_at IS NULL AND t.expires_at>? AND (t.device_id IS NULL OR EXISTS(SELECT 1 FROM storage_devices issuer WHERE 'issuer:'||issuer.id=t.device_id AND issuer.run=t.run AND issuer.source_hash=t.source_hash AND issuer.revoked_at IS NULL AND issuer.expires_at>?))) AND (SELECT COUNT(*) FROM storage_devices WHERE run=? AND revoked_at IS NULL AND expires_at>?)<10").bind(data.deviceId,ticket.run,ticket.source_hash,tokenHash,registrationHash,label,now,PERMANENT_EXPIRY,ticketId,now,now,ticket.run,now),
     env.DB.prepare('UPDATE storage_pairings SET used_at=?,device_id=? WHERE id=? AND used_at IS NULL AND EXISTS(SELECT 1 FROM storage_devices WHERE id=? AND registration_hash=?)').bind(now,data.deviceId,ticketId,data.deviceId,registrationHash)
    ]);
    const claimed=await env.DB.prepare('SELECT * FROM storage_pairings WHERE id=?').bind(ticketId).first(),actor=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND registration_hash=?').bind(data.deviceId,registrationHash).first();
@@ -23516,10 +23528,19 @@ g.PortalHydrants={schema,route};
   const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
   if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),serverTime:Date.now(),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
   if(!runtime)fail('Der Cloudflare-Datenstand ist noch nicht aktiviert.');
+  if(path==='/admin/storage-runtime/permanent-devices'){
+   if(data.run!==runtime.run||data.source!==runtime.source_hash)fail('Die Datenquelle stimmt nicht mit dem aktiven Speicher überein.',403);
+   const now=Date.now(),rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? AND source_hash=? AND revoked_at IS NULL AND expires_at>? AND expires_at<?').bind(runtime.run,runtime.source_hash,now,PERMANENT_EXPIRY).all()).results,updates=[];
+   for(const row of rows){if(await role(env,row)!=='application-admin')continue;
+    const guard=actor?' AND EXISTS(SELECT 1 FROM storage_devices a WHERE a.id=? AND a.token_hash=? AND a.revoked_at IS NULL AND a.expires_at>?)':'';
+    updates.push(env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND run=? AND source_hash=? AND revoked_at IS NULL AND expires_at>?'+guard).bind(PERMANENT_EXPIRY,row.id,runtime.run,runtime.source_hash,now,...(actor?[actor.id,actor.token_hash,now]:[])));
+   }
+   const results=updates.length?await env.DB.batch(updates):[];return {ok:true,updated:results.reduce((sum,row)=>sum+Number(row.meta.changes),0),permanent:true};
+  }
   if(path==='/storage/config'){if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);return config(env,actor);}
   if(path==='/storage/renew'){
    if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);
-   await env.DB.prepare('UPDATE storage_devices SET expires_at=? WHERE id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>?').bind(Date.now()+30*86400000,actor.id,actor.token_hash,Date.now()).run();const saved=await g.StorageState.tokenDevice(env,auth);return {ok:true,...await config(env,saved)};
+   return {ok:true,...await config(env,actor)};
   }
   if(path==='/admin/storage-runtime/pairing'){
    if(!secret(data.ticket)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+5*60000)fail('Ein Kopplungscode ist maximal fünf Minuten gültig.',400);
@@ -23528,7 +23549,7 @@ g.PortalHydrants={schema,route};
   }
   if(path==='/admin/storage-runtime/devices'){
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
-   for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
+   for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,permanent:row.expires_at===PERMANENT_EXPIRY,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
   }
   if(path==='/admin/storage-runtime/revoke'){
    if(!uuid(data.deviceId))fail('Ungültige Gerätekennung.',400);
@@ -23536,7 +23557,7 @@ g.PortalHydrants={schema,route};
   }
   fail('Nicht gefunden.',404);
  }
- g.StorageRuntime={route,current,role,assertDevice,administrator,adminScope};
+ g.StorageRuntime={route,current,role,assertDevice,administrator,adminScope,permanentExpiry:PERMANENT_EXPIRY};
 })(globalThis);
 
 /* Cloudflare Workers Free + D1 Free. Financial records are encrypted at rest. */
@@ -23560,7 +23581,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4d0bd06669bbd079c5c3a7a11fbfb1ba00d009dd041a0e3d10c9fd5bb73b0540",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"9c4ad43aa00e05b04b086a17a20471e52d08d5561f6bdc1e676df7f9dbac94e1",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
