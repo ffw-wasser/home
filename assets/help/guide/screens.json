@@ -43,10 +43,6 @@
     "width": 390,
     "height": 780
   },
-  "geraetehaus-onedrive": {
-    "width": 560,
-    "height": 880
-  },
   "geraetehaus-datenstatus": {
     "width": 390,
     "height": 67
@@ -270,5 +266,9 @@
   "geraetehaus-berichte-download": {
     "width": 728,
     "height": 382
+  },
+  "geraetehaus-cloudflare": {
+    "width": 560,
+    "height": 538
   }
 }

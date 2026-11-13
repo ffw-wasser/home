@@ -233,7 +233,7 @@ const PUBLIC_FILES=[
   "./assets/help/guide/geraetehaus-nachweise.jpg",
   "./assets/help/guide/geraetehaus-abos.jpg",
   "./assets/help/guide/geraetehaus-kalender.jpg",
-  "./assets/help/guide/geraetehaus-onedrive.jpg",
+  "./assets/help/guide/geraetehaus-cloudflare.jpg",
   "./assets/help/guide/geraetehaus-google-verbindung.jpg",
   "./assets/help/guide/geraetehaus-google-termin.jpg",
   "./assets/help/guide/geraetehaus-google-pflege.jpg",

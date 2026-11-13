@@ -38,7 +38,7 @@ jobs:
         run: node scripts/check-syntax.cjs
       - name: Verify production storage with actual browser transport
         run: |
-          CAPTURE_CLOUD_CONNECTION_HELP=1 node tests/cloud-storage-browser.cjs
+          node tests/cloud-storage-browser.cjs
           BROWSER_ENGINE=webkit node tests/cloud-storage-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -138,7 +138,11 @@ jobs:
       - name: Capture and review all H2O portal screens
         env:
           PORTAL_REVIEW_OUTPUT: qa/portal-review
-        run: node scripts/capture-help-screens.cjs --only=geraetehaus-h2o-einladung,geraetehaus-backlog,geraetehaus-getraenkeverwaltung,geraetehaus-getraenke,geraetehaus-statistik,geraetehaus-auswertungen,h2o-install-iphone,h2o-install-android,h2o-anmeldung,h2o-jahresplan-laden,h2o-atemschutz,h2o-ausbildung,h2o-wettkampf,h2o-wettkampf-bronze,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+        run: node scripts/capture-help-screens.cjs --only=geraetehaus-abschluss,geraetehaus-datenstatus,geraetehaus-h2o-einladung,geraetehaus-backlog,geraetehaus-getraenkeverwaltung,geraetehaus-getraenke,geraetehaus-statistik,geraetehaus-auswertungen,h2o-install-iphone,h2o-install-android,h2o-anmeldung,h2o-jahresplan-laden,h2o-atemschutz,h2o-ausbildung,h2o-wettkampf,h2o-wettkampf-bronze,h2o-funkgeraet,h2o-termine,h2o-nachweise,h2o-deckel,h2o-mehr,h2o-dienstvorschriften,h2o-dienstvorschriften-buch,h2o-jahresplan,h2o-fussball,h2o-aktualisieren,h2o-qr-hochformat
+      - name: Capture Cloudflare connection and backup instructions
+        run: |
+          node scripts/capture-help-screens.cjs --only=geraetehaus-cloudflare
+          node scripts/capture-help-screens.cjs --only=geraetehaus-konto,geraetehaus-sicherung
       - name: Capture account deletion with synthetic credentials
         run: node scripts/capture-help-screens.cjs --only=h2o-konto-loeschen
       - name: Keep refreshed portal help screens for visual review

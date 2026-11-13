@@ -4,7 +4,7 @@ async function addCsvToArchive(fileName, content, sessionLabel, topic="") {
   const excusedCount = closedEntries.filter(entry => entry.status === "Entschuldigt").length;
   const recordedNames = new Set(closedEntries.flatMap(entry => [entry.storedName, entry.displayName].filter(Boolean)));
   const missingCount = members.filter(member => !member.ageDepartment && !recordedNames.has(nameForStorage(member)) && !recordedNames.has(nameForTile(member))).length;
-  const archiveItem={ id: makeId(), fileName, content, sessionType: sessionLabel, createdAt: new Date().toISOString(), presentCount, excusedCount, missingCount, topic };
+  const archiveItem={ id: makeId(), fileName, content, cloudSaved:Boolean(window.CloudStorage?.connected), sessionType: sessionLabel, createdAt: new Date().toISOString(), presentCount, excusedCount, missingCount, topic };
   csvArchive = [archiveItem, ...csvArchive];
   await commitPendingDocumentReport?.(archiveItem.id);
   saveArchive(); renderArchive();
@@ -622,7 +622,10 @@ function historyNormalizeDate(value){
 }
 function historyDateFromItem(item){
   const rows=parseCsvRows(item.content);
-  return historyNormalizeDate(item.operationData?.date||rows[0]?.date||String(item.createdAt||"").slice(0,10));
+  const eventDate=historyNormalizeDate(item.operationData?.date||item.originalReportDate||rows[0]?.date||"");
+  if(eventDate)return eventDate;
+  if(window.CloudStorage?.connected)return window.ReportDownload?.eventDate({path:item.packageFileName||item.fileName||""})||"";
+  return historyNormalizeDate(String(item.createdAt||"").slice(0,10));
 }
 function historyDateLabel(item){return formatDisplayDate(historyDateFromItem(item));}
 function historyDisplayTitle(item){
