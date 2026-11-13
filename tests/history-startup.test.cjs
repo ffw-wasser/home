@@ -278,3 +278,19 @@ test('Abmeldung während paralleler Abrufe verhindert weitere Downloads und vers
   assert.equal(context.csvArchive.length, 0); assert.equal(calls.statistics, 0);
   assert.equal(await context.window.loadOneDriveHistoryPdf({id: 'onedrive-zip:zip-1'}), null);
 });
+
+async function cloudHistory(){
+ const f=await app(),reads=[];let version=1,afterRead;
+ const cloud={connected:true,source:'test-drive:test-root',legacyArchive:[],walk:async()=>[{id:'csv-1',name:'probe.csv',path:'Berichte/CSV/probe.csv',version,modifiedAt:'2026-11-13T10:00:00Z',size:100},{id:'pdf-1',name:'probe.pdf',path:'Berichte/PDF/probe.pdf',version,modifiedAt:'2026-11-13T10:00:00Z',size:20}],readFile:async(path,v)=>{reads.push({path,version:v});if(afterRead)await afterRead();return Buffer.from(path.endsWith('.pdf')?'%PDF-synthetic':'Datum;Uhrzeit;Name;Terminart;Status;Thema\n2026-10-08;18:00;Testperson;Sonderprobe;Anwesend;Funkübung');}};
+ f.context.CloudStorage=cloud;f.context.window.CloudStorage=cloud;return {...f,cloud,reads,version:v=>version=v,afterRead:fn=>afterRead=fn};
+}
+test('Cloudflare history reads CSV and PDF at listed versions without per-file metadata requests, reuses unchanged reports',async()=>{
+ const f=await cloudHistory();assert.equal(await f.context.window.loadOneDriveHistory(),true);assert.equal(f.calls.download,0);assert.equal(f.calls.list,0);assert.equal(f.reads.length,2);assert.ok(f.reads.every(x=>x.version===1));assert.equal(f.context.csvArchive[0].topic,'Funkübung');assert.equal(f.context.csvArchive[0].hasImportedPdf,true);
+ assert.equal(await f.context.window.loadOneDriveHistory(),true);assert.equal(f.reads.length,2);f.version(2);assert.equal(await f.context.window.loadOneDriveHistory(),true);assert.equal(f.reads.length,4);assert.ok(f.reads.slice(2).every(x=>x.version===2));
+});
+test('Late direct file response after logout cannot repopulate history or PDF cache',async()=>{
+ const f=await cloudHistory();f.afterRead(async()=>{f.state.signedIn=false;f.cloud.connected=false;f.context.window.clearOneDriveHistory();});assert.equal(await f.context.window.loadOneDriveHistory(),false);assert.equal(f.context.csvArchive.length,0);
+});
+test('Failed versioned file read preserves the complete previously confirmed history',async()=>{
+ const f=await cloudHistory();await f.context.window.loadOneDriveHistory();const before=JSON.stringify(f.context.csvArchive);f.version(2);f.afterRead(async()=>{throw Object.assign(Error('Synthetic version unavailable'),{status:404});});assert.equal(await f.context.window.loadOneDriveHistory(),false);assert.equal(JSON.stringify(f.context.csvArchive),before);
+});

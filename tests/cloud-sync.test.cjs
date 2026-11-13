@@ -32,12 +32,6 @@ test('Verified Cloudflare source identity is available before the first asynchro
  assert.equal(c.DrinksStore.sourceKey(),'a1b2c3d4e5f60718:root');c.CloudStorage.connected=false;assert.equal(c.DrinksStore.sourceKey(),'');
 });
 
-test('Connection picker hides folder access on iPhone and desktop-mode iPad, keeps files available',()=>{
- for(const [nav,supported,hidden] of [[{userAgent:'iPhone',platform:'iPhone'},true,true],[{userAgent:'Macintosh',platform:'MacIntel',maxTouchPoints:5},true,true],[{userAgent:'Macintosh',platform:'MacIntel',maxTouchPoints:0},true,false],[{userAgent:'Windows'},true,false],[{userAgent:'Other'},false,true]]){
-  const {c}=setup(),elements={cloudConnectionFolder:supported?{webkitdirectory:false}:{},cloudFolderSetup:{},cloudFileSetupHint:{},cloudFileSetup:{}};Object.assign(c.navigator,nav);c.byId=id=>elements[id];c.configureCloudConnectionPicker();assert.equal(elements.cloudFolderSetup.hidden,hidden);assert.equal(elements.cloudFileSetup.open,hidden);
- }
-});
-
 test('Confirmed Cloudflare handover retires old settings but preserves enrollment and application data',async()=>{
  const f=setup({legacy:true}),scope=JSON.stringify(['old-client','old-folder']);
  for(const store of [f.local,f.c.sessionStorage])for(const key of ['tokens','pkce','client_id','shared_folder_url','verified_root','silent_retry','last_sync','local_updated'])store.setItem('fw_onedrive_'+key,key);
@@ -65,4 +59,9 @@ test('Local changes made while history loads defer retirement until the next con
  f.c.loadOneDriveHistory=async()=>{if(once){once=false;f.c.members[0].firstName='Pending edit';f.c.scheduleCloudSync();}return true;};
  await f.c.syncOneDrive({refreshHistory:true});assert.equal(f.local.getItem('fw_onedrive_client_id'),'keep-until-confirmed');
  await f.c.syncOneDrive({refreshHistory:true});assert.equal(f.local.getItem('fw_onedrive_client_id'),null);assert.equal(f.remote.members[0].firstName,'Pending edit');
+});
+
+for(const microsoft of [false,true])test('Startup checks a remembered device once and reuses Microsoft confirmation: '+microsoft,async()=>{
+ const f=setup();let checks=0;f.c.CloudStorage.connected=false;f.c.CloudStorage.bootstrap=async()=>{checks++;f.c.CloudStorage.connected=true;return true;};f.c.MicrosoftConnection={finish:async()=>{if(microsoft)f.c.CloudStorage.connected=true;return microsoft;}};f.c.document={addEventListener(){}};f.c.ensureOneDriveUi=()=>{};
+ await f.c.initCloudSync();assert.equal(checks,microsoft?0:1);assert.equal(f.c.oneDriveAdministrationReady(),true);assert.deepEqual(f.events,['history']);
 });

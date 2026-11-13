@@ -1,5 +1,8 @@
 # OneDrive durch Cloudflare ersetzen
 
+**Aktueller Gerätezugang:** Weitere Verwaltungsgeräte werden ausschließlich mit Microsoft-Anmeldung (Zugriff auf den bisherigen Ordner „Webseite“) oder einmaliger QR-Kopplung verbunden. Die frühere Auswahl eines OneDrive-Ordners oder der Dateien `Getraenke/push-verbindung.json` und `Getraenke/konten-zentrale.json` ist aus der App entfernt. Diese beiden physischen OneDrive-Dateien werden nicht mehr benötigt. Frühere Schritte zur Schlusskopie und Erstaktivierung unten dokumentieren die Migration, keine Anleitung für zusätzliche Geräte. Interne kompatible Dateikennungen der Getränkeverwaltung beziehen sich auf Cloudflare und erfordern diese OneDrive-Dateien nicht.
+
+
 ## Stand: erste Übernahmephase, kein Speicherwechsel
 
 Die bestehende Anwendung nutzt weiterhin OneDrive. Dieser Branch ergänzt eine
@@ -363,4 +366,8 @@ nicht automatisch zurück nach Cloudflare importiert.
 
 Nach bestätigtem Cloudflare-Datenstand und vollständig geladenen Berichten entfernt die App alte OneDrive-Transport- und Synchronisierungseinstellungen dieses Browsers. Offene lokale Änderungen oder nicht zuordenbare Anwesenheitsentwürfe verhindern die Bereinigung. Passende Entwürfe und die abgeschlossene Einrichtung werden vorher der Cloudflare-Quelle zugeordnet. Die weiterhin benötigte öffentliche Microsoft-Anwendungs-ID erhält einen eigenen Einstellungsnamen.
 
-Ungenutzte OneDrive-Hilfsfunktionen und veraltete Oberflächenhinweise sind entfernt. Historische Kennungen in Berichten und kompatible Funktionsnamen bleiben für vorhandene Daten erhalten. Sicherungspunkte übernehmen keine alten Transport- oder aktuellen Gerätezugänge; vorhandene Sicherungspunkte werden entsprechend bereinigt. Microsoft-Anmeldung, QR-Kopplung, Verbindungsdateien und manuelle ZIP-Ablage bleiben verfügbar. OneDrive-Dateien werden dabei weder gelöscht noch verändert.
+Ungenutzte OneDrive-Hilfsfunktionen und veraltete Oberflächenhinweise sind entfernt. Historische Kennungen in Berichten und kompatible Funktionsnamen bleiben für vorhandene Daten erhalten. Sicherungspunkte übernehmen keine alten Transport- oder aktuellen Gerätezugänge; vorhandene Sicherungspunkte werden entsprechend bereinigt. Microsoft-Anmeldung, QR-Kopplung und manuelle ZIP-Ablage bleiben verfügbar. OneDrive-Dateien werden dabei weder gelöscht noch verändert.
+
+## Weniger Abrufe beim Laden der Historie
+
+Die authentifizierte Cloudflare-Ordnerliste enthält bereits die konkrete Dateiversion. ZIP-, CSV- und PDF-Inhalte werden direkt mit dieser Version gelesen; eine weitere Metadatenabfrage je Datei entfällt. Bei Abmeldung oder Quellenwechsel werden verspätete Antworten verworfen. Die Historie wird weiterhin erst nach vollständigem Erfolg ersetzt und für den Start bestätigt. Nach Microsoft-Anmeldung wird die bereits erfolgreich geprüfte Geräteverbindung nicht erneut abgefragt.
