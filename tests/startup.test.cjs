@@ -45,3 +45,11 @@ test('Ladebalken zeigt Aktivität mit aktuellem Schritt und stoppt bei Fehler od
 });
 
 test('OneDrive-bereite Anwendung wartet weiterhin auf die Start-Versionsprüfung',async()=>{let resolve;const release={pending:true,redirecting:false,ready:new Promise(r=>resolve=r)},f=fixture(release);f.events.load();f.paint();f.update({ready:true});assert.equal(f.removed,false);assert.match(f.nodes.appStartupStatus.textContent,/Updates/);assert.equal(f.nodes.appStartupConnect.hidden,true);release.pending=false;resolve(false);await new Promise(r=>setImmediate(r));assert.equal(f.removed,true);});
+
+test('Microsoft serviceReadOnly wird nicht als fehlende Internetverbindung ausgegeben',()=>{
+ const f=fixture();f.events.load();f.paint();
+ f.update({ready:false,signed:true,error:true,errorCode:'serviceReadOnly'});
+ assert.match(f.nodes.appStartupStatus.textContent,/Microsoft.*serviceReadOnly/);
+ assert.doesNotMatch(f.nodes.appStartupStatus.textContent,/Verbindung prüfen/);
+ assert.equal(f.removed,false);assert.equal(f.nodes.appStartupConnect.hidden,false);
+});

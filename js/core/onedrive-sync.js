@@ -2,7 +2,7 @@
 const OD_CLIENT_KEY="fw_onedrive_client_id",OD_SHARE_KEY="fw_onedrive_shared_folder_url",OD_TOKEN_KEY="fw_onedrive_tokens",OD_PKCE_KEY="fw_onedrive_pkce",OD_STATE_FILE="feuerwehr-wasser-daten.json";
 let oneDriveBusy=false,oneDriveTimer=null,oneDriveApplying=false,oneDriveSharedRoot=null,oneDriveLastError="",oneDriveRetryUntil=0,oneDriveLastFailure=null;
 let oneDriveAccessConfirmed=false,oneDriveSessionEpoch=0,oneDriveStartupConfirmed=false,oneDriveStartupStage="OneDrive-Anmeldung wird geprüft …",oneDriveStartupChecking=false;
-function updateOneDriveStartup(){window.AppStartup?.update({ready:oneDriveStartupConfirmed&&oneDriveSignedIn(),busy:oneDriveBusy,signed:oneDriveSignedIn(),error:oneDriveNeedsLogin||Boolean(oneDriveLastError),stage:oneDriveStartupStage,connecting:oneDriveAuthorizing||oneDriveStartupChecking,needsLogin:oneDriveNeedsLogin,offline:navigator.onLine===false});}
+function updateOneDriveStartup(){window.AppStartup?.update({ready:oneDriveStartupConfirmed&&oneDriveSignedIn(),busy:oneDriveBusy,signed:oneDriveSignedIn(),error:oneDriveNeedsLogin||Boolean(oneDriveLastError),errorCode:oneDriveLastFailure?.code||"",stage:oneDriveStartupStage,connecting:oneDriveAuthorizing||oneDriveStartupChecking,needsLogin:oneDriveNeedsLogin,offline:navigator.onLine===false});}
 window.updateOneDriveStartup=updateOneDriveStartup;
 const OD_ADMIN_RETURN_KEY='fw_onedrive_admin_return';
 const OD_VERIFIED_ROOT_KEY='fw_onedrive_verified_root';
@@ -169,7 +169,9 @@ async function odFetch(url,options={},retry=true){
     if(!response.ok){
       let data={};try{data=JSON.parse(await response.text());}catch{}
       const error=new Error(`OneDrive-Fehler ${response.status}${data.error?.code?" ("+data.error.code+")":""}`);
-      error.status=response.status;error.code=data.error?.code||"";throw error;
+      error.status=response.status;error.code=data.error?.code||"";
+      if([data.error?.code,data.error?.innerError?.code].includes("serviceReadOnly")){error.code="serviceReadOnly";error.message="Microsoft meldet serviceReadOnly: Der automatische OneDrive-Zugriff ist vorübergehend eingeschränkt. Die Anmeldung bleibt erhalten; bitte später erneut synchronisieren.";}
+      throw error;
     }
     return response;
   }
@@ -356,7 +358,7 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
     // Auch bei einer fehlerhaften Datendatei versuchen, die Berichte zu laden.
     if(refreshHistory&&typeof window.loadOneDriveHistory==="function"){
       oneDriveStatus("Lädt Historie","syncing");
-      if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
+      if(await window.loadOneDriveHistory()===false&&!stateError)throw new Error(window.oneDriveHistoryLastError||"OneDrive-Historie konnte nicht aktualisiert werden.");
     }
     if(stateError)throw stateError;
     assertOneDriveSession(epoch);if(refreshHistory&&oneDriveStateConfirmed)oneDriveStartupConfirmed=true;oneDriveLastError="";oneDriveLastFailure=null;oneDriveStatus(oneDriveStateConfirmed?"Aktuell":"Änderungen ausstehend",oneDriveStateConfirmed?"online":"syncing");

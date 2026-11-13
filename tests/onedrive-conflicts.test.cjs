@@ -75,3 +75,12 @@ test('Startstatus verwendet die tatsächlichen OneDrive-Phasen',()=>{
   c.oneDriveStatus(label,'syncing');assert.ok(states.at(-1).stage.startsWith(expected));assert.equal(states.at(-1).ready,false);
  }
 });
+
+test('Historienfehler verdeckt den ursprünglichen Fehler der Datensynchronisierung nicht',async()=>{
+ const f=fixture(),first=new Error('Microsoft meldet serviceReadOnly');
+ f.c.oneDriveReadState=async()=>{throw first;};
+ f.c.window.loadOneDriveHistory=async()=>{f.c.window.oneDriveHistoryLastError='Historie fehlgeschlagen';return false;};
+ await f.c.syncOneDrive({refreshHistory:true});
+ assert.equal(vm.runInContext('oneDriveLastFailure',f.c),first);
+ assert.equal(vm.runInContext('oneDriveStartupConfirmed',f.c),false);
+});

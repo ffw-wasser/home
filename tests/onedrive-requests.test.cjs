@@ -138,3 +138,10 @@ test('Hydrantenplan: Format- und Größenprüfung bleiben nach gemeinsamem Datei
  let f=app(()=>new Response('not a PDF'));shared(f.context);await assert.rejects(f.context.oneDriveReadHydrants(),/keine PDF/);
  f=app(()=>new Response('%PDF-test',{headers:{'content-length':String(8*1024*1024+1)}}));shared(f.context);await assert.rejects(f.context.oneDriveReadHydrants(),/höchstens 8 MB/);
 });
+
+for(const nested of [true,false])test('Microsoft serviceReadOnly wird auch im inneren Fehler erkannt: '+nested,async()=>{
+ const error=nested?{code:'accessDenied',innerError:{code:'serviceReadOnly'}}:{code:'serviceReadOnly'};
+ const {context,calls}=app(()=>response(403,{}, {error}));
+ await assert.rejects(context.odFetch(url),e=>e.status===403&&e.code==='serviceReadOnly'&&e.message.includes('automatische OneDrive-Zugriff'));
+ assert.equal(calls.length,1);
+});
