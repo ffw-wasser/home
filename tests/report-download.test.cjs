@@ -17,6 +17,7 @@ test('Korrekturen gehören zum Termin, niemals zum Upload- oder Erstellungsdatum
   assert.equal(model.eventDate({info:{createdAt:'2026-02-01',lastModifiedDateTime:'2026-03-01'},path:'Berichte/ohne-datum.pdf'}),'');
   assert.equal(model.eventDate({info:{operationData:{date:'2026-01-02'}}}),'2026-01-02');
   assert.equal(model.eventDate({path:'Berichte/2026-02-01_Probe_abcdefg.pdf'}),'2026-02-01');
+  assert.equal(model.eventDate({path:'Berichte/PDF/FFW-Wasser_2025-12-31_18-00.pdf'}),'2025-12-31');
   assert.throws(()=>model.eventDate({content:'Datum;Name\n2026-01-01;A\n2026-01-02;B'}),/Mehrere/);
   assert.throws(()=>model.eventDate({content:'Datum;Name\n2026-01-01;A',info:{operationData:{date:'2026-01-02'}}}),/Widersprüchliche/);
 });
@@ -51,4 +52,9 @@ test('ZIP-Inhalte können keine Pfade außerhalb des Exportverzeichnisses anlege
  const zip=new JSZip();zip.file('../ausbruch.pdf','bad');const bytes=await zip.generateAsync({type:'uint8array'});
  const records=await model.inventory({walk:async()=>[{path:'Berichte/a.zip',version:1}],readFile:async()=>bytes});
  await assert.rejects(model.build(records),/Unsicherer Dateipfad/);
+});
+test('Ältere PDF-Dateien in separaten Ordnern erhalten nur eindeutig zugehörige CSV-Daten',async()=>{
+ const files=[['Berichte/CSV/Probe.csv','Datum;Name\n2025-12-31;Test'],['Berichte/PDF/Probe.pdf','%PDF-Beispiel'],['Berichte/2024/mehrdeutig.csv','Datum;Name\n2024-01-01;Test'],['Berichte/2025/mehrdeutig.csv','Datum;Name\n2025-01-01;Test'],['Berichte/PDF/mehrdeutig.pdf','%PDF-Beispiel']].map(([path,body])=>({path,version:1,bytes:Buffer.from(body)}));
+ const records=await model.inventory({walk:async()=>files,readFile:async path=>files.find(file=>file.path===path).bytes});
+ assert.equal(records[1].date,'2025-12-31');assert.equal(records[4].date,'');
 });

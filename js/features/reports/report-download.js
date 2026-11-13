@@ -34,7 +34,8 @@
     const operation=date(info.operationData?.date);
     if(operation&&dates[0]&&operation!==dates[0])throw new Error('Widersprüchliche Termindaten: '+path);
     // These are event fields; createdAt / lastModifiedDateTime are deliberately excluded.
-    return dates[0]||operation||date(String(path).split('/').pop().slice(0,10))||'';
+    const namedDate=/^(?:FFW-Wasser_)?(\d{4}-\d{2}-\d{2})(?:[_ .-]|$)/i.exec(String(path).split('/').pop());
+    return dates[0]||operation||date(namedDate?.[1])||'';
   }
   function matches(value,year='',month='') {
     if(year&&!/^\d{4}$/.test(year)||month&&!/^(?:0[1-9]|1[0-2])$/.test(month)||month&&!year)throw new Error('Bitte Jahr und Monat gültig auswählen.');
@@ -44,7 +45,9 @@
     if(typeof path!=='string'||!path||/[\\\u0000-\u001f]/.test(path)||path.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('Unsicherer Dateipfad im Bericht.');
     return path;
   }
-  const group=path=>path.replace(/\.(zip|csv|pdf|docx)$/i,'').replace(/_korrigiert(?:-v\d+)?$/i,'');
+  // Historic CSV/PDF exports used separate folders. Infer only if the complete
+  // basename identifies exactly one event date across the whole report tree.
+  const group=path=>path.split('/').pop().replace(/\.(zip|csv|pdf|docx)$/i,'').replace(/_korrigiert(?:-v\d+)?$/i,'');
   async function inventory(storage,onProgress=()=>{}) {
     const files=await storage.walk('Berichte'),records=[];
     for(const file of files){

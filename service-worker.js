@@ -242,6 +242,7 @@ const PUBLIC_FILES=[
   "./assets/help/guide/geraetehaus-statistik.jpg",
   "./assets/help/guide/geraetehaus-uebernehmen.jpg",
   "./assets/help/guide/geraetehaus-verwaltung.jpg",
+  "./assets/help/guide/geraetehaus-berichte-download.jpg",
   "./assets/help/guide/geraetehaus-infos.jpg",
   "./assets/help/guide/h2o-aktualisieren.jpg",
   "./assets/help/guide/h2o-konto-sicherheit.jpg",

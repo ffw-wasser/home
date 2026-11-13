@@ -266,5 +266,9 @@
   "geraetehaus-funkausbildung": {
     "width": 1326,
     "height": 158
+  },
+  "geraetehaus-berichte-download": {
+    "width": 728,
+    "height": 382
   }
 }
