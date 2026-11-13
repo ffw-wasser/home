@@ -53,7 +53,7 @@
     const secure=typeof passwordSecurityStatus==='function'&&passwordSecurityStatus().secure;
     const count=typeof members!=='undefined'&&Array.isArray(members)?members.length:0;
     let scope='',completed=false;
-    try{scope=globalThis.CloudStorage?.connected?globalThis.CloudStorage.source:JSON.stringify([localStorage.getItem('fw_onedrive_client_id')||'',localStorage.getItem('fw_onedrive_shared_folder_url')||'']);completed=localStorage.getItem(setupKey)===scope;}catch{}
+    try{scope=globalThis.CloudStorage?.connected?globalThis.CloudStorage.source:localStorage.getItem(setupKey)||'';completed=localStorage.getItem(setupKey)===scope;}catch{}
     const ready=connected&&secure&&count>0;
     try{if(ready&&scope)localStorage.setItem(setupKey,scope);else if(!secure||(connected&&!count)){localStorage.removeItem(setupKey);completed=false;}}catch{}
     return {connected,secure,count,complete:ready||(completed&&secure)};

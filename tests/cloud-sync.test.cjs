@@ -37,3 +37,32 @@ test('Connection picker hides folder access on iPhone and desktop-mode iPad, kee
   const {c}=setup(),elements={cloudConnectionFolder:supported?{webkitdirectory:false}:{},cloudFolderSetup:{},cloudFileSetupHint:{},cloudFileSetup:{}};Object.assign(c.navigator,nav);c.byId=id=>elements[id];c.configureCloudConnectionPicker();assert.equal(elements.cloudFolderSetup.hidden,hidden);assert.equal(elements.cloudFileSetup.open,hidden);
  }
 });
+
+test('Confirmed Cloudflare handover retires old settings but preserves enrollment and application data',async()=>{
+ const f=setup({legacy:true}),scope=JSON.stringify(['old-client','old-folder']);
+ for(const store of [f.local,f.c.sessionStorage])for(const key of ['tokens','pkce','client_id','shared_folder_url','verified_root','silent_retry','last_sync','local_updated'])store.setItem('fw_onedrive_'+key,key);
+ f.local.setItem('fw_onedrive_client_id','old-client');f.local.setItem('fw_onedrive_shared_folder_url','old-folder');
+ f.local.setItem('fw_v1_attendance_draft',JSON.stringify({source:scope,topic:'Keep draft',pending:[['synthetic','Anwesend']]}));
+ f.local.setItem('fw_setup_completed_v1',scope);f.local.setItem('fw_cloud_device_v1','active-device');f.local.setItem('fw_members','keep-members');
+ let sanitized=0;f.c.sanitizeSafetySnapshots=()=>sanitized++;
+ assert.equal(await f.c.syncOneDrive({refreshHistory:true}),true);
+ assert.equal([...f.local.values.keys()].some(key=>key.startsWith('fw_onedrive_')),false);
+ assert.equal([...f.c.sessionStorage.values.keys()].some(key=>key.startsWith('fw_onedrive_')),false);
+ assert.equal(f.local.getItem('fw_microsoft_client_id'),'old-client');assert.equal(f.local.getItem('fw_cloud_device_v1'),'active-device');assert.equal(JSON.parse(f.local.getItem('fw_members'))[0].id,'synthetic');
+ const draft=JSON.parse(f.local.getItem('fw_v1_attendance_draft'));assert.equal(draft.source,'drive:root');assert.equal(draft.topic,'Keep draft');assert.equal(draft.pending.length,1);
+ assert.equal(f.local.getItem('fw_setup_completed_v1'),'drive:root');assert.equal(sanitized,1);
+});
+test('Failed history or unrecognized draft scope keeps legacy migration settings',async()=>{
+ const f=setup({legacy:true});f.local.setItem('fw_onedrive_client_id','old-client');f.c.loadOneDriveHistory=async()=>false;
+ assert.equal(await f.c.syncOneDrive({refreshHistory:true}),false);assert.equal(f.local.getItem('fw_onedrive_client_id'),'old-client');assert.ok(f.local.getItem('fw_onedrive_state_base'));
+ f.c.loadOneDriveHistory=async()=>true;f.local.setItem('fw_v1_attendance_draft',JSON.stringify({source:JSON.stringify(['old-client','']),topic:'Pending'}));
+ f.local.setItem('fw_onedrive_state_base',JSON.stringify({source:'other:folder'}));
+ assert.equal(await f.c.syncOneDrive({refreshHistory:true}),true);assert.equal(f.local.getItem('fw_onedrive_client_id'),'old-client');assert.equal(JSON.parse(f.local.getItem('fw_v1_attendance_draft')).topic,'Pending');
+});
+
+test('Local changes made while history loads defer retirement until the next confirmed sync',async()=>{
+ const f=setup();f.local.setItem('fw_onedrive_client_id','keep-until-confirmed');let once=true;
+ f.c.loadOneDriveHistory=async()=>{if(once){once=false;f.c.members[0].firstName='Pending edit';f.c.scheduleCloudSync();}return true;};
+ await f.c.syncOneDrive({refreshHistory:true});assert.equal(f.local.getItem('fw_onedrive_client_id'),'keep-until-confirmed');
+ await f.c.syncOneDrive({refreshHistory:true});assert.equal(f.local.getItem('fw_onedrive_client_id'),null);assert.equal(f.remote.members[0].firstName,'Pending edit');
+});

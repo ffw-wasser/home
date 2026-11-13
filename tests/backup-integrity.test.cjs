@@ -190,3 +190,16 @@ for(const fails of [false,true])test(`App-Sicherung integriert zentrale Konten u
  vm.runInContext(source('js/features/history/archive.js'),context);context.shareOrDownloadJson=async(name,payload)=>{output=payload;return 'downloaded';};await context.exportCompleteBackup();assert.equal(calls,1);
  if(fails){assert.equal(output,null);assert.match(message,/Sicherung nicht erstellt.*OneDrive-Sicherung fehlgeschlagen/);}else{assert.equal(output.data.backupInfo.centralBackup.file,'Getraenke/sicherung-test.json');assert.equal(output.data.backupInfo.centralBackup.verified,true);assert.equal(output.data.backupInfo.centralBackup.accountCount,1);assert.equal(output.data.backupInfo.centralBackup.sequence,7);assert.ok(!JSON.stringify(output).includes('token'));}
 });
+
+test('Safety snapshots strip retired credentials and never restore device access',()=>{
+ const c=safety(),keys=['fw_onedrive_tokens','fw_onedrive_pkce','fw_onedrive_admin_return','fw_onedrive_silent_retry','fw_onedrive_verified_root','fw_cloud_device_v1','fw_cloud_pair_pending','fw_microsoft_enrollment_pkce'];
+ c.testKeys=keys;vm.runInContext("for(const key of testKeys)safeStorage.setItem(key,'old-secret');safeStorage.setItem(KEYS.members,'keep-members');safeStorage.setItem('fw_v1_attendance_draft','keep-draft');",c);
+ assert.equal(c.createSafetySnapshot(),true);
+ let list=JSON.parse(vm.runInContext('safeStorage.getItem(QUALITY_SNAPSHOT_KEY)',c));for(const key of keys)assert.equal(list[0].data[key],undefined);
+ for(const key of keys)list[0].data[key]='old-secret';c.snapshotJson=JSON.stringify(list);vm.runInContext('safeStorage.setItem(QUALITY_SNAPSHOT_KEY,snapshotJson)',c);
+ c.requireAdmin=()=>true;c.confirm=()=>true;c.location={reload(){}};c.showToast=()=>{};
+ vm.runInContext("for(const key of testKeys)safeStorage.setItem(key,'current-access')",c);c.restoreLatestSafetySnapshot();
+ for(const key of keys)assert.equal(vm.runInContext('safeStorage.getItem('+JSON.stringify(key)+')',c),'current-access');
+ assert.equal(c.sanitizeSafetySnapshots(),true);list=JSON.parse(vm.runInContext('safeStorage.getItem(QUALITY_SNAPSHOT_KEY)',c));
+ for(const key of keys)assert.equal(list[0].data[key],undefined);assert.equal(list[0].data.fw_v5_members,'keep-members');assert.equal(list[0].data.fw_v1_attendance_draft,'keep-draft');
+});
