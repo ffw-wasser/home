@@ -84,6 +84,75 @@ Geräte- und Quellengrenzen, Sperrung/Ablauf, CAS-Konflikte, Wiederholung nach
 verlorenen Antworten und Transaktionsrollback sowie den lokalen Vorbereitungslauf.
 Reale iPad-, iOS-, Android- und R2-/D1-Abläufe bleiben gesondert zu prüfen.
 
+## Dritte Phase: private Dateiablage mit Versionen
+
+`storage-files.js` und `storage-files.sql` ergänzen einen getrennten Datei-Testbetrieb
+für Berichte, Sicherungen, Ausbildung und andere übernommene Unterlagen. Die
+laufende Gerätehaus-Anwendung wird auch durch diese Phase noch **nicht** umgestellt.
+Die neuen Endpunkte unter `/admin/storage-files/` akzeptieren ausschließlich den
+bestehenden Server-Admin-Zugang. Die zuvor eingerichteten Gerätezugänge erhalten
+dadurch keine zusätzlichen Rechte und können keine Verbindungsdateien auslesen.
+
+### Einrichtung und Vergleich
+
+1. `storage-files.sql` in derselben D1-Datenbank ausführen. Es ergänzt drei Tabellen
+   und einen Index für aktuelle Metadaten, alte Versionen und Vorgangsquittungen.
+2. Den geprüften Worker bereitstellen. Bindung `MIGRATION_FILES`, vorhandene Secrets
+   und Quellkennung bleiben gleich.
+3. `prepare-cloudflare-files.cjs` zusammen mit `migrate-onedrive-snapshot.cjs` derselben
+   geprüften Revision außerhalb der unveränderten lokalen Kopie speichern. Ausführen:
+
+   ```sh
+   node scripts/prepare-cloudflare-files.cjs /pfad/zur/uebernahmekopie
+   ```
+
+Der Dateivergleich benötigt den bereits vorbereiteten D1-Teststand und dieselbe
+bestätigte R2-Übernahmekopie. Die Stammdatendatei wird ausschließlich durch den
+getrennten Datenspeicher behandelt und ist in der Datei-API gesperrt. Andere Dateien
+werden mit ihren Ordnerpfaden indexiert und jeweils erneut aus R2 geladen und per
+SHA-256 mit der lokalen Kopie verglichen. Die Indexierung verwendet vorhandene
+verschlüsselte Übernahmeobjekte; unveränderte Dateien werden nicht nochmals kopiert.
+Leere Ordner waren nicht Bestandteil der ursprünglichen Übernahme. Änderungszeiten
+stammen aus der lokalen Windows-/Exportkopie; ein alter Microsoft-Versionsverlauf
+oder nicht mitexportierte Microsoft-Metadaten werden dadurch nicht rekonstruiert.
+
+Das Skript legt anschließend einen zufällig benannten künstlichen Testordner an.
+Es prüft binäres Schreiben, erneutes Lesen, Korrektur mit alter Version, Löschen und
+Wiederherstellung. Der Testordner und seine Testdatei werden abschließend als
+gelöscht markiert und aus der aktuellen Auflistung ausgeschlossen. Die Inhalte der
+übernommenen Benutzerdateien und die lokale Kopie werden nur gelesen. Ein
+unbestätigter Vergleich, Schreibvorgang oder Aufräumvorgang führt zu einem Fehler.
+Bei hartem Prozessabbruch kann ein isolierter Testordner verbleiben; ein erneuter
+Lauf erzeugt einen neuen Testordner und bereinigt keine fremden Pfade automatisch.
+
+### Schutz und Wiederherstellung
+
+- Namen und Pfade liegen verschlüsselt in D1. Der Index verwendet nur SHA-256-
+  Kennungen für Dateien und Elternordner. Neue Inhalte liegen AES-GCM-verschlüsselt
+  in R2; Schlüssel und zusätzliche authentifizierte Daten sind je Zweck getrennt.
+- Uploads verwenden einen begrenzten JSON-Header und binäre Daten statt Base64.
+  Die Grenze bleibt 8 MiB pro Datei und 32 Pfadsegmente. Rückgaben sind `no-store`,
+  Dateidownloads zusätzlich `private`, `attachment` und `application/octet-stream`.
+- Jede neue R2-Datei wird vor dem Bestätigen nachgelesen und geprüft. Objektschlüssel
+  enthalten Vorgangskennung und Inhaltsprüfsumme: Gleichzeitige Anfragen mit derselben
+  Kennung und unterschiedlichem Inhalt können die erfolgreiche Version nicht beschädigen.
+- Aktueller Stand, Quittung und frühere Metadatenversion werden in einer D1-Transaktion
+  gespeichert. Versionskonflikte und geänderte Wiederverwendung führen zu HTTP 409.
+  Eine Anfrage mit verlorener Antwort kann unverändert wiederholt werden.
+- Elternordner und leere Ordner beim Löschen werden innerhalb der Transaktion
+  geprüft. Die Wiederaufnahme einer Indexierung überschreibt weder neuere Versionen
+  noch Löschmarkierungen und legt keine Datei unter einem gelöschten Ordner an.
+- Löschen ist hier eine Löschmarkierung. Alte Inhalte und Metadaten bleiben erhalten;
+  Wiederherstellung benötigt eine explizite alte Version und die erwartete aktuelle
+  Version. Historische R2-Objekte werden nicht automatisch entfernt und verbrauchen
+  entsprechend zusätzlichen Speicher. Zeitgesteuerte unabhängige Sicherungen und
+  eine Aufbewahrungsstrategie sind vor dem produktiven Wechsel weiterhin nötig.
+
+Tests: `tests/storage-files.test.cjs` prüft unter anderem verschlüsselte Dateinamen,
+Ordnerstruktur, Originalversionen, Parallelanfragen, Transaktionsrollback, beschädigte
+R2-Rückgaben und die vollständige lokale Prüfsequenz mit ausschließlich künstlichen
+Daten. Reale Unterlagen und die Gerätehaus-Oberfläche sind damit noch nicht getestet.
+
 ## Vorbereitung in Cloudflare
 
 1. Im bestehenden Konto einen **privaten** R2-Standard-Bucket erstellen. Keine

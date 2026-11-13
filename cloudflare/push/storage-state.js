@@ -77,5 +77,5 @@
   if(!receipt||receipt.device_id!==actor.id||receipt.digest!==digest)fail('Speicherung nicht bestätigt. Denselben Vorgang erneut prüfen.');
   return {version:receipt.version,currentVersion:receipt.version,duplicate:!result[0].meta.changes,mode:'rehearsal'};
  }
- g.StorageState={route};
+ g.StorageState={route,assertSource:checkSource};
 })(globalThis);

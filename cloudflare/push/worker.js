@@ -35,6 +35,10 @@ export default {
    const admin=path.startsWith('/admin/');const auth=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');
    if(admin&&!equal(auth,env.ADMIN_TOKEN))return reply({error:'Admin-Zugang ungültig.'},401);
    if(path==='/admin/check')return reply({version:1,publicKey:env.VAPID_PUBLIC_KEY});
+   if(globalThis.StorageFiles&&path.startsWith('/admin/storage-files/')){
+    try{const result=await globalThis.StorageFiles.route(path,request,env,auth);if(result instanceof Response){const privateHeaders=new Headers(headers);for(const [key,value] of result.headers)privateHeaders.set(key,value);return new Response(result.body,{status:result.status,headers:privateHeaders});}return reply(result);}
+    catch(error){return reply({error:error.status?error.message:'Die private Dateiablage ist derzeit nicht bestätigt. Denselben Vorgang erneut prüfen.'},error.status||503);}
+   }
    if(globalThis.StorageState&&(path.startsWith('/admin/storage-state/')||path.startsWith('/storage-state/'))){
     try{let value;try{value=JSON.parse(new TextDecoder().decode(await globalThis.StorageMigration.bounded(request,path==='/storage-state/write'?550000:6000)));}catch(error){if(error.status)throw error;throw Object.assign(new Error('Ungültige Anfrage.'),{status:400});}if(!value||Array.isArray(value)||typeof value!=='object')return reply({error:'Ungültige Anfrage.'},400);return reply(await globalThis.StorageState.route(path,value,env,auth));}
     catch(error){return reply({error:error.status?error.message:'Der vorbereitete Speicher ist derzeit nicht erreichbar. Denselben Vorgang erneut prüfen.'},error.status||503);}
