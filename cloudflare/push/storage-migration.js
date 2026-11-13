@@ -92,14 +92,17 @@
   await env.DB.prepare('INSERT OR IGNORE INTO storage_migration_files(migration_id,file_id,size,sha256,verified_at) VALUES(?,?,?,?,?)').bind(data.run,data.fileId,file.size,file.sha256,Date.now()).run();
   return {ok:true,duplicate:false};
  }
- async function verifiedFile(env,sourceHash,run,path){
+ async function verifiedManifest(env,sourceHash,run){
   if(!id(sourceHash)||!id(run))fail('Ungültige Übernahmekennung.',400);
   const row=await env.DB.prepare("SELECT manifest FROM storage_migrations WHERE id=? AND source_hash=? AND state='verified'").bind(run,sourceHash).first();
   if(!row)fail('Eine vollständig geprüfte Übernahme wird benötigt.');
-  const manifest=await g.CentralLedger.open(env,row.manifest,'storage-manifest:'+run),file=manifest.files.find(f=>f.path===path);
+  return g.CentralLedger.open(env,row.manifest,'storage-manifest:'+run);
+ }
+ async function verifiedFile(env,sourceHash,run,path){
+  const manifest=await verifiedManifest(env,sourceHash,run),file=manifest.files.find(f=>f.path===path);
   if(!file)fail('Die erforderliche Datei fehlt in der Übernahme.',404);
   if(!await receipt(env,run,file.fileId))fail('Die erforderliche Datei wurde nicht bestätigt.');
   return readObject(env,run,file.fileId,file);
  }
- g.StorageMigration={route,verifiedFile,bounded};
+ g.StorageMigration={route,verifiedFile,verifiedManifest,bounded};
 })(globalThis);
