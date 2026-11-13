@@ -255,6 +255,8 @@ bestätigt keine Umschaltung.
    `migrate-onedrive-snapshot.cjs`, `prepare-cloudflare-storage.cjs` und
    `prepare-cloudflare-files.cjs`. Unter Windows starten mit
    `node activate-cloudflare-storage.cjs --choose`.
+   Das Skript prüft zuerst den öffentlichen Worker-Fingerprint und sendet bei
+   einer abweichenden Bereitstellung keinen Verwaltungszugang.
 5. Den aktuellen synchronisierten Originalordner `Webseite` auswählen, der
    `feuerwehr-wasser-daten.json`, `Getraenke` und `Berichte` enthält. Keine alte
    Downloads-Kopie auswählen. Das Skript erstellt eine unabhängige neue

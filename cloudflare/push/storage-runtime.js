@@ -23,7 +23,7 @@
   return actor;
  }
  async function adminScope(env,token,data){if(equal(token,env.ADMIN_TOKEN))return null;const actor=await administrator(env,token);if(data&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Zugriff auf einen anderen Datenstand ist nicht erlaubt.',403);return actor;}
- async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
+ async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',serverTime:Date.now(),run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
  async function route(path,data,env,auth){
   if(path==='/storage/status'){const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first();return {provider:'cloudflare',version:1,active:Boolean(table&&await current(env))};}
   if(path==='/storage/logout'){
@@ -58,7 +58,7 @@
    const saved=await current(env);if(!saved||saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
   }
   const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
-  if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
+  if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),serverTime:Date.now(),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
   if(!runtime)fail('Der Cloudflare-Datenstand ist noch nicht aktiviert.');
   if(path==='/storage/config'){if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);return config(env,actor);}
   if(path==='/storage/renew'){

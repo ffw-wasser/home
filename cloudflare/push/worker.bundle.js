@@ -23479,7 +23479,7 @@ g.PortalHydrants={schema,route};
   return actor;
  }
  async function adminScope(env,token,data){if(equal(token,env.ADMIN_TOKEN))return null;const actor=await administrator(env,token);if(data&&(data.run!==actor.run||data.source!==actor.source_hash))fail('Zugriff auf einen anderen Datenstand ist nicht erlaubt.',403);return actor;}
- async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
+ async function config(env,actor){const ledger=await L.meta(env),runtime=await current(env);return {provider:'cloudflare',mode:'active',serverTime:Date.now(),run:runtime.run,source:ledger.source,sourceHash:actor.source_hash,deviceId:actor.id,expiresAt:actor.expires_at,version:runtime.version};}
  async function route(path,data,env,auth){
   if(path==='/storage/status'){const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first();return {provider:'cloudflare',version:1,active:Boolean(table&&await current(env))};}
   if(path==='/storage/logout'){
@@ -23514,7 +23514,7 @@ g.PortalHydrants={schema,route};
    const saved=await current(env);if(!saved||saved.run!==data.run||saved.source_hash!==data.source)fail('Die Umschaltung wurde gleichzeitig geändert.');return {ok:true,version:saved.version,mode:'active'};
   }
   const actor=equal(auth,env.ADMIN_TOKEN)?null:await administrator(env,auth),runtime=await current(env);
-  if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
+  if(path==='/admin/storage-runtime/status')return {active:Boolean(runtime),serverTime:Date.now(),...(runtime?{run:runtime.run,source:runtime.source_hash,version:runtime.version}:{})};
   if(!runtime)fail('Der Cloudflare-Datenstand ist noch nicht aktiviert.');
   if(path==='/storage/config'){if(!actor)fail('Bitte einen eigenen Gerätezugang verwenden.',401);return config(env,actor);}
   if(path==='/storage/renew'){
@@ -23560,7 +23560,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"5431e062c764bfa84470834ff7f12a5cf610a074ccd5f4582bedff911ee0ed78",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4d0bd06669bbd079c5c3a7a11fbfb1ba00d009dd041a0e3d10c9fd5bb73b0540",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

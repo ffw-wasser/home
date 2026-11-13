@@ -146,6 +146,7 @@ jobs:
       - name: Capture account deletion with synthetic credentials
         run: node scripts/capture-help-screens.cjs --only=h2o-konto-loeschen
       - name: Keep refreshed portal help screens for visual review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: h2o-help-screens

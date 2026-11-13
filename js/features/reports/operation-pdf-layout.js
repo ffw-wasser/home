@@ -22,7 +22,8 @@
   const value=d.reserveTimes?.[name];if(!value?.from&&!value?.to)return '';
   const stamps={};let day=0,previous='';for(const key of ['alarm','departed','arrived','ended']){const time=d.times?.[key];if(!/^\d{2}:\d{2}$/.test(time||'')||!/^\d{4}-\d{2}-\d{2}$/.test(d.date||''))continue;if(previous&&time<previous)day++;const date=new Date(d.date+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+day);stamps[key]=date.toISOString().slice(0,10)+'T'+time;previous=time;}
   const show=stamp=>{const [date,time]=String(stamp||'').split('T');return dateDE(date)+(time?' '+time:'');};
-  return ' · '+show(value.from||stamps.arrived)+' bis '+show(value.to||stamps.ended);
+  const from=value.from||stamps.arrived,to=value.to||stamps.ended,minutes=Math.round((Date.parse(to)-Date.parse(from))/60000),duration=Number.isFinite(minutes)&&minutes>=0?' ('+Math.floor(minutes/60)+':'+String(minutes%60).padStart(2,'0')+' h)':'';
+  return ' · '+show(from)+' bis '+show(to)+duration;
  }
  function crew(d){const groups=new Map();for(const name of d.members||[]){const group=d.assignments?.[name]||'Ohne Zuordnung';if(!groups.has(group))groups.set(group,[]);groups.get(group).push(clean(name)+(d.assignmentRoles?.[name]?' ('+clean(d.assignmentRoles[name])+')':'')+reserve(d,name));}return [...groups].map(([group,people])=>group+': '+people.join('; ')).join('\n');}
  async function create(PDFLib,_templates,d,assets){

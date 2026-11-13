@@ -45,3 +45,6 @@ test('Production: issuer revocation cancels an unclaimed device ticket, also dur
  f.race(()=>f.db.prepare('UPDATE storage_devices SET revoked_at=1 WHERE id=?').run(f.credential.deviceId));
  const claim=await f.api('/storage/claim',{ticket,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Synthetic forbidden claim'},'');assert.equal(claim.status,409);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM storage_devices WHERE revoked_at IS NULL').get().n,0);
 });
+test('Production CLI: wrong deployed Worker fingerprint stops before transmitting any administrative credential',async t=>{
+ const f=await setup(t);let gets=0;await assert.rejects(activate(f.sourceDirectory,{...f.options,expectedFingerprint:'1'.repeat(64),fetcher:async(url,options)=>{gets++;assert.ok(url.endsWith('/health'));assert.equal(options.method,'GET');assert.equal(options.headers,undefined);return new Response(JSON.stringify({sourceFingerprint:'2'.repeat(64)}));}}),/Worker-Version stimmt/);assert.equal(gets,1);assert.equal(f.opens,0);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM storage_runtime').get().n,0);
+});
