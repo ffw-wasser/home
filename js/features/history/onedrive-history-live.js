@@ -197,7 +197,8 @@
     } catch (error) {
       if(epoch!==loadEpoch)return false;
       console.error("OneDrive-Historie konnte nicht geladen werden", error);
-      const hint = error.code === "serviceReadOnly" ? "Microsoft schränkt den automatischen OneDrive-Zugriff vorübergehend ein (serviceReadOnly). Bitte später erneut synchronisieren."
+      const hint = error.code === "oneDriveRequestTimeout" ? "OneDrive hat nicht rechtzeitig geantwortet. Bitte erneut synchronisieren."
+        : error.code === "serviceReadOnly" ? "Microsoft schränkt den automatischen OneDrive-Zugriff vorübergehend ein (serviceReadOnly). Bitte später erneut synchronisieren."
         : ["oneDriveFolderUnavailable","oneDriveFolderLinkInvalid"].includes(error.code) ? error.message
         : error.status === 401 || /Anmeldung|angemeldet/i.test(error.message || "")
         ? "Bitte OneDrive erneut anmelden."

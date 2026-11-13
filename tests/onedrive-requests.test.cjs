@@ -145,3 +145,17 @@ for(const nested of [true,false])test('Microsoft serviceReadOnly wird auch im in
  await assert.rejects(context.odFetch(url),e=>e.status===403&&e.code==='serviceReadOnly'&&e.message.includes('automatische OneDrive-Zugriff'));
  assert.equal(calls.length,1);
 });
+
+for(const method of ['GET','PUT'])test('Hängender '+method+' endet nach Zeitgrenze ohne erneuten Schreibversuch',async()=>{
+ let expire;const cleared=[];
+ const {context,calls}=app((address,options)=>new Promise((resolve,reject)=>{options.signal.addEventListener('abort',()=>reject(Object.assign(new Error('aborted'),{name:'AbortError'})),{once:true});}));
+ context.AbortController=AbortController;context.setTimeout=(fn,ms)=>{assert.equal(ms,20000);expire=fn;return 7;};context.clearTimeout=id=>cleared.push(id);
+ const pending=context.odFetch(url,{method});while(!expire)await new Promise(resolve=>setImmediate(resolve));expire();
+ await assert.rejects(pending,e=>e.code==='oneDriveRequestTimeout'&&e.message.includes('lokale Änderungen bleiben erhalten'));
+ assert.equal(calls.length,1);assert.deepEqual(cleared,[7]);
+});
+test('Erfolgreicher OneDrive-Abruf entfernt seine Zeitgrenze',async()=>{
+ const timers=new Set();const {context}=app(()=>response(200));context.AbortController=AbortController;
+ context.setTimeout=()=>{timers.add(7);return 7;};context.clearTimeout=id=>timers.delete(id);
+ assert.equal((await context.odFetch(url)).status,200);assert.equal(timers.size,0);
+});

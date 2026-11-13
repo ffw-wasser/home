@@ -146,16 +146,18 @@ async function odFetch(url,options={},retry=true){
     const token=forcedToken||await oneDriveAccessToken();forcedToken="";
     assertOneDriveSession(epoch);
     headers.set("Authorization","Bearer "+token);
-    let response;
+    let response,timedOut=false;
     const controller=typeof AbortController!=="undefined"?new AbortController():null;const cancel=()=>controller?.abort();
     if(controller){oneDriveRequests.add(controller);options.signal?.addEventListener("abort",cancel,{once:true});if(options.signal?.aborted)controller.abort();}
+    const deadline=controller?setTimeout(()=>{timedOut=true;controller.abort();},20000):null;
     try{response=await fetch(url,{...options,headers,...(controller?{signal:controller.signal}:{})});assertOneDriveSession(epoch);}
     catch(error){
       assertOneDriveSession(epoch);
+      if(timedOut&&!options.signal?.aborted)throw Object.assign(new Error("OneDrive hat innerhalb von 20 Sekunden nicht geantwortet. Bitte erneut synchronisieren; lokale Änderungen bleiben erhalten."),{code:"oneDriveRequestTimeout"});
       if(!retry||!readable||error?.name==="AbortError"||options.signal?.aborted||navigator.onLine===false||attempts>=3)throw error;
       await new Promise(resolve=>setTimeout(resolve,odRetryDelay(null,attempts++)));continue;
     }
-    finally{if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener("abort",cancel);}
+    finally{if(deadline!==null)clearTimeout(deadline);if(controller)oneDriveRequests.delete(controller);options.signal?.removeEventListener("abort",cancel);}
     if(response.status===401&&!authRetried){
       authRetried=true;forcedToken=await oneDriveAccessToken(true,token);continue;
     }
