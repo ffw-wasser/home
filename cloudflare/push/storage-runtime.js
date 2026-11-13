@@ -36,6 +36,7 @@
  }
 
  async function route(path,data,env,auth){
+  if((path.startsWith('/storage/microsoft/')||path==='/admin/storage-runtime/microsoft')&&g.StorageMicrosoft)return g.StorageMicrosoft.route(path,data,env,auth);
   if(path==='/storage/status'){const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='storage_runtime'").first();return {provider:'cloudflare',version:1,active:Boolean(table&&await current(env))};}
   if(path==='/storage/logout'){
    if(!secret(auth))fail('Gerätezugang ungültig.',401);

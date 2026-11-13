@@ -21,3 +21,11 @@ CREATE TABLE IF NOT EXISTS storage_pairings (
  used_at INTEGER,
  device_id TEXT
 );
+
+-- One-time Microsoft enrollment configuration; no Microsoft tokens are retained.
+CREATE TABLE IF NOT EXISTS storage_microsoft (
+ id INTEGER PRIMARY KEY CHECK(id=1),
+ client_id TEXT NOT NULL,
+ run TEXT NOT NULL,
+ source_hash TEXT NOT NULL
+);
