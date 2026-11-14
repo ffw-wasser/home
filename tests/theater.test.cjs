@@ -67,3 +67,14 @@ test('Rubrikfarben werden validiert, am Handy ausgeliefert und beim Zurücksetze
  const invalid={...colored,items:colored.items.map(p=>({...p,categoryColor:'url(unsafe)'}))};assert.equal((await f.call('theater/save',{eventId:eid,expectedVersion:2,catalog:invalid},null,true)).status,400);
  const reset=await f.call('theater/reset',{eventId:eid,expectedVersion:2,confirmation:'ZURÜCKSETZEN'},null,true);assert.equal(reset.status,200);assert.equal(reset.value.event.items[0].categoryColor,'#006c70');
 });
+
+test('Ausverkauft blendet neue Bestellungen aus und bewahrt reservierte Originalpreise',async()=>{
+ const f=await setup(),original=(await order(f)).value.id;
+ await f.call('theater/reserve',{eventId:eid,batchId:'sold-out-batch',memberId:f.people[0].memberId,orderIds:[original]},null,true);
+ const paused={...catalog,items:catalog.items.map(p=>({...p,active:p.id!=='beer'}))};
+ assert.equal((await f.call('theater/save',{eventId:eid,expectedVersion:1,catalog:paused},null,true)).status,200);
+ assert.equal((await order(f,undefined,{version:2})).status,400);
+ const existing=(await list(f)).value.orders.find(o=>o.id===original);assert.equal(existing.state,'reserved');assert.equal(existing.lines[0].cents,300);
+ assert.equal((await f.call('theater/complete',{eventId:eid,batchId:'sold-out-batch'},null,true)).status,200);
+ assert.equal((await list(f)).value.orders.find(o=>o.id===original).state,'done');
+});

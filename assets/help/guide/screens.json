@@ -274,5 +274,13 @@
   "geraetehaus-einstellungen": {
     "width": 984,
     "height": 427
+  },
+  "geraetehaus-theater": {
+    "width": 1024,
+    "height": 900
+  },
+  "h2o-theater": {
+    "width": 390,
+    "height": 844
   }
 }

@@ -3,6 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),{chromium}=require('playwr
 const consentVersion=require('../js/features/portal/g26-consent.js').version;
 const vm=require('node:vm'),regulationsContext=vm.createContext({URL});vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/features/portal/regulations-model.js'),'utf8'),regulationsContext);const regulationItems=regulationsContext.RegulationsModel.defaults();
 const root=path.resolve(__dirname,'..'),out=path.join(root,'assets/help/guide');
+if(process.argv.includes('--only=theater')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'scripts/check-theater.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_THEATER_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-cloudflare')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/cloud-storage-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_CLOUD_CONNECTION_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-berichte-download')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/report-download-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_REPORT_DOWNLOAD_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-kalender')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/attendance-date-regression-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_CALENDAR_CORRECTION_HELP:'1'}});process.exit(0);}
