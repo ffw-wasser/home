@@ -100,3 +100,13 @@ test('Microsoft enrollment requires exact server-verified folder access and neve
  f.context.fetch=async()=>{throw Error('Network failure '+accessToken);};const failed=await f.api('/storage/microsoft/enroll',{...request,deviceId:randomUUID()},'');assert.equal(failed.status,503);assert.equal(JSON.stringify(failed).includes(accessToken),false);
  await f.api('/admin/storage-runtime/microsoft',{clientId:''});assert.equal((await f.api('/storage/microsoft/config',{},'')).status,409);
 });
+
+test('Device naming updates only the encrypted label, preserves access, rejects invalid and foreign targets',async t=>{
+ const f=await setup(t);await activate(f.sourceDirectory,f.options);const id=f.credential.deviceId,before=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(id);
+ for(const label of ['', 'x'.repeat(101),'bad\nname'])assert.equal((await f.api('/admin/storage-runtime/rename',{deviceId:id,label})).status,400);
+ assert.equal((await f.api('/admin/storage-runtime/rename',{deviceId:randomUUID(),label:'Synthetic owner · Laptop'})).status,404);
+ assert.equal((await f.api('/admin/storage-runtime/rename',{deviceId:id,label:'Synthetic owner · Laptop'})).status,200);
+ const after=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(id);for(const key of ['token_hash','registration_hash','run','source_hash','expires_at','revoked_at'])assert.equal(after[key],before[key]);assert.notEqual(after.label,before.label);assert.equal(after.label.includes('Synthetic owner'),false);
+ assert.equal((await f.api('/admin/storage-runtime/devices')).data.devices.find(d=>d.id===id).label,'Synthetic owner · Laptop');assert.equal((await f.api('/storage/config')).status,200);
+ await f.api('/admin/storage-runtime/revoke',{deviceId:id});assert.equal((await f.api('/admin/storage-runtime/rename',{deviceId:id,label:'Blocked'})).status,401);
+});

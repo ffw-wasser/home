@@ -49,3 +49,7 @@ Referenzen:
 Die serverseitige Graph-Anfrage verwendet Workers-kompatibles `redirect: manual`.
 Weiterleitungen werden abgelehnt; Microsoft-Tokens werden keinem weiteren Ziel übermittelt.
 Referenz: https://developers.cloudflare.com/workers/runtime-apis/request/
+
+## Geräte eindeutig benennen
+
+Vor Microsoft-Anmeldung oder QR-Kopplung eine Bezeichnung aus Person und Gerät angeben. Unter Einstellungen → Verbindung & Geräte → Geräte anzeigen lassen sich bestehende Bezeichnungen ändern. Aktuelles Gerät, Status, Einrichtungszeit und kurze Gerätekennung unterstützen die Zuordnung. Die Bezeichnung ist eine Angabe der Verwaltung, keine automatisch bestätigte Microsoft-Identität. Umbenennen verändert weder Zugänge noch Berechtigungen.

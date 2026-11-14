@@ -21,11 +21,11 @@
   return options.binary?new Uint8Array(await response.arrayBuffer()):await response.json();
  }
  function scoped(data={}){if(!session)throw fail('Gerät nicht verbunden.',401);return {source:session.sourceHash,run:session.run,...data};}
- async function claim(value){
+ async function claim(value,label){
   let ticket=String(value||'').trim();if(ticket.startsWith('https://')){let url;try{url=new URL(ticket);}catch{throw fail('Ungültiger Kopplungscode.',400);}if(url.origin!=='https://ffw-wasser.github.io'||url.pathname!=='/home/index.html')throw fail('Ungültiger Kopplungscode.',400);ticket=new URLSearchParams(url.hash.slice(1)).get('pair')||'';}
   if(!/^[A-Za-z0-9_-]{43}$/.test(ticket))throw fail('Ungültiger Kopplungscode.',400);
   const pendingKey='fw_cloud_pair_pending';let old;try{old=JSON.parse(sessionStorage.getItem(pendingKey)||'null');}catch{}
-  const pending=old?.ticket===ticket&&/^[A-Za-z0-9_-]{43}$/.test(old.token||'')?old:{ticket,deviceId:crypto.randomUUID(),token:token(),label:'Verwaltungsgerät · '+(navigator.platform||'Browser')};sessionStorage.setItem(pendingKey,JSON.stringify(pending));const result=await call('/storage/claim',pending,{token:''});store({origin:ORIGIN,...result,token:pending.token});sessionStorage.removeItem(pendingKey);return true;
+  const pending=old?.ticket===ticket&&/^[A-Za-z0-9_-]{43}$/.test(old.token||'')?old:{ticket,deviceId:crypto.randomUUID(),token:token(),label:label||'Verwaltungsgerät · '+(navigator.platform||'Browser')};sessionStorage.setItem(pendingKey,JSON.stringify(pending));const result=await call('/storage/claim',pending,{token:''});store({origin:ORIGIN,...result,token:pending.token});sessionStorage.removeItem(pendingKey);return true;
  }
  async function bootstrap(){
   if(booting)return booting;
