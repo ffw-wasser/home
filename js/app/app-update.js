@@ -1,7 +1,8 @@
 /* Startup updates are automatic; manual checks keep the existing work guards. */
 (function(g){
  'use strict';
- const $=id=>document.getElementById(id);
+ const $=id=>document.getElementById(id);let retryTimer;
+ function retry(delay){g.clearTimeout?.(retryTimer);if(!document.hidden)retryTimer=g.setTimeout?.(()=>{void resume();},delay);}
  function blocked(){
   if((typeof currentSessionId!=='undefined'&&currentSessionId)||(typeof currentOperationId!=='undefined'&&currentOperationId))return 'Bitte den laufenden Termin oder Einsatz zuerst abschließen. Danach kannst du aktualisieren.';
   if(typeof oneDriveBusy!=='undefined'&&oneDriveBusy)return 'Cloudflare synchronisiert gerade. Bitte die Speicherung abwarten und erneut aktualisieren.';
@@ -25,11 +26,12 @@
   finally{if(button)button.disabled=false;}
  }
  async function resume(){
-  if(document.hidden||blocked()||!g.AppRelease?.start)return;
+  g.clearTimeout?.(retryTimer);if(document.hidden||!g.AppRelease?.start)return;
+  if(blocked()){retry(5000);return;}
   const ready=g.AppRelease.start({guard:blocked});g.updateOneDriveStartup?.();
-  if(!await ready)g.updateOneDriveStartup?.();
+  if(!await ready){g.updateOneDriveStartup?.();if(g.AppRelease.error)retry(15000);}
  }
- function init(){document.addEventListener('visibilitychange',resume);g.addEventListener?.('pageshow',event=>{if(event.persisted)void resume();});const button=$('app-update-check');if(button)button.onclick=()=>{g.closeCompactMenu?.();void apply();};}
+ function init(){document.addEventListener('visibilitychange',resume);g.addEventListener?.('pageshow',()=>{void resume();});g.addEventListener?.('focus',()=>{void resume();});g.addEventListener?.('online',()=>{void resume();});const button=$('app-update-check');if(button)button.onclick=()=>{g.closeCompactMenu?.();void apply();};}
  g.FFWUpdate={check,apply};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);

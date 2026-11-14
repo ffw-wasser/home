@@ -95,6 +95,15 @@
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
    for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,permanent:row.expires_at===PERMANENT_EXPIRY,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
   }
+  if(path==='/admin/storage-runtime/cleanup'){
+   const now=Date.now(),rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? AND source_hash=? AND (revoked_at IS NOT NULL OR expires_at<=?)').bind(runtime.run,runtime.source_hash,now).all()).results,eligible=[],deletes=[];
+   for(const row of rows)if(await role(env,row)==='application-admin')eligible.push(row);
+   // Keep both D1's statement and bound-parameter budgets small for old histories.
+   for(let offset=0;offset<eligible.length;offset+=20){const chunk=eligible.slice(offset,offset+20),guard=actor?' AND EXISTS(SELECT 1 FROM storage_devices a WHERE a.id=? AND a.token_hash=? AND a.revoked_at IS NULL AND a.expires_at>?)':'';
+    deletes.push(env.DB.prepare('DELETE FROM storage_devices WHERE run=? AND source_hash=? AND (revoked_at IS NOT NULL OR expires_at<=?) AND ('+chunk.map(()=>'(id=? AND label=?)').join(' OR ')+') AND EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)'+guard).bind(runtime.run,runtime.source_hash,now,...chunk.flatMap(row=>[row.id,row.label]),runtime.run,runtime.source_hash,...(actor?[actor.id,actor.token_hash,now]:[])));
+   }
+   const results=deletes.length?await env.DB.batch(deletes):[];return {ok:true,removed:results.reduce((sum,row)=>sum+Number(row.meta.changes),0)};
+  }
   if(path==='/admin/storage-runtime/rename'){
    if(!uuid(data.deviceId)||typeof data.label!=='string'||!data.label.trim()||data.label.trim().length>100||/[\x00-\x1f\x7f]/.test(data.label))fail('Bitte eine Gerätebezeichnung mit 1 bis 100 Zeichen eingeben.',400);
    const row=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND run=? AND source_hash=?').bind(data.deviceId,runtime.run,runtime.source_hash).first();

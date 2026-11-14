@@ -23595,6 +23595,15 @@ g.PortalHydrants={schema,route};
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
    for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,permanent:row.expires_at===PERMANENT_EXPIRY,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
   }
+  if(path==='/admin/storage-runtime/cleanup'){
+   const now=Date.now(),rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? AND source_hash=? AND (revoked_at IS NOT NULL OR expires_at<=?)').bind(runtime.run,runtime.source_hash,now).all()).results,eligible=[],deletes=[];
+   for(const row of rows)if(await role(env,row)==='application-admin')eligible.push(row);
+   // Keep both D1's statement and bound-parameter budgets small for old histories.
+   for(let offset=0;offset<eligible.length;offset+=20){const chunk=eligible.slice(offset,offset+20),guard=actor?' AND EXISTS(SELECT 1 FROM storage_devices a WHERE a.id=? AND a.token_hash=? AND a.revoked_at IS NULL AND a.expires_at>?)':'';
+    deletes.push(env.DB.prepare('DELETE FROM storage_devices WHERE run=? AND source_hash=? AND (revoked_at IS NOT NULL OR expires_at<=?) AND ('+chunk.map(()=>'(id=? AND label=?)').join(' OR ')+') AND EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)'+guard).bind(runtime.run,runtime.source_hash,now,...chunk.flatMap(row=>[row.id,row.label]),runtime.run,runtime.source_hash,...(actor?[actor.id,actor.token_hash,now]:[])));
+   }
+   const results=deletes.length?await env.DB.batch(deletes):[];return {ok:true,removed:results.reduce((sum,row)=>sum+Number(row.meta.changes),0)};
+  }
   if(path==='/admin/storage-runtime/rename'){
    if(!uuid(data.deviceId)||typeof data.label!=='string'||!data.label.trim()||data.label.trim().length>100||/[\x00-\x1f\x7f]/.test(data.label))fail('Bitte eine Gerätebezeichnung mit 1 bis 100 Zeichen eingeben.',400);
    const row=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND run=? AND source_hash=?').bind(data.deviceId,runtime.run,runtime.source_hash).first();
@@ -23636,7 +23645,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"7404b1553c12eb9aeedfbc7cadb5079f39b2d03715c72111c77a16e188c338c8",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"c91749aa154eaca88be4cb904eb48d0311b658bc55f0d0a15b036187c3fd8419",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

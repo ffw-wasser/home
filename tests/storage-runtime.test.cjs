@@ -110,3 +110,22 @@ test('Device naming updates only the encrypted label, preserves access, rejects 
  assert.equal((await f.api('/admin/storage-runtime/devices')).data.devices.find(d=>d.id===id).label,'Synthetic owner · Laptop');assert.equal((await f.api('/storage/config')).status,200);
  await f.api('/admin/storage-runtime/revoke',{deviceId:id});assert.equal((await f.api('/admin/storage-runtime/rename',{deviceId:id,label:'Blocked'})).status,401);
 });
+
+test('Cleanup removes only inactive administration grants of the active source; data, active devices and used tickets remain safe',async t=>{
+ const f=await setup(t),result=await activate(f.sourceDirectory,f.options),scope={source:f.source,run:result.run},records=[];
+ for(const kind of ['active','revoked','expired','state','foreign']){const record={...scope,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Synthetic '+kind,expiresAt:Date.now()+60000,...(kind==='state'?{}:{access:'application-admin'})};assert.equal((await f.api('/admin/storage-state/pair',record,f.env.ADMIN_TOKEN)).status,200);records.push({...record,kind});if(kind!=='active')f.db.prepare('UPDATE storage_devices SET revoked_at=?,expires_at=?,source_hash=? WHERE id=?').run(kind==='expired'?null:1,kind==='expired'?0:record.expiresAt,kind==='foreign'?'f'.repeat(64):f.source,record.deviceId);}
+ const ticket=randomBytes(32).toString('base64url'),claim={ticket,deviceId:randomUUID(),token:randomBytes(32).toString('base64url'),label:'Synthetic previous tablet'};await f.api('/admin/storage-runtime/pairing',{ticket,expiresAt:Date.now()+120000});await f.api('/storage/claim',claim,'');await f.api('/admin/storage-runtime/revoke',{deviceId:claim.deviceId});
+ const before=f.db.prepare('SELECT * FROM storage_states').all(),files=f.db.prepare('SELECT * FROM storage_files').all(),puts=f.puts();
+ assert.equal((await f.api('/admin/storage-runtime/cleanup',{},'')).status,401);assert.equal((await f.api('/admin/storage-runtime/cleanup',{},records.find(x=>x.kind==='state').token)).status,401);
+ const cleaned=await f.api('/admin/storage-runtime/cleanup');assert.equal(cleaned.status,200);assert.equal(cleaned.data.removed,3);
+ for(const record of records)assert.equal(Boolean(f.db.prepare('SELECT id FROM storage_devices WHERE id=?').get(record.deviceId)),!['revoked','expired'].includes(record.kind));
+ assert.equal((await f.api('/storage/config')).status,200);assert.equal((await f.api('/storage/claim',claim,'')).status,401,'used pairing cannot recreate a deleted grant');assert.equal((await f.api('/storage/config',{},claim.token)).status,401);assert.equal((await f.api('/admin/storage-runtime/cleanup')).data.removed,0);assert.deepEqual(f.db.prepare('SELECT * FROM storage_states').all(),before);assert.deepEqual(f.db.prepare('SELECT * FROM storage_files').all(),files);assert.equal(f.puts(),puts);
+});
+test('Cleanup rechecks actor revocation inside the deletion batch',async t=>{
+ const f=await setup(t);await activate(f.sourceDirectory,f.options);const candidate=f.credential.deviceId;await activate(f.sourceDirectory,f.options);await f.api('/admin/storage-runtime/revoke',{deviceId:candidate});f.race(()=>f.db.prepare('UPDATE storage_devices SET revoked_at=1 WHERE id=?').run(f.credential.deviceId));const result=await f.api('/admin/storage-runtime/cleanup');assert.equal(result.data.removed,0);assert.ok(f.db.prepare('SELECT id FROM storage_devices WHERE id=?').get(candidate));assert.equal((await f.api('/admin/storage-runtime/cleanup')).status,401);
+});
+test('Cleanup handles long device histories within the per-request statement budget',async t=>{
+ const f=await setup(t);await activate(f.sourceDirectory,f.options);const row=f.db.prepare('SELECT * FROM storage_devices WHERE id=?').get(f.credential.deviceId);
+ for(let i=0;i<80;i++){const id=randomUUID(),label=await f.context.CentralLedger.seal(f.env,{label:'Synthetic old device',access:'application-admin'},'storage-device:'+id);f.db.prepare('INSERT INTO storage_devices(id,run,source_hash,token_hash,registration_hash,label,created_at,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?,?,?)').run(id,row.run,row.source_hash,'old-token-'+i,'old-registration-'+i,label,Date.now(),0,1);}
+ const result=await f.api('/admin/storage-runtime/cleanup');assert.equal(result.status,200);assert.equal(result.data.removed,80);assert.equal((await f.api('/storage/config')).status,200);
+});
