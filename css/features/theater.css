@@ -9,7 +9,7 @@
 .theater-entry{margin:0 0 20px;background:#075baf;color:white;min-height:60px}
 .theater-mode>.deckel-header,.theater-mode #deckel-main>#status,.theater-mode #deckel-main>#portal-priority,.theater-mode #deckel-main>#deckel-update-banner,.theater-mode #deckel-main>#installSection,.theater-mode #deckel-main>.privacy-note{display:none!important}
 .theater-mode{background:#f1f5f9;color:#10263f}
-.theater-mode #deckel-main{padding:env(safe-area-inset-top) 12px 180px;scroll-behavior:auto;background:#f1f5f9;box-shadow:none;min-height:100dvh;box-sizing:border-box}
+.theater-mode #deckel-main{padding:env(safe-area-inset-top) 12px var(--theater-footer-space,220px);scroll-behavior:auto;background:#f1f5f9;box-shadow:none;min-height:100dvh;box-sizing:border-box}
 #portal-page-theater{padding-top:6px}
 .theater-phone-header{display:grid;grid-template-columns:minmax(0,1fr) auto 44px;align-items:center;gap:10px;padding:8px 0 14px;border-bottom:1px solid #c8d5e2}
 .theater-mode #theater-phone-title{font-size:20px;line-height:1.25;margin:0;color:#10263f;overflow-wrap:anywhere}
@@ -245,15 +245,18 @@
 .theater-preview-dialog .theater-product-add strong{overflow-wrap:anywhere}
 /* Phone shortcuts leave the full catalogue in its original order. */
 .theater-quick{margin:12px 0}
-.theater-quick>h3{margin-bottom:4px}
+.theater-phone .theater-quick>h3{margin:0 0 4px;padding:0;background:transparent;color:#143e65;font-size:.95rem;font-weight:800}
 .theater-quick>p{font-size:.8rem;margin:4px 0 8px;color:#435a70}
 .theater-quick-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .theater .theater-quick-buttons button{min-width:0;font-size:.88rem;line-height:1.3;background:#e4eef7;color:#143e65;border-color:#9fb7ce;white-space:normal;text-align:left;overflow-wrap:anywhere}
-.theater-last-order{padding:10px 12px;background:#e8f5ed;border:1px solid #9cbea9;border-radius:10px;font-size:.85rem;color:#205333;overflow-wrap:anywhere}
-.theater .theater-undo{min-height:44px;width:auto;margin:0 0 8px;padding:6px 10px;font-size:.85rem;color:#143e65;background:#edf4fb}
+.theater-phone .theater-last-order{padding:8px 10px;background:#e8f5ed;border:1px solid #9cbea9;border-radius:10px;font-size:.85rem;color:#205333;overflow-wrap:anywhere}
+.theater .theater-order-summary .theater-undo{min-height:40px;width:auto;margin:0;padding:6px 8px;font-size:.78rem;border:1px solid #b6c8da;text-decoration:none;color:#143e65;background:#edf4fb}
 #theater-phone-section[data-mode=cancellation] .theater-phone-header{position:sticky;top:0;z-index:7;background:#8a1720;color:#fff;border-radius:12px;padding:10px}
 #theater-phone-section[data-mode=cancellation] .theater-phone-header h2{color:#fff}
 #theater-phone-section[data-mode=cancellation] .theater-phone-header h2::before{content:'STORNO · ';font-weight:900}
 #theater-phone-section[data-mode=cancellation] .theater-category-nav{position:static}
 #theater-phone-section[data-mode=cancellation] .theater-phone-footer{border-top:4px solid #8a1720;background:#fff1ef}
 #theater-phone-section[data-mode=cancellation] #theater-phone-confirm{background:#8a1720;border-color:#8a1720;color:#fff}
+
+.theater-mode .theater-phone-footer{max-height:60svh;overflow-y:auto}
+.theater-phone .theater-selection #theater-phone-discard{width:auto;margin:6px 12px 10px;min-height:40px;font-size:.85rem;background:#edf4fb;color:#143e65}
