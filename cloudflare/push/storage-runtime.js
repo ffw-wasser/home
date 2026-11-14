@@ -100,9 +100,14 @@
    for(const row of rows)if(await role(env,row)==='application-admin')eligible.push(row);
    // Keep both D1's statement and bound-parameter budgets small for old histories.
    for(let offset=0;offset<eligible.length;offset+=20){const chunk=eligible.slice(offset,offset+20),guard=actor?' AND EXISTS(SELECT 1 FROM storage_devices a WHERE a.id=? AND a.token_hash=? AND a.revoked_at IS NULL AND a.expires_at>?)':'';
-    deletes.push(env.DB.prepare('DELETE FROM storage_devices WHERE run=? AND source_hash=? AND (revoked_at IS NOT NULL OR expires_at<=?) AND ('+chunk.map(()=>'(id=? AND label=?)').join(' OR ')+') AND EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)'+guard).bind(runtime.run,runtime.source_hash,now,...chunk.flatMap(row=>[row.id,row.label]),runtime.run,runtime.source_hash,...(actor?[actor.id,actor.token_hash,now]:[])));
+    const predicate='run=? AND source_hash=? AND (revoked_at IS NOT NULL OR expires_at<=?) AND ('+chunk.map(()=>'(id=? AND label=?)').join(' OR ')+') AND EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)'+guard,args=[runtime.run,runtime.source_hash,now,...chunk.flatMap(row=>[row.id,row.label]),runtime.run,runtime.source_hash,...(actor?[actor.id,actor.token_hash,now]:[])];
+    // Receipts reference the device. Remove only its retry acknowledgements in
+    // the same transaction, with the same eligibility and authorization guards.
+    // Application state, version history and active-device receipts stay intact.
+    deletes.push(env.DB.prepare('DELETE FROM storage_state_receipts WHERE device_id IN (SELECT id FROM storage_devices WHERE '+predicate+')').bind(...args));
+    deletes.push(env.DB.prepare('DELETE FROM storage_devices WHERE '+predicate).bind(...args));
    }
-   const results=deletes.length?await env.DB.batch(deletes):[];return {ok:true,removed:results.reduce((sum,row)=>sum+Number(row.meta.changes),0)};
+   const results=deletes.length?await env.DB.batch(deletes):[];return {ok:true,removed:results.reduce((sum,row,index)=>sum+(index%2?Number(row.meta.changes):0),0)};
   }
   if(path==='/admin/storage-runtime/rename'){
    if(!uuid(data.deviceId)||typeof data.label!=='string'||!data.label.trim()||data.label.trim().length>100||/[\x00-\x1f\x7f]/.test(data.label))fail('Bitte eine Gerätebezeichnung mit 1 bis 100 Zeichen eingeben.',400);
