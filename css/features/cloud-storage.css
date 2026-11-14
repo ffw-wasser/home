@@ -148,3 +148,5 @@
 #cloudPairScanner video{display:block;width:100%;max-height:50dvh;object-fit:contain;background:#101c2c;border-radius:12px}#cloudPairScanner video[hidden]{display:none}
 
 #cloudMicrosoftSettings[hidden]{display:none!important}
+
+.cloud-device-card{padding:18px;margin:12px 0;border:1px solid #cbd5df;border-radius:14px;background:#fff;overflow-wrap:anywhere}.cloud-device-card>strong{display:block;font-size:1.1rem}.cloud-device-card button{margin:5px 8px 5px 0;white-space:normal}.cloud-device-card form{margin-top:12px}.cloud-device-card label{display:block;font-weight:700}

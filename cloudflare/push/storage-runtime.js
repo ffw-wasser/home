@@ -95,7 +95,18 @@
    const rows=(await env.DB.prepare('SELECT * FROM storage_devices WHERE run=? ORDER BY created_at DESC').bind(runtime.run).all()).results,devices=[];
    for(const row of rows){const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access==='application-admin')devices.push({id:row.id,label:info.label,expiresAt:row.expires_at,permanent:row.expires_at===PERMANENT_EXPIRY,revoked:row.revoked_at!==null,createdAt:row.created_at});}return {devices};
   }
+  if(path==='/admin/storage-runtime/rename'){
+   if(!uuid(data.deviceId)||typeof data.label!=='string'||!data.label.trim()||data.label.trim().length>100||/[\x00-\x1f\x7f]/.test(data.label))fail('Bitte eine Gerätebezeichnung mit 1 bis 100 Zeichen eingeben.',400);
+   const row=await env.DB.prepare('SELECT * FROM storage_devices WHERE id=? AND run=? AND source_hash=?').bind(data.deviceId,runtime.run,runtime.source_hash).first();
+   if(!row)fail('Gerät nicht gefunden.',404);
+   const info=await L.open(env,row.label,'storage-device:'+row.id);if(info.access!=='application-admin')fail('Gerät nicht gefunden.',404);
+   const payload=await L.seal(env,{...info,label:data.label.trim()},'storage-device:'+row.id),now=Date.now();
+   const guard=actor?' AND EXISTS(SELECT 1 FROM storage_devices a WHERE a.id=? AND a.token_hash=? AND a.revoked_at IS NULL AND a.expires_at>?)':'';
+   const saved=await env.DB.prepare('UPDATE storage_devices SET label=? WHERE id=? AND run=? AND source_hash=? AND label=? AND EXISTS(SELECT 1 FROM storage_runtime WHERE run=? AND source_hash=?)'+guard).bind(payload,row.id,runtime.run,runtime.source_hash,row.label,runtime.run,runtime.source_hash,...(actor?[actor.id,actor.token_hash,now]:[])).run();
+   if(!saved.meta.changes)fail('Gerätebezeichnung wurde nicht bestätigt. Bitte Liste aktualisieren.');return {ok:true};
+  }
   if(path==='/admin/storage-runtime/revoke'){
+
    if(!uuid(data.deviceId))fail('Ungültige Gerätekennung.',400);
    await env.DB.prepare('UPDATE storage_devices SET revoked_at=COALESCE(revoked_at,?) WHERE id=? AND run=? AND source_hash=?').bind(Date.now(),data.deviceId,runtime.run,runtime.source_hash).run();return {ok:true};
   }

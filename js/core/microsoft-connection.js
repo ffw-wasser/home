@@ -8,11 +8,11 @@
   const response=await fetch(ORIGIN+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),cache:'no-store',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(15000)});
   const value=await response.json();if(!response.ok)throw Error(value.error||'Microsoft-Verbindung konnte nicht eingerichtet werden.');return value;
  }
- async function login(){
+ async function login(label='Microsoft-Verwaltungsgerät'){
   const cfg=await request('/storage/microsoft/config',{});
   if(!/^[a-f0-9-]{36}$/i.test(cfg.clientId))throw Error('Microsoft-Anmeldung noch nicht eingerichtet.');
   const verifier=random(),state=random(),challenge=b64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
-  sessionStorage.setItem(KEY,JSON.stringify({verifier,state,clientId:cfg.clientId,createdAt:Date.now()}));
+  sessionStorage.setItem(KEY,JSON.stringify({verifier,state,clientId:cfg.clientId,label,createdAt:Date.now()}));
   const url=new URL(AUTH+'/authorize');url.search=new URLSearchParams({client_id:cfg.clientId,response_type:'code',redirect_uri:REDIRECT,response_mode:'query',scope:SCOPE,code_challenge:challenge,code_challenge_method:'S256',state}).toString();location.assign(url.href);
  }
  async function finish(){
@@ -25,7 +25,7 @@
   const cfg=await request('/storage/microsoft/config',{});if(cfg.clientId!==saved.clientId)throw Error('Microsoft-Einrichtung wurde geändert. Bitte erneut anmelden.');
   const response=await fetch(AUTH+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:saved.clientId,grant_type:'authorization_code',code:query.get('code'),redirect_uri:REDIRECT,code_verifier:saved.verifier,scope:SCOPE}),cache:'no-store',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(15000)});
   const access=await response.json();if(!response.ok||!access.access_token)throw Error('Microsoft-Anmeldung fehlgeschlagen. Bitte erneut anmelden.');
-  const value=await request('/storage/microsoft/enroll',{accessToken:access.access_token,deviceId:crypto.randomUUID(),token:random(),label:'Microsoft-Verwaltungsgerät'});
+  const value=await request('/storage/microsoft/enroll',{accessToken:access.access_token,deviceId:crypto.randomUUID(),token:random(),label:saved.label||'Microsoft-Verwaltungsgerät'});
   await g.CloudStorage.acceptMicrosoft(value);return true;
  }
  g.MicrosoftConnection={login,finish};
