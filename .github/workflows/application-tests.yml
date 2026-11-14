@@ -19,6 +19,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  theater-review:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci --ignore-scripts
+      - name: Verify theater flows and refresh help screenshots
+        run: node scripts/capture-help-screens.cjs --only=theater
+      - name: Keep theater visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h2o-theater-review
+          path: |
+            assets/help/guide/geraetehaus-theater.jpg
+            assets/help/guide/h2o-theater.jpg
+            assets/help/guide/screens.json
+            qa/theater-review
+          retention-days: 7
   tests:
     runs-on: ubuntu-latest
     # Match package-lock.json; browsers and OS libraries are preinstalled.

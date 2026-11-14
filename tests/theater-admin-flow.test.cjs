@@ -47,3 +47,22 @@ test('Später Import darf nach Sperren der Verwaltung keinen anderen Entwurf üb
 test('Auch die erste Veranstaltung ohne Vorjahr besitzt eine gültige Kennung',()=>{
  const f=fixture();f.c.edit();assert.match(f.c.draft.id,/^[A-Za-z0-9_-]{1,80}$/);assert.equal(f.c.draft.version,0);assert.equal(f.c.draft.open,false);
 });
+
+function cashFixture(remaining,{next=true,query='',fail=false}={}){
+ const f=fixture();Object.assign(f.c,{current:{id:'event'},selectedMember:'person',orders:[],noticeIncomingOrders(){},liveState(){},paintStats(){},
+  boardMembers:orders=>[...new Set(orders.filter(o=>o.state!=='done').map(o=>o.member))],
+  api:async action=>{if(fail)throw Error('Offline');return action==='list'?{orders:remaining}:{ok:true};}});
+ f.get('cash-next').checked=next;f.get('cash-search').value=query;
+ vm.runInContext(section(' async function mutate(',' function table('),f.c);return f;
+}
+test('Kasse öffnet nach Abschluss verbleibende eigene Bestellungen vor der nächsten Person',async()=>{
+ const f=cashFixture([{member:'other',name:'Andere',state:'open'},{member:'person',name:'Person',state:'open'}]);await f.c.mutate('complete',{});assert.equal(f.c.selectedMember,'person');
+});
+test('Kasse beachtet Personensuche und ausschaltbare Weiterleitung',async()=>{
+ const remaining=[{member:'other',name:'Andere',state:'open'},{member:'match',name:'Max Beispiel',state:'reserved'}];
+ const f=cashFixture(remaining,{query:'max'});await f.c.mutate('complete',{});assert.equal(f.c.selectedMember,'match');
+ for(const options of [{next:false},{query:'niemand'}]){const f=cashFixture(remaining,options);await f.c.mutate('complete',{});assert.equal(f.c.selectedMember,null);}
+});
+test('Fehlgeschlagene Kassenübertragung bleibt bei derselben Person',async()=>{
+ const f=cashFixture([],{fail:true});await f.c.mutate('complete',{});assert.equal(f.c.selectedMember,'person');assert.match(f.messages.at(-1),/Offline/);
+});

@@ -2,10 +2,10 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 function fixture(events=[],handler=null){
  const nodes=new Map();class Node{constructor(){this.children=[];this.dataset={};this.hidden=false;this.value='';this.attrs={};this.style={setProperty(){}};}replaceChildren(...n){this.children=n;}append(...n){this.children.push(...n);}insertBefore(n,b){this.children.splice(this.children.indexOf(b),0,n);}setAttribute(k,v){this.attrs[k]=v;}scrollIntoView(){this.scrolled=true;}}
  const get=id=>{if(!nodes.has(id))nodes.set(id,new Node());return nodes.get(id);};
- const c=vm.createContext({document:{readyState:'complete',getElementById:get,createElement:()=>new Node()},addEventListener(){},sessionStorage:{setItem(){},getItem(){return null;}},H2OPortal:{api:async(path,data)=>handler?handler(path,data):({events})},crypto:require('node:crypto').webcrypto,Intl,confirm:()=>true});
+ const timers=new Map();let timerId=0;const c=vm.createContext({setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),document:{readyState:'complete',getElementById:get,createElement:()=>new Node()},addEventListener(){},sessionStorage:{setItem(){},getItem(){return null;}},H2OPortal:{api:async(path,data)=>handler?handler(path,data):({events})},crypto:require('node:crypto').webcrypto,Intl,confirm:()=>true});
  vm.runInContext(fs.readFileSync('js/features/theater/theater-model.js','utf8'),c);
  vm.runInContext(fs.readFileSync('js/features/theater/theater-phone.js','utf8'),c);
- return {get,load:()=>get('theater-phone-refresh').onclick()};
+ return {get,load:()=>get('theater-phone-refresh').onclick(),tick:async()=>{const callbacks=[...timers.values()];timers.clear();for(const fn of callbacks)await fn();}};
 }
 test('Leere Theaterliste bleibt auch beim wiederholten Laden ein gültiger Leerzustand',async()=>{
  const f=fixture();for(let n=0;n<2;n++){await f.load();assert.match(f.get('theater-phone-status').textContent,/keine Theater-Veranstaltung geöffnet/);assert.equal(f.get('theater-phone-confirm').disabled,true);}
@@ -65,4 +65,38 @@ test('Mobile Bestellübersicht korrigiert die Mengen vor dem Absenden',async()=>
  f.get('theater-phone-selection-items').children[0].children[1].children[0].onclick();
  assert.equal(f.get('theater-phone-selection').hidden,true);
  assert.equal(f.get('theater-phone-confirm').disabled,true);
+});
+
+
+test('Schnellzugriff und Rücknahme wirken nur auf die ungesendete Auswahl',async()=>{
+ const f=fixture([catalog]);await f.load();
+ f.get('theater-phone-quick').children[2].children[0].onclick();
+ assert.equal(f.get('theater-phone-total').textContent,'1 Artikel · 1,50 €');
+ f.get('theater-phone-undo').onclick();assert.equal(f.get('theater-phone-total').textContent,'Gesamt: 0,00 €');
+ assert.equal(f.get('theater-phone-undo').hidden,true);
+});
+test('Quittung zeigt bestätigte Originalpreise; nächste Auswahl beginnt oben und lernt Schnellzugriff',async()=>{
+ const f=fixture([catalog],async(path,data)=>path==='theater/events'?{events:[catalog]}:{ok:true,id:data.requestId});await f.load();
+ f.get('theater-phone-quick').children[2].children[1].onclick();await f.get('theater-phone-confirm').onclick();
+ assert.match(f.get('theater-phone-last').textContent,/1 × Testessen.*5,00/);
+ assert.match(f.get('theater-phone-status').textContent,/gespeichert · für die Kasse bereit/);
+ assert.equal(f.get('theater-phone-section').scrolled,true);
+ assert.match(f.get('theater-phone-quick').children[2].children[0].textContent,/Testessen/);
+ assert.equal(f.get('theater-phone-undo').hidden,true);f.get('theater-phone-undo').onclick();assert.equal(f.get('theater-phone-total').textContent,'Gesamt: 0,00 €');
+});
+test('Unbestätigte Übertragung sperrt auch Rücknahme und Schnellzugriff',async()=>{
+ const f=fixture([catalog],async(path)=>{if(path==='theater/events')return {events:[catalog]};throw Error('Offline');});await f.load();card(f).children[0].onclick();await f.get('theater-phone-confirm').onclick();
+ assert.equal(f.get('theater-phone-undo').disabled,true);f.get('theater-phone-undo').onclick();assert.equal(f.get('theater-phone-total').textContent,'1 Artikel · 1,50 €');
+ assert.equal(f.get('theater-phone-quick').children[2].children[0].disabled,true);
+});
+test('Automatischer Preislistenabgleich entfernt Ausverkauftes, bewahrt andere Mengen und warnt',async()=>{
+ let latest=catalog;const f=fixture([],async()=>({events:[latest]}));await f.load();card(f).children[0].onclick();f.get('theater-phone-quick').children[2].children[1].onclick();
+ latest={...catalog,version:2,items:catalog.items.map((p,i)=>({...p,active:i!==0}))};await f.tick();
+ assert.equal(f.get('theater-phone-total').textContent,'1 Artikel · 5,00 €');assert.match(f.get('theater-phone-status').textContent,/Preisliste geändert/);
+ assert.equal(f.get('theater-phone-undo').hidden,true);assert.equal(f.get('theater-phone-quick').children[2].children.length,1);
+});
+test('Später Preislistenabruf überschreibt keine bestätigte Bestellung',async()=>{
+ let calls=0,finish;const f=fixture([],async(path,data)=>{if(path==='theater/order')return {ok:true,id:data.requestId};if(++calls===1)return {events:[catalog]};return new Promise(resolve=>finish=resolve);});await f.load();
+ const refresh=f.tick();card(f).children[0].onclick();await f.get('theater-phone-confirm').onclick();finish({events:[]});await refresh;
+ assert.match(f.get('theater-phone-last').textContent,/Testartikel/);assert.equal(f.get('theater-phone-quick').hidden,false);
 });
