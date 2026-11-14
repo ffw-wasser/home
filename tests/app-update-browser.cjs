@@ -2,7 +2,8 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
 const root=path.resolve(__dirname,'..'),release=JSON.parse(fs.readFileSync(path.join(root,'app-release.json'),'utf8')),next=release.build.replace(/\.(\d+)$/,(_,n)=>'.'+(Number(n)+1));
 (async()=>{const browser=await chromium.launch({headless:true});try{
- for(const portal of [false,true])for(const mode of ['current','new','offline','stale','loop','slow','resume']){
+ for(const portal of [false,true])for(const mode of ['current','new','offline','stale','loop','slow','resume','resume-busy','focus','online']){
+  if(portal&&['resume-busy','focus','online'].includes(mode))continue;
   const page=await browser.newPage({serviceWorkers:'block',viewport:{width:390,height:844}}),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
   const file=portal?'deckel.html':'index.html',parameter=portal?'_h2o_refresh':'_ffw_refresh',meta=portal?'deckel-build':'ffw-build';let remote=['new','stale','loop'].includes(mode)?next:release.build,unblock;const hold=new Promise(resolve=>unblock=resolve);
   await page.route('**/*',async route=>{const request=route.request(),u=new URL(request.url());if(u.origin!=='http://localhost')return route.abort();if(u.pathname==='/app-release.json'){requests.push({url:request.url(),headers:request.headers()});if(mode==='offline')return route.abort();if(mode==='slow')await hold;return route.fulfill({json:{...release,build:remote}});}const target=path.resolve(root,'.'+u.pathname);if(!target.startsWith(root+path.sep)||!fs.existsSync(target))return route.fulfill({status:404,body:'Missing'});if(u.pathname==='/'+file){let html=fs.readFileSync(target,'utf8');if((!request.isNavigationRequest()||u.searchParams.has(parameter))&&mode!=='stale'&&mode!=='loop')html=html.replace('name="'+meta+'" content="'+release.build+'"','name="'+meta+'" content="'+remote+'"');return route.fulfill({body:html,contentType:'text/html'});}return route.fulfill({path:target});});
@@ -32,6 +33,12 @@ const root=path.resolve(__dirname,'..'),release=JSON.parse(fs.readFileSync(path.
    remote=next;await page.evaluate(portal=>{if(portal)DeckelActions.hasUnsaved=()=>true;else currentSessionId='synthetic-running-term';document.dispatchEvent(new Event('visibilitychange'));},portal);
    assert.equal(new URL(page.url()).searchParams.has(parameter),false,'open work defers resume updates');
    await page.evaluate(portal=>{if(portal)DeckelActions.hasUnsaved=()=>false;else currentSessionId='';document.querySelectorAll('dialog[open]').forEach(d=>d.close());document.dispatchEvent(new Event('visibilitychange'));},portal);
+   await page.waitForURL(new RegExp(parameter+'='+next.replaceAll('.','\\.')));await page.waitForFunction(()=>!AppRelease.pending);assert.equal(await page.locator('meta[name="'+meta+'"]').getAttribute('content'),next);
+  }
+  if(['resume-busy','focus','online'].includes(mode)){
+   remote=next;if(mode==='resume-busy'){
+    await page.evaluate(()=>{oneDriveBusy=true;document.dispatchEvent(new Event('visibilitychange'));});assert.equal(new URL(page.url()).searchParams.has(parameter),false);await page.evaluate(()=>oneDriveBusy=false);
+   }else await page.evaluate(event=>window.dispatchEvent(new Event(event)),mode);
    await page.waitForURL(new RegExp(parameter+'='+next.replaceAll('.','\\.')));await page.waitForFunction(()=>!AppRelease.pending);assert.equal(await page.locator('meta[name="'+meta+'"]').getAttribute('content'),next);
   }
   assert.deepEqual(errors,[]);console.log('PASS startup update: '+file+' / '+mode);await page.close();
