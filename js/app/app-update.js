@@ -31,7 +31,7 @@
   const ready=g.AppRelease.start({guard:blocked});g.updateOneDriveStartup?.();
   if(!await ready){g.updateOneDriveStartup?.();if(g.AppRelease.error)retry(15000);}
  }
- function init(){document.addEventListener('visibilitychange',resume);g.addEventListener?.('pageshow',()=>{void resume();});g.addEventListener?.('focus',()=>{void resume();});g.addEventListener?.('online',()=>{void resume();});const button=$('app-update-check');if(button)button.onclick=()=>{g.closeCompactMenu?.();void apply();};}
+ function init(){document.addEventListener('visibilitychange',resume);g.addEventListener?.('pageshow',event=>{if(event.persisted)void resume();});g.addEventListener?.('focus',()=>{void resume();});g.addEventListener?.('online',()=>{void resume();});const button=$('app-update-check');if(button)button.onclick=()=>{g.closeCompactMenu?.();void apply();};}
  g.FFWUpdate={check,apply};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
