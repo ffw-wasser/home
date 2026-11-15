@@ -92,10 +92,10 @@ function renderMembers() {
   const legendItems=sessionType==="Einsatz"
     ? `<span><b class="legend-a">✓</b>Anwesend</span>`
     : sessionType==="Allgemeine Probe"
-      ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
+      ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Absage</span><span><b class="legend-o">O</b>Organisation</span>`
       : ["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)
-        ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
-        : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
+        ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Absage</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
+        : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Absage</span>`;
   let headingLegend=byId("stage2StatusLegend");
   if(!headingLegend && byId("stage2Heading")){
     headingLegend=document.createElement("aside");
@@ -118,7 +118,7 @@ function renderMembers() {
 function attendanceStartState(){
   const running=Boolean(currentSessionId||currentOperationId),event=window.PortalAdmin?.selectedEvent?.(),type=running?sessionType:pendingSessionType||event?.attendanceType||(event?.sessionType==="Probe"?"Allgemeine Probe":event?.sessionType)||"";
   const rows=todayEntries(),pending=pendingMemberStatuses.size;
-  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · "):""};
+  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" Absagen"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · "):""};
 }
 function syncAttendanceStart(){
   const card=byId('attendanceStartCard');if(!card)return;
@@ -157,7 +157,7 @@ function updatePrimaryAction() {
   button.title=pending?"Bitte zuerst die Markierungen übernehmen.":hasEntries?"Nächsten Schritt öffnen":"Mindestens eine Teilnahme erfassen";
   const save=byId('saveButton');if(save)save.hidden=pending===0;
   const summary=byId("step3ActionSummary");
-  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
+  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" Absagen · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
   syncAttendanceStart();window.PortalAdmin?.attendanceChanged?.();
 }
 function backToMembers() {
