@@ -123,8 +123,9 @@ class WidgetPreviewTest {
         val shortCalendarScenarios = listOf(Triple(330, 150, 1.3f), Triple(330, 160, 1.3f)).flatMap { size -> listOf("today", "tomorrow").map { size to it } }
         val monthScenarios = listOf(Triple(110, 48, 1.3f), Triple(170, 170, 1.3f), Triple(330, 345, 1.3f)).map { it to "long-month" }
         val previewOnly = InstrumentationRegistry.getArguments().getString("widgetPreviewOnly") == "true"
-        val selectedScenarios = if (previewOnly) listOf(Triple(330, 230, 1f), Triple(330, 110, 1f)).flatMap { size -> listOf("sketch-reference", "reminded", "reminded-maybe").map { size to it } }
-            else shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }
+        val crestScenarios = listOf(Triple(170, 170, 1f), Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.5f)).map { it to "crest-reference" }
+        val selectedScenarios = if (previewOnly) crestScenarios + listOf(Triple(330, 230, 1f), Triple(330, 110, 1f)).flatMap { size -> listOf("sketch-reference", "reminded", "reminded-maybe").map { size to it } }
+            else crestScenarios + shortCalendarScenarios + sketchScenarios + scenarios + monthScenarios + listOf(Triple(330, 170, 1f), Triple(330, 345, 1f), Triple(330, 170, 1.3f)).flatMap { size -> listOf("saving-yes", "saving-excused").map { size to it } }
         for (exactSize in if (previewOnly) listOf(true) else listOf(false, true)) for ((dimensions, fixture) in selectedScenarios) {
             val (width, height, fontScale) = dimensions
             val intent = Intent(context, WidgetPreviewActivity::class.java).putExtra("width", width).putExtra("height", height).putExtra("fontScale", fontScale).putExtra("fixture", fixture).putExtra("exactSize", exactSize)
@@ -134,11 +135,24 @@ class WidgetPreviewTest {
                 scenario.onActivity { activity ->
                     val title = activity.findViewById<android.widget.TextView>(R.id.widget_title)
                     assertEquals(height >= 100 || width >= 240 || fixture in listOf("clear", "empty"), title.isShown)
-                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture.startsWith("reminded")) "Probe mit Emmendingen" else if (fixture == "sketch-reference") "Indoor Cycling" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
+                    assertEquals(if (fixture == "clear") "H₂O öffnen, um Termine zu laden." else if (fixture == "empty") "Keine kommenden Termine" else if (fixture == "crest-reference") "Ausschusssitzung im GH" else if (fixture.startsWith("reminded")) "Probe mit Emmendingen" else if (fixture == "sketch-reference") "Indoor Cycling" else if (fixture == "long-title") "Technische Hilfeleistung am Gerätehaus" else if (fixture == "short-title") "Probe" else "Technische Hilfeleistung", title.text.toString())
                     val root = activity.findViewById<android.view.View>(android.R.id.content)
                     assertTrue(root.width > 0 && root.height > 0)
                     val isEvent = fixture !in listOf("clear", "empty")
                     val widget = activity.findViewById<View>(R.id.widget_root)
+                    val crest = activity.findViewById<android.widget.ImageView>(R.id.widget_background_crest)
+                    assertEquals("Only actual events show the background crest", isEvent, crest.isShown)
+                    if (isEvent) {
+                        assertEquals("Crest never consumes event layout space", widget.width, crest.width)
+                        assertEquals("Crest spans widget height", widget.height, crest.height)
+                        assertFalse("Decorative crest cannot intercept taps", crest.isClickable)
+                        assertFalse("Decorative crest cannot take keyboard focus", crest.isFocusable)
+                        assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_NO, crest.importantForAccessibility)
+                        assertEquals(if (width < 240 || fontScale > 1.2f) 0.16f else 0.25f, crest.alpha, 0.01f)
+                        if (fixture !in listOf("reminded", "reminded-maybe", "observation")) {
+                            assertFalse("No duplicate foreground crest", activity.findViewById<View>(R.id.widget_logo).isShown)
+                        }
+                    }
                     assertFalse("Brand heading must not consume calendar space", activity.findViewById<View>(R.id.widget_brand).isShown)
                     if (isEvent && width >= 300 && height in 210..289 && height / fontScale >= 160 && width / fontScale >= 240) {
                         val day = activity.findViewById<TextView>(R.id.widget_day)
@@ -166,7 +180,7 @@ class WidgetPreviewTest {
                     if (fixture == "sketch-reference" && width == 330 && height in 110..139 && fontScale == 1f) {
                         assertTrue("Short wide cards retain all three response buttons", actions)
                         assertTrue("Short wide cards retain clothing", activity.findViewById<View>(R.id.widget_clothing).isShown)
-                        assertTrue("Short wide cards use the free space for a crest", activity.findViewById<View>(R.id.widget_logo).isShown)
+                        assertTrue("Short wide cards retain the background crest", activity.findViewById<View>(R.id.widget_background_crest).isShown)
                         assertEquals("The compact subject remains on one line", 1, title.lineCount)
                     }
                     if (fixture == "sketch-reference" && width == 330 && height >= 140) {
@@ -176,12 +190,8 @@ class WidgetPreviewTest {
                         selector.getLocationOnScreen(selectorPoint); widget.getLocationOnScreen(widgetPoint)
                         assertTrue("The whole selector stays inside the widget", selectorPoint[1] >= widgetPoint[1] && selectorPoint[1] + selector.height <= widgetPoint[1] + widget.height)
                         if (fontScale == 1f && height >= 160) {
-                            val logo = activity.findViewById<View>(R.id.widget_logo)
-                            val details = activity.findViewById<View>(R.id.widget_details)
-                            val logoPoint = IntArray(2); val detailsPoint = IntArray(2)
-                            logo.getLocationOnScreen(logoPoint); details.getLocationOnScreen(detailsPoint)
-                            assertTrue("The crest remains visible at a useful size", logo.isShown && logo.width / activity.resources.displayMetrics.density >= 47)
-                            assertTrue("The crest never overlaps the subject", detailsPoint[0] + details.width <= logoPoint[0])
+                            assertFalse("The decorative crest no longer occupies a text column", activity.findViewById<View>(R.id.widget_logo).isShown)
+                            assertTrue("The background crest remains visible", activity.findViewById<View>(R.id.widget_background_crest).isShown)
                             assertEquals("Indoor Cycling fits on one line like the iPhone reference", 1, title.lineCount)
                         }
                     }
@@ -229,7 +239,7 @@ class WidgetPreviewTest {
                             assertTrue("Roomy previews use larger readable headings", title.textSize / scaled >= 29f)
                             assertTrue("Roomy previews enlarge the calendar proportionally", dateCard.width / density >= 72f)
                             assertTrue("Roomy previews enlarge metadata", activity.findViewById<TextView>(R.id.widget_location).textSize / scaled >= 15f)
-                            assertTrue("Roomy previews enlarge the crest", activity.findViewById<View>(R.id.widget_logo).width / density >= 55f)
+                            assertEquals("The background crest uses the full widget canvas", widget.width, activity.findViewById<View>(R.id.widget_background_crest).width)
                         }
                         val aspect = dateCard.height.toFloat() / dateCard.width
                         assertTrue("The calendar sheet keeps iPhone-like proportions: $aspect", aspect in 1.05f..1.5f)
@@ -272,8 +282,8 @@ class WidgetPreviewTest {
                         }
                     }
                     if (isEvent && width >= 300 && height >= 290 && height / fontScale >= 250 && fontScale <= 1.2f) {
-                        val logo = activity.findViewById<View>(R.id.widget_logo)
-                        assertTrue("Large widgets retain a larger crest", logo.isShown && logo.width / activity.resources.displayMetrics.density >= 39)
+                        val logo = activity.findViewById<View>(R.id.widget_background_crest)
+                        assertTrue("Large widgets retain a full-height background crest", logo.isShown && logo.height == widget.height)
                         assertEquals("Large headings are not squeezed by the crest", 0, activity.findViewById<View>(R.id.widget_details).paddingRight)
                     }
                     val bindings = activity.findViewById<View>(R.id.widget_bindings)
