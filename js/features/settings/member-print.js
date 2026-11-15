@@ -51,7 +51,7 @@
   // Gleiche Datenbasis wie die bestehende Statistik: abgeschlossene Berichte aus der Historie.
   // Ein nicht dokumentierter Einsatz ist KEINE unentschuldigte Fehlzeit.
   const DRILL_TYPES=new Set(['Allgemeine Probe','Probe','Sonderprobe','Unterricht']);
-  const ATTENDANCE_STATES=new Set(['Anwesend','Absage','Fehlt']);
+  const ATTENDANCE_STATES=new Set(['Anwesend','Entschuldigt','Fehlt']);
   const normalizedName=value=>String(value||'').normalize('NFC').trim().replace(/\s+/g,' ').replace(/\s*,\s*/g,', ').toLocaleLowerCase('de-DE');
   const namesOf=person=>new Set([
     String(person.lastName||'')+', '+String(person.firstName||''),
@@ -119,7 +119,7 @@
     return '<section class="member-print-participation"><h2>Probe- und Einsatzteilnahme</h2>'+
       '<p class="member-print-participation-period">'+(year!==null?'Kalenderjahr '+year:'Alle verfügbaren abgeschlossenen Berichte')+'</p>'+
       '<div class="member-print-chart-grid">'+
-      chartCard('Proben & Unterricht',[d.present,d.excused,d.missing],['Anwesend','Entschuldigt','Fehlt'],
+      chartCard('Proben & Unterricht',[d.present,d.excused,d.missing],['Anwesend','Absage','Fehlt'],
         d.total+' betreffende Termine · „Betrifft nicht“ ausgeschlossen')+
       chartCard('Einsätze',[o.present,o.other],['Teilgenommen','Nicht als Teilnehmer erfasst'],
         o.total+' dokumentierte Einsätze · Keine Aussage über Entschuldigung oder Dienstpflicht')+
