@@ -48,3 +48,12 @@ Native Builds und echte Renderings erfolgen durch die bestehenden PR-Workflows
 Die Renderbilder liegen in deren Actions-Artefakten. Ein erfolgreicher Build
 ersetzt keinen physischen Gerätevergleich. TestFlight-/Store-Veröffentlichung
 und neue Store-Buildnummern erfolgen erst im gesonderten Veröffentlichungsablauf.
+
+## Veröffentlichung – Build 1047
+
+Die freigegebene Widgetdarstellung wird als nativer Build 1047 für beide
+Plattformen bereitgestellt. Der einmalige Release-Workflow prüft den exakten
+PR-Stand und erfolgreiche allgemeine, iOS- und Android-Prüfungen, bevor er den
+bestehenden TestFlight-Upload aufruft und das signierte Android-App-Bundle erstellt.
+Der Android-Store-Upload erfolgt wie bisher manuell. Der TestFlight-Updatehinweis
+wird erst nach bestätigter Installierbarkeit und bekanntem Ablaufdatum freigegeben.
