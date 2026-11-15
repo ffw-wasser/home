@@ -33,3 +33,13 @@ test('Verschiedene Termine am selben Tag erhalten eigene Namen, wiederholtes Spe
 test('Alter lokaler Termin erhält vor Upload eine gespeicherte Kennung, die auch nach Neustart erhalten bleibt',async()=>{
  const f=fixture({legacy:true});await f.c.window.closeDay();assert.equal(f.getSaved(),1);assert.ok(f.entries.every(e=>e.sessionId===f.getSession()));const resumed=fixture({rows:JSON.parse(JSON.stringify(f.entries))});resumed.setSession(f.getSession());await resumed.c.window.closeDay();assert.equal(resumed.uploads[0].baseName,f.uploads[0].baseName);
 });
+
+test('Nicht zuordenbare alte Namen blockieren den Bericht statt falscher PDF-Summen',async()=>{
+ const f=fixture({rows:[{storedName:'Alter Name',status:'Anwesend',sessionType:'Unterricht'}]});await f.c.window.closeDay();assert.equal(f.uploads.length,0);assert.equal(f.counts.length,0);
+});
+test('Zwei Schreibweisen derselben Person dürfen nicht zweimal exportiert werden',async()=>{
+ const f=fixture({rows:[{storedName:'a',status:'Anwesend'},{storedName:'Anzeige a',status:'Entschuldigt'}]});f.c.nameForTile=m=>'Anzeige '+m.id;await f.c.window.closeDay();assert.equal(f.uploads.length,0);
+});
+test('Vorhandene Mitgliedskennung erhält Zuordnung trotz abweichendem Anzeigenamen',async()=>{
+ const f=fixture({rows:[{memberId:'a',storedName:'Alter Name',status:'Anwesend',sessionType:'Unterricht'}]});await f.c.window.closeDay();assert.equal(f.uploads.length,1);assert.match(f.uploads[0].csvContent,/;a;Unterricht;Anwesend;/);assert.equal(f.counts[0].present,1);assert.equal(f.counts[0].missing,2);
+});

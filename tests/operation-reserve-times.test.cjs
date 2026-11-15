@@ -12,3 +12,10 @@ test('Stromausfall ist optional und erscheint einmal in der CSV',()=>{const c=ap
 
 test('Ankunft nach Mitternacht übernimmt das korrekte Datum und zählt nicht ab Alarm',()=>{const c=app(),d=structuredClone(data);d.reserveTimes={};d.times={alarm:'23:30',departed:'23:45',arrived:'00:15',ended:'02:00'};const v=c.operationEffectiveReserveTime(d,'Reserve, A');assert.equal(v.from,'2026-10-12T00:15');assert.equal(v.to,'2026-10-12T02:00');assert.equal(c.operationReserveDuration(v),105);});
 test('Ohne An-Einsatzstelle-Zeit ersetzt die Alarmzeit keinen persönlichen Beginn',()=>{const c=app(),d=structuredClone(data);d.reserveTimes={};d.times={alarm:'09:00',ended:'12:00'};assert.equal(c.operationEffectiveReserveTime(d,'Reserve, A').from,'');assert.equal(c.validateOperation(d).errors.length,2);});
+
+test('Ungültige Einsatz-Uhrzeiten werden zentral abgewiesen, leere Zeiten bleiben erlaubt',()=>{
+ const c=app();for(const key of ['alarm','departed','arrived','ended','returned'])for(const value of ['24:00','12:60','99:99','9:15','falsch']){
+  const result=c.validateOperation({date:'2026-11-15',members:['Test'],times:{[key]:value}});assert.ok(result.errors.some(x=>x.includes('gültige Uhrzeit')),key+' '+value);
+ }
+ assert.equal(c.validateOperation({date:'2026-11-15',members:['Test'],times:{alarm:'23:59',returned:'00:01'}}).errors.length,0);
+});

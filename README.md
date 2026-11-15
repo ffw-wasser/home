@@ -1,3 +1,9 @@
+# Feuerwehr Wasser / H₂O Portal
+
+Aktueller Einstieg: [Projektkarte](docs/PROJEKTKARTE.md), [Entwicklung und Prüfungen](docs/WORK-LEITFADEN.md), [Dokumentationsübersicht](docs/README.md).
+
+Die Release-Kennung steht in `app-release.json`. Die Website läuft auf GitHub Pages; der produktive Speicher verwendet Cloudflare D1/R2. Datierte Abschnitte unten beschreiben frühere Änderungen und sind keine aktuelle Abnahme.
+
 ## Gemeinsame Deckelansicht ab 2026.10.15.9
 
 „Mein Deckel“ enthält den Kontostand, PayPal, Getränke und Bareinzahlungen.
@@ -281,7 +287,7 @@ Versionsnummern für die Wiederherstellung bestehender Daten.
 
 QR-Generator: offizieller Release [js2.0.4](https://github.com/kazuhikoarase/qrcode-generator/releases/tag/js2.0.4); ZIP-Bibliothek: JSZip 3.10.2; PDF-Bibliothek: pdf-lib 1.17.1. Alte eigenständige Versionsanzeigen und doppelte Status-Overrides wurden entfernt. Benötigte Safari- und Daten-Kompatibilitätswege bleiben bestehen.
 
-Prüfergebnisse und Grenzen beim Datenreset: [Getränkeprüfung](GETRAENKE-PRUEFUNG-2026-10-10.md).
+Prüfergebnisse und Grenzen beim Datenreset: [Getränkeprüfung](docs/archive/GETRAENKE-PRUEFUNG-2026-10-10.md).
 
 Teilzahlungsstornos, die später vergebene Punkte ohne ausreichende Zahlung
 stehen lassen würden, werden vor dem Speichern mit einer Erklärung abgewiesen.
@@ -290,4 +296,4 @@ Zahlungen tatsächlich fehlerhaft sind. Vorhandene Kontohistorien werden nicht
 automatisch umgerechnet.
 
 
-Prüfung und Änderungen vom 16. Oktober 2026: [Prüfbericht 2026.10.16.1](PRUEFBERICHT-2026-10-16.md), einschließlich Menüprüfung, Tests und noch nötiger Cloudflare-Veröffentlichung.
+Prüfung und Änderungen vom 16. Oktober 2026: [Prüfbericht 2026.10.16.1](docs/archive/PRUEFBERICHT-2026-10-16.md), einschließlich Menüprüfung, Tests und noch nötiger Cloudflare-Veröffentlichung.

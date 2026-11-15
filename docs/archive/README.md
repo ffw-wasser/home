@@ -1,0 +1,13 @@
+# Historische Prüfberichte
+
+Diese Berichte dokumentieren frühere Versionen. Sie sind keine Freigabe des aktuellen Standes. Inhalte bleiben als Nachweis erhalten. Aktuelle Orientierung: [Projektkarte](../PROJEKTKARTE.md) und [Arbeitsleitfaden](../WORK-LEITFADEN.md).
+
+- [GETRAENKE-PRUEFUNG-2026-10-10.md](GETRAENKE-PRUEFUNG-2026-10-10.md)
+- [LESBARKEIT-2026-10-16.md](LESBARKEIT-2026-10-16.md)
+- [PORTAL-ANTWORTEN-2026-10-16.md](PORTAL-ANTWORTEN-2026-10-16.md)
+- [PORTAL-KALENDER-2026-10-16.md](PORTAL-KALENDER-2026-10-16.md)
+- [PORTAL-VERBINDUNG-2026-10-16.md](PORTAL-VERBINDUNG-2026-10-16.md)
+- [PORTAL-WISCHEN-2026-10-16.md](PORTAL-WISCHEN-2026-10-16.md)
+- [PRUEFBERICHT-2026-10-16.md](PRUEFBERICHT-2026-10-16.md)
+- [PRUEFBERICHT-2026-10-18.md](PRUEFBERICHT-2026-10-18.md)
+- [TERMINKARTEN-2026-10-16.md](TERMINKARTEN-2026-10-16.md)

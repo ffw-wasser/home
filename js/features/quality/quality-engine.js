@@ -20,7 +20,6 @@ function restoreLatestSafetySnapshot(){
   if(!requireAdmin("settingsFilesView"))return;
   try{const list=JSON.parse(safeStorage.getItem(QUALITY_SNAPSHOT_KEY)||"[]"),latest=list[0];if(!latest)return showToast("Kein Sicherungspunkt vorhanden.","error");if(!confirm(`Sicherung vom ${new Date(latest.createdAt).toLocaleString("de-DE")} wiederherstellen?`))return;Object.entries(latest.data).forEach(([key,value])=>{if(!snapshotCredentialKey(key))safeStorage.setItem(key,value);});location.reload();}catch(error){showToast("Sicherung konnte nicht wiederhergestellt werden.","error");}
 }
-function qualityMinutes(value){if(!/^\d{2}:\d{2}$/.test(value||""))return null;const [h,m]=value.split(":").map(Number);return h*60+m;}
 function validateOperationData(d){return validateOperation(d);}
 function validateProbeBeforeFinish(){
   const current=typeof todayEntries==="function"?todayEntries():(entries||[]).filter(e=>e.date===today()),errors=[],warnings=[];if(!current.length)errors.push("Keine Teilnahmen erfasst.");const open=current.filter(e=>!["Anwesend","Entschuldigt","Fehlt","Betrifft nicht"].includes(e.status));if(open.length)errors.push(`${open.length} Teilnahme(n) ohne gültigen Status.`);if(current.filter(e=>e.status==="Anwesend").length===0)warnings.push("Keine anwesende Person erfasst.");return {errors,warnings};
