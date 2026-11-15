@@ -84,7 +84,7 @@ function renderMembers() {
     const selected = multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId;
     const organizationSelected = selected && chosenRole === "Orga";
     const extra=["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
-    const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
+    const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" aria-label="Absage" title="Absage" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
     return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""}"><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
   };
   const visibleMembers=availableMembers;
@@ -225,7 +225,7 @@ function renderEntries() {
     <tr>
       <td>${escapeHtml(entry.time)}</td>
       <td><strong>${escapeHtml(entry.displayName)}</strong></td>
-      <td>${escapeHtml(entry.role === "Orga" ? "Organisation" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? entry.status : entry.role))}</td>
+      <td>${escapeHtml(entry.role === "Orga" ? "Organisation" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? (entry.status === "Entschuldigt" ? "Absage" : entry.status) : entry.role))}</td>
       <td><button type="button" class="outline-button" data-edit-entry="${escapeHtml(entry.id)}">Status ändern</button> <button type="button" class="delete-entry" data-entry="${escapeHtml(entry.id)}" aria-label="Anmeldung von ${escapeHtml(entry.displayName)} löschen">✕</button></td>
     </tr>`).join("");
   const presentCount = current.filter(entry => entry.status === "Anwesend").length;
@@ -521,7 +521,7 @@ function updateProbeWorkflow(){
   if(byId("memberStepNumber"))byId("memberStepNumber").textContent="2";
   if(byId("roleStepNumber"))byId("roleStepNumber").textContent="1";
   if(byId("roleStepEyebrow"))byId("roleStepEyebrow").textContent="Status direkt auswählen";
-  if(byId("roleMemberName"))byId("roleMemberName").textContent=operation?"Einsatz: nur Anwesend":standard?"Anwesend, Entschuldigt oder Orga":special?"Anwesend, Entschuldigt oder Betrifft nicht":committee?"Ausschuss Sitzung: Anwesend oder Entschuldigt":"Anwesend oder Entschuldigt";
+  if(byId("roleMemberName"))byId("roleMemberName").textContent=operation?"Einsatz: nur Anwesend":standard?"Anwesend, Absage oder Orga":special?"Anwesend, Absage oder Betrifft nicht":committee?"Ausschuss Sitzung: Anwesend oder Absage":"Anwesend oder Absage";
   if(byId("roleSelectionHint"))byId("roleSelectionHint").textContent="Der ausgewählte Status bleibt aktiv. Zum Wechsel einfach einen anderen Status antippen.";
   updatePrimaryAction();
 }
