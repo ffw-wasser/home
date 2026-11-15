@@ -1,8 +1,8 @@
 // Nur synthetische Mitglieder; reale Personenseite, Laufbahn, Speichern und mobile Darstellung.
-const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium,webkit}=require('playwright');
 const root=path.resolve(__dirname,'..');
 (async()=>{
- const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const browser=await (process.env.BROWSER_ENGINE==='webkit'?webkit:chromium).launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -109,7 +109,40 @@ const root=path.resolve(__dirname,'..');
    }
   }
   await page.setViewportSize({width:390,height:844});await row('a').screenshot({path:require('node:path').join(require('node:os').tmpdir(), 'members-editor-mobile.png')});
+  // Viele Personen dürfen die Akte auf dem Tablet nicht unter die ganze Namensliste schieben.
+  await page.evaluate(()=>{members.push(...Array.from({length:40},(_,i)=>({id:'tablet-'+i,firstName:['Clara','Daniel','Emil','Frida'][i%4],lastName:'Beispiel '+String(i+1).padStart(2,'0'),roles:[]})));renderAdmin();});
+  for(const width of [768,1024,1180,1366]){
+   await page.setViewportSize({width,height:820});await page.evaluate(()=>scrollTo(0,0));
+   const directory=page.locator('.person-record-directory');
+   assert.ok(await directory.evaluate(el=>el.scrollHeight>el.clientHeight),'Mitgliederliste scrollt bei '+width);
+   await page.locator('[data-record-choice="synthetic-a"]').click();
+   for(const tab of ['overview','master','career','roles','evidence','account']){
+    await row('a').locator('[data-record-tab="'+tab+'"]').click();
+    assert.ok(await row('a').locator('[data-record-tab="'+tab+'"]').evaluate(el=>{const r=el.getBoundingClientRect();return r.height>=48&&r.width>=44&&el.scrollWidth<=el.clientWidth+1;}),'Große Bereichsschaltfläche '+tab+' bei '+width);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Tablet ohne Seitenüberbreite '+width);
+   }
+   await row('a').locator('[data-record-tab="overview"]').click();
+   await page.locator('#memberSearch').fill('nicht-vorhanden');assert.equal(await page.locator('[data-record-choice]:visible').count(),0);
+   await page.locator('#memberSearch').fill('');
+  }
+  await page.setViewportSize({width:1180,height:820});await choose('a','overview');
+  await row('a').locator('[data-record-tab="overview"]').focus();await page.keyboard.press('ArrowRight');
+  assert.equal(await row('a').locator('[data-record-tab="master"]').getAttribute('aria-selected'),'true');
+  for(const label of ['Mitglied hinzufügen','Druck / PDF','Nachweise prüfen']){
+   await page.getByRole('navigation',{name:'Mitgliederaktionen'}).getByRole('button',{name:label,exact:true}).click();
+   assert.ok(await page.evaluate(()=>{const r=document.activeElement.getBoundingClientRect();return r.top>=0&&r.top<innerHeight;}),'Direktaktion '+label);
+  }
+  for(const width of [768,1024]){
+   await page.setViewportSize({width,height:820});await page.evaluate(()=>document.documentElement.style.fontSize='200%');
+   await choose('a','master');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Große Schrift ohne Seitenüberbreite '+width);
+   await page.evaluate(()=>document.documentElement.style.fontSize='');
+  }
+  await page.setViewportSize({width:1180,height:820});
+  await page.evaluate(()=>{members.find(m=>m.id==='synthetic-a').firstName='Ada';members.find(m=>m.id==='synthetic-b').firstName='Ben';renderAdmin();});
+  await choose('a','overview');await page.evaluate(()=>scrollTo(0,0));
+  const review=path.join(root,'qa/member-tablet');fs.mkdirSync(review,{recursive:true});await page.screenshot({path:path.join(review,'mitglieder-ipad.png')});
+  if(process.env.CAPTURE_MEMBER_TABLET_HELP==='1')await page.screenshot({path:path.join(root,'assets/help/guide/geraetehaus-mitglieder.jpg'),type:'jpeg',quality:84});
   assert.deepEqual(errors,[]);
-  console.log('Personenakten-Browsertest erfolgreich: Mehrfachspeicherung, Laufbahn, Validierung, PIN, Verwerfen und 320/390/768 px.');
+  console.log('Personenakten-Browsertest erfolgreich: Mehrfachspeicherung, Laufbahn, Validierung, PIN, Verwerfen und Tablet-Layout bis 1366 px.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -60,6 +60,7 @@
       const selected=button.dataset.recordChoice===id;
       button.classList.toggle('is-selected',selected);
       button.setAttribute('aria-current',selected?'true':'false');
+      if(selected){const directory=button.closest('.person-record-directory');if(directory){const item=button.getBoundingClientRect(),area=directory.getBoundingClientRect();if(item.top<area.top)directory.scrollTop+=item.top-area.top;else if(item.bottom>area.bottom)directory.scrollTop+=item.bottom-area.bottom;}}
     });
     setActiveTab(row,former===row?previousTab:'overview');
     window.Drinks?.loadPinStatus(row);
@@ -78,22 +79,23 @@
     search.innerHTML='<label for="memberSearch">Mitglied suchen</label><input id="memberSearch" class="text-input" type="search" placeholder="Vor- oder Nachname" autocomplete="off"><p id="memberSearchStatus" role="status"></p>';
     sidebar.append(search);search.querySelector('input').value=memberQuery;
     search.querySelector('input').addEventListener('input',event=>{memberQuery=event.target.value;filterMembers();});
+    const directory=document.createElement('div');directory.className='person-record-directory';directory.setAttribute('aria-label','Mitgliederliste');sidebar.append(directory);
     let lastDepartment='';
     rows.forEach(article=>{
       const id=article.dataset.memberId,member=members.find(person=>person.id===id);
       if(!member)return;
       const department=member.ageDepartment?'Alterskameraden':'Einsatzabteilung';
-      if(department!==lastDepartment){const caption=document.createElement('p');caption.className='person-record-category';caption.textContent=department;sidebar.append(caption);lastDepartment=department;}
+      if(department!==lastDepartment){const caption=document.createElement('p');caption.className='person-record-category';caption.textContent=department;directory.append(caption);lastDepartment=department;}
       const button=document.createElement('button');button.type='button';button.className='person-record-person';button.dataset.recordChoice=id;
       const initials=(String(member.firstName||'').charAt(0)+String(member.lastName||'').charAt(0)).toLocaleUpperCase('de');
       button.innerHTML='<span class="person-record-avatar" aria-hidden="true">'+escapeHtml(initials)+'</span><span class="person-record-person-name">'+escapeHtml(nameForTile(member))+'</span><span class="person-record-person-arrow" aria-hidden="true">›</span>';
-      sidebar.append(button);
+      directory.append(button);
       const header=article.querySelector('.member-card-header');header?.remove();
       article.classList.add('ux-member','person-record-card');
       article.setAttribute('aria-label','Personalakte '+nameForTile(member));
       const hero=document.createElement('header');hero.className='person-record-hero';
       hero.innerHTML='<div class="person-record-hero-icon" aria-hidden="true">FW</div><div class="person-record-hero-text"><p class="eyebrow">Feuerwehr Wasser · Personalakte</p><h3 class="person-record-title">'+escapeHtml(nameForTile(member))+'</h3><div class="person-record-hero-meta"><span class="person-record-badge">'+(member.ageDepartment?'Altersabteilung':member.fitnessTrainer?'Gast / Fitnesstrainer':'Einsatzabteilung')+'</span><span data-record-current-rank>Kein Dienstgrad hinterlegt</span></div></div>';
-      const tabs=document.createElement('nav');tabs.className='person-record-tabs';tabs.setAttribute('aria-label','Bereiche der Personalakte');
+      const tabs=document.createElement('nav');tabs.className='person-record-tabs';tabs.setAttribute('aria-label','Bereiche der Personalakte');tabs.setAttribute('role','tablist');
       const tabList=[['overview','Übersicht'],['master','Stammdaten'],['career','Laufbahn & Ausbildung'],['roles','Berechtigungen'],['evidence','Nachweise'],['account','Konto & Getränke']];
       tabs.innerHTML=tabList.map(pair=>'<button type="button" role="tab" data-record-tab="'+pair[0]+'">'+pair[1]+'</button>').join('');
       const panels={};
@@ -137,6 +139,12 @@
     box.replaceChildren(shell);shell.append(sidebar,main);
     if(!box.dataset.personRecordBound){
       box.dataset.personRecordBound='1';
+      box.addEventListener('keydown',event=>{
+        const tab=event.target.closest('[data-record-tab]');if(!tab)return;
+        const items=[...tab.parentElement.querySelectorAll('[data-record-tab]')],index=items.indexOf(tab);
+        const next=event.key==='Home'?0:event.key==='End'?items.length-1:['ArrowRight','ArrowDown'].includes(event.key)?(index+1)%items.length:['ArrowLeft','ArrowUp'].includes(event.key)?(index+items.length-1)%items.length:-1;
+        if(next<0)return;event.preventDefault();setActiveTab(tab.closest('.ux-member'),items[next].dataset.recordTab);items[next].focus();
+      });
       box.addEventListener('click',event=>{
         const choice=event.target.closest('[data-record-choice]');
         if(choice){selectRecord(choice.dataset.recordChoice);return;}
