@@ -65,3 +65,19 @@ for(const microsoft of [false,true])test('Startup checks a remembered device onc
  const f=setup();let checks=0;f.c.CloudStorage.connected=false;f.c.CloudStorage.bootstrap=async()=>{checks++;f.c.CloudStorage.connected=true;return true;};f.c.MicrosoftConnection={finish:async()=>{if(microsoft)f.c.CloudStorage.connected=true;return microsoft;}};f.c.document={addEventListener(){}};f.c.ensureOneDriveUi=()=>{};
  await f.c.initCloudSync();assert.equal(checks,microsoft?0:1);assert.equal(f.c.oneDriveAdministrationReady(),true);assert.deepEqual(f.events,['history']);
 });
+
+for(const history of [false,true])test('Unchanged background sync confirms storage without rebuilding screens: history='+history,async()=>{
+ const f=setup(),renders=[];for(const name of ['renderMembers','renderToday','renderAdmin','renderStatistics'])f.c[name]=()=>renders.push(name);
+ await f.c.syncOneDrive({refreshHistory:history});await f.c.syncOneDrive({refreshHistory:history});
+ assert.deepEqual(renders,[]);assert.equal(f.c.oneDriveAdministrationReady(),true);assert.equal(f.local.getItem('fw_cloud_state_dirty'),'0');assert.ok(f.local.getItem('fw_members'));assert.equal(f.writes,0);
+ f.update(value=>value.updatedAt='2026-11-15T21:00:00Z');await f.c.syncOneDrive();assert.deepEqual(renders,[],'transport metadata is not a screen change');
+ f.update(value=>value.members[0].firstName='Neue Testperson');await f.c.syncOneDrive();
+ assert.deepEqual(renders,['renderMembers','renderToday','renderAdmin','renderStatistics']);assert.equal(f.c.members[0].firstName,'Neue Testperson');
+ renders.length=0;await f.c.syncOneDrive();assert.deepEqual(renders,[]);
+});
+
+test('Role target normalization does not cause repeated redraws for older snapshots',async()=>{
+ const f=setup();f.c.getRoleTargets=()=>({GF:JSON.parse(f.local.getItem('fw_targets')||'{}').GF||0});f.c.saveRoleTargets=value=>f.local.setItem('fw_targets',JSON.stringify({GF:value.GF||0}));
+ let renders=0;f.c.renderMembers=()=>renders++;await f.c.syncOneDrive();await f.c.syncOneDrive();assert.equal(renders,0);
+ f.update(value=>value.roleTargets={GF:2});await f.c.syncOneDrive();assert.equal(renders,1);assert.equal(f.c.getRoleTargets().GF,2);
+});
