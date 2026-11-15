@@ -132,12 +132,14 @@
 #settingsMembersView #admin-members>header{display:none}
 #settingsMembersView .admin-members-grid{display:flex!important;flex-direction:column;gap:20px}
 #settingsMembersView .member-admin-panel{order:-1}
+#settingsMembersView .member-admin-panel>.panel-heading{display:none}
 #settingsMembersView .member-add-panel{scroll-margin-top:150px}
 #settingsMembersView #memberPrintControls,#settingsMembersView #portal-evidence-overview{scroll-margin-top:150px}
 #settingsMembersView .member-save-bar{position:static;display:flex;align-items:center;justify-content:space-between;gap:14px;background:#e9f3ee}
 #settingsMembersView .member-save-bar p{margin:0}
 #settingsMembersView .member-save-bar>div{flex:0 1 auto;flex-wrap:nowrap}
 #settingsMembersView .member-save-bar button{min-height:50px;width:auto;white-space:normal}
+#settingsMembersView .member-save-bar:has(#membersSaveAll:disabled):has(#membersDiscardAll:disabled)>div{display:none}
 #memberAdmin .person-record-hero{padding:18px 20px}
 #memberAdmin .person-record-hero-icon{width:52px;height:52px}
 #memberAdmin .person-record-directory{max-height:clamp(300px,60dvh,720px);overflow-y:auto;overscroll-behavior:contain;padding:0 5px 6px;scrollbar-gutter:stable}
