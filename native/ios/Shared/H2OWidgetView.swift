@@ -137,12 +137,18 @@ struct NextEventView: View {
         event?.canReply != false && event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")
     }
     // Decode the existing transparent asset once; the static watermark never requests data.
-    private static let crest: UIImage? = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png")
+    private static let crestArtwork: UIImage? = Bundle.main.url(forResource: "h2o-widget-crest-artwork", withExtension: "png")
+        .flatMap { UIImage(contentsOfFile: $0.path) }
+    private static let crestBorder: UIImage? = Bundle.main.url(forResource: "h2o-widget-crest-border", withExtension: "png")
         .flatMap { UIImage(contentsOfFile: $0.path) }
     @ViewBuilder private func backgroundCrest(width: CGFloat, height: CGFloat) -> some View {
-        if event != nil, let crest = Self.crest {
-            Image(uiImage: crest).resizable().scaledToFit()
-                .frame(width: min(width, height) * 0.98, height: height * 0.98)
+        if event != nil, let artwork = Self.crestArtwork, let border = Self.crestBorder {
+            ZStack {
+                Image(uiImage: artwork).resizable().scaledToFit()
+                Image(uiImage: border).resizable().renderingMode(.template).scaledToFit()
+                    .foregroundStyle(renderingMode == .fullColor ? edgePalette[2] : ink)
+            }.frame(width: min(width, height) * 0.98, height: height * 0.98)
+                .compositingGroup()
                 .opacity(renderingMode == .fullColor ? (small || textScale > 1.2 ? 0.16 : 0.25) : 0.10)
                 .frame(width: width, height: height, alignment: .trailing)
                 .allowsHitTesting(false).accessibilityHidden(true)
