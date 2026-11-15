@@ -142,7 +142,7 @@
 #settingsMembersView .member-save-bar:has(#membersSaveAll:disabled):has(#membersDiscardAll:disabled)>div{display:none}
 #memberAdmin .person-record-hero{padding:18px 20px}
 #memberAdmin .person-record-hero-icon{width:52px;height:52px}
-#memberAdmin .person-record-directory{max-height:clamp(300px,60dvh,720px);overflow-y:auto;overscroll-behavior:contain;padding:0 5px 6px;scrollbar-gutter:stable}
+#memberAdmin .person-record-directory{max-height:clamp(200px,30dvh,480px);overflow-y:auto;overscroll-behavior:contain;padding:0 5px 6px;scrollbar-gutter:stable}
 #memberAdmin .person-record-person[hidden]{display:none!important}
 #memberAdmin .person-record-tabs button:focus-visible,#memberAdmin .person-record-person:focus-visible{outline:3px solid #1674ae;outline-offset:3px}
 #memberAdmin .person-record-panel :is(input:not([type=checkbox]),select){min-height:50px;font-size:1rem}
