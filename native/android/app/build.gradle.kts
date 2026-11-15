@@ -21,7 +21,7 @@ android {
         applicationId = "de.feuerwehrwasser.h2o"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1048
+        versionCode = 1049
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

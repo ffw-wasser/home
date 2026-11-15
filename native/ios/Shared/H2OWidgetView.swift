@@ -43,7 +43,7 @@ struct NextEventView: View {
         return formatter.string(from: date)
     }
     private func title(_ status: String) -> String {
-        switch status { case "yes": return "Dabei"; case "excused": return "Entschuldigt"; case "maybe": return "Unsicher"; default: return "Offen" }
+        switch status { case "yes": return "Dabei"; case "excused": return "Absage"; case "maybe": return "Unsicher"; default: return "Offen" }
     }
     private func color(_ status: String) -> Color {
         if renderingMode != .fullColor { return .primary }
@@ -107,10 +107,12 @@ struct NextEventView: View {
                     .font(.system(size: large ? 15 : small ? 13 : 14, weight: .bold)).foregroundStyle(renderingMode == .fullColor ? monthInk : ink)
             }.frame(height: large ? 25 : 20)
             Text(part(event.start, "d")).font(.system(size: large ? 38 : small ? 30 : 31, weight: .bold, design: .rounded))
-                .frame(height: large ? 45 : small ? 32 : 30)
+                .frame(height: large ? 47 : small ? 33 : 32)
             Capsule().fill(red.opacity(0.85)).frame(width: calendarWidth * 0.72, height: 0.8)
             Text(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) ?? part(event.start, "EEE"))
-                .font(.system(size: large ? 16 : small ? 12 : 14, weight: .bold)).lineLimit(1).padding(.bottom, 3)
+                .font(.system(size: large ? 14 : small ? 11 : 12, weight: .bold))
+                .foregroundStyle(H2OWidgetDateLabel.relativeDay(for: event.start, comparedTo: entry.date) == "Heute" && renderingMode == .fullColor ? red : dateInk)
+                .lineLimit(1).padding(.top, 2).padding(.bottom, 3)
         }.foregroundStyle(dateInk).frame(width: calendarWidth)
             .background(LinearGradient(colors: [paper, renderingMode == .fullColor ? rgb(0xEDE7DD) : paper, paper], startPoint: .topLeading, endPoint: .bottomTrailing))
             .clipShape(RoundedRectangle(cornerRadius: 9))
@@ -148,6 +150,7 @@ struct NextEventView: View {
                 Image(uiImage: border).resizable().renderingMode(.template).scaledToFit()
                     .foregroundStyle(renderingMode == .fullColor ? edgePalette[2] : ink)
             }.frame(width: min(width, height) * 0.98, height: height * 0.98)
+                .mask(LinearGradient(stops: [.init(color: .white.opacity(0.25), location: 0), .init(color: .white.opacity(0.6), location: 0.5), .init(color: .white, location: 1)], startPoint: .leading, endPoint: .trailing))
                 .compositingGroup()
                 .opacity(renderingMode == .fullColor ? (small || textScale > 1.2 ? 0.16 : 0.25) : 0.10)
                 .frame(width: width, height: height, alignment: .trailing)
@@ -206,7 +209,7 @@ struct NextEventView: View {
             } else {
                 let scale = min(textScale, 1.5)
                 let textWidth = available - (logoSize > 0 ? logoSize + 11 : 0)
-                let lines = titleWidth > textWidth && scale <= 1.2 && height >= 70 ? 2 : 1
+                let lines = titleWidth > textWidth && height >= 60 ? 2 : 1
                 let metadataRows: CGFloat = event.clothing.isEmpty ? 1 : 2
                 let titleHeight = font.lineHeight * CGFloat(lines)
                 let detailHeight = UIFont.systemFont(ofSize: 12 * scale, weight: .semibold).lineHeight * metadataRows
@@ -222,23 +225,20 @@ struct NextEventView: View {
         let pending = job?.phase == "saving"
         let center: CGFloat = status == "yes" ? 1.0 / 6 : status == "maybe" ? 5.0 / 6 : 0.5
         let tint = color(status)
-        return GeometryReader { geometry in
-            ZStack {
-                Capsule().fill(secondaryInk.opacity(0.22)).frame(height: 0.65)
-                ZStack {
-                    Capsule().fill(tint.opacity(0.5)).frame(height: 4).blur(radius: 1.5)
-                    Capsule().fill(tint).frame(height: 1.3)
-                    Capsule().fill(highlight(status)).frame(width: geometry.size.width * 0.22, height: 0.7)
-                }
-                .frame(width: geometry.size.width * 0.58, height: 7)
-                .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: 0.3), .init(color: .white, location: 0.7), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
-                .opacity(status == "open" ? 0 : pending ? 0.6 : 1)
-                .position(x: geometry.size.width * center, y: 3.5)
+        return GeometryReader { _ in
+            Capsule().fill(LinearGradient(stops: [
+                .init(color: secondaryInk.opacity(0.15), location: 0),
+                .init(color: tint.opacity(0.35), location: max(0.01, center - 0.15)),
+                .init(color: highlight(status), location: center),
+                .init(color: tint.opacity(0.35), location: min(0.99, center + 0.15)),
+                .init(color: secondaryInk.opacity(0.15), location: 1)
+            ], startPoint: .leading, endPoint: .trailing))
+                .opacity(pending ? 0.6 : 1)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: status)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: pending)
-            }
-        }.frame(height: 7).clipped().frame(height: 1).accessibilityHidden(true)
+        }.frame(height: 1).accessibilityHidden(true)
     }
+
     private func buttonFill(_ status: String) -> LinearGradient {
         let shades: [Color]
         if renderingMode != .fullColor { shades = [ink.opacity(0.25), ink.opacity(0.15), ink.opacity(0.2)] }
@@ -257,7 +257,7 @@ struct NextEventView: View {
         return Button(intent: H2OWidgetReplyIntent(eventID: event?.id ?? "", response: status)) {
             HStack(spacing: 4) {
                 Image(systemName: selected ? "checkmark" : "circle").font(.system(size: 12, weight: .semibold))
-                Text(title(status)).font(.system(size: 13, weight: selected ? .bold : .semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                Text(title(status)).font(.system(size: 13 * min(textScale, 1.2), weight: selected ? .bold : .semibold)).lineLimit(1).minimumScaleFactor(0.75)
             }.frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(selected ? (renderingMode == .fullColor && status != "yes" ? Color(red: 45.0 / 255, green: 33.0 / 255, blue: 10.0 / 255) : ink) : secondaryInk)
                 .background {
@@ -399,7 +399,7 @@ struct NextEventView: View {
                         backgroundCrest(width: geometry.size.width, height: geometry.size.height)
                     }.animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: edgePalette[2].opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: edgePalette[2].opacity(0.55), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
         }.id(family)

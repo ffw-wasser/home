@@ -20,4 +20,7 @@
         android:padding="3dp" android:scaleType="fitEnd"
         android:src="@drawable/widget_crest_border"
         android:contentDescription="@null" android:importantForAccessibility="no" />
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+        android:src="@drawable/widget_crest_scrim" android:scaleType="fitXY"
+        android:contentDescription="@null" android:importantForAccessibility="no" />
 </FrameLayout>

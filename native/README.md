@@ -294,3 +294,15 @@ App und ändert keine produktiven OneDrive-Dateien oder Worker-Einstellungen.
 - AGP 8.11 / Gradle 8.13: https://developer.android.com/build/releases/agp-8-11-0-release-notes
 - QR-Scanner: https://github.com/journeyapps/zxing-android-embedded
 - Apple Mindestfunktionalität: https://developer.apple.com/app-store/review/guidelines/#minimum-functionality
+
+## Widgetdarstellung – Build 1049
+
+Apple und Android verwenden „Dabei · Absage · Unsicher“. „Absage“ bedeutet
+weiterhin den bestehenden Status `excused`; die Anwesenheitserfassung bleibt
+bei „Entschuldigt“. Lange Titel erhalten bei ausreichender Höhe zwei Zeilen.
+Das große Wappen bleibt rechts sichtbar und wird hinter dem Text abgeschwächt.
+Seine Umrandung folgt der bestätigten Rückmeldung, der äußere Rand ist dezenter.
+Eine einzelne feine Statuslinie ersetzt den mehrlagigen Lichtstreifen. „Morgen“
+ist kleiner, „Heute“ wird im Kalenderblatt bordeauxrot hervorgehoben.
+Antwortflächen behalten ihre Größe; alle drei Beschriftungen verwenden eine
+gemeinsame, an die verfügbare Breite angepasste Schriftgröße.
