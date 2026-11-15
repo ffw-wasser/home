@@ -101,8 +101,19 @@ class WidgetPreviewTest {
                     NextEventWidget.views(activity, 330, 230, now, true).reapply(activity, root)
                     val expectedBorder = mapOf("yes" to 0xFF78C38F.toInt(), "excused" to 0xFFFFE8A0.toInt(), "maybe" to 0xFFFFC68B.toInt(), "open" to 0xFF9AB2C6.toInt()).getValue(status)
                     val border = activity.findViewById<android.widget.ImageView>(R.id.widget_crest_border)
-                    assertEquals("Only the rim follows the confirmed status on reapply", expectedBorder,
-                        (border.colorFilter as android.graphics.PorterDuffColorFilter).color)
+                    val sampledBorder = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888)
+                    val drawable = border.drawable
+                    val bounds = android.graphics.Rect(drawable.bounds)
+                    drawable.setBounds(0, 0, 512, 512)
+                    drawable.draw(android.graphics.Canvas(sampledBorder))
+                    drawable.bounds = bounds
+                    val pixel = sampledBorder.getPixel(52, 200)
+                    assertTrue("The original rim remains opaque before group opacity", android.graphics.Color.alpha(pixel) > 240)
+                    for (shift in listOf(16, 8, 0)) {
+                        assertTrue("Only the rim follows the confirmed status on reapply",
+                            kotlin.math.abs(((pixel shr shift) and 255) - ((expectedBorder shr shift) and 255)) <= 2)
+                    }
+                    sampledBorder.recycle()
                     val flipper = activity.findViewById<android.widget.ViewFlipper>(R.id.widget_edge_transition)
                     assertEquals(index, flipper.displayedChild)
                     assertFalse("The edge must never loop", flipper.isFlipping)
