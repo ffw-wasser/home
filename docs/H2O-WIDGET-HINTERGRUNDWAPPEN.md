@@ -57,3 +57,24 @@ PR-Stand und erfolgreiche allgemeine, iOS- und Android-Prüfungen, bevor er den
 bestehenden TestFlight-Upload aufruft und das signierte Android-App-Bundle erstellt.
 Der Android-Store-Upload erfolgt wie bisher manuell. Der TestFlight-Updatehinweis
 wird erst nach bestätigter Installierbarkeit und bekanntem Ablaufdatum freigegeben.
+
+## Statusfarbener Wappenrand – Build 1048
+
+Nur die zuvor weiße Umrandung folgt jetzt der bestätigten Statusfarbe des
+Widgets: grün bei Dabei, gelb bei Entschuldigt, orange bei Unsicher; offen
+neutral blaugrau, Informationstermine hellblau. Die Flamme, der Wassertropfen,
+ihre weißen Glanzstellen und die dunkle Kontur behalten ihre Originalfarben.
+Eine noch nicht bestätigte Rückmeldung färbt den Rand nicht vorzeitig um.
+
+`scripts/build-widget-crest.py` trennt die zusammenhängende weiße Umrandung
+deterministisch vom vorhandenen transparenten Original. Die beiden Ebenen
+bleiben deckungsgleich; Größe und Alpha werden nicht neu skaliert. iOS färbt
+die Randebene als Template, Android per ColorFilter. Die bereits vorhandene
+Deckkraft wird auf die gemeinsame Hintergrundgruppe angewendet. Es gibt keine
+Bildberechnung beim Aktualisieren des Widgets.
+
+Die Android-Geräteprüfung kontrolliert die gespeicherten Originalfarben,
+den unangetasteten weißen Glanz im Wassertropfen und den Randfarbwechsel beim
+Aktualisieren einer bestehenden Ansicht. Beide nativen Bildprüfungen rendern
+die vorhandenen Größen und Statusfälle. Build 1048 ist für die nächste
+Veröffentlichung vorbereitet; der Release-Auslöser läuft erst beim Merge.

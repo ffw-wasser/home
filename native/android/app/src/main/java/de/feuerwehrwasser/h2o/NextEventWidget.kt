@@ -129,6 +129,15 @@ open class NextEventWidget : AppWidgetProvider() {
             // Resource-backed background, no generated bitmaps or extra network work.
             show(R.id.widget_background_crest, event != null)
             views.setFloat(R.id.widget_background_crest, "setAlpha", if (compact || fontScale > 1.2f) 0.16f else 0.25f)
+            // Use the confirmed event status, never the pending answer. Only the
+            // separately extracted white rim is tinted; flame and water stay original.
+            val crestBorderTint = if (observation) 0xFFA4CEE9.toInt() else when (event?.status) {
+                "yes" -> 0xFF78C38F.toInt()
+                "excused" -> 0xFFFFE8A0.toInt()
+                "maybe" -> 0xFFFFC68B.toInt()
+                else -> 0xFF9AB2C6.toInt()
+            }
+            views.setInt(R.id.widget_crest_border, "setColorFilter", crestBorderTint)
             val edgeIndex = when (event?.status) { "yes" -> 1; "excused" -> 2; "maybe" -> 3; else -> 0 }
             val edgeDrawable = if (observation) R.drawable.widget_background_observer else when (event?.status) {
                 "yes" -> R.drawable.widget_background_yes

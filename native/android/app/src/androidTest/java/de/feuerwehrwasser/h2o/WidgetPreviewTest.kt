@@ -16,6 +16,38 @@ import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class WidgetPreviewTest {
+    @Test fun tintableCrestPreservesFlameWaterAndInternalWhiteGlints() {
+        val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
+        val original = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.widget_logo)
+        val artwork = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.widget_crest_artwork)
+        val border = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.widget_crest_border)
+        assertEquals(original.width, artwork.width)
+        assertEquals(original.height, border.height)
+        var rimPixels = 0
+        var preservedGlints = 0
+        for (y in 0 until original.height) for (x in 0 until original.width) {
+            val source = original.getPixel(x, y)
+            val art = artwork.getPixel(x, y)
+            val rim = border.getPixel(x, y)
+            if (android.graphics.Color.alpha(rim) > 0) {
+                rimPixels++
+                val rgb = listOf(android.graphics.Color.red(source), android.graphics.Color.green(source), android.graphics.Color.blue(source))
+                assertTrue("The rim mask must not recolor the flame or water", rgb.max() - rgb.min() <= 16 && rgb.min() >= 32)
+                assertEquals("No original white rim remains below the tinted layer", 0, android.graphics.Color.alpha(art))
+                assertEquals("The extracted rim retains its original alpha", android.graphics.Color.alpha(source), android.graphics.Color.alpha(rim))
+            } else {
+                assertEquals("All artwork outside the rim stays byte-identical", source, art)
+            }
+            if (x in 340..410 && y in 190..310 && android.graphics.Color.red(source) > 220 && android.graphics.Color.green(source) > 220 && android.graphics.Color.blue(source) > 220) {
+                preservedGlints++
+                assertEquals("White glints inside the water drop never follow the status", 0, android.graphics.Color.alpha(rim))
+                assertEquals(source, art)
+            }
+        }
+        assertTrue("A real shield rim was extracted", rimPixels > 1000)
+        assertTrue("The original water highlights remain present", preservedGlints > 10)
+    }
+
     @Test fun mediumRepliesRemainVisibleAtLargeSystemFonts() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -67,6 +99,10 @@ class WidgetPreviewTest {
                 for ((status, index) in listOf("yes" to 1, "excused" to 2, "maybe" to 3, "open" to 0)) {
                     WidgetStore.confirm(context, event.id, status, 1)
                     NextEventWidget.views(activity, 330, 230, now, true).reapply(activity, root)
+                    val expectedBorder = mapOf("yes" to 0xFF78C38F.toInt(), "excused" to 0xFFFFE8A0.toInt(), "maybe" to 0xFFFFC68B.toInt(), "open" to 0xFF9AB2C6.toInt()).getValue(status)
+                    val border = activity.findViewById<android.widget.ImageView>(R.id.widget_crest_border)
+                    assertEquals("Only the rim follows the confirmed status on reapply", expectedBorder,
+                        (border.colorFilter as android.graphics.PorterDuffColorFilter).color)
                     val flipper = activity.findViewById<android.widget.ViewFlipper>(R.id.widget_edge_transition)
                     assertEquals(index, flipper.displayedChild)
                     assertFalse("The edge must never loop", flipper.isFlipping)
@@ -140,7 +176,7 @@ class WidgetPreviewTest {
                     assertTrue(root.width > 0 && root.height > 0)
                     val isEvent = fixture !in listOf("clear", "empty")
                     val widget = activity.findViewById<View>(R.id.widget_root)
-                    val crest = activity.findViewById<android.widget.ImageView>(R.id.widget_background_crest)
+                    val crest = activity.findViewById<View>(R.id.widget_background_crest)
                     assertEquals("Only actual events show the background crest", isEvent, crest.isShown)
                     if (isEvent) {
                         assertEquals("Crest never consumes event layout space", widget.width, crest.width)
