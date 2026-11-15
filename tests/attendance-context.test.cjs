@@ -7,7 +7,7 @@ function fixture(options={}){
 }
 test('Kalendertermin zeigt Namen und startet direkt mit übernommener Terminart',()=>{
  const f=fixture({event:{title:'Testübung',sessionType:'Probe',start:'2026-10-16T17:00:00Z'}}),state=f.c.attendanceStartState();
- assert.equal(state.title,'Testübung');assert.equal(state.type,'Allgemeine Probe');assert.equal(state.action,'Erfassung starten');assert.match(state.date,/19:00/);
+ assert.equal(state.title,'Testübung');assert.equal(state.type,'Allgemeine Probe');assert.equal(state.action,'Anwesenheit erfassen');assert.match(state.date,/19:00/);
  f.c.beginAttendanceFromContext();assert.deepEqual(f.calls,[{type:'Allgemeine Probe',calendar:true},'start']);
 });
 test('Fortsetzen erhält Termin und unübernommene Markierungen',()=>{
@@ -69,7 +69,7 @@ test('Probenabschluss übernimmt das Kalender-Thema, ohne das Textfeld zu sperre
 test('Leerer Start zeigt keinen erfundenen nächsten Termin und benennt die Auswahl korrekt',()=>{
  const f=fixture(),state=f.c.attendanceStartState();assert.equal(state.title,'Termin beginnen');assert.equal(state.date,'');assert.equal(state.action,'Terminart wählen');assert.equal(state.summary,'');f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartSummary').hidden,true);
  f.get('portal-calendar-status').textContent='Kalender nicht verbunden';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,true);assert.equal(f.get('attendanceStartCalendarStatus').textContent,'Kalender nicht verbunden');assert.equal(f.get('attendanceStartCalendarStatus').hidden,false);
- f.c.pendingSessionType='Unterricht';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,false);assert.equal(f.get('continueToAttendanceButton').textContent,'Erfassung starten');
+ f.c.pendingSessionType='Unterricht';f.c.syncAttendanceStart();assert.equal(f.get('attendanceStartMeta').hidden,false);assert.equal(f.get('continueToAttendanceButton').textContent,'Anwesenheit erfassen');
 });
 test('Ohne Mitglieder führt der nächste Schritt zur Verbindung statt zu nicht vorhandenen Karten',()=>{
  const f=fixture();f.c.updatePrimaryAction();assert.match(f.get('step3ActionSummary').textContent,/Keine Mitglieder geladen/);assert.equal(f.get('exportResetButton').disabled,true);
