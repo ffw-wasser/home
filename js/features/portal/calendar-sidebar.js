@@ -3,7 +3,7 @@
  'use strict';
  const host=()=>document.getElementById('calendar-sidebar'),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  const dateLabel=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}),monthLabel=new Intl.DateTimeFormat('de-DE',{month:'long',timeZone:'UTC'}),weekdayLabel=new Intl.DateTimeFormat('de-DE',{weekday:'short',timeZone:'UTC'}),clockLabel=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});
- let expanded=false,monthOffset=0,paintedKey='',paintedPeriod='';
+ let expanded=false,monthOffset=0,paintedKey='',paintedPeriod='',paintedLoading=false;
  let generation=0,source='',loadedAt=0,pending=false,cached=null,refreshRequested=false,googleForceRequested=false,latestTiming={},timings=[],archiveVerified=false,archiveLoading=null;
  const now=()=>g.performance?.now?.()??Date.now();
  function recordTiming(values){latestTiming={...latestTiming,...values};timings.push({...latestTiming});if(timings.length>20)timings.shift();}
@@ -58,7 +58,7 @@
   // Transport timestamps and refresh flags do not change the appointment cards.
   const key=JSON.stringify([period,cal.colors,Boolean(cal.stale),Boolean(cal.loading),Boolean(cal.stale&&!cal.refreshing),events.map(e=>[e,archiveStatus(e)])]);
   if(paintedKey===key&&host().querySelector('.calendar-sidebar-scroll')){host().hidden=false;syncSelection();status(cal.loading?'Termine werden geladen …':stand()+(cal.refreshing?' · Wird aktualisiert …':cal.stale?' · Aktualisierung nicht bestätigt':''));return;}
-  const previousScroll=host().querySelector('.calendar-sidebar-scroll'),retainPosition=paintedPeriod===period&&previousScroll;
+  const previousScroll=host().querySelector('.calendar-sidebar-scroll'),retainPosition=paintedPeriod===period&&previousScroll&&!paintedLoading;
   const scrollTop=previousScroll?.scrollTop||0,monthScroll=[...(previousScroll?.querySelectorAll('section')||[])].map(n=>n.scrollTop);
   const focused=host().contains(document.activeElement)?document.activeElement:null;
   const focusKey=focused?.dataset.calendarEvent,focusLabel=focused?.getAttribute('aria-label');
@@ -85,7 +85,7 @@
    expandButton.onclick=()=>{expanded=!expanded;layout();focusToday();};const previous=node('button','‹'),next=node('button','›');for(const [button,delta,label] of [[previous,-1,'Vorheriger Monat'],[next,1,'Nächster Monat']]){button.type='button';button.className='outline-button';button.setAttribute('aria-label',label);button.dataset.calendarMonth=String(delta);button.disabled=pending||cal.loading===true;button.onclick=()=>{if(pending)return;monthOffset+=delta;cached=null;loadedAt=0;refreshRequested=true;refresh();};}header.insertBefore(previous,todayButton);header.insertBefore(next,expandButton);todayButton.onclick=()=>{if(monthOffset){monthOffset=0;cached=null;loadedAt=0;refreshRequested=true;refresh();}else focusToday();};host().replaceChildren(contentRoot);layout();
    if(retainPosition){scroll.scrollTop=scrollTop;months.forEach((section,i)=>section.scrollTop=monthScroll[i]||0);}else focusToday();
    if(focused){const replacement=[...host().querySelectorAll('button')].find(n=>focusKey?n.dataset.calendarEvent===focusKey:focusLabel&&n.getAttribute('aria-label')===focusLabel);replacement?.focus({preventScroll:true});}
-   paintedKey=key;paintedPeriod=period;syncSelection();recordTiming({indexMs:Math.round(indexedAt-renderStarted),renderMs:Math.round(now()-indexedAt)});status(cal.loading?'Termine werden geladen …':stand()+(cal.refreshing?' · Wird aktualisiert …':cal.stale?' · Aktualisierung nicht bestätigt':''));}
+   paintedKey=key;paintedPeriod=period;paintedLoading=Boolean(cal.loading);syncSelection();recordTiming({indexMs:Math.round(indexedAt-renderStarted),renderMs:Math.round(now()-indexedAt)});status(cal.loading?'Termine werden geladen …':stand()+(cal.refreshing?' · Wird aktualisiert …':cal.stale?' · Aktualisierung nicht bestätigt':''));}
  function syncSelection(){
   const selected=g.PortalAdmin?.selectedEvent?.()?.id;
   host()?.querySelectorAll('[data-calendar-event]').forEach(button=>{const active=button.dataset.calendarEvent===selected;button.classList.toggle('is-selected',active);button.setAttribute('aria-pressed',String(active));});
