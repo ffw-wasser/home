@@ -70,8 +70,8 @@ open class NextEventWidget : AppWidgetProvider() {
             val height = density.toInt().coerceAtLeast(1)
             val bitmap = Bitmap.createBitmap(pixels, height, Bitmap.Config.ARGB_8888)
             val center = when (status) { "yes" -> 1f / 6; "maybe" -> 5f / 6; else -> 0.5f }
-            val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF4C542; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
-            val bright = when (status) { "yes" -> 0xFF78C38F; "excused" -> 0xFFFFE8A0; "maybe" -> 0xFFFFC68B; else -> 0x70C6D2DF }.toInt()
+            val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF4C542; "maybe" -> 0xFFE16A22; else -> 0xFFC6D2DF }.toInt()
+            val bright = when (status) { "yes" -> 0xFF78C38F; "excused" -> 0xFFFFE16B; "maybe" -> 0xFFFF9D55; else -> 0x70C6D2DF }.toInt()
             val stops = floatArrayOf(0f, (center - 0.29f).coerceAtLeast(0.001f), center - 0.11f, center, center + 0.11f, (center + 0.29f).coerceAtMost(0.999f), 1f)
             val edge = 0x38C6D2DF
             val faded = (tint and 0xFFFFFF) or 0x2E000000
@@ -126,8 +126,8 @@ open class NextEventWidget : AppWidgetProvider() {
             // separately extracted white rim is tinted; flame and water stay original.
             val crestBorderTint = if (observation) 0xFFA4CEE9.toInt() else when (event?.status) {
                 "yes" -> 0xFF78C38F.toInt()
-                "excused" -> 0xFFFFE8A0.toInt()
-                "maybe" -> 0xFFFFC68B.toInt()
+                "excused" -> 0xFFFFE16B.toInt()
+                "maybe" -> 0xFFFF9D55.toInt()
                 else -> 0xFF9AB2C6.toInt()
             }
             views.setInt(R.id.widget_crest_border, "setColorFilter", crestBorderTint)
