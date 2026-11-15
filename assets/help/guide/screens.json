@@ -282,5 +282,9 @@
   "h2o-theater": {
     "width": 390,
     "height": 844
+  },
+  "geraetehaus-mitglieder": {
+    "width": 1180,
+    "height": 820
   }
 }

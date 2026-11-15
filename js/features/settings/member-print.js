@@ -266,7 +266,7 @@
       '<label data-print-year-control hidden>Jahr<input id="memberPrintYear" class="text-input" type="number" inputmode="numeric" min="1900" max="'+new Date().getFullYear()+'" step="1" value="'+new Date().getFullYear()+'"></label>'+
       '<button type="button" class="outline-button" data-print-submit> <span aria-hidden="true">⎙</span> Druckansicht / PDF</button></div>'+
       '<p id="memberPrintResult" role="status" aria-live="polite"></p><small>Nur im Verwaltungsbereich. Gedruckt werden gespeicherte Stammdaten, Funktionen und Laufbahneinträge – keine PINs, privaten Kontaktdaten oder medizinischen Nachweise. Die Daten bleiben lokal im Browser.</small>';
-    target.before(controls);
+    target.after(controls);
     controls.querySelector('#memberPrintScope').addEventListener('change',updateForm);
     controls.querySelector('#memberPrintYear').addEventListener('input',updateForm);
     controls.querySelector('[data-print-submit]').addEventListener('click',printNow);

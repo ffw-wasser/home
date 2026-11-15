@@ -131,7 +131,7 @@ function syncAttendanceStart(){
   const runningOperation=Boolean(currentOperationId)&&sessionType==='Einsatz',operationTitle=byId('homeOperationTitle'),operationAction=byId('homeOperationActionLabel');if(operationTitle)operationTitle.textContent=runningOperation?'Einsatz fortsetzen':'Einsatz erfassen';if(operationAction)operationAction.textContent=runningOperation?'Fortsetzen':state.running?'Neuen Einsatz starten':'Erfassung öffnen';
   const spontaneousStart=byId('spontaneousStartButton');if(spontaneousStart)spontaneousStart.disabled=state.running||Boolean(state.event)||!state.type;
   const calendarStatus=byId('attendanceStartCalendarStatus');if(calendarStatus){calendarStatus.textContent=byId('portal-calendar-status')?.textContent||'';calendarStatus.hidden=state.running||Boolean(state.type)||!calendarStatus.textContent;}
-  const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type?'Terminart gewählt. Mit „Spontanen Termin starten“ zu den Personen wechseln.':'Terminart wählen und die Anwesenheit erfassen.';
+  const hint=byId('sessionHint');if(hint&&!state.running)hint.textContent=state.type&&!state.event?'Terminart gewählt. Mit „Spontanen Termin starten“ zu den Personen wechseln.':'Terminart wählen und die Anwesenheit erfassen.';
   const choices=byId('attendanceSpontaneous');if(choices){choices.hidden=state.running;if(state.running)choices.open=false;}
   window.CalendarSidebar?.syncSelection?.();
 }
@@ -736,7 +736,7 @@ function ensureStagedHomeFlow(){
     attendance.querySelector('.home-start-side').append(manual);
     manual.querySelector('.home-spontaneous-body').append(byId('sessionTypes'),byId('sessionHint'));
     const spontaneousStart=document.createElement('button');spontaneousStart.id='spontaneousStartButton';spontaneousStart.type='button';spontaneousStart.className='primary-button';spontaneousStart.textContent='Spontanen Termin starten';spontaneousStart.disabled=true;spontaneousStart.addEventListener('click',beginAttendanceFromContext);manual.querySelector('.home-spontaneous-body').append(spontaneousStart);
-    manual.ontoggle=()=>{if(manual.open&&!currentSessionId&&!currentOperationId){window.PortalAdmin?.useSpontaneous?.();pendingSessionType='';delete byId('sessionTypes').dataset.selectedSessionType;byId('sessionTypes').querySelectorAll('[data-session-type]').forEach(button=>{button.classList.remove('selected');button.setAttribute('aria-pressed','false');});syncAttendanceStart();}};
+    // Öffnen und Schließen sind reine Anzeigeaktionen. Erst chooseSessionType löst einen spontanen Termin aus.
   }
   const hint=byId("sessionHint");if(hint)hint.textContent="Terminart wählen und die Anwesenheit erfassen.";
   if(!byId("continueToAttendanceButton")){

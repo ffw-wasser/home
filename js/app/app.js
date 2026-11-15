@@ -135,9 +135,18 @@ function buildSettingsSubpages(){
   if(pinArticle)pinArticle.remove();
   const membersPage=makePage("settingsMembersView","Mitglieder","Mitglieder, Funktionen und Berechtigungen verwalten.",members);
   if(membersPage&&!byId('memberEvidenceSync')){
-    const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Nachweise · Handy-Abgleich</h3><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').prepend(panel);
+    const panel=document.createElement('article');panel.className='panel';panel.innerHTML='<h3>Nachweise · Handy-Abgleich</h3><button id="memberEvidenceSync" class="outline-button" type="button" hidden>Nachweise fürs Handy aktualisieren</button><p id="memberEvidenceSyncStatus" role="status" aria-live="polite"></p>';membersPage.querySelector('.settings-subpage-content').append(panel);
     byId('memberEvidenceSync').onclick=async()=>{if(!requireAdmin('settingsMembersView'))return;const button=byId('memberEvidenceSync');button.disabled=true;try{await window.PortalAdmin.syncRoster(true);}catch{/* The status card shows the confirmed sync result. */}finally{window.PortalAdmin.renderSyncStatus();}};
     window.PortalAdmin?.renderSyncStatus?.();
+  }
+  if(membersPage&&!membersPage.querySelector('.member-workspace-tools')){
+    const tools=document.createElement('nav');tools.className='member-workspace-tools';tools.setAttribute('aria-label','Mitgliederaktionen');
+    const add=byId('addMemberButton')?.closest('article');if(add){add.classList.add('member-add-panel');add.id='memberAddPanel';}
+    [['Mitglied hinzufügen','memberAddPanel'],['Druck / PDF','memberPrintControls'],['Nachweise prüfen','portal-evidence-overview']].forEach(([label,id])=>{
+      const button=document.createElement('button');button.type='button';button.className='outline-button';button.textContent=label;
+      button.addEventListener('click',()=>{const target=byId(id);if(!target)return;target.scrollIntoView({block:'start',behavior:'instant'});target.querySelector('input,select,button')?.focus({preventScroll:true});});tools.append(button);
+    });
+    membersPage.querySelector('.screen-heading').after(tools);
   }
   const goalsPage=makePage("settingsGoalsView","Funktionsziele","Jährliche Mindestziele getrennt bearbeiten.",goals,"settingsOptionsView");
   makePage("settingsSecurityView","Sicherheit","Admin-Passwort für geschützte Bereiche ändern.",pinArticle,"settingsOptionsView");
