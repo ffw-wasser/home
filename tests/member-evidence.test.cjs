@@ -80,6 +80,7 @@ test('Vollständig fehlende Atemschutznachweise erscheinen als kritischer Hinwei
  // config has its own members binding; use the same synthetic roster there.
  vm.runInContext('members=[{breathingQualified:true,lastName:"Fiktiv",firstName:"Test"}];',c);
  const app=fs.readFileSync('js/app/app.js','utf8');vm.runInContext(app.slice(app.indexOf('function isAtmOrAtgQualified('),app.indexOf('function showBreathingClearanceWarnings(')),c);c.renderSafetyInfoHub();
+ let unchangedPaints=0;const content=byId('safetyInfoContent'),markup=content.innerHTML;Object.defineProperty(content,'innerHTML',{configurable:true,get:()=>markup,set:()=>unchangedPaints++});c.renderSafetyInfoHub();assert.equal(unchangedPaints,0,'identical hints do not rebuild the open dialog');
  assert.equal(byId('safetyInfoCount').textContent,'1');assert.match(byId('safetyInfoContent').innerHTML,/fehlt: G26.3, Unterweisung AGT, FFI/);assert.ok(critical.some(([key,on])=>key==='has-critical'&&on));
 });
 
