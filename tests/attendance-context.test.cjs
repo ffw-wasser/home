@@ -12,7 +12,7 @@ test('Kalendertermin zeigt Namen und startet direkt mit übernommener Terminart'
 });
 test('Fortsetzen erhält Termin und unübernommene Markierungen',()=>{
  const pending=new Map([['test-member','Anwesend']]),f=fixture({currentSessionId:'test-session',pendingMemberStatuses:pending,todayEntries:()=>[{status:'Anwesend'},{status:'Entschuldigt'}]});
- assert.equal(f.c.attendanceStartState().action,'Erfassung fortsetzen');assert.match(f.c.attendanceStartState().summary,/1 anwesend · 1 entschuldigt · 1 noch/);
+ assert.equal(f.c.attendanceStartState().action,'Erfassung fortsetzen');assert.match(f.c.attendanceStartState().summary,/1 anwesend · 1 Absagen · 1 noch/);
  f.c.beginAttendanceFromContext();assert.deepEqual(f.calls,[2]);assert.equal(f.c.currentSessionId,'test-session');assert.equal(f.c.pendingMemberStatuses,pending);
  f.c.syncAttendanceStart();assert.equal(f.get('attendanceSpontaneous').hidden,true);
 });

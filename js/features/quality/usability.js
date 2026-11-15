@@ -235,7 +235,7 @@
     if(!dialog){dialog=document.createElement('dialog');dialog.id='entryStatusDialog';dialog.innerHTML='<form><h2>Status ändern</h2><p data-entry-person></p><label for="entryStatusSelect">Status</label><select id="entryStatusSelect" class="text-input"></select><div class="ux-dialog-actions"><button type="button" class="outline-button" data-entry-cancel>Abbrechen</button><button type="submit" class="primary-button">Status speichern</button></div></form>';document.body.append(dialog);dialog.querySelector('[data-entry-cancel]').onclick=()=>dialog.close();}
     const options=sessionType==='Einsatz'?['Anwesend']:sessionType==='Allgemeine Probe'?['Anwesend','Entschuldigt','Orga']:sessionType==='Sonderprobe'?['Anwesend','Entschuldigt','Betrifft nicht']:['Anwesend','Entschuldigt'];
     dialog.querySelector('[data-entry-person]').textContent=entry.displayName;
-    byId('entryStatusSelect').innerHTML=options.map(s=>`<option>${s}</option>`).join('');byId('entryStatusSelect').value=entry.role==='Orga'?'Orga':entry.status;
+    byId('entryStatusSelect').innerHTML=options.map(s=>`<option value="${s}">${s==='Entschuldigt'?'Absage':s}</option>`).join('');byId('entryStatusSelect').value=entry.role==='Orga'?'Orga':entry.status;
     dialog.querySelector('form').onsubmit=event=>{
       event.preventDefault();const value=byId('entryStatusSelect').value;entry.status=value==='Orga'?'Anwesend':value;
       entry.role=value==='Orga'?'Orga':value!=='Anwesend'?'':sessionType==='Unterricht'?'Unterricht':sessionType==='Ausschuss Sitzung'?'Ausschuss Sitzung':entry.role==='Orga'?'':entry.role;

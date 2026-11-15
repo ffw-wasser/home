@@ -94,6 +94,8 @@ test('Kreisdiagramme basieren auf dokumentierten abgeschlossenen Proben und Eins
  assert.match(html,/Einsätze/);
  assert.match(html,/Nicht als Teilnehmer erfasst/);
  assert.match(html,/33 %/);
+ assert.match(html,/Absage/);assert.doesNotMatch(html,/Entschuldigt/);
+ assert.equal(history[1].rows[0].status,"Entschuldigt");
  const filtered=m.documentHtml(people,{mode:'year',year:2024},history);
  assert.match(filtered,/Kalenderjahr 2024/);
  assert.match(filtered,/50 %/);

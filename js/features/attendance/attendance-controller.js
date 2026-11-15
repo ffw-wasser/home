@@ -84,7 +84,7 @@ function renderMembers() {
     const selected = multiMode ? chosenMemberIds.has(member.id) : member.id === chosenMemberId;
     const organizationSelected = selected && chosenRole === "Orga";
     const extra=["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)?`<button type="button" class="member-status-action status-na ${pendingMemberStatuses.get(member.id)==="Betrifft nicht"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Betrifft nicht"}" data-quick-status="Betrifft nicht" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">−</span></button>`:sessionType==="Allgemeine Probe"?`<button type="button" class="member-status-action status-orga ${pendingMemberStatuses.get(member.id)==="Orga"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Orga"}" data-quick-status="Orga" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">O</span></button>`:"";
-    const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
+    const excused=sessionType==="Einsatz"?"":`<button type="button" class="member-status-action status-excused ${pendingMemberStatuses.get(member.id)==="Entschuldigt"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Entschuldigt"}" data-quick-status="Entschuldigt" aria-label="Absage" title="Absage" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">E</span></button>`;
     return `<article class="member-direct-card ${member.ageDepartment ? "age-member-card" : ""}"><strong class="member-name-two-lines"><span class="member-last-name">${escapeHtml(member.lastName)}</span><span class="member-first-name">${escapeHtml(member.firstName)}</span></strong><div class="member-direct-actions"><button type="button" class="member-status-action status-present ${pendingMemberStatuses.get(member.id)==="Anwesend"?"selected":""}" aria-pressed="${pendingMemberStatuses.get(member.id)==="Anwesend"}" data-quick-status="Anwesend" data-quick-member="${escapeHtml(member.id)}"><span class="status-icon">✓</span></button>${excused}${extra}</div></article>`;
   };
   const visibleMembers=availableMembers;
@@ -92,10 +92,10 @@ function renderMembers() {
   const legendItems=sessionType==="Einsatz"
     ? `<span><b class="legend-a">✓</b>Anwesend</span>`
     : sessionType==="Allgemeine Probe"
-      ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-o">O</b>Organisation</span>`
+      ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Absage</span><span><b class="legend-o">O</b>Organisation</span>`
       : ["Sonderprobe","Fitness","Unterricht","Veranstaltung"].includes(sessionType)
-        ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
-        : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Entschuldigt</span>`;
+        ? `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Absage</span><span><b class="legend-na">−</b>Betrifft nicht</span>`
+        : `<span><b class="legend-a">✓</b>Anwesend</span><span><b class="legend-e">E</b>Absage</span>`;
   let headingLegend=byId("stage2StatusLegend");
   if(!headingLegend && byId("stage2Heading")){
     headingLegend=document.createElement("aside");
@@ -118,7 +118,7 @@ function renderMembers() {
 function attendanceStartState(){
   const running=Boolean(currentSessionId||currentOperationId),event=window.PortalAdmin?.selectedEvent?.(),type=running?sessionType:pendingSessionType||event?.attendanceType||(event?.sessionType==="Probe"?"Allgemeine Probe":event?.sessionType)||"";
   const rows=todayEntries(),pending=pendingMemberStatuses.size;
-  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · "):""};
+  return {running,event,type,title:event?.title||(running?sessionType:type?"Spontaner Termin":"Termin beginnen"),date:!running&&!event&&!type?"":event?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(event.allDay?{hour:undefined,minute:undefined}:{})}).format(new Date(event.start)):new Date(today()+'T12:00:00').toLocaleDateString('de-DE'),action:running?"Erfassung fortsetzen":type?"Erfassung starten":"Terminart wählen",summary:running?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" Absagen"+(pending?" · "+pending+" noch zu übernehmen":""):event?[event.location,event.clothing].filter(Boolean).join(" · "):""};
 }
 function syncAttendanceStart(){
   const card=byId('attendanceStartCard');if(!card)return;
@@ -157,7 +157,7 @@ function updatePrimaryAction() {
   button.title=pending?"Bitte zuerst die Markierungen übernehmen.":hasEntries?"Nächsten Schritt öffnen":"Mindestens eine Teilnahme erfassen";
   const save=byId('saveButton');if(save)save.hidden=pending===0;
   const summary=byId("step3ActionSummary");
-  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" entschuldigt · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
+  if(summary)summary.textContent=pending?pending+" Markierungen warten auf Übernahme.":hasEntries?rows.filter(e=>e.status==="Anwesend").length+" anwesend · "+rows.filter(e=>e.status==="Entschuldigt").length+" Absagen · "+count+" Personen erfasst.":!members.length?"Keine Mitglieder geladen. Bitte Cloudflare verbinden bzw. synchronisieren.":"Markiere die Personen direkt auf ihren Karten.";
   syncAttendanceStart();window.PortalAdmin?.attendanceChanged?.();
 }
 function backToMembers() {
@@ -225,7 +225,7 @@ function renderEntries() {
     <tr>
       <td>${escapeHtml(entry.time)}</td>
       <td><strong>${escapeHtml(entry.displayName)}</strong></td>
-      <td>${escapeHtml(entry.role === "Orga" ? "Organisation" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? entry.status : entry.role))}</td>
+      <td>${escapeHtml(entry.role === "Orga" ? "Organisation" : ((entry.status === "Entschuldigt" || entry.status === "Betrifft nicht") ? (entry.status === "Entschuldigt" ? "Absage" : entry.status) : entry.role))}</td>
       <td><button type="button" class="outline-button" data-edit-entry="${escapeHtml(entry.id)}">Status ändern</button> <button type="button" class="delete-entry" data-entry="${escapeHtml(entry.id)}" aria-label="Anmeldung von ${escapeHtml(entry.displayName)} löschen">✕</button></td>
     </tr>`).join("");
   const presentCount = current.filter(entry => entry.status === "Anwesend").length;
@@ -521,7 +521,7 @@ function updateProbeWorkflow(){
   if(byId("memberStepNumber"))byId("memberStepNumber").textContent="2";
   if(byId("roleStepNumber"))byId("roleStepNumber").textContent="1";
   if(byId("roleStepEyebrow"))byId("roleStepEyebrow").textContent="Status direkt auswählen";
-  if(byId("roleMemberName"))byId("roleMemberName").textContent=operation?"Einsatz: nur Anwesend":standard?"Anwesend, Entschuldigt oder Orga":special?"Anwesend, Entschuldigt oder Betrifft nicht":committee?"Ausschuss Sitzung: Anwesend oder Entschuldigt":"Anwesend oder Entschuldigt";
+  if(byId("roleMemberName"))byId("roleMemberName").textContent=operation?"Einsatz: nur Anwesend":standard?"Anwesend, Absage oder Orga":special?"Anwesend, Absage oder Betrifft nicht":committee?"Ausschuss Sitzung: Anwesend oder Absage":"Anwesend oder Absage";
   if(byId("roleSelectionHint"))byId("roleSelectionHint").textContent="Der ausgewählte Status bleibt aktiv. Zum Wechsel einfach einen anderen Status antippen.";
   updatePrimaryAction();
 }
