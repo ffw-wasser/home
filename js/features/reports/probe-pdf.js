@@ -29,7 +29,7 @@ function probePdfBlob(rows, sessionType, counts, topic="", reportDate=today()){
       const firstRole=roleParts[0],secondRole=roleParts[1]||"";
       const rowHeight=includeFunction&&secondRole?28:23,baseY=y-(includeFunction&&secondRole?1:4);
       if(idx%2){ops.push(`0.72 0.79 0.84 rg 36 ${y-rowHeight+7} 523 ${rowHeight} re f`);}else{ops.push(`0.84 0.88 0.91 rg 36 ${y-rowHeight+7} 523 ${rowHeight} re f`);} ops.push('0 0 0 rg');
-      t(42,baseY,8,row.time||''); t(includeFunction?88:100,baseY,8,String(row.name).slice(0,includeFunction?36:52)); t(includeFunction?300:430,baseY,8,row.status);
+      t(42,baseY,8,row.time||''); t(includeFunction?88:100,baseY,8,String(row.name).slice(0,includeFunction?36:52)); t(includeFunction?300:430,baseY,8,row.status==="Entschuldigt"?"Absage":row.status);
       if(includeFunction)t(390,baseY+(secondRole?4:0),7.2,firstRole);
       if(includeFunction&&secondRole)t(390,baseY-8,7.2,secondRole,true);
       ops.push(`0.25 0.34 0.42 RG 36 ${y-rowHeight+5} m 559 ${y-rowHeight+5} l S`); y-=rowHeight;

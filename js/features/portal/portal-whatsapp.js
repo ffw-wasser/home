@@ -52,14 +52,14 @@
   el('event-when').textContent='📅 '+when(event);
   el('event-clothing').hidden=!event.clothing;el('event-clothing').textContent=event.clothing?'👕 '+(event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing==='Tagdienst'?'Tagesdienst':event.clothing):'';
   el('event-location').textContent='📍 '+(event.location||'GH Wasser');
-  const state={yes:'✓ Du bist dabei',excused:'Entschuldigt',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
+  const state={yes:'✓ Du bist dabei',excused:'Absage',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
   const changed=Number.isSafeInteger(event.updatedAt)&&event.updatedAt>0?' · Zuletzt geändert: '+new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.updatedAt))+' Uhr':'';
   el('event-status').textContent=(state[event.status]||state.open)+changed;
   const locked=stale||event.start<=Date.now()||working;
   for(const button of el('chosen').querySelectorAll('[data-reply]')){
    const chosen=button.dataset.reply===event.status;
    button.disabled=locked;button.setAttribute('aria-pressed',String(chosen));
-   button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Entschuldigt',maybe:'Noch unsicher'}[button.dataset.reply]);
+   button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Absage',maybe:'Noch unsicher'}[button.dataset.reply]);
   }
   status(stale?'Kalender nicht aktuell. Bitte neu laden.':event.start<=Date.now()?'Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad klären.':'');
  }

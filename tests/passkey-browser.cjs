@@ -87,7 +87,7 @@ const {chromium}=require('playwright');
  await page.evaluate(()=>localStorage.removeItem('h2o-portal-identity-v1'));await page.reload();await page.locator('#pairing').waitFor({state:'visible'});
  await page.getByRole('button',{name:'Mit Passkey anmelden',exact:true}).click();await page.locator('#chosen').waitFor({state:'visible'});
  assert.equal(await page.locator('#event-title').textContent(),event.title);
- await page.getByRole('button',{name:'Entschuldigt',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Gespeichert!'));
+ await page.getByRole('button',{name:'Absage',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Gespeichert!'));
  assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM portal_passkeys').get().n,1);
 
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});

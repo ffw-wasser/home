@@ -357,10 +357,10 @@ function appendArchiveCorrectionPerson(row,index){
   const statusLabel=document.createElement("label");statusLabel.textContent="Teilnahme";const status=document.createElement("select");status.className="text-input";status.dataset.correctionField="status";
   const types=["Anwesend","Entschuldigt","Fehlt"];
   if(archiveCorrectionState?.item.sessionType==="Sonderprobe"||row.status==="Betrifft nicht")types.push("Betrifft nicht");
-  for(const value of types){const option=document.createElement("option");option.value=value;option.textContent=value;status.append(option);}
+  for(const value of types){const option=document.createElement("option");option.value=value;option.textContent=value==="Entschuldigt"?"Absage":value;status.append(option);}
   status.value=types.includes(row.status)?row.status:"Fehlt";statusLabel.append(status);
   const roleLabel=document.createElement("label");roleLabel.textContent="Funktion / Status";const role=document.createElement("input");role.type="text";role.className="text-input";role.maxLength=120;role.dataset.correctionField="role";role.value=row.role||"";roleLabel.append(role);
-  const update=()=>{roleLabel.hidden=status.value!=="Anwesend"||archiveCorrectionState?.item.sessionType!=="Allgemeine Probe"||!archiveCorrectionUsesRoles();card.dataset.status=status.value;state.textContent=status.value;filterArchiveCorrectionRows();};
+  const update=()=>{roleLabel.hidden=status.value!=="Anwesend"||archiveCorrectionState?.item.sessionType!=="Allgemeine Probe"||!archiveCorrectionUsesRoles();card.dataset.status=status.value;state.textContent=status.value==="Entschuldigt"?"Absage":status.value;filterArchiveCorrectionRows();};
   status.onchange=update;name.oninput=filterArchiveCorrectionRows;
   fields.append(nameLabel,statusLabel,roleLabel);card.append(top,fields);container.append(card);update();
 }

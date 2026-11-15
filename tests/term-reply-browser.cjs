@@ -18,7 +18,7 @@ for(const width of [320,390,412,768]){
  // A second tap still withdraws the selected answer.
  await page.getByRole('button',{name:'✓ Bin dabei',exact:true}).click();await page.getByText('Deine Rückmeldung fehlt noch',{exact:false}).waitFor();assert.equal(jobs.at(-1).status,'open');
  mode='conflict';await page.getByRole('button',{name:'Noch unsicher',exact:true}).click();await page.getByRole('button',{name:'Termin neu laden',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Bin dabei',exact:true}).isDisabled(),true);
- event={...event,status:'excused',version:9};await page.getByRole('button',{name:'Termin neu laden',exact:true}).click();await page.getByRole('button',{name:'✓ Entschuldigt',exact:true}).waitFor();
+ event={...event,status:'excused',version:9};await page.getByRole('button',{name:'Termin neu laden',exact:true}).click();await page.getByRole('button',{name:'✓ Absage',exact:true}).waitFor();
  mode='success';await page.getByRole('button',{name:'Bin dabei',exact:true}).click();await page.getByText('✓ Gespeichert!',{exact:true}).waitFor();assert.equal(jobs.at(-1).expectedVersion,9);
  assert.equal(await page.evaluate(()=>__tabCloseAttempts),0,'saving alone does not close the tab');
  await page.screenshot({path:path.join(require('node:os').tmpdir(),'term-reply-'+width+'.png'),fullPage:true});

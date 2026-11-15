@@ -570,7 +570,7 @@ function renderIndividualStatistics(memberId) {
     .filter(row => row.status === "Anwesend" || row.status === "Entschuldigt")
     .sort((a,b) => String(b.date).localeCompare(String(a.date)) || String(b.time).localeCompare(String(a.time)))
     .slice(0,10);
-  byId("individualRecentVisits").innerHTML = recent.map(row => `<div class="individual-recent-row"><span>${escapeHtml(formatDisplayDate(row.date))}${row.time ? ` · ${escapeHtml(row.time)}` : ""}</span><strong>${escapeHtml(row.status)}</strong><small>${escapeHtml(row.sessionType || "Probe")}${row.topic ? ` · ${escapeHtml(row.topic)}` : ""}${row.role ? ` · ${escapeHtml(row.role)}` : ""}</small></div>`).join("");
+  byId("individualRecentVisits").innerHTML = recent.map(row => `<div class="individual-recent-row"><span>${escapeHtml(formatDisplayDate(row.date))}${row.time ? ` · ${escapeHtml(row.time)}` : ""}</span><strong>${escapeHtml(row.status==="Entschuldigt"?"Absage":row.status)}</strong><small>${escapeHtml(row.sessionType || "Probe")}${row.topic ? ` · ${escapeHtml(row.topic)}` : ""}${row.role ? ` · ${escapeHtml(row.role)}` : ""}</small></div>`).join("");
   byId("individualRecentVisitsEmpty").hidden = recent.length > 0;
 
   preview.hidden = false; button.disabled = false;

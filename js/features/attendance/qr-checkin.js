@@ -34,7 +34,7 @@
    if(existing?.status==='Anwesend'){status.textContent=name+' – bereits erfasst ✓';guide('success','Bereits als anwesend erfasst ✓');return;}
    const selected=g.PortalAdmin.checkinContext(),info=selected.replies,reply=!info?.stale&&(!info?.event||info.event.id===selected.eventId)&&info?.replies?.find(r=>String(r.memberId)===String(member.id));
    const excused=existing?.status==='Entschuldigt'||pendingMemberStatuses.get(member.id)==='Entschuldigt'||reply?.status==='excused';
-   if((excused||reply?.status!=='yes')&&!confirm(name+(excused?' ist entschuldigt. Trotzdem als anwesend erfassen?':' ist nicht vorgemerkt. Als anwesend hinzufügen?'))){guide('waiting','Erfassung nicht übernommen');return;}
+   if((excused||reply?.status!=='yes')&&!confirm(name+(excused?' hat abgesagt. Trotzdem als anwesend erfassen?':' ist nicht vorgemerkt. Als anwesend hinzufügen?'))){guide('waiting','Erfassung nicht übernommen');return;}
    if(!valid())return;
    const before=existing?{...existing}:null,pendingBefore=pendingMemberStatuses.get(member.id);
    if(existing){existing.status='Anwesend';existing.role=sessionType==='Unterricht'?'Unterricht':sessionType==='Ausschuss Sitzung'?'Ausschuss Sitzung':'';}
