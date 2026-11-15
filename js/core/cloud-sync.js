@@ -19,7 +19,7 @@ async function odFetch(url,options={}){const epoch=oneDriveSessionEpoch;await Cl
 function oneDrivePayload(){return {schemaVersion:4,updatedAt:new Date().toISOString(),members,entries,careerCatalog:typeof careerCatalog!=='undefined'?careerCatalog:[],roleTargets:typeof getRoleTargets==='function'?getRoleTargets():{},functionEntryEnabled:typeof isFunctionEntryEnabled==='function'?isFunctionEntryEnabled():true};}
 function applyOneDrivePayload(data){
  if(!data||!Array.isArray(data.members)||!Array.isArray(data.entries))throw new Error('Ungültiger Cloudflare-Datenstand.');
- const changed=!cloudSame(oneDrivePayload(),data);
+ const before=oneDrivePayload();
  oneDriveApplying=true;
  try{members=data.members;entries=data.entries;if(typeof careerCatalog!=='undefined')careerCatalog=Array.isArray(data.careerCatalog)?data.careerCatalog:[];
  safeStorage.setItem(KEYS.members,JSON.stringify(members));safeStorage.setItem(KEYS.entries,JSON.stringify(entries));if(KEYS.careerCatalog&&typeof careerCatalog!=='undefined')safeStorage.setItem(KEYS.careerCatalog,JSON.stringify(careerCatalog));
@@ -27,7 +27,7 @@ function applyOneDrivePayload(data){
  }finally{oneDriveApplying=false;}
  // A successful background confirmation must not rebuild every screen.
  // Persist the confirmed payload as before; redraw only actual data changes.
- if(changed)for(const render of [window.renderMembers,window.renderToday,window.renderAdmin,window.renderStatistics])render?.();
+ if(!cloudSame(before,oneDrivePayload()))for(const render of [window.renderMembers,window.renderToday,window.renderAdmin,window.renderStatistics])render?.();
 }
 async function oneDriveReadState({versioned=false}={}){const epoch=oneDriveSessionEpoch,result=await CloudStorage.readState();assertOneDriveSession(epoch);return versioned?{data:result.value,version:result.version,eTag:'"s-'+result.version+'"'}:result.value;}
 const cloudSame=(a,b)=>['members','entries','careerCatalog','roleTargets','functionEntryEnabled'].every(key=>JSON.stringify(a[key]??(key==='functionEntryEnabled'?true:key==='roleTargets'?{}:[]))===JSON.stringify(b[key]??(key==='functionEntryEnabled'?true:key==='roleTargets'?{}:[])));

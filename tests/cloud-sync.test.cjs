@@ -75,3 +75,9 @@ for(const history of [false,true])test('Unchanged background sync confirms stora
  assert.deepEqual(renders,['renderMembers','renderToday','renderAdmin','renderStatistics']);assert.equal(f.c.members[0].firstName,'Neue Testperson');
  renders.length=0;await f.c.syncOneDrive();assert.deepEqual(renders,[]);
 });
+
+test('Role target normalization does not cause repeated redraws for older snapshots',async()=>{
+ const f=setup();f.c.getRoleTargets=()=>({GF:JSON.parse(f.local.getItem('fw_targets')||'{}').GF||0});f.c.saveRoleTargets=value=>f.local.setItem('fw_targets',JSON.stringify({GF:value.GF||0}));
+ let renders=0;f.c.renderMembers=()=>renders++;await f.c.syncOneDrive();await f.c.syncOneDrive();assert.equal(renders,0);
+ f.update(value=>value.roleTargets={GF:2});await f.c.syncOneDrive();assert.equal(renders,1);assert.equal(f.c.getRoleTargets().GF,2);
+});
