@@ -50,7 +50,7 @@ struct NextEventView: View {
         switch status {
         case "yes": return Color(red: 40.0 / 255, green: 125.0 / 255, blue: 73.0 / 255)
         case "excused": return signalYellow
-        case "maybe": return Color(red: 232.0 / 255, green: 117.0 / 255, blue: 36.0 / 255)
+        case "maybe": return Color(red: 232.0 / 255, green: 106.0 / 255, blue: 34.0 / 255)
         default: return secondaryInk
         }
     }
@@ -61,8 +61,8 @@ struct NextEventView: View {
         guard renderingMode == .fullColor else { return ink.opacity(0.3) }
         switch status {
         case "yes": return rgb(0x65B580)
-        case "excused": return rgb(0xFFE797)
-        case "maybe": return rgb(0xFFC184)
+        case "excused": return rgb(0xFFE16B)
+        case "maybe": return rgb(0xFF9D55)
         default: return secondaryInk
         }
     }
@@ -73,8 +73,8 @@ struct NextEventView: View {
         if event?.canReply == false { return [rgb(0x466E90), rgb(0x213346), rgb(0xA4CEE9)] }
         switch edgeStatus {
         case "yes": return [rgb(0x28513E), rgb(0x152D2D), rgb(0x78C38F)]
-        case "excused": return [rgb(0x675327), rgb(0x3B3026), rgb(0xFFE8A0)]
-        case "maybe": return [rgb(0x714026), rgb(0x432A28), rgb(0xFFC68B)]
+        case "excused": return [rgb(0x66511A), rgb(0x3A301C), rgb(0xFFE16B)]
+        case "maybe": return [rgb(0x70321B), rgb(0x42231F), rgb(0xFF9D55)]
         default: return [rgb(0x344A60), rgb(0x213346), rgb(0x9AB2C6)]
         }
     }

@@ -100,7 +100,7 @@ class WidgetPreviewTest {
                 for ((status, index) in listOf("yes" to 1, "excused" to 2, "maybe" to 3, "open" to 0)) {
                     WidgetStore.confirm(context, event.id, status, 1)
                     NextEventWidget.views(activity, 330, 230, now, true).reapply(activity, root)
-                    val expectedBorder = mapOf("yes" to 0xFF78C38F.toInt(), "excused" to 0xFFFFE8A0.toInt(), "maybe" to 0xFFFFC68B.toInt(), "open" to 0xFF9AB2C6.toInt()).getValue(status)
+                    val expectedBorder = mapOf("yes" to 0xFF78C38F.toInt(), "excused" to 0xFFFFE16B.toInt(), "maybe" to 0xFFFF9D55.toInt(), "open" to 0xFF9AB2C6.toInt()).getValue(status)
                     val border = activity.findViewById<android.widget.ImageView>(R.id.widget_crest_border)
                     val sampledBorder = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888)
                     val drawable = border.drawable
