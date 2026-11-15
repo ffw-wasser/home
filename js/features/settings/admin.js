@@ -177,7 +177,7 @@ function addMember() {
   const lastName = byId("newLastName").value.trim();
   const firstName = byId("newFirstName").value.trim();
   if (!lastName || !firstName) return showToast("Bitte Nachname und Vorname eingeben.", "error");
-  const duplicate = members.some(member => member.lastName.toLocaleLowerCase("de") === lastName.toLocaleLowerCase("de") && member.firstName.toLocaleLowerCase("de") === firstName.toLocaleLowerCase("de"));
+  const duplicate = members.some(member => memberNameKey(member) === memberNameKey({lastName,firstName}));
   if (duplicate) return showToast("Dieses Mitglied ist bereits vorhanden.", "error");
   members = sortMembers([...members, { id: makeId(), lastName, firstName, roles: [], breathingQualified: false, ageDepartment: false, machinistVehicles: [] }]);
   saveMembers();
@@ -187,12 +187,19 @@ function addMember() {
   renderAdmin();
   showToast("Mitglied angelegt. Bitte Funktionen und Berechtigungen gezielt auswählen.");
 }
+function memberNameKey(member){
+  return [member.lastName,member.firstName].map(value=>String(value||'').normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase('de-DE')).join('\u0000');
+}
 function prepareMemberUpdate(id, row) {
   const lastName = row.querySelector("[data-last-name]").value.trim();
   const firstName = row.querySelector("[data-first-name]").value.trim();
   if (!lastName || !firstName) throw Error("Name darf nicht leer sein.");
   const current = members.find(item => item.id === id);
   if (!current) throw Error("Mitglied wurde inzwischen entfernt. Bitte die Liste neu laden.");
+  if((current.lastName!==lastName||current.firstName!==firstName)&&typeof entries!=="undefined"&&entries.length){
+    const names=new Set([nameForStorage(current),nameForTile(current)]);
+    if(entries.some(entry=>entry.memberId===id||names.has(entry.storedName)||names.has(entry.displayName)))throw Error("Bitte offene Teilnahmen dieser Person zuerst abschließen oder verwerfen. Danach den Namen ändern.");
+  }
   const member = {...current};
   const joinedInput=row.querySelector("[data-joined-on]");
   if(joinedInput){
@@ -241,7 +248,13 @@ function updateMembers(rows) {
   }
   if(!updates.size)return true;
   // Validate the complete selection before changing any member or starting sync.
-  members=sortMembers(members.map(member=>updates.get(member.id)||member));
+  const nextMembers=members.map(member=>updates.get(member.id)||member),names=new Set();
+  for(const member of nextMembers){
+    const key=memberNameKey(member);
+    if(names.has(key)){showToast("Vor- und Nachname sind mehrfach vorhanden. Bitte eindeutige Namen eingeben; keine Änderungen gespeichert.","error");return false;}
+    names.add(key);
+  }
+  members=sortMembers(nextMembers);
   // Erst nach erfolgreicher Prüfung aller Personen den gemeinsamen FF-Katalog aktualisieren.
   // Berufsfeuerwehr- und Beamtenbezeichnungen werden nicht als Vorschlag übernommen.
   if(window.MemberCareer?.mergedCatalog){

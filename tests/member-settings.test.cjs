@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../js/features/portal/member-evidence.js');
-function fixture(){const messages=[],saved=[];const c=vm.createContext({members:[],AVAILABLE_ROLES:['GF','ATF','ATM','Maschinist'],MemberEvidence:E,requireAdmin:()=>true,byId:id=>({value:id==='newFirstName'?'Test':'Fiktiv'}),makeId:()=> 'test-member',sortMembers:x=>x,saveMembers:()=>saved.push(JSON.stringify(c.members)),renderMembers(){},renderAdmin(){},updateSelection(){},showToast:t=>messages.push(t),systemToday:()=> '2026-10-16',window:{},hasValidBreathingClearance:m=>['valid','soon'].includes(E.breathingAssessment(m,'2026-10-16')?.status)});const source=fs.readFileSync('js/features/settings/admin.js','utf8');vm.runInContext(source.slice(source.indexOf('function addMember()'),source.indexOf('function deleteMember(')),c);return {c,messages,saved};}
+function fixture(){const messages=[],saved=[];const c=vm.createContext({members:[],AVAILABLE_ROLES:['GF','ATF','ATM','Maschinist'],MemberEvidence:E,nameForStorage:m=>m.lastName+', '+m.firstName,nameForTile:m=>m.firstName+' '+m.lastName,requireAdmin:()=>true,byId:id=>({value:id==='newFirstName'?'Test':'Fiktiv'}),makeId:()=> 'test-member',sortMembers:x=>x,saveMembers:()=>saved.push(JSON.stringify(c.members)),renderMembers(){},renderAdmin(){},updateSelection(){},showToast:t=>messages.push(t),systemToday:()=> '2026-10-16',window:{},hasValidBreathingClearance:m=>['valid','soon'].includes(E.breathingAssessment(m,'2026-10-16')?.status)});const source=fs.readFileSync('js/features/settings/admin.js','utf8');vm.runInContext(source.slice(source.indexOf('function addMember()'),source.indexOf('function deleteMember(')),c);return {c,messages,saved};}
 function row(dates={}){const fields={'data-last-name':{value:'Fiktiv'},'data-first-name':{value:'Test'},'data-breathing-qualified':{checked:true},...Object.fromEntries(Object.entries(dates).map(([key,value])=>[key,{value}]))};return {querySelector:s=>fields[s.slice(1,-1)],querySelectorAll:()=>[]};}
 test('Neue Mitglieder erhalten weder Funktionen noch GF-Portalrechte automatisch',()=>{const f=fixture();f.c.addMember();assert.equal(f.c.members.length,1);assert.deepEqual([...f.c.members[0].roles],[]);assert.equal(f.c.members[0].breathingQualified,false);assert.equal(f.c.members[0].roles.includes('GF'),false);});
 test('G26.3 löschen behält andere Nachweise und erzeugt keinen Ersatz aus dem Sammeldatum',()=>{const f=fixture();f.c.members=[{id:'test-member',firstName:'Test',lastName:'Fiktiv',breathingQualified:true,g263ValidUntil:'2028-01-01',breathingClearanceUntil:'2028-01-01'}];f.c.updateMember('test-member',row({'data-agt-instruction-valid-until':'2028-03','data-ffi-valid-until':'2028-04'}));const m=f.c.members[0];assert.equal(m.g263ValidUntil,'');assert.equal(m.agtInstructionValidUntil,'2028-03-31');assert.equal(m.breathingClearanceUntil,'');assert.equal(m.breathingClearance,false);assert.equal(E.breathingAssessment(m,'2026-10-16').status,'missing');assert.equal(f.saved.length,1);});
@@ -24,7 +24,7 @@ test('Sammelspeichern validiert alle Personen vor dem ersten Schreibvorgang',()=
 });
 test('Sammelspeichern übernimmt mehrere Personen mit genau einem Speichervorgang',()=>{
  const f=fixture();f.c.members=[{id:'a',lastName:'Alt A',firstName:'Test'},{id:'b',lastName:'Alt B',firstName:'Test'},{id:'c',lastName:'Unverändert',firstName:'Test'}];
- assert.equal(f.c.updateMembers([{id:'a',row:row({'data-ffi-valid-until':'2027-02'})},{id:'b',row:row({'data-g263-valid-until':'2027-03'})}]),true);
+ assert.equal(f.c.updateMembers([{id:'a',row:row({'data-ffi-valid-until':'2027-02'})},{id:'b',row:row({'data-last-name':'Anderer Name','data-g263-valid-until':'2027-03'})}]),true);
  assert.equal(f.saved.length,1);assert.equal(f.c.members[0].ffiValidUntil,'2027-02-28');assert.equal(f.c.members[1].g263ValidUntil,'2027-03-31');assert.equal(f.c.members[2].lastName,'Unverändert');
 });
 test('Sammelspeichern bricht bei zwischenzeitlich entferntem Mitglied ohne Teiländerung ab',()=>{
@@ -45,4 +45,22 @@ test('Ungültiges oder zukünftiges Eintrittsdatum verhindert jede Teiländerung
   const f=fixture();f.c.members=[{id:'test-member',lastName:'Alt',firstName:'Test',joinedOn:'2001-03-17'}];const before=JSON.stringify(f.c.members);
   f.c.updateMember('test-member',row({'data-joined-on':date}));assert.equal(JSON.stringify(f.c.members),before);assert.equal(f.saved.length,0);assert.match(f.messages[0],/Eintrittsdatum/);
  }
+});
+
+test('Namenskonflikte verhindern Einzel- und Sammeländerungen ohne Teiländerung',()=>{
+ for(const batch of [false,true]){
+  const f=fixture();f.c.members=[{id:'a',firstName:'Anna',lastName:'Alt'},{id:'b',firstName:'Test',lastName:'Fiktiv'}];const before=JSON.stringify(f.c.members);
+  const changes=[{id:'a',row:row({'data-last-name':'  FIKTIV  '})}];if(batch)changes.push({id:'b',row:row()});
+  assert.equal(f.c.updateMembers(changes),false);assert.equal(f.saved.length,0);assert.equal(JSON.stringify(f.c.members),before);assert.match(f.messages[0],/mehrfach/);
+ }
+});
+test('Namenswechsel mit offenen Teilnahmen wird blockiert; reine Nachweispflege bleibt möglich',()=>{
+ const f=fixture();f.c.members=[{id:'a',firstName:'Test',lastName:'Fiktiv'}];f.c.entries=[{storedName:'Fiktiv, Test',status:'Anwesend'}];const before=JSON.stringify(f.c.entries);
+ assert.equal(f.c.updateMember('a',row({'data-last-name':'Neu'})),false);assert.equal(f.saved.length,0);assert.match(f.messages[0],/offene Teilnahmen/);
+ assert.equal(f.c.updateMember('a',row({'data-g263-valid-until':'2027-03'})),true);assert.equal(JSON.stringify(f.c.entries),before);
+ f.c.entries=[];assert.equal(f.c.updateMember('a',row({'data-last-name':'Neu'})),true);
+});
+test('Gleichzeitiger Namenstausch prüft den vollständigen Zielbestand',()=>{
+ const f=fixture();f.c.members=[{id:'a',firstName:'Test',lastName:'Alpha'},{id:'b',firstName:'Test',lastName:'Beta'}];
+ assert.equal(f.c.updateMembers([{id:'a',row:row({'data-last-name':'Beta'})},{id:'b',row:row({'data-last-name':'Alpha'})}]),true);assert.equal(f.saved.length,1);
 });

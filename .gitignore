@@ -17,3 +17,6 @@ native/.swiftpm/
 
 # Local synthetic rendering checks
 /tmp/
+
+# Generated synthetic browser-test screenshots and reports
+/qa/

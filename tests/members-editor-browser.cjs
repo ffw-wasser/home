@@ -108,7 +108,7 @@ const root=path.resolve(__dirname,'..');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Keine Seitenüberbreite bei '+width);
    }
   }
-  await page.setViewportSize({width:390,height:844});await row('a').screenshot({path:'/tmp/members-editor-mobile.png'});
+  await page.setViewportSize({width:390,height:844});await row('a').screenshot({path:require('node:path').join(require('node:os').tmpdir(), 'members-editor-mobile.png')});
   assert.deepEqual(errors,[]);
   console.log('Personenakten-Browsertest erfolgreich: Mehrfachspeicherung, Laufbahn, Validierung, PIN, Verwerfen und 320/390/768 px.');
  }finally{await browser.close();}
