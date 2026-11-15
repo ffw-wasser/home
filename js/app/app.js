@@ -28,7 +28,7 @@ function removeTacticsMenuEntry(){
 function moveProbeStatusToHeader(){
   const brand=document.querySelector(".top-brand span");if(brand)brand.textContent="Feuerwehr Wasser";
   document.title="Feuerwehr Wasser";
-  const homeButton=byId("attendanceTab");if(homeButton){homeButton.setAttribute("aria-label","Termin");homeButton.title="Zur Terminübersicht";}
+  const homeButton=byId("attendanceTab");if(homeButton){homeButton.textContent="Startseite";homeButton.setAttribute("aria-label","Startseite");homeButton.title="Zur Terminübersicht";}
   const menuButton=byId("menuToggleButton");if(menuButton)menuButton.textContent="Menü";
 
   const original=byId("homeCurrentProbeStatus"),menu=byId("compactMenu");if(!original||!menu)return;

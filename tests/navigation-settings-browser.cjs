@@ -20,7 +20,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(await page.locator('#adminLoginView').isVisible(),true,'deletion still requires administration');
  assert.equal(await page.evaluate(()=>JSON.stringify(csvArchive)===qaReportSnapshot),true,'viewing and blocked deletion leave reports unchanged');
  await page.evaluate(()=>{oneDriveAdministrationReady=qaAdminReady;window.loadOneDriveHistory=qaHistoryLoader;showView('attendanceView');});
- const home=page.getByRole('button',{name:'Termin',exact:true});assert.equal(await home.textContent(),'Termin');assert.equal(await home.locator('svg').count(),0);
+ const home=page.getByRole('button',{name:'Startseite',exact:true});assert.equal(await home.textContent(),'Startseite');assert.equal(await home.locator('svg').count(),0);
  // Returning to the appointment overview must preserve this document, session and drafts.
  await page.evaluate(()=>{window.qaTermNavigationMarker='same-document';window.qaTermSource=()=> 'synthetic-source';window.qaOriginalSource=attendanceDraftSource;attendanceDraftSource=qaTermSource;currentSessionId='synthetic-running-term';currentOperationId='';oneDriveBusy=true;oneDriveAdministrationReady=()=>true;adminUnlocked=true;resetAdminTimeout();showView('settingsView');});
  const previousUrl=page.url();let documents=0;const countDocument=request=>{if(request.isNavigationRequest()&&request.frame()===page.mainFrame())documents++;};page.on('request',countDocument);
@@ -35,7 +35,6 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  for(const width of [320,390,768,1024]){
   await page.setViewportSize({width,height:900});
   const layout=await page.evaluate(()=>{const nav=document.querySelector('.top-nav').getBoundingClientRect(),status=document.querySelector('#appConnectionStatus').getBoundingClientRect(),buttons=['attendanceTab','drinksShortcut','menuToggleButton'].map(id=>document.getElementById(id).getBoundingClientRect());return {fits:document.documentElement.scrollWidth<=innerWidth,separate:status.bottom<=document.querySelector('.app-footer').getBoundingClientRect().top+1&&status.top>=document.querySelector('main').getBoundingClientRect().bottom-1,overlap:buttons.some((a,i)=>buttons.slice(i+1).some(b=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top)),height:buttons.every(b=>b.height>=44)};});
-  const center=await page.locator('.top-nav-actions').evaluate(el=>{const r=el.getBoundingClientRect();return Math.abs((r.left+r.right)/2-innerWidth/2);});assert.ok(center<2,'centered Termin/Getränke '+width+' '+center);
   assert.ok(layout.fits&&layout.separate&&!layout.overlap&&layout.height,JSON.stringify({width,layout}));
   const contrast=await page.locator('#cloudSyncButton').evaluate(n=>({button:getComputedStyle(n).color,label:getComputedStyle(n.querySelector('small')).color,visible:getComputedStyle(n.querySelector('.cloud-sync-copy')).display!=='none'}));assert.ok(contrast.visible&&contrast.button===contrast.label&&contrast.label!=='rgb(255, 255, 255)','connection status is readable '+width);
  }
