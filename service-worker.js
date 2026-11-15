@@ -241,6 +241,7 @@ const PUBLIC_FILES=[
   "./assets/help/guide/geraetehaus-google-termin.jpg",
   "./assets/help/guide/geraetehaus-google-pflege.jpg",
   "./assets/help/guide/geraetehaus-start.jpg",
+  "./assets/lf10-home-watermark.png",
   "./assets/help/guide/geraetehaus-statistik-pdf.jpg",
   "./assets/help/guide/geraetehaus-statistik.jpg",
   "./assets/help/guide/geraetehaus-uebernehmen.jpg",
