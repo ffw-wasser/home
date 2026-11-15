@@ -81,3 +81,11 @@ test('Role target normalization does not cause repeated redraws for older snapsh
  let renders=0;f.c.renderMembers=()=>renders++;await f.c.syncOneDrive();await f.c.syncOneDrive();assert.equal(renders,0);
  f.update(value=>value.roleTargets={GF:2});await f.c.syncOneDrive();assert.equal(renders,1);assert.equal(f.c.getRoleTargets().GF,2);
 });
+
+test('Safety indicators refresh after remote sync, identical confirmation and local edits',async()=>{
+ const f=setup(),seen=[];f.c.renderSafetyInfoHub=()=>seen.push(f.c.members[0]?.firstName);
+ await f.c.syncOneDrive();assert.equal(seen.at(-1),'Anna');
+ f.update(value=>value.members[0].firstName='Neuer Nachweisstand');await f.c.syncOneDrive();assert.equal(seen.at(-1),'Neuer Nachweisstand');
+ seen.length=0;await f.c.syncOneDrive();assert.ok(seen.length>0,'unchanged state also refreshes date-dependent hints');
+ f.c.members[0].firstName='Lokale Nachweisänderung';f.c.scheduleCloudSync();assert.equal(seen.at(-1),'Lokale Nachweisänderung');
+});

@@ -53,7 +53,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
  if(process.env.QA_OUTPUT){fs.mkdirSync(process.env.QA_OUTPUT,{recursive:true});await page.setViewportSize({width:390,height:780});await page.evaluate(()=>oneDriveStatus('Synchronisiert','online'));await page.locator('.app-footer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.QA_OUTPUT,'sync-footer-390.png')});}
  await page.locator('#safetyInfoButton').click();assert.equal(await page.locator('#safetyInfoDialog').isVisible(),true);assert.match(await page.locator('#safetyInfoContent').innerText(),/Beispiel/);await page.getByRole('button',{name:'Hinweise schließen',exact:true}).click();
- await page.evaluate(()=>{members=[];renderSafetyInfoHub();});assert.equal(await page.locator('#safetyInfoButton').isVisible(),false);
+ // Same content remains mounted; changing local member evidence refreshes the badge.
+ await page.evaluate(()=>{window.keptSafetyContent=document.querySelector('#safetyInfoContent section');window.keptSafetyBadge=document.getElementById('safetyInfoCount').firstChild;notifyAppStorageState();notifyAppStorageState();});
+ assert.equal(await page.evaluate(()=>keptSafetyContent===document.querySelector('#safetyInfoContent section')&&keptSafetyBadge===document.getElementById('safetyInfoCount').firstChild),true,'unchanged sync notifications preserve dialog and badge nodes');
+ await page.evaluate(()=>{members[0].machinistVehicles=['LF'];saveMembers();});assert.equal(await page.locator('#safetyInfoCount').textContent(),'2','local evidence changes refresh hints without reopening');
+ await page.evaluate(()=>{members[0].breathingQualified=false;saveMembers();});assert.equal(await page.locator('#safetyInfoCount').textContent(),'1');
+ await page.evaluate(()=>{members=[];saveMembers();});assert.equal(await page.locator('#safetyInfoButton').isVisible(),false,'removing relevant members clears the stale count');
  await page.evaluate(()=>{window.qaSignedIn=oneDriveSignedIn;oneDriveSignedIn=()=>true;oneDriveStateConfirmed=true;oneDriveLocalRevision=oneDriveSyncedRevision;notifyAppStorageState();});
  assert.equal(await page.locator('#cloudSyncState').textContent(),'Synchronisiert');
  await page.evaluate(()=>{oneDriveLocalRevision++;notifyAppStorageState();});assert.equal(await page.locator('#cloudSyncState').textContent(),'Speicherung ausstehend');
