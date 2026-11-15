@@ -20,7 +20,7 @@ function probePdfBlob(rows, sessionType, counts, topic="", reportDate=today()){
     ops.push('0.06 0.24 0.12 rg 36 792 523 32 re f'); ops.push('1 1 1 rg'); t(48,803,16,'Feuerwehr Wasser - Probenbericht',true); ops.push('0.08 0.10 0.09 rg');
     t(36,770,10,`Datum: ${reportDate}    Terminart: ${sessionType}`,true);
     t(36,753,9,`Thema: ${String(topic||"-").slice(0,90)}`,true);
-    t(36,738,9,`Anwesend: ${counts.present}    Entschuldigt: ${counts.excused}    Fehlt: ${counts.missing}    Betrifft nicht: ${counts.notApplicable}`);
+    t(36,738,9,`Anwesend: ${counts.present}    Absagen: ${counts.excused}    Fehlt: ${counts.missing}    Betrifft nicht: ${counts.notApplicable}`);
     ops.push('0.30 0.40 0.50 rg 36 708 523 22 re f');
     ops.push('0 0 0 rg'); (includeFunction?[['Zeit',42],['Name',88],['Status',300],['Funktion',390]]:[['Zeit',42],['Name',100],['Status',430]]).forEach(([v,x])=>t(x,715,9,v,true));
     let y=688;
