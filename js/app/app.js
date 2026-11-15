@@ -35,7 +35,7 @@ function moveProbeStatusToHeader(){
   original.hidden=true;
   if(byId("headerProbeSummary"))return;
   const summary=document.createElement("div");summary.id="headerProbeSummary";summary.className="header-probe-summary";
-  summary.innerHTML=`<span class="header-probe-dot" aria-hidden="true"></span><span class="header-probe-type" id="headerProbeType">Keine laufende Probe</span><span class="header-probe-count"><strong id="headerPresentCount">0</strong> anwesend</span><span class="header-probe-count"><strong id="headerExcusedCount">0</strong> entschuldigt</span>`;
+  summary.innerHTML=`<span class="header-probe-dot" aria-hidden="true"></span><span class="header-probe-type" id="headerProbeType">Keine laufende Probe</span><span class="header-probe-count"><strong id="headerPresentCount">0</strong> anwesend</span><span class="header-probe-count"><strong id="headerExcusedCount">0</strong> Absagen</span>`;
   const legacy=byId("headerSessionType");if(legacy)legacy.hidden=true;
   const nav=document.querySelector(".participant-nav");
   nav?.appendChild(summary);
