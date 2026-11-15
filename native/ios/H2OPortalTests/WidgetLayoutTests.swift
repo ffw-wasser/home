@@ -104,6 +104,7 @@ final class WidgetLayoutTests: XCTestCase {
         let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         let start = ISO8601DateFormatter().date(from: "2026-11-02T18:30:00Z")!
         var cases: [(String, H2OWidgetEvent?, Bool)] = [
+            ("crest-reference", H2OWidgetEvent(title: "Ausschusssitzung im GH", start: now.addingTimeInterval(86400 + 21600), end: now.addingTimeInterval(86400 + 25200), location: "GH Wasser", clothing: "Zivil", status: "yes", allDay: false), false),
             ("today-excused", H2OWidgetEvent(title: "Indoor Cycling", start: start, end: start.addingTimeInterval(7200), location: "GH Wasser", clothing: "Einsatzkleidung", status: "excused", allDay: false), false),
             ("today", H2OWidgetEvent(title: "Löschangriff", start: now.addingTimeInterval(3600), end: now.addingTimeInterval(10800), location: "GH Wasser", clothing: "Einsatzkleidung", status: "yes", allDay: false), false),
             ("tomorrow", H2OWidgetEvent(title: "Löschangriff", start: now.addingTimeInterval(86400), end: now.addingTimeInterval(93600), location: "GH Wasser", clothing: "Einsatzkleidung", status: "open", allDay: false), false),

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative background only: no layout column and no click/accessibility target.
+     fitEnd preserves the original square asset and anchors it to the right. -->
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_background_crest"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="3dp"
+    android:src="@drawable/widget_logo"
+    android:scaleType="fitEnd"
+    android:alpha="0.25"
+    android:visibility="gone"
+    android:clickable="false"
+    android:focusable="false"
+    android:contentDescription="@null"
+    android:importantForAccessibility="no" />

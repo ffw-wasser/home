@@ -136,6 +136,19 @@ struct NextEventView: View {
     private var reminderVisible: Bool {
         event?.canReply != false && event?.reminded == true && ["open", "maybe"].contains(event?.status ?? "")
     }
+    // Decode the existing transparent asset once; the static watermark never requests data.
+    private static let crest: UIImage? = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png")
+        .flatMap { UIImage(contentsOfFile: $0.path) }
+    @ViewBuilder private func backgroundCrest(width: CGFloat, height: CGFloat) -> some View {
+        if event != nil, let crest = Self.crest {
+            Image(uiImage: crest).resizable().scaledToFit()
+                .frame(width: min(width, height) * 0.98, height: height * 0.98)
+                .opacity(renderingMode == .fullColor ? (small || textScale > 1.2 ? 0.16 : 0.25) : 0.10)
+                .frame(width: width, height: height, alignment: .trailing)
+                .allowsHitTesting(false).accessibilityHidden(true)
+        }
+    }
+    private var hasForegroundEmblem: Bool { event?.canReply == false || reminderVisible }
     @ViewBuilder private func emblem(size: CGFloat) -> some View {
         if size > 0 && event?.canReply == false {
             Image(systemName: "info.circle").font(.system(size: size * 0.72, weight: .light))
@@ -145,9 +158,6 @@ struct NextEventView: View {
             Image(systemName: "exclamationmark.triangle.fill").resizable().scaledToFit()
                 .foregroundStyle(renderingMode == .fullColor ? signalYellow : ink)
                 .frame(width: size, height: size).accessibilityHidden(true)
-        } else if size > 0, let url = Bundle.main.url(forResource: "h2o-symbol-white-512", withExtension: "png"), let logo = UIImage(contentsOfFile: url.path) {
-            Image(uiImage: logo).resizable().scaledToFit().frame(width: size, height: size)
-                .opacity(0.5).accessibilityHidden(true)
         }
     }
     private func details(_ event: H2OWidgetEvent, titleSize: CGFloat, detailSize: CGFloat, spacing: CGFloat, availableWidth: CGFloat, titleLines: Int = 2) -> some View {
@@ -161,7 +171,7 @@ struct NextEventView: View {
             Text(event.title).font(.system(size: titleSize * min(textScale, 1.5), weight: .bold)).lineLimit(2).truncationMode(.tail)
             HStack(spacing: 8) {
                 metadata(event, size: detailSize, spacing: 2).frame(maxWidth: .infinity, alignment: .leading)
-                emblem(size: textScale > 1.2 ? 0 : logoSize)
+                emblem(size: !hasForegroundEmblem || textScale > 1.2 ? 0 : logoSize)
             }
         }.frame(width: width, alignment: .leading)
     }
@@ -170,7 +180,7 @@ struct NextEventView: View {
         let titleSize: CGFloat = small ? 15 : 20
         let font = UIFont.systemFont(ofSize: titleSize * min(textScale, 1.5), weight: .bold)
         let titleWidth = (event.title as NSString).size(withAttributes: [.font: font]).width
-        let logoSize: CGFloat = small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
+        let logoSize: CGFloat = !hasForegroundEmblem || small || textScale > 1.2 ? 0 : titleWidth <= available - 62 ? 48 : titleWidth <= (available - 38) * 1.7 ? 28 : 0
         return HStack(spacing: small ? 7 : 11) {
             calendar(event)
                 .scaleEffect(small || large ? 1 : min(1, max(1, height - 4) / 80))
@@ -380,6 +390,7 @@ struct NextEventView: View {
                     ZStack {
                         LinearGradient(stops: [.init(color: edgePalette[0], location: 0), .init(color: edgePalette[1], location: 0.08), .init(color: edgePalette[1], location: 1)], startPoint: .top, endPoint: .bottom)
                         LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.24), .init(color: rgb(0x072436), location: 1)], startPoint: .top, endPoint: .bottom)
+                        backgroundCrest(width: geometry.size.width, height: geometry.size.height)
                     }.animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: edgeStatus)
                 }
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(stops: [.init(color: edgePalette[2].opacity(0.95), location: 0), .init(color: rgb(0x4A748D).opacity(0.7), location: 0.28), .init(color: rgb(0x030B12), location: 1)], startPoint: .top, endPoint: .bottom), lineWidth: 1)

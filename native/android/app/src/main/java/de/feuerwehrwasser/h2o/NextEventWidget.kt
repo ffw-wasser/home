@@ -124,6 +124,11 @@ open class NextEventWidget : AppWidgetProvider() {
             fun size(id: Int, value: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, value * contentScale / fontScale)
             // ViewFlipper animates locally in the launcher: no timer or repeated widget updates.
             val observation = event?.canReply == false
+            val reminderVisible = event?.canReply == true && event.reminded && event.status in setOf("open", "maybe")
+            val foregroundEmblem = observation || reminderVisible
+            // Resource-backed background, no generated bitmaps or extra network work.
+            show(R.id.widget_background_crest, event != null)
+            views.setFloat(R.id.widget_background_crest, "setAlpha", if (compact || fontScale > 1.2f) 0.16f else 0.25f)
             val edgeIndex = when (event?.status) { "yes" -> 1; "excused" -> 2; "maybe" -> 3; else -> 0 }
             val edgeDrawable = if (observation) R.drawable.widget_background_observer else when (event?.status) {
                 "yes" -> R.drawable.widget_background_yes
@@ -259,7 +264,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     val locationSize = if (spacious) (textHeight * 0.17f).coerceIn(13f, 18f) else (textHeight / 10f).coerceIn(if (card) 11f else 9f, 16f)
                     val clothingSize = if (spacious) (textHeight * 0.15f).coerceIn(12f, 16f) else (textHeight / 12f).coerceIn(if (card) 10f else 8f, 14f)
                     val lines = if (spacious) headingLines else 2
-                    val metadataHeight = if (large && fontScale <= 1.2f) maxOf(largeLogoSize / fontScale, 1.2f * (locationSize + clothingSize)) else 1.2f * (locationSize + clothingSize)
+                    val metadataHeight = if (large && foregroundEmblem && fontScale <= 1.2f) maxOf(largeLogoSize / fontScale, 1.2f * (locationSize + clothingSize)) else 1.2f * (locationSize + clothingSize)
                     val maxTitle = ((textHeight - metadataHeight - 4f) / (lines * 1.2f)).coerceAtLeast(12f)
                     val titleLimit = if (compact && !tall) titleSize else if (tall) 28f else if (card && !large) 24f else 36f
                     val growingTitle = if (spacious) headingSize else maxOf(titleSize, textHeight * 0.19f).coerceAtMost(titleLimit).coerceAtMost(maxTitle)
@@ -273,16 +278,15 @@ open class NextEventWidget : AppWidgetProvider() {
             val availableText = (width - calendarLayoutWidth - 34f).coerceAtLeast(1f)
             val titlePaint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = renderedTitleSize * metrics.scaledDensity }
             val titleWidth = titlePaint.measureText(title) / metrics.density
-            // The crest has its own column in medium cards, as on iPhone.
-            // A short heading may shrink slightly to stay on one line beside it.
+            // Only information/reminder symbols retain a foreground column.
+            // The decorative shield never takes width away from the event text.
             val mediumLogo = (compactActions || wideCompact || (card && !large && logicalHeight >= 140)) && fontScale <= 1.2f
-            val logoSize = if ((!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (spacious) 56 else if (wideCompact || compactActions) 40 else 48) else 0
-            if (mediumLogo && event != null && !spacious) {
+            val logoSize = if (!foregroundEmblem || (!card && !wideCompact) || fontScale > 1.2f || event == null) 0 else if (large) largeLogoSize else if (mediumLogo) (if (spacious) 56 else if (wideCompact || compactActions) 40 else 48) else 0
+            if (mediumLogo && logoSize > 0 && event != null && !spacious) {
                 val titleSpace = (availableText - logoSize - 8f).coerceAtLeast(1f)
                 val singleLineSize = renderedTitleSize * (titleSpace / titleWidth.coerceAtLeast(1f)).coerceAtMost(1f)
                 if (singleLineSize >= 18f) size(R.id.widget_title, singleLineSize)
             }
-            val reminderVisible = event?.canReply == true && event.reminded && event.status in setOf("open", "maybe")
             views.setImageViewResource(R.id.widget_logo, when { observation -> R.drawable.widget_info; reminderVisible -> R.drawable.widget_reminder; else -> R.drawable.widget_logo })
             views.setFloat(R.id.widget_logo, "setAlpha", if (reminderVisible || observation) 1f else 0.5f)
             show(R.id.widget_logo, logoSize > 0)
