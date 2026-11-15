@@ -74,8 +74,10 @@ jobs:
           # Match the newest installed runtime and boot one simulator explicitly.
           # Parallel cold boots on the Intel fallback stalled in the device service.
           device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); candidates=[(tuple(map(int,r.split(".iOS-")[1].split("-"))),x["udid"]) for r,devices in d["devices"].items() if ".iOS-" in r for x in devices if x["name"].startswith("iPhone")]; print(max(candidates,key=lambda x:x[0])[1])')
+          # macOS 26 Intel needs more than five minutes for cold device migration.
+          # Keep the complete layout test mandatory; never skip failed boots.
           xcrun simctl boot "$device" || true
-          python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=300)' "$device"
+          python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=900)' "$device"
           xcodebuild -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal \
             -destination "platform=iOS Simulator,id=$device" -destination-timeout 180 \
             -parallel-testing-enabled NO \

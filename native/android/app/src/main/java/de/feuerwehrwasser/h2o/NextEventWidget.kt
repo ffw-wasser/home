@@ -20,8 +20,6 @@ import java.util.Locale
 import android.util.TypedValue
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.ComposeShader
-import android.graphics.PorterDuff
 import android.graphics.LinearGradient
 import android.graphics.Shader
 import android.graphics.Paint
@@ -69,7 +67,7 @@ open class NextEventWidget : AppWidgetProvider() {
         }
         private fun statusLine(width: Int, status: String, density: Float): Bitmap {
             val pixels = ((width - 24).coerceAtLeast(1) * density).toInt().coerceIn(1, 2048)
-            val height = (5 * density).toInt().coerceAtLeast(3)
+            val height = density.toInt().coerceAtLeast(1)
             val bitmap = Bitmap.createBitmap(pixels, height, Bitmap.Config.ARGB_8888)
             val center = when (status) { "yes" -> 1f / 6; "maybe" -> 5f / 6; else -> 0.5f }
             val tint = when (status) { "yes" -> 0xFF287D49; "excused" -> 0xFFF4C542; "maybe" -> 0xFFE87524; else -> 0xFFC6D2DF }.toInt()
@@ -83,12 +81,7 @@ open class NextEventWidget : AppWidgetProvider() {
                     intArrayOf(edge, faded, vivid, bright, vivid, faded, edge), stops, Shader.TileMode.CLAMP)
             }
             Canvas(bitmap).apply {
-                if (status != "open") {
-                    val horizontal = LinearGradient(0f, 0f, pixels.toFloat(), 0f, intArrayOf(0, 0, (tint and 0xFFFFFF) or 0x66000000, (tint and 0xFFFFFF) or 0x80000000.toInt(), (tint and 0xFFFFFF) or 0x66000000, 0, 0), stops, Shader.TileMode.CLAMP)
-                    val vertical = LinearGradient(0f, 0f, 0f, height.toFloat(), intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
-                    drawRect(0f, 0f, pixels.toFloat(), height.toFloat(), Paint().apply { shader = ComposeShader(horizontal, vertical, PorterDuff.Mode.DST_IN) })
-                }
-                val half = 0.65f * density
+                val half = height / 2f
                 drawRect(0f, height / 2f - half, pixels.toFloat(), height / 2f + half, core)
             }
             return bitmap
@@ -180,7 +173,9 @@ open class NextEventWidget : AppWidgetProvider() {
             val monthFit = if (monthText.isEmpty()) 1f else ((availableDayWidth + 2f) * metrics.density / monthPaint.measureText(monthText)).coerceAtMost(1f)
             size(R.id.widget_month, baseMonthSize * monthFit)
             val weekdayText = relative?.takeIf { it in listOf("Heute", "Morgen") } ?: date?.format(DateTimeFormatter.ofPattern("EEE", Locale.GERMAN)).orEmpty()
-            size(R.id.widget_weekday, if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f)
+            fun weekdaySize(value: Float) = if (relative == "Morgen") (value - 1f).coerceAtLeast(if (height >= 200 && logicalHeight >= 160) 12f else 9f) else value
+            views.setTextColor(R.id.widget_weekday, if (relative == "Heute") 0xFFA52332.toInt() else 0xFF191B20.toInt())
+            size(R.id.widget_weekday, weekdaySize(if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f))
             views.setTextViewText(R.id.widget_weekday, weekdayText)
             views.setTextViewText(R.id.widget_month, monthText)
             views.setTextColor(R.id.widget_month, if (observation) 0xFF18344C.toInt() else 0xFFFFFFFF.toInt())
@@ -261,12 +256,12 @@ open class NextEventWidget : AppWidgetProvider() {
                 }
                 // Match the short calendar sheet in the iPhone reference instead of stretching it with launcher height.
                 val calendarHeight = if (card && !large) minOf(dateHeight, dateWidth * 1.30f) else dateHeight
-                val weekdaySize = if (grow && spacious) (calendarHeight / fontScale * 0.16f).coerceIn(12f, 18f) else if (grow) (calendarHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
+                val weekdayBaseSize = if (grow && spacious) (calendarHeight / fontScale * 0.16f).coerceIn(12f, 18f) else if (grow) (calendarHeight / fontScale * 0.115f).coerceIn(if (tall) 14f else 12f, if (tall) 20f else 18f)
                     else if (compactActions) 9f else if (spacious || large) 14f else if (width < 150 || wideCompact || fontScale > 1.15f || (card && height < 160)) 10f else 12f
-                size(R.id.widget_weekday, fitted(weekdaySize, weekdayText))
+                size(R.id.widget_weekday, fitted(weekdaySize(weekdayBaseSize), weekdayText))
                 if (grow) {
                     val monthSize = if (spacious) (calendarHeight / fontScale * 0.16f).coerceIn(13f, 18f) else (calendarHeight / fontScale * 0.12f).coerceIn(13f, 22f)
-                    val daySize = ((calendarHeight / fontScale - 1.2f * (monthSize + weekdaySize) - 17f) / 1.2f).coerceIn(22f, 82f)
+                    val daySize = ((calendarHeight / fontScale - 1.2f * (monthSize + weekdaySize(weekdayBaseSize)) - 17f) / 1.2f).coerceIn(22f, 82f)
                     size(R.id.widget_month, fitted(monthSize, monthText))
                     size(R.id.widget_day, fitted(daySize, day))
                     val textHeight = (if (spacious) dateHeight else if (tall) bodyHeight - dateHeight - 8f else bodyHeight) / fontScale
@@ -316,7 +311,7 @@ open class NextEventWidget : AppWidgetProvider() {
             val canReply = event != null && event.canReply && WidgetEvent.validID(event.id) && event.start > now && snapshot?.stale == false && prefs.getLong("expires", 0) > now && prefs.getString("grant", null) != null
             val actions = card && event != null && event.canReply && !retry && message == null
             val status = if (event?.canReply == false) "Information" else when (event?.status) {
-                "yes" -> "Dabei"; "excused" -> if (flat && compact) "Entsch." else "Entschuldigt"; "maybe" -> "Unsicher"; else -> "Offen"
+                "yes" -> "Dabei"; "excused" -> "Absage"; "maybe" -> "Unsicher"; else -> "Offen"
             }
             val statusText = when {
                 saving -> if (card) "" else status
@@ -387,13 +382,13 @@ open class NextEventWidget : AppWidgetProvider() {
                     for ((id, answer) in listOf(R.id.widget_reply_yes to "yes", R.id.widget_reply_excused to "excused", R.id.widget_reply_maybe to "maybe")) {
                         val selected = event?.status == answer
                         val pending = saving && job?.optString("status") == answer
-                        views.setTextViewText(id, (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" })
-                        if (compactActions) {
-                            val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = 13f * metrics.scaledDensity }
+                        views.setTextViewText(id, (if (selected) "✓ " else "○ ") + when (answer) { "yes" -> "Dabei"; "excused" -> "Absage"; else -> "Unsicher" })
+                        if (card) {
+                            val paint = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = 13f * minOf(fontScale, 1.3f) * metrics.density }
                             val available = ((width - 20f) / 3f - 8f) * metrics.density
                             // Use one size for all choices; changing the selected answer
                             // must not resize labels or let short words dominate the row.
-                            val widest = listOf("✓ Dabei", "○ Dabei", "✓ Entschuldigt", "○ Entschuldigt", "✓ Unsicher", "○ Unsicher").maxOf { paint.measureText(it) }
+                            val widest = listOf("✓ Dabei", "○ Dabei", "✓ Absage", "○ Absage", "✓ Unsicher", "○ Unsicher").maxOf { paint.measureText(it) }
                             views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, minOf(paint.textSize, paint.textSize * available / widest))
                         }
                         val selectedBackground = when (answer) { "yes" -> R.drawable.widget_segment_yes; "excused" -> R.drawable.widget_segment_excused; else -> R.drawable.widget_segment_maybe }
@@ -401,7 +396,7 @@ open class NextEventWidget : AppWidgetProvider() {
                         views.setTextColor(id, if (selected) (if (answer == "yes") 0xFFFFFFFF.toInt() else 0xFF2D210A.toInt()) else 0xFFC6D2DF.toInt())
                         views.setBoolean(id, "setEnabled", canReply && job == null)
                         views.setFloat(id, "setAlpha", if (canReply) 1f else 0.55f)
-                        views.setContentDescription(id, (when (answer) { "yes" -> "Dabei"; "excused" -> "Entschuldigt"; else -> "Unsicher" }) + if (selected) ". Ausgewählt" else if (pending) ". Wird gespeichert" else "")
+                        views.setContentDescription(id, (when (answer) { "yes" -> "Dabei"; "excused" -> "Absage"; else -> "Unsicher" }) + if (selected) ". Ausgewählt" else if (pending) ". Wird gespeichert" else "")
                         if (event != null && canReply) views.setOnClickPendingIntent(id, WidgetReplyReceiver.pending(context, event, answer))
                     }
                 }

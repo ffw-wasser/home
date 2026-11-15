@@ -69,6 +69,7 @@ class WidgetPreviewTest {
                         assertTrue("Reply target keeps its height", button.height >= 44 * activity.resources.displayMetrics.density - 1)
                         assertTrue("Reply label fits", button.paint.measureText(button.text.toString()) <= button.width - button.compoundPaddingLeft - button.compoundPaddingRight + 2)
                     }
+                    assertEquals("○ Absage", activity.findViewById<TextView>(R.id.widget_reply_excused).text.toString())
                     assertEquals("Reply labels use the same readable size", 1,
                         listOf(R.id.widget_reply_yes, R.id.widget_reply_excused, R.id.widget_reply_maybe)
                             .map { activity.findViewById<TextView>(it).textSize }.distinct().size)
