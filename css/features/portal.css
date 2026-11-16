@@ -646,3 +646,32 @@ html[data-loyalty="paused"] #portal-page-points,html[data-loyalty="paused"] #por
 .identity-release-scanner video{display:block;width:100%;max-height:50dvh;object-fit:contain;border-radius:12px;background:#10223c}
 .identity-release-scanner video[hidden]{display:none}
 .identity-release-scanner button{min-height:48px}
+
+.portal-overview-dialog .portal-whatsapp-share{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin:10px 0 0;padding:8px 12px;border:1px solid #95c6a8;border-radius:12px;background:#edf8f0;color:#175d35;font:inherit;font-weight:600;box-shadow:none;text-align:center}
+.portal-overview-dialog .portal-whatsapp-share:focus-visible{outline:3px solid #175d35;outline-offset:2px}
+
+.portal-overview-dialog .portal-whatsapp-share svg{width:22px;height:22px;flex:none;fill:currentColor}
+
+/* Mobile reply overview: clear sections and reachable actions, including large text. */
+.portal-overview-dialog{width:min(94vw,460px);max-height:90dvh;padding:18px;border:1px solid #c4d3e2}
+.portal-overview-dialog .portal-overview-topic{margin:0;font-weight:700;font-size:1.125rem;line-height:1.4}
+.portal-overview-dialog .portal-overview-date{margin:5px 0 18px;color:#425d77;font-size:1rem}
+.portal-overview-summary{display:grid;gap:12px}
+.portal-overview-status{min-width:0;padding:12px;border:1px solid #d7e1eb;border-radius:12px;background:#f7f9fc}
+.portal-overview-status>h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:1rem}
+.portal-overview-status>h3::before{content:"";width:9px;height:9px;flex:none;border-radius:50%;background:#718096}
+.portal-overview-status[data-status=yes]>h3::before{background:#21834b}
+.portal-overview-status[data-status=excused]>h3::before{background:#b34b60}
+.portal-overview-status[data-status=maybe]>h3::before{background:#c77700}
+.portal-overview-count{margin-left:auto;min-width:28px;padding:1px 7px;border-radius:8px;background:#e5edf4;text-align:center;font-variant-numeric:tabular-nums}
+.portal-overview-names{display:grid;gap:6px;font-size:1rem;line-height:1.5}
+.portal-overview-names>span{min-width:0;overflow-wrap:anywhere}
+.portal-overview-dialog .portal-reply-functions section{background:#fff;border:0;padding:8px 10px}
+.portal-overview-dialog .portal-reply-functions h4{font-size:.9375rem}
+.portal-overview-note{margin-top:10px;font-size:.9375rem;color:#425d77}
+.portal-overview-note summary{min-height:44px;display:list-item;align-content:center}
+.portal-overview-note p{margin:6px 0 0}
+.portal-overview-dialog .portal-overview-actions{border-top:1px solid #d7e1eb;padding-top:14px;margin-top:18px}
+.portal-overview-dialog .portal-overview-actions button{flex:1 1 100%;min-height:48px;margin:0;justify-content:center}
+@media(min-width:420px){.portal-overview-dialog .portal-overview-actions button{flex-basis:160px}}
+@media(max-width:360px){.portal-overview-dialog{padding:14px}.portal-overview-status{padding:10px}}
