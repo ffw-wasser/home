@@ -185,7 +185,7 @@
  function whatsappTermLink(event){
   if(!/^[A-Za-z0-9_-]{43}$/.test(event.id||'')||!Number.isFinite(event.start))throw Error('Ungültiger Termin.');
   const when=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',...(event.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(event.start))+(event.allDay?' · ganztägig':' Uhr');
-  const text=['📣 *BITTE ABSTIMMEN*','🚒 Feuerwehr Wasser · *'+(event.title||event.sessionType||'Termin')+'*','📅 '+when,'📍 '+(event.location||'GH Wasser'),'','👇 Rückmeldung in H₂O:','https://ffw-wasser.github.io/home/termin.html?event='+event.id].join('\n');
+  const text=['📣 *BITTE ABSTIMMEN*','🚒 Feuerwehr Wasser · *'+(event.title||event.sessionType||'Termin')+'*',when,'📍 '+(event.location||'GH Wasser'),'','👇 Rückmeldung in H₂O:','https://ffw-wasser.github.io/home/termin.html?event='+event.id].join('\n');
   return 'https://wa.me/?text='+encodeURIComponent(text);
  }
  function whatsappShareButton(event){
