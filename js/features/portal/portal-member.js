@@ -127,22 +127,22 @@
  function closeOverview(){overviewRequest++;overviewDialog?.close();}
  async function showOverview(event){
   if(!overviewDialog){overviewDialog=node('dialog');overviewDialog.className='portal-calendar-dialog portal-overview-dialog';overviewDialog.setAttribute('aria-labelledby','portal-overview-title');document.body.append(overviewDialog);overviewDialog.addEventListener('close',()=>{overviewRequest++;});}
-  const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.className='portal-overview-close';close.textContent='×';close.setAttribute('aria-label','Schließen');close.onclick=closeOverview;const header=node('div');header.className='portal-overview-heading';header.append(heading,close);overviewDialog.replaceChildren(header,title,content);if(!overviewDialog.open)overviewDialog.showModal();
+  const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.className='portal-overview-close';close.textContent='×';close.setAttribute('aria-label','Schließen');close.onclick=closeOverview;const header=node('div');header.className='portal-overview-heading';header.append(heading,close);title.className='portal-overview-topic';const meta=node('p',date(event));meta.className='portal-overview-date';overviewDialog.replaceChildren(header,title,meta,content);if(!overviewDialog.open)overviewDialog.showModal();
   try{const result=await api('overview',{eventId:event.id});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;content.replaceChildren();
-   const summary=node('div');content.append(summary);
+   const summary=node('div');summary.className='portal-overview-summary';content.append(summary);
    if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Absage'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){
-    const people=result.members.filter(m=>m.status===value).sort((a,b)=>a.name.localeCompare(b.name,'de'));summary.append(node('h3',label+' ('+people.length+')'));
-    if(value!=='yes'||!people.length||result.functionsVersion!==2){summary.append(node('p',people.map(m=>m.name).join(' · ')||'Keine'));continue;}
+    const people=result.members.filter(m=>m.status===value).sort((a,b)=>a.name.localeCompare(b.name,'de'));const section=node('section'),heading=node('h3',label),count=node('span',String(people.length));section.className='portal-overview-status';section.dataset.status=value;count.className='portal-overview-count';heading.append(count);section.append(heading);summary.append(section);
+    if(value!=='yes'||!people.length||result.functionsVersion!==2){const names=node('div');names.className='portal-overview-names';for(const member of people)names.append(node('span',member.name));if(!people.length)names.append(node('span','Keine'));section.append(names);continue;}
     const groups=node('div');groups.className='portal-reply-functions';
     for(const [role,label] of [['GF','Gruppenführer'],['AGT','Atemschutz'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
-     const list=people.filter(m=>(['GF','Maschinist','AGT'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section'),names=node('p');
-     for(const member of list){if(names.childNodes.length)names.append(node('span',' · '));const name=node('span',member.name);if(role==='AGT'&&member.breathingNeedsCheck!==false){name.className='portal-reply-breathing-check';name.title='Atemschutz-Nachweise prüfen';name.setAttribute('aria-label',member.name+' · Atemschutz-Nachweise prüfen');}names.append(name);}
+     const list=people.filter(m=>(['GF','Maschinist','AGT'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section'),names=node('div');names.className='portal-overview-names';
+     for(const member of list){const name=node('span',member.name);if(role==='AGT'&&member.breathingNeedsCheck!==false){name.className='portal-reply-breathing-check';name.title='Atemschutz-Nachweise prüfen';name.setAttribute('aria-label',member.name+' · Atemschutz-Nachweise prüfen');}names.append(name);}
      if(!list.length)names.textContent='Keine';section.dataset.replyFunction=role;section.append(node('h4',label+' ('+list.length+')'),names);groups.append(section);
     }
-    summary.append(groups,node('p','Jede Person einmal · Gruppenführer und Maschinisten stehen in ihrer eigenen Rubrik. Atemschutz: übrige Zusagen mit Atemschutz-Häkchen. Orange: Nachweise fehlen, sind abgelaufen oder nicht aktuell prüfbar. Keine feste Einteilung.'));
+    const note=node('details'),noteHeading=node('summary','Hinweise zur Einteilung');note.className='portal-overview-note';note.append(noteHeading,node('p','Jede Person einmal · Gruppenführer und Maschinisten stehen in ihrer eigenen Rubrik. Atemschutz: übrige Zusagen mit Atemschutz-Häkchen. Orange: Nachweise fehlen, sind abgelaufen oder nicht aktuell prüfbar. Keine feste Einteilung.'));section.append(groups,note);
    }
-   const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button';feedback.setAttribute('role','status');let campaign=null,sending=false,total={accepted:0,failed:0,failures:[]};
+   const remind=node('button','Erinnerung abschicken'),feedback=node('p');remind.type='button';remind.className='portal-remind-button portal-overview-remind';feedback.setAttribute('role','status');let campaign=null,sending=false,total={accepted:0,failed:0,failures:[]};
    remind.disabled=result.stale||event.start<=Date.now();
    remind.onclick=async()=>{
     if(sending)return;
@@ -152,7 +152,9 @@
     catch(e){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;feedback.textContent=(g.ConnectionStatus?.message(e)||e.message)+' Denselben Versand erneut prüfen.';remind.textContent='Versand erneut prüfen';remind.disabled=[401,403,404,409,423].includes(e.status);}
     finally{sending=false;}
    };
-   content.append(remind,feedback);
+   const tools=node('div');tools.className='portal-overview-actions';
+   if(latestResult?.leader===true&&latestResult?.fitnessTrainer!==true)tools.append(whatsappShareButton(result.event||event));
+   tools.append(remind);content.append(tools,feedback);
 
   }catch(error){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;const retry=node('button','Erneut laden');retry.type='button';retry.onclick=()=>showOverview(event);content.replaceChildren(node('p',g.ConnectionStatus?.message(error)||error.message),retry);}
  }
@@ -179,6 +181,19 @@
   }));
   bridge.postMessage({action:'update',stale:!!result.stale,event:events[0],events,reply:result.widgetReply||null});
  }
+ // Share only displayed appointment data and its public, non-authorizing response link.
+ function whatsappTermLink(event){
+  if(!/^[A-Za-z0-9_-]{43}$/.test(event.id||'')||!Number.isFinite(event.start))throw Error('Ungültiger Termin.');
+  const when=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',...(event.allDay?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(event.start))+(event.allDay?' · ganztägig':' Uhr');
+  const text=['📣 *BITTE ABSTIMMEN*','🚒 Feuerwehr Wasser · *'+(event.title||event.sessionType||'Termin')+'*','📅 '+when,'📍 '+(event.location||'GH Wasser'),'','👇 Rückmeldung in H₂O:','https://ffw-wasser.github.io/home/termin.html?event='+event.id].join('\n');
+  return 'https://wa.me/?text='+encodeURIComponent(text);
+ }
+ function whatsappShareButton(event){
+  const share=node('button','In WhatsApp teilen');share.type='button';share.className='portal-whatsapp-share';
+  const shareIcon=document.createElementNS('http://www.w3.org/2000/svg','svg');shareIcon.setAttribute('viewBox','0 0 24 24');shareIcon.setAttribute('aria-hidden','true');shareIcon.setAttribute('focusable','false');
+  const sharePath=document.createElementNS('http://www.w3.org/2000/svg','path');sharePath.setAttribute('d','M20.52 3.48A11.86 11.86 0 0 0 12.06 0C5.47 0 .11 5.36.1 11.95c0 2.11.55 4.17 1.6 5.99L0 24l6.23-1.63a11.97 11.97 0 0 0 5.83 1.49h.01C18.66 23.86 24 18.5 24 11.91c0-3.19-1.24-6.18-3.48-8.43ZM12.07 21.84a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.7.97.99-3.61-.24-.37a9.89 9.89 0 0 1-1.51-5.29c0-5.48 4.46-9.94 9.94-9.94a9.87 9.87 0 0 1 7.03 2.92 9.88 9.88 0 0 1 2.91 7.03c0 5.48-4.46 9.88-9.94 9.88Zm5.45-7.43c-.3-.15-1.77-.87-2.04-.97-.28-.1-.48-.15-.68.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.11 3.22 5.11 4.51.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.08 1.77-.72 2.02-1.42.25-.69.25-1.29.17-1.42-.07-.12-.27-.19-.57-.34Z');shareIcon.append(sharePath);share.prepend(shareIcon);
+  share.setAttribute('aria-label','Termin in WhatsApp teilen: '+event.title);share.onclick=()=>g.open(whatsappTermLink(event),'_blank','noopener,noreferrer');return share;
+ }
  function paint(result){latestResult=result;globalThis.DeckelMobile?.sync();
   for(const target of ['portal-evidence','more-breathing','more-hydrants','more-regulations','more-training','more-contacts','more-water','theater-phone-section','more-bundesliga'])for(const tile of (document.querySelectorAll?.('[data-deckel-target="'+target+'"],[data-portal-tile="'+target+'"]')||[]))tile.hidden=result.fitnessTrainer===true;
   if(result.fitnessTrainer===true){if($('evidence'))$('evidence').hidden=true;evidencePriority([]);g.PortalEvidenceEditor?.clear();}
@@ -194,6 +209,7 @@
    if(icon){icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const circle=document.createElementNS(ns,'circle'),path=document.createElementNS(ns,'path');circle.setAttribute('cx','12');circle.setAttribute('cy','12');circle.setAttribute('r','9');path.setAttribute('d','M12 11.5v5m0-9h.01');icon.append(circle,path);marker.append(icon);}
    details.append(marker);
   }
+
   const status=node('strong');status.setAttribute('role','status');if(!event.observerOnly&&event.start<=Date.now())status.textContent='Rückmeldung geschlossen';status.className='portal-answer portal-answer-'+event.status;card.append(status);
   const actions=node('div');actions.className='portal-choices portal-reply-switch';actions.setAttribute('role','group');actions.setAttribute('aria-label','Deine Rückmeldung');for(const [value,label] of [['yes','Bin dabei'],['excused','Absage'],['maybe','Noch unsicher']]){const selected=event.status===value,button=node('button',({yes:'Dabei',excused:'Absage',maybe:'Unsicher'})[value]);button.type='button';button.dataset.reply=value;button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',(value==='maybe'?'Gesehen, noch unsicher – Erinnerungen bleiben aktiv':label)+(selected?' – ausgewählt, erneut tippen zum Zurücknehmen':''));if(value==='maybe')button.title='Gesehen · noch unsicher';button.dataset.locked=String(result.stale||event.start<=Date.now());button.onclick=()=>{if(busy||pending)return;const selected=event.status===value;if(value==='maybe'&&!selected&&!result.uncertainReplies){$('status').textContent='Für die Antwort „Noch unsicher“ muss die Verwaltung den Cloudflare-Dienst aktualisieren.';return;}return reply(event,selected?'open':value);};actions.append(button);}if(event.start>Date.now()&&event.canReply!==false){details.append(actions);const hint=node('p','Zum Abwählen erneut antippen.');hint.className='portal-choice-hint';hint.hidden=!['yes','excused','maybe'].includes(event.status);card.append(hint);}if(event.canManage===true||result.leader){const overview=node('button','Rückmeldungen ansehen');overview.type='button';overview.className='portal-overview-open';overview.setAttribute('aria-haspopup','dialog');overview.setAttribute('aria-label','Rückmeldungen ansehen');const icon=document.createElementNS?.('http://www.w3.org/2000/svg','svg');if(icon){icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');icon.setAttribute('class','portal-overview-symbol');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75');const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('cx','9');circle.setAttribute('cy','7');circle.setAttribute('r','4');icon.append(path,circle);overview.append(icon);}overview.onclick=()=>showOverview(event);info.append(overview);}if(event===sections.next){const first=node('div');first.className='portal-first-event';const heading=node('h2','Nächster Termin');heading.className='portal-next-heading';first.append(heading,card);$('events').append(first);}else $('events').append(card);
  }if(!upcoming.length){const empty=node('p','Zurzeit stehen keine weiteren freigegebenen Termine an.');empty.className='portal-empty-state';$('events').append(empty);}

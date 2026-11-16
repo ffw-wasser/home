@@ -106,11 +106,11 @@ test('Terminkarte ordnet Thema vor Datum an und zeigt Ort und Kleidung kompakt',
 });
 test('Rückmeldungsdialog bleibt getrennt und verwirft verspätete Antworten nach Schließen',async()=>{
  const body=new Node(),make=(tag,text)=>{const n=new Node(tag,text);n.addEventListener=()=>{};n.showModal=()=>{n.open=true;};n.close=()=>{n.open=false;};return n;};
- let resolve;const c=vm.createContext({node:make,document:{body},generation:1,g:{},api:()=>new Promise(r=>resolve=r)});
+ let resolve;const c=vm.createContext({node:make,document:{body},generation:1,g:{},latestResult:null,date:()=> 'Freitag · 19:30 Uhr',api:()=>new Promise(r=>resolve=r)});
  vm.runInContext(source.slice(source.indexOf(' let overviewDialog='),source.indexOf(' function paint(')),c);
  const first=c.showOverview({id:'test',title:'Testprobe'}),dialog=body.children[0];assert.equal(dialog.open,true);c.closeOverview();resolve({members:[{status:'yes',name:'Testperson'}]});await first;assert.equal(dialog.open,false);assert.equal(dialog.querySelectorAll('h3').length,0);
  const second=c.showOverview({id:'test',title:'Testprobe'});resolve({members:[{status:'yes',name:'Testperson'}]});await second;
- assert.equal(body.children.length,1);assert.equal(dialog.querySelectorAll('h3')[0].textContent,'Zugesagt (1)');assert.ok(dialog.querySelectorAll('p').some(n=>n.textContent==='Testperson'));
+ assert.equal(body.children.length,1);assert.equal(dialog.querySelectorAll('h3')[0].textContent,'Zugesagt');assert.equal(dialog.querySelectorAll('h3')[0].children[0].textContent,'1');assert.ok(dialog.querySelectorAll('span').some(n=>n.textContent==='Testperson'));
 });
 
 test('Ärztliche Untersuchungen erscheinen getrennt; gültige G26.3 erzeugt keinen zusätzlichen G26.2-Alarm',()=>{
