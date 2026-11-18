@@ -467,7 +467,7 @@
   const fitnessScope=['/portal/list','/portal/year','/portal/overview','/portal/remind','/portal/reply','/portal/widget-status','/portal/notification'].includes(path);
   const trainerGroups=!admin&&fitnessScope?(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
   const trainerEvent=event=>event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length>0&&event.groupIds.every(id=>trainerGroups.some(group=>group.id===id))&&event.recipientIds.every(id=>trainerGroups.some(group=>g.PortalGroups.members(group,accessRoster).includes(id)));
-  const visibleEvent=event=>trainerEvent(event)||!guest&&canView(event,record.memberId);
+  const visibleEvent=event=>trainerEvent(event)||(guest?event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.recipientIds.includes(record.memberId):canView(event,record.memberId));
   if(guest&&!['/portal/list','/portal/year','/portal/overview','/portal/remind','/portal/reply','/portal/widget-status','/portal/notification','/portal/calendar-subscription','/portal/native-push','/portal/push-devices','/portal/subscribe','/portal/unsubscribe'].includes(path))fail('Gäste haben ausschließlich Zugriff auf freigegebene Fitnessfunktionen.',403);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path==='/admin/portal/reminder-policy'){
@@ -828,7 +828,7 @@
  }
  async function personalCalendar(env,record){
   await assertMember(env,record);const cal=await decorate(env,await calendar(env)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),guest=roster.members.find(m=>m.id===record.memberId)?.fitnessTrainer===true,groups=(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId));
-  const visible=event=>(event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length&&event.groupIds.every(id=>groups.some(group=>group.id===id))&&event.recipientIds.every(id=>groups.some(group=>g.PortalGroups.members(group,roster).includes(id))))||!guest&&canView(event,record.memberId);
+  const visible=event=>(event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length&&event.groupIds.every(id=>groups.some(group=>group.id===id))&&event.recipientIds.every(id=>groups.some(group=>g.PortalGroups.members(group,roster).includes(id))))||(guest?event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.recipientIds.includes(record.memberId):canView(event,record.memberId));
   if(!cal.configured||cal.stale)fail('Kalender derzeit nicht erreichbar. Bitte später erneut versuchen.',503);
   return {fetchedAt:cal.fetchedAt,events:cal.events.filter(e=>!e.completedAt&&e.kind==='probe'&&e.approved&&e.end>Date.now()&&visible(e)).map(e=>memberEvent(e,record.memberId))};
  }
