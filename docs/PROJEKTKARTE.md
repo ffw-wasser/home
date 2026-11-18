@@ -126,7 +126,8 @@ Die Mitgliederrolle heißt „Gast“. Bestehende Daten verwenden kompatibel wei
 und Getränkeauswahl einschließlich Top 3 und Vorladen. Die Fitnessgruppe vergibt über
 `trainerIds` unabhängig vom Gast-Kennzeichen die Berechtigung für Rückmeldungsübersicht
 und Erinnerungen. Gäste ohne Trainerzuordnung haben keine Trainerrechte; reguläre Feuerwehrmitglieder
-mit Trainerzuordnung behalten ihre bisherigen Feuerwehrrechte ohne zusätzliche Rechte durch die Fitnessrolle.
+mit Trainerzuordnung behalten ihre bisherigen Feuerwehrrechte. Gäste können ihre eigenen freigegebenen
+Fitnesstermine beantworten und Bundesliga & Pokal unter „Mehr“ öffnen.
 
 ## Produktiver Speicher ab 2026.11.13.9
 

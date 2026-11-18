@@ -40,19 +40,44 @@ const root=path.resolve(__dirname,'..');
   await page.setViewportSize({width:1180,height:1000});await page.evaluate(()=>{currentSessionId='';sessionType='Allgemeine Probe';setHomeFlowStage(1);showView('settingsCalendarView');renderMembers();});
   await page.locator('.portal-keyword-card').first().waitFor({state:'attached'});await page.getByRole('button',{name:'Gruppen',exact:true}).click();
   const group=page.locator('.portal-keyword-card[data-group-id="fitness"]');await group.locator('summary').click();await group.getByRole('button',{name:'Gruppe bearbeiten',exact:true}).click();
-  const trainer=group.locator('fieldset').filter({has:page.getByText('Trainer · nur diese Fitnessgruppe',{exact:true})});assert.equal(await trainer.locator('input[type=checkbox]').count(),1);await trainer.locator('input[type=checkbox]').check();
+  const trainer=group.locator('fieldset').filter({has:page.getByText('Trainer · nur diese Fitnessgruppe',{exact:true})});assert.equal(await trainer.locator('input[type=checkbox]').count(),people.length);await trainer.getByLabel(/^2,? Beispiel$/).check();await trainer.getByLabel(/^3,? Beispiel$/).check();
   await group.getByRole('button',{name:'Gruppe speichern',exact:true}).click();await group.getByRole('button',{name:'Gruppe bearbeiten',exact:true}).waitFor();
-  assert.deepEqual((await f.call('groups',{},null,true)).value.groups.find(g=>g.id==='fitness').trainerIds,[people[1].id]);
+  assert.deepEqual((await f.call('groups',{},null,true)).value.groups.find(g=>g.id==='fitness').trainerIds,[people[1].id,people[2].id]);
   await group.getByRole('button',{name:'Gruppe bearbeiten',exact:true}).click();
-  const capture=async(name,locator)=>{if(!process.env.CAPTURE_FITNESS_HELP)return;const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));await locator.screenshot({path:path.join(out,name+'.jpg'),type:'jpeg',quality:80,animations:'disabled',style:'.top-nav,#headerProbeSummary{visibility:hidden!important}'});const b=await locator.boundingBox();sizes[name]={width:Math.round(b.width),height:Math.round(b.height)};fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');};
+  const capture=async(name,locator)=>{if(!process.env.CAPTURE_FITNESS_HELP||process.env.CAPTURE_FITNESS_HELP==='roles'&&!['geraetehaus-fitness-rolle','geraetehaus-fitness-gruppe'].includes(name))return;const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));await locator.screenshot({path:path.join(out,name+'.jpg'),type:'jpeg',quality:80,animations:'disabled',style:'.top-nav,#headerProbeSummary{visibility:hidden!important}'});const b=await locator.boundingBox();sizes[name]={width:Math.round(b.width),height:Math.round(b.height)};fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');};
   await capture('geraetehaus-fitness-gruppe',group);await group.getByRole('button',{name:'Abbrechen',exact:true}).click();
-  await page.evaluate(()=>{showView('settingsMembersView');renderAdmin();});const member=page.locator('[data-member-id="'+people[1].id+'"]');assert.equal(await member.locator('[data-fitness-trainer]').isChecked(),true);assert.equal(await member.locator('label:has([data-fitness-trainer]) strong').textContent(),'Gast');await page.locator('[data-record-choice="'+people[1].id+'"]').click();await member.locator('[data-record-tab="roles"]').click();await capture('geraetehaus-fitness-rolle',member.locator('label:has([data-fitness-trainer])'));
+  await page.evaluate(()=>{showView('settingsMembersView');renderAdmin();});const member=page.locator('[data-member-id="'+people[1].id+'"]');assert.equal(await member.locator('[data-fitness-trainer]').isChecked(),true);assert.equal(await member.locator('label:has([data-fitness-trainer]) strong').textContent(),'Gast');await page.locator('[data-record-choice="'+people[1].id+'"]').click();await member.locator('[data-record-tab="roles"]').click();const guestToggle=member.locator('[data-fitness-trainer]');
+  const role=member.locator('[data-member-role]').first();
+  assert.equal(await role.isDisabled(),true);
+  await guestToggle.uncheck();
+  assert.equal(await role.isEnabled(),true);
+  await role.check();
+  await guestToggle.check();
+  assert.equal(await role.isDisabled(),true);
+  assert.equal(await role.isChecked(),true,'toggling the checkbox does not clear stored fields');
+  assert.deepEqual(await member.evaluate((row,id)=>prepareMemberUpdate(id,row),people[1].id),people[1],'saving a guest preserves the existing record');
+  await member.locator('[data-record-tab="master"]').click();
+  assert.equal(await member.locator('[data-first-name]').isDisabled(),true);
+  await member.locator('[data-record-tab="roles"]').click();
+  await capture('geraetehaus-fitness-rolle',member.locator('[data-record-panel="roles"]'));
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#membersDiscardAll').click();
   await page.evaluate(()=>showView('settingsStatisticsView'));await page.locator('#fitnessStatistics').waitFor();await page.getByRole('button',{name:'Fitnessstatistik laden (Verwaltung)',exact:true}).click();await page.locator('#fitnessStatistics table').waitFor();assert.match(await page.locator('#fitnessStatistics').innerText(),/Ohne Rückmeldung/);await capture('geraetehaus-fitness-statistik',page.locator('#fitnessStatistics'));
   for(const width of [320,390,768,1024]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Fitness statistics fit '+width);}
   await page.evaluate(()=>lockAdministration());assert.equal(await page.locator('#fitnessStatistics').innerText(),'');const trainerAccount=f.people[1],token='t'.repeat(43),now=Date.now();f.sql.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) VALUES(?,?,?,?,?,?)').run(require('node:crypto').createHash('sha256').update('portal-session:'+token).digest('base64url'),trainerAccount.alias,trainerAccount.revision,'fixture-'+trainerAccount.alias,now,now+86400000);
   await page.addInitScript(session=>{localStorage.setItem('h2o-portal-identity-v1',JSON.stringify(session));localStorage.setItem('h2o-portal-identity-mode','1');},{scope:'portal',alias:trainerAccount.alias,revision:trainerAccount.revision,token,expiresAt:now+86400000});await page.setViewportSize({width:390,height:844});await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.locator('#portal-events .portal-event').waitFor();
   assert.equal(await page.locator('[data-portal-tile=portal-evidence]').isVisible(),false);assert.equal(await page.locator('#memberCheckinButton').isVisible(),false);
   await page.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).click();await page.getByRole('button',{name:'Erinnerung abschicken',exact:true}).waitFor();assert.doesNotMatch(await page.locator('.portal-overview-dialog').innerText(),/Reihenfolge: GF/);await capture('h2o-fitness',page.locator('.portal-overview-dialog'));
+  await page.keyboard.press('Escape');
+  await page.locator('[data-deckel-target="deckel-more"]').click();
+  const football=page.locator('[data-portal-tile="more-bundesliga"]');
+  assert.equal(await football.isVisible(),true);
+  assert.equal(await page.locator('[data-portal-tile="more-security"]').isVisible(),true);
+  await football.click();
+  assert.equal(await page.locator('#portal-page-more-bundesliga').isVisible(),true);
+  for(const restricted of ['phone-menu','account','more-training','more-year-plan']){
+   assert.equal(await page.evaluate(id=>DeckelMobile.jump(id),restricted),false);
+  }
   assert.deepEqual(errors,[]);console.log('Fitness browser OK: trainer assignment, role checkbox, private statistics, year filter, lock and responsive layout.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

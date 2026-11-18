@@ -302,7 +302,7 @@
       try{global.DrinksExtras?.celebrate(bonus,finishPaid);}catch{}
     }
   }
-  function adminFields(member){if(member.fitnessTrainer===true)return '';return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie über „Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus Cloudflare laden.</span></fieldset>`;}
+  function adminFields(member){return `<fieldset class="dr-pin-editor"><legend>Getränke-PIN</legend><p>Die Getränke-PIN ist freiwillig. Mitglieder können sie über „Konto“ selbst einrichten oder entfernen.</p><label>Neue persönliche PIN<input type="password" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" data-dr-new-pin placeholder="4 Ziffern"></label><button type="button" class="outline-button" data-dr-save-pin="${escapeHtml(member.id)}">PIN speichern</button><span data-dr-pin-status aria-live="polite">PIN-Status beim Öffnen aus Cloudflare laden.</span></fieldset>`;}
   async function saveAdminPin(button){
     if(!adminUnlocked)return showToast('Bitte zuerst die Administration entsperren.','error');
     const box=button.closest('.dr-pin-editor'),input=box.querySelector('[data-dr-new-pin]'),status=box.querySelector('[data-dr-pin-status]'),pin=input.value;

@@ -63,7 +63,7 @@
       if(selected){const directory=button.closest('.person-record-directory');if(directory){const item=button.getBoundingClientRect(),area=directory.getBoundingClientRect();if(item.top<area.top)directory.scrollTop+=item.top-area.top;else if(item.bottom>area.bottom)directory.scrollTop+=item.bottom-area.bottom;}}
     });
     setActiveTab(row,former===row?previousTab:'overview');
-    window.Drinks?.loadPinStatus(row);
+    if(!row.querySelector('[data-fitness-trainer]')?.checked)window.Drinks?.loadPinStatus(row);
   }
   function renderMemberList(){
     if(!ready)return;
@@ -94,7 +94,7 @@
       article.classList.add('ux-member','person-record-card');
       article.setAttribute('aria-label','Personalakte '+nameForTile(member));
       const hero=document.createElement('header');hero.className='person-record-hero';
-      hero.innerHTML='<div class="person-record-hero-icon" aria-hidden="true">FW</div><div class="person-record-hero-text"><p class="eyebrow">Feuerwehr Wasser · Personalakte</p><h3 class="person-record-title">'+escapeHtml(nameForTile(member))+'</h3><div class="person-record-hero-meta"><span class="person-record-badge">'+(member.ageDepartment?'Altersabteilung':member.fitnessTrainer?'Gast':'Einsatzabteilung')+'</span><span data-record-current-rank>Kein Dienstgrad hinterlegt</span></div></div>';
+      hero.innerHTML='<div class="person-record-hero-icon" aria-hidden="true">FW</div><div class="person-record-hero-text"><p class="eyebrow">Feuerwehr Wasser · Personalakte</p><h3 class="person-record-title">'+escapeHtml(nameForTile(member))+'</h3><div class="person-record-hero-meta"><span class="person-record-badge">'+(member.fitnessTrainer?'Gast':member.ageDepartment?'Altersabteilung':'Einsatzabteilung')+'</span><span data-record-current-rank>Kein Dienstgrad hinterlegt</span></div></div>';
       const tabs=document.createElement('nav');tabs.className='person-record-tabs';tabs.setAttribute('aria-label','Bereiche der Personalakte');tabs.setAttribute('role','tablist');
       const tabList=[['overview','Übersicht'],['master','Stammdaten'],['career','Laufbahn & Ausbildung'],['roles','Berechtigungen'],['evidence','Nachweise'],['account','Konto & Getränke']];
       tabs.innerHTML=tabList.map(pair=>'<button type="button" role="tab" data-record-tab="'+pair[0]+'">'+pair[1]+'</button>').join('');
@@ -104,8 +104,8 @@
       const move=(selector,to)=>{const node=article.querySelector(':scope > '+selector);if(node)panels[to].append(node);};
       move('.member-name-fields','master');
       move('.age-department-toggle','roles');
-      move('.committee-member-toggle','roles');
-      move('.committee-member-toggle','roles');
+      move('.committee-member-toggle:has([data-committee-member])','roles');
+      move('.committee-member-toggle:has([data-fitness-trainer])','roles');
       move('.member-role-editor','roles');
       move('.age-no-role-note','roles');
       move('.member-safety-settings','evidence');
@@ -114,6 +114,24 @@
       const actions=article.querySelector(':scope > .member-card-actions');actions?.remove();
       // Dynamisch ergänzte Getränkefelder bleiben unverändert und behalten ihre Ereignisse.
       [...article.children].forEach(node=>panels.account.append(node));
+      const guest=panels.roles.querySelector('[data-fitness-trainer]');
+      const guestLabel=guest.closest('label');
+      const settings=['master','career','roles','evidence','account'].map(name=>{
+        const panel=panels[name],fields=document.createElement('fieldset');
+        fields.className='person-record-settings';
+        fields.append(...[...panel.children].filter(node=>node!==guestLabel&&node!==panel.firstElementChild));
+        panel.append(fields);
+        return fields;
+      });
+      const syncGuest=()=>{
+        for(const fields of settings)fields.disabled=guest.checked;
+        hero.querySelector('.person-record-badge').textContent=guest.checked?'Gast':member.ageDepartment?'Altersabteilung':'Einsatzabteilung';
+      };
+      syncGuest();
+      guest.addEventListener('input',()=>{
+        syncGuest();
+        if(!guest.checked)window.Drinks?.loadPinStatus(article);
+      });
       if(actions)panels.master.append(actions);
       article.append(hero,tabs,...tabList.map(pair=>panels[pair[0]]));
       const dirty=document.createElement('p');dirty.className='ux-member-status';dirty.setAttribute('role','status');dirty.textContent='Mitgliederdaten: '+getAppStorageState().text+' · PIN separat in Cloudflare';panels.master.append(dirty);
@@ -186,7 +204,7 @@
   }
   async function saveMemberRows(rows){
     if(memberSaving||!rows.length||!requireAdmin('settingsMembersView'))return;
-    const jobs=rows.map(row=>({row,id:row.dataset.memberId,pin:row.querySelector('[data-dr-new-pin]')?.value||''}));
+    const jobs=rows.map(row=>({row,id:row.dataset.memberId,pin:row.querySelector('[data-dr-new-pin]:enabled')?.value||''}));
     for(const job of jobs){
       if(job.pin&&!/^\d{4}$/.test(job.pin)){
         job.row.open=true;job.row.querySelector('[data-dr-pin-status]').textContent='Bitte vier Ziffern eingeben.';
@@ -201,7 +219,13 @@
     try{
       if(!updateMembers(dataJobs))return;
       for(const job of jobs){
-        if(!job.pin)continue;
+        if(!job.pin){
+          if(job.row.querySelector('[data-fitness-trainer]')?.checked){
+            const editor=job.row.querySelector('.dr-pin-editor[data-dirty]');
+            if(editor)delete editor.dataset.dirty;
+          }
+          continue;
+        }
         const button=job.row.querySelector('[data-dr-save-pin]');
         const saved=await window.Drinks.saveAdminPin(button);
         job.row.dataset.pinOutcome=saved?'PIN in Cloudflare gespeichert':'PIN nicht gespeichert · bitte erneut eingeben';

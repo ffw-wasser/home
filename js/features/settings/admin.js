@@ -191,11 +191,12 @@ function memberNameKey(member){
   return [member.lastName,member.firstName].map(value=>String(value||'').normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase('de-DE')).join('\u0000');
 }
 function prepareMemberUpdate(id, row) {
+  const current = members.find(item => item.id === id);
+  if (!current) throw Error("Mitglied wurde inzwischen entfernt. Bitte die Liste neu laden.");
+  if (row.querySelector("[data-fitness-trainer]")?.checked) return {...current, fitnessTrainer:true};
   const lastName = row.querySelector("[data-last-name]").value.trim();
   const firstName = row.querySelector("[data-first-name]").value.trim();
   if (!lastName || !firstName) throw Error("Name darf nicht leer sein.");
-  const current = members.find(item => item.id === id);
-  if (!current) throw Error("Mitglied wurde inzwischen entfernt. Bitte die Liste neu laden.");
   if((current.lastName!==lastName||current.firstName!==firstName)&&typeof entries!=="undefined"&&entries.length){
     const names=new Set([nameForStorage(current),nameForTile(current)]);
     if(entries.some(entry=>entry.memberId===id||names.has(entry.storedName)||names.has(entry.displayName)))throw Error("Bitte offene Teilnahmen dieser Person zuerst abschließen oder verwerfen. Danach den Namen ändern.");
@@ -220,7 +221,7 @@ function prepareMemberUpdate(id, row) {
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
   member.ageDepartment = Boolean(row.querySelector("[data-age-department]")?.checked);
   member.committeeMember = Boolean(row.querySelector("[data-committee-member]")?.checked);
-  member.fitnessTrainer = Boolean(row.querySelector("[data-fitness-trainer]")?.checked);
+  member.fitnessTrainer = false;
   member.breathingQualified = Boolean(row.querySelector("[data-breathing-qualified]")?.checked);
   member.driverLicenseIntervalMonths = interval;
   member.g262ValidUntil = MemberEvidence.monthExpiry(row.querySelector("[data-g262-valid-until]")?.value || "",member.g262ValidUntil);

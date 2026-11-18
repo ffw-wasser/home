@@ -21005,9 +21005,13 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
    const proof=await hash('deckel-read/v1:'+record.alias+':'+record.key);
    const identity=g.WhatsAppPasskeys?await g.WhatsAppPasskeys.authorize(env,{alias:record.alias,revision:record.revision},auth,proof):null;
    if(!identity&&!equal(auth,proof))fail('Handyzugang ungültig.',401);
-   await g.PortalService?.assertMember(env,record);
-   const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:identity?.row?auth:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
+   const person=await g.PortalService?.assertMember(env,record);
+   // Older portal clients also start from this envelope. Give guests only the
+   // session bootstrap and an empty ledger projection, without reading their ledger.
+   const guest=person?.fitnessTrainer===true;
+   const account=guest?M.empty(record.memberId):(await read(env,record.memberId)).account;
+   const p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(account,p);
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:identity?.row?auth:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:!guest&&['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:account.resetEpoch||'0',...(!guest&&await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
@@ -21015,7 +21019,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
    const row=await env.DB.prepare('SELECT revision FROM ledger_access WHERE alias=?').bind(data.alias).first();
    if(!row||row.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,row.revision,'commands')))fail('Buchungszugang ersetzt. Bitte neu laden.',401);
    if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,row.revision,'commands'));
-   await g.PortalService?.assertAlias(env,data.alias);
+   await g.PortalService?.assertAlias(env,data.alias,false);
    if(path==='/commands/status')return process(env,data);
    if(path!=='/commands/submit')fail('Nicht gefunden.',404);
    const envelope=JSON.stringify(data.envelope);if(data.envelope?.version!==1||data.envelope.iv?.length!==16||data.envelope.data?.length!==5484)fail('Ungültige verschlüsselte Buchung.',400);
@@ -21104,7 +21108,7 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
   if(!row||current?.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
   if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,data.revision,'commands'));
   const record=await L.open(env,row.payload,'access:'+data.alias);
-  await g.PortalService?.assertMember(env,record);return record;
+  await g.PortalService?.assertMember(env,record,false);return record;
  }
  async function pool(env){const row=await env.DB.prepare('SELECT * FROM challenge_pool WHERE id=1').first();return row?{value:await L.open(env,row.payload,'challenge-pool'),version:row.version}:null;}
 
@@ -22512,6 +22516,16 @@ g.PortalHydrants={schema,route};
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
  function isObserver(event,memberId){return event.kind==='probe'&&event.observerIds?.includes(memberId)===true;}
  function canView(event,memberId){return isRecipient(event,memberId)||isObserver(event,memberId);}
+ function guestRecipient(event,memberId){
+  return event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.recipientIds.includes(memberId);
+ }
+ async function fitnessAccess(env,roster,memberId){
+  const group=(await audienceGroups(env)).groups.find(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(memberId));
+  const members=new Set(group?g.PortalGroups.members(group,roster):[]);
+  const manages=event=>!!group&&event.attendanceType==='Fitness'&&event.groupIds?.length===1&&event.groupIds[0]===group.id&&Array.isArray(event.recipientIds)&&event.recipientIds.every(id=>members.has(id));
+  const guest=roster?.members.find(person=>person.id===memberId)?.fitnessTrainer===true;
+  return {manages,visible:event=>manages(event)||(guest?guestRecipient(event,memberId):canView(event,memberId))};
+ }
  function memberEvent(event,memberId){const {observerIds,recipientIds,automaticRecipientIds,groupIds,includeIds,excludeIds,googleUid,googleOccurrence,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds),...(memberId?{canReply:isRecipient(event,memberId),observerOnly:!isRecipient(event,memberId)&&isObserver(event,memberId)}:{})};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe','Fitness','Veranstaltung'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
@@ -22577,18 +22591,22 @@ g.PortalHydrants={schema,route};
   }return processed;
  }
 
-  async function assertMember(env,record){
-   await ready(env);
+ async function assertMember(env,record,allowGuest=true){
+  await ready(env);
   const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
-   if(!roster||!Array.isArray(roster.members)||!roster.members.some(m=>m.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
-   return record;
-  }
-  async function assertAlias(env,alias){
-   if((await L.meta(env))?.state!=='active')return; // Preserve pre-central reminder mode.
-   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=?').bind(alias).first();
-   if(!row)fail('Handyzugang wurde gesperrt oder ersetzt.',401);
-   return assertMember(env,await L.open(env,row.payload,'access:'+alias));
-  }
+  const person=roster?.members?.find(m=>m.id===record.memberId);
+  if(!person)fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
+  if(!allowGuest&&person.fitnessTrainer===true)fail('Diese Funktion ist für Gäste gesperrt.',403);
+  return person;
+ }
+ async function assertAlias(env,alias,allowGuest=true){
+  if((await L.meta(env))?.state!=='active')return; // Preserve pre-central reminder mode.
+  const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=?').bind(alias).first();
+  if(!row)fail('Handyzugang wurde gesperrt oder ersetzt.',401);
+  const record=await L.open(env,row.payload,'access:'+alias);
+  await assertMember(env,record,allowGuest);
+  return record;
+ }
   async function actor(env,data,auth,path){
   if(!ALIAS.test(data.alias||'')||!REV.test(data.revision||''))fail('Ungültiger Portalzugang.',400);
   const row=await env.DB.prepare('SELECT a.* FROM ledger_access a JOIN accounts c ON c.alias=a.alias AND c.revision=a.revision WHERE a.alias=? AND a.revision=?').bind(data.alias,data.revision).first();
@@ -22640,7 +22658,9 @@ g.PortalHydrants={schema,route};
   const failures=new Map(),rememberFailure=detail=>{const key=JSON.stringify(detail),old=failures.get(key);if(old)old.count++;else failures.set(key,{...detail,count:1});};
   let accepted=0,failed=0,excused=0,duplicate=0,processed=0;const people=await recipients(env),campaign=requestId,already=new Set((await env.DB.prepare('SELECT member FROM portal_sends WHERE event=? AND campaign=?').bind(event.id,campaign).all()).results.map(r=>r.member)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');let remaining=0;const replyRows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of replyRows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
   for(const [member,records] of people){
-   if(roster&&!roster.members.some(m=>m.id===member))continue;if(roster?.members.find(m=>m.id===member)?.fitnessTrainer===true){const assigned=(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(member));if(event.attendanceType!=='Fitness'||!event.groupIds?.length||!Array.isArray(event.recipientIds)||!event.groupIds.every(id=>assigned.some(group=>group.id===id))||!event.recipientIds.every(id=>assigned.some(group=>g.PortalGroups.members(group,roster).includes(id))))continue;}if(!isRecipient(event,member))continue;if(already.has(member)){duplicate++;continue;}
+   const person=roster?.members.find(m=>m.id===member);
+   if(roster&&!person||!isRecipient(event,member)||person?.fitnessTrainer===true&&!guestRecipient(event,member))continue;
+   if(already.has(member)){duplicate++;continue;}
    if(statuses.get(member)==='excused'){excused++;continue;}if(processed>=2){remaining++;continue;}processed++;
    const id=await hash('portal-send:'+event.id+':'+member+':'+requestId),now=Date.now(),payload=await L.seal(env,{event:memberEvent(event),status:'reminder'},'portal-send:'+id);
    // Claim before delivery: ambiguous network responses are never sent a second time.
@@ -22755,11 +22775,12 @@ g.PortalHydrants={schema,route};
    let record;if(admin)L.source(m,data);else record=(widgetReply||widgetRead)?await widgetActor(env,auth,data):await actor(env,data,auth,path);
    if(widgetReply)path='/portal/reply';
   const accessRoster=admin?null:await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
-  const trainer=!admin&&accessRoster?.members.find(person=>person.id===record.memberId)?.fitnessTrainer===true;
-  const trainerGroups=trainer?(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
-  const trainerEvent=event=>event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length>0&&event.groupIds.every(id=>trainerGroups.some(group=>group.id===id))&&event.recipientIds.every(id=>trainerGroups.some(group=>g.PortalGroups.members(group,accessRoster).includes(id)));
-  const visibleEvent=event=>trainer?trainerEvent(event):canView(event,record.memberId);
-  if(trainer&&!['/portal/list','/portal/year','/portal/overview','/portal/remind','/portal/reply','/portal/widget-status','/portal/notification','/portal/calendar-subscription','/portal/native-push','/portal/push-devices','/portal/subscribe','/portal/unsubscribe'].includes(path))fail('Fitnesstrainer haben ausschließlich Zugriff auf ihre Fitnessgruppe.',403);
+  const guest=!admin&&accessRoster?.members.find(person=>person.id===record.memberId)?.fitnessTrainer===true;
+  const fitnessScope=['/portal/list','/portal/year','/portal/overview','/portal/remind','/portal/reply','/portal/widget-status','/portal/notification'].includes(path);
+  const {manages:trainerEvent,visible:visibleEvent}=!admin&&fitnessScope?await fitnessAccess(env,accessRoster,record.memberId):{};
+  const leader=!guest&&accessRoster?.members.some(person=>person.id===record.memberId&&person.leader===true)===true;
+  const canManage=event=>leader||trainerEvent(event);
+  if(guest&&!fitnessScope&&!['/portal/calendar-subscription','/portal/native-push','/portal/push-devices','/portal/subscribe','/portal/unsubscribe'].includes(path))fail('Diese Funktion ist für Gäste gesperrt.',403);
   if(path.startsWith('/portal/passkey/'))return g.WhatsAppPasskeys.route(path.slice('/portal/passkey/'.length),data,env,record);
   if(path==='/admin/portal/reminder-policy'){
    const policy=await reminderPolicy(env);
@@ -22803,7 +22824,7 @@ g.PortalHydrants={schema,route};
    if(typeof data.code!=='string'||data.code.length>4096||!data.code.startsWith('FFW-CHECKIN:1:'))fail('Kein gültiger Anwesenheitscode.',400);
    let ticket;try{ticket=await L.open(env,atob(data.code.slice(14)),'attendance-checkin-v1');}catch{fail('Anwesenheitscode ungültig. Bitte neu öffnen.',400);}
    if(!Number.isFinite(ticket.expiresAt)||ticket.expiresAt<=Date.now()||ticket.expiresAt>Date.now()+90000||ticket.source!==m.source)fail('Code abgelaufen. Bitte im Portal neu öffnen.',400);
-   const active=await assertAlias(env,ticket.alias);
+   const active=await assertAlias(env,ticket.alias,false);
    if(!active||active.revision!==ticket.revision||!roster?.members.some(person=>person.id===active.memberId))fail('Mitgliedszugang nicht mehr freigegeben.',403);
    return {memberId:active.memberId};
   }
@@ -22813,7 +22834,7 @@ g.PortalHydrants={schema,route};
    if(data.groups===undefined)return {...current,rosterUpdatedAt:roster?.updatedAt||null,members:(roster?.members||[]).map(({id,name,agt,leader,ageDepartment,committeeMember,fitnessTrainer})=>({id,name,agt,leader,ageDepartment,committeeMember,fitnessTrainer}))};
    if(!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion!==current.version)fail('Gruppen wurden inzwischen geändert. Bitte neu laden.');
    let groups;try{groups=g.PortalGroups.validate(data.groups);}catch(e){fail(e.message,400);}
-   for(const group of groups)if(group.trainerIds?.some(id=>!roster?.members.some(person=>person.id===id&&person.fitnessTrainer===true)))fail('Bitte nur hinterlegte Fitnesstrainer zuordnen.',400);
+   for(const group of groups)if(group.trainerIds?.some(id=>!roster?.members.some(person=>person.id===id)))fail('Bitte nur vorhandene Mitglieder als Trainer zuordnen.',400);
    const oldIds=new Set(current.groups.flatMap(group=>group.memberIds));
    if(groups.some(group=>group.memberIds.some(id=>!roster?.members.some(m=>m.id===id)&&!oldIds.has(id))))fail('Mitglied nicht mehr vorhanden. Bitte neu laden.',400);
    const observerIds=data.observerIds===undefined?current.observerIds:data.observerIds;
@@ -22905,7 +22926,7 @@ g.PortalHydrants={schema,route};
     // Older projections could infer membership from roles. Require a fresh checkbox-only projection.
     if(roster.agtSource!=='member-checkbox')return {people,uncertain,stale:true,assignmentSyncRequired:true,syncedAt:roster.updatedAt||null,servedAt:now};
     for(const member of roster.members){
-     if(member.agt!==true)continue;
+     if(member.agt!==true||member.fitnessTrainer===true)continue;
      if(!approvals.get(member.id)?.granted){uncertain.push({name:member.name,reason:'g26-consent'});continue;}
      const merged=await g.PortalEvidence.view(env,member,roster,evidenceRows),e=merged.evidence?.breathing,details={version:1,medical:{g262:'',g263:e?.g263||''},breathing:{g263:e?.g263||'',instruction:e?.instruction||'',ffi:e?.ffi||''},driver:null};
      const assessment=g.MemberEvidence.assess(details,now).find(group=>group.title==='Atemschutz');
@@ -22958,7 +22979,7 @@ g.PortalHydrants={schema,route};
    // Preserve the same audience as the personal appointment list. Other people's
    // birthdays, unapproved entries and administration metadata stay private.
    return {year:cal.year,configured:cal.configured,fetchedAt:cal.fetchedAt,stale:cal.stale,refreshing:cal.refreshing===true,colors:cal.colors,colorVersion:cal.colorVersion,
-    events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&visibleEvent(e)||!trainer&&e.kind==='birthday'&&e.memberId===record.memberId||!trainer&&e.kind==='info'&&e.infoVisible&&isRecipient(e,record.memberId)).map(e=>({
+    events:cal.events.filter(e=>e.kind==='probe'&&e.approved&&visibleEvent(e)||!guest&&e.kind==='birthday'&&e.memberId===record.memberId||!guest&&e.kind==='info'&&e.infoVisible&&isRecipient(e,record.memberId)).map(e=>({
      id:e.id,calendarManaged:false,calendarLinkOnly:true,title:e.kind==='birthday'?'Dein Geburtstag':e.title,start:e.start,end:e.end,allDay:e.allDay===true,kind:e.kind,...(e.googleColor?{googleColor:e.googleColor}:{}),
      ...(e.kind==='probe'?{canReply:isRecipient(e,record.memberId),observerOnly:!isRecipient(e,record.memberId)&&isObserver(e,record.memberId),sessionType:e.sessionType,attendanceType:e.attendanceType,location:e.location,clothing:e.clothing,note:e.note,approved:true}:e.kind==='info'?{note:e.note}:{})
     }))};
@@ -23026,7 +23047,7 @@ g.PortalHydrants={schema,route};
    const saved=await env.DB.prepare('INSERT INTO devices(id,alias,revision,endpoint) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?) AND ((SELECT COUNT(*) FROM devices WHERE alias=?)<5 OR EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=?)) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision WHERE devices.alias=excluded.alias').bind(id,data.alias,data.revision,url,data.alias,data.revision,data.alias,id,data.alias).run();if(!saved.meta.changes)fail('Maximal fünf Geräte pro Mitglied.');await env.DB.prepare('INSERT OR IGNORE INTO portal_devices(id) SELECT ? WHERE EXISTS(SELECT 1 FROM devices WHERE id=? AND alias=? AND revision=?)').bind(id,id,record.alias,record.revision).run();return {ok:true};
   }
   if(path==='/portal/notification'){
-   const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&!e.completedAt&&e.approved&&e.kind==='probe'&&visibleEvent(e));
+   const row=await env.DB.prepare("SELECT * FROM portal_sends WHERE member=? AND status IN ('pending','accepted') AND created_at>? ORDER BY created_at DESC LIMIT 1").bind(record.memberId,Date.now()-DAY).first();if(!row)return {event:null};const value=await open(env,row,'portal-send:'+row.id),cal=await decorate(env,await calendar(env)),event=cal.events.find(e=>e.id===value.event.id&&!e.completedAt&&e.approved&&e.kind==='probe'&&visibleEvent(e)&&(guest?guestRecipient(e,record.memberId):isRecipient(e,record.memberId)));
    return {event:event&&event.start>Date.now()&&(await replyFor(env,event.id,record.memberId)).status!=='excused'?memberEvent(event):null};
   }
   // A manual administration reload must bypass the saved snapshot. Normal and
@@ -23037,21 +23058,21 @@ g.PortalHydrants={schema,route};
   if(path==='/admin/portal/display')return saveCalendarDisplay(env,data,cal,roster);
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
-   const ownBirthday=cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:!requestedEvent?.completedAt&&requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(visibleEvent(requestedEvent)?null:'not-relevant'):'unavailable';const result={...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:trainer?null:birthday,fitnessTrainer:trainer,leader:!trainer&&roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,events:cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&e.end>Date.now()&&visibleEvent(e)).map(e=>({...memberEvent(e,record.memberId),canReply:isRecipient(e,record.memberId),canManage:trainer?trainerEvent(e):roster?.members.some(m=>m.id===record.memberId&&m.leader)===true,calendarManaged:false,calendarLinkOnly:true,...(isRecipient(e,record.memberId)?map.get(e.id)||{status:'open',version:0}:{status:'open',version:0})}))};
+   const ownBirthday=!guest&&cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:!requestedEvent?.completedAt&&requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(visibleEvent(requestedEvent)?null:'not-relevant'):'unavailable';const result={...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:guest?null:birthday,fitnessTrainer:guest,leader,events:cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&e.end>Date.now()&&visibleEvent(e)).map(e=>({...memberEvent(e,record.memberId),canReply:isRecipient(e,record.memberId),canManage:canManage(e),calendarManaged:false,calendarLinkOnly:true,...(isRecipient(e,record.memberId)?map.get(e.id)||{status:'open',version:0}:{status:'open',version:0})}))};
    if(data.widget===true){const upcoming=g.CalendarPresentation.widgetEvents(result.events);result.widgetReply=await widgetGrant(env,auth,upcoming);}
    return result;
   }
   if(path==='/admin/portal/list')return {...cal,calendarLinkOnly:true,googleInstructionVersion:1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1};
-  const event=cal.events.find(e=>e.id===data.eventId&&(!e.completedAt&&e.approved&&e.kind==='probe')&&(admin||visibleEvent(e)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
+  const event=cal.events.find(e=>e.id===data.eventId&&(!e.completedAt&&e.approved&&e.kind==='probe')&&(admin||visibleEvent?.(e)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
   if(path==='/portal/widget-status'){
    if(cal.stale)fail('Kalenderstand veraltet. Bitte H₂O öffnen.',503);
    const participant=isRecipient(event,record.memberId);
    return {ok:true,...(participant?await replyFor(env,event.id,record.memberId):{status:'open',version:0}),reminded:participant&&!!event.remindedAt,canReply:participant};
   }
   if(path==='/portal/overview'){
-   if(!(trainer?trainerEvent(event):roster?.members.some(m=>m.id===record.memberId&&m.leader)))fail('Diese Übersicht ist nur für hinterlegte Gruppenführer freigegeben.',403);
+   if(!canManage(event))fail('Diese Übersicht ist nur für Gruppenführer und zugeordnete Fitnesstrainer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   const grouped=!trainer&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
+   const grouped=!guest&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
    // Only the remaining accepted AGT candidates need an assessment. Medical details stay server-side.
    const candidates=grouped&&roster.agtSource==='member-checkbox'?recipients.filter(m=>statuses.get(m.id)==='yes'&&!m.leader&&!m.replyRoles?.includes('Maschinist')&&m.agt===true&&!m.ageDepartment&&!m.fitnessTrainer):[];
    if(candidates.length){
@@ -23073,7 +23094,7 @@ g.PortalHydrants={schema,route};
   if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden. Bitte später erneut versuchen.',503);
   if(event.start<=Date.now())fail('Der Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad erfassen.');
   if(path==='/portal/remind'){
-   if(!(trainer?trainerEvent(event):roster?.members.some(m=>m.id===record.memberId&&m.leader)))fail('Erinnerungen sind nur für hinterlegte Gruppenführer freigegeben.',403);
+   if(!canManage(event))fail('Erinnerungen sind nur für Gruppenführer und zugeordnete Fitnesstrainer freigegeben.',403);
    if(!REV.test(data.requestId||''))fail('Ungültige Versandkennung.',400);
    return send(env,event,data.requestId);
   }
@@ -23118,8 +23139,10 @@ g.PortalHydrants={schema,route};
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
  async function personalCalendar(env,record){
-  await assertMember(env,record);const cal=await decorate(env,await calendar(env)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),trainer=roster.members.find(m=>m.id===record.memberId)?.fitnessTrainer===true,groups=trainer?(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
-  const visible=event=>!trainer?canView(event,record.memberId):event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length&&event.groupIds.every(id=>groups.some(group=>group.id===id))&&event.recipientIds.every(id=>groups.some(group=>g.PortalGroups.members(group,roster).includes(id)));
+  const roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
+  if(!roster?.members?.some(person=>person.id===record.memberId))fail('Dieser Portalzugang ist nicht mehr freigegeben.',403);
+  const {visible}=await fitnessAccess(env,roster,record.memberId);
+  const cal=await decorate(env,await calendar(env));
   if(!cal.configured||cal.stale)fail('Kalender derzeit nicht erreichbar. Bitte später erneut versuchen.',503);
   return {fetchedAt:cal.fetchedAt,events:cal.events.filter(e=>!e.completedAt&&e.kind==='probe'&&e.approved&&e.end>Date.now()&&visible(e)).map(e=>memberEvent(e,record.memberId))};
  }
@@ -23650,7 +23673,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"26b98a4ec0716e6817d8f546ac2a929e3e6fa77f2e37abe284e28df487db323a",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"da6c2e9ab5d09053c09e6f05b79558d349bf1d02dd6c142f1f024b1e53043b0e",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

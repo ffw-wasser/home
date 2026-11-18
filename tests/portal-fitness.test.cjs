@@ -27,9 +27,9 @@ test('Fitnessrolle: eigene Termine/Rückmeldungen/Erinnerungen, keine Feuerwehr-
 });
 test('Fitnessrolle: Entzug, deaktivierte Gruppe, Fremdempfänger und Feuerwehrtermine bleiben serverseitig gesperrt',async()=>{
  const f=await setup(),trainer=f.people[1],cal=(await f.call('list',{},null,true)).value;
- // Explicit extra recipient outside this group must not be visible to the trainer.
+ // An extra recipient removes trainer authority. The guest keeps their own reply.
  assert.equal((await f.call('classify',{eventId:f.event.id,kind:'probe',approved:true,attendanceType:'Fitness',recipientMode:'groups',groupIds:['fitness'],includeIds:[f.people[0].memberId],excludeIds:[],expectedGroupsVersion:cal.groupsVersion,expectedVersion:cal.rulesVersion},null,true)).status,200);
- assert.equal((await f.call('list',{},trainer)).value.events.length,0);assert.equal((await f.call('overview',{eventId:f.event.id},trainer)).status,404);
+ assert.equal((await f.call('list',{},trainer)).value.events[0].canManage,false);assert.equal((await f.call('overview',{eventId:f.event.id},trainer)).status,403);
  const groups=(await f.call('groups',{},null,true)).value;groups.groups.find(g=>g.id==='fitness').enabled=false;
  assert.equal((await f.call('groups',{groups:groups.groups,expectedVersion:groups.version},null,true)).status,200);
  assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'fitness-remind-2'},trainer)).status,404);
@@ -52,6 +52,36 @@ test('Gast ohne Fitness-Zuordnung bleibt Gast und erhält keine Trainerrechte',a
  assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'guest-no-trainer'},guest)).status,403);
  assert.equal((await f.call('gf-breathing',{},guest)).status,403);
  assert.equal((await f.c.PortalService.personalCalendar(f.env,guest)).events.length,1);
+});
+
+test('Gaststart enthält keine vorhandenen Getränkedaten. Rollenwechsel erhält Zuordnung und Kontodaten.',async()=>{
+ const f=await setup(),person=f.people[1],token='g'.repeat(43);
+ const digest=require('node:crypto').createHash('sha256').update('portal-session:'+token).digest('base64url');
+ f.sql.prepare('INSERT INTO portal_identity_sessions(token_hash,alias,revision,credential,created_at,expires_at) VALUES(?,?,?,?,?,?)').run(digest,person.alias,person.revision,'fixture-'+person.alias,f.clock.now,f.clock.now+3600000);
+ const request=async(path,data={})=>{
+  const r=await f.c.worker.fetch(new Request('https://test.account.workers.dev'+path,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({alias:person.alias,revision:person.revision,...data})}),f.env);
+  return {status:r.status,value:await r.json()};
+ };
+ const account=f.c.DrinksModel.append(f.c.DrinksModel.empty(person.memberId),{id:'historic-drink',type:'drinks',cents:f.c.DrinksModel.PRICE,count:1,createdAt:new Date(f.clock.now).toISOString()});
+ const payload=await f.L.seal(f.env,account,'ledger:'+person.memberId);
+ f.sql.prepare('INSERT INTO ledgers(member,payload,version) VALUES(?,?,1)').run(person.memberId,payload);
+ const guest=await request('/central/snapshot');
+ assert.equal(guest.status,200);
+ const projection=await f.c.DeckelCrypto.open(guest.value.envelope,person);
+ assert.equal(projection.balance,0);
+ assert.equal(projection.bookings.length,0);
+ const command={id:'00000000-0000-4000-8000-000000000001'};
+ assert.equal((await request('/commands/status',command)).status,403);
+ assert.equal((await request('/commands/submit',command)).status,403);
+ assert.equal((await request('/challenge/status')).status,403);
+
+ const roster=f.roster.map(member=>member.id===person.memberId?{...member,fitnessTrainer:false}:member);
+ assert.equal((await f.call('roster',{members:roster},null,true)).status,200);
+ assert.deepEqual((await f.call('groups',{},null,true)).value.groups.find(g=>g.id==='fitness').trainerIds,[person.memberId]);
+ assert.equal((await f.call('overview',{eventId:f.event.id},person)).status,200);
+ const restored=await request('/central/snapshot');
+ assert.equal((await f.c.DeckelCrypto.open(restored.value.envelope,person)).balance,f.c.DrinksModel.PRICE);
+ assert.equal(f.sql.prepare('SELECT payload FROM ledgers WHERE member=?').get(person.memberId).payload,payload);
 });
 
 test('Fitnessgruppe vergibt Trainerrechte unabhängig von Gast an normales Mitglied',async()=>{
