@@ -25,9 +25,9 @@ test('Atemschutzabgleich übernimmt alte angezeigte Häkchen, aber ein gespeiche
  assert.deepEqual(Array.from(f.requests[0].data.members,m=>m.agt),[true,false,true,true]);
 });
 
-test('Funktionsübersicht überträgt ATF und Fahrzeugfreigaben getrennt von GF-Rechten',async()=>{
- const f=fixture();f.people([{id:'multi',roles:['GF','ATF'],machinistVehicles:['LF']},{id:'legacy',roles:['Maschinist']},{id:'tsf',roles:[],machinistVehicles:['TSF']},{id:'none',roles:['ATM'],machinistVehicles:['other']}]);await f.c.PortalAdmin.syncRoster(true);
- const data=f.requests[0].data;assert.equal(data.replyFunctionsVersion,1);assert.deepEqual(Array.from(data.members,m=>Array.from(m.replyRoles)),[['ATF','Maschinist'],[],['Maschinist'],[]]);assert.deepEqual(Array.from(data.members,m=>m.leader),[true,false,false,false]);
+test('Funktionsübersicht überträgt die Funktion Maschinist auch ohne Fahrberechtigung',async()=>{
+ const f=fixture();f.people([{id:'multi',roles:['GF','ATF'],machinistVehicles:['LF']},{id:'legacy',roles:['Maschinist']},{id:'tsf',roles:[],machinistVehicles:['TSF']},{id:'none',roles:['ATM'],machinistVehicles:['other']},{id:'qualified',roles:[],machinistQualified:true,machinistVehicles:[]}]);await f.c.PortalAdmin.syncRoster(true);
+ const data=f.requests[0].data;assert.equal(data.replyFunctionsVersion,1);assert.deepEqual(Array.from(data.members,m=>Array.from(m.replyRoles)),[['ATF','Maschinist'],[],['Maschinist'],[],['Maschinist']]);assert.deepEqual(Array.from(data.members,m=>m.leader),[true,false,false,false,false]);assert.equal(data.members[4].evidence.driver,null);
 });
 
 test('Alter Dienst bestätigt Funktionsabgleich nicht fälschlich; erneuter Versuch überträgt den ganzen Stand',async()=>{

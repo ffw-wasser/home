@@ -43,7 +43,7 @@ function getMemberRoles(member) {
   if (!member) return [];
   const stored = Array.isArray(member.roles) ? member.roles.filter(role => AVAILABLE_ROLES.includes(role) && role !== "Maschinist") : [];
   const vehicles = Array.isArray(member.machinistVehicles) ? member.machinistVehicles.filter(value => value === "LF" || value === "TSF") : [];
-  return vehicles.length ? [...new Set([...stored, "Maschinist"])] : stored;
+  return member.machinistQualified === true || vehicles.length ? [...new Set([...stored, "Maschinist"])] : stored;
 }
 
 let members;

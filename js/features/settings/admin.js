@@ -218,6 +218,8 @@ function prepareMemberUpdate(id, row) {
   // Laufbahndaten gehören zur bestehenden, Cloudflare-synchronisierten Personalakte.
   if(row.querySelector("[data-career-json]")) member.careerEntries = window.MemberCareer.validate(JSON.parse(row.querySelector("[data-career-json]").value||"[]"));
   member.roles = [...row.querySelectorAll("[data-member-role]:checked")].map(input => input.dataset.memberRole).filter(role => role !== "Maschinist");
+  const machinistInput = row.querySelector("[data-machinist-qualified]");
+  if (machinistInput) member.machinistQualified = machinistInput.checked;
   member.ageDepartment = Boolean(row.querySelector("[data-age-department]")?.checked);
   member.committeeMember = Boolean(row.querySelector("[data-committee-member]")?.checked);
   member.fitnessTrainer = Boolean(row.querySelector("[data-fitness-trainer]")?.checked);

@@ -27,13 +27,24 @@ const root=path.resolve(__dirname,'..');
   };
   await choose('a');await row('a').locator('[data-first-name]').fill('Ada geändert');
   await choose('b');await row('b').locator('[data-first-name]').fill('Ben geändert');
+  await row('b').locator('[data-record-tab="roles"]').click();
+  await row('b').getByRole('checkbox',{name:'Maschinist',exact:true}).check();
   await page.locator('#memberSearch').fill('Musterfrau');assert.equal(await row('b').isVisible(),false);
   assert.match(await page.locator('#membersSaveStatus').textContent(),/2 Mitglieder/);
   await page.locator('#membersSaveAll').click();
   assert.equal(await page.evaluate(()=>memberSaveCalls),1);
   assert.equal(await page.evaluate(()=>memberSaved.find(m=>m.id==='synthetic-a').firstName),'Ada geändert');
   assert.equal(await page.evaluate(()=>memberSaved.find(m=>m.id==='synthetic-b').firstName),'Ben geändert');
+  assert.deepEqual(await page.evaluate(()=>{
+   const member=memberSaved.find(m=>m.id==='synthetic-b');
+   return {roles:getMemberRoles(member),vehicles:member.machinistVehicles,
+    driving:canDriveVehicle(member,'LF10')||canDriveVehicle(member,'TSF'),
+    license:MemberEvidence.project(member).driver,
+    operation:operationRolesForName(nameForStorage(member),'EM 5/42 LF10')};
+  }),{roles:['Maschinist'],vehicles:[],driving:false,license:null,operation:[]});
   await page.locator('#memberSearch').fill('');
+  await choose('b','roles');
+  assert.equal(await row('b').getByRole('checkbox',{name:'Maschinist',exact:true}).isChecked(),true);
   await choose('a');await row('a').locator('[data-first-name]').fill('Nicht übernehmen');
   // Eine ungültige Maschinistenberechtigung eines anderen Mitglieds verhindert den ganzen Stapel.
   await choose('b');await row('b').locator('[data-first-name]').fill('Auch offen');
@@ -141,7 +152,12 @@ const root=path.resolve(__dirname,'..');
   await page.evaluate(()=>{members.find(m=>m.id==='synthetic-a').firstName='Ada';members.find(m=>m.id==='synthetic-b').firstName='Ben';renderAdmin();});
   await choose('a','overview');await page.evaluate(()=>scrollTo(0,0));
   const review=path.join(root,'qa/member-tablet');fs.mkdirSync(review,{recursive:true});await page.screenshot({path:path.join(review,'mitglieder-ipad.png')});
-  if(process.env.CAPTURE_MEMBER_TABLET_HELP==='1')await page.screenshot({path:path.join(root,'assets/help/guide/geraetehaus-mitglieder.jpg'),type:'jpeg',quality:84});
+  if(process.env.CAPTURE_MEMBER_TABLET_HELP==='1'){
+   await page.evaluate(()=>{const member=members.find(m=>m.id==='synthetic-b');member.machinistVehicles=[];member.driverLicenseCheckedOn='';renderAdmin();});
+   await choose('b','roles');
+   await row('b').locator('.machinist-vehicle-group').scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(root,'assets/help/guide/geraetehaus-mitglieder.jpg'),type:'jpeg',quality:84});
+  }
   assert.deepEqual(errors,[]);
   console.log('Personenakten-Browsertest erfolgreich: Mehrfachspeicherung, Laufbahn, Validierung, PIN, Verwerfen und Tablet-Layout bis 1366 px.');
  }finally{await browser.close();}

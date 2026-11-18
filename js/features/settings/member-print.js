@@ -39,7 +39,7 @@
     if(roles.includes('GF'))values.push('Gruppenführer');
     const map={'ATF':'Angriffstruppführer','ATM':'Angriffstruppmann','WTF':'Wassertruppführer','WTM':'Wassertruppmann','STF':'Schlauchtruppführer','STM':'Schlauchtruppmann','Melder':'Melder'};
     roles.forEach(role=>{if(map[role])values.push(map[role]);});
-    if(roles.includes('Maschinist')||Array.isArray(person.machinistVehicles)&&person.machinistVehicles.length){
+    if(person.machinistQualified===true||roles.includes('Maschinist')||Array.isArray(person.machinistVehicles)&&person.machinistVehicles.length){
       const vehicles=Array.isArray(person.machinistVehicles)?person.machinistVehicles.filter(v=>v==='LF'||v==='TSF'):[];
       values.push('Maschinist'+(vehicles.length?' · '+vehicles.join(' / '):''));
     }
