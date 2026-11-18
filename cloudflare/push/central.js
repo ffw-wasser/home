@@ -53,9 +53,13 @@
    const proof=await hash('deckel-read/v1:'+record.alias+':'+record.key);
    const identity=g.WhatsAppPasskeys?await g.WhatsAppPasskeys.authorize(env,{alias:record.alias,revision:record.revision},auth,proof):null;
    if(!identity&&!equal(auth,proof))fail('Handyzugang ungültig.',401);
-   await g.PortalService?.assertMember(env,record);
-   const current=await read(env,record.memberId),p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(current.account,p);
-   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:identity?.row?auth:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:current.account.resetEpoch||'0',...(await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
+   const person=await g.PortalService?.assertMember(env,record);
+   // Older portal clients also start from this envelope. Give guests only the
+   // session bootstrap and an empty ledger projection, without reading their ledger.
+   const guest=person?.fitnessTrainer===true;
+   const account=guest?M.empty(record.memberId):(await read(env,record.memberId)).account;
+   const p=M.rewardPolicy(await open(env,m.policy,'policy')),snapshot=g.DrinksLedger.snapshot(account,p);
+   snapshot.actions={origin:new URL(url).origin,revision:record.revision,capability:identity?.row?auth:await capability(env,record.alias,record.revision,'commands'),central:true,challengeLevel:!guest&&['TM','TF','GF'].includes(record.challengeLevel)?record.challengeLevel:null,epoch:account.resetEpoch||'0',...(!guest&&await g.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{})};
    return {mode:'central',envelope:await C.seal(snapshot,record)};
   }
   if(path.startsWith('/commands/')&&m?.state==='active'){
@@ -63,7 +67,7 @@
    const row=await env.DB.prepare('SELECT revision FROM ledger_access WHERE alias=?').bind(data.alias).first();
    if(!row||row.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,row.revision,'commands')))fail('Buchungszugang ersetzt. Bitte neu laden.',401);
    if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,row.revision,'commands'));
-   await g.PortalService?.assertAlias(env,data.alias);
+   await g.PortalService?.assertAlias(env,data.alias,false);
    if(path==='/commands/status')return process(env,data);
    if(path!=='/commands/submit')fail('Nicht gefunden.',404);
    const envelope=JSON.stringify(data.envelope);if(data.envelope?.version!==1||data.envelope.iv?.length!==16||data.envelope.data?.length!==5484)fail('Ungültige verschlüsselte Buchung.',400);

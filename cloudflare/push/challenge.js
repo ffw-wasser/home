@@ -9,7 +9,7 @@
   if(!row||current?.revision!==data.revision||!g.WhatsAppPasskeys&&!equal(auth,await capability(env,data.alias,data.revision,'commands')))fail('Handyzugang wurde geändert. Bitte Deckel aktualisieren.',401);
   if(g.WhatsAppPasskeys)await g.WhatsAppPasskeys.authorize(env,data,auth,await capability(env,data.alias,data.revision,'commands'));
   const record=await L.open(env,row.payload,'access:'+data.alias);
-  await g.PortalService?.assertMember(env,record);return record;
+  await g.PortalService?.assertMember(env,record,false);return record;
  }
  async function pool(env){const row=await env.DB.prepare('SELECT * FROM challenge_pool WHERE id=1').first();return row?{value:await L.open(env,row.payload,'challenge-pool'),version:row.version}:null;}
 
