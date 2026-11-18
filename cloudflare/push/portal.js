@@ -826,7 +826,7 @@
    stale:!row.fetched_at||row.fetched_at<Date.now()-maxAgeMs};
  }
  async function personalCalendar(env,record){
-  await assertMember(env,record);const cal=await decorate(env,await calendar(env)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),guest=roster.members.find(m=>m.id===record.memberId)?.fitnessTrainer===true,groups=(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
+  await assertMember(env,record);const cal=await decorate(env,await calendar(env)),roster=await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster'),guest=roster.members.find(m=>m.id===record.memberId)?.fitnessTrainer===true,groups=(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId));
   const visible=event=>(event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length&&event.groupIds.every(id=>groups.some(group=>group.id===id))&&event.recipientIds.every(id=>groups.some(group=>g.PortalGroups.members(group,roster).includes(id))))||!guest&&canView(event,record.memberId);
   if(!cal.configured||cal.stale)fail('Kalender derzeit nicht erreichbar. Bitte später erneut versuchen.',503);
   return {fetchedAt:cal.fetchedAt,events:cal.events.filter(e=>!e.completedAt&&e.kind==='probe'&&e.approved&&e.end>Date.now()&&visible(e)).map(e=>memberEvent(e,record.memberId))};
