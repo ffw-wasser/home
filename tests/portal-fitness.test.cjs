@@ -37,6 +37,43 @@ test('Fitnessrolle: Entzug, deaktivierte Gruppe, Fremdempfänger und Feuerwehrte
  // Same account with accidental GF flag still has only the fitness scope.
  f.roster[1].leader=true;await f.call('roster',{members:f.roster},null,true);assert.equal((await f.call('gf-breathing',{},trainer)).status,403);
 });
+test('Gast ohne Fitness-Zuordnung bleibt Gast und erhält keine Trainerrechte',async()=>{
+ const f=await setup(),guest=f.people[1],state=(await f.call('groups',{},null,true)).value;
+ state.groups.find(g=>g.id==='fitness').trainerIds=[];
+ assert.equal((await f.call('groups',{groups:state.groups,expectedVersion:state.version},null,true)).status,200);
+ const list=await f.call('list',{},guest);
+ assert.equal(list.status,200);
+ assert.equal(list.value.fitnessTrainer,true);
+ assert.equal(list.value.leader,false);
+ assert.equal(list.value.events.length,0);
+ assert.equal((await f.call('overview',{eventId:f.event.id},guest)).status,404);
+ assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'guest-no-trainer'},guest)).status,404);
+ assert.equal((await f.call('gf-breathing',{},guest)).status,403);
+ assert.equal((await f.c.PortalService.personalCalendar(f.env,guest)).events.length,0);
+});
+
+test('Fitnessgruppe vergibt Trainerrechte unabhängig von Gast an normales Mitglied',async()=>{
+ const f=await setup(),member=f.people[2],former=f.people[1],state=(await f.call('groups',{},null,true)).value;
+ const group=state.groups.find(g=>g.id==='fitness');
+ group.trainerIds=[member.memberId];
+ assert.equal((await f.call('groups',{groups:state.groups,expectedVersion:state.version},null,true)).status,200);
+ const list=await f.call('list',{},member);
+ assert.equal(list.status,200);
+ assert.equal(list.value.fitnessTrainer,false);
+ assert.equal(list.value.leader,false);
+ assert.equal(list.value.events.find(e=>e.id===f.event.id).canManage,true);
+ assert.equal((await f.call('overview',{eventId:f.event.id},member)).status,200);
+ assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'normal-trainer-1'},member)).status,200);
+ assert.equal((await f.call('list',{},former)).value.events.length,0);
+ const subscription=await f.c.PortalService.personalCalendar(f.env,member);
+ assert.ok(subscription.events.some(e=>e.id===f.event.id));
+ const updated=(await f.call('groups',{},null,true)).value;
+ updated.groups.find(g=>g.id==='fitness').trainerIds=[];
+ assert.equal((await f.call('groups',{groups:updated.groups,expectedVersion:updated.version},null,true)).status,200);
+ assert.equal((await f.call('list',{},member)).value.events.find(e=>e.id===f.event.id).canManage,false);
+ assert.equal((await f.call('overview',{eventId:f.event.id},member)).status,403);
+});
+
 test('Fitnessstatistik: Rückmeldungen getrennt, ausgeschlossene Personen, Monatsfilter und dauerhafte namenlose Summen',async()=>{
  const f=await setup(),year=Number(new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric'}).format(new Date(f.start)));
  for(const [index,status] of [[2,'yes'],[3,'excused'],[4,'maybe']])assert.equal((await f.call('reply',{eventId:f.event.id,status,requestId:'fitness-answer-'+index,expectedVersion:0},f.people[index])).status,200);
