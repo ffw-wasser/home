@@ -45,11 +45,13 @@ test('Gast ohne Fitness-Zuordnung bleibt Gast und erhält keine Trainerrechte',a
  assert.equal(list.status,200);
  assert.equal(list.value.fitnessTrainer,true);
  assert.equal(list.value.leader,false);
- assert.equal(list.value.events.length,0);
- assert.equal((await f.call('overview',{eventId:f.event.id},guest)).status,404);
- assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'guest-no-trainer'},guest)).status,404);
+ assert.equal(list.value.events.length,1);
+ assert.equal(list.value.events[0].canReply,true);
+ assert.equal(list.value.events[0].canManage,false);
+ assert.equal((await f.call('overview',{eventId:f.event.id},guest)).status,403);
+ assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'guest-no-trainer'},guest)).status,403);
  assert.equal((await f.call('gf-breathing',{},guest)).status,403);
- assert.equal((await f.c.PortalService.personalCalendar(f.env,guest)).events.length,0);
+ assert.equal((await f.c.PortalService.personalCalendar(f.env,guest)).events.length,1);
 });
 
 test('Fitnessgruppe vergibt Trainerrechte unabhängig von Gast an normales Mitglied',async()=>{
@@ -64,7 +66,7 @@ test('Fitnessgruppe vergibt Trainerrechte unabhängig von Gast an normales Mitgl
  assert.equal(list.value.events.find(e=>e.id===f.event.id).canManage,true);
  assert.equal((await f.call('overview',{eventId:f.event.id},member)).status,200);
  assert.equal((await f.call('remind',{eventId:f.event.id,requestId:'normal-trainer-1'},member)).status,200);
- assert.equal((await f.call('list',{},former)).value.events.length,0);
+ assert.equal((await f.call('list',{},former)).value.events[0].canManage,false);
  const subscription=await f.c.PortalService.personalCalendar(f.env,member);
  assert.ok(subscription.events.some(e=>e.id===f.event.id));
  const updated=(await f.call('groups',{},null,true)).value;
