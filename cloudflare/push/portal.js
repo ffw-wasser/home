@@ -464,7 +464,8 @@
    if(widgetReply)path='/portal/reply';
   const accessRoster=admin?null:await open(env,await env.DB.prepare('SELECT * FROM portal_roster WHERE id=1').first(),'portal-roster');
   const guest=!admin&&accessRoster?.members.find(person=>person.id===record.memberId)?.fitnessTrainer===true;
-  const trainerGroups=!admin?(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
+  const fitnessScope=['/portal/list','/portal/year','/portal/overview','/portal/remind','/portal/reply','/portal/widget-status','/portal/notification'].includes(path);
+  const trainerGroups=!admin&&fitnessScope?(await audienceGroups(env)).groups.filter(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(record.memberId)):[];
   const trainerEvent=event=>event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.groupIds?.length>0&&event.groupIds.every(id=>trainerGroups.some(group=>group.id===id))&&event.recipientIds.every(id=>trainerGroups.some(group=>g.PortalGroups.members(group,accessRoster).includes(id)));
   const visibleEvent=event=>trainerEvent(event)||!guest&&canView(event,record.memberId);
   if(guest&&!['/portal/list','/portal/year','/portal/overview','/portal/remind','/portal/reply','/portal/widget-status','/portal/notification','/portal/calendar-subscription','/portal/native-push','/portal/push-devices','/portal/subscribe','/portal/unsubscribe'].includes(path))fail('Gäste haben ausschließlich Zugriff auf freigegebene Fitnessfunktionen.',403);
