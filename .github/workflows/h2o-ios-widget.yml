@@ -83,7 +83,27 @@ jobs:
         run: |
           set -euo pipefail
           # Match the newest installed runtime and boot one simulator explicitly.
-          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); candidates=[(tuple(map(int,r.split(".iOS-")[1].split("-"))),x["udid"]) for r,devices in d["devices"].items() if ".iOS-" in r for x in devices if x["name"].startswith("iPhone")]; print(max(candidates,key=lambda x:x[0])[1])')
+          device=$(python3 - <<'PYSELECT'
+          import json
+          import re
+          import subprocess
+
+          runtimes = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))["devices"]
+          candidates = []
+          for runtime, devices in runtimes.items():
+              version = re.search(r"\.iOS-(\d+(?:-\d+)*)", runtime)
+              if version is None:
+                  continue
+              release = tuple(map(int, version[1].split("-")))
+              generic = version.end() == len(runtime)
+              for device in devices:
+                  if device["name"].startswith("iPhone"):
+                      candidates.append((release, generic, device["udid"]))
+          if not candidates:
+              raise SystemExit("No available iPhone simulator found")
+          print(max(candidates, key=lambda candidate: candidate[:2])[2])
+          PYSELECT
+          )
           # Allow a cold simulator boot and keep the layout tests mandatory.
           xcrun simctl boot "$device" || true
           python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=900)' "$device"
