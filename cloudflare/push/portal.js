@@ -248,6 +248,13 @@
  function guestRecipient(event,memberId){
   return event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.recipientIds.includes(memberId);
  }
+ function pendingReplyMembers(event,roster){
+  // Older approvals without a saved selection still carry the resolved calendar groups.
+  const ids=event.recipientIds??(event.recipientMode==='legacy'?event.automaticRecipientIds:null);
+  const assigned=Array.isArray(ids)?new Set(ids):null;
+  return (roster?.members||[]).filter(member=>(!assigned||assigned.has(member.id))&&
+   (member.fitnessTrainer!==true||guestRecipient(event,member.id)));
+ }
  async function fitnessAccess(env,roster,memberId){
   const group=(await audienceGroups(env)).groups.find(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(memberId));
   const members=new Set(group?g.PortalGroups.members(group,roster):[]);
@@ -803,7 +810,7 @@
   if(path==='/portal/overview'){
    if(!canManage(event))fail('Diese Übersicht ist nur für Gruppenführer und zugeordnete Fitnesstrainer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   const grouped=!guest&&event.sessionType!=='Fitness'&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
+   const grouped=!guest&&event.sessionType!=='Fitness'&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,pendingIds=new Set(pendingReplyMembers(event,roster).map(m=>m.id)),recipients=roster.members.filter(m=>isRecipient(event,m.id)&&((statuses.get(m.id)||'open')!=='open'||pendingIds.has(m.id))),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
    // Only the remaining accepted AGT candidates need an assessment. Medical details stay server-side.
    const candidates=grouped&&roster.agtSource==='member-checkbox'?recipients.filter(m=>statuses.get(m.id)==='yes'&&!m.leader&&!m.replyRoles?.includes('Maschinist')&&m.agt===true&&!m.ageDepartment&&!m.fitnessTrainer):[];
    if(candidates.length){
@@ -821,7 +828,7 @@
    return {event:{...memberEvent(event),...(participation?{participation}:{})},stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
   }
   if(path==='/admin/portal/replies'){
-   const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,stale:cal.stale,fetchedAt:cal.fetchedAt};
+   const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,pendingReplyMemberIds:pendingReplyMembers(event,roster).map(m=>m.id),stale:cal.stale,fetchedAt:cal.fetchedAt};
   }
   if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden. Bitte später erneut versuchen.',503);
   if(event.start<=Date.now())fail('Der Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad erfassen.');

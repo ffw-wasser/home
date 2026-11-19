@@ -53,13 +53,14 @@
   }
   return text;
  }
- function participationText(participation){
+ function participationText(participation,requestReply=false){
   if(!participation)return '';
   const {confirmed,required,state}=participation;
   const label={pending:'Findet nur bei genügend Zusagen statt',ready:'Mindestzahl erreicht',confirmed:'Findet statt',cancelled:'Fällt aus'}[state];
   if(!label)return '';
-  const count=confirmed>required?confirmed+' Zusagen · mindestens '+required:confirmed+' von '+required+' Zusagen';
-  return label+' · '+count;
+  const count=confirmed+(confirmed===1?' Zusage':' Zusagen')+' · mindestens '+required+' nötig';
+  const invitation=requestReply&&state==='ready'?' · Bitte gib noch deine Rückmeldung ab.':'';
+  return label+' · '+count+invitation;
  }
  function widgetEvents(events,now=Date.now()){
   const upcoming=events.filter(event=>event.end>now&&event.participation?.state!=='cancelled').sort((a,b)=>a.start-b.start);
