@@ -22547,13 +22547,15 @@ g.PortalHydrants={schema,route};
  async function fitnessParticipation(env,events,roster,now=Date.now()){
   const fitness=new Map(events.filter(event=>event.minimumParticipation).map(event=>[event.id,event]));
   const counts=new Map([...fitness.keys()].map(id=>[id,0])),members=new Set((roster?.members||[]).map(person=>person.id));
+  const groups=fitness.size?(await audienceGroups(env)).groups:[];
+  const trainers=new Set(groups.filter(group=>g.PortalGroups.normalize(group.name)==='fitness').flatMap(group=>group.trainerIds||[]));
   const ids=[...fitness.keys()];
   for(let offset=0;offset<ids.length;offset+=75){
    const batch=ids.slice(offset,offset+75);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event IN ('+batch.map(()=>'?').join(',')+')').bind(...batch).all()).results;
    for(const row of rows){
     const event=fitness.get(row.event);
-    if(row.updated_at>=event.start||!members.has(row.member)||!isRecipient(event,row.member))continue;
+    if(row.updated_at>=event.start||!members.has(row.member)||trainers.has(row.member)||!isRecipient(event,row.member))continue;
     const reply=await open(env,row,'portal-reply:'+row.event+':'+row.member);
     if(reply.status==='yes')counts.set(row.event,counts.get(row.event)+1);
    }
@@ -23732,7 +23734,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4b4197a2ce091448eb507ce43e850d0a77b7ec1ede174d84f5b76caf8fdb92ff",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"e6e45c1a4a43ae484752d79b1c21fb1bb51b5b7485797560193b9b5fbf4390d3",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

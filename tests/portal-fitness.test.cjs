@@ -28,6 +28,8 @@ test('Fitnessrolle: eigene Termine/Rückmeldungen/Erinnerungen, keine Feuerwehr-
 test('Fitness-Mindestteilnahme zählt eindeutige, berechtigte Zusagen bis zum Beginn',async()=>{
  const f=await setup(),[leader,trainer,...members]=f.people,eventId=f.event.id,job={eventId};
  const answer=(person,status,expectedVersion=0)=>f.call('reply',{eventId,status,expectedVersion,requestId:crypto.randomUUID()},person);
+ const groups=(await f.call('groups',{},null,true)).value;groups.groups.find(group=>group.id==='fitness').trainerIds=[];
+ assert.equal((await f.call('groups',{groups:groups.groups,expectedVersion:groups.version},null,true)).status,200);
  const participation=async person=>(await f.call('list',{},person)).value.events[0].participation;
  assert.deepEqual(await participation(trainer),{required:5,confirmed:0,state:'pending'});
  assert.equal((await answer(leader,'yes')).status,404);
@@ -57,6 +59,22 @@ test('Fitness-Mindestteilnahme kann im Kalender geändert werden und gilt nur f�
  assert.deepEqual((await f.call('list',{},person)).value.events[0].participation,{required:1,confirmed:1,state:'confirmed'});
  const standard=await fixture();
  assert.equal((await standard.call('list')).value.events[0].participation,undefined);
+});
+test('Fitness-Mindestteilnahme schließt zugeordnete Trainer unabhängig vom Gast-Kennzeichen aus',async()=>{
+ const f=await setup(),eventId=f.event.id,trainer=f.people[1],member=f.people[2];
+ const answer=person=>f.call('reply',{eventId,status:'yes',expectedVersion:0,requestId:crypto.randomUUID()},person);
+ assert.deepEqual((await answer(trainer)).value.participation,{required:5,confirmed:0,state:'pending'});
+ assert.deepEqual((await answer(member)).value.participation,{required:5,confirmed:1,state:'pending'});
+ const state=(await f.call('groups',{},null,true)).value;
+ state.groups.find(group=>group.id==='fitness').trainerIds.push(member.memberId);
+ assert.equal((await f.call('groups',{groups:state.groups,expectedVersion:state.version},null,true)).status,200);
+ assert.deepEqual((await f.call('list',{},trainer)).value.events[0].participation,{required:5,confirmed:0,state:'pending'});
+ assert.equal((await f.call('overview',{eventId},trainer)).value.members.filter(person=>person.status==='yes').length,2);
+ state.groups.find(group=>group.id==='fitness').trainerIds=[];
+ const current=(await f.call('groups',{},null,true)).value;
+ assert.equal((await f.call('groups',{groups:state.groups,expectedVersion:current.version},null,true)).status,200);
+ assert.deepEqual((await f.call('list',{},trainer)).value.events[0].participation,{required:5,confirmed:2,state:'pending'});
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_replies WHERE event=?').get(eventId).n,2);
 });
 test('Alte Fitness-Freigaben gruppieren Zusagen auch für Gruppenführer nur nach Antwortstatus',async()=>{
  const f=await setup(),job={eventId:f.event.id},leader=f.people[0];
