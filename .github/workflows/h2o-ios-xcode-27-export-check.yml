@@ -1,0 +1,17 @@
+name: Verify signed H2O export with Xcode 27
+
+# Verify the migration with the existing signing environment after merging.
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/h2o-ios-xcode-27-export-check.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-member-export:
+    uses: ./.github/workflows/h2o-ios-member-pilot.yml
+    with:
+      upload_to_testflight: false
+    secrets: inherit

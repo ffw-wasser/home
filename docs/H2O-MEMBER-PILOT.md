@@ -51,9 +51,9 @@ Apple-Referenz: https://developer.apple.com/documentation/bundleresources/inform
 
 ## Bauen und Signieren
 
-Der Mitglieder-Signierworkflow verwendet `macos-26-intel` (GitHub-Standardrunner mit Xcode 26). Die zuvor verwendeten arm64-Runner konnten den Uploadauftrag wegen Kapazitätsfehlern zweimal nicht übernehmen. Signierung, Profile, App Group und ausdrückliche Uploadfreigabe bleiben unverändert.
+Die iOS-Workflows verwenden den GitHub-Runner `xcode-27` auf Apple Silicon. Sie prüfen zu Beginn, ob das iPhoneOS-SDK mindestens Version 27 hat. Die App und das Widget unterstützen weiterhin iOS 17 und neuer.
 
-1. Der Workflow `h2o-ios-widget.yml` prüft Swift-Richtlinien, kompiliert echte und Demo-Variante und rendert kleine/mittlere Widgetbilder mit künstlichen Daten. Die Bilder liegen im Artefakt `h2o-member-widget-layouts`.
+1. Der Workflow `h2o-ios-widget.yml` prüft Swift-Richtlinien, kompiliert echte und Demo-Variante und rendert kleine, mittlere und große Widgetbilder mit künstlichen Daten. Die Bilder liegen im Artefakt `h2o-member-widget-layouts`.
 2. `Check application changes` kann auf dem Pilotzweig manuell mit `build_member_pilot=true` gestartet werden. Erst nach den vollständigen Prüfungen wird ein signiertes Mitglieder-IPA erzeugt. Dieser Weg lädt nichts nach TestFlight.
 3. Der Mitglieder-Signierworkflow baut genau den gewählten Commit ohne Review-Flag mit den echten App-Entitlements. Beide Profile müssen gültig, mit demselben Zertifikat signierbar und für die App Group freigegeben sein. Das Haupt-App-Profil muss zusätzlich Associated Domains zulassen. Bei fehlender Berechtigung bricht die Prüfung ab; sie schwächt die App-Berechtigungen nicht ab.
 4. Der getrennte Workflow `h2o-ios-member-pilot.yml` ermöglicht später einen ausdrücklich gewählten TestFlight-Upload. Der Standard ist `false`. Der vorhandene GitHub-Environment-Name `apple-testflight-review` wird nur für bereits eingerichtetes Signiermaterial weiterverwendet; er wählt nicht den Demo-Modus aus.

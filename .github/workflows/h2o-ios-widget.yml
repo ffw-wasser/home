@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - "native/ios/**"
+      - ".github/workflows/h2o-ios-member-pilot.yml"
+      - ".github/workflows/h2o-apple-testflight-review.yml"
       - "native/Package.swift"
       - "native/widget-tests/**"
       - "native/shared/ios-entry.js"
@@ -19,9 +21,18 @@ permissions:
 
 jobs:
   ios-simulator:
-    runs-on: macos-26-intel
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Xcode and iPhone SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          sdk_version=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iPhoneOS SDK: $sdk_version"
+          test "${sdk_version%%.*}" -ge 27
+
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Check synthetic review worker and QR login
@@ -72,10 +83,28 @@ jobs:
         run: |
           set -euo pipefail
           # Match the newest installed runtime and boot one simulator explicitly.
-          # Parallel cold boots on the Intel fallback stalled in the device service.
-          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); candidates=[(tuple(map(int,r.split(".iOS-")[1].split("-"))),x["udid"]) for r,devices in d["devices"].items() if ".iOS-" in r for x in devices if x["name"].startswith("iPhone")]; print(max(candidates,key=lambda x:x[0])[1])')
-          # macOS 26 Intel needs more than five minutes for cold device migration.
-          # Keep the complete layout test mandatory; never skip failed boots.
+          device=$(python3 - <<'PYSELECT'
+          import json
+          import re
+          import subprocess
+
+          runtimes = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))["devices"]
+          candidates = []
+          for runtime, devices in runtimes.items():
+              version = re.search(r"\.iOS-(\d+(?:-\d+)*)", runtime)
+              if version is None:
+                  continue
+              release = tuple(map(int, version[1].split("-")))
+              generic = version.end() == len(runtime)
+              for device in devices:
+                  if device["name"].startswith("iPhone"):
+                      candidates.append((release, generic, device["udid"]))
+          if not candidates:
+              raise SystemExit("No available iPhone simulator found")
+          print(max(candidates, key=lambda candidate: candidate[:2])[2])
+          PYSELECT
+          )
+          # Allow a cold simulator boot and keep the layout tests mandatory.
           xcrun simctl boot "$device" || true
           python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=900)' "$device"
           xcodebuild -project native/ios/H2OPortal.xcodeproj -scheme H2OPortal \
