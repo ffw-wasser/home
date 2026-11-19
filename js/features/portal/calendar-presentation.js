@@ -17,9 +17,9 @@
  function instructions(value){
   const fields={},issues=[],note=[];
   for(const line of plain(value).split('\n')){
-   const match=/^\s*(Terminart|Gruppen?|Kleidung|Freigabe)\s*:\s*(.*?)\s*$/i.exec(line);
+   const match=/^\s*(Terminart|Gruppen?|Kleidung|Freigabe|Mindestteilnahme)\s*:\s*(.*?)\s*$/i.exec(line);
    if(!match){note.push(line);continue;}
-   const key=/^gruppe/i.test(match[1])?'group':({terminart:'type',kleidung:'clothing',freigabe:'release'})[match[1].toLocaleLowerCase('de')];
+   const key=/^gruppe/i.test(match[1])?'group':({terminart:'type',kleidung:'clothing',freigabe:'release',mindestteilnahme:'minimumParticipation'})[match[1].toLocaleLowerCase('de')];
    if(Object.hasOwn(fields,key))issues.push('Die Angabe '+match[1]+' ist mehrfach vorhanden.');
    fields[key]=match[2];if(!match[2])issues.push('Die Angabe '+match[1]+' ist leer.');
   }
@@ -27,6 +27,11 @@
   if(fields.type!==undefined){const type=names[fields.type.toLocaleLowerCase('de')];if(!type)issues.push('Unbekannte Terminart: '+fields.type);fields.type=type||null;}
   if(fields.clothing?.length>120)issues.push('Kleidung darf höchstens 120 Zeichen enthalten.');
   if(fields.release!==undefined){const word=fields.release.toLocaleLowerCase('de');if(!['ja','nein'].includes(word))issues.push('Freigabe muss Ja oder Nein sein.');fields.release=word==='ja';}
+  if(fields.minimumParticipation!==undefined){
+   const value=fields.minimumParticipation,minimum=Number(value),valid=/^\d{1,3}$/.test(value)&&minimum>=1&&minimum<=500;
+   if(!valid)issues.push('Mindestteilnahme muss eine ganze Zahl von 1 bis 500 sein.');
+   fields.minimumParticipation=valid?minimum:null;
+  }
   return {fields,issues,note:note.join('\n').trim()};
  }
  function responseLink(id){if(!/^[A-Za-z0-9_-]{43}$/.test(id||''))throw Error('Ungültiger Kalendertermin.');return 'https://ffw-wasser.github.io/home/termin.html?event='+id;}
@@ -48,11 +53,19 @@
   }
   return text;
  }
+ function participationText(participation){
+  if(!participation)return '';
+  const {confirmed,required,state}=participation;
+  const label={pending:'Findet nur bei genügend Zusagen statt',ready:'Mindestzahl erreicht',confirmed:'Findet statt',cancelled:'Fällt aus'}[state];
+  if(!label)return '';
+  const count=confirmed>required?confirmed+' Zusagen · mindestens '+required:confirmed+' von '+required+' Zusagen';
+  return label+' · '+count;
+ }
  function widgetEvents(events,now=Date.now()){
-  const upcoming=events.filter(event=>event.end>now).sort((a,b)=>a.start-b.start);
+  const upcoming=events.filter(event=>event.end>now&&event.participation?.state!=='cancelled').sort((a,b)=>a.start-b.start);
   const first=upcoming[0];
   const preferred=first?.canReply===false&&upcoming.find(event=>event.canReply===true&&event.start<first.end&&event.end>first.start);
   return (preferred?[preferred,...upcoming.filter(event=>event!==preferred)]:upcoming).slice(0,3);
  }
- g.CalendarPresentation={widgetEvents,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ g.CalendarPresentation={widgetEvents,participationText,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);

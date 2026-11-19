@@ -52,6 +52,9 @@
   el('event-when').textContent='📅 '+when(event);
   el('event-clothing').hidden=!event.clothing;el('event-clothing').textContent=event.clothing?'👕 '+(event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing==='Tagdienst'?'Tagesdienst':event.clothing):'';
   el('event-location').textContent='📍 '+(event.location||'GH Wasser');
+  const participation=el('event-participation');
+  participation.hidden=!event.participation;
+  participation.textContent=globalThis.CalendarPresentation.participationText(event.participation);
   const state={yes:'✓ Du bist dabei',excused:'Absage',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
   const changed=Number.isSafeInteger(event.updatedAt)&&event.updatedAt>0?' · Zuletzt geändert: '+new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.updatedAt))+' Uhr':'';
   el('event-status').textContent=(state[event.status]||state.open)+changed;
@@ -61,7 +64,7 @@
    button.disabled=locked;button.setAttribute('aria-pressed',String(chosen));
    button.textContent=(chosen?'✓ ':'')+({yes:'Bin dabei',excused:'Absage',maybe:'Noch unsicher'}[button.dataset.reply]);
   }
-  status(stale?'Kalender nicht aktuell. Bitte neu laden.':event.start<=Date.now()?'Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad klären.':'');
+  status(stale?'Kalender nicht aktuell. Bitte neu laden.':event.participation?.state==='cancelled'?'Rückmeldung geschlossen.':event.start<=Date.now()?'Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad klären.':'');
  }
  async function refresh(){
   if(working)return;
@@ -109,7 +112,7 @@
   try{
    const value=await post('reply',{alias:session.alias,revision:session.revision,...pending},session.token);
    if(value.ok!==true||value.status!==pending.status||!Number.isSafeInteger(value.version)||value.version<pending.expectedVersion)throw Error('Speicherung noch nicht eindeutig bestätigt.');
-   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();pending=null;status('✓ Gespeichert!');
+   event.status=value.status;event.version=value.version;event.updatedAt=value.updatedAt||Date.now();if(value.participation)event.participation=value.participation;pending=null;status('✓ Gespeichert!');
   }catch(e){
    if([400,401,403,404,409,423].includes(e.status)){pending=null;stale=true;el('reload-event').hidden=false;}
    if(e.status===401||e.status===403)session=null;
