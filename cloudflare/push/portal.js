@@ -224,13 +224,15 @@
  async function fitnessParticipation(env,events,roster,now=Date.now()){
   const fitness=new Map(events.filter(event=>event.minimumParticipation).map(event=>[event.id,event]));
   const counts=new Map([...fitness.keys()].map(id=>[id,0])),members=new Set((roster?.members||[]).map(person=>person.id));
+  const groups=fitness.size?(await audienceGroups(env)).groups:[];
+  const trainers=new Set(groups.filter(group=>g.PortalGroups.normalize(group.name)==='fitness').flatMap(group=>group.trainerIds||[]));
   const ids=[...fitness.keys()];
   for(let offset=0;offset<ids.length;offset+=75){
    const batch=ids.slice(offset,offset+75);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event IN ('+batch.map(()=>'?').join(',')+')').bind(...batch).all()).results;
    for(const row of rows){
     const event=fitness.get(row.event);
-    if(row.updated_at>=event.start||!members.has(row.member)||!isRecipient(event,row.member))continue;
+    if(row.updated_at>=event.start||!members.has(row.member)||trainers.has(row.member)||!isRecipient(event,row.member))continue;
     const reply=await open(env,row,'portal-reply:'+row.event+':'+row.member);
     if(reply.status==='yes')counts.set(row.event,counts.get(row.event)+1);
    }
