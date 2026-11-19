@@ -13,6 +13,11 @@ Die Verwaltung kann die Zuordnung später am Computer ändern. Ausdrückliche
 Gruppen, `Freigabe: Nein` und H₂O-Einzelanpassungen haben weiterhin Vorrang.
 INFO-Einträge und Geburtstage behalten ihre getrennten Freigaberegeln.
 Ohne gültigen Mitgliederstand oder bei fehlerhaften Angaben erfolgt keine Freigabe.
+
+Fitness-Termine brauchen standardmäßig fünf eindeutige Zusagen. Für einen einzelnen
+Fitness-Termin oder eine Serie kann in der Google-Kalenderbeschreibung eine eigene
+Zeile stehen, zum Beispiel `Mindestteilnahme: 6`. Die Rückmeldefrist endet mit dem
+Terminbeginn. Den aktuellen Stand zeigt die Fitnesskarte in H₂O.
 Die mobile Vorgabe funktioniert ohne Öffnen des Add-ons. Für dieselbe Vorbelegung
 in der Google-Seitenleiste die aktualisierte **Model.gs** übernehmen.
 
