@@ -14,11 +14,13 @@ Gruppen, `Freigabe: Nein` und H₂O-Einzelanpassungen haben weiterhin Vorrang.
 INFO-Einträge und Geburtstage behalten ihre getrennten Freigaberegeln.
 Ohne gültigen Mitgliederstand oder bei fehlerhaften Angaben erfolgt keine Freigabe.
 
-Fitness-Termine brauchen standardmäßig fünf eindeutige Zusagen. Zugeordnete
-Fitnesstrainer zählen bei dieser Mindestteilnahme nicht mit. Für einen einzelnen
-Fitness-Termin oder eine Serie kann in der Google-Kalenderbeschreibung eine eigene
-Zeile stehen, zum Beispiel `Mindestteilnahme: 6`. Die Rückmeldefrist endet mit dem
+Die Mindestteilnahme wird in der Verwaltung unter **Gruppen → Fitness → Gruppe bearbeiten**
+im Feld **Mindestteilnahme ohne Trainer** eingestellt. Die Vorgabe ist fünf. Der Wert
+gilt für alle Fitnesstermine und hat Vorrang vor einer Google-Steuerzeile.
+Zugeordnete Fitnesstrainer zählen nicht mit. Die Rückmeldefrist endet mit dem
 Terminbeginn. Den aktuellen Stand zeigt die Fitnesskarte in H₂O.
+Bei älteren Gruppen ohne gespeicherten Wert bleibt `Mindestteilnahme: 6` in der
+Google-Beschreibung als bisherige Vorgabe erhalten, andernfalls gelten fünf.
 Die mobile Vorgabe funktioniert ohne Öffnen des Add-ons. Für dieselbe Vorbelegung
 in der Google-Seitenleiste die aktualisierte **Model.gs** übernehmen.
 
