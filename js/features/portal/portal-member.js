@@ -130,10 +130,12 @@
   const request=++overviewRequest,version=generation,heading=node('h2','Rückmeldungen'),title=node('p',event.title),content=node('div','Rückmeldungen werden geladen …'),close=node('button','Schließen');heading.id='portal-overview-title';close.type='button';close.className='portal-overview-close';close.textContent='×';close.setAttribute('aria-label','Schließen');close.onclick=closeOverview;const header=node('div');header.className='portal-overview-heading';header.append(heading,close);title.className='portal-overview-topic';const meta=node('p',date(event));meta.className='portal-overview-date';overviewDialog.replaceChildren(header,title,meta,content);if(!overviewDialog.open)overviewDialog.showModal();
   try{const result=await api('overview',{eventId:event.id});if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;content.replaceChildren();
    const summary=node('div');summary.className='portal-overview-summary';content.append(summary);
+   const currentEvent=result.event||event;
+   const groupByFunction=result.functionsVersion===2&&currentEvent.attendanceType!=='Fitness'&&currentEvent.sessionType!=='Fitness';
    if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Absage'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){
     const people=result.members.filter(m=>m.status===value).sort((a,b)=>a.name.localeCompare(b.name,'de'));const section=node('section'),heading=node('h3',label),count=node('span',String(people.length));section.className='portal-overview-status';section.dataset.status=value;count.className='portal-overview-count';heading.append(count);section.append(heading);summary.append(section);
-    if(value!=='yes'||!people.length||result.functionsVersion!==2){const names=node('div');names.className='portal-overview-names';for(const member of people)names.append(node('span',member.name));if(!people.length)names.append(node('span','Keine'));section.append(names);continue;}
+    if(value!=='yes'||!people.length||!groupByFunction){const names=node('div');names.className='portal-overview-names';for(const member of people)names.append(node('span',member.name));if(!people.length)names.append(node('span','Keine'));section.append(names);continue;}
     const groups=node('div');groups.className='portal-reply-functions';
     for(const [role,label] of [['GF','Gruppenführer'],['AGT','Atemschutz'],['Maschinist','Maschinist'],['other','Weitere Zusagen']]){
      const list=people.filter(m=>(['GF','Maschinist','AGT'].find(r=>m.functions?.includes(r))||'other')===role),section=node('section'),names=node('div');names.className='portal-overview-names';
@@ -153,7 +155,7 @@
     finally{sending=false;}
    };
    const tools=node('div');tools.className='portal-overview-actions';
-   if(latestResult?.leader===true&&latestResult?.fitnessTrainer!==true)tools.append(whatsappShareButton(result.event||event));
+   if(latestResult?.leader===true&&latestResult?.fitnessTrainer!==true)tools.append(whatsappShareButton(currentEvent));
    tools.append(remind);content.append(tools,feedback);
 
   }catch(error){if(request!==overviewRequest||version!==generation||!overviewDialog.open)return;const retry=node('button','Erneut laden');retry.type='button';retry.onclick=()=>showOverview(event);content.replaceChildren(node('p',g.ConnectionStatus?.message(error)||error.message),retry);}

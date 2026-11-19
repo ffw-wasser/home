@@ -111,6 +111,10 @@ test('Rückmeldungsdialog bleibt getrennt und verwirft verspätete Antworten nac
  const first=c.showOverview({id:'test',title:'Testprobe'}),dialog=body.children[0];assert.equal(dialog.open,true);c.closeOverview();resolve({members:[{status:'yes',name:'Testperson'}]});await first;assert.equal(dialog.open,false);assert.equal(dialog.querySelectorAll('h3').length,0);
  const second=c.showOverview({id:'test',title:'Testprobe'});resolve({members:[{status:'yes',name:'Testperson'}]});await second;
  assert.equal(body.children.length,1);assert.equal(dialog.querySelectorAll('h3')[0].textContent,'Zugesagt');assert.equal(dialog.querySelectorAll('h3')[0].children[0].textContent,'1');assert.ok(dialog.querySelectorAll('span').some(n=>n.textContent==='Testperson'));
+ const fitness=c.showOverview({id:'fitness',title:'Training'});resolve({event:{sessionType:'Fitness'},functionsVersion:2,members:[{status:'yes',name:'Testperson',functions:['GF']}]});await fitness;
+ assert.equal(dialog.querySelectorAll('h4').length,0);
+ assert.ok(dialog.querySelectorAll('span').some(n=>n.textContent==='Testperson'));
+
 });
 
 test('Ärztliche Untersuchungen erscheinen getrennt; gültige G26.3 erzeugt keinen zusätzlichen G26.2-Alarm',()=>{
