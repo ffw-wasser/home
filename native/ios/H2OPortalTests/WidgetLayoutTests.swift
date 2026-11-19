@@ -100,6 +100,65 @@ final class WidgetLayoutTests: XCTestCase {
         }
     }
 
+    @available(iOS 18.0, *)
+    @MainActor func testAccentedWidgetDrawsDateDetailsAndReply() throws {
+        let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
+        let start = now.addingTimeInterval(3600)
+        for (name, family, width, height, eventHeight) in [
+            ("small", WidgetFamily.systemSmall, 155.0, 155.0, 104.0),
+            ("medium", WidgetFamily.systemMedium, 329.0, 155.0, 75.0),
+            ("large", WidgetFamily.systemLarge, 329.0, 345.0, 119.0)
+        ] {
+            for status in ["open", "yes", "excused", "maybe"] {
+                let event = H2OWidgetEvent(title: "Probe im Gerätehaus", start: start, end: start.addingTimeInterval(3600),
+                                          location: "GH Wasser", clothing: "Einsatzkleidung", status: status, allDay: false,
+                                          id: String(repeating: "a", count: 43), canReply: true)
+                let snapshot = H2OWidgetSnapshot(updatedAt: now, event: event, stale: false)
+                let view = NextEventView(entry: NextEventEntry(date: now, snapshot: snapshot, family: family))
+                    .environment(\.widgetRenderingMode, .accented)
+                    .environment(\.colorScheme, .dark)
+                    .environment(\.dynamicTypeSize, .large)
+                    .frame(width: width, height: height)
+                    .background(Color.black)
+                let renderer = ImageRenderer(content: view)
+                renderer.scale = 2
+                let image = try XCTUnwrap(renderer.uiImage)
+                let cg = try XCTUnwrap(image.cgImage)
+                let stride = cg.width * 4
+                var pixels = [UInt8](repeating: 0, count: stride * cg.height)
+                try pixels.withUnsafeMutableBytes { bytes in
+                    let context = try XCTUnwrap(CGContext(data: bytes.baseAddress, width: cg.width, height: cg.height,
+                                                        bitsPerComponent: 8, bytesPerRow: stride, space: CGColorSpaceCreateDeviceRGB(),
+                                                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                    context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                }
+                // Ignore the thin outlines and count bright content within the date, details and reply areas.
+                func brightPixels(x: Range<Int>, y: Range<Int>) -> Int {
+                    var count = 0
+                    for row in y {
+                        for column in x {
+                            let offset = row * stride + column * 4
+                            if pixels[offset] > 200 && pixels[offset + 1] > 200 && pixels[offset + 2] > 200 { count += 1 }
+                        }
+                    }
+                    return count
+                }
+                let dateRight = name == "small" ? 55 : name == "medium" ? 70 : 85
+                let detailsLeft = name == "small" ? 67 : name == "medium" ? 88 : 102
+                let replyTop = Int(eventHeight) + (name == "small" ? 12 : name == "medium" ? 12 : 38)
+                let replyBottom = min(Int(height) - 6, replyTop + 30)
+                let summary = "\(name) / \(status)"
+                XCTAssertGreaterThan(brightPixels(x: 30..<(dateRight * 2), y: 36..<Int(eventHeight * 2)), 150, "Date: \(summary)")
+                XCTAssertGreaterThan(brightPixels(x: (detailsLeft * 2)..<(cg.width - 24), y: 36..<Int(eventHeight * 2)), 150, "Details: \(summary)")
+                XCTAssertGreaterThan(brightPixels(x: 32..<(cg.width - 32), y: (replyTop * 2)..<(replyBottom * 2)), 150, "Reply: \(summary)")
+                let attachment = XCTAttachment(image: image)
+                attachment.name = "widget-accented-\(name)-\(status)"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
+    }
+
     @MainActor func testRenderAllSupportedWidgetLayouts() throws {
         let now = ISO8601DateFormatter().date(from: "2026-11-02T12:00:00Z")!
         let start = ISO8601DateFormatter().date(from: "2026-11-02T18:30:00Z")!
