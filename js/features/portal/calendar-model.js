@@ -74,7 +74,7 @@
   {id:'gf',name:'Gruppenführer',keywords:['Gruppenführer','GF'],source:'leader',memberIds:[],enabled:true,general:false},
   {id:'committee',name:'Ausschuss',keywords:['Ausschuss','Ausschusssitzung'],source:'committee',memberIds:[],enabled:true,general:false},
   {id:'events',name:'Veranstaltung',keywords:['Veranstaltung'],source:'manual',memberIds:[],enabled:true,general:false},
-  {id:'fitness',name:'Fitness',keywords:['Fitness'],source:'manual',memberIds:[],trainerIds:[],enabled:true,general:false},
+  {id:'fitness',name:'Fitness',keywords:['Fitness'],source:'manual',memberIds:[],trainerIds:[],minimumParticipation:5,enabled:true,general:false},
   {id:'age',name:'Alterskameraden',keywords:['Alterskameraden','Altersabteilung'],source:'age',memberIds:[],enabled:true,general:false}
  ];
  function validate(groups){
@@ -85,10 +85,11 @@
    if(!group||!safe(group.id,80)||ids.has(group.id)||!safe(group.name,80)||names.has(normalize(group.name))||!['active','agt','leader','age','committee','manual'].includes(group.source)||typeof group.enabled!=='boolean'||typeof group.general!=='boolean'||!Array.isArray(group.keywords)||group.keywords.length>200||!Array.isArray(group.memberIds)||group.memberIds.length>500||group.memberIds.some(id=>!safe(id,200))||new Set(group.memberIds).size!==group.memberIds.length)throw Error('Gruppenname, Kennzeichen oder Mitgliederauswahl ungültig oder doppelt.');
    if(group.trainerIds!==undefined&&(!Array.isArray(group.trainerIds)||group.trainerIds.length>50||new Set(group.trainerIds).size!==group.trainerIds.length||group.trainerIds.some(id=>!safe(id,200))))throw Error('Ungültige Fitnesstrainer-Zuordnung.');
    if(group.trainerIds?.length&&normalize(group.name)!=='fitness')throw Error('Fitnesstrainer sind ausschließlich der Fitnessgruppe zugeordnet.');
+   if(group.minimumParticipation!==undefined&&(!Number.isInteger(group.minimumParticipation)||group.minimumParticipation<1||group.minimumParticipation>500))throw Error('Mindestteilnahme der Fitnessgruppe muss eine ganze Zahl von 1 bis 500 sein.');
    ids.add(group.id);names.add(normalize(group.name));
    const keywords=group.keywords.map(word=>{const key=normalize(word);if(!safe(word,80)||!key||words.has(key))throw Error('Schlagwort ungültig oder mehrfach vergeben: '+String(word).slice(0,80));words.add(key);return word.trim();});
    total+=keywords.length;if(total>2000)throw Error('Höchstens 2000 Schlagwörter insgesamt erlaubt.');
-   return {id:group.id,name:group.name.trim(),source:group.source,enabled:group.enabled,general:group.general,keywords,memberIds:[...group.memberIds],...(group.trainerIds!==undefined?{trainerIds:[...group.trainerIds]}:{})};
+   return {id:group.id,name:group.name.trim(),source:group.source,enabled:group.enabled,general:group.general,keywords,memberIds:[...group.memberIds],...(group.trainerIds!==undefined?{trainerIds:[...group.trainerIds]}:{}),...(group.minimumParticipation!==undefined?{minimumParticipation:group.minimumParticipation}:{})};
   });
  }
  function members(group,roster){const selected=group.source==='manual'?new Set(group.memberIds):null;return (roster?.members||[]).filter(m=>group.source==='manual'?selected.has(m.id):m.fitnessTrainer===true?false:group.source==='agt'?m.agt===true:group.source==='leader'?m.leader===true:group.source==='committee'?m.committeeMember===true:group.source==='age'?m.ageDepartment===true:m.ageDepartment!==true).map(m=>m.id);}

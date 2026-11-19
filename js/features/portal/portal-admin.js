@@ -85,7 +85,7 @@
    search.oninput=filter;peopleArea.append(namesTitle,search,names,empty);peopleArea.className='portal-group-people';
    const recount=()=>{
     const ids=g.PortalGroups.members(group,{members:groupSnapshot.members});heading.textContent=group.name;count.textContent=ids.length+' Personen';
-    sourceNote.textContent=(group.enabled?'Aktiv':'Deaktiviert')+' · '+groupSources[group.source];
+    sourceNote.textContent=(group.enabled?'Aktiv':'Deaktiviert')+' · '+groupSources[group.source]+(g.PortalGroups.normalize(group.name)==='fitness'?' · Mindestteilnahme: '+(group.minimumParticipation??5)+' ohne Trainer':'');
     namesTitle.textContent='Zugeordnete Personen ('+ids.length+')';names.replaceChildren(nameList(ids,groupSnapshot.members));search.hidden=ids.length<8;
     filter();if(!ids.length){empty.hidden=false;empty.textContent='Keine Personen zugeordnet.';}
    };
@@ -105,7 +105,12 @@
     const memberSearch=node('input');memberSearch.type='search';memberSearch.className='text-input';memberSearch.placeholder='Person zur Auswahl suchen';memberSearch.setAttribute('aria-label','Manuelle Gruppenmitglieder suchen');memberSearch.hidden=group.source!=='manual';memberSearch.oninput=()=>{const q=memberSearch.value.trim().toLocaleLowerCase('de');for(const label of manual.children)label.hidden=!label.textContent.toLocaleLowerCase('de').includes(q);};
     source.onchange=()=>{if(source.value==='manual'&&group.source!=='manual'){group.memberIds=g.PortalGroups.members(group,{members:groupSnapshot.members});for(const check of manual.querySelectorAll('input'))check.checked=group.memberIds.includes(check.value);}group.source=source.value;manual.hidden=memberSearch.hidden=group.source!=='manual';mark();recount();};
     form.append(memberSearch,manual,node('p','Automatische Gruppen folgen den hinterlegten Mitgliederkennzeichen. Für eine eigene Auswahl „Manuell hinterlegte Mitglieder“ wählen.'));
-    if(g.PortalGroups.normalize(group.name)==='fitness'){const trainers=node('fieldset');trainers.append(node('legend','Trainer · nur diese Fitnessgruppe'));for(const person of sortedPeople(groupSnapshot.members)){const label=node('label'),check=node('input');check.type='checkbox';check.checked=group.trainerIds?.includes(person.id)===true;label.append(check,node('span',person.name));trainers.append(label);check.onchange=()=>{group.trainerIds=(group.trainerIds||[]).filter(id=>id!==person.id);if(check.checked)group.trainerIds.push(person.id);mark();};}trainers.append(node('p','Trainerrechte ausschließlich in dieser Fitnessgruppe vergeben. Das Kennzeichen „Gast“ wird unabhängig davon in der Mitgliederakte verwaltet.'));form.append(trainers);}
+    if(g.PortalGroups.normalize(group.name)==='fitness'){
+     group.minimumParticipation??=5;
+     const minimum=field('Mindestteilnahme ohne Trainer',node('input'));minimum.type='number';minimum.className='text-input';minimum.min='1';minimum.max='500';minimum.step='1';minimum.required=true;minimum.value=String(group.minimumParticipation??5);
+     form.append(node('p','Gilt für alle Fitnesstermine. Zugeordnete Trainer zählen nicht mit.'));
+     minimum.oninput=()=>{group.minimumParticipation=minimum.valueAsNumber;mark();recount();};
+     const trainers=node('fieldset');trainers.append(node('legend','Trainer · nur diese Fitnessgruppe'));for(const person of sortedPeople(groupSnapshot.members)){const label=node('label'),check=node('input');check.type='checkbox';check.checked=group.trainerIds?.includes(person.id)===true;label.append(check,node('span',person.name));trainers.append(label);check.onchange=()=>{group.trainerIds=(group.trainerIds||[]).filter(id=>id!==person.id);if(check.checked)group.trainerIds.push(person.id);mark();};}trainers.append(node('p','Trainerrechte ausschließlich in dieser Fitnessgruppe vergeben. Das Kennzeichen „Gast“ wird unabhängig davon in der Mitgliederakte verwaltet.'));form.append(trainers);}
     const enabled=node('input');enabled.type='checkbox';enabled.checked=group.enabled;field('Gruppe zur Auswahl anbieten ',enabled);enabled.onchange=()=>{group.enabled=enabled.checked;mark();recount();};
     const save=node('button','Gruppe speichern'),cancel=node('button','Abbrechen'),remove=node('button','Gruppe löschen');for(const b of [save,cancel,remove])b.type='button';save.className='primary-button';cancel.className=remove.className='outline-button';remove.className+=' portal-delete-group';
     const feedback=node('p');feedback.setAttribute('role','status');
