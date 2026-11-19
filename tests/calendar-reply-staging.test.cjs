@@ -26,6 +26,14 @@ test('Die Übersicht bietet die passende Anzahl direkt an und blendet den Button
  f.c.document={getElementById:()=>area};f.c.node=(tag,text)=>({tagName:tag,textContent:text,dataset:{},children:[],append(...nodes){this.children.push(...nodes);}});f.c.date=()=> 'Testdatum';f.c.manual=null;f.c.reminderPanel=null;f.c.reminderEvent=null;
  vm.runInContext(source.slice(source.indexOf(' function paintReplies'),source.indexOf(' async function refreshAttendance')),f.c);f.c.paintReplies();
  const reminderPanel=f.c.reminderPanel;const apply=area.children.find(n=>n.tagName==='button');assert.equal(apply.textContent,'2 Rückmeldungen vormerken');assert.equal(apply.hidden,false);assert.equal(apply.disabled,false);apply.onclick();assert.equal(area.children.find(n=>n.tagName==='button').hidden,true);assert.equal(f.c.pendingMemberStatuses.size,3);assert.equal(f.c.reminderPanel,reminderPanel,'Reminder workspace survives reply refresh');
+ f.c.replyData.event.recipientIds=null;
+ f.c.replyData.pendingReplyMemberIds=['open'];
+ f.c.members.push({id:'observer',firstName:'Test',lastName:'Beobachter'});
+ f.c.paintReplies();
+ const open=area.children.find(n=>n.dataset.replyStatus==='open');
+ assert.equal(open.children[0].textContent,'Ohne Rückmeldung (1)');
+ assert.equal(open.children[1].textContent,'open Test');
+
 });
 
 test('Schritt 2 merkt Zusagen automatisch vor, ohne spätere Abwahl oder Änderungen zurückzusetzen',()=>{

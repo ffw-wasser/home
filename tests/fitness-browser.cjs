@@ -76,13 +76,12 @@ const root=path.resolve(__dirname,'..');
   assert.equal(await page.locator('[data-portal-tile=portal-evidence]').isVisible(),false);assert.equal(await page.locator('#memberCheckinButton').isVisible(),false);
   const fitnessCard=page.locator('#portal-events .portal-event');
   const participation=fitnessCard.locator('.portal-fitness-participation');
-  assert.match(await participation.innerText(),/0 von 6 Zusagen/);
-  await capture('h2o-fitness',fitnessCard);
+  assert.match(await participation.innerText(),/0 Zusagen · mindestens 6 nötig/);
   await fitnessCard.getByRole('button',{name:'Bin dabei',exact:true}).click();
   await fitnessCard.getByRole('button',{name:/Bin dabei.*ausgewählt/}).waitFor();
-  assert.match(await participation.innerText(),/0 von 6 Zusagen/);
+  assert.match(await participation.innerText(),/0 Zusagen · mindestens 6 nötig/);
   await fitnessCard.getByRole('button',{name:/Bin dabei.*ausgewählt/}).click();
-  await participation.filter({hasText:'0 von 6 Zusagen'}).waitFor();
+  await participation.filter({hasText:'0 Zusagen · mindestens 6 nötig'}).waitFor();
   await page.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).click();await page.getByRole('button',{name:'Erinnerung abschicken',exact:true}).waitFor();const overview=page.locator('.portal-overview-dialog');assert.equal(await overview.locator('.portal-reply-functions, .portal-overview-note').count(),0);assert.match(await overview.locator('[data-status=yes] .portal-overview-names').innerText(),/3 Beispiel/);
   await page.keyboard.press('Escape');
   await page.locator('[data-deckel-target="deckel-more"]').click();
@@ -94,6 +93,12 @@ const root=path.resolve(__dirname,'..');
   for(const restricted of ['phone-menu','account','more-training','more-year-plan']){
    assert.equal(await page.evaluate(id=>DeckelMobile.jump(id),restricted),false);
   }
+  const ready=(await f.call('list',{},trainerAccount)).value;
+  await page.route('**/portal/list',route=>route.fulfill({json:{...ready,events:ready.events.map(event=>({...event,status:'open',participation:{confirmed:5,required:5,state:'ready'}}))}}));
+  await page.reload();
+  await participation.filter({hasText:'Mindestzahl erreicht · 5 Zusagen · mindestens 5 nötig · Bitte gib noch deine Rückmeldung ab.'}).waitFor();
+  await fitnessCard.getByRole('button',{name:'Bin dabei',exact:true}).waitFor();
+  await capture('h2o-fitness',fitnessCard);
   assert.deepEqual(errors,[]);console.log('Fitness browser OK: trainer assignment, role checkbox, private statistics, year filter, lock and responsive layout.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

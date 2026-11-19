@@ -20461,13 +20461,14 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
   }
   return text;
  }
- function participationText(participation){
+ function participationText(participation,requestReply=false){
   if(!participation)return '';
   const {confirmed,required,state}=participation;
   const label={pending:'Findet nur bei genügend Zusagen statt',ready:'Mindestzahl erreicht',confirmed:'Findet statt',cancelled:'Fällt aus'}[state];
   if(!label)return '';
-  const count=confirmed>required?confirmed+' Zusagen · mindestens '+required:confirmed+' von '+required+' Zusagen';
-  return label+' · '+count;
+  const count=confirmed+(confirmed===1?' Zusage':' Zusagen')+' · mindestens '+required+' nötig';
+  const invitation=requestReply&&state==='ready'?' · Bitte gib noch deine Rückmeldung ab.':'';
+  return label+' · '+count+invitation;
  }
  function widgetEvents(events,now=Date.now()){
   const upcoming=events.filter(event=>event.end>now&&event.participation?.state!=='cancelled').sort((a,b)=>a.start-b.start);
@@ -22572,6 +22573,13 @@ g.PortalHydrants={schema,route};
  function guestRecipient(event,memberId){
   return event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.recipientIds.includes(memberId);
  }
+ function pendingReplyMembers(event,roster){
+  // Older approvals without a saved selection still carry the resolved calendar groups.
+  const ids=event.recipientIds??(event.recipientMode==='legacy'?event.automaticRecipientIds:null);
+  const assigned=Array.isArray(ids)?new Set(ids):null;
+  return (roster?.members||[]).filter(member=>(!assigned||assigned.has(member.id))&&
+   (member.fitnessTrainer!==true||guestRecipient(event,member.id)));
+ }
  async function fitnessAccess(env,roster,memberId){
   const group=(await audienceGroups(env)).groups.find(group=>group.enabled&&g.PortalGroups.normalize(group.name)==='fitness'&&group.trainerIds?.includes(memberId));
   const members=new Set(group?g.PortalGroups.members(group,roster):[]);
@@ -23127,7 +23135,7 @@ g.PortalHydrants={schema,route};
   if(path==='/portal/overview'){
    if(!canManage(event))fail('Diese Übersicht ist nur für Gruppenführer und zugeordnete Fitnesstrainer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   const grouped=!guest&&event.sessionType!=='Fitness'&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
+   const grouped=!guest&&event.sessionType!=='Fitness'&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,pendingIds=new Set(pendingReplyMembers(event,roster).map(m=>m.id)),recipients=roster.members.filter(m=>isRecipient(event,m.id)&&((statuses.get(m.id)||'open')!=='open'||pendingIds.has(m.id))),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
    // Only the remaining accepted AGT candidates need an assessment. Medical details stay server-side.
    const candidates=grouped&&roster.agtSource==='member-checkbox'?recipients.filter(m=>statuses.get(m.id)==='yes'&&!m.leader&&!m.replyRoles?.includes('Maschinist')&&m.agt===true&&!m.ageDepartment&&!m.fitnessTrainer):[];
    if(candidates.length){
@@ -23145,7 +23153,7 @@ g.PortalHydrants={schema,route};
    return {event:{...memberEvent(event),...(participation?{participation}:{})},stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
   }
   if(path==='/admin/portal/replies'){
-   const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,stale:cal.stale,fetchedAt:cal.fetchedAt};
+   const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,pendingReplyMemberIds:pendingReplyMembers(event,roster).map(m=>m.id),stale:cal.stale,fetchedAt:cal.fetchedAt};
   }
   if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden. Bitte später erneut versuchen.',503);
   if(event.start<=Date.now())fail('Der Termin hat bereits begonnen. Änderungen bitte am Gerätehaus-iPad erfassen.');
@@ -23735,7 +23743,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"4527b3b177c1e8b285ead561504e44079bd7af14a01259a3517aa2b0d332c0dd",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"3778f15193f8903de8c3b241c7ed7bdbc125547eb94c057140cb33a52754e549",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

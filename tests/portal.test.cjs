@@ -120,6 +120,30 @@ test('Normale Probe kann nachträglich auf bestimmte Mitglieder begrenzt und ern
  assert.equal((await f.c.PortalService.publicCalendar(f.env)).events.length,1);
 });
 
+test('Offene Rückmeldungen bei älterer Freigabe folgen der Terminzuordnung und lassen reine Beobachter aus',async()=>{
+ const f=await fixture(),event=(await f.call('list',{},null,true)).value.events[0];
+ const [leader,assigned,observer,outsider,guest]=f.people;
+ const members=f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+i,leader:p===leader,fitnessTrainer:p===guest}));
+ assert.equal((await f.call('roster',{members},null,true)).status,200);
+ const groups=(await f.call('groups',{},null,true)).value;
+ groups.groups.push({id:'night-team',name:'Nachtgruppe',source:'manual',memberIds:[leader.memberId,assigned.memberId,guest.memberId],keywords:['nachtgruppe'],enabled:true,general:false});
+ assert.equal((await f.call('groups',{groups:groups.groups,expectedVersion:groups.version},null,true)).status,200);
+ const state=(await f.call('groups',{},null,true)).value;
+ assert.equal((await f.call('groups',{groups:state.groups,observerIds:[observer.memberId],expectedVersion:state.version},null,true)).status,200);
+ const row=f.sql.prepare('SELECT payload FROM portal_calendar').get(),calendar=await f.L.open(f.env,row.payload,'portal-calendar');
+ calendar.events[0].description='Gruppe: Nachtgruppe';
+ f.sql.prepare('UPDATE portal_calendar SET payload=?').run(await f.L.seal(f.env,calendar,'portal-calendar'));
+ const job={eventId:event.id};
+ assert.equal((await f.call('reply',{...job,status:'yes',expectedVersion:0,requestId:crypto.randomUUID()},outsider)).status,200);
+ const overview=await f.call('overview',job);
+ assert.equal(overview.status,200);
+ assert.deepEqual(Array.from(overview.value.members.filter(m=>m.status==='open'),m=>m.name),['Testperson 0','Testperson 1']);
+ assert.ok(overview.value.members.some(m=>m.name==='Testperson 3'&&m.status==='yes'));
+ const admin=await f.call('replies',job,null,true);
+ assert.equal(admin.status,200);
+ assert.deepEqual(Array.from(admin.value.pendingReplyMemberIds),[leader.memberId,assigned.memberId]);
+});
+
 test('Öffentlicher Kalender enthält nur neutrale freigegebene Termine und keine privaten Daten',async()=>{
  const f=await fixture(),r=await f.c.worker.fetch(new Request('https://test.example/calendar/public',{headers:{Origin:'https://ffw-wasser.github.io'}}),f.env);assert.equal(r.status,200);assert.equal(r.headers.get('Cache-Control'),'no-store');const data=await r.json();assert.equal(data.events.length,1);assert.ok(['Probe','Sonderprobe'].includes(data.events[0].title));assert.deepEqual(Object.keys(data.events[0]).sort(),['allDay','approved','attendanceType','audienceRestricted','end','id','kind','sessionType','start','title']);assert.equal(data.events[0].audienceRestricted,false);assert.ok(!JSON.stringify(data).includes('Testperson'));assert.ok(!JSON.stringify(data).includes('calendar.google.com'));assert.equal(data.rulesVersion,undefined);
  const forbidden=await f.c.worker.fetch(new Request('https://test.example/admin/portal/list',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),f.env);assert.equal(forbidden.status,401);
