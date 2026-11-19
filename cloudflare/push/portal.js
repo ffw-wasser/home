@@ -776,7 +776,7 @@
   if(path==='/portal/overview'){
    if(!canManage(event))fail('Diese Übersicht ist nur für Gruppenführer und zugeordnete Fitnesstrainer freigegeben.',403);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,statuses=new Map();for(const row of rows)statuses.set(row.member,(await open(env,row,'portal-reply:'+event.id+':'+row.member)).status);
-   const grouped=!guest&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
+   const grouped=!guest&&event.sessionType!=='Fitness'&&!['Fitness','Veranstaltung'].includes(event.attendanceType)&&roster.replyFunctionsVersion===1,recipients=roster.members.filter(m=>isRecipient(event,m.id)),breathing=new Set(),confirmedBreathing=new Set(),now=Date.now(),limit=now-7*DAY;
    // Only the remaining accepted AGT candidates need an assessment. Medical details stay server-side.
    const candidates=grouped&&roster.agtSource==='member-checkbox'?recipients.filter(m=>statuses.get(m.id)==='yes'&&!m.leader&&!m.replyRoles?.includes('Maschinist')&&m.agt===true&&!m.ageDepartment&&!m.fitnessTrainer):[];
    if(candidates.length){

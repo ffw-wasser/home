@@ -25,6 +25,22 @@ test('Fitnessrolle: eigene Termine/Rückmeldungen/Erinnerungen, keine Feuerwehr-
  const year=(await f.call('year',{year:new Date(f.start).getUTCFullYear()},trainer)).value;assert.equal(year.events.length,1);assert.equal(year.events[0].attendanceType,'Fitness');
  const subscription=await f.c.PortalService.personalCalendar(f.env,trainer);assert.equal(subscription.events.length,1);
 });
+test('Alte Fitness-Freigaben gruppieren Zusagen auch für Gruppenführer nur nach Antwortstatus',async()=>{
+ const f=await setup(),job={eventId:f.event.id},leader=f.people[0];
+ const roster=f.roster.map((m,i)=>({...m,replyRoles:i===2?['Maschinist']:[]}));
+ assert.equal((await f.call('roster',{members:roster,replyFunctionsVersion:1},null,true)).status,200);
+ f.raw(raw(f.start,false));f.clock.now+=310000;
+ const saved=f.sql.prepare('SELECT payload FROM portal_rules WHERE id=1').get();
+ const rules=await f.L.open(f.env,saved.payload,'portal-rules');delete rules[f.event.id].attendanceType;
+ rules[f.event.id].includeIds=[leader.memberId];
+ f.sql.prepare('UPDATE portal_rules SET payload=?').run(await f.L.seal(f.env,rules,'portal-rules'));
+ assert.equal((await f.call('reply',{...job,status:'yes',expectedVersion:0,requestId:crypto.randomUUID()},f.people[2])).status,200);
+ const overview=await f.call('overview',job,leader);
+ assert.equal(overview.status,200);assert.equal(overview.value.event.sessionType,'Fitness');
+ assert.equal(overview.value.functionsVersion,0);
+ assert.ok(overview.value.members.some(member=>member.name==='Synthetisch 2'&&member.status==='yes'));
+ assert.ok(overview.value.members.every(member=>member.functions===undefined));
+});
 test('Fitnessrolle: Entzug, deaktivierte Gruppe, Fremdempfänger und Feuerwehrtermine bleiben serverseitig gesperrt',async()=>{
  const f=await setup(),trainer=f.people[1],cal=(await f.call('list',{},null,true)).value;
  // An extra recipient removes trainer authority. The guest keeps their own reply.

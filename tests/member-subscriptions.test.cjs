@@ -18,10 +18,14 @@ test('Nur aktuelle Push-Revisionen zählen; fehlende und entfernte Zugänge werd
  await f.call('roster',{members:f.people.slice(1).map(p=>({id:p.memberId,name:'Synthetic',leader:false}))},null,true);assert.equal(person(await overview(f),p.memberId),undefined);
 });
 test('Link erstellen, HEAD und fehlgeschlagene Abrufe gelten nicht als Kalenderabo; GET erfasst nur den letzten Erfolg verschlüsselt',async()=>{
- const f=await fixture(),p=f.people[0],url=(await f.call('calendar-subscription')).value.subscriptionUrl;
+ const f=await fixture(),p=f.people[0],initial=(await f.call('calendar-subscription')).value,url=initial.subscriptionUrl;
+ assert.equal(initial.calendarLastFetchedAt,null);
  assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,null);
  assert.equal((await read(f,url,'HEAD')).status,200);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_usage').get().n,0);
- assert.equal((await read(f,url)).status,200);assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,f.clock.now);
+ assert.equal((await f.call('calendar-subscription')).value.calendarLastFetchedAt,null);
+ assert.equal((await read(f,url)).status,200);
+ assert.equal((await f.call('calendar-subscription')).value.calendarLastFetchedAt,f.clock.now);
+ assert.equal((await f.call('calendar-subscription',{},f.people[1])).value.calendarLastFetchedAt,null);assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,f.clock.now);
  const usage=f.sql.prepare('SELECT * FROM portal_calendar_usage').get();assert.ok(!usage.payload.includes(String(f.clock.now)));assert.ok(!usage.payload.includes('tokenHash'));
  f.clock.now+=3600000;f.offline(true);assert.equal((await read(f,url)).status,503);assert.notEqual(person(await overview(f),p.memberId).calendarLastFetchedAt,f.clock.now);
  f.offline(false);assert.equal((await read(f,url)).status,200);assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,f.clock.now);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_usage').get().n,1);
@@ -29,7 +33,7 @@ test('Link erstellen, HEAD und fehlgeschlagene Abrufe gelten nicht als Kalendera
 test('Linkwechsel, Kontowiederherstellung, Quellwechsel und Mitgliederaustritt entfernen oder entwerten den Abrufstatus',async()=>{
  for(const mode of ['reset','recover','source','remove']){
   const f=await fixture(),p=f.people[0],sub=(await f.call('calendar-subscription')).value;await read(f,sub.subscriptionUrl);
-  if(mode==='reset'){await f.call('calendar-subscription',{reset:true,expectedVersion:sub.version});assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,null);}
+  if(mode==='reset'){assert.equal((await f.call('calendar-subscription',{reset:true,expectedVersion:sub.version})).value.calendarLastFetchedAt,null);assert.equal((await f.call('calendar-subscription')).value.calendarLastFetchedAt,null);assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,null);}
   if(mode==='recover'){await f.c.WhatsAppPasskeys.revoke(f.env,p);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_usage').get().n,0);assert.equal(person(await overview(f),p.memberId).calendarLastFetchedAt,null);}
   if(mode==='source'){f.sql.prepare('UPDATE ledger_meta SET source=?').run('other-source');const r=await f.call('subscriptions',{source:'other-source'},null,true);assert.equal(r.status,200);assert.equal(person(r.value,p.memberId).calendarLastFetchedAt,null);}
   if(mode==='remove'){await f.call('roster',{members:f.people.slice(1).map(p=>({id:p.memberId,name:'Synthetic',leader:false}))},null,true);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_usage').get().n,0);}
@@ -43,6 +47,6 @@ test('Ein zurückgesetzter Link während eines langsamen Abrufs erzeugt keinen b
 });
 test('Eine Störung der Statusspeicherung blockiert keinen gültigen Kalenderabruf',async()=>{
  const f=await fixture(),sub=(await f.call('calendar-subscription')).value,prepare=f.DB.prepare;
- f.DB.prepare=query=>{if(query.startsWith('INSERT INTO portal_calendar_usage'))throw Error('synthetic metadata storage failure');return prepare(query);};
- const response=await read(f,sub.subscriptionUrl);assert.equal(response.status,200);assert.match(await response.text(),/BEGIN:VCALENDAR/);assert.equal(person(await overview(f),f.people[0].memberId).calendarLastFetchedAt,null);
+ f.DB.prepare=query=>{if(query.startsWith('INSERT INTO portal_calendar_usage')||query==='SELECT * FROM portal_calendar_usage WHERE member=?')throw Error('synthetic metadata storage failure');return prepare(query);};
+ const response=await read(f,sub.subscriptionUrl);assert.equal(response.status,200);assert.match(await response.text(),/BEGIN:VCALENDAR/);const current=(await f.call('calendar-subscription')).value;assert.equal(current.subscriptionUrl,sub.subscriptionUrl);assert.equal(current.calendarLastFetchedAt,null);assert.equal(person(await overview(f),f.people[0].memberId).calendarLastFetchedAt,null);
 });
