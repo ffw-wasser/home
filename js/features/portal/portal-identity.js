@@ -88,21 +88,44 @@
   const retry=document.createElement('button');retry.type='button';retry.className='secondary';retry.textContent='Kalenderabo erneut laden';retry.hidden=true;
   const feedback=document.createElement('p');feedback.setAttribute('role','status');let owner='',loading=false,version=0,subscriptionUrl='';
   function clearSubscription(){subscriptionUrl='';subscribe.hidden=true;subscribe.open=false;apple.removeAttribute('href');google.removeAttribute('href');address.value='';address.hidden=true;}
-  function setSubscription(value){
-   clearSubscription();if(!value){state.textContent='Der Feuerwehrkalender ist noch nicht hinterlegt. Bitte die Verwaltung ansprechen.';return;}
+  function setSubscription({subscriptionUrl:value,calendarLastFetchedAt}){
+   if(value!==subscriptionUrl)clearSubscription();
+   if(!value){state.textContent='Der Feuerwehrkalender ist noch nicht hinterlegt. Bitte die Verwaltung ansprechen.';return;}
    const url=new URL(value);if(url.origin!==ORIGIN||!/^\/calendar\/member\/[A-Za-z0-9_-]{43}\.ics$/.test(url.pathname)||url.search||url.hash||url.username||url.password)throw Error('Der Kalender-Abo-Link ist ungültig. Bitte die Verwaltung ansprechen.');
    subscriptionUrl=url.href;apple.href=url.href.replace(/^https:/,'webcal:');
    // Subscribe to the personal read-only feed; the master Google calendar stays private to configuration.
    google.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(subscriptionUrl);
-   address.value=subscriptionUrl;subscribe.hidden=false;state.textContent='';
+   address.value=subscriptionUrl;subscribe.hidden=false;
+   const fetched=Number.isFinite(calendarLastFetchedAt);
+   summary.textContent=fetched?'Feuerwehrkalender verwalten':'Feuerwehrkalender abonnieren';
+   state.textContent=fetched
+    ?'Kalender zuletzt abgerufen: '+new Intl.DateTimeFormat('de-DE',{dateStyle:'short',timeStyle:'short'}).format(calendarLastFetchedAt)+' Uhr.'
+    :'Kalenderabruf noch nicht erkannt. Nach der Einrichtung kann es etwas dauern.';
   }
   async function request(data={}){const session=g.H2OIdentity?.session();if(!session||!g.H2OIdentity?.credentials())throw Error('Bitte zuerst persönlich anmelden.');const response=await fetch(ORIGIN+'/portal/calendar-subscription',{method:'POST',headers:{Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({alias:session.alias,revision:session.revision,...data}),cache:'no-store',credentials:'omit',redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(20000)});const value=await response.json();if(!response.ok)throw Error(value.error||'Kalenderstatus nicht bestätigt.');return value;}
-  section.load=async force=>{const key=current&&record?current.alias+':'+current.revision:'';section.hidden=!key;if(!key){owner='';clearSubscription();feedback.textContent='';return;}if(loading||owner===key&&!force)return;loading=true;retry.hidden=true;state.textContent='Kalenderabo wird geladen …';try{const value=await request();if(current?.alias+':'+current?.revision!==key)return;setSubscription(value.subscriptionUrl);version=value.version;owner=key;feedback.textContent='';}catch(e){clearSubscription();state.textContent=e.message;retry.hidden=false;}finally{loading=false;}};
-  reset.onclick=async()=>{if(!confirm('Persönlichen Abo-Link zurücksetzen? Der bisherige Link wird ungültig. Danach zuerst das alte H₂O-Abo in deiner Kalender-App entfernen, dann den neuen Link abonnieren. Bereits gespeicherte Kalenderdaten werden dadurch nicht vom Gerät gelöscht.'))return;const key=current?.alias+':'+current?.revision;reset.disabled=true;try{const value=await request({reset:true,expectedVersion:version});if(current?.alias+':'+current?.revision!==key)return;setSubscription(value.subscriptionUrl);version=value.version;cleanup.open=true;feedback.textContent='Neuer Abo-Link erstellt. Bitte zuerst das bisherige H₂O-Abo entfernen, danach neu abonnieren.';}catch(e){feedback.textContent=e.message;}finally{reset.disabled=false;}};
+  const accountKey=()=>current&&record?current.alias+':'+current.revision:'';
+  section.load=async force=>{
+   const key=accountKey();section.hidden=!key;
+   if(!key||owner!==key){owner='';clearSubscription();feedback.textContent='';}
+   if(!key||loading||reset.disabled||owner===key&&!force)return;
+   loading=true;retry.hidden=true;reset.disabled=true;
+   if(!subscriptionUrl)state.textContent='Kalenderabo wird geladen …';
+   try{
+    const value=await request();if(accountKey()!==key)return;
+    if(value.subscriptionUrl!==subscriptionUrl)feedback.textContent='';
+    setSubscription(value);version=value.version;owner=key;
+   }catch(e){if(accountKey()===key){clearSubscription();state.textContent=e.message;retry.hidden=false;}}
+   finally{loading=false;reset.disabled=false;}
+  };
+  reset.onclick=async()=>{if(!confirm('Persönlichen Abo-Link zurücksetzen? Der bisherige Link wird ungültig. Danach zuerst das alte H₂O-Abo in deiner Kalender-App entfernen, dann den neuen Link abonnieren. Bereits gespeicherte Kalenderdaten werden dadurch nicht vom Gerät gelöscht.'))return;const key=accountKey();reset.disabled=true;try{const value=await request({reset:true,expectedVersion:version});if(accountKey()!==key)return;setSubscription(value);version=value.version;cleanup.open=true;feedback.textContent='Neuer Abo-Link erstellt. Bitte zuerst das bisherige H₂O-Abo entfernen, danach neu abonnieren.';}catch(e){feedback.textContent=e.message;}finally{reset.disabled=false;}};
   retry.onclick=()=>section.load(true);
   copy.onclick=async()=>{if(!subscriptionUrl)return;try{await navigator.clipboard.writeText(subscriptionUrl);address.hidden=true;feedback.textContent='Abo-Link kopiert. In deiner Kalender-App als Kalenderabonnement hinzufügen.';}catch{address.hidden=false;address.focus();address.select();feedback.textContent='Bitte den markierten Abo-Link kopieren und in deiner Kalender-App als Kalenderabonnement hinzufügen.';}};
-  section.append(heading,intro,cleanup,subscribe,state,retry,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
+  section.append(heading,intro,state,cleanup,subscribe,retry,feedback);host.insertBefore(section,host.querySelector('.portal-notification-settings'));
   g.addEventListener('portal-pagechange',event=>{if(event.detail?.page==='more-security')section.load(true);});
+  const refreshOnReturn=()=>{if(!document.hidden&&!host.closest('[hidden]'))section.load(true);};
+  document.addEventListener('visibilitychange',refreshOnReturn);
+  g.addEventListener('focus',refreshOnReturn);
+  g.addEventListener('pageshow',event=>{if(event.persisted)refreshOnReturn();});
  }
  function releaseCode(value){
   if(typeof value!=='string')return '';

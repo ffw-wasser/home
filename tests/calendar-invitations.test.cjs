@@ -38,7 +38,7 @@ test('Alte Abfragefreigaben sind beendet; Antworten und Erinnerungen benötigen 
 
 test('Mitglieder erhalten ausschließlich ihren persönlichen Abo-Link, ohne Quellkalender-Link oder Versandauftrag',async()=>{
  const f=await fixture(),before=f.sql.prepare('SELECT payload FROM portal_config WHERE id=1').get().payload;
- const value=(await f.call('calendar-subscription')).value;assert.match(value.subscriptionUrl,/\/calendar\/member\/[A-Za-z0-9_-]{43}\.ics$/);assert.equal(Object.keys(value).sort().join(','),'subscriptionUrl,version');assert.equal(value.calendarId,undefined);assert.equal(value.secret,undefined);
+ const value=(await f.call('calendar-subscription')).value;assert.match(value.subscriptionUrl,/\/calendar\/member\/[A-Za-z0-9_-]{43}\.ics$/);assert.equal(Object.keys(value).sort().join(','),'calendarLastFetchedAt,subscriptionUrl,version');assert.equal(value.calendarId,undefined);assert.equal(value.secret,undefined);
  assert.equal(f.sql.prepare('SELECT payload FROM portal_config WHERE id=1').get().payload,before);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM portal_calendar_invites').get().n,0);assert.equal(f.sends.length,0);
  f.sql.prepare('DELETE FROM portal_config').run();assert.equal((await f.call('calendar-subscription')).value.subscriptionUrl,null);
 });

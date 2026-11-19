@@ -8,19 +8,32 @@
  const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('calendar-subscription:'+token))),n=>n.toString(16).padStart(2,'0')).join('');
  const random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
  const open=(env,row)=>row?L.open(env,row.payload,'calendar-subscription:'+row.member):null;
+ async function lastFetchedAt(env,row,usage,source){
+  if(!usage||usage.alias!==row.alias)return null;
+  const seen=await L.open(env,usage.payload,'calendar-usage:'+row.member);
+  return seen.source===source&&seen.tokenHash===row.token_hash&&Number.isFinite(seen.lastFetchedAt)?seen.lastFetchedAt:null;
+ }
+ async function existingSubscription(env,row,value,source){
+  let calendarLastFetchedAt=null;
+  try{
+   const usage=await env.DB.prepare('SELECT * FROM portal_calendar_usage WHERE member=?').bind(row.member).first();
+   calendarLastFetchedAt=await lastFetchedAt(env,row,usage,source);
+  }catch{/* Optional usage metadata must not block access to the calendar link. */}
+  return {subscriptionUrl:origin+'/calendar/member/'+value.token+'.ics',version:row.version,calendarLastFetchedAt};
+ }
  async function subscription(env,data,record){
   await g.PortalService.assertMember(env,record);const meta=await L.meta(env);L.active(meta);
-  if(!await g.PortalService.config(env))return {subscriptionUrl:null,version:0};
+  if(!await g.PortalService.config(env))return {subscriptionUrl:null,version:0,calendarLastFetchedAt:null};
   const row=await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions WHERE member=?').bind(record.memberId).first(),old=await open(env,row);
   if(data.reset!==undefined&&typeof data.reset!=='boolean')fail('Ungültige Kalenderaktion.',400);
   if(data.reset===true&&data.expectedVersion!==(row?.version||0))fail('Der Kalenderlink wurde inzwischen geändert. Bitte neu laden.');
-  if(data.reset!==true&&row?.alias===record.alias&&row.revision===record.revision&&old?.source===meta.source)return {subscriptionUrl:origin+'/calendar/member/'+old.token+'.ics',version:row.version};
+  if(data.reset!==true&&row?.alias===record.alias&&row.revision===record.revision&&old?.source===meta.source)return existingSubscription(env,row,old,meta.source);
   const token=random(),tokenHash=await digest(token),payload=await L.seal(env,{token,source:meta.source},'calendar-subscription:'+record.memberId);
   const guard="EXISTS(SELECT 1 FROM ledger_meta WHERE id=1 AND source=? AND state='active') AND EXISTS(SELECT 1 FROM accounts WHERE alias=? AND revision=?)";
   const result=row?await env.DB.prepare('UPDATE portal_calendar_subscriptions SET alias=?,revision=?,token_hash=?,payload=?,version=version+1 WHERE member=? AND version=? AND '+guard).bind(record.alias,record.revision,tokenHash,payload,record.memberId,row.version,meta.source,record.alias,record.revision).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_calendar_subscriptions(member,alias,revision,token_hash,payload) SELECT ?,?,?,?,? WHERE '+guard).bind(record.memberId,record.alias,record.revision,tokenHash,payload,meta.source,record.alias,record.revision).run();
-  if(!result.meta.changes){if(data.reset===true)fail('Der Kalenderlink wurde gleichzeitig geändert. Bitte neu laden.');const winner=await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions WHERE member=? AND alias=? AND revision=?').bind(record.memberId,record.alias,record.revision).first(),value=await open(env,winner);if(value?.source===meta.source)return {subscriptionUrl:origin+'/calendar/member/'+value.token+'.ics',version:winner.version};fail('Kalenderzugang wurde geändert. Bitte neu laden.');}
+  if(!result.meta.changes){if(data.reset===true)fail('Der Kalenderlink wurde gleichzeitig geändert. Bitte neu laden.');const winner=await env.DB.prepare('SELECT * FROM portal_calendar_subscriptions WHERE member=? AND alias=? AND revision=?').bind(record.memberId,record.alias,record.revision).first(),value=await open(env,winner);if(value?.source===meta.source)return existingSubscription(env,winner,value,meta.source);fail('Kalenderzugang wurde geändert. Bitte neu laden.');}
   await g.PortalService.assertMember(env,record);
-  return {subscriptionUrl:origin+'/calendar/member/'+token+'.ics',version:(row?.version||0)+1};
+  return {subscriptionUrl:origin+'/calendar/member/'+token+'.ics',version:(row?.version||0)+1,calendarLastFetchedAt:null};
  }
  async function resolve(env,token){
   if(!/^[A-Za-z0-9_-]{43}$/.test(token||''))fail('Kalenderabo nicht verfügbar.',404);
@@ -48,9 +61,10 @@
    const record=await L.open(env,row.payload,'access:'+row.alias),person=members.get(record.memberId);if(!person||record.alias!==row.alias||record.revision!==row.revision)continue;
    person.pushDevices+=Number(row.devices)||0;
    const sub=subscriptions.get(record.memberId),read=usage.get(record.memberId);
-   if(!sub||sub.alias!==row.alias||sub.revision!==row.revision||!read||read.alias!==row.alias)continue;
-   const [value,seen]=await Promise.all([open(env,sub),L.open(env,read.payload,'calendar-usage:'+record.memberId)]);
-   if(value.source===source&&seen.source===source&&seen.tokenHash===sub.token_hash&&Number.isFinite(seen.lastFetchedAt))person.calendarLastFetchedAt=Math.max(person.calendarLastFetchedAt||0,seen.lastFetchedAt);
+   if(!sub||sub.alias!==row.alias||sub.revision!==row.revision||!read)continue;
+   const value=await open(env,sub);
+   const fetchedAt=value.source===source?await lastFetchedAt(env,sub,read,source):null;
+   if(fetchedAt!==null)person.calendarLastFetchedAt=Math.max(person.calendarLastFetchedAt||0,fetchedAt);
   }
   return {version:1,source,checkedAt:Date.now(),members:[...members.values()]};
  }

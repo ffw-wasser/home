@@ -14,7 +14,17 @@
   const wrapper=$('portal-page-'+pages[id]);if(wrapper){const scroller=$('deckel-main');if(scroller?.scrollTo)scroller.scrollTo({top:0,left:0,behavior:'instant'});else g.scrollTo?.({top:0,left:0,behavior:'instant'});wrapper.focus?.({preventScroll:true});}else if(!target.hidden){target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});target.focus?.({preventScroll:true});}
   if(typeof g.CustomEvent==='function')g.dispatchEvent(new CustomEvent('portal-pagechange',{detail:{page:id,previousPage}}));
  }
- function show(value,options={}){const previousResources=resources;resources=Boolean(value&&options.resources);if(value&&(!visible||resources!==previousResources)){current=resources?'more-help':'portal-section';if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');}visible=Boolean(value);g.H2OIdentity?.setPortalVisible?.(visible);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();}
+ function show(value,options={}){
+  const previousResources=resources;
+  resources=Boolean(value&&options.resources);
+  const resumeSecurity=value&&!visible&&!resources&&options.resumeSecurity&&current==='more-security';
+  if(value&&(!visible||resources!==previousResources)&&!resumeSecurity){
+   current=resources?'more-help':'portal-section';
+   if(g.history?.replaceState)g.history.replaceState({...g.history.state,portalPage:current},'');
+  }
+  visible=Boolean(value);g.H2OIdentity?.setPortalVisible?.(visible);if($('deckel-nav'))$('deckel-nav').hidden=!visible;sync();
+  if(resumeSecurity)g.dispatchEvent(new CustomEvent('portal-pagechange',{detail:{page:current,previousPage:current}}));
+ }
  function init(){if(g.H2OFeatures?.rewards===false)document.querySelectorAll('[data-portal-tile="portal-points"]').forEach(n=>n.remove());const nav=$('deckel-nav');if(!nav)return;const main=$('deckel-main'),grid=$('portal-more-grid'),dialog=$('portal-layout-dialog'),selector=$('portal-layout-item'),layoutStatus=$('portal-layout-status'),tileHeadings=new Map();
   function getTiles(){return [...(main?.querySelectorAll('[data-portal-tile]')||[]),...(nav.querySelectorAll('[data-portal-tile]')||[]),...(grid?.querySelectorAll('[data-portal-tile]')||[])].filter((item,index,list)=>list.indexOf(item)===index);}
   function saveLayout(){try{const storage=typeof safeStorage!=='undefined'?safeStorage:g.localStorage;storage?.setItem(layoutKey,JSON.stringify(layout));if(layoutStatus)layoutStatus.textContent='Anordnung auf diesem Gerät gespeichert.';}catch{if(layoutStatus)layoutStatus.textContent='Anordnung gilt bis zum Schließen dieser Sitzung.';}}
