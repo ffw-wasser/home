@@ -92,9 +92,10 @@ const root=path.resolve(__dirname,'..');
   await page.setViewportSize({width:390,height:844});
   await overview.getByRole('button',{name:'Schließen',exact:true}).click();
   const ownRole=eventCard.locator('.portal-own-role');
-  await ownRole.filter({hasText:'Für dich vorgesehen · Gruppenführer'}).waitFor();
+  await ownRole.getByText('Gruppenführer',{exact:true}).waitFor();
   await eventCard.locator('[data-reply="yes"]').click();
   await ownRole.waitFor({state:'hidden'});
+  assert.equal(await notice.evaluate(n=>n.offsetWidth===n.parentElement.clientWidth),true,'staffing uses the full width without an assignment');
   const direct=await page.context().newPage();
   await direct.goto(link);
   const directRole=direct.locator('#event-own-role');
@@ -106,10 +107,14 @@ const root=path.resolve(__dirname,'..');
   await page.bringToFront();
   await page.evaluate(()=>document.getElementById('portal-refresh').onclick());
   await eventCard.locator('[data-reply="yes"][aria-pressed="true"]').waitFor();
-  await ownRole.filter({hasText:'Für dich vorgesehen · Gruppenführer'}).waitFor();
-  await page.setViewportSize({width:320,height:860});
-  await page.evaluate(()=>document.documentElement.style.fontSize='200%');
-  assert.equal(await notice.evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,'own role fits 320px with doubled text');
+  await ownRole.getByText('Gruppenführer',{exact:true}).waitFor();
+  assert.equal(await ownRole.evaluate(n=>n.offsetTop===n.previousElementSibling.offsetTop),true,'assignment is beside staffing at 390px');
+  for(const {width,scale} of [{width:320,scale:100},{width:390,scale:200}]){
+   await page.setViewportSize({width,height:860});
+   await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);
+   assert.equal(await ownRole.evaluate(n=>n.offsetTop>n.previousElementSibling.offsetTop),true,'assignment stacks on narrow or enlarged layouts');
+   assert.equal(await ownRole.evaluate(n=>n.parentElement.scrollWidth<=n.parentElement.clientWidth+1),true,'staffing and assignment fit without horizontal scroll');
+  }
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>document.documentElement.style.fontSize='100%');
   if(process.env.CAPTURE_STAFFING_MEMBER_HELP){
