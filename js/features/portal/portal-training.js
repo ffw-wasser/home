@@ -2,9 +2,9 @@
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
-let epoch=0,url='',busy=false,dialog=null,syncing=false,lastSync=0,syncSource='';const originalSteps=[],shells=new Map();const trainingPages=new Set(['more-training','training-breathing','breathing-basics','breathing-emergency','training-competition','competition-bronze','competition-silver','competition-gold','training-radio','radio-device','radio-status','radio-examples','radio-videos']);
+let epoch=0,url='',busy=false,dialog=null,syncing=false,lastSync=0,syncSource='';let videoUrl='',videoRequest=null;const originalSteps=[],shells=new Map();const trainingPages=new Set(['more-training','training-breathing','breathing-basics','breathing-emergency','training-competition','competition-bronze','competition-silver','competition-gold','training-radio','radio-device','radio-status','radio-examples','radio-videos']);
 function clear(){
- epoch++;busy=false;if(dialog){if(dialog.open)dialog.close();dialog.remove();dialog=null;}
+ epoch++;busy=false;videoRequest?.abort();videoRequest=null;if(videoUrl)URL.revokeObjectURL(videoUrl);videoUrl='';if(dialog){if(dialog.open)dialog.close();dialog.remove();dialog=null;}
  originalSteps.length=0;for(const [id,shell] of shells){const page=$('portal-page-'+id);page?.replaceChildren(shell.cloneNode(true));}
  $('radio-private-content')?.replaceChildren();if(url)URL.revokeObjectURL(url);url='';
  if($('radio-private-status'))$('radio-private-status').textContent='';
@@ -14,7 +14,6 @@ function section(title){const card=node('section');card.className='training-card
 function renderRadioVideos(){
  const radio=$('training-radio'),page=$('radio-videos');
  if(!radio||!page||$('review-banner'))return;
- const reel='https://www.instagram.com/reel/Df9f91IyBTQ/';
  const grid=radio.querySelector('.portal-more-grid')||node('div');
  grid.classList.add('portal-more-grid');
  if(!grid.parentElement)radio.append(grid);
@@ -25,23 +24,42 @@ function renderRadioVideos(){
 
  const back=node('button','← Zurück zu Funk');back.type='button';back.className='secondary portal-more-back';back.dataset.moreTarget='training-radio';
  const card=section('Funkstatus 0 bis 9');
- const notice=node('p','Beim Öffnen des Videos wird eine Verbindung zu Instagram (Meta) hergestellt.');notice.className='note';
- if(/(?:^|\s)H2OFunkBrowser\/1(?:\s|$)/.test(navigator.userAgent)){
-  const open=node('a','Video laden');open.href=reel;open.className='radio-video-link';open.rel='noreferrer';
-  card.append(notice,open);page.replaceChildren(back,node('h2','Lernvideos'),card);
-  return;
- }
  const loadVideo=node('button','Video laden');loadVideo.type='button';
- const link=node('a','In Instagram öffnen ↗');link.href=reel;link.target='_blank';link.rel='noopener noreferrer';
- const fallback=node('p');fallback.className='note';fallback.append(link);
- loadVideo.onclick=()=>{
-  if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
-  const player=node('iframe');player.className='radio-video-player';player.title='Lernvideo Funk · Instagram';
-  player.referrerPolicy='no-referrer';player.setAttribute('sandbox','allow-scripts allow-same-origin');
-  player.allowFullscreen=true;player.src=reel+'embed/';
-  loadVideo.replaceWith(player);
+ const status=node('p');status.className='note';status.setAttribute('role','status');status.hidden=true;
+ loadVideo.onclick=async()=>{
+  if(loadVideo.disabled||!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
+  const current=epoch,request=new AbortController();videoRequest=request;
+  loadVideo.disabled=true;status.hidden=false;status.textContent='Video wird geladen …';
+  try{
+   const video=await g.H2OPortal.api('training/video',{},{
+    signal:AbortSignal.any([request.signal,AbortSignal.timeout(65000)])
+   });
+   if(current!==epoch)return;
+   videoUrl=URL.createObjectURL(video);
+   const player=node('video');player.className='radio-video-player';player.controls=true;player.playsInline=true;
+   player.setAttribute('aria-label','Funkstatus 0 bis 9');player.src=videoUrl;
+   const stage=node('div');stage.className='radio-video-stage';
+   const expand=node('button','Vollbild');expand.type='button';expand.className='secondary';
+   function setExpanded(expanded){
+    stage.classList.toggle('is-expanded',expanded);
+    expand.textContent=expanded?'Vollbild schließen':'Vollbild';
+    expand.setAttribute('aria-pressed',String(expanded));
+   }
+   setExpanded(false);
+   expand.onclick=()=>setExpanded(!stage.classList.contains('is-expanded'));
+   stage.addEventListener('keydown',event=>{if(event.key==='Escape'&&stage.classList.contains('is-expanded'))setExpanded(false);});
+   player.addEventListener('error',()=>{
+    if(current!==epoch)return;
+    URL.revokeObjectURL(videoUrl);videoUrl='';stage.replaceWith(loadVideo);
+    loadVideo.disabled=false;status.hidden=false;status.textContent='Das Video konnte nicht abgespielt werden. Bitte erneut laden.';
+   },{once:true});
+   stage.append(player,expand);status.hidden=true;loadVideo.replaceWith(stage);player.focus();
+  }catch(error){
+   if(current!==epoch)return;
+   loadVideo.disabled=false;status.textContent=error.name==='TimeoutError'?'Das Laden dauert zu lange. Bitte erneut versuchen.':error.message||'Das Video konnte nicht geladen werden.';
+  }finally{if(videoRequest===request)videoRequest=null;}
  };
- card.append(notice,loadVideo,fallback);page.replaceChildren(back,node('h2','Lernvideos'),card);
+ card.append(loadVideo,status);page.replaceChildren(back,node('h2','Lernvideos'),card);
 }
 async function load(pageId='radio-device'){
  clear();const status=$('portal-page-'+pageId)?.querySelector('[role=status]');if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;

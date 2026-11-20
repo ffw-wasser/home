@@ -33,3 +33,28 @@ test('Verifizierte Funkansicht zeigt keinen überflüssigen Mitgliedschaftshinwe
  assert.doesNotMatch(ui,/Nur für verifizierte Mitglieder · keine Offline-Ablage|Nur für verifizierte Feuerwehrmitglieder\. Bitte persönlich anmelden/);
  assert.match(ui,/\$\('radio-private-status'\)\.textContent='';/);
 });
+
+
+test('Funkvideo: nur aktive Feuerwehrmitglieder erhalten die MP4 ohne Cache',async()=>{
+ const f=await fixture(),read=[];
+ assert.equal((await f.call('training/video')).status,404);
+ const expected=fs.readFileSync('tests/fixtures/portal-training-video.mp4');
+ f.env.MIGRATION_FILES={get:async key=>{read.push(key);return {body:new Response(expected).body};}};
+ assert.equal((await f.call('training/video',{}, {...f.people[0],testToken:'invalid'})).status,401);
+ await f.call('roster',{members:f.people.map((p,i)=>({id:p.memberId,name:'Testperson '+i,leader:false,fitnessTrainer:i===1}))},null,true);
+ const row=f.sql.prepare('SELECT payload FROM portal_roster WHERE id=1').get();
+ const roster=await f.L.open(f.env,row.payload,'portal-roster');
+ roster.members=roster.members.filter(person=>person.id!==f.people[2].memberId);
+ await f.DB.prepare('UPDATE portal_roster SET payload=? WHERE id=1').bind(await f.L.seal(f.env,roster,'portal-roster')).run();
+ assert.equal((await f.call('training/video',{},f.people[1])).status,403);
+ assert.equal((await f.call('training/video',{},f.people[2])).status,403);
+ assert.equal((await f.call('training/video',{},null,true)).status,404);
+ assert.equal((await f.c.worker.fetch(new Request('https://test.example/portal/training/video'),f.env)).status,404);
+ assert.deepEqual(read,[]);
+ const video=await f.call('training/video',{key:'anderes-objekt'});
+ assert.deepEqual(read,['training/funkstatus-0-bis-9.mp4']);
+ assert.equal(video.status,200);
+ assert.equal(video.headers.get('Content-Type'),'video/mp4');
+ assert.equal(video.headers.get('Cache-Control'),'no-store');
+ assert.deepEqual(Buffer.from(video.value),expected);
+});
