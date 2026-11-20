@@ -14,14 +14,20 @@
     return breathingPlanned?roles:[...new Set([...roles,...STANDARD_CREW_ROLES])];
   }
   function roleScore(remaining,actual,target){return remaining*1000-actual+(target>0?100:0);}
-  function compareCrewCandidates(a,b,role,vehicle){
+  function compareBreathingCandidates(a,b,role){
+    const difference=Number(b.breathingActive===true)-Number(a.breathingActive===true);
+    // Keep qualified members available for attack and water troop if other
+    // eligible candidates can cover the remaining posts.
+    return STANDARD_CREW_ROLES.includes(role)?difference:-difference;
+  }
+  function compareCrewCandidates(a,b,role,vehicle,prioritizeBreathing=false){
     if(role==="Maschinist"&&vehicle==="TSF"){
       const tsfOnly=member=>canDriveVehicle(member,"TSF")&&!canDriveVehicle(member,"LF10");
       const priority=Number(tsfOnly(b.member))-Number(tsfOnly(a.member));
       if(priority)return priority;
     }
     const rank=person=>(person.preferred?.role===role?5000:0)+(person.options.find(option=>option.role===role)?.score||0);
-    return rank(b)-rank(a)||a.name.localeCompare(b.name,"de");
+    return (prioritizeBreathing?compareBreathingCandidates(a,b,role):0)||rank(b)-rank(a)||a.name.localeCompare(b.name,"de");
   }
   function assignCrew(slots,people,eligible,compare,essential){
     const candidates=slots.map(slot=>people.filter(person=>eligible(person,slot)).sort((a,b)=>compare(a,b,slot)));
@@ -65,7 +71,7 @@
     const lf=(Array.isArray(slots)?slots:[]).filter(slot=>slot.vehicle==="LF10"&&slot.member);
     return vehicleHasMinimumUnit(lf)?"Die aktuelle Fahrzeugbesetzung ist plausibel.":"Auf dem LF10 kann keine einsatzfähige Einheit 1/3 gebildet werden. Besetzung und offene Positionen prüfen.";
   }
-  const api=Object.freeze({GROUP_ROLES,STAFF_ROLES,STAFF_REQUIRED_ROLES,STANDARD_CREW_ROLES,MINIMUM_UNIT_ROLES,assignCrew,crewRoles,roleScore,compareCrewCandidates,canDriveVehicle,vehicleHasRoles,vehicleHasCompleteStaffel,hasCompleteStaffelOnAnyVehicle,vehicleHasMinimumUnit,recommendationText});
+  const api=Object.freeze({GROUP_ROLES,STAFF_ROLES,STAFF_REQUIRED_ROLES,STANDARD_CREW_ROLES,MINIMUM_UNIT_ROLES,assignCrew,crewRoles,roleScore,compareBreathingCandidates,compareCrewCandidates,canDriveVehicle,vehicleHasRoles,vehicleHasCompleteStaffel,hasCompleteStaffelOnAnyVehicle,vehicleHasMinimumUnit,recommendationText});
   global.TacticsEngine=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })(typeof globalThis!=="undefined"?globalThis:this);

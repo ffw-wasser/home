@@ -155,7 +155,9 @@ test('TSF kann die Mindeststaffel stellen, die Gruppe benötigt das LF10',async(
  assert.equal((await f.list(leader)).participation.ownRole.role,'GF');
  f.members[3].staffingProfile.vehicles=['LF'];
  assert.equal((await f.call('roster',{members:f.members,replyFunctionsVersion:1},null,true)).status,200);
- assert.deepEqual((await f.list(driver)).participation.ownRole,{role:'ATF',vehicle:'LF10'});
+ const reassigned=(await f.list(driver)).participation.ownRole;
+ assert.equal(reassigned.vehicle,'LF10');
+ assert.ok(['ATF','ATM','WTF','WTM'].includes(reassigned.role));
  assert.deepEqual((await f.list(leader)).participation.ownRole,{role:'GF',vehicle:'LF10'});
 });
 
@@ -174,4 +176,31 @@ test('LF10 und TSF können gleichzeitig verschiedene Personen einteilen',async()
  assert.equal(new Set(staffingProposal.assignments.map(item=>item.name)).size,15);
  assert.deepEqual((await f.list(lfDriver)).participation.ownRole,{role:'Maschinist',vehicle:'LF10'});
  assert.deepEqual((await f.list(tsfDriver)).participation.ownRole,{role:'Maschinist',vehicle:'TSF'});
+});
+
+test('Angriffs- und Wassertrupp bevorzugen aktive AGT vor den Funktionszielen',async()=>{
+ const f=await setup('Allgemeine Probe',9),leader=f.people[2];
+ const active=[0,1,4,5];
+ for(const [index,member] of f.members.entries())member.agt=active.includes(index);
+ f.members[0].staffingProfile.targets.GF=99;
+ f.members[6].staffingProfile.targets.ATF=99;
+ f.members[7].staffingProfile.targets.WTF=99;
+ assert.equal((await f.call('roster',{members:f.members,replyFunctionsVersion:1,agtSource:'member-checkbox'},null,true)).status,200);
+ for(const person of f.people.slice(0,-1))assert.equal((await f.answer(person)).status,200);
+ const assignments=async()=>{
+  const {staffingProposal}=(await f.call('overview',{eventId:f.eventId},leader)).value;
+  return staffingProposal.assignments;
+ };
+ const crewRoles=new Set(['ATF','ATM','WTF','WTM']);
+ const crew=plan=>plan.filter(position=>crewRoles.has(position.role));
+ const first=await assignments();
+ assert.equal(first.find(position=>position.role==='GF').name,f.members[2].name);
+ assert.equal(first.find(position=>position.role==='Maschinist').name,f.members[3].name);
+ assert.deepEqual(crew(first).map(position=>position.name).sort(),active.map(i=>f.members[i].name).sort());
+ assert.equal((await f.answer(f.people[5],'excused',1)).status,200);
+ const later=crew(await assignments());
+ assert.equal(later.length,4);
+ assert.equal(later.filter(position=>active.slice(0,3).some(i=>f.members[i].name===position.name)).length,3);
+ const replacement=later.find(position=>!active.some(i=>f.members[i].name===position.name));
+ assert.match(f.c.CalendarPresentation.crewAssignmentLabel(replacement),/ohne Atemschutz$/);
 });
