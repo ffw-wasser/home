@@ -206,6 +206,22 @@ test('Kopfbereich zeigt die gewählte Rubrik bei Menüwechsel, Unterseite und Ak
  ctx.DeckelMobile.show(false);assert.equal(dom['portal-menu-title'].textContent,'H₂O Portal');ctx.DeckelMobile.show(true);assert.equal(dom['portal-menu-title'].textContent,'Termine');
 });
 
+test('Ausbildungsunterseiten markieren den Menüeintrag passend zur Kachelanordnung',()=>{
+ const pages=['more-training','training-radio','radio-device','radio-status','radio-examples','radio-videos','training-breathing','breathing-basics','breathing-emergency','training-competition','competition-bronze','competition-silver','competition-gold'];
+ const {ctx,dom}=layoutFixture();
+ const verify=target=>{
+  for(const page of pages){
+   ctx.DeckelMobile.jump(page);
+   const active=dom['deckel-nav'].querySelectorAll('[data-deckel-target]').filter(tile=>tile.attributes['aria-current']==='page');
+   assert.deepEqual(active.map(tile=>tile.dataset.deckelTarget),[target],page);
+  }
+ };
+ verify('more-training');
+ dom['portal-layout-item'].value='more-training';dom['portal-layout-item'].change();
+ dom['portal-layout-transfer'].click();
+ verify('deckel-more');
+});
+
 test('Wischen folgt verschobenen Hauptkacheln auch nach erneutem Laden',()=>{
  const f=layoutFixture(),{dom,storage}=f;
  const select=id=>{dom['portal-layout-item'].value=id;dom['portal-layout-item'].change();};
