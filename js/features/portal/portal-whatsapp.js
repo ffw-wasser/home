@@ -55,6 +55,8 @@
   const participation=el('event-participation');
   participation.hidden=!event.participation;
   participation.textContent=globalThis.CalendarPresentation.participationText(event.participation);
+  const ownRole=globalThis.CalendarPresentation.ownRoleText(event);
+  el('event-own-role').hidden=!ownRole;el('event-own-role').textContent=ownRole;
   const state={yes:'✓ Du bist dabei',excused:'Absage',maybe:'Noch unsicher',open:'Deine Rückmeldung fehlt noch'};
   const changed=Number.isSafeInteger(event.updatedAt)&&event.updatedAt>0?' · Zuletzt geändert: '+new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.updatedAt))+' Uhr':'';
   el('event-status').textContent=(state[event.status]||state.open)+changed;
@@ -134,5 +136,6 @@
  el('reload-event').addEventListener('click',()=>void refresh());
  el('password-login-form').onsubmit=async event=>{event.preventDefault();if(working)return;working=true;const button=el('password-login-form').querySelector('button'),password=el('password-value').value;button.disabled=true;el('password-value').value='';status('Passwort wird geprüft …');try{session=await globalThis.H2OIdentity.loginPassword(el('password-username').value,password);persist(session);working=false;await refresh();}catch(error){showPair(error.message||'Anmeldung fehlgeschlagen.');}finally{working=false;button.disabled=false;}};
  el('passkey-login').addEventListener('click',loginPasskey);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&session&&wanted()&&!pending)void refresh();});
  session=restore();persist();if(initialPair)showPair('Die bisherige Browser-Verbindung wurde ersetzt. Bitte mit deinem zentralen H₂O-Passkey anmelden.');else if(session)void refresh();else showPair();
 })();

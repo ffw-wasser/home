@@ -61,6 +61,7 @@
   AGT:['Atemschutzgeräteträger','Atemschutzgeräteträger']
  };
  const tacticalPostLabels={
+  Reserve:['Reserve','Reserve'],
   ATF:['Angriffstruppführer','Angriffstruppführer'],
   ATM:['Angriffstruppmann','Angriffstruppleute'],
   WTF:['Wassertruppführer','Wassertruppführer'],
@@ -69,6 +70,12 @@
   STM:['Schlauchtruppmann','Schlauchtruppleute']
  };
  function crewRoleLabel(role,count=1){return (staffingRoles[role]||tacticalPostLabels[role])[count===1?0:1];}
+ function crewAssignmentLabel({role,requirement,vehicle}){
+  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'');
+ }
+ function ownRoleText(event){
+  return event.status==='yes'&&event.participation?.ownRole?'Vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
+ }
  function staffingText({confirmed,minimum,goal}){
   const shortage=level=>{
    const roles=level.missing.map(({role,count})=>count+' '+crewRoleLabel(role,count));
@@ -99,5 +106,5 @@
   const preferred=first?.canReply===false&&upcoming.find(event=>event.canReply===true&&event.start<first.end&&event.end>first.start);
   return (preferred?[preferred,...upcoming.filter(event=>event!==preferred)]:upcoming).slice(0,3);
  }
- g.CalendarPresentation={staffingRoles,crewRoleLabel,widgetEvents,participationText,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ g.CalendarPresentation={staffingRoles,crewRoleLabel,crewAssignmentLabel,ownRoleText,widgetEvents,participationText,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);

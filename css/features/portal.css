@@ -268,6 +268,7 @@
 .portal-fitness-participation{--fitness-accent:#90600c;--fitness-surface:#fff3cf;--fitness-ink:#644000;margin:10px 0 0;padding:8px 12px;border-inline-start:4px solid var(--fitness-accent);border-radius:8px;background:var(--fitness-surface);color:var(--fitness-ink);font-size:.9375rem;font-weight:750;line-height:1.4}
 .portal-fitness-participation:is([data-state=ready],[data-state=confirmed]){--fitness-accent:#258047;--fitness-surface:#e4f4e9;--fitness-ink:#154d2a}
 .portal-fitness-participation[data-state=cancelled]{--fitness-accent:#ad3748;--fitness-surface:#fbe9ec;--fitness-ink:#772332}
+.portal-own-role{display:block;margin-top:5px;padding-top:5px;border-top:1px solid currentColor;overflow-wrap:anywhere}
 .portal-overview-summary>.portal-fitness-participation{margin:0}
 .portal-staffing-proposal dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 12px;margin:8px 0 0;overflow-wrap:anywhere}
 .portal-staffing-proposal dt{font-weight:700}

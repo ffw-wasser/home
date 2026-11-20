@@ -249,19 +249,21 @@
    return {member:candidate,name:member.name,options,preferred:options[0]};
   });
  }
- function staffingLevel(people,required,roles,standard=[]){
-  const vehicle=standard.length?'LF10':null,standardCrew=g.TacticsEngine.STANDARD_CREW_ROLES;
-  const slots=standard.map(role=>({role,requirement:standardCrew.includes(role)?null:role}));
+ function staffingLevel(people,required,roles,standard=[],vehicle=null,addStaffel=false){
+  const standardCrew=g.TacticsEngine.STANDARD_CREW_ROLES;
+  const vehicleSlots=(crew,vehicle)=>crew.map(role=>({role,vehicle,requirement:standardCrew.includes(role)?null:role}));
+  const slots=vehicleSlots(standard,vehicle);
   for(const [role,count] of Object.entries(roles)){
    const covered=slots.filter(slot=>slot.requirement===role||role==='TF'&&slot.requirement==='STF').length;
    for(let i=covered;i<count;i++){
     const flexible=slots.find(slot=>!slot.requirement&&(role!=='TF'||['ATF','WTF'].includes(slot.role)));
     if(flexible)flexible.requirement=role;
-    else slots.push({role,requirement:role});
+    else slots.push({role,vehicle:null,requirement:role});
    }
   }
+  if(addStaffel)slots.push(...vehicleSlots(g.TacticsEngine.STAFF_REQUIRED_ROLES,'TSF'));
   const qualifies=(person,slot)=>{
-   const {member,options}=person,{role,requirement}=slot,stored=member.staffingProfile?.roles||[];
+   const {member,options}=person,{role,requirement,vehicle}=slot,stored=member.staffingProfile?.roles||[];
    if(vehicle&&role==='Maschinist'&&!g.TacticsEngine.canDriveVehicle(member,vehicle))return false;
    if(tacticalRoles.includes(role)&&!options.some(option=>option.role===role))return false;
    if(requirement==='AGT')return member.agt===true;
@@ -269,27 +271,42 @@
    if(requirement==='Maschinist'&&vehicle)return g.TacticsEngine.canDriveVehicle(member,vehicle);
    return !requirement||options.some(option=>option.role===requirement);
   };
-  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,vehicle),slot=>Boolean(slot.requirement));
+  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,slot.vehicle),slot=>Boolean(slot.requirement));
   const missing=new Map(),assignments=[];
-  for(const [index,{role,requirement}] of slots.entries()){
+  for(const [index,{role,requirement,vehicle}] of slots.entries()){
    const person=crew[index];
-   if(person)assignments.push({role,name:person.name,...(requirement&&requirement!==role?{requirement}:{})});
+   if(person)assignments.push({memberId:person.member.id,role,name:person.name,...(vehicle?{vehicle}:{}),...(requirement&&requirement!==role?{requirement}:{})});
    else if(requirement)missing.set(requirement,(missing.get(requirement)||0)+1);
   }
   const shortfall=Math.max(0,Math.max(required,slots.length)-people.length);
   return {summary:{ready:!shortfall&&!missing.size,shortfall,missing:[...missing].map(([role,count])=>({role,count}))},assignments};
  }
- function staffingSummary(event,people,includeProposal){
+ function staffingSummary(event,people,{includeProposal=false,memberId}){
   const {minimum=0,roles={}}=event.staffingRequirements||{};
   const candidates=staffingCandidates(people,Number(berlinDay(event.start).slice(0,4)));
-  const first=staffingLevel(candidates,minimum,roles,event.tacticalStaffing?g.TacticsEngine.STAFF_REQUIRED_ROLES:[]);
-  const goal=event.tacticalStaffing?staffingLevel(candidates,minimum,roles,tacticalRoles):null;
-  const planned=goal?.summary.ready?goal:first;
+  const level=(posts,vehicle,extra=false)=>staffingLevel(candidates,minimum,roles,posts,vehicle,extra);
+  const staffRoles=g.TacticsEngine.STAFF_REQUIRED_ROLES;
+  let first=event.tacticalStaffing?level(staffRoles,'LF10'):level([]);
+  let vehicle=event.tacticalStaffing?'LF10':null;
+  if(event.tacticalStaffing&&!first.summary.ready){
+   const tsf=level(staffRoles,'TSF');
+   const openPosts=plan=>plan.summary.missing.reduce((sum,{count})=>sum+count,0);
+   if(tsf.summary.ready||openPosts(tsf)<openPosts(first)){first=tsf;vehicle='TSF';}
+  }
+  const goal=event.tacticalStaffing?level(tacticalRoles,'LF10'):null;
+  let planned=goal?.summary.ready?goal:first,unit=goal?.summary.ready?'Gruppe':goal?'Staffel':null;
+  if((goal?.summary.ready||first.summary.ready&&vehicle==='LF10')&&people.length>=planned.assignments.length+staffRoles.length){
+   const combined=level(goal?.summary.ready?tacticalRoles:staffRoles,'LF10',true);
+   if(combined.summary.ready){planned=combined;unit=goal.summary.ready?'Gruppe + Staffel':'Zwei Staffeln';}
+  }
+  const own=memberId&&planned.assignments.find(assignment=>assignment.memberId===memberId);
+  const ownRole=own?{role:own.role,...(own.vehicle?{vehicle:own.vehicle}:{}),...(own.requirement?{requirement:own.requirement}:{})}:
+   memberId&&event.tacticalStaffing&&people.some(person=>person.id===memberId)?{role:'Reserve'}:null;
   return {confirmed:people.length,state:first.summary.ready?'ready':'pending',minimum:first.summary,
-   ...(goal?{goal:goal.summary}:{}),
-   ...(includeProposal?{proposal:{unit:goal?.summary.ready?'Gruppe':goal?'Staffel':null,assignments:planned.assignments}}:{})};
+   ...(goal?{goal:goal.summary}:{}),...(ownRole?{ownRole}:{}),
+   ...(includeProposal?{proposal:{unit,assignments:planned.assignments.map(({memberId,...assignment})=>assignment)}}:{})};
  }
- async function eventParticipation(env,events,roster,now=Date.now(),includeProposal=false){
+ async function eventParticipation(env,events,roster,now=Date.now(),options={}){
   const tracked=new Map(events.filter(event=>event.minimumParticipation||event.tacticalStaffing||event.staffingRequirements).map(event=>[event.id,event]));
   const replies=new Map([...tracked.keys()].map(id=>[id,[]]));
   const members=new Map((roster?.members||[]).map(person=>[person.id,person]));
@@ -309,7 +326,7 @@
   }
   return new Map([...tracked].map(([id,event])=>{
    const people=replies.get(id);
-   if(!event.minimumParticipation)return [id,staffingSummary(event,people,includeProposal)];
+   if(!event.minimumParticipation)return [id,staffingSummary(event,people,options)];
    const required=event.minimumParticipation,confirmed=people.length,enough=confirmed>=required;
    const state=now<event.start?(enough?'ready':'pending'):(enough?'confirmed':'cancelled');
    return [id,{required,confirmed,state}];
@@ -877,7 +894,7 @@
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
    const ownBirthday=!guest&&cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:!requestedEvent?.completedAt&&requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(visibleEvent(requestedEvent)?null:'not-relevant'):'unavailable';const now=Date.now(),events=cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&e.end>now&&visibleEvent(e));
-   const participation=await eventParticipation(env,events,roster,now);
+   const participation=await eventParticipation(env,events,roster,now,{memberId:record.memberId});
    const result={...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:guest?null:birthday,fitnessTrainer:guest,leader,events:events.map(e=>({...memberEvent(e,record.memberId),...(participation.has(e.id)&&(!participation.get(e.id).minimum||isRecipient(e,record.memberId)||e.organizerId===record.memberId||canManage(e))?{participation:participation.get(e.id)}:{}),canReply:isRecipient(e,record.memberId)&&participation.get(e.id)?.state!=='cancelled',canManage:canManage(e),calendarManaged:false,calendarLinkOnly:true,...(isRecipient(e,record.memberId)?map.get(e.id)||{status:'open',version:0}:{status:'open',version:0})}))};
    if(data.widget===true){const upcoming=g.CalendarPresentation.widgetEvents(result.events);result.widgetReply=await widgetGrant(env,auth,upcoming);}
    return result;
@@ -906,7 +923,7 @@
     const latest=await g.PortalEvidence.consents(env);
     for(const id of confirmedBreathing)if(!latest.get(id)?.granted||latest.get(id).version!==approvals.get(id).version)confirmedBreathing.delete(id);
    }
-   const calculated=(await eventParticipation(env,[event],roster,now,leader)).get(event.id);
+   const calculated=(await eventParticipation(env,[event],roster,now,{includeProposal:leader})).get(event.id);
    const {proposal,...participation}=calculated||{};
    return {event:{...memberEvent(event),...(calculated?{participation}:{})},...(proposal?{staffingProposal:proposal}:{}),stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
   }
@@ -927,7 +944,7 @@
    if(!isRecipient(event,record.memberId))fail('Dieser Termin betrifft dich nicht.',403);
    if(!['yes','excused','maybe','open'].includes(data.status)||!REV.test(data.requestId||'')||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Rückmeldung.',400);
    const replyResult=async(status,version,updatedAt)=>{
-    const participation=(await eventParticipation(env,[event],roster)).get(event.id);
+    const participation=(await eventParticipation(env,[event],roster,Date.now(),{memberId:status==='yes'?record.memberId:undefined})).get(event.id);
     return {ok:true,status,version,updatedAt,...(participation?{participation}:{})};
    };
    const old=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event.id,record.memberId).first(),previous=await open(env,old,'portal-reply:'+event.id+':'+record.memberId);

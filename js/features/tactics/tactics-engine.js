@@ -1,8 +1,8 @@
 (function(global){
   "use strict";
   const GROUP_ROLES=Object.freeze(["GF","Maschinist","ATF","ATM","WTF","WTM","STF","STM","Melder"]);
-  const STAFF_ROLES=Object.freeze(["GF","Maschinist","ATF","ATM","WTF","WTM","Melder"]);
   const STAFF_REQUIRED_ROLES=Object.freeze(["GF","Maschinist","ATF","ATM","WTF","WTM"]);
+  const STAFF_ROLES=STAFF_REQUIRED_ROLES;
   const MINIMUM_UNIT_ROLES=Object.freeze(["Maschinist","GF","ATF","ATM"]);
 
   function canDriveVehicle(member,vehicle){

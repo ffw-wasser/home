@@ -136,9 +136,8 @@
     const {unit,assignments}=result.staffingProposal;
     const proposal=node('details'),list=node('dl');
     proposal.className='portal-overview-note portal-staffing-proposal';
-    for(const {role,name,requirement} of assignments){
-     const title=g.CalendarPresentation.crewRoleLabel(role)+(requirement?' ('+g.CalendarPresentation.crewRoleLabel(requirement)+')':'');
-     list.append(node('dt',title),node('dd',name));
+    for(const assignment of assignments){
+     list.append(node('dt',g.CalendarPresentation.crewAssignmentLabel(assignment)),node('dd',assignment.name));
     }
     proposal.append(node('summary','Besetzungsvorschlag'+(unit?' · '+unit:'')),list);
     summary.append(proposal);
@@ -214,6 +213,10 @@
   notice.dataset.state=event.participation.state;
   const requestReply=personal&&event.canReply!==false&&event.start>Date.now()&&event.status==='open';
   notice.textContent=g.CalendarPresentation.participationText(event.participation,requestReply);
+  const ownRole=personal?g.CalendarPresentation.ownRoleText(event):'';
+  if(ownRole){
+   const role=node('span',ownRole);role.className='portal-own-role';notice.append(role);
+  }
  }
  function paint(result){latestResult=result;globalThis.DeckelMobile?.sync();
   for(const target of ['portal-evidence','account','portal-points','more-year-plan','more-breathing','more-hydrants','more-regulations','more-training','more-contacts','more-water','theater-phone-section'])for(const tile of (document.querySelectorAll?.('[data-deckel-target="'+target+'"],[data-portal-tile="'+target+'"]')||[]))tile.hidden=result.fitnessTrainer===true;
