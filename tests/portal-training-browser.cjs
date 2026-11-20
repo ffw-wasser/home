@@ -44,7 +44,7 @@ material.library={...material.library,'radio-device':material.library['radio-dev
  await page.setViewportSize({width:390,height:844});
  await page.evaluate(()=>{Object.defineProperty(navigator,'userAgent',{value:'Synthetic WebView H2ONative/1 H2OFunkBrowser/1'});DeckelMobile.jump('training-radio');});
  await page.getByRole('button',{name:/Lernvideos/}).click();
- const nativeLink=videos.getByRole('link',{name:'Video öffnen',exact:true});
+ const nativeLink=videos.getByRole('link',{name:'Video laden',exact:true});
  await nativeLink.waitFor();
  assert.equal(await nativeLink.getAttribute('href'),'https://www.instagram.com/reel/Df9f91IyBTQ/');
  assert.equal(await nativeLink.getAttribute('target'),null,'the native browser intercepts a main-frame link');
@@ -58,6 +58,13 @@ material.library={...material.library,'radio-device':material.library['radio-dev
   sizes['h2o-funk-lernvideos']={width:Math.round(width),height:Math.round(height)};
   fs.writeFileSync(index,JSON.stringify(sizes,null,2)+'\n');
  }
+ const reelUrl='https://www.instagram.com/reel/Df9f91IyBTQ/';
+ await page.route(reelUrl,route=>route.fulfill({status:204}));
+ const [opening]=await Promise.all([page.waitForRequest(reelUrl),nativeLink.click()]);
+ assert.equal(opening.isNavigationRequest(),true);
+ assert.equal(opening.frame(),page.mainFrame(),'one tap starts a main-frame navigation for the native browser');
+ assert.equal((await opening.allHeaders()).referer,undefined);
+ assert.equal(embedRequests.length,1,'the native button does not request the Instagram embed');
  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
  const automatic=await page.evaluate(async material=>{window.oneDriveAdministrationReady=()=>true;window.oneDriveReadTraining=async()=>material;adminUnlocked=false;DrinksStore.sourceKey=()=> 'training-test-source';DrinksCentral.connection=async()=>({source:'training-test-source'});window.syncWrites=[];DrinksPush.request=async(c,path,data)=>{syncWrites.push({path,write:!!data.material,edition:data.material?.edition});return data.material?{ok:true,version:1}:{version:0,configured:false};};await PortalTraining.sync();return syncWrites;},material);assert.equal(automatic.filter(x=>x.write).length,1,'automatic sync needs no administration unlock or upload click');assert.equal(automatic.find(x=>x.write).edition.length,48);
  assert.deepEqual(errors,[]);console.log('PASS protected training UI, guest/public denial, enlarged text, original image, opt-in video embed, logout and late-response cleanup.');

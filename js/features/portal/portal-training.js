@@ -27,7 +27,7 @@ function renderRadioVideos(){
  const card=section('Funkstatus 0 bis 9');
  const notice=node('p','Beim Öffnen des Videos wird eine Verbindung zu Instagram (Meta) hergestellt.');notice.className='note';
  if(/(?:^|\s)H2OFunkBrowser\/1(?:\s|$)/.test(navigator.userAgent)){
-  const open=node('a','Video öffnen');open.href=reel;open.className='radio-video-link';open.rel='noreferrer';
+  const open=node('a','Video laden');open.href=reel;open.className='radio-video-link';open.rel='noreferrer';
   card.append(notice,open);page.replaceChildren(back,node('h2','Lernvideos'),card);
   return;
  }
