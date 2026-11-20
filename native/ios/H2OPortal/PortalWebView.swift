@@ -1,6 +1,7 @@
 import SwiftUI
 import WebKit
 import UIKit
+import SafariServices
 
 struct PortalWebView: UIViewRepresentable {
     @ObservedObject var model: PortalModel
@@ -97,6 +98,19 @@ struct PortalWebView: UIViewRepresentable {
                 decisionHandler(.cancel); return
             }
             if !model.review && PortalLinks.isReview(url) { decisionHandler(.cancel); return }
+            if !model.review, let source = action.sourceFrame.request.url,
+               PortalLinks.opensRadioVideo(from: source, to: url, mainFrame: action.sourceFrame.isMainFrame,
+                                          userInitiated: action.navigationType == .linkActivated) {
+                decisionHandler(.cancel)
+                guard let controller = webView.window?.rootViewController, controller.presentedViewController == nil else {
+                    model.message = "Das Video konnte nicht geöffnet werden. Bitte erneut versuchen."
+                    return
+                }
+                let browser = SFSafariViewController(url: PortalLinks.radioVideo)
+                browser.dismissButtonStyle = .close
+                controller.present(browser, animated: true)
+                return
+            }
             if PortalLinks.trusted(url) {
                 if let destination = PortalLinks.destination(url), destination != url {
                     decisionHandler(.cancel)

@@ -10,6 +10,13 @@ enum PortalLinks {
     static let home = URL(string: "https://ffw-wasser.github.io/home/deckel.html")!
     static let host = "ffw-wasser.github.io"
     #endif
+    static let radioVideo = URL(string: "https://www.instagram.com/reel/Df9f91IyBTQ/")!
+
+    static func opensRadioVideo(from source: URL, to destination: URL, mainFrame: Bool, userInitiated: Bool) -> Bool {
+        mainFrame && userInitiated && trusted(source) && source.host == "ffw-wasser.github.io" &&
+            source.path == "/home/deckel.html" && destination.absoluteString == radioVideo.absoluteString
+    }
+
     static let privacy = URL(string: "https://ffw-wasser.github.io/home/privacy.html")!
     static func isPublicPrivacy(_ url: URL) -> Bool { url.absoluteString == privacy.absoluteString }
     static let review = URL(string: "https://ffw-wasser.github.io/home/review.html")!
