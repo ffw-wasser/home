@@ -1,7 +1,6 @@
 import SwiftUI
 import WebKit
 import UIKit
-import SafariServices
 
 struct PortalWebView: UIViewRepresentable {
     @ObservedObject var model: PortalModel
@@ -102,13 +101,11 @@ struct PortalWebView: UIViewRepresentable {
                PortalLinks.opensRadioVideo(from: source, to: url, mainFrame: action.sourceFrame.isMainFrame,
                                           userInitiated: action.navigationType == .linkActivated) {
                 decisionHandler(.cancel)
-                guard let controller = webView.window?.rootViewController, controller.presentedViewController == nil else {
-                    model.message = "Das Video konnte nicht geöffnet werden. Bitte erneut versuchen."
-                    return
+                Task {
+                    if !(await UIApplication.shared.open(PortalLinks.radioVideo, options: [.universalLinksOnly: true])) {
+                        model.message = "Das Video konnte nicht in der Instagram-App geöffnet werden."
+                    }
                 }
-                let browser = SFSafariViewController(url: PortalLinks.radioVideo)
-                browser.dismissButtonStyle = .close
-                controller.present(browser, animated: true)
                 return
             }
             if PortalLinks.trusted(url) {

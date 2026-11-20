@@ -5,7 +5,7 @@ import java.net.URI
 /** Only the member portal and appointment entry point can receive native links. */
 object PortalLinks {
     const val HOME = "https://ffw-wasser.github.io/home/deckel.html"
-    const val RADIO_VIDEO = "https://www.instagram.com/reel/Df9f91IyBTQ/"
+    const val RADIO_VIDEO = "https://www.instagram.com/reel/Df9f91IyBTQ"
 
     fun opensRadioVideo(source: String, destination: String, userInitiated: Boolean): Boolean =
         userInitiated && trusted(source) && URI(source).rawPath == "/home/deckel.html" && destination == RADIO_VIDEO

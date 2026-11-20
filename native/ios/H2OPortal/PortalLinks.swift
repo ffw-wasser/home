@@ -10,7 +10,7 @@ enum PortalLinks {
     static let home = URL(string: "https://ffw-wasser.github.io/home/deckel.html")!
     static let host = "ffw-wasser.github.io"
     #endif
-    static let radioVideo = URL(string: "https://www.instagram.com/reel/Df9f91IyBTQ/")!
+    static let radioVideo = URL(string: "https://www.instagram.com/reel/Df9f91IyBTQ")!
 
     static func opensRadioVideo(from source: URL, to destination: URL, mainFrame: Bool, userInitiated: Bool) -> Bool {
         mainFrame && userInitiated && trusted(source) && source.host == "ffw-wasser.github.io" &&

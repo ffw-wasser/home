@@ -14,8 +14,6 @@ import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.browser.customtabs.CustomTabsClient
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -124,7 +122,7 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true; domStorageEnabled = true
             allowFileAccess = false; allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            userAgentString += " H2ONative/1 Android H2OFunkBrowser/1"
+            userAgentString += " H2ONative/1 Android"
             setSupportMultipleWindows(true)
         }
         passkeysSupported = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)
@@ -192,19 +190,10 @@ class MainActivity : ComponentActivity() {
         } else web.loadUrl(link)
     }
     private fun openRadioVideo() {
-        val browsers = packageManager.queryIntentActivities(
-            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.org/")).addCategory(Intent.CATEGORY_BROWSABLE), 0
-        ).map { it.activityInfo.packageName }.distinct()
-        val provider = CustomTabsClient.getPackageName(this, browsers)
-        if (provider == null) {
-            notice("Für das Video wird ein Browser mit Unterstützung für In-App-Tabs benötigt.")
-            return
-        }
-        runCatching {
-            val tab = CustomTabsIntent.Builder().build()
-            tab.intent.setPackage(provider)
-            tab.launchUrl(this, Uri.parse(PortalLinks.RADIO_VIDEO))
-        }.onFailure { notice("Das Video konnte nicht geöffnet werden. Bitte erneut versuchen.") }
+        val reel = Intent(Intent.ACTION_VIEW, Uri.parse(PortalLinks.RADIO_VIDEO))
+            .setPackage("com.instagram.android")
+        runCatching { startActivity(reel) }
+            .onFailure { notice("Das Video konnte nicht in der Instagram-App geöffnet werden.") }
     }
     private fun external(uri: Uri) {
         PortalLinks.calendarTime(uri.toString())?.let { time ->

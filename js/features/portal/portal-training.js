@@ -14,7 +14,7 @@ function section(title){const card=node('section');card.className='training-card
 function renderRadioVideos(){
  const radio=$('training-radio'),page=$('radio-videos');
  if(!radio||!page||$('review-banner'))return;
- const reel='https://www.instagram.com/reel/Df9f91IyBTQ/';
+ const reel='https://www.instagram.com/reel/Df9f91IyBTQ';
  const grid=radio.querySelector('.portal-more-grid')||node('div');
  grid.classList.add('portal-more-grid');
  if(!grid.parentElement)radio.append(grid);
@@ -26,22 +26,10 @@ function renderRadioVideos(){
  const back=node('button','← Zurück zu Funk');back.type='button';back.className='secondary portal-more-back';back.dataset.moreTarget='training-radio';
  const card=section('Funkstatus 0 bis 9');
  const notice=node('p','Beim Öffnen des Videos wird eine Verbindung zu Instagram (Meta) hergestellt.');notice.className='note';
- if(/(?:^|\s)H2OFunkBrowser\/1(?:\s|$)/.test(navigator.userAgent)){
-  const open=node('a','Video laden');open.href=reel;open.className='radio-video-link';open.rel='noreferrer';
-  card.append(notice,open);page.replaceChildren(back,node('h2','Lernvideos'),card);
-  return;
- }
- const loadVideo=node('button','Video laden');loadVideo.type='button';
- const link=node('a','In Instagram öffnen ↗');link.href=reel;link.target='_blank';link.rel='noopener noreferrer';
- const fallback=node('p');fallback.className='note';fallback.append(link);
- loadVideo.onclick=()=>{
-  if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
-  const player=node('iframe');player.className='radio-video-player';player.title='Lernvideo Funk · Instagram';
-  player.referrerPolicy='no-referrer';player.setAttribute('sandbox','allow-scripts allow-same-origin');
-  player.allowFullscreen=true;player.src=reel+'embed/';
-  loadVideo.replaceWith(player);
- };
- card.append(notice,loadVideo,fallback);page.replaceChildren(back,node('h2','Lernvideos'),card);
+ const link=node('a','In Instagram öffnen');
+ link.href=reel;link.className='radio-video-link';link.rel='noopener noreferrer';
+ if(!/(?:^|\s)H2ONative\/1(?:\s|$)/.test(navigator.userAgent))link.target='_blank';
+ card.append(notice,link);page.replaceChildren(back,node('h2','Lernvideos'),card);
 }
 async function load(pageId='radio-device'){
  clear();const status=$('portal-page-'+pageId)?.querySelector('[role=status]');if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
