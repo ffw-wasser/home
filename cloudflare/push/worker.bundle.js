@@ -23080,6 +23080,12 @@ g.PortalHydrants={schema,route};
   if(/^\/(?:admin\/)?portal\/whatsapp-/.test(path))fail('WhatsApp-Erinnerungen sind entfallen. Bitte H₂O-Erinnerungen verwenden.',410);
   if(path==='/portal/calendar-subscription')return g.PortalCalendarSubscriptions.subscription(env,data,record);
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
+  if(path==='/portal/training/video'){
+   await assertMember(env,record,false);
+   const video=await env.MIGRATION_FILES?.get('training/Funkstatus-0-bis-9.mp4');
+   if(!video?.body)fail('Das Lernvideo ist derzeit nicht verfügbar.',404);
+   return new Response(video.body,{headers:{'Content-Type':'video/mp4'}});
+  }
   if(path==='/portal/training'||path==='/admin/portal/training'){
    if(!admin)await assertMember(env,record);
    const row=await env.DB.prepare('SELECT * FROM portal_training WHERE id=1').first();
@@ -23967,7 +23973,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"2a45c855e09cc361a4c92f25c1795a61e29a6e76b2932525b7ff0a5ef7f47192",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"412504818ac617df80fc20ba13739bde7f339865d86066dea040eb6ec5e37c7e",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
@@ -24002,7 +24008,7 @@ export default {
    }
    if(globalThis.PortalService&&(path.startsWith('/portal/')||path.startsWith('/admin/portal/'))){
     const value=await body(request,path==='/admin/portal/training'?750000:path==='/portal/calendar-addon/groups'?130000:path==='/admin/portal/hydrants/chunk'?270000:(path==='/admin/portal/roster'||path==='/admin/portal/theater/save')?512000:path.startsWith('/portal/passkey/')?32000:6000);
-    try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(path==='/portal/regulations/pdf'&&result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline'}});return reply(result);}
+    try{const result=await globalThis.PortalService.route(path,value,env,auth,request.headers.get('CF-Connecting-IP')||'unknown',ctx);if(result instanceof Response)return new Response(result.body,{status:result.status,headers:{...headers,'Content-Type':result.headers.get('Content-Type'),'Content-Disposition':'inline'}});return reply(result);}
     catch(error){return reply({error:error.status?error.message:'Portal derzeit nicht erreichbar. Bitte erneut prüfen.',...(path==='/portal/widget-reply'&&error.status===409&&error.widgetReply?{currentReply:error.widgetReply}:{})},error.status||503);}
    }
    if(globalThis.DeckelChallengeService&&(path.startsWith('/challenge/')||path.startsWith('/admin/challenge/'))){

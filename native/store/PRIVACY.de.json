@@ -111,15 +111,9 @@
       ]
     },
     {
-      "title": "Instagram-Lernvideos",
+      "title": "Funk-Lernvideos",
       "paragraphs": [
-        "Wenn du unter Ausbildung → Funk → Lernvideos das Video öffnest, verbindet sich dein Gerät mit Instagram (Meta Platforms Ireland Limited). Dabei kann Meta zum Beispiel deine IP-Adresse, Browserinformationen und vorhandene Instagram-Cookies verarbeiten. Es gelten die Datenschutzhinweise von Meta."
-      ],
-      "links": [
-        [
-          "Meta – Datenschutzrichtlinie",
-          "https://privacycenter.instagram.com/policy/"
-        ]
+        "Das Funk-Lernvideo wird nach dem Antippen über den H₂O-Dienst (Cloudflare) geladen. Der Dienst prüft deinen bestehenden Mitgliederzugang."
       ]
     },
     {
