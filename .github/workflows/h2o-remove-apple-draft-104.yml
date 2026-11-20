@@ -1,0 +1,82 @@
+name: Remove unsubmitted H2O App Store version 1.0.4
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/h2o-remove-apple-draft-104.yml"]
+
+permissions: {}
+
+jobs:
+  remove-draft:
+    if: github.repository == 'ffw-wasser/home' && github.run_attempt == 1
+    runs-on: xcode-27
+    timeout-minutes: 5
+    environment: apple-testflight-review
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Delete the unattached iOS draft and verify it is gone
+        shell: bash
+        env:
+          API_KEY_BASE64: ${{ secrets.H2O_APPSTORE_API_KEY_BASE64 }}
+          API_KEY_ID: ${{ secrets.H2O_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.H2O_APPSTORE_ISSUER_ID }}
+        run: |
+          node --input-type=module <<'APPLE_DRAFT'
+          import { sign } from 'node:crypto';
+
+          const app = '6827442639';
+          const version = '1.0.4';
+          const platform = 'IOS';
+          const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+          const { API_KEY_BASE64, API_KEY_ID, API_ISSUER_ID } = process.env;
+          if (!API_KEY_BASE64 || !API_KEY_ID || !API_ISSUER_ID) throw Error('App Store Connect API credentials are unavailable.');
+
+          const issued = Math.floor(Date.now() / 1000);
+          const unsigned = encode({ alg: 'ES256', kid: API_KEY_ID, typ: 'JWT' }) + '.' +
+            encode({ iss: API_ISSUER_ID, iat: issued, exp: issued + 180, aud: 'appstoreconnect-v1' });
+          const signature = sign('sha256', Buffer.from(unsigned), {
+            key: Buffer.from(API_KEY_BASE64, 'base64'),
+            dsaEncoding: 'ieee-p1363',
+          }).toString('base64url');
+          const headers = { Authorization: 'Bearer ' + unsigned + '.' + signature };
+          const origin = 'https://api.appstoreconnect.apple.com';
+          const listPath = '/v1/apps/' + app + '/appStoreVersions?' + new URLSearchParams({
+            'filter[versionString]': version,
+            'filter[platform]': platform,
+            include: 'build',
+          });
+
+          async function request(path, method = 'GET', expected = 200) {
+            const response = await fetch(origin + path, {
+              method, headers, redirect: 'error', signal: AbortSignal.timeout(20000),
+            });
+            if (response.status !== expected) throw Error('App Store Connect returned HTTP ' + response.status + ' for ' + method + '.');
+            return expected === 204 ? null : response.json();
+          }
+
+          const listDrafts = async () => {
+            const { data, links } = await request(listPath);
+            if (!Array.isArray(data) || links?.next) throw Error('Unexpected version-list response.');
+            return data;
+          };
+
+          const drafts = await listDrafts();
+          if (drafts.length === 0) {
+            console.log('The iOS App Store draft 1.0.4 does not exist.');
+          } else {
+            const [draft] = drafts;
+            const state = draft.attributes?.appVersionState ?? draft.attributes?.appStoreState;
+            if (drafts.length !== 1 || draft.type !== 'appStoreVersions' ||
+                draft.attributes?.versionString !== version || draft.attributes?.platform !== platform ||
+                state !== 'PREPARE_FOR_SUBMISSION' || draft.relationships?.build?.data !== null ||
+                !/^[a-z0-9-]+$/i.test(draft.id ?? '')) {
+              throw Error('Expected exactly one unsubmitted iOS 1.0.4 draft with no build attached.');
+            }
+            await request('/v1/appStoreVersions/' + draft.id, 'DELETE', 204);
+            if ((await listDrafts()).length !== 0) throw Error('Version 1.0.4 remains visible after deletion.');
+            console.log('Deleted and verified the unattached iOS App Store draft 1.0.4.');
+          }
+          APPLE_DRAFT
