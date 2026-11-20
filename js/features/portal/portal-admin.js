@@ -398,14 +398,16 @@ continue;}
       if(restricted&&!people.length)throw Error('Keine Mitglieder geladen. Bitte Cloudflare synchronisieren und die Kalenderverwaltung erneut öffnen.');
       if(restricted&&!ids.length&&recipientMode!=='automatic')throw Error('Bitte mindestens ein Mitglied für diesen Termin auswählen.');
       if(restricted&&Array.isArray(e.recipientIds)&&e.recipientIds.some(id=>!people.some(check=>check.value===id)))throw Error('Bisherige Empfänger sind nicht vollständig in der Mitgliederliste vorhanden. Bitte Mitgliederabgleich prüfen, bevor du die Auswahl änderst.');
-      // Read the live rule version before editing any targeted member audience.
-      const latest=restricted?await request('list'):null;
-      if(restricted&&(latest?.recipientFeatureVersion!==2&&!(kind.value==='special'&&latest?.recipientFeatureVersion===1))){
+      // Version 2 validates the event, rules and audience atomically on save.
+      // Keep the live compatibility check for older calendar services.
+      const latest=restricted&&cal.recipientFeatureVersion!==2?await request('list'):null;
+      const service=latest||cal;
+      if(restricted&&(service.recipientFeatureVersion!==2&&!(kind.value==='special'&&service.recipientFeatureVersion===1))){
         const active=(await connection()).origin;
         throw Error('Die derzeit verbundene Cloudflare-Adresse ('+active+') unterstützt diese Mitglieder-Auswahl noch nicht. Bitte den neuen worker.bundle.js veröffentlichen, bevor der Termin geändert wird.');
       }
-      if(restricted&&latest.rulesVersion!==cal.rulesVersion)throw Error('Der Termin wurde inzwischen bearbeitet. Bitte neu laden.');
-      if(restricted&&!latest.events.some(item=>item.id===e.id))throw Error('Der Termin wurde inzwischen geändert. Bitte Kalender neu laden.');
+      if(latest&&latest.rulesVersion!==cal.rulesVersion)throw Error('Der Termin wurde inzwischen bearbeitet. Bitte neu laden.');
+      if(latest&&!latest.events.some(item=>item.id===e.id))throw Error('Der Termin wurde inzwischen geändert. Bitte Kalender neu laden.');
       if(isProbe&&cal.attendanceTypeVersion!==1){const active=(await connection()).origin;throw Error('Für die iPad-Terminart muss der Cloudflare-Worker aktualisiert werden ('+active+'). Bitte den aktuellen Worker-Code veröffentlichen. Es wurde nichts gespeichert.');}
       if(isProbe&&['automatic','groups'].includes(recipientMode)&&cal.groupsVersion===undefined)throw Error('Bitte zuerst den Kalenderdienst aktualisieren.');
       const staffingAvailable=cal.staffingVersion===1&&isProbe&&attendanceType.value!=='Fitness';
@@ -414,7 +416,7 @@ continue;}
       const roles=Object.fromEntries(roleInputs.map(([role,input])=>[role,value(input)]).filter(([,count])=>count>0));
       const requirements=value(minimum)||Object.keys(roles).length?{minimum:value(minimum),roles}:null;
       if(staffingAvailable&&latest&&latest.staffingVersion!==1)throw Error('Der Kalenderdienst unterstützt die Besetzung noch nicht. Bitte neu laden.');
-      const data={eventId:e.id,...(staffingAvailable?{staffingRequirements:requirements,organizerId:organizer.value||null}:{}),...(kind.value!=='birthday'?{location:locationChoice.value==='custom'?locationText.value.trim():'GH Wasser'}:{}),clothing:kind.value==='birthday'?'':clothing.value==='custom'?clothingText.value.trim():clothing.value,kind:kind.value==='special'?'probe':kind.value,...(isProbe?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:isProbe&&approval.checked,memberId:kind.value==='birthday'?person.value:null,...(isProbe?{attendanceType:attendanceType.value,recipientIds:ids,recipientMode,expectedGroupsVersion:cal.groupsVersion,...(recipientMode==='groups'?{groupIds:groupChecks.filter(c=>c.checked).map(c=>c.value),includeIds,excludeIds}:{} )}:{}),expectedVersion:restricted?latest.rulesVersion:cal.rulesVersion};
+      const data={eventId:e.id,...(staffingAvailable?{staffingRequirements:requirements,organizerId:organizer.value||null}:{}),...(kind.value!=='birthday'?{location:locationChoice.value==='custom'?locationText.value.trim():'GH Wasser'}:{}),clothing:kind.value==='birthday'?'':clothing.value==='custom'?clothingText.value.trim():clothing.value,kind:kind.value==='special'?'probe':kind.value,...(isProbe?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:isProbe&&approval.checked,memberId:kind.value==='birthday'?person.value:null,...(isProbe?{attendanceType:attendanceType.value,recipientIds:ids,recipientMode,expectedGroupsVersion:cal.groupsVersion,...(recipientMode==='groups'?{groupIds:groupChecks.filter(c=>c.checked).map(c=>c.value),includeIds,excludeIds}:{} )}:{}),expectedVersion:cal.rulesVersion};
       const matches=entry=>restricted?Array.isArray(entry?.recipientIds)&&entry.recipientIds.length===ids.length&&ids.every(id=>entry.recipientIds.includes(id)):!Array.isArray(entry?.recipientIds);
       // Current Workers validate recipients and approval together, in one D1
       // rules update. Never temporarily turn off approval: a timeout between
@@ -423,7 +425,15 @@ continue;}
       const saved=await request('classify',data);if(access!==generation)return;
       if(isProbe&&(![1,2].includes(saved.recipientFeatureVersion)||kind.value==='probe'&&restricted&&saved.recipientFeatureVersion!==2||!matches(saved)))throw Error('Der Cloudflare-Worker hat die Empfängerliste nicht bestätigt. Bitte Worker aktualisieren und Einordnung prüfen.');
       if(kind.value!=='birthday'&&saved.clothingVersion!==1)throw Error('Die Kleidung wurde vom Dienst nicht bestätigt. Bitte Kalender neu laden.');
-      admin();const confirmed=await request('list');if(access!==generation)return;admin();const stored=confirmed.events.find(item=>item.id===e.id);
+      admin();
+      let confirmed;
+      try{confirmed=await request('list');}
+      catch(error){
+       if(access!==generation)return;
+       reviewSnapshot.stale=true;resetEditor();$('review-load').hidden=false;
+       throw Error('Der Dienst hat die Speicherung bestätigt. Die Terminansicht konnte noch nicht aktualisiert werden. '+(error?.message||''));
+      }
+      if(access!==generation)return;admin();const stored=confirmed.events.find(item=>item.id===e.id);
       if(staffingAvailable&&(JSON.stringify(stored?.staffingRequirements??null)!==JSON.stringify(requirements)||(stored?.organizerId??null)!==data.organizerId))throw Error('Die Terminbesetzung wurde nicht bestätigt. Bitte Kalender neu laden und prüfen.');
       if(isProbe&&!matches(stored))throw Error('Die Empfängerauswahl konnte nach dem Speichern nicht bestätigt werden. Bitte Kalender neu laden und Empfänger prüfen.');
       if(stored?.approved!==data.approved)throw Error('Die Freigabe für die Terminanzeige wurde nicht wie gewünscht übernommen. Bitte den Termin prüfen.');
