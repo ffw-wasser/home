@@ -219,17 +219,15 @@
   const notice=node('p');
   paintParticipation(notice,event,true);
   if(event.participation.minimum){
+   box.dataset.staffing='';
    const [headline,...details]=notice.textContent.split(' · ');
-   notice.replaceChildren(node('span','Besetzung'),node('strong',headline));
-   if(details.length)notice.append(node('small',details.join(' · ')));
-  }
+   notice.replaceChildren(node('strong',headline));
+   if(details.length)notice.append(node('span',' · '+details.join(' · ')));
+  }else delete box.dataset.staffing;
   box.replaceChildren(notice);
   if(event.status==='yes'&&event.participation.ownRole){
-   const {role,vehicle,withoutBreathing}=g.CalendarPresentation.crewAssignmentParts(event.participation.ownRole);
-   const assignment=node('div');assignment.className='portal-own-role';
-   assignment.append(node('span','Für dich vorgesehen'),node('strong',role));
-   const detail=[vehicle,withoutBreathing?'ohne Atemschutz':''].filter(Boolean).join(' · ');
-   if(detail)assignment.append(node('small',detail));
+   const assignment=node('p');assignment.className='portal-own-role';
+   assignment.append(node('strong','Für dich vorgesehen'),node('span',' · '),node('span',g.CalendarPresentation.crewAssignmentLabel(event.participation.ownRole)));
    box.append(assignment);
   }
  }

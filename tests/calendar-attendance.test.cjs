@@ -177,7 +177,9 @@ test('Normale Probe speichert korrigierte Empfänger ohne Terminartwechsel und b
  list.children[1].children[0].checked=true;list.children[1].children[0].onchange();
  const save=descendants(card).find(n=>n.tagName==='BUTTON'&&n.textContent==='Speichern');
  assert.ok(save);
+ const requestsBeforeSave=f.requests.length;
  await save.onclick();
+ assert.deepEqual(f.requests.slice(requestsBeforeSave).filter(path=>path.endsWith('/list')),['/admin/portal/list']);
  assert.equal(payload.kind,'probe');assert.equal(payload.sessionType,'Probe');assert.equal(payload.attendanceType,'Allgemeine Probe');
  assert.deepEqual(Array.from(payload.recipientIds),['one','two']);
  assert.equal(f.privateCal.events[0].approved,true);

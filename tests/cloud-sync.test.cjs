@@ -89,3 +89,30 @@ test('Safety indicators refresh after remote sync, identical confirmation and lo
  seen.length=0;await f.c.syncOneDrive();assert.ok(seen.length>0,'unchanged state also refreshes date-dependent hints');
  f.c.members[0].firstName='Lokale Nachweisänderung';f.c.scheduleCloudSync();assert.equal(seen.at(-1),'Lokale Nachweisänderung');
 });
+
+test('Later automatic report downloads leave the cloud state available for new saves',async()=>{
+ const f=setup();
+ assert.equal(await f.c.syncOneDrive({refreshHistory:true}),true);
+ let finishHistory,started=false;
+ f.c.loadOneDriveHistory=()=>{started=true;return new Promise(resolve=>{finishHistory=resolve;});};
+ assert.equal(await f.c.syncOneDrive({refreshHistory:true}),true);
+ assert.equal(started,true);
+ f.c.members[0].firstName='Edit during report download';f.c.scheduleCloudSync();
+ assert.equal(await f.c.syncOneDrive(),true);
+ assert.equal(f.remote.members[0].firstName,'Edit during report download');
+ finishHistory(false);
+ await new Promise(setImmediate);
+ assert.equal(f.c.getAppStorageState().kind,'cloud');
+});
+
+test('A manual report failure after startup preserves a successful cloud state save',async()=>{
+ const f=setup(),messages=[];
+ f.c.showToast=message=>messages.push(message);
+ assert.equal(await f.c.syncOneDrive({refreshHistory:true}),true);
+ f.c.members[0].firstName='Confirmed edit';f.c.scheduleCloudSync();
+ f.c.loadOneDriveHistory=async()=>false;
+ assert.equal(await f.c.syncOneDrive({manual:true}),false);
+ assert.equal(f.remote.members[0].firstName,'Confirmed edit');
+ assert.equal(f.c.getAppStorageState().kind,'cloud');
+ assert.match(messages.at(-1),/Daten gespeichert.*Berichte/);
+});

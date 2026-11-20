@@ -59,6 +59,11 @@ function retireOneDriveSettings(){
  for(const store of [safeStorage,localStorage,sessionStorage])for(const key of keys)store.removeItem('fw_onedrive_'+key);
  window.sanitizeSafetySnapshots?.();return true;
 }
+async function refreshCloudHistory(epoch){
+ if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||'Berichte konnten nicht vollständig geladen werden.');
+ assertOneDriveSession(epoch);
+ cloudHistoryConfirmed=true;
+}
 async function syncOneDrive({manual=false,refreshHistory=manual}={}){
  if(!oneDriveSignedIn()||navigator.onLine===false){notifyAppStorageState();return false;}
  if(oneDriveBusy){oneDriveResyncRequested=true;return false;}
@@ -95,9 +100,24 @@ async function syncOneDrive({manual=false,refreshHistory=manual}={}){
    for(const key of ['fw_onedrive_tokens','fw_onedrive_pkce','fw_onedrive_admin_return','fw_onedrive_silent_retry','fw_onedrive_verified_root']){localStorage.removeItem(key);sessionStorage.removeItem(key);}
   }
   window.Drinks?.preload?.();
-  if(refreshHistory&&typeof window.loadOneDriveHistory==='function'){if(await window.loadOneDriveHistory()===false)throw new Error(window.oneDriveHistoryLastError||'Berichte konnten nicht vollständig geladen werden.');cloudHistoryConfirmed=true;}
+  oneDriveLastError='';oneDriveLastFailure=null;oneDriveNeedsLogin=false;
+  if(refreshHistory&&typeof window.loadOneDriveHistory==='function'){
+   if(oneDriveStartupConfirmed&&!manual){
+    // The initial report load gates startup. Later automatic loads can run
+    // alongside state saves and already share one in-flight history request.
+    void refreshCloudHistory(epoch).then(()=>window.PortalAdmin?.syncRoster?.()).catch(()=>{});
+   }else{
+    try{await refreshCloudHistory(epoch);}
+    catch(error){
+     if(!oneDriveStartupConfirmed)throw error;
+     assertOneDriveSession(epoch);
+     if(manual)showToast('Daten gespeichert. '+error.message,'error');
+     return false;
+    }
+   }
+  }
   if(cloudHistoryConfirmed&&oneDriveStateConfirmed){oneDriveStartupConfirmed=true;retireOneDriveSettings();}
-  oneDriveLastError='';oneDriveLastFailure=null;oneDriveNeedsLogin=false;if(manual)showToast('Daten und Berichte mit Cloudflare synchronisiert.');return true;
+  if(manual)showToast('Daten und Berichte mit Cloudflare synchronisiert.');return true;
  }catch(error){if(epoch!==oneDriveSessionEpoch)return false;oneDriveLastError=error.message||'Speicherung nicht bestätigt.';oneDriveLastFailure=error;oneDriveStateConfirmed=false;if(error.status===401){oneDriveNeedsLogin=true;oneDriveAccessConfirmed=false;oneDriveStartupConfirmed=false;}if(manual)showToast(oneDriveLastError,'error');return false;
  }finally{oneDriveBusy=false;renderOneDriveDialog();notifyAppStorageState();const again=oneDriveResyncRequested||oneDriveLocalRevision>startRevision;oneDriveResyncRequested=false;if(again&&epoch===oneDriveSessionEpoch&&oneDriveSignedIn()){clearTimeout(oneDriveTimer);oneDriveTimer=setTimeout(()=>syncOneDrive(),oneDriveLastError?5000:900);}}
 }
