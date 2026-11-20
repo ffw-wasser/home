@@ -4,11 +4,15 @@ const root=path.resolve(__dirname,'..'),base64='/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD
 const material={library:require('./helpers/training-library.cjs').library,schemaVersion:1,title:'Synthetische Funkhilfe',steps:Array.from({length:6},(_,i)=>'Testschritt '+i),groups:[{mode:'TMO',code:'TEST',label:'Erfundene Gruppe'},{mode:'DMO',code:'DEMO',label:'Erfundener Ort'}],notes:['Nur Testdaten'],image:{mime:'image/jpeg',base64,sha256:createHash('sha256').update(Buffer.from(base64,'base64')).digest('hex')}};
 material.library={...material.library,'radio-device':material.library['radio-device'].replace('</section>','<article class="training-card training-source-card"><h3>Zum Nachschlagen</h3><a href="https://example.test/manual.pdf">Synthetische Kurzanleitung (PDF)</a></article></section>')};material.notes=['Testschritt 0','Nur Testdaten','Nur Testdaten'];material.library['radio-device']=material.library['radio-device'].replace('</section>','<article class="training-card"><div class="radio-illustrations"><figure class="radio-illustration"><figcaption><strong>Ansicht A</strong><br>Gemeinsame Displayinformation.</figcaption></figure><figure class="radio-illustration"><figcaption><strong>Ansicht B</strong><br>Gemeinsame Displayinformation.</figcaption></figure></div><p class="note">Synthetische Beispielanzeigen. Den Testschritt beachten.</p></article></section>');
 (async()=>{const browser=await chromium.launch({headless:true});try{
- const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)?route.fulfill({path:file}):route.abort();});
+ const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[],embedRequests=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',route=>{const u=new URL(route.request().url()),file=path.resolve(root,u.pathname.replace(/^\/home\//,''));if(u.origin==='https://www.instagram.com'){
+  embedRequests.push(route.request());
+  return route.fulfill({contentType:'text/html',body:'<!doctype html><title>Testvideo</title><p>Synthetischer Videoplayer</p>'});
+ }return u.origin==='https://ffw-wasser.github.io'&&file.startsWith(root+path.sep)&&fs.existsSync(file)?route.fulfill({path:file}):route.abort();});
  await page.goto('https://ffw-wasser.github.io/home/deckel.html');await page.locator('#h2oStartup').waitFor({state:'hidden'});await page.keyboard.press('Escape');
  await page.evaluate(()=>{window.privateCalls=0;H2OPortal.hasAccess=()=>false;H2OPortal.api=async()=>{privateCalls++;return {}};DeckelMobile.show(true);DeckelMobile.jump('radio-device');});
  assert.equal(await page.evaluate(()=>privateCalls),0);assert.equal(await page.locator('#radio-private-content').count(),0);
+ assert.equal(await page.evaluate(()=>DeckelMobile.jump('radio-videos')),false);
  await page.evaluate(material=>{H2OPortal.hasAccess=()=>true;H2OPortal.isFitnessTrainer=()=>false;H2OPortal.api=async()=>{privateCalls++;return {material}};DeckelMobile.jump('training-radio');DeckelMobile.jump('radio-device');},material);
  await page.locator('.radio-original').waitFor({state:'attached'});assert.equal(await page.locator('#radio-private-content > h3').count(),0);assert.equal(await page.locator('#radio-device .training-source-card').count(),0);assert.equal(await page.locator('.radio-original .radio-manual-link a').count(),1);assert.equal(await page.locator('#radio-private-content').getByText('Testschritt 0',{exact:true}).count(),0);assert.equal(await page.locator('#radio-private-content').getByText('Nur Testdaten',{exact:true}).count(),1);assert.equal(await page.locator('#radio-device .radio-illustration figcaption strong').count(),2);assert.equal(await page.getByText('Synthetische Beispielanzeigen. Gemeinsame Displayinformation.',{exact:true}).count(),1);assert.equal(await page.locator('#radio-device .radio-illustration figcaption').filter({hasText:'Gemeinsame Displayinformation.'}).count(),0);await page.locator('.radio-original summary').click();await page.locator('.radio-original img').evaluate(img=>img.decode());
  for(const width of [320,390,768]){await page.setViewportSize({width,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='200%');assert.equal(await page.locator('#radio-device').evaluate(n=>n.scrollWidth>n.clientWidth+1),false);}
@@ -17,7 +21,35 @@ material.library={...material.library,'radio-device':material.library['radio-dev
  await page.evaluate(()=>{window.pendingMaterial=null;H2OPortal.api=()=>new Promise(resolve=>pendingMaterial=resolve);DeckelMobile.jump('training-radio');DeckelMobile.jump('radio-device');DeckelMobile.jump('more-help');});
  await page.evaluate(material=>pendingMaterial({material}),material);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));assert.equal(await page.locator('#radio-private-content').count(),0,'late responses cannot restore protected content after leaving');
  await page.evaluate(()=>{H2OPortal.isFitnessTrainer=()=>true;window.privateCalls=0;H2OPortal.api=async()=>{privateCalls++;return {}};DeckelMobile.jump('radio-device');});assert.equal(await page.evaluate(()=>privateCalls),0);
+ assert.equal(await page.evaluate(()=>DeckelMobile.jump('radio-videos')),false);
+ await page.setViewportSize({width:390,height:844});
+ await page.evaluate(material=>{H2OPortal.isFitnessTrainer=()=>false;H2OPortal.api=async()=>({material});DeckelMobile.jump('training-radio');},material);
+ await page.getByRole('button',{name:/Lernvideos/}).click();
+ const videos=page.locator('#radio-videos'),player=videos.locator('iframe');
+ await videos.getByRole('heading',{name:'Lernvideos'}).waitFor();
+ assert.equal(embedRequests.length,0);
+ assert.match(await videos.getByRole('link',{name:/In Instagram öffnen/}).getAttribute('href'),/^https:\/\/www\.instagram\.com\/reel\/Df9f91IyBTQ\/$/);
+ if(process.env.CAPTURE_FUNK_VIDEOS_HELP){
+  const directory=path.join(root,'assets/help/guide');
+  await videos.screenshot({path:path.join(directory,'h2o-funk-lernvideos.jpg'),type:'jpeg',quality:82,animations:'disabled'});
+  const index=path.join(directory,'screens.json'),sizes=JSON.parse(fs.readFileSync(index,'utf8'));
+  const {width,height}=await videos.boundingBox();
+  sizes['h2o-funk-lernvideos']={width:Math.round(width),height:Math.round(height)};
+  fs.writeFileSync(index,JSON.stringify(sizes,null,2)+'\n');
+ }
+ await videos.getByRole('button',{name:'Video laden',exact:true}).click();
+ await videos.frameLocator('iframe').getByText('Synthetischer Videoplayer').waitFor();
+ assert.equal(embedRequests.length,1);
+ assert.equal(embedRequests[0].url(),'https://www.instagram.com/reel/Df9f91IyBTQ/embed/');
+ assert.equal((await embedRequests[0].allHeaders()).referer,undefined);
+ await page.setViewportSize({width:320,height:720});
+ assert.equal(await videos.evaluate(n=>n.scrollWidth>n.clientWidth+1),false);
+ await videos.getByRole('button',{name:/Zurück zu Funk/}).click();
+ assert.equal(await player.count(),0);
+ await page.getByRole('button',{name:/Lernvideos/}).click();
+ await videos.getByRole('button',{name:'Video laden',exact:true}).waitFor();
+ assert.equal(embedRequests.length,1);
  await page.goto('https://ffw-wasser.github.io/home/index.html');await page.evaluate(()=>{AppStartup.update({ready:true});AppStartup.update=()=>{};});await page.locator('#appStartup').waitFor({state:'hidden'});
  const automatic=await page.evaluate(async material=>{window.oneDriveAdministrationReady=()=>true;window.oneDriveReadTraining=async()=>material;adminUnlocked=false;DrinksStore.sourceKey=()=> 'training-test-source';DrinksCentral.connection=async()=>({source:'training-test-source'});window.syncWrites=[];DrinksPush.request=async(c,path,data)=>{syncWrites.push({path,write:!!data.material,edition:data.material?.edition});return data.material?{ok:true,version:1}:{version:0,configured:false};};await PortalTraining.sync();return syncWrites;},material);assert.equal(automatic.filter(x=>x.write).length,1,'automatic sync needs no administration unlock or upload click');assert.equal(automatic.find(x=>x.write).edition.length,48);
- assert.deepEqual(errors,[]);console.log('PASS protected training UI, guest/public denial, enlarged text, original image, logout and late-response cleanup.');
+ assert.deepEqual(errors,[]);console.log('PASS protected training UI, guest/public denial, enlarged text, original image, opt-in video embed, logout and late-response cleanup.');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

@@ -2,7 +2,7 @@
 (function(g){
 'use strict';
 const $=id=>document.getElementById(id),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
-let epoch=0,url='',busy=false,dialog=null,syncing=false,lastSync=0,syncSource='';const originalSteps=[],shells=new Map();const trainingPages=new Set(['more-training','training-breathing','breathing-basics','breathing-emergency','training-competition','competition-bronze','competition-silver','competition-gold','training-radio','radio-device','radio-status','radio-examples']);
+let epoch=0,url='',busy=false,dialog=null,syncing=false,lastSync=0,syncSource='';const originalSteps=[],shells=new Map();const trainingPages=new Set(['more-training','training-breathing','breathing-basics','breathing-emergency','training-competition','competition-bronze','competition-silver','competition-gold','training-radio','radio-device','radio-status','radio-examples','radio-videos']);
 function clear(){
  epoch++;busy=false;if(dialog){if(dialog.open)dialog.close();dialog.remove();dialog=null;}
  originalSteps.length=0;for(const [id,shell] of shells){const page=$('portal-page-'+id);page?.replaceChildren(shell.cloneNode(true));}
@@ -11,6 +11,33 @@ function clear(){
  if($('radio-private-retry'))$('radio-private-retry').hidden=true;
 }
 function section(title){const card=node('section');card.className='training-card';card.append(node('h3',title));return card;}
+function renderRadioVideos(){
+ const radio=$('training-radio'),page=$('radio-videos');
+ if(!radio||!page||$('review-banner'))return;
+ const reel='https://www.instagram.com/reel/Df9f91IyBTQ/';
+ const grid=radio.querySelector('.portal-more-grid')||node('div');
+ grid.classList.add('portal-more-grid');
+ if(!grid.parentElement)radio.append(grid);
+ const tile=node('button');tile.type='button';tile.className='portal-more-tile training-card';tile.dataset.moreTarget='radio-videos';
+ const icon=node('span','▶');icon.className='portal-more-icon';icon.setAttribute('aria-hidden','true');
+ const description=node('span','Funkstatus 0 bis 9');description.className='portal-tile-description';
+ tile.append(icon,node('strong','Lernvideos'),description);grid.append(tile);
+
+ const back=node('button','← Zurück zu Funk');back.type='button';back.className='secondary portal-more-back';back.dataset.moreTarget='training-radio';
+ const card=section('Funkstatus 0 bis 9');
+ const notice=node('p','Beim Laden des Videos wird eine Verbindung zu Instagram (Meta) hergestellt.');notice.className='note';
+ const loadVideo=node('button','Video laden');loadVideo.type='button';
+ const link=node('a','In Instagram öffnen ↗');link.href=reel;link.target='_blank';link.rel='noopener noreferrer';
+ const fallback=node('p');fallback.className='note';fallback.append(link);
+ loadVideo.onclick=()=>{
+  if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
+  const player=node('iframe');player.className='radio-video-player';player.title='Lernvideo Funk · Instagram';
+  player.referrerPolicy='no-referrer';player.setAttribute('sandbox','allow-scripts allow-same-origin');
+  player.allowFullscreen=true;player.src=reel+'embed/';
+  loadVideo.replaceWith(player);
+ };
+ card.append(notice,loadVideo,fallback);page.replaceChildren(back,node('h2','Lernvideos'),card);
+}
 async function load(pageId='radio-device'){
  clear();const status=$('portal-page-'+pageId)?.querySelector('[role=status]');if(!g.H2OPortal?.hasAccess()||g.H2OPortal.isFitnessTrainer?.())return;
  const current=epoch;busy=true;if(status)status.textContent='Örtliche Unterlagen werden geschützt geladen …';
@@ -18,7 +45,7 @@ async function load(pageId='radio-device'){
   const {material}=await g.H2OPortal.api('training');if(current!==epoch)return;
   if(!material||!material.library||material.schemaVersion!==1||!Array.isArray(material.steps)||material.steps.length!==6||!Array.isArray(material.groups)||!Array.isArray(material.notes)||material.image?.mime!=='image/jpeg')throw Error('Die Ausbildungsunterlagen werden noch vom Gerätehaus bereitgestellt. Bitte die Gerätehaus-App aktualisieren.');
   if(material.library){
-   for(const [id,html] of Object.entries(material.library)){if(!trainingPages.has(id))continue;const page=$('portal-page-'+id);if(!page)continue;const parsed=new DOMParser().parseFromString(html,'text/html');
+   for(const [id,html] of Object.entries(material.library)){if(!trainingPages.has(id)||id==='radio-videos')continue;const page=$('portal-page-'+id);if(!page)continue;const parsed=new DOMParser().parseFromString(html,'text/html');
     for(const n of parsed.querySelectorAll('script,iframe,object,embed,form,base,meta,link'))n.remove();
     for(const n of parsed.querySelectorAll('*'))for(const a of [...n.attributes])if(/^on/i.test(a.name)||['srcdoc','action','formaction'].includes(a.name)||['href','src','xlink:href'].includes(a.name)&&(!/^(?:https:\/\/|assets\/|#)/.test(a.value)||/javascript:/i.test(a.value)))n.removeAttribute(a.name);
     page.replaceChildren(...[...parsed.body.childNodes].map(n=>document.importNode(n,true)));
@@ -50,6 +77,7 @@ async function load(pageId='radio-device'){
   const manuals=new Set();for(const link of document.querySelectorAll('#radio-device .training-source-card a, #radio-private .radio-manual-link a')){if(manuals.has(link.href))continue;manuals.add(link.href);const p=node('p');p.className='radio-manual-link';p.append(link);original.append(p);}
   document.querySelectorAll('#radio-device .training-source-card, #radio-private > .radio-manual-link').forEach(card=>card.remove());
   content.append(original);$('radio-private-status').textContent='';
+  renderRadioVideos();
  }catch(e){if(current===epoch&&status){status.textContent=e.message||'Unterlagen konnten nicht geladen werden.';}}
  finally{if(current===epoch)busy=false;}
 }

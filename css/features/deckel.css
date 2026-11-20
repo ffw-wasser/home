@@ -330,7 +330,8 @@ body.h2o-portal .portal-training-page .training-card{background-image:none;borde
 .training-dialogue ol{padding-left:1.4em}
 .training-dialogue li{margin:12px 0}
 .training-dialogue li p{margin:4px 0}
-#training-radio .portal-more-tile:last-child{grid-column:1/-1}
+#training-radio .portal-more-tile:nth-child(odd):last-child{grid-column:1/-1}
+.radio-video-player{display:block;width:min(100%,420px);height:clamp(340px,75vh,680px);margin:12px auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .portal-resource-panel{position:relative;margin:0 0 14px;padding:8px 12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .portal-resource-panel p{margin:0 0 8px}
 .portal-resource-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
