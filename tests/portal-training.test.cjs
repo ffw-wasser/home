@@ -52,7 +52,7 @@ test('Funkvideo: nur aktive Feuerwehrmitglieder erhalten die MP4 ohne Cache',asy
  assert.equal((await f.c.worker.fetch(new Request('https://test.example/portal/training/video'),f.env)).status,404);
  assert.deepEqual(read,[]);
  const video=await f.call('training/video',{key:'anderes-objekt'});
- assert.deepEqual(read,['training/funkstatus-0-bis-9.mp4']);
+ assert.deepEqual(read,['training/Funkstatus-0-bis-9.mp4']);
  assert.equal(video.status,200);
  assert.equal(video.headers.get('Content-Type'),'video/mp4');
  assert.equal(video.headers.get('Cache-Control'),'no-store');

@@ -633,7 +633,7 @@
   if(path==='/portal/calendar-preference')return g.CalendarInvitations.preference(env,data,record);
   if(path==='/portal/training/video'){
    await assertMember(env,record,false);
-   const video=await env.MIGRATION_FILES?.get('training/funkstatus-0-bis-9.mp4');
+   const video=await env.MIGRATION_FILES?.get('training/Funkstatus-0-bis-9.mp4');
    if(!video?.body)fail('Das Lernvideo ist derzeit nicht verfügbar.',404);
    return new Response(video.body,{headers:{'Content-Type':'video/mp4'}});
   }
