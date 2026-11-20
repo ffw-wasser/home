@@ -213,11 +213,27 @@
   notice.dataset.state=event.participation.state;
   const requestReply=personal&&event.canReply!==false&&event.start>Date.now()&&event.status==='open';
   notice.textContent=g.CalendarPresentation.participationText(event.participation,requestReply);
-  const ownRole=personal?g.CalendarPresentation.ownRoleText(event):'';
-  if(ownRole){
-   const role=node('span',ownRole);role.className='portal-own-role';notice.append(role);
+ }
+ function paintEventParticipation(box,event){
+  if(!box||!event.participation)return;
+  const notice=node('p');
+  paintParticipation(notice,event,true);
+  if(event.participation.minimum){
+   const [headline,...details]=notice.textContent.split(' · ');
+   notice.replaceChildren(node('span','Besetzung'),node('strong',headline));
+   if(details.length)notice.append(node('small',details.join(' · ')));
+  }
+  box.replaceChildren(notice);
+  if(event.status==='yes'&&event.participation.ownRole){
+   const {role,vehicle,withoutBreathing}=g.CalendarPresentation.crewAssignmentParts(event.participation.ownRole);
+   const assignment=node('div');assignment.className='portal-own-role';
+   assignment.append(node('span','Für dich vorgesehen'),node('strong',role));
+   const detail=[vehicle,withoutBreathing?'ohne Atemschutz':''].filter(Boolean).join(' · ');
+   if(detail)assignment.append(node('small',detail));
+   box.append(assignment);
   }
  }
+
  function paint(result){latestResult=result;globalThis.DeckelMobile?.sync();
   for(const target of ['portal-evidence','account','portal-points','more-year-plan','more-breathing','more-hydrants','more-regulations','more-training','more-contacts','more-water','theater-phone-section'])for(const tile of (document.querySelectorAll?.('[data-deckel-target="'+target+'"],[data-portal-tile="'+target+'"]')||[]))tile.hidden=result.fitnessTrainer===true;
   if(result.fitnessTrainer===true){if($('evidence'))$('evidence').hidden=true;evidencePriority([]);g.PortalEvidenceEditor?.clear();}
@@ -225,7 +241,7 @@
   const card=node('article');card.className='portal-event'+(event.observerOnly===true?' portal-event-observer':'');card.dataset.status=event.participation?.state!=='cancelled'&&['yes','excused','maybe'].includes(event.status)?event.status:'open';card.id='portal-event-'+event.id;const info=node('div');info.className='portal-event-content';info.setAttribute('aria-label','Termininformationen');card.append(info);const month=node('span',eventMonthLabel(event));month.className='portal-month-tab';month.setAttribute('aria-hidden','true');card.append(month);const when=node('button');when.type='button';when.className='portal-event-date';when.setAttribute('aria-label',date(event)+' – Kalender öffnen');when.setAttribute('aria-haspopup','dialog');const time=node('time',date(event));time.setAttribute('datetime',new Date(event.start).toISOString());when.append(time);when.onclick=()=>g.H2OCalendar.show(event);const badges=node('div');badges.className='portal-event-badges';const topic=eventTopic(event);if(String(event.sessionType||'').trim()){badges.append(node('span',event.sessionType));}if(event.organizes)badges.append(node('span','Du organisierst'));if(String(event.sessionType||'').trim()||event.organizes)info.append(badges);info.append(node('h3',topic),when);
   const {day,data:weekData}=weekView(event,upcoming),clock=node('strong',event.allDay?'Ganztägig':new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start))+' Uhr');clock.className='portal-event-clock';time.textContent='';time.append(day);if(weekData.otherCount)when.setAttribute('aria-label',date(event)+' – '+weekData.otherCount+' weitere Termine in dieser Woche – Kalender öffnen');
 
-  if(event.participation){const notice=node('p');notice.setAttribute('role','status');paintParticipation(notice,event,true);info.append(notice);}
+  if(event.participation){const box=node('div');box.className='portal-event-participation';box.setAttribute('role','status');paintEventParticipation(box,event);info.append(box);}
   const details=node('div');details.className='portal-event-details';const practical=node('div');practical.className='portal-event-practical';details.append(practical);info.append(details);
   for(const [symbol,label,value] of [['📍','Ort',event.location||'GH Wasser'],['👕','Kleidung',event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing]]){if(!value)continue;const row=node('p'),icon=node('span',symbol),text=node('span',value);row.className='portal-event-meta';icon.setAttribute('aria-hidden','true');row.setAttribute('aria-label',label+': '+value);if(label==='Kleidung'&&['Einsatzkleidung','Tagesdienst'].includes(value)){text.className='portal-clothing-label';text.dataset.clothing=value;text.title=value;const full=node('span',value),short=node('span',value==='Einsatzkleidung'?'Einsatzkl.':'Tagesd.');full.className='portal-clothing-full';short.className='portal-clothing-short';short.setAttribute('aria-hidden','true');text.textContent='';text.append(full,short);}row.append(icon,text);practical.append(row);if(label==='Ort'){const clockRow=node('p'),clockIcon=node('span','◷');clockRow.className='portal-event-meta portal-event-time';clockIcon.setAttribute('aria-hidden','true');clockRow.setAttribute('aria-label','Beginn: '+clock.textContent);clockRow.append(clockIcon,clock);practical.append(clockRow);}}
   if(event.observerOnly===true&&!event.organizes){
@@ -245,7 +261,7 @@
   responseBadge(latestResult?.events);
   const card=document.getElementById('portal-event-'+event.id);if(!card)return;
   card.dataset.status=event.participation?.state!=='cancelled'&&['yes','excused','maybe'].includes(event.status)?event.status:'open';
-  paintParticipation(card.querySelector('.portal-fitness-participation'),event,true);
+  paintEventParticipation(card.querySelector('.portal-event-participation'),event);
   const answer=card.querySelector('.portal-answer');if(answer)answer.className='portal-answer portal-answer-'+event.status;
   for(const button of card.querySelectorAll('button')){const value=button.dataset.reply;if(!value)continue;const label={yes:'Bin dabei',excused:'Absage',maybe:'Noch unsicher'}[value],selected=event.status===value;button.textContent=({yes:'Dabei',excused:'Absage',maybe:'Unsicher'})[value];button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',(value==='maybe'?'Gesehen, noch unsicher – Erinnerungen bleiben aktiv':label)+(selected?' – ausgewählt, erneut tippen zum Zurücknehmen':''));}
   const hint=card.querySelector('.portal-choice-hint');if(hint)hint.hidden=!['yes','excused','maybe'].includes(event.status);

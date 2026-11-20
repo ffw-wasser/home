@@ -70,9 +70,16 @@
   STM:['Schlauchtruppmann','Schlauchtruppleute']
  };
  function crewRoleLabel(role,count=1){return (staffingRoles[role]||tacticalPostLabels[role])[count===1?0:1];}
- function crewAssignmentLabel({role,requirement,vehicle}){
-  const withoutBreathing=['ATF','ATM','WTF','WTM'].includes(role)&&requirement!=='AGT';
-  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'')+(withoutBreathing?' · ohne Atemschutz':'');
+ function crewAssignmentParts({role,requirement,vehicle}){
+  return {
+   role:crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':''),
+   vehicle,
+   withoutBreathing:['ATF','ATM','WTF','WTM'].includes(role)&&requirement!=='AGT'
+  };
+ }
+ function crewAssignmentLabel(assignment){
+  const {role,vehicle,withoutBreathing}=crewAssignmentParts(assignment);
+  return role+(vehicle?' am '+vehicle:'')+(withoutBreathing?' · ohne Atemschutz':'');
  }
  function ownRoleText(event){
   return event.status==='yes'&&event.participation?.ownRole?'Für dich vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
@@ -107,5 +114,5 @@
   const preferred=first?.canReply===false&&upcoming.find(event=>event.canReply===true&&event.start<first.end&&event.end>first.start);
   return (preferred?[preferred,...upcoming.filter(event=>event!==preferred)]:upcoming).slice(0,3);
  }
- g.CalendarPresentation={staffingRoles,crewRoleLabel,crewAssignmentLabel,ownRoleText,widgetEvents,participationText,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
+ g.CalendarPresentation={staffingRoles,crewRoleLabel,crewAssignmentParts,crewAssignmentLabel,ownRoleText,widgetEvents,participationText,reminderResult,responseLink,withResponseLink,types,defaults,validate,key,style,plain,instructions,isInfo:title=>/^\s*INFO\s*:/i.test(String(title||''))};
 })(globalThis);
