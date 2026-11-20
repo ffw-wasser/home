@@ -25,7 +25,7 @@ struct H2OPortalApp: App {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.websiteDataStore = review ? .nonPersistent() : .default()
-        config.applicationNameForUserAgent = "H2ONative/1 iOS H2OReviewHelp/1"
+        config.applicationNameForUserAgent = "H2ONative/1 iOS H2OReviewHelp/1 H2OFunkBrowser/1"
         web = WKWebView(frame: .zero, configuration: config)
         web.allowsBackForwardNavigationGestures = true
         web.isInspectable = false

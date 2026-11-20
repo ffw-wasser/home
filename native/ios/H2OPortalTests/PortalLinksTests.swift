@@ -5,6 +5,16 @@ import XCTest
 @testable import H2OPortal
 #endif
 final class PortalLinksTests: XCTestCase {
+    func testRadioVideoOpensOnlyForTheExactLinkFromTheMemberPage() {
+        let reel = PortalLinks.radioVideo
+        XCTAssertEqual(PortalLinks.opensRadioVideo(from: PortalLinks.home, to: reel, mainFrame: true, userInitiated: true),
+                       PortalLinks.host == "ffw-wasser.github.io")
+        XCTAssertFalse(PortalLinks.opensRadioVideo(from: PortalLinks.home, to: reel, mainFrame: false, userInitiated: true))
+        XCTAssertFalse(PortalLinks.opensRadioVideo(from: PortalLinks.home, to: reel, mainFrame: true, userInitiated: false))
+        XCTAssertFalse(PortalLinks.opensRadioVideo(from: PortalLinks.review, to: reel, mainFrame: true, userInitiated: true))
+        let extra = URL(string: reel.absoluteString + "?next=external")!
+        XCTAssertFalse(PortalLinks.opensRadioVideo(from: PortalLinks.home, to: extra, mainFrame: true, userInitiated: true))
+    }
     func testPublicPrivacyCanOpenExternallyWithoutReceivingMemberTokens() {
         XCTAssertTrue(PortalLinks.isPublicPrivacy(PortalLinks.privacy))
         XCTAssertFalse(PortalLinks.trusted(PortalLinks.privacy))

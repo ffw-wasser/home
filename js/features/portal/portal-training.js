@@ -25,7 +25,12 @@ function renderRadioVideos(){
 
  const back=node('button','← Zurück zu Funk');back.type='button';back.className='secondary portal-more-back';back.dataset.moreTarget='training-radio';
  const card=section('Funkstatus 0 bis 9');
- const notice=node('p','Beim Laden des Videos wird eine Verbindung zu Instagram (Meta) hergestellt.');notice.className='note';
+ const notice=node('p','Beim Öffnen des Videos wird eine Verbindung zu Instagram (Meta) hergestellt.');notice.className='note';
+ if(/(?:^|\s)H2OFunkBrowser\/1(?:\s|$)/.test(navigator.userAgent)){
+  const open=node('a','Video laden');open.href=reel;open.className='radio-video-link';open.rel='noreferrer';
+  card.append(notice,open);page.replaceChildren(back,node('h2','Lernvideos'),card);
+  return;
+ }
  const loadVideo=node('button','Video laden');loadVideo.type='button';
  const link=node('a','In Instagram öffnen ↗');link.href=reel;link.target='_blank';link.rel='noopener noreferrer';
  const fallback=node('p');fallback.className='note';fallback.append(link);

@@ -14,6 +14,8 @@ import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.browser.customtabs.CustomTabsClient
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -122,7 +124,7 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true; domStorageEnabled = true
             allowFileAccess = false; allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            userAgentString += " H2ONative/1 Android"
+            userAgentString += " H2ONative/1 Android H2OFunkBrowser/1"
             setSupportMultipleWindows(true)
         }
         passkeysSupported = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)
@@ -136,6 +138,10 @@ class MainActivity : ComponentActivity() {
                 if (!request.isForMainFrame) return false
                 val value = request.url.toString()
                 if (PortalLinks.trusted(value)) return false
+                if (PortalLinks.opensRadioVideo(view.url.orEmpty(), value, request.hasGesture())) {
+                    openRadioVideo()
+                    return true
+                }
                 if (request.hasGesture()) external(request.url); return true
             }
             override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) { handler.cancel(); pageFailed = true; notice("Die sichere Verbindung ist fehlgeschlagen. Bitte später erneut versuchen."); errorActions.visibility = View.VISIBLE }
@@ -184,6 +190,21 @@ class MainActivity : ComponentActivity() {
             if (event != null && WidgetEvent.validID(event)) web.evaluateJavascript("window.H2OPortal?.openEvent('$event')", null)
             else web.evaluateJavascript("window.DeckelMobile?.jump('portal-section')", null)
         } else web.loadUrl(link)
+    }
+    private fun openRadioVideo() {
+        val browsers = packageManager.queryIntentActivities(
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.org/")).addCategory(Intent.CATEGORY_BROWSABLE), 0
+        ).map { it.activityInfo.packageName }.distinct()
+        val provider = CustomTabsClient.getPackageName(this, browsers)
+        if (provider == null) {
+            notice("Für das Video wird ein Browser mit Unterstützung für In-App-Tabs benötigt.")
+            return
+        }
+        runCatching {
+            val tab = CustomTabsIntent.Builder().build()
+            tab.intent.setPackage(provider)
+            tab.launchUrl(this, Uri.parse(PortalLinks.RADIO_VIDEO))
+        }.onFailure { notice("Das Video konnte nicht geöffnet werden. Bitte erneut versuchen.") }
     }
     private fun external(uri: Uri) {
         PortalLinks.calendarTime(uri.toString())?.let { time ->

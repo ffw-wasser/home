@@ -7,6 +7,14 @@ class PortalLinksTest {
         assertTrue(PortalLinks.trusted("https://ffw-wasser.github.io/home/termin.html?event=test"))
         for (url in listOf("http://ffw-wasser.github.io/home/deckel.html", "https://ffw-wasser.github.io.evil.test/home/deckel.html", "https://user@ffw-wasser.github.io/home/deckel.html", "https://ffw-wasser.github.io:443/home/deckel.html", "https://ffw-wasser.github.io/home/index.html", "javascript:alert(1)", "https://ffw-wasser.github.io/home/%64eckel.html")) assertFalse(url, PortalLinks.trusted(url))
     }
+    @Test fun radioVideoOpensOnlyForTheExactLinkFromTheMemberPage() {
+        val reel = PortalLinks.RADIO_VIDEO
+        assertTrue(PortalLinks.opensRadioVideo(PortalLinks.HOME + "?nativePage=terms", reel, true))
+        assertFalse(PortalLinks.opensRadioVideo(PortalLinks.HOME, reel, false))
+        assertFalse(PortalLinks.opensRadioVideo("https://ffw-wasser.github.io/home/review.html", reel, true))
+        assertFalse(PortalLinks.opensRadioVideo(PortalLinks.HOME.replace("deckel.html", "termin.html"), reel, true))
+        assertFalse(PortalLinks.opensRadioVideo(PortalLinks.HOME, reel + "?next=external", true))
+    }
     @Test fun invitationsRequireOneSetupCode() {
         val url = PortalLinks.HOME + "#setup=" + "a".repeat(43)
         assertTrue(PortalLinks.invitation(url))
