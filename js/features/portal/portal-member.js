@@ -132,6 +132,16 @@
    const summary=node('div');summary.className='portal-overview-summary';content.append(summary);
    const currentEvent=result.event||event;
    if(currentEvent.participation){const notice=node('p');paintParticipation(notice,currentEvent);summary.append(notice);}
+   if(result.staffingProposal?.assignments.length){
+    const {unit,assignments}=result.staffingProposal;
+    const proposal=node('details'),list=node('dl');
+    proposal.className='portal-overview-note portal-staffing-proposal';
+    for(const assignment of assignments){
+     list.append(node('dt',g.CalendarPresentation.crewAssignmentLabel(assignment)),node('dd',assignment.name));
+    }
+    proposal.append(node('summary','Besetzungsvorschlag'+(unit?' · '+unit:'')),list);
+    summary.append(proposal);
+   }
    const groupByFunction=result.functionsVersion===2&&currentEvent.attendanceType!=='Fitness'&&currentEvent.sessionType!=='Fitness';
    if(result.stale)summary.append(node('p','Die Terminangaben konnten gerade nicht aktualisiert werden. Die Rückmeldungen sind aktuell.'));
    for(const [value,label] of [['yes','Zugesagt'],['excused','Absage'],['maybe','Noch unsicher'],['open','Ohne Rückmeldung']]){
@@ -203,18 +213,22 @@
   notice.dataset.state=event.participation.state;
   const requestReply=personal&&event.canReply!==false&&event.start>Date.now()&&event.status==='open';
   notice.textContent=g.CalendarPresentation.participationText(event.participation,requestReply);
+  const ownRole=personal?g.CalendarPresentation.ownRoleText(event):'';
+  if(ownRole){
+   const role=node('span',ownRole);role.className='portal-own-role';notice.append(role);
+  }
  }
  function paint(result){latestResult=result;globalThis.DeckelMobile?.sync();
   for(const target of ['portal-evidence','account','portal-points','more-year-plan','more-breathing','more-hydrants','more-regulations','more-training','more-contacts','more-water','theater-phone-section'])for(const tile of (document.querySelectorAll?.('[data-deckel-target="'+target+'"],[data-portal-tile="'+target+'"]')||[]))tile.hidden=result.fitnessTrainer===true;
   if(result.fitnessTrainer===true){if($('evidence'))$('evidence').hidden=true;evidencePriority([]);g.PortalEvidenceEditor?.clear();}
  syncNativeWidget(result);responseBadge(result.events);globalThis.H2OIdentity?.setMemberName?.(result.memberName||'');const gfTile=document.getElementById('portal-more-breathing-tile');if(gfTile)gfTile.hidden=result.leader!==true;$('birthday').hidden=globalThis.H2OFeatures?.rewards===false||!result.birthday?.today;$('birthday').textContent=result.birthday?.today?'🎂 Alles Gute zum Geburtstag! '+(result.birthday.awarded?'Dein Geburtstagsbonus wurde gutgeschrieben: ':'Dein Geburtstagsbonus wird heute gutgeschrieben: ')+(result.birthday.awardUnits/150).toLocaleString('de-DE')+' Treuepunkt'+(result.birthday.awardUnits===150?'':'e')+'.':'';$('events').replaceChildren();const sections=eventSections(result.events),upcoming=sections.ordered;for(const event of upcoming){
-  const card=node('article');card.className='portal-event'+(event.observerOnly===true?' portal-event-observer':'');card.dataset.status=event.participation?.state!=='cancelled'&&['yes','excused','maybe'].includes(event.status)?event.status:'open';card.id='portal-event-'+event.id;const info=node('div');info.className='portal-event-content';info.setAttribute('aria-label','Termininformationen');card.append(info);const month=node('span',eventMonthLabel(event));month.className='portal-month-tab';month.setAttribute('aria-hidden','true');card.append(month);const when=node('button');when.type='button';when.className='portal-event-date';when.setAttribute('aria-label',date(event)+' – Kalender öffnen');when.setAttribute('aria-haspopup','dialog');const time=node('time',date(event));time.setAttribute('datetime',new Date(event.start).toISOString());when.append(time);when.onclick=()=>g.H2OCalendar.show(event);const badges=node('div');badges.className='portal-event-badges';const topic=eventTopic(event);if(String(event.sessionType||'').trim()){badges.append(node('span',event.sessionType));info.append(badges);}info.append(node('h3',topic),when);
+  const card=node('article');card.className='portal-event'+(event.observerOnly===true?' portal-event-observer':'');card.dataset.status=event.participation?.state!=='cancelled'&&['yes','excused','maybe'].includes(event.status)?event.status:'open';card.id='portal-event-'+event.id;const info=node('div');info.className='portal-event-content';info.setAttribute('aria-label','Termininformationen');card.append(info);const month=node('span',eventMonthLabel(event));month.className='portal-month-tab';month.setAttribute('aria-hidden','true');card.append(month);const when=node('button');when.type='button';when.className='portal-event-date';when.setAttribute('aria-label',date(event)+' – Kalender öffnen');when.setAttribute('aria-haspopup','dialog');const time=node('time',date(event));time.setAttribute('datetime',new Date(event.start).toISOString());when.append(time);when.onclick=()=>g.H2OCalendar.show(event);const badges=node('div');badges.className='portal-event-badges';const topic=eventTopic(event);if(String(event.sessionType||'').trim()){badges.append(node('span',event.sessionType));}if(event.organizes)badges.append(node('span','Du organisierst'));if(String(event.sessionType||'').trim()||event.organizes)info.append(badges);info.append(node('h3',topic),when);
   const {day,data:weekData}=weekView(event,upcoming),clock=node('strong',event.allDay?'Ganztägig':new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(event.start))+' Uhr');clock.className='portal-event-clock';time.textContent='';time.append(day);if(weekData.otherCount)when.setAttribute('aria-label',date(event)+' – '+weekData.otherCount+' weitere Termine in dieser Woche – Kalender öffnen');
 
   if(event.participation){const notice=node('p');notice.setAttribute('role','status');paintParticipation(notice,event,true);info.append(notice);}
   const details=node('div');details.className='portal-event-details';const practical=node('div');practical.className='portal-event-practical';details.append(practical);info.append(details);
   for(const [symbol,label,value] of [['📍','Ort',event.location||'GH Wasser'],['👕','Kleidung',event.clothing==='Einsatz'?'Einsatzkleidung':event.clothing]]){if(!value)continue;const row=node('p'),icon=node('span',symbol),text=node('span',value);row.className='portal-event-meta';icon.setAttribute('aria-hidden','true');row.setAttribute('aria-label',label+': '+value);if(label==='Kleidung'&&['Einsatzkleidung','Tagesdienst'].includes(value)){text.className='portal-clothing-label';text.dataset.clothing=value;text.title=value;const full=node('span',value),short=node('span',value==='Einsatzkleidung'?'Einsatzkl.':'Tagesd.');full.className='portal-clothing-full';short.className='portal-clothing-short';short.setAttribute('aria-hidden','true');text.textContent='';text.append(full,short);}row.append(icon,text);practical.append(row);if(label==='Ort'){const clockRow=node('p'),clockIcon=node('span','◷');clockRow.className='portal-event-meta portal-event-time';clockIcon.setAttribute('aria-hidden','true');clockRow.setAttribute('aria-label','Beginn: '+clock.textContent);clockRow.append(clockIcon,clock);practical.append(clockRow);}}
-  if(event.observerOnly===true){
+  if(event.observerOnly===true&&!event.organizes){
    const marker=node('div');marker.className='portal-observer-info';marker.setAttribute('role','img');marker.setAttribute('aria-label','Nur zur Information');marker.title='Nur zur Information';
    const ns='http://www.w3.org/2000/svg',icon=document.createElementNS?.(ns,'svg');
    if(icon){icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const circle=document.createElementNS(ns,'circle'),path=document.createElementNS(ns,'path');circle.setAttribute('cx','12');circle.setAttribute('cy','12');circle.setAttribute('r','9');path.setAttribute('d','M12 11.5v5m0-9h.01');icon.append(circle,path);marker.append(icon);}

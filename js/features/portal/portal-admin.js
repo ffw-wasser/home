@@ -85,7 +85,7 @@
    search.oninput=filter;peopleArea.append(namesTitle,search,names,empty);peopleArea.className='portal-group-people';
    const recount=()=>{
     const ids=g.PortalGroups.members(group,{members:groupSnapshot.members});heading.textContent=group.name;count.textContent=ids.length+' Personen';
-    sourceNote.textContent=(group.enabled?'Aktiv':'Deaktiviert')+' · '+groupSources[group.source]+(g.PortalGroups.normalize(group.name)==='fitness'?' · Mindestteilnahme: '+(group.minimumParticipation??5)+' ohne Trainer':'');
+    sourceNote.textContent=(group.enabled?'Aktiv':'Deaktiviert')+' · '+groupSources[group.source]+(group.general?' · Bei Allgemeinen Proben: Staffel als Mindestbesetzung, Gruppe als Ziel':'')+(g.PortalGroups.normalize(group.name)==='fitness'?' · Mindestteilnahme: '+(group.minimumParticipation??5)+' ohne Trainer':'');
     namesTitle.textContent='Zugeordnete Personen ('+ids.length+')';names.replaceChildren(nameList(ids,groupSnapshot.members));search.hidden=ids.length<8;
     filter();if(!ids.length){empty.hidden=false;empty.textContent='Keine Personen zugeordnet.';}
    };
@@ -139,7 +139,18 @@
   if(!oneDriveAdministrationReady()||typeof oneDriveStateConfirmed!=='undefined'&&!oneDriveStateConfirmed){storageChanged();return false;}
   rosterBusy=true;syncStatus('syncing','In Cloudflare gespeichert · Handyportal wird abgeglichen …');
   try{
-   const c=await connection(),state=await g.oneDriveReadState(),people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),firstName:m.firstName||'',ageDepartment:m.ageDepartment===true,committeeMember:m.committeeMember===true,fitnessTrainer:m.fitnessTrainer===true,leader:Array.isArray(m.roles)&&m.roles.includes('GF'),replyRoles:[...(Array.isArray(m.roles)&&m.roles.includes('ATF')?['ATF']:[]),...(Array.isArray(m.machinistVehicles)&&m.machinistVehicles.some(v=>['LF','TSF'].includes(v))?['Maschinist']:[])],agt:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m),evidence:g.MemberEvidence.project({...m,breathingQualified:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m)})})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
+   const c=await connection(),state=await g.oneDriveReadState();
+   const year=new Intl.DateTimeFormat('sv-SE',{year:'numeric',timeZone:'Europe/Berlin'}).format(Date.now());
+   const counts=typeof tacticsYearRoleCounts==='function'?tacticsYearRoleCounts(year):new Map();
+   const targets=state.roleTargets||{},tacticalRoles=g.TacticsEngine?.GROUP_ROLES||[];
+   const staffingProfile=member=>({
+    roles:tacticalRoles.filter(role=>role!=='Maschinist'&&Array.isArray(member.roles)&&member.roles.includes(role)),
+    vehicles:['LF','TSF'].filter(vehicle=>Array.isArray(member.machinistVehicles)&&member.machinistVehicles.includes(vehicle)),
+    year:Number(year),
+    actuals:Object.fromEntries(tacticalRoles.filter(role=>counts.has(nameForStorage(member)+'|||'+role)).map(role=>[role,counts.get(nameForStorage(member)+'|||'+role)])),
+    targets:Object.fromEntries(tacticalRoles.filter(role=>Number.isInteger(targets[role])&&targets[role]>0&&targets[role]<=99).map(role=>[role,targets[role]]))
+   });
+   const people=state.members.map(m=>({id:String(m.id),name:[m.lastName,m.firstName].filter(Boolean).join(' '),firstName:m.firstName||'',ageDepartment:m.ageDepartment===true,committeeMember:m.committeeMember===true,fitnessTrainer:m.fitnessTrainer===true,leader:Array.isArray(m.roles)&&m.roles.includes('GF'),replyRoles:[...(Array.isArray(m.roles)&&m.roles.includes('ATF')?['ATF']:[]),...(Array.isArray(m.machinistVehicles)&&m.machinistVehicles.some(v=>['LF','TSF'].includes(v))?['Maschinist']:[])],...(g.TacticsEngine?{staffingProfile:staffingProfile(m)}:{}),agt:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m),evidence:g.MemberEvidence.project({...m,breathingQualified:m.breathingQualified===true||typeof m.breathingQualified!=='boolean'&&g.MemberEvidence.breathingRelevant(m)})})),key=c.origin+':'+c.source+':'+JSON.stringify(people);
    if(key!==rosterKey||force){
     if(g.DrinksStore.sourceKey()!==c.source)throw Error('Mitgliederordner wurde geändert.');
     const saved=await g.DrinksPush.request(c,'/admin/portal/roster',{source:c.source,members:people,agtSource:'member-checkbox',replyFunctionsVersion:1});
@@ -236,7 +247,7 @@
     if(editEvent===e.id&&!editOpened){editOpened=true;reviewPinned.add(e.id);reviewShowSaved=true;card.querySelector('.calendar-display-editor').open=true;queueMicrotask(()=>card.scrollIntoView?.({block:'start'}));}
 continue;}
     const matched=(groupSnapshot?.groups||[]).filter(g=>(e.groupIds||[]).includes(g.id));
-    const origin=e.recipientMode==='groups'?'Gruppenauswahl · persönliche Ergänzungen und Ausnahmen':e.recipientMode==='automatic'?'Gruppen · '+(Array.isArray(e.recipientIds)&&!e.recipientIds.length?'keine Personen zugeordnet':matched.map(g=>g.name).join(', ')||'alle aktiven Mitglieder'):e.recipientMode==='manual'?'Manuell angepasst':'Zugeordnete Mitglieder';
+    const origin=e.recipientMode==='groups'?'Gruppenauswahl · persönliche Ergänzungen und Ausnahmen':e.recipientMode==='automatic'?'Gruppen · '+(Array.isArray(e.recipientIds)&&!e.recipientIds.length?'keine Personen zugeordnet':matched.map(g=>g.name).join(', ')||'alle aktiven Mitglieder'):e.recipientMode==='manual'?'Manuell angepasst':e.recipientMode==='individual'?'Teilnehmer einzeln ausgewählt':'Zugeordnete Mitglieder';
     const audienceSummary=node('p',origin);audienceSummary.className='portal-review-audience';audienceSummary.hidden=e.kind!=='probe';
     const audienceDetails=node('details'),audienceTitle=node('summary','Betroffene Mitglieder ('+(Array.isArray(e.recipientIds)?e.recipientIds.length:roster.length)+')');audienceDetails.className='portal-event-people';audienceDetails.hidden=e.kind!=='probe';audienceDetails.append(audienceTitle,nameList(Array.isArray(e.recipientIds)?e.recipientIds:null,roster),node('small','Diese Personen sehen den Termin. Zu- und Absage sind direkt in H₂O möglich. Gruppenführer können am Termin eine Erinnerung senden.'));
     if(Array.isArray(e.recipientIds)&&!e.recipientIds.length)audienceDetails.append(node('p','Keine Personen zugeordnet. Bitte die Gruppe prüfen.'));
@@ -270,7 +281,11 @@ continue;}
     recipients.className='portal-recipient-choices';
     const audienceMode=node('select');audienceMode.className='text-input portal-audience-mode';audienceMode.setAttribute('aria-label','Betroffene Mitglieder auswählen');
     for(const [value,label] of [['all','Alle Mitglieder'],['selected','Nur ausgewählte Mitglieder']]){const option=node('option',label);option.value=value;audienceMode.append(option);}
-    audienceMode.value=Array.isArray(e.recipientIds)?'selected':'all';
+    let individualOption;
+    if(cal.staffingVersion===1){individualOption=node('option','Einzelne Feuerwehrmitglieder · ohne Gruppe');individualOption.value='individual';audienceMode.append(individualOption);}
+    audienceMode.value=recipientMode==='individual'?'individual':Array.isArray(e.recipientIds)?'selected':'all';
+    const isGuest=id=>roster.find(member=>member.id===id)?.fitnessTrainer===true;
+    const individualButton=node('button','Teilnehmer einzeln auswählen');individualButton.type='button';individualButton.className='outline-button';
     const selectedCount=node('p');selectedCount.className='portal-recipient-count';selectedCount.setAttribute('role','status');
     const recipientSearch=node('input');recipientSearch.type='search';recipientSearch.className='text-input portal-recipient-search';recipientSearch.placeholder='Namen suchen …';recipientSearch.setAttribute('aria-label','Betroffene Mitglieder suchen');
     const peopleBox=node('div');peopleBox.className='portal-recipient-list';const people=[],peopleLabels=[];
@@ -286,18 +301,19 @@ continue;}
     for(const btn of [chooseVisible,clearVisible]){btn.type='button';btn.className='outline-button';recipientActions.append(btn);}
     const missingMembers=node('p');missingMembers.className='portal-recipient-missing';
     const updateRecipients=()=>{
-      const restricted=audienceMode.value==='selected',checked=people.filter(c=>c.checked).length;
+      const individual=audienceMode.value==='individual',restricted=audienceMode.value!=='all',eligible=people.filter(c=>!individual||!isGuest(c.value)),checked=eligible.filter(c=>c.checked).length;
       recipientSearch.hidden=peopleBox.hidden=recipientActions.hidden=!restricted;
-      selectedCount.textContent=restricted?checked+' von '+people.length+' Mitgliedern ausgewählt':'Alle Mitglieder ('+people.length+')';
+      selectedCount.textContent=restricted?checked+' von '+eligible.length+' Mitgliedern ausgewählt':'Alle Mitglieder ('+people.length+')';
       selectedCount.dataset.empty=String(restricted&&!checked);
-      missingMembers.hidden=people.length>0||!restricted;
+      missingMembers.hidden=eligible.length>0||!restricted;
       missingMembers.textContent='Mitgliederliste noch nicht verfügbar. Bitte zuerst Cloudflare synchronisieren und die Kalenderverwaltung neu öffnen.';
-      for(const c of people)c.disabled=!restricted;
+      for(const c of people)c.disabled=!restricted||individual&&isGuest(c.value);
+      filterRecipients();
 
     };
     const filterRecipients=()=>{
       const query=recipientSearch.value.trim().toLocaleLowerCase('de');
-      for(const r of peopleLabels)r.choice.hidden=!r.name.includes(query);
+      for(const r of peopleLabels)r.choice.hidden=r.choice.children[0].disabled||!r.name.includes(query);
     };
     recipientSearch.oninput=filterRecipients;
     const groupChoices=node('fieldset'),groupTitle=node('legend','Gruppen auswählen · mehrfach möglich');groupChoices.append(groupTitle);
@@ -307,32 +323,78 @@ continue;}
      if(!group.enabled)continue;const label=node('label'),check=node('input');check.type='checkbox';check.value=group.id;check.checked=['groups','automatic'].includes(recipientMode)&&(e.groupIds||[]).includes(group.id);groupChecks.push(check);label.append(check,node('span',group.name));groupChoices.append(label);
      check.onchange=()=>{recipientMode='groups';audienceMode.value='selected';const ids=g.PortalGroups.selection(groupChecks.filter(c=>c.checked).map(c=>c.value),includeIds,excludeIds,groupSnapshot.groups,{members:roster});for(const person of people)person.checked=ids.includes(person.value);audienceOrigin.textContent='Auswahl: Gruppen mit persönlichen Ergänzungen und Ausnahmen';updateRecipients();changed();};
     }
-    const exceptions=node('details');exceptions.className='portal-recipient-exceptions';exceptions.append(node('summary','Einzelne Personen ergänzen oder ausschließen'),audienceMode,recipientSearch,recipientActions,missingMembers,peopleBox);
-    recipients.append(groupChoices,selectedCount,audienceOrigin,exceptions);
+    const exceptions=node('details');exceptions.className='portal-recipient-exceptions';const exceptionsTitle=node('summary','Einzelne Personen ergänzen oder ausschließen');exceptions.append(exceptionsTitle,audienceMode,recipientSearch,recipientActions,missingMembers,peopleBox);
+    exceptions.open=recipientMode==='individual';
+    recipients.append(groupChoices,selectedCount,audienceOrigin,individualButton,exceptions);
+    const staffingOptions=node('details'),staffing=node('fieldset'),staffingNote=node('p');
+    staffingOptions.className='portal-staffing-options';
+    staffingOptions.open=Boolean(e.staffingRequirements);
+    staffingOptions.append(node('summary','Mindestteilnahme und benötigte Funktionen'),staffing);
+    staffing.className='portal-staffing-editor';
+    staffing.setAttribute('aria-label','Mindestteilnahme und benötigte Funktionen');staffing.append(staffingNote);
+    const organizerLabel=node('label','Organisator'),organizer=node('select');
+    organizer.className='text-input';
+    const noOrganizer=node('option','Kein Organisator');noOrganizer.value='';organizer.append(noOrganizer);
+    for(const member of roster){
+     if(member.leader!==true||member.fitnessTrainer===true)continue;
+     const option=node('option',member.name);option.value=member.id;organizer.append(option);
+    }
+    organizer.value=e.organizerId||'';
+    organizerLabel.append(organizer,node('small','Nur Gruppenführer sind auswählbar. Der Organisator sieht die Rückmeldungen und zählt bei der Besetzung nicht mit.'));
+    const quantity=(label,value)=>{
+     const row=node('label',label),input=node('input');
+     input.type='number';input.className='text-input';input.min='0';input.max='500';input.step='1';input.value=value??'';input.placeholder='–';
+     row.append(input);staffing.append(row);return input;
+    };
+    const minimum=quantity('Mindestteilnahme (Personen)',e.staffingRequirements?.minimum||null);
+    const roleInputs=Object.entries(g.CalendarPresentation?.staffingRoles||{}).map(([role,[label]])=>[role,quantity(role==='AGT'?'Atemschutz (AGT)':label,e.staffingRequirements?.roles?.[role])]);
+    const staffingInputs=[minimum,...roleInputs.map(([,input])=>input)];
     updateRecipients();
     const note=node('p'),save=node('button','Speichern'),cancel=node('button','Abbrechen'),feedback=node('p');save.type=cancel.type='button';save.className='primary-button';cancel.className='outline-button';feedback.className='portal-event-feedback';feedback.setAttribute('role','status');
     const update=()=>{
      const ended=!currentEvent(e),probe=['probe','special'].includes(kind.value);fields.hidden=!editing;audienceDetails.hidden=editing||e.kind!=='probe';editButton.hidden=editing;editButton.disabled=ended;editButton.setAttribute('aria-expanded',String(editing));
      locationLabel.hidden=!editing||kind.value==='birthday';locationText.hidden=!editing||locationChoice.value!=='custom';clothingLabel.hidden=!editing||kind.value==='birthday';clothingText.hidden=!editing||clothing.value!=='custom';approvalLabel.hidden=!editing||!probe;personLabel.hidden=!editing||kind.value!=='birthday';attendanceTypeLabel.hidden=!editing||kind.value==='birthday';recipientsLabel.hidden=recipients.hidden=!editing||!probe;
+     const staffingAvailable=cal.staffingVersion===1&&probe&&attendanceType.value!=='Fitness';
+     staffingOptions.hidden=organizerLabel.hidden=!editing||!staffingAvailable;individualButton.hidden=!staffingAvailable||recipientMode==='individual';
+     if(individualOption)individualOption.disabled=!staffingAvailable;
+     if(!staffingAvailable&&recipientMode==='individual'){
+      recipientMode='manual';audienceMode.value='selected';updateRecipients();
+     }
+     exceptionsTitle.textContent=recipientMode==='individual'?'Teilnehmerauswahl':'Einzelne Personen ergänzen oder ausschließen';
+     const general=attendanceType.value==='Allgemeine Probe'&&recipientMode!=='individual'&&(groupSnapshot?.groups||[]).some(group=>group.general&&group.enabled&&groupChecks.some(check=>check.value===group.id&&check.checked));
+     staffingNote.textContent=general?'Staffel (6) als Mindestbesetzung, Gruppe (9) als Ziel. Hier kannst du zusätzliche Anforderungen festlegen.':'Felder leer lassen, wenn keine Mindestteilnahme oder Funktion vorgegeben ist.';
      save.hidden=cancel.hidden=!editing;save.disabled=reviewSnapshot?.stale===true||cal.stale||ended;note.hidden=!editing||probe;note.textContent=kind.value==='birthday'?'Die Zuordnung gilt für diese Geburtstagsserie. Keine Anmeldung; Geburtstagsbonus nach der bestehenden Einstellung.':'Keine Anmeldung und keine Termin-Erinnerung.';
      if(ended){badge.textContent='Termin beendet';if(editing)feedback.textContent='Dieser Termin ist beendet. Die Eingaben bleiben bis zum Abbrechen sichtbar; Speichern ist nicht mehr möglich.';}
     };
     const changed=()=>{reviewEdited.add(e.id);card.dataset.saved='false';card.dataset.state='edited';feedback.textContent='Änderungen noch nicht gespeichert.';update();reviewControls();};
-    const controls=[kind,attendanceType,locationChoice,locationText,clothing,clothingText,approval,person,audienceMode,...groupChecks,...people],initial=controls.map(c=>[c,c.value,c.checked]);
+    const controls=[kind,attendanceType,locationChoice,locationText,clothing,clothingText,approval,person,audienceMode,...groupChecks,...people,...staffingInputs,organizer],initial=controls.map(c=>[c,c.value,c.checked]);
     const resetEditor=()=>{for(const [control,value,checked] of initial){control.value=value;control.checked=checked;}recipientMode=e.recipientMode||'legacy';includeIds=[...(e.includeIds||[])];excludeIds=[...(e.excludeIds||[])];clothingEdited=false;kind.dataset.previousKind='';editing=false;reviewEdited.delete(e.id);reviewOpen.delete(e.id);card.dataset.saved=String(e.automatic===false);card.dataset.state=needsReview(e)?'unresolved':'saved';feedback.textContent='';audienceOrigin.textContent=origin;updateRecipients();update();};
     reviewEditors.set(e.id,{close:resetEditor,expire:update});cancel.onclick=()=>setEdit(false);
     kind.onchange=()=>{const prior=kind.dataset.previousKind||(e.kind==='probe'&&e.sessionType==='Sonderprobe'?'special':e.kind),oldDefault=prior==='probe'?'Allgemeine Probe':prior==='special'?'Sonderprobe':null,nextDefault=kind.value==='probe'?'Allgemeine Probe':kind.value==='special'?'Sonderprobe':null;if(oldDefault&&nextDefault&&attendanceType.value===oldDefault)attendanceType.value=nextDefault;if(!clothingEdited&&clothing.value===(prior==='probe'?'Einsatzkleidung':prior==='special'?'Tagesdienst':''))clothing.value=kind.value==='probe'?'Einsatzkleidung':kind.value==='special'?'Tagesdienst':'';kind.dataset.previousKind=kind.value;changed();};
     locationChoice.onchange=changed;locationText.oninput=changed;clothing.onchange=()=>{clothingEdited=true;changed();};clothingText.oninput=()=>{clothingEdited=true;changed();};attendanceType.onchange=()=>{kind.value=attendanceType.value==='other'?'other':attendanceType.value==='Allgemeine Probe'?'probe':'special';kind.onchange();};approval.onchange=changed;person.onchange=changed;
-    const manualAudience=()=>{if(recipientMode!=='groups')recipientMode='manual';audienceOrigin.textContent=recipientMode==='groups'?'Auswahl: Gruppen mit persönlichen Ergänzungen und Ausnahmen':'Auswahl: manuell festgelegt';updateRecipients();changed();};
-    audienceMode.onchange=()=>{recipientMode='manual';for(const c of groupChecks)c.checked=false;manualAudience();};for(const check of people)check.onchange=()=>{if(recipientMode==='groups'){includeIds=includeIds.filter(id=>id!==check.value);excludeIds=excludeIds.filter(id=>id!==check.value);(check.checked?includeIds:excludeIds).push(check.value);}manualAudience();};for(const [btn,on] of [[chooseVisible,true],[clearVisible,false]])btn.onclick=()=>{recipientMode='manual';for(const c of groupChecks)c.checked=false;for(const row of peopleLabels)if(!row.choice.hidden)row.choice.children[0].checked=on;manualAudience();};update();
+    for(const input of staffingInputs)input.oninput=changed;organizer.onchange=changed;
+    const manualAudience=()=>{
+     if(!['groups','individual'].includes(recipientMode))recipientMode='manual';
+     audienceOrigin.textContent=recipientMode==='individual'?'Auswahl: einzelne Feuerwehrmitglieder':recipientMode==='groups'?'Auswahl: Gruppen mit persönlichen Ergänzungen und Ausnahmen':'Auswahl: manuell festgelegt';
+     updateRecipients();changed();
+    };
+    const selectIndividual=()=>{
+     const alreadyIndividual=recipientMode==='individual';
+     recipientMode='individual';audienceMode.value='individual';exceptions.open=true;
+     for(const c of groupChecks)c.checked=false;
+     for(const c of people)if(!alreadyIndividual||isGuest(c.value))c.checked=false;
+     manualAudience();
+    };
+    individualButton.onclick=selectIndividual;
+    audienceMode.onchange=()=>{if(audienceMode.value==='individual')return selectIndividual();recipientMode='manual';for(const c of groupChecks)c.checked=false;manualAudience();};for(const check of people)check.onchange=()=>{if(recipientMode==='groups'){includeIds=includeIds.filter(id=>id!==check.value);excludeIds=excludeIds.filter(id=>id!==check.value);(check.checked?includeIds:excludeIds).push(check.value);}manualAudience();};for(const [btn,on] of [[chooseVisible,true],[clearVisible,false]])btn.onclick=()=>{if(recipientMode!=='individual')recipientMode='manual';for(const c of groupChecks)c.checked=false;for(const row of peopleLabels)if(!row.choice.hidden)row.choice.children[0].checked=on;manualAudience();};update();
     save.onclick=()=>run(async()=>{
       const access=generation;if(reviewSnapshot?.stale||cal.stale)throw Error('Kalenderstand nicht aktuell. Bitte vor dem Speichern erneut laden.');if(!currentEvent(e))throw Error('Der Termin ist beendet. Es wurde nichts gespeichert.');
       if(kind.value!=='birthday'&&cal.locationVersion!==1)throw Error('Für die Ortsauswahl bitte die aktuelle Veröffentlichung des Kalenderdienstes abwarten und den Kalender neu laden.');
       if(kind.value!=='birthday'&&locationChoice.value==='custom'&&!locationText.value.trim())throw Error('Bitte einen Treffpunkt im Freitext eingeben.');
       if(kind.value!=='birthday'&&cal.clothingVersion!==1)throw Error('Für die Kleidung bitte zuerst die aktuelle Veröffentlichung des Cloudflare-Workers abwarten und den Kalender neu laden. Es wurde nichts gespeichert.');
       if(kind.value!=='birthday'&&clothing.value==='custom'&&!clothingText.value.trim())throw Error('Bitte eine Kleidung im Freitext eingeben.');
-      const isProbe=['probe','special'].includes(kind.value),restricted=isProbe&&audienceMode.value==='selected';
-      const ids=restricted?people.filter(check=>check.checked).map(check=>check.value):null;
+      const isProbe=['probe','special'].includes(kind.value),restricted=isProbe&&audienceMode.value!=='all';
+      const ids=restricted?people.filter(check=>check.checked&&(recipientMode!=='individual'||!isGuest(check.value))).map(check=>check.value):null;
       if(restricted&&!people.length)throw Error('Keine Mitglieder geladen. Bitte Cloudflare synchronisieren und die Kalenderverwaltung erneut öffnen.');
       if(restricted&&!ids.length&&recipientMode!=='automatic')throw Error('Bitte mindestens ein Mitglied für diesen Termin auswählen.');
       if(restricted&&Array.isArray(e.recipientIds)&&e.recipientIds.some(id=>!people.some(check=>check.value===id)))throw Error('Bisherige Empfänger sind nicht vollständig in der Mitgliederliste vorhanden. Bitte Mitgliederabgleich prüfen, bevor du die Auswahl änderst.');
@@ -346,7 +408,13 @@ continue;}
       if(restricted&&!latest.events.some(item=>item.id===e.id))throw Error('Der Termin wurde inzwischen geändert. Bitte Kalender neu laden.');
       if(isProbe&&cal.attendanceTypeVersion!==1){const active=(await connection()).origin;throw Error('Für die iPad-Terminart muss der Cloudflare-Worker aktualisiert werden ('+active+'). Bitte den aktuellen Worker-Code veröffentlichen. Es wurde nichts gespeichert.');}
       if(isProbe&&['automatic','groups'].includes(recipientMode)&&cal.groupsVersion===undefined)throw Error('Bitte zuerst den Kalenderdienst aktualisieren.');
-      const data={eventId:e.id,...(kind.value!=='birthday'?{location:locationChoice.value==='custom'?locationText.value.trim():'GH Wasser'}:{}),clothing:kind.value==='birthday'?'':clothing.value==='custom'?clothingText.value.trim():clothing.value,kind:kind.value==='special'?'probe':kind.value,...(isProbe?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:isProbe&&approval.checked,memberId:kind.value==='birthday'?person.value:null,...(isProbe?{attendanceType:attendanceType.value,recipientIds:ids,recipientMode,expectedGroupsVersion:cal.groupsVersion,...(recipientMode==='groups'?{groupIds:groupChecks.filter(c=>c.checked).map(c=>c.value),includeIds,excludeIds}:{} )}:{}),expectedVersion:restricted?latest.rulesVersion:cal.rulesVersion};
+      const staffingAvailable=cal.staffingVersion===1&&isProbe&&attendanceType.value!=='Fitness';
+      const value=input=>input.value===''?0:input.valueAsNumber;
+      if(staffingAvailable&&staffingInputs.some(input=>input.validity.badInput||!Number.isInteger(value(input))||value(input)<0||value(input)>500))throw Error('Bitte ganze Teilnehmer- und Funktionszahlen von 0 bis 500 eingeben.');
+      const roles=Object.fromEntries(roleInputs.map(([role,input])=>[role,value(input)]).filter(([,count])=>count>0));
+      const requirements=value(minimum)||Object.keys(roles).length?{minimum:value(minimum),roles}:null;
+      if(staffingAvailable&&latest&&latest.staffingVersion!==1)throw Error('Der Kalenderdienst unterstützt die Besetzung noch nicht. Bitte neu laden.');
+      const data={eventId:e.id,...(staffingAvailable?{staffingRequirements:requirements,organizerId:organizer.value||null}:{}),...(kind.value!=='birthday'?{location:locationChoice.value==='custom'?locationText.value.trim():'GH Wasser'}:{}),clothing:kind.value==='birthday'?'':clothing.value==='custom'?clothingText.value.trim():clothing.value,kind:kind.value==='special'?'probe':kind.value,...(isProbe?{sessionType:kind.value==='special'?'Sonderprobe':'Probe'}:{}),approved:isProbe&&approval.checked,memberId:kind.value==='birthday'?person.value:null,...(isProbe?{attendanceType:attendanceType.value,recipientIds:ids,recipientMode,expectedGroupsVersion:cal.groupsVersion,...(recipientMode==='groups'?{groupIds:groupChecks.filter(c=>c.checked).map(c=>c.value),includeIds,excludeIds}:{} )}:{}),expectedVersion:restricted?latest.rulesVersion:cal.rulesVersion};
       const matches=entry=>restricted?Array.isArray(entry?.recipientIds)&&entry.recipientIds.length===ids.length&&ids.every(id=>entry.recipientIds.includes(id)):!Array.isArray(entry?.recipientIds);
       // Current Workers validate recipients and approval together, in one D1
       // rules update. Never temporarily turn off approval: a timeout between
@@ -356,6 +424,7 @@ continue;}
       if(isProbe&&(![1,2].includes(saved.recipientFeatureVersion)||kind.value==='probe'&&restricted&&saved.recipientFeatureVersion!==2||!matches(saved)))throw Error('Der Cloudflare-Worker hat die Empfängerliste nicht bestätigt. Bitte Worker aktualisieren und Einordnung prüfen.');
       if(kind.value!=='birthday'&&saved.clothingVersion!==1)throw Error('Die Kleidung wurde vom Dienst nicht bestätigt. Bitte Kalender neu laden.');
       admin();const confirmed=await request('list');if(access!==generation)return;admin();const stored=confirmed.events.find(item=>item.id===e.id);
+      if(staffingAvailable&&(JSON.stringify(stored?.staffingRequirements??null)!==JSON.stringify(requirements)||(stored?.organizerId??null)!==data.organizerId))throw Error('Die Terminbesetzung wurde nicht bestätigt. Bitte Kalender neu laden und prüfen.');
       if(isProbe&&!matches(stored))throw Error('Die Empfängerauswahl konnte nach dem Speichern nicht bestätigt werden. Bitte Kalender neu laden und Empfänger prüfen.');
       if(stored?.approved!==data.approved)throw Error('Die Freigabe für die Terminanzeige wurde nicht wie gewünscht übernommen. Bitte den Termin prüfen.');
       if(['probe','special'].includes(kind.value)&&stored?.attendanceType!==data.attendanceType)throw Error('Die iPad-Terminart wurde nicht wie gewünscht gespeichert. Bitte Kalender neu laden und prüfen.');
@@ -364,7 +433,7 @@ continue;}
       reviewPinned.add(e.id);reviewEdited.delete(e.id);reviewOpen.delete(e.id);lastLoad=0;await reviewCalendar({snapshot:confirmed});
       const savedCard=[...$('review-events').children].find(c=>c.dataset.eventId===e.id),savedFeedback=savedCard?.querySelector('.portal-event-feedback');
       if(savedFeedback)savedFeedback.textContent='Änderungen gespeichert.';$('status').textContent=savedCard?'':'Änderungen gespeichert.';
-     },feedback);fields.append(node('p','Anpassungen hier gelten für H₂O und bleiben bei späteren Google-Importen erhalten.'),attendanceTypeLabel,locationLabel,clothingLabel,approvalLabel,personLabel,recipientsLabel,recipients,note,save,cancel);if(g.CalendarDisplayAdmin)fields.append(g.CalendarDisplayAdmin.editor(e,roster,request,()=>reviewCalendar()));const more=node('details');more.className='portal-event-more';more.append(node('summary','Weitere Aktionen'),googleRestore);fields.append(more);card.append(selection,badge,h,when,meta,googleSource,googleIssues,audienceSummary,audienceDetails,editButton,fields,feedback);if(e.googleColor)card.style.borderInlineStart='4px solid '+g.CalendarPresentation.style(e,cal.colors).accent;$('review-events').append(card);
+     },feedback);fields.append(node('p','Anpassungen hier gelten für H₂O und bleiben bei späteren Google-Importen erhalten.'),attendanceTypeLabel,locationLabel,clothingLabel,approvalLabel,personLabel,recipientsLabel,recipients,organizerLabel,staffingOptions,note,save,cancel);if(g.CalendarDisplayAdmin)fields.append(g.CalendarDisplayAdmin.editor(e,roster,request,()=>reviewCalendar()));const more=node('details');more.className='portal-event-more';more.append(node('summary','Weitere Aktionen'),googleRestore);fields.append(more);card.append(selection,badge,h,when,meta,googleSource,googleIssues,audienceSummary,audienceDetails,editButton,fields,feedback);if(e.googleColor)card.style.borderInlineStart='4px solid '+g.CalendarPresentation.style(e,cal.colors).accent;$('review-events').append(card);
     if(e.kind==='probe'){
      const responseLink=node('a','Rückmeldelink öffnen'),copyResponse=node('button','Rückmeldelink kopieren'),writeResponse=node('button','Rückmeldelink in Google ergänzen');
      responseLink.href=g.CalendarPresentation.responseLink(e.id);responseLink.target='_blank';responseLink.rel='noopener noreferrer';
@@ -635,8 +704,8 @@ continue;}
   const excluded=members.filter(member=>notApplicableNames.includes(nameForStorage(member))||notApplicableNames.includes(nameForTile(member))).map(member=>String(member.id));
   if(!excluded.length)return;
   const common={eventId:event.id,kind:'probe',approved:current.approved,sessionType:event.attendanceType,attendanceType:event.attendanceType,location:current.location,clothing:current.clothing,expectedVersion:snapshot.rulesVersion,expectedGroupsVersion:snapshot.groupsVersion};
-  if(current.groupIds?.length)await request('classify',{...common,recipientMode:'groups',groupIds:current.groupIds,includeIds:current.includeIds||[],excludeIds:[...new Set([...(current.excludeIds||[]),...excluded])]});
-  else await request('classify',{...common,recipientMode:'manual',recipientIds:(current.recipientIds||members.map(member=>String(member.id))).filter(id=>!excluded.includes(id))});
+  if(current.recipientMode!=='individual'&&current.groupIds?.length)await request('classify',{...common,recipientMode:'groups',groupIds:current.groupIds,includeIds:current.includeIds||[],excludeIds:[...new Set([...(current.excludeIds||[]),...excluded])]});
+  else await request('classify',{...common,recipientMode:current.recipientMode==='individual'?'individual':'manual',recipientIds:(current.recipientIds||members.map(member=>String(member.id))).filter(id=>!excluded.includes(id))});
  }
  g.PortalAdmin={calendarEventDeleted,eventStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('event-statistics',{year});},completeAttendance,finalizeFitnessAudience,fitnessStatistics:year=>{if(!requireAdmin('settingsStatisticsView'))return Promise.reject(Error('Bitte die Verwaltung entsperren.'));return request('fitness-statistics',{year});},calendarModeChanged:()=>reviewCalendar(),resolveCheckin:code=>request('checkin-resolve',{code}),checkinContext:()=>({eventId:chosen(),replies:replyData,source:g.DrinksStore.sourceKey()}),load,loadCalendar,lock,reviewOverview,openReview,beforeView,refreshAttendance,sessionStarted,autoStageCalendarReplies,discard,syncRoster,renderSyncStatus,storageChanged,selectedDate,selectedEvent,selectCalendarEvent,isNextEvent,attendanceAudience,resolveAttendanceAudience,useSpontaneous,attendanceChanged:paintReplies};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(globalThis);
