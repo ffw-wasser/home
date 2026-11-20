@@ -71,10 +71,11 @@
  };
  function crewRoleLabel(role,count=1){return (staffingRoles[role]||tacticalPostLabels[role])[count===1?0:1];}
  function crewAssignmentLabel({role,requirement,vehicle}){
-  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'');
+  const withoutBreathing=['ATF','ATM','WTF','WTM'].includes(role)&&requirement!=='AGT';
+  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'')+(withoutBreathing?' · ohne Atemschutz':'');
  }
  function ownRoleText(event){
-  return event.status==='yes'&&event.participation?.ownRole?'Vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
+  return event.status==='yes'&&event.participation?.ownRole?'Für dich vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
  }
  function staffingText({confirmed,minimum,goal}){
   const shortage=level=>{

@@ -145,6 +145,13 @@ test('TSF kann die Mindeststaffel stellen, die Gruppe benötigt das LF10',async(
  assert.equal(plan.unit,'Staffel');
  assert.equal(plan.assignments.length,6);
  assert.ok(plan.assignments.every(item=>item.vehicle==='TSF'&&!item.memberId));
+ const personal=f.c.CalendarPresentation;
+ for(const role of ['ATF','ATM','WTF','WTM']){
+  const assigned=allPersonal.find(item=>item.participation.ownRole?.role===role);
+  assert.match(personal.ownRoleText(assigned),/^Für dich vorgesehen · .+ am TSF · ohne Atemschutz$/);
+  assert.doesNotMatch(personal.crewAssignmentLabel({...assigned.participation.ownRole,requirement:'AGT'}),/ohne Atemschutz/);
+ }
+ assert.equal(personal.ownRoleText(event),'Für dich vorgesehen · Maschinist am TSF');
  assert.equal((await f.list(leader)).participation.ownRole.role,'GF');
  f.members[3].staffingProfile.vehicles=['LF'];
  assert.equal((await f.call('roster',{members:f.members,replyFunctionsVersion:1},null,true)).status,200);

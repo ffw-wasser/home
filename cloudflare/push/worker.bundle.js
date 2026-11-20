@@ -20551,10 +20551,11 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
  };
  function crewRoleLabel(role,count=1){return (staffingRoles[role]||tacticalPostLabels[role])[count===1?0:1];}
  function crewAssignmentLabel({role,requirement,vehicle}){
-  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'');
+  const withoutBreathing=['ATF','ATM','WTF','WTM'].includes(role)&&requirement!=='AGT';
+  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'')+(withoutBreathing?' · ohne Atemschutz':'');
  }
  function ownRoleText(event){
-  return event.status==='yes'&&event.participation?.ownRole?'Vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
+  return event.status==='yes'&&event.participation?.ownRole?'Für dich vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
  }
  function staffingText({confirmed,minimum,goal}){
   const shortage=level=>{
@@ -23953,7 +23954,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"1f9fb2689262691680a2b8d10351049a0acb76082dd163ea0635b7b56fd85e44",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"fbd2d5aefda8a9c896a9dac5df8051c842fb7e411f4138ac8a24d4d2c70bcdc9",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};
