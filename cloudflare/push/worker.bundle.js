@@ -20386,14 +20386,20 @@ ${strMDSAlgs}`);
     return breathingPlanned?roles:[...new Set([...roles,...STANDARD_CREW_ROLES])];
   }
   function roleScore(remaining,actual,target){return remaining*1000-actual+(target>0?100:0);}
-  function compareCrewCandidates(a,b,role,vehicle){
+  function compareBreathingCandidates(a,b,role){
+    const difference=Number(b.breathingActive===true)-Number(a.breathingActive===true);
+    // Keep qualified members available for attack and water troop if other
+    // eligible candidates can cover the remaining posts.
+    return STANDARD_CREW_ROLES.includes(role)?difference:-difference;
+  }
+  function compareCrewCandidates(a,b,role,vehicle,prioritizeBreathing=false){
     if(role==="Maschinist"&&vehicle==="TSF"){
       const tsfOnly=member=>canDriveVehicle(member,"TSF")&&!canDriveVehicle(member,"LF10");
       const priority=Number(tsfOnly(b.member))-Number(tsfOnly(a.member));
       if(priority)return priority;
     }
     const rank=person=>(person.preferred?.role===role?5000:0)+(person.options.find(option=>option.role===role)?.score||0);
-    return rank(b)-rank(a)||a.name.localeCompare(b.name,"de");
+    return (prioritizeBreathing?compareBreathingCandidates(a,b,role):0)||rank(b)-rank(a)||a.name.localeCompare(b.name,"de");
   }
   function assignCrew(slots,people,eligible,compare,essential){
     const candidates=slots.map(slot=>people.filter(person=>eligible(person,slot)).sort((a,b)=>compare(a,b,slot)));
@@ -20437,7 +20443,7 @@ ${strMDSAlgs}`);
     const lf=(Array.isArray(slots)?slots:[]).filter(slot=>slot.vehicle==="LF10"&&slot.member);
     return vehicleHasMinimumUnit(lf)?"Die aktuelle Fahrzeugbesetzung ist plausibel.":"Auf dem LF10 kann keine einsatzfähige Einheit 1/3 gebildet werden. Besetzung und offene Positionen prüfen.";
   }
-  const api=Object.freeze({GROUP_ROLES,STAFF_ROLES,STAFF_REQUIRED_ROLES,STANDARD_CREW_ROLES,MINIMUM_UNIT_ROLES,assignCrew,crewRoles,roleScore,compareCrewCandidates,canDriveVehicle,vehicleHasRoles,vehicleHasCompleteStaffel,hasCompleteStaffelOnAnyVehicle,vehicleHasMinimumUnit,recommendationText});
+  const api=Object.freeze({GROUP_ROLES,STAFF_ROLES,STAFF_REQUIRED_ROLES,STANDARD_CREW_ROLES,MINIMUM_UNIT_ROLES,assignCrew,crewRoles,roleScore,compareBreathingCandidates,compareCrewCandidates,canDriveVehicle,vehicleHasRoles,vehicleHasCompleteStaffel,hasCompleteStaffelOnAnyVehicle,vehicleHasMinimumUnit,recommendationText});
   global.TacticsEngine=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })(typeof globalThis!=="undefined"?globalThis:this);
@@ -20551,10 +20557,11 @@ g.RegulationsModel={source,defaults,validate,pdfUrl,bundledPdf,bundledParts,sele
  };
  function crewRoleLabel(role,count=1){return (staffingRoles[role]||tacticalPostLabels[role])[count===1?0:1];}
  function crewAssignmentLabel({role,requirement,vehicle}){
-  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'');
+  const withoutBreathing=['ATF','ATM','WTF','WTM'].includes(role)&&requirement!=='AGT';
+  return crewRoleLabel(role)+(requirement?' ('+crewRoleLabel(requirement)+')':'')+(vehicle?' am '+vehicle:'')+(withoutBreathing?' · ohne Atemschutz':'');
  }
  function ownRoleText(event){
-  return event.status==='yes'&&event.participation?.ownRole?'Vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
+  return event.status==='yes'&&event.participation?.ownRole?'Für dich vorgesehen · '+crewAssignmentLabel(event.participation.ownRole):'';
  }
  function staffingText({confirmed,minimum,goal}){
   const shortage=level=>{
@@ -22681,7 +22688,7 @@ g.PortalHydrants={schema,route};
     const actual=profile?.year===year?profile.actuals[role]||0:0,target=profile?.targets[role]||0;
     return {role,score:g.TacticsEngine.roleScore(Math.max(0,target-actual),actual,target)};
    }).sort((a,b)=>b.score-a.score||a.role.localeCompare(b.role,'de'));
-   return {member:candidate,name:member.name,options,preferred:options[0]};
+   return {member:candidate,name:member.name,breathingActive:member.agt===true&&member.ageDepartment!==true,options,preferred:options[0]};
   });
  }
  function staffingLevel(people,required,roles,standard=[],vehicle=null,addStaffel=false){
@@ -22706,7 +22713,7 @@ g.PortalHydrants={schema,route};
    if(requirement==='Maschinist'&&vehicle)return g.TacticsEngine.canDriveVehicle(member,vehicle);
    return !requirement||options.some(option=>option.role===requirement);
   };
-  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,slot.vehicle),slot=>Boolean(slot.requirement));
+  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,slot.vehicle,Boolean(slot.vehicle)),slot=>Boolean(slot.requirement));
   const missing=new Map(),assignments=[];
   for(const [index,{role,requirement,vehicle}] of slots.entries()){
    const person=crew[index];
@@ -23953,7 +23960,7 @@ export default {
   const path=new URL(request.url).pathname;
   try{
    if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<40||!env.INVITE_SECRET||env.INVITE_SECRET.length<40||!env.VAPID_PRIVATE_JWK||!env.VAPID_PUBLIC_KEY)return reply({error:'Versanddienst noch nicht eingerichtet.'},503);
-   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"1f9fb2689262691680a2b8d10351049a0acb76082dd163ea0635b7b56fd85e44",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
+   if(path==='/health'&&request.method==='GET'){await env.DB.prepare('SELECT alias FROM accounts LIMIT 1').first();await env.DB.prepare('SELECT id FROM commands LIMIT 1').first();await vapid(env,'https://web.push.apple.com/');if(globalThis.CentralLedger)await env.DB.prepare('SELECT id FROM ledger_meta LIMIT 1').first();return reply({version:1,sourceFingerprint:"667236fc9bcf2ac18c7b637a954db79d6621137f34fb8a49c11a2266a0659302",commandsVersion:1,...(globalThis.CentralLedger?{centralVersion:1}:{}),...(await globalThis.DeckelChallengeService?.ready(env)?{challengeVersion:1,challengeCategoriesVersion:1,challengeLevelsVersion:1,challengeSoloVersion:1}:{}),portalVersion:globalThis.PortalService?1:0,privateCalendarVersion:globalThis.PortalService?1:0,subscriptionOverviewVersion:1,browserPairVersion:globalThis.PortalService?1:0,passkeyVersion:globalThis.WhatsAppPasskeys?1:0,portalIdentityVersion:globalThis.WhatsAppPasskeys?1:0,publicKey:env.VAPID_PUBLIC_KEY});}
    const personalFeed=/^\/calendar\/member\/([A-Za-z0-9_-]{43})\.ics$/.exec(path);
    if(personalFeed&&['GET','HEAD'].includes(request.method)){
     const privateHeaders={'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':'inline; filename="H2O-Meine-Feuerwehrtermine.ics"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'};

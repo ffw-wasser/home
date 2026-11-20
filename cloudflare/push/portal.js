@@ -246,7 +246,7 @@
     const actual=profile?.year===year?profile.actuals[role]||0:0,target=profile?.targets[role]||0;
     return {role,score:g.TacticsEngine.roleScore(Math.max(0,target-actual),actual,target)};
    }).sort((a,b)=>b.score-a.score||a.role.localeCompare(b.role,'de'));
-   return {member:candidate,name:member.name,options,preferred:options[0]};
+   return {member:candidate,name:member.name,breathingActive:member.agt===true&&member.ageDepartment!==true,options,preferred:options[0]};
   });
  }
  function staffingLevel(people,required,roles,standard=[],vehicle=null,addStaffel=false){
@@ -271,7 +271,7 @@
    if(requirement==='Maschinist'&&vehicle)return g.TacticsEngine.canDriveVehicle(member,vehicle);
    return !requirement||options.some(option=>option.role===requirement);
   };
-  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,slot.vehicle),slot=>Boolean(slot.requirement));
+  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,slot.vehicle,Boolean(slot.vehicle)),slot=>Boolean(slot.requirement));
   const missing=new Map(),assignments=[];
   for(const [index,{role,requirement,vehicle}] of slots.entries()){
    const person=crew[index];
