@@ -95,7 +95,7 @@ const root=path.resolve(__dirname,'..');
   await ownRole.getByText('Gruppenführer',{exact:true}).waitFor();
   await eventCard.locator('[data-reply="yes"]').click();
   await ownRole.waitFor({state:'hidden'});
-  assert.equal(await notice.evaluate(n=>n.offsetWidth===n.parentElement.clientWidth),true,'staffing uses the full width without an assignment');
+  assert.equal(await notice.evaluate(n=>n.offsetWidth===n.parentElement.clientWidth-2*parseFloat(getComputedStyle(n.parentElement).paddingInlineEnd)),true,'staffing uses the full width without an assignment');
   const direct=await page.context().newPage();
   await direct.goto(link);
   const directRole=direct.locator('#event-own-role');
@@ -108,12 +108,16 @@ const root=path.resolve(__dirname,'..');
   await page.evaluate(()=>document.getElementById('portal-refresh').onclick());
   await eventCard.locator('[data-reply="yes"][aria-pressed="true"]').waitFor();
   await ownRole.getByText('Gruppenführer',{exact:true}).waitFor();
-  assert.equal(await ownRole.evaluate(n=>n.offsetTop===n.previousElementSibling.offsetTop),true,'assignment is beside staffing at 390px');
-  for(const {width,scale} of [{width:320,scale:100},{width:390,scale:200}]){
+  for(const [width,scale] of [[390,100],[320,100],[390,200]]){
    await page.setViewportSize({width,height:860});
    await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);
-   assert.equal(await ownRole.evaluate(n=>n.offsetTop>n.previousElementSibling.offsetTop),true,'assignment stacks on narrow or enlarged layouts');
-   assert.equal(await ownRole.evaluate(n=>n.parentElement.scrollWidth<=n.parentElement.clientWidth+1),true,'staffing and assignment fit without horizontal scroll');
+   const layout=await ownRole.evaluate(n=>{
+    const box=n.parentElement,prior=n.previousElementSibling,p=n.getBoundingClientRect(),q=prior.getBoundingClientRect();
+    return {stacked:p.top>=q.bottom&&p.left===q.left,sameWidth:p.width===q.width,
+     fits:box.scrollWidth<=box.clientWidth+1,height:box.getBoundingClientRect().height};
+   });
+   assert.ok(layout.stacked&&layout.sameWidth&&layout.fits,'both lines fit across the strip at '+width+'px / '+scale+'%');
+   if(scale===100)assert.ok(layout.height<=(width===390?76:96),'the strip stays compact at '+width+'px, measured '+layout.height+'px');
   }
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>document.documentElement.style.fontSize='100%');
