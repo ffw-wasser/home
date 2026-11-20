@@ -286,5 +286,13 @@
   "geraetehaus-mitglieder": {
     "width": 1180,
     "height": 820
+  },
+  "geraetehaus-terminbesetzung": {
+    "width": 682,
+    "height": 281
+  },
+  "h2o-terminbesetzung": {
+    "width": 354,
+    "height": 516
   }
 }

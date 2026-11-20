@@ -14,6 +14,12 @@ if(process.argv.includes('--only=geraetehaus-abos')){require('node:child_process
 if(process.argv.includes('--only=geraetehaus-kalender-privat')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-private-source-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_PRIVATE_CALENDAR_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=geraetehaus-google-gruppen')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-groups-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_GOOGLE_GROUP_ACCESS_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=h2o-gf-erinnerung')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-invitations-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_GF_REMINDER_HELP:'1'}});process.exit(0);}
+if(process.argv.includes('--only=terminbesetzung')){
+ for(const [file,flag] of [['calendar-groups-browser.cjs','CAPTURE_STAFFING_ADMIN_HELP'],['calendar-invitations-browser.cjs','CAPTURE_STAFFING_MEMBER_HELP']]){
+  require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests',file)],{stdio:'inherit',env:{...process.env,[flag]:'1'}});
+ }
+ process.exit(0);
+}
 if(process.argv.includes('--only=h2o-termine')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-invitations-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_INVITATIONS_TERMS_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=h2o-kalenderkonto')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/calendar-invitations-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_INVITATIONS_HELP:'1'}});process.exit(0);}
 if(process.argv.includes('--only=h2o-konto-loeschen')){require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/password-browser.cjs')],{stdio:'inherit',env:{...process.env,CAPTURE_ACCOUNT_HELP:'1'}});process.exit(0);}

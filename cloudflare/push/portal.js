@@ -178,12 +178,18 @@
    }
    const recipientMode=rule?(rule.recipientMode||'legacy'):'automatic',meta=display.get(e.id)||{};
    let groupRecipients=[];if(recipientMode==='groups')try{groupRecipients=g.PortalGroups.selection(rule.groupIds,rule.includeIds||[],rule.excludeIds||[],groups.groups,roster);}catch{issues.push('Gruppen-Auswahl bitte erneut prüfen.');}
-   const recipientIds=kind==='info'?(meta.recipientIds??null):kind!=='probe'?null:recipientMode==='groups'?groupRecipients:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
+   const individual=recipientMode==='individual';
+   const selectedGroupIds=recipientMode==='groups'?rule.groupIds:individual?[]:automaticAudience.groupIds;
+   const selectedIndividuals=individual?(rule.recipientIds||[]).filter(id=>roster?.members.some(member=>member.id===id&&member.fitnessTrainer!==true)):null;
+   const recipientIds=individual?selectedIndividuals:kind==='info'?(meta.recipientIds??null):kind!=='probe'?null:recipientMode==='groups'?groupRecipients:recipientMode==='automatic'?(rule&&((rule.groupsVersion>0&&!groups.version)||!roster)?[]:automaticAudience.recipientIds):Array.isArray(rule?.recipientIds)?rule.recipientIds:null;
    if(!rule&&fields.release!==false&&kind==='probe'&&!automaticAudience.recipientIds.length)issues.push('Keine Mitglieder für die Freigabe zugeordnet.');
    const clothingValue=rule?.clothing??fields.clothing??(kind==='probe'?(sessionType==='Fitness'?'Sportkleidung':sessionType==='Probe'?'Einsatzkleidung':'Tagesdienst'):'');
    const attendanceType=kind==='probe'?(rule?.attendanceType||auto.attendanceType||(sessionType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null;
    const minimumParticipation=attendanceType==='Fitness'||sessionType==='Fitness'?(groups.groups.find(group=>g.PortalGroups.normalize(group.name)==='fitness')?.minimumParticipation??fields.minimumParticipation??DEFAULT_FITNESS_MINIMUM):null;
-   return {...e,...(minimumParticipation?{minimumParticipation}:{}),observerIds:kind==='probe'?(groups.observerIds||[]).filter(id=>roster?.members.some(member=>member.id===id&&member.fitnessTrainer!==true)):[],completedAt:meta.completedStart===e.start&&Number.isSafeInteger(meta.completedAt)?meta.completedAt:null,remindedAt:reminded.get(e.id)||null,...(googleColors.colors.get(g.GoogleCalendarColors.eventKey(e))?{googleColor:googleColors.colors.get(g.GoogleCalendarColors.eventKey(e)).color}:{}),description:source.note,note:g.CalendarPresentation.plain(meta.note??source.note),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType:kind==='probe'&&['Fitness','Veranstaltung'].includes(rule?.attendanceType||auto.attendanceType)?(rule?.attendanceType||auto.attendanceType):sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,googleManaged:!rule,googleIssues:issues,approved:kind==='probe'&&(rule?rule.kind==='probe'&&rule.approved===true:fields.release!==false&&!issues.length),memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:recipientMode==='groups'?rule.groupIds:automaticAudience.groupIds,...(recipientMode==='groups'?{includeIds:rule.includeIds||[],excludeIds:rule.excludeIds||[]}:{}),automaticRecipientIds:automaticAudience.recipientIds,attendanceType};
+   const tacticalStaffing=attendanceType==='Allgemeine Probe'&&groups.groups.some(group=>group.enabled&&group.general&&selectedGroupIds.includes(group.id));
+   const staffingRequirements=kind==='probe'&&attendanceType!=='Fitness'?rule?.staffingRequirements??null:null;
+   const organizerId=kind==='probe'&&attendanceType!=='Fitness'&&roster?.members.some(member=>member.id===rule?.organizerId&&member.leader===true&&member.fitnessTrainer!==true)?rule.organizerId:null;
+   return {...e,staffingRequirements,tacticalStaffing,organizerId,...(minimumParticipation?{minimumParticipation}:{}),observerIds:kind==='probe'&&!individual?(groups.observerIds||[]).filter(id=>roster?.members.some(member=>member.id===id&&member.fitnessTrainer!==true)):[],completedAt:meta.completedStart===e.start&&Number.isSafeInteger(meta.completedAt)?meta.completedAt:null,remindedAt:reminded.get(e.id)||null,...(googleColors.colors.get(g.GoogleCalendarColors.eventKey(e))?{googleColor:googleColors.colors.get(g.GoogleCalendarColors.eventKey(e)).color}:{}),description:source.note,note:g.CalendarPresentation.plain(meta.note??source.note),noteOverride:meta.note!=null,displayVersion:meta.version||0,infoVisible:kind==='info'&&meta.infoVisible===true,location:kind==='info'?'':rule?.location??(e.location||'GH Wasser'),kind,sessionType:kind==='probe'&&['Fitness','Veranstaltung'].includes(rule?.attendanceType||auto.attendanceType)?(rule?.attendanceType||auto.attendanceType):sessionType,clothing:clothingValue==='Tagdienst'?'Tagesdienst':clothingValue==='Einsatz'?'Einsatzkleidung':clothingValue,automatic:!rule,googleManaged:!rule,googleIssues:issues,approved:kind==='probe'&&(rule?rule.kind==='probe'&&rule.approved===true:fields.release!==false&&!issues.length),memberId:kind==='birthday'?(rule?rule.memberId||null:auto.memberId):null,recipientIds,recipientMode,groupIds:selectedGroupIds,...(recipientMode==='groups'?{includeIds:rule.includeIds||[],excludeIds:rule.excludeIds||[]}:{}),automaticRecipientIds:automaticAudience.recipientIds,attendanceType};
   })};
  }
  async function calendarColors(env,data={}){
@@ -221,29 +227,95 @@
   return {ok:true,completedAt};
  }
  function isRecipient(event,memberId){return !Array.isArray(event.recipientIds)||event.recipientIds.includes(memberId);}
- async function fitnessParticipation(env,events,roster,now=Date.now()){
-  const fitness=new Map(events.filter(event=>event.minimumParticipation).map(event=>[event.id,event]));
-  const counts=new Map([...fitness.keys()].map(id=>[id,0])),members=new Set((roster?.members||[]).map(person=>person.id));
-  const groups=fitness.size?(await audienceGroups(env)).groups:[];
+ const tacticalRoles=g.TacticsEngine.GROUP_ROLES;
+ function validStaffingProfile(profile){
+  const validNumbers=(values,max)=>values&&typeof values==='object'&&!Array.isArray(values)&&Object.entries(values).every(([role,value])=>tacticalRoles.includes(role)&&Number.isInteger(value)&&value>=0&&value<=max);
+  return profile&&Number.isInteger(profile.year)&&profile.year>=2000&&profile.year<=2100&&
+   Array.isArray(profile.roles)&&profile.roles.length<=tacticalRoles.length&&profile.roles.every(role=>tacticalRoles.includes(role)&&role!=='Maschinist')&&
+   Array.isArray(profile.vehicles)&&profile.vehicles.length<=2&&profile.vehicles.every(vehicle=>['LF','TSF'].includes(vehicle))&&
+   validNumbers(profile.actuals,100000)&&validNumbers(profile.targets,99);
+ }
+ function staffingCandidates(people,year){
+  return people.map(member=>{
+   const profile=member.staffingProfile;
+   const roles=g.TacticsEngine.crewRoles(profile?.roles||member.replyRoles?.filter(role=>role==='ATF')||[],false).filter(role=>role!=='GF');
+   if(member.leader)roles.push('GF');
+   const candidate={...member,machinistVehicles:profile?.vehicles||[]};
+   if(candidate.machinistVehicles.length||member.replyRoles?.includes('Maschinist'))roles.push('Maschinist');
+   const options=roles.map(role=>{
+    const actual=profile?.year===year?profile.actuals[role]||0:0,target=profile?.targets[role]||0;
+    return {role,score:g.TacticsEngine.roleScore(Math.max(0,target-actual),actual,target)};
+   }).sort((a,b)=>b.score-a.score||a.role.localeCompare(b.role,'de'));
+   return {member:candidate,name:member.name,options,preferred:options[0]};
+  });
+ }
+ function staffingLevel(people,required,roles,standard=[]){
+  const vehicle=standard.length?'LF10':null,standardCrew=g.TacticsEngine.STANDARD_CREW_ROLES;
+  const slots=standard.map(role=>({role,requirement:standardCrew.includes(role)?null:role}));
+  for(const [role,count] of Object.entries(roles)){
+   const covered=slots.filter(slot=>slot.requirement===role||role==='TF'&&slot.requirement==='STF').length;
+   for(let i=covered;i<count;i++){
+    const flexible=slots.find(slot=>!slot.requirement&&(role!=='TF'||['ATF','WTF'].includes(slot.role)));
+    if(flexible)flexible.requirement=role;
+    else slots.push({role,requirement:role});
+   }
+  }
+  const qualifies=(person,slot)=>{
+   const {member,options}=person,{role,requirement}=slot,stored=member.staffingProfile?.roles||[];
+   if(vehicle&&role==='Maschinist'&&!g.TacticsEngine.canDriveVehicle(member,vehicle))return false;
+   if(tacticalRoles.includes(role)&&!options.some(option=>option.role===role))return false;
+   if(requirement==='AGT')return member.agt===true;
+   if(requirement==='TF')return ['ATF','WTF','STF'].some(role=>stored.includes(role))||member.replyRoles?.includes('ATF');
+   if(requirement==='Maschinist'&&vehicle)return g.TacticsEngine.canDriveVehicle(member,vehicle);
+   return !requirement||options.some(option=>option.role===requirement);
+  };
+  const crew=g.TacticsEngine.assignCrew(slots,people,qualifies,(a,b,slot)=>g.TacticsEngine.compareCrewCandidates(a,b,slot.role,vehicle),slot=>Boolean(slot.requirement));
+  const missing=new Map(),assignments=[];
+  for(const [index,{role,requirement}] of slots.entries()){
+   const person=crew[index];
+   if(person)assignments.push({role,name:person.name,...(requirement&&requirement!==role?{requirement}:{})});
+   else if(requirement)missing.set(requirement,(missing.get(requirement)||0)+1);
+  }
+  const shortfall=Math.max(0,Math.max(required,slots.length)-people.length);
+  return {summary:{ready:!shortfall&&!missing.size,shortfall,missing:[...missing].map(([role,count])=>({role,count}))},assignments};
+ }
+ function staffingSummary(event,people,includeProposal){
+  const {minimum=0,roles={}}=event.staffingRequirements||{};
+  const candidates=staffingCandidates(people,Number(berlinDay(event.start).slice(0,4)));
+  const first=staffingLevel(candidates,minimum,roles,event.tacticalStaffing?g.TacticsEngine.STAFF_REQUIRED_ROLES:[]);
+  const goal=event.tacticalStaffing?staffingLevel(candidates,minimum,roles,tacticalRoles):null;
+  const planned=goal?.summary.ready?goal:first;
+  return {confirmed:people.length,state:first.summary.ready?'ready':'pending',minimum:first.summary,
+   ...(goal?{goal:goal.summary}:{}),
+   ...(includeProposal?{proposal:{unit:goal?.summary.ready?'Gruppe':goal?'Staffel':null,assignments:planned.assignments}}:{})};
+ }
+ async function eventParticipation(env,events,roster,now=Date.now(),includeProposal=false){
+  const tracked=new Map(events.filter(event=>event.minimumParticipation||event.tacticalStaffing||event.staffingRequirements).map(event=>[event.id,event]));
+  const replies=new Map([...tracked.keys()].map(id=>[id,[]]));
+  const members=new Map((roster?.members||[]).map(person=>[person.id,person]));
+  const groups=events.some(event=>event.minimumParticipation)?(await audienceGroups(env)).groups:[];
   const trainers=new Set(groups.filter(group=>g.PortalGroups.normalize(group.name)==='fitness').flatMap(group=>group.trainerIds||[]));
-  const ids=[...fitness.keys()];
+  const ids=[...tracked.keys()];
   for(let offset=0;offset<ids.length;offset+=75){
    const batch=ids.slice(offset,offset+75);
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event IN ('+batch.map(()=>'?').join(',')+')').bind(...batch).all()).results;
    for(const row of rows){
-    const event=fitness.get(row.event);
-    if(row.updated_at>=event.start||!members.has(row.member)||trainers.has(row.member)||!isRecipient(event,row.member))continue;
+    const event=tracked.get(row.event),member=members.get(row.member);
+    if(row.updated_at>=event.start||!member||!isRecipient(event,row.member))continue;
+    if(event.minimumParticipation?trainers.has(row.member):member.fitnessTrainer===true||row.member===event.organizerId)continue;
     const reply=await open(env,row,'portal-reply:'+row.event+':'+row.member);
-    if(reply.status==='yes')counts.set(row.event,counts.get(row.event)+1);
+    if(reply.status==='yes')replies.get(row.event).push(member);
    }
   }
-  return new Map([...fitness].map(([id,event])=>{
-   const required=event.minimumParticipation,confirmed=counts.get(id),enough=confirmed>=required;
+  return new Map([...tracked].map(([id,event])=>{
+   const people=replies.get(id);
+   if(!event.minimumParticipation)return [id,staffingSummary(event,people,includeProposal)];
+   const required=event.minimumParticipation,confirmed=people.length,enough=confirmed>=required;
    const state=now<event.start?(enough?'ready':'pending'):(enough?'confirmed':'cancelled');
    return [id,{required,confirmed,state}];
   }));
  }
- function isObserver(event,memberId){return event.kind==='probe'&&event.observerIds?.includes(memberId)===true;}
+ function isObserver(event,memberId){return event.kind==='probe'&&(event.organizerId===memberId||event.observerIds?.includes(memberId)===true);}
  function canView(event,memberId){return isRecipient(event,memberId)||isObserver(event,memberId);}
  function guestRecipient(event,memberId){
   return event.attendanceType==='Fitness'&&Array.isArray(event.recipientIds)&&event.recipientIds.includes(memberId);
@@ -262,7 +334,7 @@
   const guest=roster?.members.find(person=>person.id===memberId)?.fitnessTrainer===true;
   return {manages,visible:event=>manages(event)||(guest?guestRecipient(event,memberId):canView(event,memberId))};
  }
- function memberEvent(event,memberId){const {observerIds,recipientIds,automaticRecipientIds,groupIds,includeIds,excludeIds,googleUid,googleOccurrence,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds),...(memberId?{canReply:isRecipient(event,memberId),observerOnly:!isRecipient(event,memberId)&&isObserver(event,memberId)}:{})};}
+ function memberEvent(event,memberId){const {staffingRequirements,tacticalStaffing,organizerId,observerIds,recipientIds,automaticRecipientIds,groupIds,includeIds,excludeIds,googleUid,googleOccurrence,recipientMode,googleIssues,googleManaged,...visible}=event;return {...visible,audienceRestricted:Array.isArray(recipientIds),...(memberId?{canReply:isRecipient(event,memberId),observerOnly:!isRecipient(event,memberId)&&isObserver(event,memberId),...(organizerId===memberId?{organizes:true}:{})}:{})};}
  async function classify(env,data,cal,roster){
   if(data.sessionType!==undefined&&!['Probe','Sonderprobe','Fitness','Veranstaltung'].includes(data.sessionType))fail('Ungültige Terminart.',400);if(!['probe','birthday','other'].includes(data.kind)||typeof data.approved!=='boolean'||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Terminfreigabe.',400);const event=cal.events.find(e=>e.id===data.eventId);if(!event)fail('Termin nicht mehr verfügbar.',404);if(cal.stale)fail('Kalender konnte nicht aktuell geprüft werden.',503);
   if(event.kind==='info')fail('INFO-Einträge sind reine Kalenderinformationen. Bitte nur Darstellung und Sichtbarkeit bearbeiten.',400);
@@ -286,10 +358,10 @@
   const attendanceType=data.kind==='probe'?(data.attendanceType||event.attendanceType||(targetType==='Probe'?'Allgemeine Probe':'Sonderprobe')):null;
   if(data.attendanceType!==undefined&&data.kind!=='probe')fail('Eine iPad-Terminart kann nur Proben und Sonderproben zugeordnet werden.',400);
   if(data.kind==='probe'&&!['Allgemeine Probe','Sonderprobe','Unterricht','Ausschuss Sitzung','Fitness','Veranstaltung'].includes(attendanceType))fail('Ungültige iPad-Terminart.',400);
-  if(data.recipientMode!==undefined&&!['automatic','manual','legacy','groups'].includes(data.recipientMode))fail('Ungültige Mitgliederauswahl.',400);
+  if(data.recipientMode!==undefined&&!['automatic','manual','legacy','groups','individual'].includes(data.recipientMode))fail('Ungültige Mitgliederauswahl.',400);
   const previousMode=event.recipientMode;
   if(data.recipientMode==='legacy'&&previousMode!=='legacy')fail('Ungültige bisherige Auswahl.',400);
-  const recipientMode=data.kind==='probe'?(data.recipientMode||(data.recipientIds!==undefined?'manual':previousMode==='automatic'?(event.automatic?'legacy':'manual'):previousMode)):'legacy';
+  const recipientMode=data.kind==='probe'?(data.recipientMode||(data.recipientIds!==undefined?(previousMode==='individual'?'individual':'manual'):previousMode==='automatic'?(event.automatic?'legacy':'manual'):previousMode)):'legacy';
   if(recipientMode==='groups'){
    if(data.expectedGroupsVersion!==cal.groupsVersion)fail('Gruppen wurden inzwischen geändert. Bitte neu laden.');
    const groups=await audienceGroups(env);try{data.recipientIds=g.PortalGroups.selection(data.groupIds,data.includeIds||[],data.excludeIds||[],groups.groups,roster);}catch(e){fail(e.message,400);}
@@ -301,9 +373,18 @@
   if(data.recipientIds!==undefined&&data.recipientIds!==null){
    if(data.kind!=='probe'||!Array.isArray(data.recipientIds)||(recipientMode!=='automatic'&&!['Fitness','Veranstaltung'].includes(attendanceType)&&!data.recipientIds.length)||data.recipientIds.length>500||new Set(data.recipientIds).size!==data.recipientIds.length||!roster?.members||data.recipientIds.some(id=>typeof id!=='string'||!roster.members.some(m=>m.id===id)))fail('Bitte gültige Mitglieder für diesen Termin auswählen.',400);
   }
+  if(recipientMode==='individual'&&(attendanceType==='Fitness'||!Array.isArray(data.recipientIds)||!data.recipientIds.length||data.recipientIds.some(id=>!roster?.members.some(member=>member.id===id&&member.fitnessTrainer!==true))))fail('Bitte mindestens ein Feuerwehrmitglied auswählen. Gäste sind bei Einzelterminen ausgeschlossen.',400);
+  const organizerId=attendanceType&&attendanceType!=='Fitness'?(data.organizerId===undefined?event.organizerId:data.organizerId):null;
+  if(organizerId!==null&&!roster?.members.some(member=>member.id===organizerId&&member.leader===true&&member.fitnessTrainer!==true))fail('Bitte einen Gruppenführer als Organisator auswählen.',400);
+  let staffingRequirements=attendanceType&&attendanceType!=='Fitness'?(data.staffingRequirements===undefined?event.staffingRequirements:data.staffingRequirements):null;
+  if(staffingRequirements!==null){
+   const {minimum,roles}=staffingRequirements||{};
+   if(!Number.isInteger(minimum)||minimum<0||minimum>500||!roles||typeof roles!=='object'||Array.isArray(roles)||Object.entries(roles).some(([role,count])=>!Object.hasOwn(g.CalendarPresentation.staffingRoles,role)||!Number.isInteger(count)||count<1||count>500)||Object.values(roles).reduce((sum,count)=>sum+count,0)>500)fail('Bitte gültige Teilnehmer- und Funktionszahlen eingeben (höchstens 500).',400);
+   staffingRequirements=minimum||Object.keys(roles).length?{minimum,roles}:null;
+  }
   const old=await env.DB.prepare('SELECT * FROM portal_rules WHERE id=1').first(),rules=await open(env,old,'portal-rules')||{};if((old?.version||0)!==data.expectedVersion)fail('Terminfreigaben wurden inzwischen geändert. Bitte neu laden.');
-  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,location,clothing,...(data.kind==='probe'?{sessionType:targetType,attendanceType,recipientMode,groupsVersion:cal.groupsVersion,groupIds:recipientMode==='groups'?data.groupIds:event.groupIds,...(recipientMode==='groups'?{includeIds:data.includeIds||[],excludeIds:data.excludeIds||[]}:{}),...(Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
-  const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=? AND COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,old.version,cal.groupsVersion).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) SELECT 1,? WHERE COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,cal.groupsVersion).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');if(['Fitness','Veranstaltung'].includes(attendanceType))await env.DB.prepare('DELETE FROM portal_fitness_history WHERE event=?').bind(event.id).run();return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,attendanceType,recipientMode,recipientIds:data.kind==='probe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
+  if(data.kind==='birthday'){rules[event.seriesId]={kind:'birthday',memberId:data.memberId||null};delete rules[event.id];}else rules[event.id]={kind:data.kind,approved:data.kind==='probe'&&data.approved,expiresAt:event.end,location,clothing,...(data.kind==='probe'?{sessionType:targetType,attendanceType,recipientMode,staffingRequirements,organizerId,groupsVersion:cal.groupsVersion,groupIds:recipientMode==='groups'?data.groupIds:event.groupIds,...(recipientMode==='groups'?{includeIds:data.includeIds||[],excludeIds:data.excludeIds||[]}:{}),...(Array.isArray(data.recipientIds)?{recipientIds:data.recipientIds}:{} )}:{})};
+  const payload=await L.seal(env,rules,'portal-rules'),result=old?await env.DB.prepare('UPDATE portal_rules SET payload=?,version=version+1 WHERE id=1 AND version=? AND COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,old.version,cal.groupsVersion).run():await env.DB.prepare('INSERT OR IGNORE INTO portal_rules(id,payload) SELECT 1,? WHERE COALESCE((SELECT version FROM portal_groups WHERE id=1),0)=?').bind(payload,cal.groupsVersion).run();if(!result.meta.changes)fail('Freigabe wurde gleichzeitig geändert. Bitte neu laden.');if(['Fitness','Veranstaltung'].includes(attendanceType))await env.DB.prepare('DELETE FROM portal_fitness_history WHERE event=?').bind(event.id).run();return {ok:true,version:data.expectedVersion+1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,staffingVersion:1,staffingRequirements,organizerId,attendanceType,recipientMode,recipientIds:data.kind==='probe'&&Array.isArray(data.recipientIds)?data.recipientIds:null};
  }
  async function birthdayPolicy(env){const row=await env.DB.prepare('SELECT * FROM portal_bonus_policy WHERE id=1').first();return {row,value:await open(env,row,'portal-birthday-policy')||{revision:'birthday-default-v1',awardUnits:150}};}
  async function saveBirthdayPolicy(env,data){
@@ -623,7 +704,8 @@
   if(path==='/admin/portal/roster'){
    if(data.replyFunctionsVersion!==undefined&&data.replyFunctionsVersion!==1)fail('Ungültige Funktionsversion.',400);
    if(!Array.isArray(data.members)||data.members.length>500||new Set(data.members.map(m=>m.id)).size!==data.members.length||data.members.some(m=>typeof m.id!=='string'||!m.id||m.id.length>200||typeof m.name!=='string'||!m.name.trim()||m.name.length>200||typeof m.leader!=='boolean'||(data.replyFunctionsVersion===1||m.replyRoles!==undefined)&&(!Array.isArray(m.replyRoles)||m.replyRoles.length>2||new Set(m.replyRoles).size!==m.replyRoles.length||m.replyRoles.some(role=>!['ATF','Maschinist'].includes(role)))||['ageDepartment','committeeMember','fitnessTrainer'].some(k=>m[k]!==undefined&&typeof m[k]!=='boolean')||m.agt!==undefined&&m.agt!==null&&typeof m.agt!=='boolean'))fail('Ungültige Mitgliederfreigabe.',400);
-   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,ageDepartment:m.ageDepartment===undefined?roster?.members.find(p=>p.id===m.id)?.ageDepartment===true:m.ageDepartment===true,committeeMember:m.committeeMember===undefined?roster?.members.find(p=>p.id===m.id)?.committeeMember===true:m.committeeMember===true,fitnessTrainer:m.fitnessTrainer===undefined?roster?.members.find(p=>p.id===m.id)?.fitnessTrainer===true:m.fitnessTrainer===true,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',leader:m.leader,...(Array.isArray(m.replyRoles)?{replyRoles:[...m.replyRoles]}:{}),agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),replyFunctionsVersion:data.replyFunctionsVersion===1?1:0,agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
+   if(data.members.some(member=>member.staffingProfile!==undefined&&!validStaffingProfile(member.staffingProfile)))fail('Ungültige Qualifikation für die Terminbesetzung.',400);
+   let people;try{people=data.members.map(m=>({id:m.id,name:m.name,ageDepartment:m.ageDepartment===undefined?roster?.members.find(p=>p.id===m.id)?.ageDepartment===true:m.ageDepartment===true,committeeMember:m.committeeMember===undefined?roster?.members.find(p=>p.id===m.id)?.committeeMember===true:m.committeeMember===true,fitnessTrainer:m.fitnessTrainer===undefined?roster?.members.find(p=>p.id===m.id)?.fitnessTrainer===true:m.fitnessTrainer===true,firstName:typeof m.firstName==='string'?m.firstName.slice(0,100):'',leader:m.leader,...(Array.isArray(m.replyRoles)?{replyRoles:[...m.replyRoles]}:{}),staffingProfile:m.staffingProfile??roster?.members.find(p=>p.id===m.id)?.staffingProfile,agt:m.agt===true?true:m.agt===false?false:null,...(m.evidence!==undefined?{evidence:g.MemberEvidence.validate(m.evidence),evidenceUpdatedAt:Date.now()}:(()=>{const old=roster?.members.find(p=>p.id===m.id);return old?.evidence?{evidence:old.evidence,evidenceUpdatedAt:old.evidenceUpdatedAt||null}:{};})())}));}catch(e){fail(e.message,400);}people=people.map(person=>({...person,evidenceRevisions:g.PortalEvidence.revisions(person,roster?.members.find(old=>old.id===person.id))}));const payload=await L.seal(env,{members:people,updatedAt:Date.now(),replyFunctionsVersion:data.replyFunctionsVersion===1?1:0,agtSource:data.agtSource==='member-checkbox'?'member-checkbox':null},'portal-roster');
    // A roster change and every credential revocation are one transaction.
    // The sequence CAS also invalidates ledger/game writes started before removal.
    const marker='EXISTS(SELECT 1 FROM portal_roster WHERE id=1 AND payload=?)';
@@ -653,7 +735,7 @@
    statements.push(env.DB.prepare('UPDATE ledger_meta SET seq=seq+1 WHERE id=1 AND seq=? AND '+marker).bind(m.seq,payload));
    const result=await env.DB.batch(statements);
    if(!result[0].meta.changes)fail('Mitglieder oder Konten wurden gleichzeitig geändert. Bitte erneut synchronisieren.',409);
-   return {ok:true,evidenceVersion:1,replyFunctionsVersion:data.replyFunctionsVersion===1?1:0,removedBrowserMembers:removed.size};
+   return {ok:true,evidenceVersion:1,replyFunctionsVersion:data.replyFunctionsVersion===1?1:0,staffingVersion:1,removedBrowserMembers:removed.size};
   }
   if(path==='/portal/gf-breathing'){
     if(!roster?.members?.some(m=>m.id===record.memberId&&m.leader===true))fail('Diese Übersicht ist nur für Gruppenführer freigegeben.',403);
@@ -795,12 +877,12 @@
   if(path==='/admin/portal/classify')return classify(env,data,cal,roster);
   if(path==='/portal/list'){
    const ownBirthday=!guest&&cal.events.some(e=>e.kind==='birthday'&&e.memberId===record.memberId&&berlinDay(e.start)===berlinDay(Date.now())),birthdayRow=ownBirthday?await env.DB.prepare('SELECT * FROM portal_birthdays WHERE member=? AND year=?').bind(record.memberId,Number(berlinDay(Date.now()).slice(0,4))).first():null,birthday=ownBirthday?{today:true,awarded:!!birthdayRow,awardUnits:birthdayRow?(await open(env,birthdayRow,'birthday:'+record.memberId+':'+berlinDay(Date.now()).slice(0,4))).awardUnits:(await birthdayPolicy(env)).value.awardUnits}:null;const replies=(await env.DB.prepare('SELECT * FROM portal_replies WHERE member=?').bind(record.memberId).all()).results,map=new Map();for(const row of replies)map.set(row.event,{status:(await open(env,row,'portal-reply:'+row.event+':'+record.memberId)).status,version:row.version,updatedAt:row.updated_at||null});const requestedId=typeof data.eventId==='string'&&/^[A-Za-z0-9_-]{43}$/.test(data.eventId)?data.eventId:null;const requestedEvent=requestedId?cal.events.find(e=>e.id===requestedId):null;const eventLinkStatus=!requestedId?null:!requestedEvent?.completedAt&&requestedEvent?.approved&&requestedEvent.kind==='probe'&&requestedEvent.end>Date.now()?(visibleEvent(requestedEvent)?null:'not-relevant'):'unavailable';const now=Date.now(),events=cal.events.filter(e=>!e.completedAt&&e.approved&&e.kind==='probe'&&e.end>now&&visibleEvent(e));
-   const participation=await fitnessParticipation(env,events,roster,now);
-   const result={...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:guest?null:birthday,fitnessTrainer:guest,leader,events:events.map(e=>({...memberEvent(e,record.memberId),...(participation.has(e.id)?{participation:participation.get(e.id)}:{}),canReply:isRecipient(e,record.memberId)&&participation.get(e.id)?.state!=='cancelled',canManage:canManage(e),calendarManaged:false,calendarLinkOnly:true,...(isRecipient(e,record.memberId)?map.get(e.id)||{status:'open',version:0}:{status:'open',version:0})}))};
+   const participation=await eventParticipation(env,events,roster,now);
+   const result={...cal,eventLinkStatus,memberName:roster?.members.find(m=>m.id===record.memberId)?.name||'',uncertainReplies:true,birthday:guest?null:birthday,fitnessTrainer:guest,leader,events:events.map(e=>({...memberEvent(e,record.memberId),...(participation.has(e.id)&&(!participation.get(e.id).minimum||isRecipient(e,record.memberId)||e.organizerId===record.memberId||canManage(e))?{participation:participation.get(e.id)}:{}),canReply:isRecipient(e,record.memberId)&&participation.get(e.id)?.state!=='cancelled',canManage:canManage(e),calendarManaged:false,calendarLinkOnly:true,...(isRecipient(e,record.memberId)?map.get(e.id)||{status:'open',version:0}:{status:'open',version:0})}))};
    if(data.widget===true){const upcoming=g.CalendarPresentation.widgetEvents(result.events);result.widgetReply=await widgetGrant(env,auth,upcoming);}
    return result;
   }
-  if(path==='/admin/portal/list')return {...cal,calendarLinkOnly:true,googleInstructionVersion:1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1};
+  if(path==='/admin/portal/list')return {...cal,calendarLinkOnly:true,googleInstructionVersion:1,recipientFeatureVersion:2,locationVersion:1,clothingVersion:1,attendanceTypeVersion:1,staffingVersion:1};
   const event=cal.events.find(e=>e.id===data.eventId&&(!e.completedAt&&e.approved&&e.kind==='probe')&&(admin||visibleEvent?.(e)));if(!event)fail('Termin wurde abgesagt oder ist nicht mehr im Kalender.',404);
   if(path==='/portal/widget-status'){
    if(cal.stale)fail('Kalenderstand veraltet. Bitte H₂O öffnen.',503);
@@ -824,8 +906,9 @@
     const latest=await g.PortalEvidence.consents(env);
     for(const id of confirmedBreathing)if(!latest.get(id)?.granted||latest.get(id).version!==approvals.get(id).version)confirmedBreathing.delete(id);
    }
-   const participation=(await fitnessParticipation(env,[event],roster,now)).get(event.id);
-   return {event:{...memberEvent(event),...(participation?{participation}:{})},stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
+   const calculated=(await eventParticipation(env,[event],roster,now,leader)).get(event.id);
+   const {proposal,...participation}=calculated||{};
+   return {event:{...memberEvent(event),...(calculated?{participation}:{})},...(proposal?{staffingProposal:proposal}:{}),stale:cal.stale,functionsVersion:grouped?2:0,members:recipients.map(m=>{const status=statuses.get(m.id)||'open';return {name:m.name,status,...(status==='yes'&&grouped?{functions:m.leader?['GF']:m.replyRoles?.includes('Maschinist')?['Maschinist']:breathing.has(m.id)?['AGT']:[],...(breathing.has(m.id)?{breathingNeedsCheck:!confirmedBreathing.has(m.id)}:{})}:{})};})};
   }
   if(path==='/admin/portal/replies'){
    const rows=(await env.DB.prepare('SELECT * FROM portal_replies WHERE event=?').bind(event.id).all()).results,replies=[];for(const row of rows)if(isRecipient(event,row.member))replies.push({memberId:row.member,...await open(env,row,'portal-reply:'+row.event+':'+row.member)});return {event,replies,pendingReplyMemberIds:pendingReplyMembers(event,roster).map(m=>m.id),stale:cal.stale,fetchedAt:cal.fetchedAt};
@@ -844,7 +927,7 @@
    if(!isRecipient(event,record.memberId))fail('Dieser Termin betrifft dich nicht.',403);
    if(!['yes','excused','maybe','open'].includes(data.status)||!REV.test(data.requestId||'')||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)fail('Ungültige Rückmeldung.',400);
    const replyResult=async(status,version,updatedAt)=>{
-    const participation=(await fitnessParticipation(env,[event],roster)).get(event.id);
+    const participation=(await eventParticipation(env,[event],roster)).get(event.id);
     return {ok:true,status,version,updatedAt,...(participation?{participation}:{})};
    };
    const old=await env.DB.prepare('SELECT * FROM portal_replies WHERE event=? AND member=?').bind(event.id,record.memberId).first(),previous=await open(env,old,'portal-reply:'+event.id+':'+record.memberId);

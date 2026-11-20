@@ -66,6 +66,36 @@ const root=path.resolve(__dirname,'..');
  const feedback=overview.locator('p[role=status]');assert.match(await feedback.innerText(),/3 Handy-Mitteilungen angenommen · 1 fehlgeschlagen/);assert.match(await feedback.innerText(),/iPhone-App: HTTP 403 · InvalidProviderToken/);
  for(const width of [320,390])for(const scale of [100,200]){await page.setViewportSize({width,height:1100});await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);assert.equal(await overview.evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,'failure details fit small screens and doubled text');}
  await page.setViewportSize({width:390,height:1700});await page.evaluate(()=>document.documentElement.style.fontSize='100%');const out=path.join(root,'qa/push-failure-feedback');fs.mkdirSync(out,{recursive:true});await overview.screenshot({path:path.join(out,'push-failure-feedback.png'),animations:'disabled'});
+ if(process.env.CAPTURE_STAFFING_MEMBER_HELP){
+  await overview.getByRole('button',{name:'Schließen',exact:true}).click();
+  const roster=groupedMembers.map(member=>({...member,replyRoles:member.replyRoles.filter(role=>role!=='Maschinist')}));
+  assert.equal((await f.call('roster',{members:roster,replyFunctionsVersion:1,agtSource:'member-checkbox'},null,true)).status,200);
+  const cal=(await f.call('list',{},null,true)).value,event=cal.events[0];
+  const classified=await f.call('classify',{eventId:event.id,kind:'probe',approved:true,expectedVersion:cal.rulesVersion,staffingRequirements:{minimum:3,roles:{GF:1,Maschinist:1}}},null,true);
+  assert.equal(classified.status,200);
+  await page.setViewportSize({width:390,height:844});await page.reload();
+  await page.evaluate(()=>DeckelMobile.jump('portal-section'));
+  const eventCard=page.locator('#portal-events .portal-event').first(),notice=eventCard.locator('.portal-fitness-participation');
+  await notice.filter({hasText:/Es fehlt noch 1 Maschinist/}).waitFor();
+  await eventCard.getByRole('button',{name:'Rückmeldungen ansehen',exact:true}).click();
+  const proposal=overview.locator('.portal-staffing-proposal');
+  await proposal.locator('summary').waitFor();
+  assert.equal(await proposal.locator('dl').isVisible(),false);
+  await proposal.locator('summary').click();
+  await proposal.getByText('Testperson 1',{exact:true}).waitFor();
+  for(const width of [320,390])for(const scale of [100,200]){
+   await page.setViewportSize({width,height:900});
+   await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);
+   assert.equal(await proposal.evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,'staffing proposal width '+width+' at '+scale+'%');
+  }
+  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
+  await page.setViewportSize({width:390,height:844});
+  await overview.getByRole('button',{name:'Schließen',exact:true}).click();
+  const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));
+  await eventCard.screenshot({path:path.join(out,'h2o-terminbesetzung.jpg'),type:'jpeg',quality:80,animations:'disabled'});
+  const box=await eventCard.boundingBox();sizes['h2o-terminbesetzung']={width:Math.round(box.width),height:Math.round(box.height)};
+  fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');
+ }
  if(process.env.CAPTURE_INVITATIONS_TERMS_HELP){
   await overview.getByRole('button',{name:'Schließen',exact:true}).click();
   const list=(await f.call('list',{},person)).value;

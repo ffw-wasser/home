@@ -88,6 +88,39 @@ await page.locator('.portal-keyword-card').first().waitFor({state:'attached'}).c
   await observers.locator('summary').click();
   for(const width of [320,390,768]){await page.setViewportSize({width,height:1100});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'global observers overflow '+width);}
   if(process.env.CAPTURE_OBSERVER_HELP){const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));await observers.screenshot({path:path.join(out,'geraetehaus-beobachter.jpg'),type:'jpeg',quality:80,animations:'disabled'});const box=await observers.boundingBox();sizes['geraetehaus-beobachter']={width:Math.round(box.width),height:Math.round(box.height)};fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');}
+   await page.getByRole('button',{name:'Termine',exact:true}).click();
+  await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();
+  await card.getByRole('button',{name:'Teilnehmer einzeln auswählen',exact:true}).click();
+  await card.locator('.portal-recipient-list input').nth(1).check();
+  await card.locator('.portal-recipient-list input').nth(2).check();
+  await card.getByLabel('Organisator').selectOption('member-1');
+  const staffing=card.locator('.portal-staffing-editor');
+  await card.locator('.portal-staffing-options > summary').click();
+  await staffing.getByLabel('Mindestteilnahme (Personen)',{exact:true}).fill('2');
+  await staffing.getByLabel('Maschinist',{exact:true}).fill('1');
+  for(const width of [320,390,768])for(const scale of [100,200]){
+   await page.setViewportSize({width,height:900});
+   await page.evaluate(scale=>document.documentElement.style.fontSize=scale+'%',scale);
+   assert.equal(await staffing.evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,'staffing editor width '+width+' at '+scale+'%');
+  }
+  await page.evaluate(()=>document.documentElement.style.fontSize='100%');
+  const saveIndividual=page.waitForResponse(r=>r.url().endsWith('/admin/portal/classify'));
+  await card.getByRole('button',{name:'Speichern',exact:true}).click();
+  assert.equal((await saveIndividual).status(),200);
+  await card.locator('.portal-event-feedback').filter({hasText:'Änderungen gespeichert.'}).waitFor();
+  const individual=(await f.call('list',{},null,true)).value.events[0];
+  assert.equal(individual.recipientMode,'individual');
+  assert.deepEqual(individual.recipientIds,['member-2','member-3']);
+  assert.equal(individual.organizerId,'member-1');
+  assert.deepEqual(individual.staffingRequirements,{minimum:2,roles:{Maschinist:1}});
+  if(process.env.CAPTURE_STAFFING_ADMIN_HELP){
+   await page.setViewportSize({width:768,height:1100});
+   await card.getByRole('button',{name:'Bearbeiten',exact:true}).click();
+   const out=path.join(root,'assets/help/guide'),sizes=JSON.parse(fs.readFileSync(path.join(out,'screens.json'),'utf8'));
+   await staffing.screenshot({path:path.join(out,'geraetehaus-terminbesetzung.jpg'),type:'jpeg',quality:80,animations:'disabled'});
+   const box=await staffing.boundingBox();sizes['geraetehaus-terminbesetzung']={width:Math.round(box.width),height:Math.round(box.height)};
+   fs.writeFileSync(path.join(out,'screens.json'),JSON.stringify(sizes,null,2)+'\n');
+  }
   await page.evaluate(()=>PortalAdmin.lock());assert.equal(await groups.locator('.portal-name-list li').count(),0,'Lock removes private names');
   assert.deepEqual(errors,[]);console.log('Calendar browser OK: visible automatic names, effective audience, group/term editing, draft guards, resolver, tabs, privacy, 320/390/412/768/1024.');
  }finally{await browser.close();}

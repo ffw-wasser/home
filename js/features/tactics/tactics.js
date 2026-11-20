@@ -8,8 +8,8 @@ function tacticsPresentMembers() {
   const names = new Set(todayEntries().filter(entry => entry.status === "Anwesend" && entry.role !== "Orga").flatMap(entry => [entry.storedName, entry.displayName].filter(Boolean)));
   return members.filter(member => !member.ageDepartment && (names.has(nameForStorage(member)) || names.has(nameForTile(member))));
 }
-function tacticsYearRoleCounts() {
-  const year=String(today()).slice(0,4), counts=new Map();
+function tacticsYearRoleCounts(year=String(today()).slice(0,4)) {
+  const counts=new Map();
   statisticsArchiveData().filter(data => String(data.rows[0]?.date || data.item.createdAt || "").startsWith(year)).flatMap(data => data.rows).filter(row => row.status === "Anwesend").forEach(row => {
     statisticsRolesFromValue(row.role).forEach(role=>{const key=`${row.name}|||${role}`;counts.set(key,(counts.get(key)||0)+1);});
   });
@@ -27,18 +27,18 @@ function assignableRolesForTactics(member){
   // Ohne geplanten Atemschutzeinsatz sind AT und WT normale taktische
   // Funktionen. Deshalb dürfen alle anwesenden Einsatzkräfte dort eingesetzt
   // werden, auch ohne aktive Atemschutzfreigabe.
-  return breathingProtectionPlanned?roles:[...new Set([...roles,"ATF","ATM","WTF","WTM"])];
+  return TacticsEngine.crewRoles(roles,breathingProtectionPlanned);
 }
 function personRoleOptions(member, counts, targets) {
   return assignableRolesForTactics(member).map(role => {
     const progress=roleProgress(member,role,counts,targets);
     const vehicleFit=role!=="Maschinist" || canDriveVehicle(member,"LF10") || canDriveVehicle(member,"TSF");
-    return {role,...progress,vehicleFit,score:(progress.remaining*1000)+(progress.target>0?100:0)-progress.actual};
+    return {role,...progress,vehicleFit,score:TacticsEngine.roleScore(progress.remaining,progress.actual,progress.target)};
   }).filter(option => option.vehicleFit).sort((a,b)=>b.score-a.score || a.role.localeCompare(b.role,"de"));
 }
 function preferredRoleForPerson(member, counts, targets) { return personRoleOptions(member,counts,targets)[0] || null; }
 function buildPersonRecommendations(present, counts, targets) {
-  return present.map(member => ({member, preferred:preferredRoleForPerson(member,counts,targets), options:personRoleOptions(member,counts,targets)})).sort((a,b) => (b.preferred?.remaining||0)-(a.preferred?.remaining||0) || nameForTile(a.member).localeCompare(nameForTile(b.member),"de"));
+  return present.map(member => ({member,name:nameForTile(member),preferred:preferredRoleForPerson(member,counts,targets), options:personRoleOptions(member,counts,targets)})).sort((a,b) => (b.preferred?.remaining||0)-(a.preferred?.remaining||0) || nameForTile(a.member).localeCompare(nameForTile(b.member),"de"));
 }
 function breathingRoleAllowed(member,role){return !BREATHING_ROLES.has(role)||!breathingProtectionPlanned||hasValidBreathingClearance(member,today());}
 function assignmentPriority(roles) {
@@ -46,24 +46,14 @@ function assignmentPriority(roles) {
   return ordered.filter(role => roles.includes(role));
 }
 function assignVehicleFromPeople(people, roles, vehicle) {
-  const assignments = new Map();
-  assignmentPriority(roles).forEach(role => {
-    const candidates=people.filter(person => !person.assigned && person.options.some(option => option.role===role) && breathingRoleAllowed(person.member,role) && (role!=="Maschinist" || canDriveVehicle(person.member,vehicle)));
-    candidates.sort((a,b) => {
-      const ao=a.options.find(option=>option.role===role), bo=b.options.find(option=>option.role===role);
-      const ap=a.preferred?.role===role?5000:0, bp=b.preferred?.role===role?5000:0;
-      if(role==="Maschinist" && vehicle==="TSF") {
-        const ats=(a.member.machinistVehicles||[]).includes("TSF") && !(a.member.machinistVehicles||[]).includes("LF")?7000:0;
-        const bts=(b.member.machinistVehicles||[]).includes("TSF") && !(b.member.machinistVehicles||[]).includes("LF")?7000:0;
-        if(bts!==ats)return bts-ats;
-      }
-      return (bp+bo.score)-(ap+ao.score) || nameForTile(a.member).localeCompare(nameForTile(b.member),"de");
-    });
-    const selected=candidates[0]||null;
-    if(selected) selected.assigned={vehicle,role};
-    assignments.set(role, selected?.member || null);
-  });
-  return roles.map(role => ({ role, member: assignments.get(role) || null }));
+  const available=people.filter(person=>!person.assigned),ordered=assignmentPriority(roles);
+  const crew=TacticsEngine.assignCrew(ordered,available,
+    (person,role)=>person.options.some(option=>option.role===role)&&breathingRoleAllowed(person.member,role)&&(role!=="Maschinist"||canDriveVehicle(person.member,vehicle)),
+    (a,b,role)=>TacticsEngine.compareCrewCandidates(a,b,role,vehicle),
+    role=>!TacticsEngine.STANDARD_CREW_ROLES.includes(role));
+  const assignments=new Map(ordered.map((role,index)=>[role,crew[index]]));
+  for(const [role,person] of assignments)if(person)person.assigned={vehicle,role};
+  return roles.map(role=>({role,member:assignments.get(role)?.member||null}));
 }
 function vehicleHasMinimumUnit(slots) {
   const filled=new Set(slots.filter(slot=>slot.member).map(slot=>slot.role));
